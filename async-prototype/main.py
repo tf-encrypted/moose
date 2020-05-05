@@ -17,10 +17,16 @@ in1_agg = AsyncMemoryChannel()
 agg_out = AsyncMemoryChannel()
 
 in0_executor = AsyncKernelBasedExecutor(
-    name="alice", store={"x0": 5}, channels={"inputter0_aggregator": in0_agg}, send_delay=2,
+    name="alice",
+    store={"x0": 5},
+    channels={"inputter0_aggregator": in0_agg},
+    send_delay=2,
 )
 in1_executor = AsyncKernelBasedExecutor(
-    name="bob", store={"x1": 7}, channels={"inputter1_aggregator": in1_agg}, send_delay=None,
+    name="bob",
+    store={"x1": 7},
+    channels={"inputter1_aggregator": in1_agg},
+    send_delay=None,
 )
 agg_executor = AsyncKernelBasedExecutor(
     name="carole",

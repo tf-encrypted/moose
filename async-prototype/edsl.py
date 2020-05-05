@@ -177,15 +177,13 @@ class AbstractComputation:
     def __call__(self, role_assignment, *args, **kwargs):
         comp = self.trace_func(*args, **kwargs)
         sid = random.randrange(2 ** 32)
-        run_handles = [
+        tasks = [
             executor.run_computation(comp, role=role.name, session_id=sid)
             for role, executor in role_assignment.items()
         ]
-
-        async def run():
-            await asyncio.gather(*run_handles)
-
-        asyncio.run(run())
+        joint_task = asyncio.gather(*[task for task in tasks])
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(joint_task)
 
     def trace_func(self, *args, **kwargs):
         expression = self.func(*args, **kwargs)
