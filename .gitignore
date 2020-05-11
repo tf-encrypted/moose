@@ -1,0 +1,4 @@
+**/.mypy*
+**/__pycache__
+
+**/.vscode

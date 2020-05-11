@@ -83,10 +83,11 @@ class AsyncKernelBasedExecutor:
             AddOperation: AddKernel(),
         }
 
-    async def run_computation(self, comp, role, session_id):
+    async def run_computation(self, logical_computation, role, session_id):
+        physical_computation = self.compile_computation(logical_computation)
+        execution_plan = self.schedule_execution(physical_computation, role)
         session_values = {}
-        plan = self.compile_plan(comp, role)
-        for op in plan:
+        for op in execution_plan:
             kernel = self.kernels.get(type(op))
             inputs = {
                 param_name: session_values[value_name]
@@ -98,11 +99,15 @@ class AsyncKernelBasedExecutor:
             if output:
                 session_values[op.output] = output
 
-    def compile_plan(self, comp, device_name):
+    def compile_computation(self, logical_computation):
+        # TODO for now we don't do any compilation of computations
+        return logical_computation
+
+    def schedule_execution(self, comp, role):
         # TODO(Morten) this is as simple and naive as it gets; we should at least
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
-        return [node for node in comp.nodes() if node.device_name == device_name]
+        return [node for node in comp.nodes() if node.device_name == role]
 
 
 class AsyncStore:
