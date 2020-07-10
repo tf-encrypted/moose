@@ -1,0 +1,4 @@
+absl-py==0.7.1
+black==19.10b0
+flake8==3.8.3
+pip==20.2b1
