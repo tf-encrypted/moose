@@ -1,19 +1,15 @@
-import asyncio
-import random
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import wraps
-from typing import Dict
 from typing import List
-from typing import Optional
 
 from computation import AddOperation
 from computation import Computation
+from computation import Graph
 from computation import LoadOperation
-from computation import Operation
 from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
+from runtime import get_runtime
 
 CURRENT_ROLE: List = []
 
@@ -85,11 +81,18 @@ def add(lhs, rhs):
     return AddExpression(role=get_current_role(), inputs=[lhs, rhs],)
 
 
-class GraphCompiler:
+class Compiler:
     def __init__(self):
         self.operations = []
         self.name_counters = defaultdict(int)
         self.known_operations = {}
+
+    def compile(self, expression: Expression) -> Computation:
+        _ = self.visit(expression)
+        operations = self.operations
+        graph = Graph(nodes={op.name: op for op in operations})
+        computation = Computation(graph=graph)
+        return computation
 
     def get_fresh_name(self, prefix):
         count = self.name_counters[prefix]
@@ -98,7 +101,7 @@ class GraphCompiler:
         return name
 
     def maybe_add_networking(self, expression, destination_device):
-        if not destination_device in self.known_operations[expression]:
+        if destination_device not in self.known_operations[expression]:
             source_device = expression.role.name
             assert source_device != destination_device
             operation_at_source = self.known_operations[expression][source_device]
@@ -174,23 +177,14 @@ class AbstractComputation:
     def __init__(self, func):
         self.func = func
 
-    def __call__(self, role_assignment, *args, **kwargs):
+    def __call__(self, *args, **kwargs):
         comp = self.trace_func(*args, **kwargs)
-        sid = random.randrange(2 ** 32)
-        tasks = [
-            executor.run_computation(comp, role=role.name, session_id=sid)
-            for role, executor in role_assignment.items()
-        ]
-        joint_task = asyncio.gather(*[task for task in tasks])
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(joint_task)
+        get_runtime().evaluate_computation(comp)
 
     def trace_func(self, *args, **kwargs):
         expression = self.func(*args, **kwargs)
-        compiler = GraphCompiler()
-        _ = compiler.visit(expression)
-        operations = compiler.operations
-        return Computation(graph={op.name: op for op in operations})
+        compiler = Compiler()
+        return compiler.compile(expression)
 
 
 def computation(func):

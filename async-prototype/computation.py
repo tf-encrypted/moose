@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from typing import Dict
-from typing import List
 from typing import Optional
 
 
@@ -40,14 +39,19 @@ class ReceiveOperation(Operation):
 
 
 @dataclass
+class Graph:
+    nodes: Dict[str, Operation]
+
+
+@dataclass
 class Computation:
-    graph: Dict[str, Operation]
+    graph: Graph
 
     def devices(self):
-        return set(node.device for node in self.graph)
+        return set(node.device for node in self.graph.nodes.values())
 
     def nodes(self):
-        return self.graph.values()
+        return self.graph.nodes.values()
 
     def node(self, name):
-        return self.graph.get(name)
+        return self.graph.nodes.get(name)
