@@ -8,4 +8,6 @@ lint:
 run:
 	python main.py
 
-.PHONY: fmt lint run
+test: run
+
+.PHONY: fmt lint run test
