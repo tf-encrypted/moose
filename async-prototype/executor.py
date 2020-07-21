@@ -9,29 +9,41 @@ from computation import SendOperation
 
 
 class Kernel:
-    async def execute(self, op, session_id, *values):
+    async def execute(self, op, session_id, **kwargs):
         raise NotImplementedError()
 
 
-class LoadKernel(Kernel):
+class StrictKernel(Kernel):
+    async def execute(self, op, session_id, output, **kwargs):
+        concrete_kwargs = {
+            key: await value
+            for key, value in kwargs.items()
+        }
+        concrete_output = self.strict_execute(op=op, session_id=session_id, **concrete_kwargs)
+        if output:
+            output.set_result(concrete_output)
+
+    def strict_execute(self, op, session_id, **kwargs):
+        raise NotImplementedError()
+
+
+class LoadKernel(StrictKernel):
     def __init__(self, store):
         self.store = store
 
-    async def execute(self, op, session_id, output):
+    def strict_execute(self, op, session_id):
         assert isinstance(op, LoadOperation)
-        value = self.store[op.key]
-        print(f"Loaded {value}")
-        output.set_result(value)
+        return self.store[op.key]
 
 
-class SaveKernel(Kernel):
+class SaveKernel(StrictKernel):
     def __init__(self, store):
         self.store = store
 
-    async def execute(self, op, session_id, value, output=None):
+    def strict_execute(self, op, session_id, value):
         assert isinstance(op, SaveOperation)
-        self.store[op.key] = await value
-        print(f"Saved {await value}")
+        self.store[op.key] = value
+        print(f"Saved {value}")
 
 
 class SendKernel(Kernel):
@@ -63,11 +75,10 @@ class ReceiveKernel(Kernel):
         output.set_result(value)
 
 
-class AddKernel(Kernel):
-    async def execute(self, op, session_id, lhs, rhs, output):
+class AddKernel(StrictKernel):
+    def strict_execute(self, op, session_id, lhs, rhs):
         assert isinstance(op, AddOperation)
-        res = (await lhs) + (await rhs)
-        output.set_result(res)
+        return lhs + rhs
 
 
 class AsyncKernelBasedExecutor:
