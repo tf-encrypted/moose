@@ -11,13 +11,13 @@ class Runtime:
         self.role_assignment = role_assignment
 
     def evaluate_computation(self, comp: Computation):
+        loop = asyncio.get_event_loop()
         sid = random.randrange(2 ** 32)
         tasks = [
-            executor.run_computation(comp, role=role.name, session_id=sid)
+            executor.run_computation(comp, role=role.name, session_id=sid, event_loop=loop)
             for role, executor in self.role_assignment.items()
         ]
-        joint_task = asyncio.gather(*[task for task in tasks])
-        loop = asyncio.get_event_loop()
+        joint_task = asyncio.gather(*tasks)
         loop.run_until_complete(joint_task)
 
 

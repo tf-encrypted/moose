@@ -17,20 +17,21 @@ class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    async def execute(self, op, session_id):
+    async def execute(self, op, session_id, output):
         assert isinstance(op, LoadOperation)
-        return self.store[op.key]
+        value = self.store[op.key]
+        print(f"Loaded {value}")
+        output.set_result(value)
 
 
 class SaveKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    async def execute(self, op, session_id, value):
+    async def execute(self, op, session_id, value, output=None):
         assert isinstance(op, SaveOperation)
-        self.store[op.key] = value
-        print("Saved {}".format(value))
-        return None
+        self.store[op.key] = await value
+        print(f"Saved {await value}")
 
 
 class SendKernel(Kernel):
@@ -38,33 +39,35 @@ class SendKernel(Kernel):
         self.channels = channels
         self.delay = delay
 
-    async def execute(self, op, session_id, value):
+    async def execute(self, op, session_id, value, output=None):
         assert isinstance(op, SendOperation)
         channel = self.channels[op.channel]
         if self.delay:
             await asyncio.sleep(self.delay)
+        value = await value
         await channel.send(
             value, rendezvous_key=op.rendezvous_key, session_id=session_id
         )
-        return None
 
 
 class ReceiveKernel(Kernel):
     def __init__(self, channels):
         self.channels = channels
 
-    async def execute(self, op, session_id):
+    async def execute(self, op, session_id, output):
         assert isinstance(op, ReceiveOperation)
         channel = self.channels[op.channel]
-        return await channel.receive(
+        value = await channel.receive(
             rendezvous_key=op.rendezvous_key, session_id=session_id
         )
+        output.set_result(value)
 
 
 class AddKernel(Kernel):
-    async def execute(self, op, session_id, lhs, rhs):
+    async def execute(self, op, session_id, lhs, rhs, output):
         assert isinstance(op, AddOperation)
-        return lhs + rhs
+        res = (await lhs) + (await rhs)
+        output.set_result(res)
 
 
 class AsyncKernelBasedExecutor:
@@ -80,21 +83,26 @@ class AsyncKernelBasedExecutor:
             AddOperation: AddKernel(),
         }
 
-    async def run_computation(self, logical_computation, role, session_id):
+    async def run_computation(self, logical_computation, role, session_id, event_loop):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, role)
-        session_values = {}
+        # create futures for all edges in the graph
+        # - note that this could be done lazily as well
+        session_values = {op.output: event_loop.create_future() for op in execution_plan if op.output}
+        # link futures together using kernels
+        tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
             inputs = {
                 param_name: session_values[value_name]
                 for (param_name, value_name) in op.inputs.items()
             }
+            output = session_values[op.output] if op.output else None
             print("{} playing {}: Enter '{}'".format(self.name, role, op.name))
-            output = await kernel.execute(op, session_id=session_id, **inputs)
+            kernel_task = kernel.execute(op, session_id=session_id, output=output, **inputs)
+            tasks += [kernel_task]
             print("{} playing {}: Exit '{}'".format(self.name, role, op.name))
-            if output:
-                session_values[op.output] = output
+        await asyncio.gather(*tasks)
 
     def compile_computation(self, logical_computation):
         # TODO for now we don't do any compilation of computations
