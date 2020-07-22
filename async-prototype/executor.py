@@ -15,11 +15,10 @@ class Kernel:
 
 class StrictKernel(Kernel):
     async def execute(self, op, session_id, output, **kwargs):
-        concrete_kwargs = {
-            key: await value
-            for key, value in kwargs.items()
-        }
-        concrete_output = self.strict_execute(op=op, session_id=session_id, **concrete_kwargs)
+        concrete_kwargs = {key: await value for key, value in kwargs.items()}
+        concrete_output = self.strict_execute(
+            op=op, session_id=session_id, **concrete_kwargs
+        )
         if output:
             output.set_result(concrete_output)
 
@@ -99,7 +98,9 @@ class AsyncKernelBasedExecutor:
         execution_plan = self.schedule_execution(physical_computation, role)
         # create futures for all edges in the graph
         # - note that this could be done lazily as well
-        session_values = {op.output: event_loop.create_future() for op in execution_plan if op.output}
+        session_values = {
+            op.output: event_loop.create_future() for op in execution_plan if op.output
+        }
         # link futures together using kernels
         tasks = []
         for op in execution_plan:

@@ -14,7 +14,9 @@ class Runtime:
         loop = asyncio.get_event_loop()
         sid = random.randrange(2 ** 32)
         tasks = [
-            executor.run_computation(comp, role=role.name, session_id=sid, event_loop=loop)
+            executor.run_computation(
+                comp, role=role.name, session_id=sid, event_loop=loop
+            )
             for role, executor in self.role_assignment.items()
         ]
         joint_task = asyncio.gather(*tasks)
