@@ -115,7 +115,7 @@ class AsyncKernelBasedExecutor:
                 kernel.execute(op, session_id=session_id, output=output, **inputs)
             )]
             print("{} playing {}: Exit '{}'".format(self.name, role, op.name))
-        await asyncio.gather(*tasks)
+        await asyncio.wait(tasks)
 
     def compile_computation(self, logical_computation):
         # TODO for now we don't do any compilation of computations

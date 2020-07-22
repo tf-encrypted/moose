@@ -19,7 +19,7 @@ class Runtime:
             )
             for role, executor in self.role_assignment.items()
         ]
-        joint_task = asyncio.gather(*tasks)
+        joint_task = asyncio.wait(tasks)
         loop.run_until_complete(joint_task)
 
 
