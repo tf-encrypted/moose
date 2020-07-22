@@ -110,8 +110,9 @@ class AsyncKernelBasedExecutor:
             }
             output = session_values[op.output] if op.output else None
             print("{} playing {}: Enter '{}'".format(self.name, role, op.name))
-            kernel_task = kernel.execute(op, session_id=session_id, output=output, **inputs)
-            tasks += [kernel_task]
+            tasks += [asyncio.create_task(
+                kernel.execute(op, session_id=session_id, output=output, **inputs)
+            )]
             print("{} playing {}: Exit '{}'".format(self.name, role, op.name))
         await asyncio.gather(*tasks)
 
