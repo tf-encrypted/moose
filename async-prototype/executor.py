@@ -2,9 +2,11 @@ import asyncio
 
 from computation import AddOperation
 from computation import LoadOperation
+from computation import MulOperation
 from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
+from computation import SubOperation
 
 
 class Kernel:
@@ -69,6 +71,18 @@ class AddKernel(StrictKernel):
         return lhs + rhs
 
 
+class SubKernel(StrictKernel):
+    def strict_execute(self, op, session_id, lhs, rhs):
+        assert isinstance(op, SubOperation)
+        return lhs - rhs
+
+
+class MulKernel(StrictKernel):
+    def strict_execute(self, op, session_id, lhs, rhs):
+        assert isinstance(op, MulOperation)
+        return lhs * rhs
+
+
 class AsyncKernelBasedExecutor:
     def __init__(self, name, store, channel_manager):
         self.name = name
@@ -78,6 +92,8 @@ class AsyncKernelBasedExecutor:
             SendOperation: SendKernel(channel_manager),
             ReceiveOperation: ReceiveKernel(channel_manager),
             AddOperation: AddKernel(),
+            SubOperation: SubKernel(),
+            MulOperation: MulKernel(),
         }
 
     async def run_computation(self, logical_computation, role, session_id, event_loop):
@@ -97,7 +113,7 @@ class AsyncKernelBasedExecutor:
                 for (param_name, value_name) in op.inputs.items()
             }
             output = session_values[op.output] if op.output else None
-            print("{} playing {}: Enter '{}'".format(self.name, role, op.name))
+            print(f"{self.name} playing {role}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session_id=session_id, output=output, **inputs)

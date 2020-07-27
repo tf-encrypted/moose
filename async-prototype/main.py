@@ -2,7 +2,9 @@ from edsl import Role
 from edsl import add
 from edsl import computation
 from edsl import load
+from edsl import mul
 from edsl import save
+from edsl import sub
 from channel import AsyncChannelManager
 from executor import AsyncKernelBasedExecutor
 from runtime import Runtime
@@ -25,7 +27,7 @@ def my_comp():
 
     with aggregator:
         y0 = add(x0, x0)
-        y1 = add(x1, x1)
+        y1 = mul(x1, x1)
         y = add(y0, y1)
 
     with outputter:

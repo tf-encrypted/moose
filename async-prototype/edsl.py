@@ -6,9 +6,11 @@ from computation import AddOperation
 from computation import Computation
 from computation import Graph
 from computation import LoadOperation
+from computation import MulOperation
 from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
+from computation import SubOperation
 from runtime import get_runtime
 
 CURRENT_ROLE: List = []
@@ -66,6 +68,18 @@ class AddExpression(Expression):
         return id(self)
 
 
+@dataclass
+class SubExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class MulExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
 def load(key):
     return LoadExpression(role=get_current_role(), inputs=[], key=key)
 
@@ -79,6 +93,18 @@ def add(lhs, rhs):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     return AddExpression(role=get_current_role(), inputs=[lhs, rhs],)
+
+
+def sub(lhs, rhs):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    return SubExpression(role=get_current_role(), inputs=[lhs, rhs],)
+
+
+def mul(lhs, rhs):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    return MulExpression(role=get_current_role(), inputs=[lhs, rhs],)
 
 
 class Compiler:
@@ -170,6 +196,32 @@ class Compiler:
             name=self.get_fresh_name("add_op"),
             inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
             output=self.get_fresh_name("add"),
+        )
+
+    def visit_SubExpression(self, sub_expression):
+        assert isinstance(sub_expression, SubExpression)
+        sub_device = sub_expression.role.name
+        lhs_expression, rhs_expression = sub_expression.inputs
+        lhs_operation = self.visit(lhs_expression, sub_device)
+        rhs_operation = self.visit(rhs_expression, sub_device)
+        return SubOperation(
+            device_name=sub_device,
+            name=self.get_fresh_name("sub_op"),
+            inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
+            output=self.get_fresh_name("sub"),
+        )
+
+    def visit_MulExpression(self, mul_expression):
+        assert isinstance(mul_expression, MulExpression)
+        mul_device = mul_expression.role.name
+        lhs_expression, rhs_expression = mul_expression.inputs
+        lhs_operation = self.visit(lhs_expression, mul_device)
+        rhs_operation = self.visit(rhs_expression, mul_device)
+        return MulOperation(
+            device_name=mul_device,
+            name=self.get_fresh_name("mul_op"),
+            inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
+            output=self.get_fresh_name("mul"),
         )
 
 
