@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 
 from computation import AddOperation
 from computation import LoadOperation
@@ -46,31 +45,21 @@ class SaveKernel(StrictKernel):
 
 
 class SendKernel(Kernel):
-    def __init__(self, channels, delay=None):
-        self.channels = channels
-        self.delay = delay
+    def __init__(self, channel_manager):
+        self.channel_manager = channel_manager
 
     async def execute(self, op, session_id, value, output=None):
         assert isinstance(op, SendOperation)
-        channel = self.channels[op.channel]
-        if self.delay:
-            await asyncio.sleep(self.delay)
-        value = await value
-        await channel.send(
-            value, rendezvous_key=op.rendezvous_key, session_id=session_id
-        )
+        await self.channel_manager.send(await value, op=op, session_id=session_id)
 
 
 class ReceiveKernel(Kernel):
-    def __init__(self, channels):
-        self.channels = channels
+    def __init__(self, channel_manager):
+        self.channel_manager = channel_manager
 
     async def execute(self, op, session_id, output):
         assert isinstance(op, ReceiveOperation)
-        channel = self.channels[op.channel]
-        value = await channel.receive(
-            rendezvous_key=op.rendezvous_key, session_id=session_id
-        )
+        value = await self.channel_manager.receive(op=op, session_id=session_id)
         output.set_result(value)
 
 
@@ -81,15 +70,13 @@ class AddKernel(StrictKernel):
 
 
 class AsyncKernelBasedExecutor:
-    def __init__(self, name, store, channels, send_delay=None):
+    def __init__(self, name, store, channel_manager):
         self.name = name
-        self.store = store
-        self.channels = channels
         self.kernels = {
-            LoadOperation: LoadKernel(self.store),
-            SaveOperation: SaveKernel(self.store),
-            SendOperation: SendKernel(self.channels, delay=send_delay),
-            ReceiveOperation: ReceiveKernel(self.channels),
+            LoadOperation: LoadKernel(store),
+            SaveOperation: SaveKernel(store),
+            SendOperation: SendKernel(channel_manager),
+            ReceiveOperation: ReceiveKernel(channel_manager),
             AddOperation: AddKernel(),
         }
 
@@ -111,9 +98,11 @@ class AsyncKernelBasedExecutor:
             }
             output = session_values[op.output] if op.output else None
             print("{} playing {}: Enter '{}'".format(self.name, role, op.name))
-            tasks += [asyncio.create_task(
-                kernel.execute(op, session_id=session_id, output=output, **inputs)
-            )]
+            tasks += [
+                asyncio.create_task(
+                    kernel.execute(op, session_id=session_id, output=output, **inputs)
+                )
+            ]
             print("{} playing {}: Exit '{}'".format(self.name, role, op.name))
         await asyncio.wait(tasks)
 
@@ -137,20 +126,3 @@ class AsyncStore:
 
     async def save(self, key, value):
         self.values[key] = value
-
-
-class AsyncMemoryChannel:
-    def __init__(self):
-        # TODO(Morten) having an async dict-like structure
-        # would probably be better ...
-        self.queues = defaultdict(asyncio.Queue)
-
-    async def send(self, value, rendezvous_key, session_id):
-        queue_key = (session_id, rendezvous_key)
-        queue = self.queues[queue_key]
-        return await queue.put(value)
-
-    async def receive(self, rendezvous_key, session_id):
-        queue_key = (session_id, rendezvous_key)
-        queue = self.queues[queue_key]
-        return await queue.get()
