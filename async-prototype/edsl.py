@@ -84,19 +84,25 @@ def save(value, key):
 def add(lhs, rhs):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    return BinaryOpExpression(op_type=AddOperation, role=get_current_role(), inputs=[lhs, rhs])
+    return BinaryOpExpression(
+        op_type=AddOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
 
 
 def sub(lhs, rhs):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    return BinaryOpExpression(op_type=SubOperation, role=get_current_role(), inputs=[lhs, rhs])
+    return BinaryOpExpression(
+        op_type=SubOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
 
 
 def mul(lhs, rhs):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    return BinaryOpExpression(op_type=MulOperation, role=get_current_role(), inputs=[lhs, rhs])
+    return BinaryOpExpression(
+        op_type=MulOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
 
 
 class Compiler:
