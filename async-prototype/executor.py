@@ -108,6 +108,8 @@ class AsyncKernelBasedExecutor:
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
+            if not kernel:
+                print(f"No kernel found for operation {type(op)}")
             inputs = {
                 param_name: session_values[value_name]
                 for (param_name, value_name) in op.inputs.items()
