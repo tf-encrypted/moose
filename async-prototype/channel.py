@@ -24,7 +24,8 @@ class AsyncChannelManager:
         self.channels = defaultdict(AsyncMemoryChannel)
 
     def get_channel(self, op):
-        return self.channels[op.channel]
+        channel_key = (op.sender, op.receiver)
+        return self.channels[channel_key]
 
     async def send(self, value, op, session_id):
         await self.get_channel(op).send(

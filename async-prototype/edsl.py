@@ -129,20 +129,21 @@ class Compiler:
             source_device = expression.role.name
             assert source_device != destination_device
             operation_at_source = self.known_operations[expression][source_device]
-            channel_name = "{}_{}".format(source_device, destination_device)
             rendezvous_key = self.get_fresh_name("rendezvous_key")
             send_operation = SendOperation(
                 device_name=source_device,
                 name=self.get_fresh_name("send_op"),
                 inputs={"value": operation_at_source.output},
                 output=None,
-                channel=channel_name,
+                sender=source_device,
+                receiver=destination_device,
                 rendezvous_key=rendezvous_key,
             )
             receive_operation = ReceiveOperation(
                 device_name=destination_device,
                 name=self.get_fresh_name("receive_op"),
-                channel=channel_name,
+                sender=source_device,
+                receiver=destination_device,
                 rendezvous_key=rendezvous_key,
                 inputs={},
                 output=self.get_fresh_name("receive"),

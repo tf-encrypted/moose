@@ -38,13 +38,15 @@ class MulOperation(Operation):
 
 @dataclass
 class SendOperation(Operation):
-    channel: str
+    sender: str
+    receiver: str
     rendezvous_key: str
 
 
 @dataclass
 class ReceiveOperation(Operation):
-    channel: str
+    sender: str
+    receiver: str
     rendezvous_key: str
 
 
