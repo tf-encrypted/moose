@@ -27,6 +27,16 @@ class AddOperation(Operation):
 
 
 @dataclass
+class SubOperation(Operation):
+    pass
+
+
+@dataclass
+class MulOperation(Operation):
+    pass
+
+
+@dataclass
 class SendOperation(Operation):
     channel: str
     rendezvous_key: str

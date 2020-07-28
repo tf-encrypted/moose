@@ -1,14 +1,18 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import List
+from typing import Type
 
+from computation import Operation
 from computation import AddOperation
 from computation import Computation
 from computation import Graph
 from computation import LoadOperation
+from computation import MulOperation
 from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
+from computation import SubOperation
 from runtime import get_runtime
 
 CURRENT_ROLE: List = []
@@ -61,7 +65,9 @@ class SaveExpression(Expression):
 
 
 @dataclass
-class AddExpression(Expression):
+class BinaryOpExpression(Expression):
+    op_type: Operation
+
     def __hash__(self):
         return id(self)
 
@@ -78,7 +84,25 @@ def save(value, key):
 def add(lhs, rhs):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
-    return AddExpression(role=get_current_role(), inputs=[lhs, rhs],)
+    return BinaryOpExpression(
+        op_type=AddOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
+
+
+def sub(lhs, rhs):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    return BinaryOpExpression(
+        op_type=SubOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
+
+
+def mul(lhs, rhs):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    return BinaryOpExpression(
+        op_type=MulOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
 
 
 class Compiler:
@@ -159,17 +183,19 @@ class Compiler:
             output=None,
         )
 
-    def visit_AddExpression(self, add_expression):
-        assert isinstance(add_expression, AddExpression)
-        add_device = add_expression.role.name
-        lhs_expression, rhs_expression = add_expression.inputs
-        lhs_operation = self.visit(lhs_expression, add_device)
-        rhs_operation = self.visit(rhs_expression, add_device)
-        return AddOperation(
-            device_name=add_device,
-            name=self.get_fresh_name("add_op"),
+    def visit_BinaryOpExpression(self, expression):
+        assert isinstance(expression, BinaryOpExpression)
+        device = expression.role.name
+        lhs_expression, rhs_expression = expression.inputs
+        lhs_operation = self.visit(lhs_expression, device)
+        rhs_operation = self.visit(rhs_expression, device)
+        op_type = expression.op_type
+        op_name = op_type.__name__.lower()
+        return op_type(
+            device_name=device,
+            name=self.get_fresh_name(f"{op_name}_op"),
             inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
-            output=self.get_fresh_name("add"),
+            output=self.get_fresh_name(f"{op_name}"),
         )
 
 

@@ -2,9 +2,11 @@ from edsl import Role
 from edsl import add
 from edsl import computation
 from edsl import load
+from edsl import mul
 from edsl import save
+from edsl import sub
+from channel import AsyncChannelManager
 from executor import AsyncKernelBasedExecutor
-from executor import AsyncMemoryChannel
 from runtime import Runtime
 
 
@@ -25,7 +27,7 @@ def my_comp():
 
     with aggregator:
         y0 = add(x0, x0)
-        y1 = add(x1, x1)
+        y1 = mul(x1, x1)
         y = add(y0, y1)
 
     with outputter:
@@ -37,34 +39,19 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 print(concrete_comp)
 
-
-in0_agg = AsyncMemoryChannel()
-in1_agg = AsyncMemoryChannel()
-agg_out = AsyncMemoryChannel()
+channel_manager = AsyncChannelManager()
 
 in0_executor = AsyncKernelBasedExecutor(
-    name="alice",
-    store={"x0": 5},
-    channels={"inputter0_aggregator": in0_agg},
-    send_delay=2,
+    name="alice", store={"x0": 5}, channel_manager=channel_manager,
 )
 in1_executor = AsyncKernelBasedExecutor(
-    name="bob",
-    store={"x1": 7},
-    channels={"inputter1_aggregator": in1_agg},
-    send_delay=None,
+    name="bob", store={"x1": 7}, channel_manager=channel_manager,
 )
 agg_executor = AsyncKernelBasedExecutor(
-    name="carole",
-    store={},
-    channels={
-        "inputter0_aggregator": in0_agg,
-        "inputter1_aggregator": in1_agg,
-        "aggregator_outputter": agg_out,
-    },
+    name="carole", store={}, channel_manager=channel_manager,
 )
 out_executor = AsyncKernelBasedExecutor(
-    name="dave", store={}, channels={"aggregator_outputter": agg_out}
+    name="dave", store={}, channel_manager=channel_manager
 )
 
 runtime = Runtime(
