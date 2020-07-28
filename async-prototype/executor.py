@@ -96,11 +96,8 @@ class AsyncKernelBasedExecutor:
     async def run_computation(self, logical_computation, role, session_id, event_loop):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, role)
-        # create futures for all edges in the graph
-        # - note that this could be done lazily as well
-        session_values = {
-            op.output: event_loop.create_future() for op in execution_plan if op.output
-        }
+        # lazily create futures for all edges in the graph
+        session_values = defaultdict(event_loop.create_future)
         # link futures together using kernels
         tasks = []
         for op in execution_plan:
