@@ -1,4 +1,5 @@
 import asyncio
+from collections import defaultdict
 
 from computation import AddOperation
 from computation import LoadOperation
