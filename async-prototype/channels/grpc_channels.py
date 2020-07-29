@@ -3,6 +3,8 @@ from collections import defaultdict
 import grpc
 import logging
 
+from grpc.experimental import aio
+
 from channels import secure_channel_pb2
 from channels.secure_channel_pb2_grpc import SecureChannelStub
 
@@ -33,36 +35,16 @@ class Channel:
         self._endpoint = self.host + ":" + self.port
 
     async def receive(self, rendezvous_key, session_id):
-        with grpc.insecure_channel(self._endpoint) as channel:
+        async with aio.insecure_channel(self._endpoint) as channel:
             stub = SecureChannelStub(channel)
-            value = get_value(
-                stub,
-                secure_channel_pb2.KeyValue(
-                    rendezvous_key=rendezvous_key, session_id=session_id
-                ),
-            )
-
-        return value
+            reply = await stub.GetValue(secure_channel_pb2.KeyValue(
+                rendezvous_key=rendezvous_key, session_id=session_id
+            ))
+            return reply.value
 
     async def send(self, value, rendezvous_key, session_id):
-        with grpc.insecure_channel(self._endpoint) as channel:
+        async with aio.insecure_channel(self._endpoint) as channel:
             stub = SecureChannelStub(channel)
-            add_value_to_buffer(
-                stub,
-                secure_channel_pb2.RemoteValue(
-                    value=value, rendezvous_key=rendezvous_key, session_id=session_id
-                ),
-            )
-
-
-def get_value(stub, key_value):
-    value = stub.GetValue(key_value)
-    if not value.value:
-        return
-
-    return value.value
-
-
-def add_value_to_buffer(stub, remote_value):
-    stub.AddValueToBuffer(remote_value)
-    return
+            await stub.AddValueToBuffer(secure_channel_pb2.RemoteValue(
+                value=value, rendezvous_key=rendezvous_key, session_id=session_id
+            ))

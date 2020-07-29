@@ -6,10 +6,12 @@ import logging
 
 import asyncio
 # import grpc
-from grpc.experimental import aio 
+from grpc.experimental import aio
 
 from channels import secure_channel_pb2
 from channels import secure_channel_pb2_grpc
+
+import threading
 
 
 # async def get_value(buffer, key):
@@ -21,19 +23,16 @@ from channels import secure_channel_pb2_grpc
 #     # else:
 #     return secure_channel_pb2.Value(value=value)
 
-
-
 class SecureChannelServicer(secure_channel_pb2_grpc.SecureChannelServicer):
     def __init__(self):
         self.buffer = defaultdict(asyncio.get_event_loop().create_future)
 
     async def GetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
-        print()
-        value = await self.buffer.get(key)
+        value = await self.buffer[key]
         return secure_channel_pb2.Value(value=value)
 
-    def AddValueToBuffer(self, request, context):
+    async def AddValueToBuffer(self, request, context):
         key = (request.session_id, request.rendezvous_key)
         self.buffer[key].set_result(request.value)
         return secure_channel_pb2.Empty()
@@ -48,13 +47,12 @@ class ChannelServer:
 
     async def start(self):
         connection = self.host + ":" + self.port
-        self.server = aio.server(futures.ThreadPoolExecutor(max_workers=10))
+        self.server = aio.server()
         secure_channel_pb2_grpc.add_SecureChannelServicer_to_server(
             self._servicer, self.server
         )
         self.server.add_insecure_port(connection)
         await self.server.start()
-        await self.server.wait_for_termination()
 
     async def wait(self):
         await self.server.wait_for_termination()

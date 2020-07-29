@@ -7,8 +7,12 @@ from edsl import load
 from edsl import mul
 from edsl import save
 from edsl import sub
+from channels import AsyncChannelManager
 from executor import AsyncKernelBasedExecutor
 from runtime import Runtime
+
+from grpc.experimental import aio
+aio.init_grpc_aio()
 
 
 inputter0 = Role(name="inputter0")

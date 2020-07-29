@@ -10,6 +10,9 @@ from edsl import sub
 from executor import AsyncKernelBasedExecutor
 from runtime import Runtime
 
+from grpc.experimental import aio
+aio.init_grpc_aio()
+
 
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
