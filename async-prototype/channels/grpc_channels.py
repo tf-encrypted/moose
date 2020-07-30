@@ -37,14 +37,18 @@ class Channel:
     async def receive(self, rendezvous_key, session_id):
         async with aio.insecure_channel(self._endpoint) as channel:
             stub = SecureChannelStub(channel)
-            reply = await stub.GetValue(secure_channel_pb2.KeyValue(
-                rendezvous_key=rendezvous_key, session_id=session_id
-            ))
+            reply = await stub.GetValue(
+                secure_channel_pb2.KeyValue(
+                    rendezvous_key=rendezvous_key, session_id=session_id
+                )
+            )
             return reply.value
 
     async def send(self, value, rendezvous_key, session_id):
         async with aio.insecure_channel(self._endpoint) as channel:
             stub = SecureChannelStub(channel)
-            await stub.AddValueToBuffer(secure_channel_pb2.RemoteValue(
-                value=value, rendezvous_key=rendezvous_key, session_id=session_id
-            ))
+            await stub.AddValueToBuffer(
+                secure_channel_pb2.RemoteValue(
+                    value=value, rendezvous_key=rendezvous_key, session_id=session_id
+                )
+            )

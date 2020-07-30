@@ -5,23 +5,12 @@ import math
 import logging
 
 import asyncio
-# import grpc
 from grpc.experimental import aio
+import threading
 
 from channels import secure_channel_pb2
 from channels import secure_channel_pb2_grpc
 
-import threading
-
-
-# async def get_value(buffer, key):
-#     key = (key.session_id, key.rendezvous_key)
-#     value = await buffer.get(key)
-#     # if value == None:
-#     #     buffer[key] = asyncio.Future()
-#     #     return What?
-#     # else:
-#     return secure_channel_pb2.Value(value=value)
 
 class SecureChannelServicer(secure_channel_pb2_grpc.SecureChannelServicer):
     def __init__(self):
@@ -38,20 +27,20 @@ class SecureChannelServicer(secure_channel_pb2_grpc.SecureChannelServicer):
         return secure_channel_pb2.Empty()
 
 
-class ChannelServer:
+class Server:
     def __init__(self, host, port):
         self.host = host
         self.port = port
+        self._endpoint = self.host + ":" + self.port
         self._servicer = SecureChannelServicer()
         self.server = None
 
     async def start(self):
-        connection = self.host + ":" + self.port
         self.server = aio.server()
         secure_channel_pb2_grpc.add_SecureChannelServicer_to_server(
             self._servicer, self.server
         )
-        self.server.add_insecure_port(connection)
+        self.server.add_insecure_port(self._endpoint)
         await self.server.start()
 
     async def wait(self):
