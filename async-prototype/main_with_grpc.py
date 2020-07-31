@@ -42,19 +42,11 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 print(concrete_comp)
 
-# Currently, it's using the same Channel client to add the value to the grpc server
-# buffer (when inputter send), and for the outputter to receive.
-# Probably need two different Channel clients but with same endpoint.
-channel_inp0_agg = Channel("localhost", "50051")
-channel_inp1_agg = Channel("localhost", "50052")
-channel_agg_out = Channel("localhost", "50053")
-
 cluster_spec = {
     inputter0.name: "localhost:50051",
     inputter1.name: "localhost:50052",
     aggregator.name: "localhost:50053",
 }
-
 
 channel_manager = ChannelManager(cluster_spec)
 

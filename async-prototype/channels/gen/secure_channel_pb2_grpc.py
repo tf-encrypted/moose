@@ -2,7 +2,7 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import channels.secure_channel_pb2 as secure__channel__pb2
+import channels.gen.secure_channel_pb2 as secure__channel__pb2
 
 
 class SecureChannelStub(object):
