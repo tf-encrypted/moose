@@ -49,14 +49,14 @@ channel_inp0_agg = Channel("localhost", "50051")
 channel_inp1_agg = Channel("localhost", "50052")
 channel_agg_out = Channel("localhost", "50053")
 
-channels = {
-    ("inputter0", "aggregator"): channel_inp0_agg,
-    ("inputter1", "aggregator"): channel_inp1_agg,
-    ("aggregator", "outputter"): channel_agg_out,
+cluster_spec = {
+    inputter0.name: "localhost:50051",
+    inputter1.name: "localhost:50052",
+    aggregator.name: "localhost:50053",
 }
 
 
-channel_manager = ChannelManager(channels)
+channel_manager = ChannelManager(cluster_spec)
 
 in0_executor = AsyncKernelBasedExecutor(
     name="alice", store={"x0": 5}, channel_manager=channel_manager,
