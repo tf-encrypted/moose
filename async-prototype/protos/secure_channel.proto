@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+
+package securechannel;
+
+service SecureChannel{
+    rpc GetValue(KeyValue) returns(Value) {}
+    rpc AddValueToBuffer(RemoteValue) returns(Empty) {}
+}
+
+message RemoteValue{
+    float value = 1;
+    string rendezvous_key = 2;
+    int64 session_id = 3;
+}
+
+message KeyValue{
+    string rendezvous_key = 1;
+    int64 session_id = 2;
+}
+
+message Value{
+    float value = 1;
+}
+
+message Empty {}
