@@ -6,7 +6,6 @@ from edsl import mul
 from edsl import save
 from edsl import sub
 from channels import AsyncChannelManager
-from channels import AsyncMemoryChannel
 from executor import AsyncKernelBasedExecutor
 from runtime import Runtime
 

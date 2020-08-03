@@ -5,9 +5,9 @@ from grpc.experimental import aio
 
 from channels import Server
 
-parser = argparse.ArgumentParser(description='Launch servers')
-parser.add_argument('--host', type=str, default="localhost")
-parser.add_argument('--port', type=str, default="50051")
+parser = argparse.ArgumentParser(description="Launch servers")
+parser.add_argument("--host", type=str, default="localhost")
+parser.add_argument("--port", type=str, default="50051")
 args = parser.parse_args()
 
 
@@ -20,4 +20,3 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(server.start())
     loop.run_until_complete(server.wait())
-

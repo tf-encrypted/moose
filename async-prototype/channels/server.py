@@ -8,8 +8,8 @@ import asyncio
 from grpc.experimental import aio
 import threading
 
-from channels.gen import secure_channel_pb2
-from channels.gen import secure_channel_pb2_grpc
+from protos import secure_channel_pb2
+from protos import secure_channel_pb2_grpc
 
 
 class SecureChannelServicer(secure_channel_pb2_grpc.SecureChannelServicer):
