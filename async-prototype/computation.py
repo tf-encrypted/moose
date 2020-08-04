@@ -1,7 +1,10 @@
 from dataclasses import dataclass
+import json
+import re
 from typing import Dict
 from typing import Optional
 
+OPS_REGISTER = {}
 
 @dataclass
 class Operation:
@@ -67,3 +70,48 @@ class Computation:
 
     def node(self, name):
         return self.graph.nodes.get(name)
+
+    def to_dict(self):
+        nodes_dict = {}
+        for node, op in self.graph.nodes.items():
+            args = op.__dict__
+            nodes_dict[node] = args
+        return nodes_dict
+
+    @classmethod
+    def from_dict(self, nodes_dict):
+        nodes = {}
+        for node, args in nodes_dict.items():
+            nodes[node] = select_op(node)(**args)
+        computation = Computation(Graph(nodes)) 
+        return computation 
+
+    def serialize(self):
+        return json.dumps(self.to_dict())
+
+    @classmethod
+    def deserialize(self, bytes_stream):
+        return self.from_dict(json.loads(bytes_stream))
+
+
+
+def select_op(op_name):
+    name = op_name.split('_')[0]
+    if 'operation' in name:
+        name = re.sub('operation', '', name)
+    name = name[0].upper() + name[1:] + 'Operation'
+    op = OPS_REGISTER[name]
+    return op
+
+
+def register_op(name, op):
+    OPS_REGISTER[name] = op
+
+
+register_op('LoadOperation', LoadOperation)
+register_op('SaveOperation', SaveOperation)
+register_op('AddOperation', AddOperation)
+register_op('SubOperation', SubOperation)
+register_op('MulOperation', MulOperation)
+register_op('SendOperation', SendOperation)
+register_op('ReceiveOperation', ReceiveOperation)
