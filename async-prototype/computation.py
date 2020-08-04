@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dataclasses import asdict
 import json
 import re
 from typing import Dict
@@ -72,15 +73,12 @@ class Computation:
         return self.graph.nodes.get(name)
 
     def to_dict(self):
-        nodes_dict = {}
-        for node, op in self.graph.nodes.items():
-            args = op.__dict__
-            nodes_dict[node] = args
-        return nodes_dict
+        return asdict(self)
 
     @classmethod
-    def from_dict(self, nodes_dict):
-        nodes = {}
+    def from_dict(self, computation_dict):
+        nodes_dict = computation_dict['graph']['nodes']
+        nodes = {} 
         for node, args in nodes_dict.items():
             nodes[node] = select_op(node)(**args)
         computation = Computation(Graph(nodes)) 
