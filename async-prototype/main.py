@@ -8,7 +8,7 @@ from edsl import sub
 from channels import AsyncChannelManager
 from executor import AsyncKernelBasedExecutor
 from runtime import Runtime
-
+from computation import Computation
 
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
@@ -37,7 +37,6 @@ def my_comp():
 
 
 concrete_comp = my_comp.trace_func()
-print(concrete_comp)
 
 channel_manager = AsyncChannelManager()
 

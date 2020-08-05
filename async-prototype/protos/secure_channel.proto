@@ -6,6 +6,7 @@ package securechannel;
 service SecureChannel{
     rpc GetValue(KeyValue) returns(Value) {}
     rpc AddValueToBuffer(RemoteValue) returns(Empty) {}
+    rpc Compute(ComputeRequest) returns(ComputeResponse) {}
 }
 
 message RemoteValue{
@@ -24,3 +25,11 @@ message Value{
 }
 
 message Empty {}
+
+message ComputeRequest{
+    string computation = 1;
+    string role = 2;
+    int64 session_id = 3;
+}
+
+message ComputeResponse{}

@@ -8,7 +8,7 @@ from edsl import mul
 from edsl import save
 from edsl import sub
 from executor import AsyncKernelBasedExecutor
-from runtime import Runtime
+from runtime import RemoteRuntime
 
 from grpc.experimental import aio
 
@@ -18,6 +18,12 @@ inputter1 = Role(name="inputter1")
 aggregator = Role(name="aggregator")
 outputter = Role(name="outputter")
 
+cluster_spec = {
+    inputter0.name: "localhost:50051",
+    inputter1.name: "localhost:50052",
+    aggregator.name: "localhost:50053",
+    outputter.name: "localhost:50054",
+}
 
 @computation
 def my_comp():
@@ -42,36 +48,6 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 print(concrete_comp)
 
-cluster_spec = {
-    inputter0.name: "localhost:50000",
-    inputter1.name: "localhost:50001",
-    aggregator.name: "localhost:50002",
-}
-
-channel_manager = ChannelManager(cluster_spec)
-
-in0_executor = AsyncKernelBasedExecutor(
-    name="alice", store={"x0": 5}, channel_manager=channel_manager,
-)
-in1_executor = AsyncKernelBasedExecutor(
-    name="bob", store={"x1": 7}, channel_manager=channel_manager,
-)
-agg_executor = AsyncKernelBasedExecutor(
-    name="carole", store={}, channel_manager=channel_manager,
-)
-out_executor = AsyncKernelBasedExecutor(
-    name="dave", store={}, channel_manager=channel_manager
-)
-
-
-runtime = Runtime(
-    role_assignment={
-        inputter0: in0_executor,
-        inputter1: in1_executor,
-        aggregator: agg_executor,
-        outputter: out_executor,
-    }
-)
-
+runtime = RemoteRuntime(cluster_spec)
 runtime.evaluate_computation(concrete_comp)
 print("Done")

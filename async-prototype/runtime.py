@@ -4,6 +4,7 @@ from typing import Dict
 from typing import Optional
 
 from computation import Computation
+from executor import RemoteExecutor
 
 
 class Runtime:
@@ -18,6 +19,24 @@ class Runtime:
                 comp, role=role.name, session_id=sid, event_loop=loop
             )
             for role, executor in self.role_assignment.items()
+        ]
+        joint_task = asyncio.wait(tasks)
+        loop.run_until_complete(joint_task)
+
+
+class RemoteRuntime:
+    def __init__(self, cluster_spec: Dict) -> None:
+        self.cluster_spec = cluster_spec
+
+    def evaluate_computation(self, comp: Computation):
+        comp_ser = comp.serialize()
+        loop = asyncio.get_event_loop()
+        sid = random.randrange(2 ** 32)
+        tasks = [
+            RemoteExecutor(endpoint).run_computation(
+                comp_ser, role=role, session_id=sid
+            )
+            for role, endpoint in self.cluster_spec.items()
         ]
         joint_task = asyncio.wait(tasks)
         loop.run_until_complete(joint_task)

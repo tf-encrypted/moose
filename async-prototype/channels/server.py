@@ -11,10 +11,14 @@ import threading
 from protos import secure_channel_pb2
 from protos import secure_channel_pb2_grpc
 
+from computation import Computation
+
 
 class SecureChannelServicer(secure_channel_pb2_grpc.SecureChannelServicer):
-    def __init__(self):
+    def __init__(self, executor=None):
         self.buffer = defaultdict(asyncio.get_event_loop().create_future)
+        self.executor = executor
+        self._loop = asyncio.get_event_loop()
 
     async def GetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
@@ -26,13 +30,20 @@ class SecureChannelServicer(secure_channel_pb2_grpc.SecureChannelServicer):
         self.buffer[key].set_result(request.value)
         return secure_channel_pb2.Empty()
 
+    async def Compute(self, request, context):
+        computation = Computation.deserialize(request.computation)
+        role = request.role
+        session_id = request.session_id
+        await self.executor.run_computation(computation, role, session_id, self._loop)
+        return secure_channel_pb2.ComputeResponse()
+
 
 class Server:
-    def __init__(self, host, port):
+    def __init__(self, host, port, executor=None):
         self.host = host
         self.port = port
         self._endpoint = self.host + ":" + self.port
-        self._servicer = SecureChannelServicer()
+        self._servicer = SecureChannelServicer(executor)
         self.server = None
 
     async def start(self):

@@ -7,6 +7,7 @@ from typing import Optional
 
 OPS_REGISTER = {}
 
+
 @dataclass
 class Operation:
     device_name: str
@@ -77,12 +78,12 @@ class Computation:
 
     @classmethod
     def from_dict(self, computation_dict):
-        nodes_dict = computation_dict['graph']['nodes']
-        nodes = {} 
+        nodes_dict = computation_dict["graph"]["nodes"]
+        nodes = {}
         for node, args in nodes_dict.items():
             nodes[node] = select_op(node)(**args)
-        computation = Computation(Graph(nodes)) 
-        return computation 
+        computation = Computation(Graph(nodes))
+        return computation
 
     def serialize(self):
         return json.dumps(self.to_dict())
@@ -92,12 +93,11 @@ class Computation:
         return self.from_dict(json.loads(bytes_stream))
 
 
-
 def select_op(op_name):
-    name = op_name.split('_')[0]
-    if 'operation' in name:
-        name = re.sub('operation', '', name)
-    name = name[0].upper() + name[1:] + 'Operation'
+    name = op_name.split("_")[0]
+    if "operation" in name:
+        name = re.sub("operation", "", name)
+    name = name[0].upper() + name[1:] + "Operation"
     op = OPS_REGISTER[name]
     return op
 
@@ -106,10 +106,10 @@ def register_op(name, op):
     OPS_REGISTER[name] = op
 
 
-register_op('LoadOperation', LoadOperation)
-register_op('SaveOperation', SaveOperation)
-register_op('AddOperation', AddOperation)
-register_op('SubOperation', SubOperation)
-register_op('MulOperation', MulOperation)
-register_op('SendOperation', SendOperation)
-register_op('ReceiveOperation', ReceiveOperation)
+register_op("LoadOperation", LoadOperation)
+register_op("SaveOperation", SaveOperation)
+register_op("AddOperation", AddOperation)
+register_op("SubOperation", SubOperation)
+register_op("MulOperation", MulOperation)
+register_op("SendOperation", SendOperation)
+register_op("ReceiveOperation", ReceiveOperation)

@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+from grpc.experimental import aio
 
 from computation import AddOperation
 from computation import LoadOperation
@@ -8,6 +9,8 @@ from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
+from protos import secure_channel_pb2
+from protos import secure_channel_pb2_grpc
 
 from logger import get_logger
 
@@ -133,6 +136,18 @@ class AsyncKernelBasedExecutor:
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
         return [node for node in comp.nodes() if node.device_name == role]
+
+
+class RemoteExecutor:
+    def __init__(self, endpoint):
+        self.channel = aio.insecure_channel(endpoint)
+        self._stub = secure_channel_pb2_grpc.SecureChannelStub(self.channel)
+
+    async def run_computation(self, logical_computation, role, session_id):
+        compute_request = secure_channel_pb2.ComputeRequest(
+            computation=logical_computation, role=role, session_id=session_id
+        )
+        response = await self._stub.Compute(compute_request)
 
 
 class AsyncStore:
