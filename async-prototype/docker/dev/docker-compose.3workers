@@ -1,0 +1,35 @@
+version: "3.8"
+
+services:
+  worker0:
+    image: tfencrypted/runtime-dev-worker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    entrypoint:
+      - "watchexec -e py -r"
+      - "python3 /runtime/launch_servers.py"
+
+  worker1:
+    image: tfencrypted/runtime-dev-worker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    entrypoint:
+      - "watchexec -e py -r"
+      - "python3 /runtime/launch_servers.py"
+
+  worker2:
+    image: tfencrypted/runtime-dev-worker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    entrypoint:
+      - "watchexec -e py -r"
+      - "python3 /runtime/launch_servers.py"

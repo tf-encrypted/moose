@@ -1,0 +1,19 @@
+FROM ubuntu:20.04
+
+RUN apt update && apt upgrade -y
+
+# Basic tools
+RUN apt install -y build-essential curl wget git gnupg
+RUN apt install -y python3 python3-venv
+
+# Rust and cargo
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV CARGO_HOME=/usr/local/cargo
+ENV PATH=/usr/local/cargo/bin:$PATH
+RUN wget -q https://static.rust-lang.org/rustup/rustup-init.sh; \
+    chmod u+x rustup-init.sh; \
+    ./rustup-init.sh -y --no-modify-path --default-toolchain stable; \
+    chmod -R a+w $RUSTUP_HOME $CARGO_HOME
+
+# watchexec
+RUN cargo install watchexec
