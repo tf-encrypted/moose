@@ -4,16 +4,24 @@ RUN apt update && apt upgrade -y
 
 # Basic tools
 RUN apt install -y build-essential curl wget git gnupg
-RUN apt install -y python3 python3-venv
+RUN apt install -y python3 python3-pip python3-venv
 
 # Rust and cargo
-ENV RUSTUP_HOME=/usr/local/rustup
-ENV CARGO_HOME=/usr/local/cargo
-ENV PATH=/usr/local/cargo/bin:$PATH
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
 RUN wget -q https://static.rust-lang.org/rustup/rustup-init.sh; \
     chmod u+x rustup-init.sh; \
     ./rustup-init.sh -y --no-modify-path --default-toolchain stable; \
-    chmod -R a+w $RUSTUP_HOME $CARGO_HOME
+    chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
+    rm rustup-init.sh
 
 # watchexec
 RUN cargo install watchexec
+
+# Dependencies
+COPY requirements.txt .
+RUN pip3 install -r requirements.txt
+
+WORKDIR /runtime
+CMD watchexec -e py -r "python3 /runtime/launch_servers.py --verbose --port $PORT"

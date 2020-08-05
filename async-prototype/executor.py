@@ -9,6 +9,8 @@ from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
 
+from logger import get_logger
+
 
 class Kernel:
     async def execute(self, op, session_id, **kwargs):
@@ -107,19 +109,19 @@ class AsyncKernelBasedExecutor:
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
             if not kernel:
-                print(f"No kernel found for operation {type(op)}")
+                get_logger().fatal(f"No kernel found for operation {type(op)}")
             inputs = {
                 param_name: session_values[value_name]
                 for (param_name, value_name) in op.inputs.items()
             }
             output = session_values[op.output] if op.output else None
-            print(f"{self.name} playing {role}: Enter '{op.name}'")
+            get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session_id=session_id, output=output, **inputs)
                 )
             ]
-            print("{} playing {}: Exit '{}'".format(self.name, role, op.name))
+            get_logger().debug(f"{self.name} playing {role}: Exit '{op.name}'")
         await asyncio.wait(tasks)
 
     def compile_computation(self, logical_computation):
