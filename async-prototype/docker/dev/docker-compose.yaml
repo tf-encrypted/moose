@@ -1,0 +1,39 @@
+version: "3.7"
+
+services:
+
+  worker0:
+    image: tfencrypted/runtime-dev-worker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50000:50000
+    environment:
+      PORT: 50000
+
+  worker1:
+    image: tfencrypted/runtime-dev-worker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50001:50001
+    environment:
+      PORT: 50001
+
+  worker2:
+    image: tfencrypted/runtime-dev-worker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50002:50002
+    environment:
+      PORT: 50002

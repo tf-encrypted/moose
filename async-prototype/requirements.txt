@@ -1,4 +1,6 @@
 absl-py==0.7.1
 black==19.10b0
 flake8==3.8.3
+grpcio==1.30.0
+grpcio-tools==1.30.0
 pip==20.2b1
