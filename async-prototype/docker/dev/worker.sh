@@ -1,3 +1,3 @@
 #!/bin/sh
 
-watchexec -e py -r "echo '***** LAUNCH *****'; python3 /runtime/launch_servers.py"
+watchexec -e py -r "python3 /runtime/launch_servers.py --verbose --port $PORT"

@@ -24,4 +24,4 @@ COPY requirements.txt .
 RUN pip3 install -r requirements.txt
 
 WORKDIR /runtime
-CMD watchexec -e py -r "python3 /runtime/launch_servers.py --verbose --port $PORT"
+CMD watchexec -e py -r "sh /runtime/docker/dev/worker.sh"
