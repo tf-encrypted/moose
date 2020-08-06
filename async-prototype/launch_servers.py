@@ -34,7 +34,7 @@ if __name__ == "__main__":
 
     executor = AsyncKernelBasedExecutor(
         name="remote",
-        store={args.valuename: args.value},
+        store={},
         channel_manager=channel_manager,
     )
 

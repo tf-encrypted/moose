@@ -3,6 +3,7 @@ from collections import defaultdict
 from grpc.experimental import aio
 
 from computation import AddOperation
+from computation import ConstantOperation
 from computation import LoadOperation
 from computation import MulOperation
 from computation import ReceiveOperation
@@ -71,6 +72,12 @@ class ReceiveKernel(Kernel):
         output.set_result(value)
 
 
+class ConstantKernel(StrictKernel):
+    async def execute(self, op, session_id, output, value):
+        assert isinstance(op, ConstantOperation)
+        return output.set_result(value)
+
+
 class AddKernel(StrictKernel):
     def strict_execute(self, op, session_id, lhs, rhs):
         assert isinstance(op, AddOperation)
@@ -97,6 +104,7 @@ class AsyncKernelBasedExecutor:
             SaveOperation: SaveKernel(store),
             SendOperation: SendKernel(channel_manager),
             ReceiveOperation: ReceiveKernel(channel_manager),
+            ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
@@ -113,10 +121,13 @@ class AsyncKernelBasedExecutor:
             kernel = self.kernels.get(type(op))
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
-            inputs = {
-                param_name: session_values[value_name]
-                for (param_name, value_name) in op.inputs.items()
-            }
+            if isinstance(op, ConstantOperation):
+                inputs = op.inputs
+            else:
+                inputs = {
+                    param_name: session_values[value_name]
+                    for (param_name, value_name) in op.inputs.items()
+                }
             output = session_values[op.output] if op.output else None
             get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
             tasks += [

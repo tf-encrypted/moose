@@ -25,6 +25,7 @@ cluster_spec = {
     outputter.name: "localhost:50054",
 }
 
+
 @computation
 def my_comp():
 

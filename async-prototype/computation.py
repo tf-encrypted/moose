@@ -27,6 +27,11 @@ class SaveOperation(Operation):
 
 
 @dataclass
+class ConstantOperation(Operation):
+    pass
+
+
+@dataclass
 class AddOperation(Operation):
     pass
 

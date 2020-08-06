@@ -6,6 +6,7 @@ from typing import Type
 from computation import Operation
 from computation import AddOperation
 from computation import Computation
+from computation import ConstantOperation
 from computation import Graph
 from computation import LoadOperation
 from computation import MulOperation
@@ -65,6 +66,12 @@ class SaveExpression(Expression):
 
 
 @dataclass
+class ConstantExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class BinaryOpExpression(Expression):
     op_type: Operation
 
@@ -74,6 +81,10 @@ class BinaryOpExpression(Expression):
 
 def load(key):
     return LoadExpression(role=get_current_role(), inputs=[], key=key)
+
+
+def constant(value):
+    return ConstantExpression(role=get_current_role(), inputs=value)
 
 
 def save(value, key):
@@ -182,6 +193,15 @@ class Compiler:
             key=save_expression.key,
             inputs={"value": value_operation.output},
             output=None,
+        )
+
+    def visit_ConstantExpression(self, constant_expression):
+        assert isinstance(constant_expression, ConstantExpression)
+        return ConstantOperation(
+            device_name=constant_expression.role.name,
+            name=self.get_fresh_name("constant_op"),
+            inputs={"value": constant_expression.inputs},
+            output=self.get_fresh_name("constant"),
         )
 
     def visit_BinaryOpExpression(self, expression):
