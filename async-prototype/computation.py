@@ -3,6 +3,7 @@ from dataclasses import asdict
 import json
 import re
 from typing import Dict
+from typing import Union
 from typing import Optional
 
 OPS_REGISTER = {}
@@ -28,7 +29,7 @@ class SaveOperation(Operation):
 
 @dataclass
 class ConstantOperation(Operation):
-    pass
+    value: Union[int, float]
 
 
 @dataclass

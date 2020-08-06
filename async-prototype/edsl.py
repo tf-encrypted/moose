@@ -2,6 +2,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from typing import List
 from typing import Type
+from typing import Union
 
 from computation import Operation
 from computation import AddOperation
@@ -67,6 +68,8 @@ class SaveExpression(Expression):
 
 @dataclass
 class ConstantExpression(Expression):
+    value: Union[int, float]
+
     def __hash__(self):
         return id(self)
 
@@ -84,7 +87,7 @@ def load(key):
 
 
 def constant(value):
-    return ConstantExpression(role=get_current_role(), inputs=value)
+    return ConstantExpression(role=get_current_role(), inputs=[], value=value)
 
 
 def save(value, key):
@@ -200,7 +203,8 @@ class Compiler:
         return ConstantOperation(
             device_name=constant_expression.role.name,
             name=self.get_fresh_name("constant_op"),
-            inputs={"value": constant_expression.inputs},
+            value=constant_expression.value,
+            inputs={},
             output=self.get_fresh_name("constant"),
         )
 

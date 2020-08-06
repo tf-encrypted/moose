@@ -73,10 +73,10 @@ class ReceiveKernel(Kernel):
 
 
 class ConstantKernel(StrictKernel):
-    async def execute(self, op, session_id, output, value):
+    async def execute(self, op, session_id, output):
         print("constant")
         assert isinstance(op, ConstantOperation)
-        return output.set_result(value)
+        return output.set_result(op.value)
 
 
 class AddKernel(StrictKernel):
@@ -122,16 +122,10 @@ class AsyncKernelBasedExecutor:
             kernel = self.kernels.get(type(op))
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
-            # TODO(Yann) We should avoid having this codition here. But The value from
-            # ConstantOperation has to be the constant and not a future otherwise it
-            # will block the coroutine because the value will never get set.
-            if isinstance(op, ConstantOperation):
-                inputs = op.inputs
-            else:
-                inputs = {
-                    param_name: session_values[value_name]
-                    for (param_name, value_name) in op.inputs.items()
-                }
+            inputs = {
+                param_name: session_values[value_name]
+                for (param_name, value_name) in op.inputs.items()
+            }
             output = session_values[op.output] if op.output else None
             get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
             tasks += [
