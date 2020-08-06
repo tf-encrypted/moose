@@ -91,11 +91,11 @@ class Computation:
         return computation
 
     def serialize(self):
-        return json.dumps(self.to_dict())
+        return json.dumps(self.to_dict()).encode("utf-8")
 
     @classmethod
     def deserialize(self, bytes_stream):
-        return self.from_dict(json.loads(bytes_stream))
+        return self.from_dict(json.loads(bytes_stream.decode("utf-8")))
 
 
 def select_op(op_name):

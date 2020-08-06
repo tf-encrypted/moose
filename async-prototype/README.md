@@ -20,10 +20,10 @@ python -m grpc_tools.protoc \
       --proto_path=. \
       --python_out=. \
       --grpc_python_out=. \
-      "protos/secure_channel.proto"
+      "protos/executor.proto"
 ```
 
-Then start in differnt terminals 3 servers:
+Then start in differnt terminals 4 servers:
 ```
 python launch_servers.py --port 50000 --verbose
 python launch_servers.py --port 50001 --verbose

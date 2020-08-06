@@ -10,8 +10,8 @@ from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
-from protos import secure_channel_pb2
-from protos import secure_channel_pb2_grpc
+from protos import executor_pb2
+from protos import executor_pb2_grpc
 
 from logger import get_logger
 
@@ -121,6 +121,9 @@ class AsyncKernelBasedExecutor:
             kernel = self.kernels.get(type(op))
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
+            # TODO(Yann) We should avoid having this codition here. But The value from 
+            # ConstantOperation has to be the constant and not a future otherwise it 
+            # will block the coroutine because the value will never get set.
             if isinstance(op, ConstantOperation):
                 inputs = op.inputs
             else:
@@ -152,10 +155,10 @@ class AsyncKernelBasedExecutor:
 class RemoteExecutor:
     def __init__(self, endpoint):
         self.channel = aio.insecure_channel(endpoint)
-        self._stub = secure_channel_pb2_grpc.SecureChannelStub(self.channel)
+        self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
 
     async def run_computation(self, logical_computation, role, session_id):
-        compute_request = secure_channel_pb2.ComputeRequest(
+        compute_request = executor_pb2.ComputeRequest(
             computation=logical_computation, role=role, session_id=session_id
         )
         response = await self._stub.Compute(compute_request)

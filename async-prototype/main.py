@@ -11,6 +11,7 @@ from executor import AsyncKernelBasedExecutor
 from runtime import Runtime
 from computation import Computation
 
+
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
 aggregator = Role(name="aggregator")

@@ -6,7 +6,7 @@ from grpc.experimental import aio
 
 from logger import get_logger
 from logger import set_logger
-from channels import Server
+from server import Server
 from channels import ChannelManager
 from executor import AsyncKernelBasedExecutor
 
@@ -23,6 +23,7 @@ if args.verbose:
 if __name__ == "__main__":
     aio.init_grpc_aio()
 
+    # TODO(Yann) Should be passed as an arg
     cluster_spec = {
         "inputter0": "localhost:50000",
         "inputter1": "localhost:50001",
