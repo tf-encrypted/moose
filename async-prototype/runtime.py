@@ -29,11 +29,10 @@ class RemoteRuntime:
         self.remote_executers = self.create_remote_executers(cluster_spec)
 
     def evaluate_computation(self, comp: Computation):
-        comp_ser = comp.serialize()
         loop = asyncio.get_event_loop()
         sid = random.randrange(2 ** 32)
         tasks = [
-            remote_executor.run_computation(comp_ser, role=role, session_id=sid)
+            remote_executor.run_computation(comp, role=role, session_id=sid)
             for role, remote_executor in self.remote_executers.items()
         ]
         joint_task = asyncio.wait(tasks)

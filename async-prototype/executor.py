@@ -153,8 +153,9 @@ class RemoteExecutor:
         self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
 
     async def run_computation(self, logical_computation, role, session_id):
+        comp_ser = logical_computation.serialize()
         compute_request = executor_pb2.ComputeRequest(
-            computation=logical_computation, role=role, session_id=session_id
+            computation=comp_ser, role=role, session_id=session_id
         )
         response = await self._stub.RunComputation(compute_request)
 
