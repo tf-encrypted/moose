@@ -25,10 +25,10 @@ if __name__ == "__main__":
 
     # TODO(Yann) Should be passed as an arg
     cluster_spec = {
-        "inputter0": "localhost:50000",
-        "inputter1": "localhost:50001",
-        "aggregator": "localhost:50002",
-        "outputter": "localhost:50003",
+        "inputter0": "worker0:50000",
+        "inputter1": "worker1:50001",
+        "aggregator": "worker2:50002",
+        "outputter": "worker3:50003",
     }
 
     channel_manager = ChannelManager(cluster_spec)
