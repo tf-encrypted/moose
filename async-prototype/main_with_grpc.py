@@ -1,32 +1,45 @@
+from grpc.experimental import aio
+import logging
+
+from logger import get_logger
+from logger import set_logger
+
+
 from channels.grpc_channels import Channel
 from channels.grpc_channels import ChannelManager
+from cluster.cluster_spec import load_cluster_spec
 from edsl import Role
 from edsl import add
+from edsl import constant
 from edsl import computation
 from edsl import load
 from edsl import mul
 from edsl import save
 from edsl import sub
 from executor import AsyncKernelBasedExecutor
-from runtime import Runtime
+from runtime import RemoteRuntime
 
 from grpc.experimental import aio
 
+
+get_logger().setLevel(level=logging.DEBUG)
 
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
 aggregator = Role(name="aggregator")
 outputter = Role(name="outputter")
 
+cluster_spec = load_cluster_spec("cluster/cluster-spec-localhost.yaml")
+
 
 @computation
 def my_comp():
 
     with inputter0:
-        x0 = load("x0")
+        x0 = constant(5)
 
     with inputter1:
-        x1 = load("x1")
+        x1 = constant(7)
 
     with aggregator:
         y0 = add(x0, x0)
@@ -42,36 +55,6 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 print(concrete_comp)
 
-cluster_spec = {
-    inputter0.name: "localhost:50000",
-    inputter1.name: "localhost:50001",
-    aggregator.name: "localhost:50002",
-}
-
-channel_manager = ChannelManager(cluster_spec)
-
-in0_executor = AsyncKernelBasedExecutor(
-    name="alice", store={"x0": 5}, channel_manager=channel_manager,
-)
-in1_executor = AsyncKernelBasedExecutor(
-    name="bob", store={"x1": 7}, channel_manager=channel_manager,
-)
-agg_executor = AsyncKernelBasedExecutor(
-    name="carole", store={}, channel_manager=channel_manager,
-)
-out_executor = AsyncKernelBasedExecutor(
-    name="dave", store={}, channel_manager=channel_manager
-)
-
-
-runtime = Runtime(
-    role_assignment={
-        inputter0: in0_executor,
-        inputter1: in1_executor,
-        aggregator: agg_executor,
-        outputter: out_executor,
-    }
-)
-
+runtime = RemoteRuntime(cluster_spec)
 runtime.evaluate_computation(concrete_comp)
 print("Done")

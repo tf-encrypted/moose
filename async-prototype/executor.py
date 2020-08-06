@@ -1,13 +1,17 @@
 import asyncio
 from collections import defaultdict
+from grpc.experimental import aio
 
 from computation import AddOperation
+from computation import ConstantOperation
 from computation import LoadOperation
 from computation import MulOperation
 from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
+from protos import executor_pb2
+from protos import executor_pb2_grpc
 
 from logger import get_logger
 
@@ -46,7 +50,7 @@ class SaveKernel(StrictKernel):
     def strict_execute(self, op, session_id, value):
         assert isinstance(op, SaveOperation)
         self.store[op.key] = value
-        print(f"Saved {value}")
+        get_logger().debug(f"Saved {value}")
 
 
 class SendKernel(Kernel):
@@ -68,6 +72,13 @@ class ReceiveKernel(Kernel):
         output.set_result(value)
 
 
+class ConstantKernel(StrictKernel):
+    async def execute(self, op, session_id, output):
+        print("constant")
+        assert isinstance(op, ConstantOperation)
+        return output.set_result(op.value)
+
+
 class AddKernel(StrictKernel):
     def strict_execute(self, op, session_id, lhs, rhs):
         assert isinstance(op, AddOperation)
@@ -87,13 +98,14 @@ class MulKernel(StrictKernel):
 
 
 class AsyncKernelBasedExecutor:
-    def __init__(self, name, store, channel_manager):
+    def __init__(self, name, channel_manager, store={}):
         self.name = name
         self.kernels = {
             LoadOperation: LoadKernel(store),
             SaveOperation: SaveKernel(store),
             SendOperation: SendKernel(channel_manager),
             ReceiveOperation: ReceiveKernel(channel_manager),
+            ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
@@ -133,6 +145,19 @@ class AsyncKernelBasedExecutor:
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
         return [node for node in comp.nodes() if node.device_name == role]
+
+
+class RemoteExecutor:
+    def __init__(self, endpoint):
+        self.channel = aio.insecure_channel(endpoint)
+        self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
+
+    async def run_computation(self, logical_computation, role, session_id):
+        comp_ser = logical_computation.serialize()
+        compute_request = executor_pb2.ComputeRequest(
+            computation=comp_ser, role=role, session_id=session_id
+        )
+        response = await self._stub.RunComputation(compute_request)
 
 
 class AsyncStore:

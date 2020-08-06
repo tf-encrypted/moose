@@ -5,8 +5,8 @@ import logging
 
 from grpc.experimental import aio
 
-from protos import secure_channel_pb2
-from protos import secure_channel_pb2_grpc
+from protos import executor_pb2
+from protos import executor_pb2_grpc
 
 
 class ChannelManager:
@@ -41,11 +41,11 @@ class Channel:
         self.port = port
         self._endpoint = self.host + ":" + self.port
         self.channel = aio.insecure_channel(self._endpoint)
-        self._stub = secure_channel_pb2_grpc.SecureChannelStub(self.channel)
+        self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
 
     async def receive(self, rendezvous_key, session_id):
         reply = await self._stub.GetValue(
-            secure_channel_pb2.KeyValue(
+            executor_pb2.ValueRequest(
                 rendezvous_key=rendezvous_key, session_id=session_id
             )
         )
@@ -53,7 +53,7 @@ class Channel:
 
     async def send(self, value, rendezvous_key, session_id):
         await self._stub.AddValueToBuffer(
-            secure_channel_pb2.RemoteValue(
+            executor_pb2.RemoteValue(
                 value=value, rendezvous_key=rendezvous_key, session_id=session_id
             )
         )

@@ -1,0 +1,7 @@
+workers:
+  
+  - inputter0: worker0:50000
+  - inputter1: worker1:50001
+  - aggregator: worker2:50002
+  - outputter: worker3:50003
+    
