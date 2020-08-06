@@ -7,6 +7,7 @@ from logger import set_logger
 
 from channels.grpc_channels import Channel
 from channels.grpc_channels import ChannelManager
+from cluster.cluster_spec import load_cluster_spec
 from edsl import Role
 from edsl import add
 from edsl import constant
@@ -28,12 +29,7 @@ inputter1 = Role(name="inputter1")
 aggregator = Role(name="aggregator")
 outputter = Role(name="outputter")
 
-cluster_spec = {
-    inputter0.name: "localhost:50000",
-    inputter1.name: "localhost:50001",
-    aggregator.name: "localhost:50002",
-    outputter.name: "localhost:50003",
-}
+cluster_spec = load_cluster_spec("cluster/cluster-spec-localhost.yaml")
 
 
 @computation

@@ -23,12 +23,10 @@ python -m grpc_tools.protoc \
       "protos/executor.proto"
 ```
 
-Then start in differnt terminals 4 servers:
+Then start the workers using Docker:
 ```
-python launch_servers.py --port 50000 --verbose
-python launch_servers.py --port 50001 --verbose
-python launch_servers.py --port 50002 --verbose
-python launch_servers.py --port 50003 --verbose
+cd docker/dev
+docker-compose up
 ```
 
 Then run:
