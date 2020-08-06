@@ -6,7 +6,7 @@ package executor;
 service Executor{
     rpc GetValue(ValueRequest) returns(ValueResponse) {}
     rpc AddValueToBuffer(RemoteValue) returns(BufferResponse) {}
-    rpc Compute(ComputeRequest) returns(ComputeResponse) {}
+    rpc RunComputation(ComputeRequest) returns(ComputeResponse) {}
 }
 
 // TODO Reduce the number of messages

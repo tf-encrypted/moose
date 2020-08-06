@@ -42,18 +42,10 @@ concrete_comp = my_comp.trace_func()
 
 channel_manager = AsyncChannelManager()
 
-in0_executor = AsyncKernelBasedExecutor(
-    name="alice", store={}, channel_manager=channel_manager,
-)
-in1_executor = AsyncKernelBasedExecutor(
-    name="bob", store={}, channel_manager=channel_manager,
-)
-agg_executor = AsyncKernelBasedExecutor(
-    name="carole", store={}, channel_manager=channel_manager,
-)
-out_executor = AsyncKernelBasedExecutor(
-    name="dave", store={}, channel_manager=channel_manager
-)
+in0_executor = AsyncKernelBasedExecutor(name="alice", channel_manager=channel_manager,)
+in1_executor = AsyncKernelBasedExecutor(name="bob", channel_manager=channel_manager,)
+agg_executor = AsyncKernelBasedExecutor(name="carole", channel_manager=channel_manager,)
+out_executor = AsyncKernelBasedExecutor(name="dave", channel_manager=channel_manager)
 
 runtime = Runtime(
     role_assignment={

@@ -30,7 +30,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
         self.buffer[key].set_result(request.value)
         return executor_pb2.BufferResponse()
 
-    async def Compute(self, request, context):
+    async def RunComputation(self, request, context):
         computation = Computation.deserialize(request.computation)
         role = request.role
         session_id = request.session_id
@@ -39,7 +39,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
 
 
 class Server:
-    def __init__(self, host, port, executor=None):
+    def __init__(self, host, port, executor):
         self.host = host
         self.port = port
         self._endpoint = self.host + ":" + self.port

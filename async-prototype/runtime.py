@@ -26,20 +26,24 @@ class Runtime:
 
 class RemoteRuntime:
     def __init__(self, cluster_spec: Dict) -> None:
-        self.cluster_spec = cluster_spec
+        self.remote_executers = self.create_remote_executers(cluster_spec)
 
     def evaluate_computation(self, comp: Computation):
         comp_ser = comp.serialize()
         loop = asyncio.get_event_loop()
         sid = random.randrange(2 ** 32)
         tasks = [
-            RemoteExecutor(endpoint).run_computation(
-                comp_ser, role=role, session_id=sid
-            )
-            for role, endpoint in self.cluster_spec.items()
+            remote_executor.run_computation(comp_ser, role=role, session_id=sid)
+            for role, remote_executor in self.remote_executers.items()
         ]
         joint_task = asyncio.wait(tasks)
         loop.run_until_complete(joint_task)
+
+    def create_remote_executers(self, clusper_spec):
+        remote_executers = {
+            role: RemoteExecutor(endpoint) for role, endpoint in clusper_spec.items()
+        }
+        return remote_executers
 
 
 _RUNTIME: Optional[Runtime] = None

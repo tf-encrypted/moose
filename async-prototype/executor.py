@@ -50,7 +50,7 @@ class SaveKernel(StrictKernel):
     def strict_execute(self, op, session_id, value):
         assert isinstance(op, SaveOperation)
         self.store[op.key] = value
-        print(f"Saved {value}")
+        get_logger().debug(f"Saved {value}")
 
 
 class SendKernel(Kernel):
@@ -74,6 +74,7 @@ class ReceiveKernel(Kernel):
 
 class ConstantKernel(StrictKernel):
     async def execute(self, op, session_id, output, value):
+        print("constant")
         assert isinstance(op, ConstantOperation)
         return output.set_result(value)
 
@@ -97,7 +98,7 @@ class MulKernel(StrictKernel):
 
 
 class AsyncKernelBasedExecutor:
-    def __init__(self, name, store, channel_manager):
+    def __init__(self, name, channel_manager, store={}):
         self.name = name
         self.kernels = {
             LoadOperation: LoadKernel(store),
@@ -121,8 +122,8 @@ class AsyncKernelBasedExecutor:
             kernel = self.kernels.get(type(op))
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
-            # TODO(Yann) We should avoid having this codition here. But The value from 
-            # ConstantOperation has to be the constant and not a future otherwise it 
+            # TODO(Yann) We should avoid having this codition here. But The value from
+            # ConstantOperation has to be the constant and not a future otherwise it
             # will block the coroutine because the value will never get set.
             if isinstance(op, ConstantOperation):
                 inputs = op.inputs
@@ -161,7 +162,7 @@ class RemoteExecutor:
         compute_request = executor_pb2.ComputeRequest(
             computation=logical_computation, role=role, session_id=session_id
         )
-        response = await self._stub.Compute(compute_request)
+        response = await self._stub.RunComputation(compute_request)
 
 
 class AsyncStore:

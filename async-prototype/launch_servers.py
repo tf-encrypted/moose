@@ -33,9 +33,7 @@ if __name__ == "__main__":
 
     channel_manager = ChannelManager(cluster_spec)
 
-    executor = AsyncKernelBasedExecutor(
-        name="remote", store={}, channel_manager=channel_manager,
-    )
+    executor = AsyncKernelBasedExecutor(name="remote", channel_manager=channel_manager,)
 
     loop = asyncio.get_event_loop()
 
