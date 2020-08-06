@@ -41,7 +41,7 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
 
     get_logger().info(f"Starting on {args.host}:{args.port}")
-    server = Server(args.host, args.port)
+    server = Server(args.host, args.port, executor)
 
     loop.run_until_complete(server.start())
     get_logger().info("Started")

@@ -25,10 +25,10 @@ python -m grpc_tools.protoc \
 
 Then start in differnt terminals 3 servers:
 ```
-python launch_servers.py --port 50051
-python launch_servers.py --port 50052
-python launch_servers.py --port 50053
-python launch_servers.py --port 50054
+python launch_servers.py --port 50051 --verbose
+python launch_servers.py --port 50052 --verbose
+python launch_servers.py --port 50053 --verbose
+python launch_servers.py --port 50054 --verbose
 ```
 
 Then run:

@@ -1,3 +1,10 @@
+from grpc.experimental import aio
+import logging
+
+from logger import get_logger
+from logger import set_logger
+
+
 from channels.grpc_channels import Channel
 from channels.grpc_channels import ChannelManager
 from edsl import Role
@@ -13,6 +20,8 @@ from runtime import RemoteRuntime
 
 from grpc.experimental import aio
 
+
+get_logger().setLevel(level=logging.DEBUG)
 
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
