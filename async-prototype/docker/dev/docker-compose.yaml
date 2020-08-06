@@ -37,3 +37,15 @@ services:
       - 50002:50002
     environment:
       PORT: 50002
+
+  worker3:
+    image: tfencrypted/runtime-dev-worker:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50003:50003
+    environment:
+      PORT: 50003

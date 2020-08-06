@@ -29,10 +29,10 @@ aggregator = Role(name="aggregator")
 outputter = Role(name="outputter")
 
 cluster_spec = {
-    inputter0.name: "localhost:50051",
-    inputter1.name: "localhost:50052",
-    aggregator.name: "localhost:50053",
-    outputter.name: "localhost:50054",
+    inputter0.name: "localhost:50000",
+    inputter1.name: "localhost:50001",
+    aggregator.name: "localhost:50002",
+    outputter.name: "localhost:50003",
 }
 
 

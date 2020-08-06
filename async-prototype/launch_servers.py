@@ -24,18 +24,16 @@ if __name__ == "__main__":
     aio.init_grpc_aio()
 
     cluster_spec = {
-        "inputter0": "localhost:50051",
-        "inputter1": "localhost:50052",
-        "aggregator": "localhost:50053",
-        "outputter": "localhost:50054",
+        "inputter0": "localhost:50000",
+        "inputter1": "localhost:50001",
+        "aggregator": "localhost:50002",
+        "outputter": "localhost:50003",
     }
 
     channel_manager = ChannelManager(cluster_spec)
 
     executor = AsyncKernelBasedExecutor(
-        name="remote",
-        store={},
-        channel_manager=channel_manager,
+        name="remote", store={}, channel_manager=channel_manager,
     )
 
     loop = asyncio.get_event_loop()
