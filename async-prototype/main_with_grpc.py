@@ -2,6 +2,7 @@ from channels.grpc_channels import Channel
 from channels.grpc_channels import ChannelManager
 from edsl import Role
 from edsl import add
+from edsl import constant
 from edsl import computation
 from edsl import load
 from edsl import mul
@@ -30,10 +31,10 @@ cluster_spec = {
 def my_comp():
 
     with inputter0:
-        x0 = load("x0")
+        x0 = constant(5)
 
     with inputter1:
-        x1 = load("x1")
+        x1 = constant(7)
 
     with aggregator:
         y0 = add(x0, x0)

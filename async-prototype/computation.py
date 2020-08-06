@@ -111,10 +111,11 @@ def register_op(name, op):
     OPS_REGISTER[name] = op
 
 
-register_op("LoadOperation", LoadOperation)
-register_op("SaveOperation", SaveOperation)
 register_op("AddOperation", AddOperation)
-register_op("SubOperation", SubOperation)
+register_op("LoadOperation", LoadOperation)
+register_op("ConstantOperation", ConstantOperation)
 register_op("MulOperation", MulOperation)
+register_op("SaveOperation", SaveOperation)
 register_op("SendOperation", SendOperation)
+register_op("SubOperation", SubOperation)
 register_op("ReceiveOperation", ReceiveOperation)
