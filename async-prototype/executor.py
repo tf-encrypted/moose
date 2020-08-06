@@ -1,5 +1,6 @@
 import asyncio
 from collections import defaultdict
+
 from grpc.experimental import aio
 
 from computation import AddOperation
@@ -10,10 +11,9 @@ from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
+from logger import get_logger
 from protos import executor_pb2
 from protos import executor_pb2_grpc
-
-from logger import get_logger
 
 
 class Kernel:

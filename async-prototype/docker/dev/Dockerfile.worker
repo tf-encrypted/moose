@@ -20,8 +20,8 @@ RUN wget -q https://static.rust-lang.org/rustup/rustup-init.sh; \
 RUN cargo install watchexec
 
 # Dependencies
-COPY requirements.txt .
-RUN pip3 install -r requirements.txt
+COPY requirements-dev.txt .
+RUN pip3 install -r requirements-dev.txt
 
 WORKDIR /runtime
 CMD watchexec -e py -r "sh /runtime/docker/dev/worker.sh"

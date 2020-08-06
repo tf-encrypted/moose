@@ -1,3 +1,5 @@
+from channels import AsyncChannelManager
+from computation import Computation
 from edsl import Role
 from edsl import add
 from edsl import computation
@@ -6,11 +8,8 @@ from edsl import load
 from edsl import mul
 from edsl import save
 from edsl import sub
-from channels import AsyncChannelManager
 from executor import AsyncKernelBasedExecutor
 from runtime import Runtime
-from computation import Computation
-
 
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")

@@ -4,13 +4,12 @@ import logging
 
 from grpc.experimental import aio
 
+from channels import ChannelManager
 from cluster.cluster_spec import load_cluster_spec
+from executor import AsyncKernelBasedExecutor
 from logger import get_logger
 from logger import set_logger
 from server import Server
-from channels import ChannelManager
-from executor import AsyncKernelBasedExecutor
-
 
 parser = argparse.ArgumentParser(description="Launch servers")
 parser.add_argument("--host", type=str, default="0.0.0.0")
