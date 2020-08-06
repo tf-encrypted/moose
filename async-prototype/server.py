@@ -28,7 +28,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
     async def AddValueToBuffer(self, request, context):
         key = (request.session_id, request.rendezvous_key)
         self.buffer[key].set_result(request.value)
-        return executor_pb2.Empty()
+        return executor_pb2.BufferResponse()
 
     async def Compute(self, request, context):
         computation = Computation.deserialize(request.computation)
