@@ -4,13 +4,13 @@ from typing import List
 from typing import Type
 from typing import Union
 
-from computation import Operation
 from computation import AddOperation
 from computation import Computation
 from computation import ConstantOperation
 from computation import Graph
 from computation import LoadOperation
 from computation import MulOperation
+from computation import Operation
 from computation import ReceiveOperation
 from computation import SaveOperation
 from computation import SendOperation

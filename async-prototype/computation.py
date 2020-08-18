@@ -1,10 +1,10 @@
-from dataclasses import dataclass
-from dataclasses import asdict
 import json
 import re
+from dataclasses import asdict
+from dataclasses import dataclass
 from typing import Dict
-from typing import Union
 from typing import Optional
+from typing import Union
 
 OPS_REGISTER = {}
 

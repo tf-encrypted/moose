@@ -1,17 +1,16 @@
+import asyncio
+import logging
+import math
+import threading
+import time
 from collections import defaultdict
 from concurrent import futures
-import time
-import math
-import logging
 
-import asyncio
 from grpc.experimental import aio
-import threading
-
-from protos import executor_pb2
-from protos import executor_pb2_grpc
 
 from computation import Computation
+from protos import executor_pb2
+from protos import executor_pb2_grpc
 
 
 class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):

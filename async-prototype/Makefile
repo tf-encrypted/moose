@@ -1,9 +1,9 @@
 fmt:
+	isort --atomic --recursive .
 	black .
 
 lint:
-	flake8 . --max-line-length 88
-	black . --check
+	flake8 .
 
 run:
 	python main.py
