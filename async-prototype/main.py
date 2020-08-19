@@ -8,9 +8,8 @@ from edsl import constant
 from edsl import mul
 from edsl import save
 from logger import get_logger
-from runtime import TestRuntime
 from runtime import RemoteRuntime
-
+from runtime import TestRuntime
 
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
