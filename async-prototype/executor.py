@@ -97,7 +97,7 @@ class MulKernel(StrictKernel):
         return lhs * rhs
 
 
-class AsyncKernelBasedExecutor:
+class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
         self.kernels = {

@@ -2,7 +2,7 @@ import asyncio
 from collections import defaultdict
 
 
-class AsyncMemoryChannel:
+class Channel:
     def __init__(self):
         # TODO(Morten) having an async dict-like structure
         # would probably be better ...
@@ -19,9 +19,9 @@ class AsyncMemoryChannel:
         return await queue.get()
 
 
-class AsyncChannelManager:
+class ChannelManager:
     def __init__(self):
-        self.channels = defaultdict(AsyncMemoryChannel)
+        self.channels = defaultdict(Channel)
 
     def get_channel(self, op):
         channel_key = (op.sender, op.receiver)

@@ -4,10 +4,10 @@ from typing import Dict
 from typing import Optional
 from typing import Union
 
-from channels import AsyncChannelManager
+from channels.memory import ChannelManager
 from cluster.cluster_spec import load_cluster_spec
 from computation import Computation
-from executor import AsyncKernelBasedExecutor
+from executor import KernelBasedExecutor
 from executor import RemoteExecutor
 
 
@@ -24,9 +24,9 @@ class Runtime:
 
 class TestRuntime(Runtime):
     def __init__(self, num_workers) -> None:
-        channel_manager = AsyncChannelManager()
+        channel_manager = ChannelManager()
         self.executors = [
-            AsyncKernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
+            KernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
             for i in range(num_workers)
         ]
 

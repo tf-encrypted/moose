@@ -4,9 +4,9 @@ import logging
 
 from grpc.experimental import aio
 
-from channels import ChannelManager
+from channels.grpc import ChannelManager
 from cluster.cluster_spec import load_cluster_spec
-from executor import AsyncKernelBasedExecutor
+from executor import KernelBasedExecutor
 from logger import get_logger
 from server import Server
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     clusters_spec = load_cluster_spec(args.cluster_spec)
     channel_manager = ChannelManager(clusters_spec)
-    executor = AsyncKernelBasedExecutor(name="remote", channel_manager=channel_manager)
+    executor = KernelBasedExecutor(name="remote", channel_manager=channel_manager)
 
     get_logger().info(f"Starting on {args.host}:{args.port}")
     server = Server(args.host, args.port, executor)
