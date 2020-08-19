@@ -36,7 +36,7 @@ class RemoteRuntime(Runtime):
         if isinstance(cluster_spec, str):
             # assume `cluster_spec` is given as a path
             cluster_spec = load_cluster_spec(cluster_spec)
-        self.executers = [
+        self.executors = [
             RemoteExecutor(endpoint) for _, endpoint in cluster_spec.items()
         ]
 

@@ -1,3 +1,4 @@
+import argparse
 import logging
 
 from edsl import Role
@@ -8,8 +9,20 @@ from edsl import mul
 from edsl import save
 from logger import get_logger
 from runtime import TestRuntime
+from runtime import RemoteRuntime
 
-get_logger().setLevel(level=logging.DEBUG)
+
+parser = argparse.ArgumentParser(description="Run example")
+parser.add_argument("--runtime", type=str, default="test")
+parser.add_argument("--verbose", action="store_true")
+parser.add_argument(
+    "--cluster-spec", default="cluster/cluster-spec-docker-compose.yaml"
+)
+args = parser.parse_args()
+
+if args.verbose:
+    get_logger().setLevel(level=logging.DEBUG)
+
 
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
@@ -39,15 +52,24 @@ def my_comp():
 
 concrete_comp = my_comp.trace_func()
 
-runtime = TestRuntime(num_workers=4)
-runtime.evaluate_computation(
-    computation=concrete_comp,
-    role_assignment={
-        inputter0: runtime.executors[0],
-        inputter1: runtime.executors[1],
-        aggregator: runtime.executors[2],
-        outputter: runtime.executors[3],
-    },
-)
 
-print("Done")
+if __name__ == "__main__":
+
+    if args.runtime == "test":
+        runtime = TestRuntime(num_workers=4)
+    elif args.runtime == "remote":
+        runtime = RemoteRuntime("cluster/cluster-spec-localhost.yaml")
+    else:
+        raise ValueError(f"Unknown runtime '{args.runtime}'")
+
+    runtime.evaluate_computation(
+        computation=concrete_comp,
+        role_assignment={
+            inputter0: runtime.executors[0],
+            inputter1: runtime.executors[1],
+            aggregator: runtime.executors[2],
+            outputter: runtime.executors[3],
+        },
+    )
+
+    get_logger().info("Done")
