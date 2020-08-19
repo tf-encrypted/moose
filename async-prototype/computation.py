@@ -16,6 +16,10 @@ class Operation:
     inputs: Dict[str, str]
     output: Optional[str]
 
+    @classmethod
+    def identifier(cls):
+        return cls.__name__
+
 
 @dataclass
 class LoadOperation(Operation):
@@ -102,15 +106,15 @@ def select_op(op_name):
     return op
 
 
-def register_op(name, op):
-    OPS_REGISTER[name] = op
+def register_op(op):
+    OPS_REGISTER[op.identifier()] = op
 
 
-register_op("AddOperation", AddOperation)
-register_op("LoadOperation", LoadOperation)
-register_op("ConstantOperation", ConstantOperation)
-register_op("MulOperation", MulOperation)
-register_op("SaveOperation", SaveOperation)
-register_op("SendOperation", SendOperation)
-register_op("SubOperation", SubOperation)
-register_op("ReceiveOperation", ReceiveOperation)
+register_op(AddOperation)
+register_op(LoadOperation)
+register_op(ConstantOperation)
+register_op(MulOperation)
+register_op(SaveOperation)
+register_op(SendOperation)
+register_op(SubOperation)
+register_op(ReceiveOperation)
