@@ -12,17 +12,6 @@ from executor import RemoteExecutor
 
 
 class Runtime:
-    pass
-
-
-class TestRuntime(Runtime):
-    def __init__(self, num_workers) -> None:
-        channel_manager = AsyncChannelManager()
-        self.executors = [
-            AsyncKernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
-            for i in range(num_workers)
-        ]
-
     def evaluate_computation(self, computation: Computation, role_assignment: Dict):
         sid = random.randrange(2 ** 32)
         tasks = [
@@ -33,6 +22,15 @@ class TestRuntime(Runtime):
         asyncio.get_event_loop().run_until_complete(joint_task)
 
 
+class TestRuntime(Runtime):
+    def __init__(self, num_workers) -> None:
+        channel_manager = AsyncChannelManager()
+        self.executors = [
+            AsyncKernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
+            for i in range(num_workers)
+        ]
+
+
 class RemoteRuntime(Runtime):
     def __init__(self, cluster_spec: Union[Dict, str]) -> None:
         if isinstance(cluster_spec, str):
@@ -41,16 +39,6 @@ class RemoteRuntime(Runtime):
         self.executers = [
             RemoteExecutor(endpoint) for _, endpoint in cluster_spec.items()
         ]
-
-    def evaluate_computation(self, computation: Computation, role_assignment: Dict):
-        loop = asyncio.get_event_loop()
-        sid = random.randrange(2 ** 32)
-        tasks = [
-            executor.run_computation(computation, role=role.name, session_id=sid)
-            for role, executor in role_assignment.items()
-        ]
-        joint_task = asyncio.wait(tasks)
-        loop.run_until_complete(joint_task)
 
 
 _RUNTIME: Optional[Runtime] = None
