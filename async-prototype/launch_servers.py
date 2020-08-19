@@ -8,7 +8,6 @@ from channels import ChannelManager
 from cluster.cluster_spec import load_cluster_spec
 from executor import AsyncKernelBasedExecutor
 from logger import get_logger
-from logger import set_logger
 from server import Server
 
 parser = argparse.ArgumentParser(description="Launch servers")

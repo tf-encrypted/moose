@@ -1,7 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import List
-from typing import Type
 from typing import Union
 
 from computation import AddOperation

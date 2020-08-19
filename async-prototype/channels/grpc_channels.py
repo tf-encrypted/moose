@@ -1,8 +1,3 @@
-import asyncio
-import logging
-from collections import defaultdict
-
-import grpc
 from grpc.experimental import aio
 
 from protos import executor_pb2

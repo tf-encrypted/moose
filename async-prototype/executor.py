@@ -157,7 +157,7 @@ class RemoteExecutor:
         compute_request = executor_pb2.ComputeRequest(
             computation=comp_ser, role=role, session_id=session_id
         )
-        response = await self._stub.RunComputation(compute_request)
+        _ = await self._stub.RunComputation(compute_request)
 
 
 class AsyncStore:

@@ -1,18 +1,12 @@
 import logging
 
-from grpc.experimental import aio
-
 from edsl import Role
 from edsl import add
 from edsl import computation
 from edsl import constant
-from edsl import load
 from edsl import mul
 from edsl import save
-from edsl import sub
-from executor import AsyncKernelBasedExecutor
 from logger import get_logger
-from logger import set_logger
 from runtime import RemoteRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
@@ -44,7 +38,6 @@ def my_comp():
 
 
 concrete_comp = my_comp.trace_func()
-print(concrete_comp)
 
 runtime = RemoteRuntime("cluster/cluster-spec-localhost.yaml")
 runtime.evaluate_computation(
