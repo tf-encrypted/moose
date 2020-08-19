@@ -90,6 +90,7 @@ class CallProgramExpression(Expression):
     def __hash__(self):
         return id(self)
 
+
 def load(key):
     return LoadExpression(role=get_current_role(), inputs=[], key=key)
 

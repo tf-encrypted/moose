@@ -1,7 +1,7 @@
-import asyncio
 import ast
-from collections import defaultdict
+import asyncio
 import subprocess
+from collections import defaultdict
 
 from grpc.experimental import aio
 
@@ -109,13 +109,22 @@ class MulKernel(StrictKernel):
 class CallProgramKernel(StrictKernel):
     async def execute(self, op, session_id, output):
         path = op.path
-        session_id_str  = str(session_id)
-   
-        process = subprocess.run(['python', path,'--session-id', session_id_str, '--device', op.device_name], 
-                         stdout=subprocess.PIPE, 
-                         universal_newlines=True)
+        session_id_str = str(session_id)
 
-        filename = '/tmp/' + '_' + op.device_name + 'data_store.json'
+        process = subprocess.run(
+            [
+                "python",
+                path,
+                "--session-id",
+                session_id_str,
+                "--device",
+                op.device_name,
+            ],
+            stdout=subprocess.PIPE,
+            universal_newlines=True,
+        )
+
+        filename = "/tmp/" + "_" + op.device_name + "data_store.json"
         with open(filename, "r") as f:
             data_store = f.read()
             out = ast.literal_eval(data_store)
