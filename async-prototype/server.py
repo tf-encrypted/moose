@@ -1,10 +1,5 @@
 import asyncio
-import logging
-import math
-import threading
-import time
 from collections import defaultdict
-from concurrent import futures
 
 from grpc.experimental import aio
 
@@ -17,40 +12,37 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
     def __init__(self, executor=None):
         self.buffer = defaultdict(asyncio.get_event_loop().create_future)
         self.executor = executor
-        self._loop = asyncio.get_event_loop()
 
     async def GetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
         value = await self.buffer[key]
-        return executor_pb2.ValueResponse(value=value)
+        return executor_pb2.GetValueResponse(value=value)
 
-    async def AddValueToBuffer(self, request, context):
+    async def SetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
         self.buffer[key].set_result(request.value)
-        return executor_pb2.BufferResponse()
+        return executor_pb2.SetValueResponse()
 
     async def RunComputation(self, request, context):
         computation = Computation.deserialize(request.computation)
         role = request.role
         session_id = request.session_id
-        await self.executor.run_computation(computation, role, session_id, self._loop)
-        return executor_pb2.ComputeResponse()
+        await self.executor.run_computation(computation, role, session_id)
+        return executor_pb2.RunComputationResponse()
 
 
 class Server:
     def __init__(self, host, port, executor):
-        self.host = host
-        self.port = port
-        self._endpoint = self.host + ":" + self.port
+        self._endpoint = f"{host}:{port}"
         self._servicer = ExecutorServicer(executor)
-        self.server = None
+        self._server = None
 
     async def start(self):
-        self.server = aio.server()
-        executor_pb2_grpc.add_ExecutorServicer_to_server(self._servicer, self.server)
-        self.server.add_insecure_port(self._endpoint)
-        await self.server.start()
+        self._server = aio.server()
+        executor_pb2_grpc.add_ExecutorServicer_to_server(self._servicer, self._server)
+        self._server.add_insecure_port(self._endpoint)
+        await self._server.start()
 
     async def wait(self):
-        await self.server.wait_for_termination()
-        self.server = None
+        await self._server.wait_for_termination()
+        self._server = None

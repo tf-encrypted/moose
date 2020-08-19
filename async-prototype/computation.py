@@ -16,6 +16,10 @@ class Operation:
     inputs: Dict[str, str]
     output: Optional[str]
 
+    @classmethod
+    def identifier(cls):
+        return cls.__name__
+
 
 @dataclass
 class LoadOperation(Operation):
@@ -71,7 +75,7 @@ class Computation:
     graph: Graph
 
     def devices(self):
-        return set(node.device for node in self.graph.nodes.values())
+        return set(node.device_name for node in self.graph.nodes.values())
 
     def nodes(self):
         return self.graph.nodes.values()
@@ -79,24 +83,15 @@ class Computation:
     def node(self, name):
         return self.graph.nodes.get(name)
 
-    def to_dict(self):
-        return asdict(self)
-
-    @classmethod
-    def from_dict(self, computation_dict):
-        nodes_dict = computation_dict["graph"]["nodes"]
-        nodes = {}
-        for node, args in nodes_dict.items():
-            nodes[node] = select_op(node)(**args)
-        computation = Computation(Graph(nodes))
-        return computation
-
     def serialize(self):
-        return json.dumps(self.to_dict()).encode("utf-8")
+        return json.dumps(asdict(self)).encode("utf-8")
 
     @classmethod
-    def deserialize(self, bytes_stream):
-        return self.from_dict(json.loads(bytes_stream.decode("utf-8")))
+    def deserialize(cls, bytes_stream):
+        computation_dict = json.loads(bytes_stream.decode("utf-8"))
+        nodes_dict = computation_dict["graph"]["nodes"]
+        nodes = {node: select_op(node)(**args) for node, args in nodes_dict.items()}
+        return Computation(Graph(nodes))
 
 
 def select_op(op_name):
@@ -108,15 +103,15 @@ def select_op(op_name):
     return op
 
 
-def register_op(name, op):
-    OPS_REGISTER[name] = op
+def register_op(op):
+    OPS_REGISTER[op.identifier()] = op
 
 
-register_op("AddOperation", AddOperation)
-register_op("LoadOperation", LoadOperation)
-register_op("ConstantOperation", ConstantOperation)
-register_op("MulOperation", MulOperation)
-register_op("SaveOperation", SaveOperation)
-register_op("SendOperation", SendOperation)
-register_op("SubOperation", SubOperation)
-register_op("ReceiveOperation", ReceiveOperation)
+register_op(AddOperation)
+register_op(LoadOperation)
+register_op(ConstantOperation)
+register_op(MulOperation)
+register_op(SaveOperation)
+register_op(SendOperation)
+register_op(SubOperation)
+register_op(ReceiveOperation)

@@ -74,7 +74,6 @@ class ReceiveKernel(Kernel):
 
 class ConstantKernel(StrictKernel):
     async def execute(self, op, session_id, output):
-        print("constant")
         assert isinstance(op, ConstantOperation)
         return output.set_result(op.value)
 
@@ -97,7 +96,7 @@ class MulKernel(StrictKernel):
         return lhs * rhs
 
 
-class AsyncKernelBasedExecutor:
+class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
         self.kernels = {
@@ -111,11 +110,11 @@ class AsyncKernelBasedExecutor:
             MulOperation: MulKernel(),
         }
 
-    async def run_computation(self, logical_computation, role, session_id, event_loop):
+    async def run_computation(self, logical_computation, role, session_id):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, role)
         # lazily create futures for all edges in the graph
-        session_values = defaultdict(event_loop.create_future)
+        session_values = defaultdict(asyncio.get_event_loop().create_future)
         # link futures together using kernels
         tasks = []
         for op in execution_plan:
@@ -154,10 +153,10 @@ class RemoteExecutor:
 
     async def run_computation(self, logical_computation, role, session_id):
         comp_ser = logical_computation.serialize()
-        compute_request = executor_pb2.ComputeRequest(
+        compute_request = executor_pb2.RunComputationRequest(
             computation=comp_ser, role=role, session_id=session_id
         )
-        response = await self._stub.RunComputation(compute_request)
+        _ = await self._stub.RunComputation(compute_request)
 
 
 class AsyncStore:

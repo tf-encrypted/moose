@@ -1,15 +1,27 @@
-from channels import AsyncChannelManager
-from computation import Computation
+import argparse
+import logging
+
 from edsl import Role
 from edsl import add
 from edsl import computation
 from edsl import constant
-from edsl import load
 from edsl import mul
 from edsl import save
-from edsl import sub
-from executor import AsyncKernelBasedExecutor
-from runtime import Runtime
+from logger import get_logger
+from runtime import RemoteRuntime
+from runtime import TestRuntime
+
+parser = argparse.ArgumentParser(description="Run example")
+parser.add_argument("--runtime", type=str, default="test")
+parser.add_argument("--verbose", action="store_true")
+parser.add_argument(
+    "--cluster-spec", default="cluster/cluster-spec-docker-compose.yaml"
+)
+args = parser.parse_args()
+
+if args.verbose:
+    get_logger().setLevel(level=logging.DEBUG)
+
 
 inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
@@ -39,21 +51,25 @@ def my_comp():
 
 concrete_comp = my_comp.trace_func()
 
-channel_manager = AsyncChannelManager()
 
-in0_executor = AsyncKernelBasedExecutor(name="alice", channel_manager=channel_manager,)
-in1_executor = AsyncKernelBasedExecutor(name="bob", channel_manager=channel_manager,)
-agg_executor = AsyncKernelBasedExecutor(name="carole", channel_manager=channel_manager,)
-out_executor = AsyncKernelBasedExecutor(name="dave", channel_manager=channel_manager)
+if __name__ == "__main__":
 
-runtime = Runtime(
-    role_assignment={
-        inputter0: in0_executor,
-        inputter1: in1_executor,
-        aggregator: agg_executor,
-        outputter: out_executor,
-    }
-)
+    if args.runtime == "test":
+        runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+    elif args.runtime == "remote":
+        runtime = RemoteRuntime("cluster/cluster-spec-localhost.yaml")
+        assert len(runtime.executors) == len(concrete_comp.devices())
+    else:
+        raise ValueError(f"Unknown runtime '{args.runtime}'")
 
-runtime.evaluate_computation(concrete_comp)
-print("Done")
+    runtime.evaluate_computation(
+        computation=concrete_comp,
+        role_assignment={
+            inputter0: runtime.executors[0],
+            inputter1: runtime.executors[1],
+            aggregator: runtime.executors[2],
+            outputter: runtime.executors[3],
+        },
+    )
+
+    print("Done")

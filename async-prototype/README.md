@@ -4,34 +4,41 @@
 
 ### Bootstrapping
 
+Install dependencies:
+
 ```
 pip install -r requirements-dev.txt
 ```
 
-### Running
+Compile protobuf files:
 
-```
-make run
-```
-
-To run the example `main_with_grcp.py` over grcp you need to first generate the grpc python files:
 ```
 python -m grpc_tools.protoc \
       --proto_path=. \
       --python_out=. \
       --grpc_python_out=. \
-      "protos/executor.proto"
+      protos/*.proto
 ```
 
-Then start the workers using Docker:
+### Running locally for testing
+
+```
+python main.py --runtime test
+```
+
+### Running with remote cluster
+
+You can start a cluster locally using the following:
+
 ```
 cd docker/dev
 docker-compose up
 ```
 
-Then run:
-``` 
-python main_with_grpc.py
+Once done you can run the following to evaluate a computation on it:
+
+```
+python main.py --runtime remote
 ```
 
 ### Developing

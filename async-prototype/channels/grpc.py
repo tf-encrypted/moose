@@ -1,8 +1,3 @@
-import asyncio
-import logging
-from collections import defaultdict
-
-import grpc
 from grpc.experimental import aio
 
 from protos import executor_pb2
@@ -45,15 +40,15 @@ class Channel:
 
     async def receive(self, rendezvous_key, session_id):
         reply = await self._stub.GetValue(
-            executor_pb2.ValueRequest(
+            executor_pb2.GetValueRequest(
                 rendezvous_key=rendezvous_key, session_id=session_id
             )
         )
         return reply.value
 
     async def send(self, value, rendezvous_key, session_id):
-        await self._stub.AddValueToBuffer(
-            executor_pb2.RemoteValue(
+        await self._stub.SetValue(
+            executor_pb2.SetValueRequest(
                 value=value, rendezvous_key=rendezvous_key, session_id=session_id
             )
         )

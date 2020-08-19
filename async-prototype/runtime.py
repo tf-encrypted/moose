@@ -2,47 +2,43 @@ import asyncio
 import random
 from typing import Dict
 from typing import Optional
+from typing import Union
 
+from channels.memory import ChannelManager
+from cluster.cluster_spec import load_cluster_spec
 from computation import Computation
+from executor import KernelBasedExecutor
 from executor import RemoteExecutor
 
 
 class Runtime:
-    def __init__(self, role_assignment: Dict) -> None:
-        self.role_assignment = role_assignment
-
-    def evaluate_computation(self, comp: Computation):
-        loop = asyncio.get_event_loop()
+    def evaluate_computation(self, computation: Computation, role_assignment: Dict):
         sid = random.randrange(2 ** 32)
         tasks = [
-            executor.run_computation(
-                comp, role=role.name, session_id=sid, event_loop=loop
-            )
-            for role, executor in self.role_assignment.items()
+            executor.run_computation(computation, role=role.name, session_id=sid)
+            for role, executor in role_assignment.items()
         ]
         joint_task = asyncio.wait(tasks)
-        loop.run_until_complete(joint_task)
+        asyncio.get_event_loop().run_until_complete(joint_task)
 
 
-class RemoteRuntime:
-    def __init__(self, cluster_spec: Dict) -> None:
-        self.remote_executers = self.create_remote_executers(cluster_spec)
-
-    def evaluate_computation(self, comp: Computation):
-        loop = asyncio.get_event_loop()
-        sid = random.randrange(2 ** 32)
-        tasks = [
-            remote_executor.run_computation(comp, role=role, session_id=sid)
-            for role, remote_executor in self.remote_executers.items()
+class TestRuntime(Runtime):
+    def __init__(self, num_workers) -> None:
+        channel_manager = ChannelManager()
+        self.executors = [
+            KernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
+            for i in range(num_workers)
         ]
-        joint_task = asyncio.wait(tasks)
-        loop.run_until_complete(joint_task)
 
-    def create_remote_executers(self, clusper_spec):
-        remote_executers = {
-            role: RemoteExecutor(endpoint) for role, endpoint in clusper_spec.items()
-        }
-        return remote_executers
+
+class RemoteRuntime(Runtime):
+    def __init__(self, cluster_spec: Union[Dict, str]) -> None:
+        if isinstance(cluster_spec, str):
+            # assume `cluster_spec` is given as a path
+            cluster_spec = load_cluster_spec(cluster_spec)
+        self.executors = [
+            RemoteExecutor(endpoint) for _, endpoint in cluster_spec.items()
+        ]
 
 
 _RUNTIME: Optional[Runtime] = None
