@@ -4,36 +4,36 @@ syntax = "proto3";
 package executor;
 
 service Executor {
-    rpc GetValue(ValueRequest) returns(ValueResponse) {}
-    rpc AddValueToBuffer(RemoteValue) returns(BufferResponse) {}
-    rpc RunComputation(ComputeRequest) returns(ComputeResponse) {}
+    rpc SetValue(SetValueRequest) returns(SetValueResponse) {}
+    rpc GetValue(GetValueRequest) returns(GetValueResponse) {}
+    rpc RunComputation(RunComputationRequest) returns(RunComputationResponse) {}
 }
 
 // TODO Reduce the number of messages
 // Should be a message holding a stream of bytes
 // handlers would be responsible for reconstructing 
 // object based on stream of bytes
-message RemoteValue {
+message SetValueRequest {
     float value = 1;
     string rendezvous_key = 2;
     int64 session_id = 3;
 }
 
-message ValueRequest {
+message SetValueResponse {}
+
+message GetValueRequest {
     string rendezvous_key = 1;
     int64 session_id = 2;
 }
 
-message ValueResponse {
+message GetValueResponse {
     float value = 1;
 }
 
-message BufferResponse {}
-
-message ComputeRequest {
+message RunComputationRequest {
     bytes computation = 1;
     string role = 2;
     int64 session_id = 3;
 }
 
-message ComputeResponse {}
+message RunComputationResponse {}

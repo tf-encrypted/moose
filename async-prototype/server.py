@@ -16,19 +16,19 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
     async def GetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
         value = await self.buffer[key]
-        return executor_pb2.ValueResponse(value=value)
+        return executor_pb2.GetValueResponse(value=value)
 
-    async def AddValueToBuffer(self, request, context):
+    async def SetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
         self.buffer[key].set_result(request.value)
-        return executor_pb2.BufferResponse()
+        return executor_pb2.SetValueResponse()
 
     async def RunComputation(self, request, context):
         computation = Computation.deserialize(request.computation)
         role = request.role
         session_id = request.session_id
         await self.executor.run_computation(computation, role, session_id)
-        return executor_pb2.ComputeResponse()
+        return executor_pb2.RunComputationResponse()
 
 
 class Server:

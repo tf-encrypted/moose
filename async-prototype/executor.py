@@ -153,7 +153,7 @@ class RemoteExecutor:
 
     async def run_computation(self, logical_computation, role, session_id):
         comp_ser = logical_computation.serialize()
-        compute_request = executor_pb2.ComputeRequest(
+        compute_request = executor_pb2.RunComputationRequest(
             computation=comp_ser, role=role, session_id=session_id
         )
         _ = await self._stub.RunComputation(compute_request)
