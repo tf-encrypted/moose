@@ -1,4 +1,5 @@
-from channels import AsyncChannelManager
+import logging
+
 from computation import Computation
 from edsl import Role
 from edsl import add
@@ -8,10 +9,8 @@ from edsl import load
 from edsl import mul
 from edsl import save
 from edsl import sub
-from executor import AsyncKernelBasedExecutor
-from runtime import Runtime
 from logger import get_logger
-import logging
+from runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
@@ -41,22 +40,17 @@ def my_comp():
     return res
 
 
-channel_manager = AsyncChannelManager()
+concrete_comp = my_comp.trace_func()
 
-in0_executor = AsyncKernelBasedExecutor(name="alice", channel_manager=channel_manager)
-in1_executor = AsyncKernelBasedExecutor(name="bob", channel_manager=channel_manager)
-agg_executor = AsyncKernelBasedExecutor(name="carole", channel_manager=channel_manager)
-out_executor = AsyncKernelBasedExecutor(name="dave", channel_manager=channel_manager)
-
-runtime = Runtime(
+runtime = TestRuntime(num_workers=4)
+runtime.evaluate_computation(
+    computation=concrete_comp,
     role_assignment={
-        inputter0: in0_executor,
-        inputter1: in1_executor,
-        aggregator: agg_executor,
-        outputter: out_executor,
-    }
+        inputter0: runtime.executors[0],
+        inputter1: runtime.executors[1],
+        aggregator: runtime.executors[2],
+        outputter: runtime.executors[3],
+    },
 )
 
-concrete_comp = my_comp.trace_func()
-runtime.evaluate_computation(concrete_comp)
 print("Done")

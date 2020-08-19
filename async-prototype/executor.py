@@ -111,11 +111,11 @@ class AsyncKernelBasedExecutor:
             MulOperation: MulKernel(),
         }
 
-    async def run_computation(self, logical_computation, role, session_id, event_loop):
+    async def run_computation(self, logical_computation, role, session_id):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, role)
         # lazily create futures for all edges in the graph
-        session_values = defaultdict(event_loop.create_future)
+        session_values = defaultdict(asyncio.get_event_loop().create_future)
         # link futures together using kernels
         tasks = []
         for op in execution_plan:

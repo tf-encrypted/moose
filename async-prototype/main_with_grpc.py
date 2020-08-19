@@ -2,9 +2,6 @@ import logging
 
 from grpc.experimental import aio
 
-from channels.grpc_channels import Channel
-from channels.grpc_channels import ChannelManager
-from cluster.cluster_spec import load_cluster_spec
 from edsl import Role
 from edsl import add
 from edsl import computation
@@ -24,8 +21,6 @@ inputter0 = Role(name="inputter0")
 inputter1 = Role(name="inputter1")
 aggregator = Role(name="aggregator")
 outputter = Role(name="outputter")
-
-cluster_spec = load_cluster_spec("cluster/cluster-spec-localhost.yaml")
 
 
 @computation
@@ -51,6 +46,14 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 print(concrete_comp)
 
-runtime = RemoteRuntime(cluster_spec)
-runtime.evaluate_computation(concrete_comp)
+runtime = RemoteRuntime("cluster/cluster-spec-localhost.yaml")
+runtime.evaluate_computation(
+    computation=concrete_comp,
+    role_assignment={
+        inputter0: runtime.executers[0],
+        inputter1: runtime.executers[1],
+        aggregator: runtime.executers[2],
+        outputter: runtime.executers[3],
+    },
+)
 print("Done")

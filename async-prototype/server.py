@@ -17,7 +17,6 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
     def __init__(self, executor=None):
         self.buffer = defaultdict(asyncio.get_event_loop().create_future)
         self.executor = executor
-        self._loop = asyncio.get_event_loop()
 
     async def GetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
@@ -33,7 +32,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
         computation = Computation.deserialize(request.computation)
         role = request.role
         session_id = request.session_id
-        await self.executor.run_computation(computation, role, session_id, self._loop)
+        await self.executor.run_computation(computation, role, session_id)
         return executor_pb2.ComputeResponse()
 
 
