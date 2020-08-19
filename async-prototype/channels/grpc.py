@@ -6,11 +6,12 @@ from protos import executor_pb2_grpc
 
 class ChannelManager:
     def __init__(self, cluster_spec):
-        self.channels = self.create_channels(cluster_spec)
+        self.channels = {
+            player: Channel(endpoint) for player, endpoint in cluster_spec.items()
+        }
 
     def get_channel(self, op):
-        channel_key = op.sender
-        return self.channels[channel_key]
+        return self.channels[op.sender]
 
     async def send(self, value, op, session_id):
         await self.get_channel(op).send(
@@ -22,21 +23,11 @@ class ChannelManager:
             rendezvous_key=op.rendezvous_key, session_id=session_id
         )
 
-    def create_channels(self, cluster_spec):
-        channels = {}
-        for player in cluster_spec:
-            host, port = cluster_spec[player].split(":")
-            channels[player] = Channel(host, port)
-        return channels
-
 
 class Channel:
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        self._endpoint = self.host + ":" + self.port
-        self.channel = aio.insecure_channel(self._endpoint)
-        self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
+    def __init__(self, endpoint):
+        self._channel = aio.insecure_channel(endpoint)
+        self._stub = executor_pb2_grpc.ExecutorStub(self._channel)
 
     async def receive(self, rendezvous_key, session_id):
         reply = await self._stub.GetValue(
