@@ -1,5 +1,5 @@
 fmt:
-	isort --atomic --recursive .
+	isort --atomic --recursive --skip protos/*.py .
 	black .
 
 lint:

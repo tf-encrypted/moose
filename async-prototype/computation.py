@@ -90,10 +90,7 @@ class Computation:
     def deserialize(cls, bytes_stream):
         computation_dict = json.loads(bytes_stream.decode("utf-8"))
         nodes_dict = computation_dict["graph"]["nodes"]
-        nodes = {
-            node: select_op(node)(**args)
-            for node, args in nodes_dict.items()
-        }
+        nodes = {node: select_op(node)(**args) for node, args in nodes_dict.items()}
         return Computation(Graph(nodes))
 
 
