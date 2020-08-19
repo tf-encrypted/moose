@@ -79,24 +79,18 @@ class Computation:
     def node(self, name):
         return self.graph.nodes.get(name)
 
-    def to_dict(self):
-        return asdict(self)
-
-    @classmethod
-    def from_dict(self, computation_dict):
-        nodes_dict = computation_dict["graph"]["nodes"]
-        nodes = {}
-        for node, args in nodes_dict.items():
-            nodes[node] = select_op(node)(**args)
-        computation = Computation(Graph(nodes))
-        return computation
-
     def serialize(self):
-        return json.dumps(self.to_dict()).encode("utf-8")
+        return json.dumps(asdict(self)).encode("utf-8")
 
     @classmethod
-    def deserialize(self, bytes_stream):
-        return self.from_dict(json.loads(bytes_stream.decode("utf-8")))
+    def deserialize(cls, bytes_stream):
+        computation_dict = json.loads(bytes_stream.decode("utf-8"))
+        nodes_dict = computation_dict["graph"]["nodes"]
+        nodes = {
+            node: select_op(node)(**args)
+            for node, args in nodes_dict.items()
+        }
+        return Computation(Graph(nodes))
 
 
 def select_op(op_name):

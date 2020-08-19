@@ -135,8 +135,7 @@ class Compiler:
     def get_fresh_name(self, prefix):
         count = self.name_counters[prefix]
         self.name_counters[prefix] += 1
-        name = "{}{}".format(prefix, count)
-        return name
+        return f"{prefix}{count}"
 
     def maybe_add_networking(self, expression, destination_device):
         if destination_device not in self.known_operations[expression]:
@@ -169,7 +168,7 @@ class Compiler:
     def visit(self, expression, destination_device=None):
         device = expression.role.name
         if expression not in self.known_operations:
-            visit_fn = getattr(self, "visit_{}".format(type(expression).__name__))
+            visit_fn = getattr(self, f"visit_{type(expression).__name__}")
             operation = visit_fn(expression)
             self.operations += [operation]
             self.known_operations[expression] = {device: operation}

@@ -20,7 +20,7 @@ python -m grpc_tools.protoc \
       --proto_path=. \
       --python_out=. \
       --grpc_python_out=. \
-      "protos/executor.proto"
+      protos/*.proto
 ```
 
 Then start the workers using Docker:

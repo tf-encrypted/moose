@@ -38,9 +38,9 @@ class RemoteRuntime:
         joint_task = asyncio.wait(tasks)
         loop.run_until_complete(joint_task)
 
-    def create_remote_executers(self, clusper_spec):
+    def create_remote_executers(self, cluster_spec):
         remote_executers = {
-            role: RemoteExecutor(endpoint) for role, endpoint in clusper_spec.items()
+            role: RemoteExecutor(endpoint) for role, endpoint in cluster_spec.items()
         }
         return remote_executers
 
