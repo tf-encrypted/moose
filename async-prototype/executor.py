@@ -74,7 +74,6 @@ class ReceiveKernel(Kernel):
 
 class ConstantKernel(StrictKernel):
     async def execute(self, op, session_id, output):
-        print("constant")
         assert isinstance(op, ConstantOperation)
         return output.set_result(op.value)
 
