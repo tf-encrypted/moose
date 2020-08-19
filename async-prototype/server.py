@@ -33,18 +33,16 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
 
 class Server:
     def __init__(self, host, port, executor):
-        self.host = host
-        self.port = port
-        self._endpoint = self.host + ":" + self.port
+        self._endpoint = f"{host}:{port}"
         self._servicer = ExecutorServicer(executor)
-        self.server = None
+        self._server = None
 
     async def start(self):
-        self.server = aio.server()
-        executor_pb2_grpc.add_ExecutorServicer_to_server(self._servicer, self.server)
-        self.server.add_insecure_port(self._endpoint)
-        await self.server.start()
+        self._server = aio.server()
+        executor_pb2_grpc.add_ExecutorServicer_to_server(self._servicer, self._server)
+        self._server.add_insecure_port(self._endpoint)
+        await self._server.start()
 
     async def wait(self):
-        await self.server.wait_for_termination()
-        self.server = None
+        await self._server.wait_for_termination()
+        self._server = None
