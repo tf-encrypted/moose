@@ -107,11 +107,17 @@ class MulKernel(StrictKernel):
 
 
 class CallProgramKernel(StrictKernel):
-    async def execute(self, op, session_id, output, inputs):
+    async def execute(self, op, session_id, output, **kwargs):
         path = op.path
-        inputs = await inputs
         session_id_str = str(session_id)
 
+        concrete_kwargs = {key: await value for key, value in kwargs.items()}
+        if "inputs" in concrete_kwargs:
+            inputs = concrete_kwargs["inputs"]
+        else:
+            inputs = None
+
+        # [TODO] pass input file with serialized data instead of values directly
         process = subprocess.run(
             [
                 "python",
@@ -127,10 +133,10 @@ class CallProgramKernel(StrictKernel):
             universal_newlines=True,
         )
 
-        filename = "/tmp/" + "_" + op.device_name + "data_store.json"
-        with open(filename, "r") as f:
-            data_store = f.read()
-            out = ast.literal_eval(data_store)
+        outputfile = "/tmp/" + op.device_name + "_" + "data_output.json"
+        with open(outputfile, "r") as f:
+            output_store = f.read()
+            out = ast.literal_eval(output_store)
 
         return output.set_result(out[session_id_str])
 

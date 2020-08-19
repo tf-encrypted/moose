@@ -43,19 +43,6 @@ def my_comp():
     return res
 
 
-# @computation
-# def my_comp():
-
-#     with inputter0:
-#         c0 = constant(2)
-#         x0 = call_program("local_computation.py", c0)
-
-#     with outputter:
-#         res = save(x0, "y")
-
-#     return res
-
-
 concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":

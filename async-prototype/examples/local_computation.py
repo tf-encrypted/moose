@@ -24,7 +24,9 @@ if __name__ == "__main__":
 
     get_logger().debug(f"Computation completed on device {args.device}")
 
-    data_store = {args.session_id: output}
-    filename = "/tmp/" + "_" + args.device + "data_store.json"
-    with open(filename, "w") as fp:
-        json.dump(data_store, fp)
+    # [TODO] find a more agnostic way to serialize output
+    output_store = {args.session_id: output}
+    # [TODO] check if file already exist. if yes, store new values in this file
+    outputfile = "/tmp/" + args.device + "_" + "data_output.json"
+    with open(outputfile, "w") as fp:
+        json.dump(output_store, fp)
