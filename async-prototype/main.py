@@ -55,7 +55,7 @@ concrete_comp = my_comp.trace_func()
 if __name__ == "__main__":
 
     if args.runtime == "test":
-        runtime = TestRuntime(num_workers=4)
+        runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
     elif args.runtime == "remote":
         runtime = RemoteRuntime("cluster/cluster-spec-localhost.yaml")
     else:
@@ -71,4 +71,4 @@ if __name__ == "__main__":
         },
     )
 
-    get_logger().info("Done")
+    print("Done")

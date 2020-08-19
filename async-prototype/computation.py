@@ -75,7 +75,7 @@ class Computation:
     graph: Graph
 
     def devices(self):
-        return set(node.device for node in self.graph.nodes.values())
+        return set(node.device_name for node in self.graph.nodes.values())
 
     def nodes(self):
         return self.graph.nodes.values()
