@@ -5,9 +5,6 @@ fmt:
 lint:
 	flake8 .
 
-run:
-	python main.py
+test: lint
 
-test: run
-
-.PHONY: fmt lint run test
+.PHONY: fmt lint test
