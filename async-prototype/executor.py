@@ -165,9 +165,7 @@ class KernelBasedExecutor:
         # link futures together using kernels
         tasks = []
         for op in execution_plan:
-
             kernel = self.kernels.get(type(op))
-
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
             inputs = {
