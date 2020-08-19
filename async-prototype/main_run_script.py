@@ -27,10 +27,12 @@ outputter = Role(name="outputter")
 def my_comp():
 
     with inputter0:
-        x0 = call_program("local_computation.py")
+        c0 = constant(2)
+        x0 = call_program("local_computation.py", c0)
 
     with inputter1:
-        x1 = call_program("local_computation.py")
+        c1 = constant(3)
+        x1 = call_program("local_computation.py", c1)
 
     with aggregator:
         y = add(x0, x1)
@@ -39,6 +41,19 @@ def my_comp():
         res = save(y, "y")
 
     return res
+
+
+# @computation
+# def my_comp():
+
+#     with inputter0:
+#         c0 = constant(2)
+#         x0 = call_program("local_computation.py", c0)
+
+#     with outputter:
+#         res = save(x0, "y")
+
+#     return res
 
 
 concrete_comp = my_comp.trace_func()
@@ -54,6 +69,7 @@ if __name__ == "__main__":
             inputter1: runtime.executors[1],
             aggregator: runtime.executors[2],
             outputter: runtime.executors[3],
+            outputter: runtime.executors[1],
         },
     )
 

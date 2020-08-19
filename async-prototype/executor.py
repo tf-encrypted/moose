@@ -107,14 +107,17 @@ class MulKernel(StrictKernel):
 
 
 class CallProgramKernel(StrictKernel):
-    async def execute(self, op, session_id, output):
+    async def execute(self, op, session_id, output, inputs):
         path = op.path
+        inputs = await inputs
         session_id_str = str(session_id)
 
         process = subprocess.run(
             [
                 "python",
                 path,
+                "--inputs",
+                str(inputs),
                 "--session-id",
                 session_id_str,
                 "--device",
@@ -156,13 +159,16 @@ class KernelBasedExecutor:
         # link futures together using kernels
         tasks = []
         for op in execution_plan:
+
             kernel = self.kernels.get(type(op))
+
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
             inputs = {
                 param_name: session_values[value_name]
                 for (param_name, value_name) in op.inputs.items()
             }
+
             output = session_values[op.output] if op.output else None
             get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
             tasks += [

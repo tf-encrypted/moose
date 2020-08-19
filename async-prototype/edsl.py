@@ -140,6 +140,10 @@ def call_program(path):
     return CallProgramExpression(role=get_current_role(), inputs=[], path=path)
 
 
+def call_program(path, inputs):
+    return CallProgramExpression(role=get_current_role(), inputs=[inputs], path=path)
+
+
 class Compiler:
     def __init__(self):
         self.operations = []
@@ -244,12 +248,15 @@ class Compiler:
         )
 
     def visit_CallProgramExpression(self, expression):
+        device = expression.role.name
+        input_expression = expression.inputs[0]
+        input_operation = self.visit(input_expression, device)
         assert isinstance(expression, CallProgramExpression)
         return CallProgramOperation(
             device_name=expression.role.name,
             name=self.get_fresh_name("call_program_op"),
             path=expression.path,
-            inputs={},
+            inputs={"inputs": input_operation.output},
             output=self.get_fresh_name("call_program"),
         )
 
