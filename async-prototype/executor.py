@@ -1,9 +1,12 @@
 import asyncio
+import ast
 from collections import defaultdict
+import subprocess
 
 from grpc.experimental import aio
 
 from computation import AddOperation
+from computation import CallProgramOperation
 from computation import ConstantOperation
 from computation import DivOperation
 from computation import LoadOperation
@@ -103,6 +106,23 @@ class MulKernel(StrictKernel):
         return lhs * rhs
 
 
+class CallProgramKernel(StrictKernel):
+    async def execute(self, op, session_id, output):
+        path = op.path
+        session_id_str  = str(session_id)
+   
+        process = subprocess.run(['python', path,'--session-id', session_id_str, '--device', op.device_name], 
+                         stdout=subprocess.PIPE, 
+                         universal_newlines=True)
+
+        filename = '/tmp/' + '_' + op.device_name + 'data_store.json'
+        with open(filename, "r") as f:
+            data_store = f.read()
+            out = ast.literal_eval(data_store)
+
+        return output.set_result(out[session_id_str])
+
+
 class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
@@ -116,6 +136,7 @@ class KernelBasedExecutor:
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
             DivOperation: DivKernel(),
+            CallProgramOperation: CallProgramKernel(),
         }
 
     async def run_computation(self, logical_computation, role, session_id):

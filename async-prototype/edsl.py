@@ -4,6 +4,7 @@ from typing import List
 from typing import Union
 
 from computation import AddOperation
+from computation import CallProgramOperation
 from computation import Computation
 from computation import ConstantOperation
 from computation import DivOperation
@@ -82,6 +83,13 @@ class BinaryOpExpression(Expression):
         return id(self)
 
 
+@dataclass
+class CallProgramExpression(Expression):
+    path: str
+
+    def __hash__(self):
+        return id(self)
+
 def load(key):
     return LoadExpression(role=get_current_role(), inputs=[], key=key)
 
@@ -125,6 +133,10 @@ def div(lhs, rhs):
     return BinaryOpExpression(
         op_type=DivOperation, role=get_current_role(), inputs=[lhs, rhs],
     )
+
+    
+def call_program(path):
+    return CallProgramExpression(role=get_current_role(), inputs=[], path=path)
 
 
 class Compiler:
@@ -228,6 +240,16 @@ class Compiler:
             name=self.get_fresh_name(f"{op_name}_op"),
             inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
             output=self.get_fresh_name(f"{op_name}"),
+        )
+
+    def visit_CallProgramExpression(self, expression):
+        assert isinstance(expression, CallProgramExpression)
+        return CallProgramOperation(
+            device_name=expression.role.name,
+            name=self.get_fresh_name("call_program_op"),
+            path=expression.path,
+            inputs={},
+            output=self.get_fresh_name("call_program"),
         )
 
 
