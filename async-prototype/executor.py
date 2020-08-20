@@ -5,6 +5,7 @@ from grpc.experimental import aio
 
 from computation import AddOperation
 from computation import ConstantOperation
+from computation import DivOperation
 from computation import LoadOperation
 from computation import MulOperation
 from computation import ReceiveOperation
@@ -84,6 +85,12 @@ class AddKernel(StrictKernel):
         return lhs + rhs
 
 
+class DivKernel(StrictKernel):
+    def strict_execute(self, op, session_id, lhs, rhs):
+        assert isinstance(op, DivOperation)
+        return lhs / rhs
+
+
 class SubKernel(StrictKernel):
     def strict_execute(self, op, session_id, lhs, rhs):
         assert isinstance(op, SubOperation)
@@ -108,6 +115,7 @@ class KernelBasedExecutor:
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
+            DivOperation: DivKernel(),
         }
 
     async def run_computation(self, logical_computation, role, session_id):
