@@ -71,7 +71,7 @@ class ReceiveOperation(Operation):
 
 
 @dataclass
-class CallProgramOperation(Operation):
+class RunPythonOperation(Operation):
     path: str
 
 
@@ -119,7 +119,7 @@ def register_op(op):
 
 # NOTE: this is only needed for gRPC so far
 register_op(AddOperation)
-register_op(CallProgramOperation)
+register_op(RunPythonOperation)
 register_op(LoadOperation)
 register_op(ConstantOperation)
 register_op(DivOperation)

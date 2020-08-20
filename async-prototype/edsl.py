@@ -4,7 +4,7 @@ from typing import List
 from typing import Union
 
 from computation import AddOperation
-from computation import CallProgramOperation
+from computation import RunPythonOperation
 from computation import Computation
 from computation import ConstantOperation
 from computation import DivOperation
@@ -84,7 +84,7 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
-class CallProgramExpression(Expression):
+class RunPythonExpression(Expression):
     path: str
 
     def __hash__(self):
@@ -136,12 +136,12 @@ def div(lhs, rhs):
     )
 
     
-def call_program(path):
-    return CallProgramExpression(role=get_current_role(), inputs=[], path=path)
-
-
 def call_program(path, inputs=None):
     return CallProgramExpression(role=get_current_role(), inputs=inputs, path=path)
+
+
+def run_python_program(path, inputs=None):
+    return RunPythonExpression(role=get_current_role(), inputs=inputs, path=path)
 
 
 class Compiler:
@@ -247,7 +247,7 @@ class Compiler:
             output=self.get_fresh_name(f"{op_name}"),
         )
 
-    def visit_CallProgramExpression(self, expression):
+    def visit_RunPythonExpression(self, expression):
         device = expression.role.name
         input_expression = expression.inputs
         if input_expression:
@@ -256,13 +256,13 @@ class Compiler:
         else:
             inputs = {}
 
-        assert isinstance(expression, CallProgramExpression)
-        return CallProgramOperation(
+        assert isinstance(expression, RunPythonExpression)
+        return RunPythonOperation(
             device_name=expression.role.name,
-            name=self.get_fresh_name("call_program_op"),
+            name=self.get_fresh_name("run_python_op"),
             path=expression.path,
             inputs=inputs,
-            output=self.get_fresh_name("call_program"),
+            output=self.get_fresh_name("run_python"),
         )
 
 

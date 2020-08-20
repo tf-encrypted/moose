@@ -3,7 +3,7 @@ import logging
 from computation import Computation
 from edsl import Role
 from edsl import add
-from edsl import call_program
+from edsl import run_python_program
 from edsl import computation
 from edsl import constant
 from edsl import load
@@ -28,11 +28,11 @@ def my_comp():
 
     with inputter0:
         c0 = constant(2)
-        x0 = call_program("local_computation.py", c0)
+        x0 = run_python_program("local_computation.py", c0)
 
     with inputter1:
         c1 = constant(3)
-        x1 = call_program("local_computation.py", c1)
+        x1 = run_python_program("local_computation.py", c1)
 
     with aggregator:
         y = add(x0, x1)
@@ -56,7 +56,6 @@ if __name__ == "__main__":
             inputter1: runtime.executors[1],
             aggregator: runtime.executors[2],
             outputter: runtime.executors[3],
-            outputter: runtime.executors[1],
         },
     )
 

@@ -6,7 +6,7 @@ from collections import defaultdict
 from grpc.experimental import aio
 
 from computation import AddOperation
-from computation import CallProgramOperation
+from computation import RunPythonOperation
 from computation import ConstantOperation
 from computation import DivOperation
 from computation import LoadOperation
@@ -106,7 +106,7 @@ class MulKernel(StrictKernel):
         return lhs * rhs
 
 
-class CallProgramKernel(StrictKernel):
+class RunPythonKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
         path = op.path
         session_id_str = str(session_id)
@@ -138,6 +138,7 @@ class CallProgramKernel(StrictKernel):
             output_store = f.read()
             out = ast.literal_eval(output_store)
 
+
         return output.set_result(out[session_id_str])
 
 
@@ -155,6 +156,7 @@ class KernelBasedExecutor:
             MulOperation: MulKernel(),
             DivOperation: DivKernel(),
             CallProgramOperation: CallProgramKernel(),
+            RunPythonOperation: RunPythonKernel(),
         }
 
     async def run_computation(self, logical_computation, role, session_id):
