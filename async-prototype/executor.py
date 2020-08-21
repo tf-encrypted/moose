@@ -1,17 +1,18 @@
 import ast
 import asyncio
+import os
 import subprocess
 from collections import defaultdict
 
 from grpc.experimental import aio
 
 from computation import AddOperation
-from computation import RunPythonOperation
 from computation import ConstantOperation
 from computation import DivOperation
 from computation import LoadOperation
 from computation import MulOperation
 from computation import ReceiveOperation
+from computation import RunPythonOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
@@ -108,22 +109,34 @@ class MulKernel(StrictKernel):
 
 class RunPythonKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
-        path = op.path
+        python_script_path = op.path
         session_id_str = str(session_id)
+        # [TODO] this folder should be done somehere else so the folder
+        # check is not done every call
+        if not os.path.exists("/tmp/runtime"):
+            os.makedirs("/tmp/runtime/")
+        tmp_file_path = "/tmp/runtime/" + op.device_name + "_"
+        inputfile = tmp_file_path + session_id_str + "data_input.json"
+        outputfile = tmp_file_path + session_id_str + "data_output.json"
 
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
+
         if "inputs" in concrete_kwargs:
             inputs = concrete_kwargs["inputs"]
+            inputs_dict = {session_id_str: inputs}
+            with open(inputfile, "w") as fp:
+                fp.write(str(inputs_dict))
         else:
-            inputs = None
+            inputfile = str(None)
 
-        # [TODO] pass input file with serialized data instead of values directly
         process = subprocess.run(
             [
                 "python",
-                path,
-                "--inputs",
-                str(inputs),
+                python_script_path,
+                "--input-file",
+                inputfile,
+                "--output-file",
+                outputfile,
                 "--session-id",
                 session_id_str,
                 "--device",
@@ -133,13 +146,11 @@ class RunPythonKernel(StrictKernel):
             universal_newlines=True,
         )
 
-        outputfile = "/tmp/" + op.device_name + "_" + "data_output.json"
         with open(outputfile, "r") as f:
-            output_store = f.read()
-            out = ast.literal_eval(output_store)
+            out = f.read()
+            outputs_dict = ast.literal_eval(out)
 
-
-        return output.set_result(out[session_id_str])
+        return output.set_result(outputs_dict[session_id_str])
 
 
 class KernelBasedExecutor:

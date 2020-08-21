@@ -4,7 +4,6 @@ from typing import List
 from typing import Union
 
 from computation import AddOperation
-from computation import RunPythonOperation
 from computation import Computation
 from computation import ConstantOperation
 from computation import DivOperation
@@ -13,6 +12,7 @@ from computation import LoadOperation
 from computation import MulOperation
 from computation import Operation
 from computation import ReceiveOperation
+from computation import RunPythonOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation

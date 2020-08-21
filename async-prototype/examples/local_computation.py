@@ -1,4 +1,5 @@
 import argparse
+import ast
 import json
 import logging
 
@@ -8,25 +9,29 @@ from logger import set_logger
 get_logger().setLevel(level=logging.DEBUG)
 
 parser = argparse.ArgumentParser(description="Local computation")
-parser.add_argument("--inputs", type=int, default=0)
+parser.add_argument("--input-file", type=str, default="None")
+parser.add_argument("--output-file", type=str, default=".")
 parser.add_argument("--session-id", type=str, default=0)
 parser.add_argument("--device", type=str, default="inputter0")
 
 args = parser.parse_args()
 
 
-def foo(x):
+def foo(x=0):
     return x + 1
 
 
 if __name__ == "__main__":
-    output = foo(args.inputs)
-
-    get_logger().debug(f"Computation completed on device {args.device}")
+    if args.input_file == "None":
+        output = foo()
+    else:
+        with open(args.input_file, "r") as f:
+            inputs = ast.literal_eval(f.read())
+        output = foo(inputs[args.session_id])
 
     # [TODO] find a more agnostic way to serialize output
-    output_store = {args.session_id: output}
-    # [TODO] check if file already exist. if yes, store new values in this file
-    outputfile = "/tmp/" + args.device + "_" + "data_output.json"
-    with open(outputfile, "w") as fp:
-        json.dump(output_store, fp)
+    output_dict = {args.session_id: output}
+    with open(args.output_file, "w") as fp:
+        json.dump(output_dict, fp)
+
+    get_logger().debug(f"Computation completed on device {args.device}")
