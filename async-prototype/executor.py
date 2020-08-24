@@ -119,13 +119,11 @@ class RunPythonKernel(StrictKernel):
         inputfile = tmp_file_path + session_id_str + "data_input.json"
         outputfile = tmp_file_path + session_id_str + "data_output.json"
 
-        concrete_kwargs = {key: await value for key, value in kwargs.items()}
+        inputs_kwargs = {key: await value for key, value in kwargs.items()}
 
-        if "inputs" in concrete_kwargs:
-            inputs = concrete_kwargs["inputs"]
-            inputs_dict = {session_id_str: inputs}
+        if inputs_kwargs.keys():
             with open(inputfile, "w") as fp:
-                fp.write(str(inputs_dict))
+                fp.write(str(inputs_kwargs))
         else:
             inputfile = str(None)
 

@@ -140,8 +140,8 @@ def call_program(path, inputs=None):
     return CallProgramExpression(role=get_current_role(), inputs=inputs, path=path)
 
 
-def run_python_program(path, inputs=None):
-    return RunPythonExpression(role=get_current_role(), inputs=inputs, path=path)
+def run_python_program(path, *args):
+    return RunPythonExpression(role=get_current_role(), inputs=args, path=path)
 
 
 class Compiler:
@@ -251,8 +251,10 @@ class Compiler:
         device = expression.role.name
         input_expression = expression.inputs
         if input_expression:
-            input_operation = self.visit(input_expression, device)
-            inputs = {"inputs": input_operation.output}
+            inputs = {
+                self.visit(expr, device).output: self.visit(expr, device).output
+                for expr in input_expression
+            }
         else:
             inputs = {}
 

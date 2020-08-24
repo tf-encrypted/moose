@@ -17,8 +17,8 @@ parser.add_argument("--device", type=str, default="inputter0")
 args = parser.parse_args()
 
 
-def foo(x=0):
-    return x + 1
+def foo(x=0, y=0):
+    return x + y + 1
 
 
 if __name__ == "__main__":
@@ -27,7 +27,8 @@ if __name__ == "__main__":
     else:
         with open(args.input_file, "r") as f:
             inputs = ast.literal_eval(f.read())
-        output = foo(inputs[args.session_id])
+        get_logger().debug(f"inputs {inputs}")
+        output = foo(*list(inputs.values()))
 
     # [TODO] find a more agnostic way to serialize output
     output_dict = {args.session_id: output}

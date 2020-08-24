@@ -27,12 +27,13 @@ outputter = Role(name="outputter")
 def my_comp():
 
     with inputter0:
-        c0 = constant(2)
-        x0 = run_python_program("local_computation.py", c0)
+        c0_0 = constant(2)
+        c1_0 = constant(3)
+        x0 = run_python_program("local_computation.py", c0_0, c1_0)
 
     with inputter1:
-        c1 = constant(3)
-        x1 = run_python_program("local_computation.py", c1)
+        c0_1 = constant(3)
+        x1 = run_python_program("local_computation.py", c0_1)
 
     with aggregator:
         y = add(x0, x1)
