@@ -2,6 +2,7 @@ import ast
 import asyncio
 import os
 import subprocess
+import tempfile
 from collections import defaultdict
 
 from grpc.experimental import aio
@@ -111,30 +112,22 @@ class RunPythonKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
         python_script_path = op.path
         session_id_str = str(session_id)
-        # [TODO] this folder should be done somehere else so the folder
-        # check is not done every call
-        if not os.path.exists("/tmp/runtime"):
-            os.makedirs("/tmp/runtime/")
-        tmp_file_path = "/tmp/runtime/" + op.device_name + "_"
-        inputfile = tmp_file_path + session_id_str + "data_input.json"
-        outputfile = tmp_file_path + session_id_str + "data_output.json"
+        tmp_dir = tempfile.TemporaryDirectory(dir='/tmp')
+        inputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
+        outputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
 
         inputs_kwargs = {key: await value for key, value in kwargs.items()}
-
-        if inputs_kwargs.keys():
-            with open(inputfile, "w") as fp:
-                fp.write(str(inputs_kwargs))
-        else:
-            inputfile = str(None)
+        inputfile.write(str(inputs_kwargs).encode())
+        inputfile.seek(0)
 
         process = subprocess.run(
             [
                 "python",
                 python_script_path,
                 "--input-file",
-                inputfile,
+                inputfile.name,
                 "--output-file",
-                outputfile,
+                outputfile.name,
                 "--session-id",
                 session_id_str,
                 "--device",
@@ -144,9 +137,11 @@ class RunPythonKernel(StrictKernel):
             universal_newlines=True,
         )
 
-        with open(outputfile, "r") as f:
-            out = f.read()
-            outputs_dict = ast.literal_eval(out)
+        outputs =  outputfile.read()
+        outputs_dict = ast.literal_eval(outputs.decode())
+
+        inputfile.close()
+        outputfile.close()  
 
         return output.set_result(outputs_dict[session_id_str])
 
