@@ -52,6 +52,11 @@ class MulOperation(Operation):
 
 
 @dataclass
+class DivOperation(Operation):
+    pass
+
+
+@dataclass
 class SendOperation(Operation):
     sender: str
     receiver: str

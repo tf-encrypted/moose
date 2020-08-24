@@ -6,6 +6,7 @@ from typing import Union
 from computation import AddOperation
 from computation import Computation
 from computation import ConstantOperation
+from computation import DivOperation
 from computation import Graph
 from computation import LoadOperation
 from computation import MulOperation
@@ -115,6 +116,14 @@ def mul(lhs, rhs):
     assert isinstance(rhs, Expression)
     return BinaryOpExpression(
         op_type=MulOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
+
+
+def div(lhs, rhs):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    return BinaryOpExpression(
+        op_type=DivOperation, role=get_current_role(), inputs=[lhs, rhs],
     )
 
 
