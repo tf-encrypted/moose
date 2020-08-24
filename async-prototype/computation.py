@@ -112,9 +112,11 @@ def register_op(op):
     OPS_REGISTER[op.identifier()] = op
 
 
+# NOTE: this is only needed for gRPC so far
 register_op(AddOperation)
 register_op(LoadOperation)
 register_op(ConstantOperation)
+register_op(DivOperation)
 register_op(MulOperation)
 register_op(SaveOperation)
 register_op(SendOperation)
