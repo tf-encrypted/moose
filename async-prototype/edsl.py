@@ -3,7 +3,10 @@ from dataclasses import dataclass
 from typing import List
 from typing import Union
 
+import dill
+
 from computation import AddOperation
+from computation import CallPythonFnOperation
 from computation import Computation
 from computation import ConstantOperation
 from computation import DivOperation
@@ -91,6 +94,14 @@ class RunPythonExpression(Expression):
         return id(self)
 
 
+@dataclass
+class CallPythonFnExpression(Expression):
+    fn: bytes
+
+    def __hash__(self):
+        return id(self)
+
+
 def load(key):
     return LoadExpression(role=get_current_role(), inputs=[], key=key)
 
@@ -142,6 +153,11 @@ def call_program(path, inputs=None):
 
 def run_python_program(path, *args):
     return RunPythonExpression(role=get_current_role(), inputs=args, path=path)
+
+
+def call_python_fn(fn, *args):
+    fn_ser = dill.dumps(fn)
+    return CallPythonFnExpression(role=get_current_role(), inputs=args, fn=fn_ser)
 
 
 class Compiler:
@@ -265,6 +281,27 @@ class Compiler:
             path=expression.path,
             inputs=inputs,
             output=self.get_fresh_name("run_python"),
+        )
+
+    def visit_CallPythonFnExpression(self, expression):
+        device = expression.role.name
+        input_expression = expression.inputs
+
+        if input_expression:
+            inputs = {
+                self.visit(expr, device).output: self.visit(expr, device).output
+                for expr in input_expression
+            }
+        else:
+            inputs = {}
+
+        assert isinstance(expression, CallPythonFnExpression)
+        return CallPythonFnOperation(
+            device_name=expression.role.name,
+            name=self.get_fresh_name("run_call_fn_op"),
+            fn=expression.fn,
+            inputs=inputs,
+            output=self.get_fresh_name("run_call_fn"),
         )
 
 

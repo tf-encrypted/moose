@@ -5,9 +5,11 @@ import subprocess
 import tempfile
 from collections import defaultdict
 
+import dill
 from grpc.experimental import aio
 
 from computation import AddOperation
+from computation import CallPythonFnOperation
 from computation import ConstantOperation
 from computation import DivOperation
 from computation import LoadOperation
@@ -112,7 +114,7 @@ class RunPythonKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
         python_script_path = op.path
         session_id_str = str(session_id)
-        tmp_dir = tempfile.TemporaryDirectory(dir='/tmp')
+        tmp_dir = tempfile.TemporaryDirectory(dir="/tmp")
         inputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
         outputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
 
@@ -137,13 +139,23 @@ class RunPythonKernel(StrictKernel):
             universal_newlines=True,
         )
 
-        outputs =  outputfile.read()
+        outputs = outputfile.read()
         outputs_dict = ast.literal_eval(outputs.decode())
 
         inputfile.close()
-        outputfile.close()  
+        outputfile.close()
 
         return output.set_result(outputs_dict[session_id_str])
+
+
+class CallPythonFnKernel(StrictKernel):
+    async def execute(self, op, session_id, output, **kwargs):
+        python_fn = dill.loads(op.fn)
+        session_id_str = str(session_id)
+
+        inputs_kwargs = {key: await value for key, value in kwargs.items()}
+        out = python_fn(*list(inputs_kwargs.values()))
+        return output.set_result(out)
 
 
 class KernelBasedExecutor:
@@ -161,6 +173,7 @@ class KernelBasedExecutor:
             DivOperation: DivKernel(),
             CallProgramOperation: CallProgramKernel(),
             RunPythonOperation: RunPythonKernel(),
+            CallPythonFnOperation: CallPythonFnKernel(),
         }
 
     async def run_computation(self, logical_computation, role, session_id):
