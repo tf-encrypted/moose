@@ -148,14 +148,11 @@ def div(lhs, rhs):
 
 
 def run_python_script(path, *args):
-    return RunPythonScriptExpression(
-        role=get_current_role(), inputs=args, path=path
-    )
+    return RunPythonScriptExpression(role=get_current_role(), inputs=args, path=path)
 
 
 def call_python_fn(fn, *args):
-    fn_ser = dill.dumps(fn)
-    return CallPythonFunctionExpression(role=get_current_role(), inputs=args, fn=fn_ser)
+    return CallPythonFunctionExpression(role=get_current_role(), inputs=args, fn=fn)
 
 
 class Compiler:
@@ -288,7 +285,7 @@ class Compiler:
         return CallPythonFunctionOperation(
             device_name=expression.role.name,
             name=self.get_fresh_name("call_python_function_op"),
-            fn=expression.fn,
+            fn=dill.dumps(expression.fn),
             inputs=inputs,
             output=self.get_fresh_name("call_python_function"),
         )

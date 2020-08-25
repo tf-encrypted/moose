@@ -1,5 +1,6 @@
 import ast
 import asyncio
+import json
 import os
 import subprocess
 import tempfile
@@ -120,10 +121,8 @@ class RunPythonScriptKernel(StrictKernel):
 
         if "inputs" in kwargs.keys():
             inputs = await asyncio.gather(*kwargs["inputs"])
-            inputfile.write(str(inputs).encode())
+            inputfile.write(json.dumps({"inputs": inputs}).encode())
             inputfile.seek(0)
-        else:
-            inputfile = "None"
 
         process = subprocess.run(
             [
@@ -142,7 +141,7 @@ class RunPythonScriptKernel(StrictKernel):
             universal_newlines=True,
         )
 
-        outputs_dict = ast.literal_eval(outputfile.read().decode())
+        outputs_dict = json.loads(outputfile.read())
         inputfile.close()
         outputfile.close()
 
@@ -155,9 +154,10 @@ class CallPythonFunctionKernel(StrictKernel):
 
         if "inputs" in kwargs.keys():
             inputs = await asyncio.gather(*kwargs["inputs"])
-            out = python_fn(*inputs)
         else:
-            out = python_fn()
+            inputs = []
+
+        out = python_fn(*inputs)
         return output.set_result(out)
 
 
