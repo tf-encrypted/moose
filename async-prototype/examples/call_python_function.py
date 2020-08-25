@@ -6,6 +6,7 @@ from edsl import add
 from edsl import call_python_fn
 from edsl import computation
 from edsl import constant
+from edsl import function
 from edsl import load
 from edsl import mul
 from edsl import save
@@ -23,6 +24,7 @@ aggregator = Role(name="aggregator")
 outputter = Role(name="outputter")
 
 
+@function
 def mul_fn(x, y):
     return x * y
 
@@ -33,12 +35,12 @@ def my_comp():
     with inputter0:
         c0_0 = constant(1)
         c1_0 = constant(2)
-        x0 = call_python_fn(mul_fn, c0_0, c1_0)
+        x0 = mul_fn(c0_0, c1_0)
 
     with inputter1:
         c0_1 = constant(2)
         c1_1 = constant(3)
-        x1 = call_python_fn(mul_fn, c0_1, c1_1)
+        x1 = mul_fn(c0_1, c1_1)
 
     with aggregator:
         y = add(x0, x1)

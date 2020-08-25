@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import partial
 from typing import List
 from typing import Union
 
@@ -307,3 +308,7 @@ class AbstractComputation:
 
 def computation(func):
     return AbstractComputation(func)
+
+
+def function(func):
+    return partial(call_python_fn, func)
