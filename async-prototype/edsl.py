@@ -146,13 +146,11 @@ def div(lhs, rhs):
         op_type=DivOperation, role=get_current_role(), inputs=[lhs, rhs],
     )
 
-    
-def call_program(path, inputs=None):
-    return CallProgramExpression(role=get_current_role(), inputs=inputs, path=path)
-
 
 def run_python_program(path, *args):
-    return RunPythonExecutableExpression(role=get_current_role(), inputs=args, path=path)
+    return RunPythonExecutableExpression(
+        role=get_current_role(), inputs=args, path=path
+    )
 
 
 def call_python_fn(fn, *args):
