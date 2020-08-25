@@ -142,9 +142,7 @@ class RunPythonExecutableKernel(StrictKernel):
             universal_newlines=True,
         )
 
-        outputs = outputfile.read()
-        outputs_dict = ast.literal_eval(outputs.decode())
-
+        outputs_dict = ast.literal_eval(outputfile.read().decode())
         inputfile.close()
         outputfile.close()
 
