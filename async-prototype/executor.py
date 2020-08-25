@@ -15,7 +15,7 @@ from computation import DivOperation
 from computation import LoadOperation
 from computation import MulOperation
 from computation import ReceiveOperation
-from computation import RunPythonOperation
+from computation import RunPythonExecutableOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
@@ -110,7 +110,7 @@ class MulKernel(StrictKernel):
         return lhs * rhs
 
 
-class RunPythonKernel(StrictKernel):
+class RunPythonExecutableKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
         python_script_path = op.path
         session_id_str = str(session_id)
@@ -175,9 +175,7 @@ class KernelBasedExecutor:
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
-            DivOperation: DivKernel(),
-            CallProgramOperation: CallProgramKernel(),
-            RunPythonOperation: RunPythonKernel(),
+            RunPythonExecutableOperation: RunPythonExecutableKernel(),
             CallPythonFnOperation: CallPythonFnKernel(),
         }
 

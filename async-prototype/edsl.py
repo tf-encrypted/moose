@@ -15,7 +15,7 @@ from computation import LoadOperation
 from computation import MulOperation
 from computation import Operation
 from computation import ReceiveOperation
-from computation import RunPythonOperation
+from computation import RunPythonExecutableOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
@@ -87,7 +87,7 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
-class RunPythonExpression(Expression):
+class RunPythonExecutableExpression(Expression):
     path: str
 
     def __hash__(self):
@@ -152,7 +152,7 @@ def call_program(path, inputs=None):
 
 
 def run_python_program(path, *args):
-    return RunPythonExpression(role=get_current_role(), inputs=args, path=path)
+    return RunPythonExecutableExpression(role=get_current_role(), inputs=args, path=path)
 
 
 def call_python_fn(fn, *args):
@@ -263,20 +263,20 @@ class Compiler:
             output=self.get_fresh_name(f"{op_name}"),
         )
 
-    def visit_RunPythonExpression(self, expression):
+    def visit_RunPythonExecutableExpression(self, expression):
         device = expression.role.name
         input_expression = expression.inputs
         inputs = {
             "inputs": [self.visit(expr, device).output for expr in input_expression]
         }
 
-        assert isinstance(expression, RunPythonExpression)
-        return RunPythonOperation(
+        assert isinstance(expression, RunPythonExecutableExpression)
+        return RunPythonExecutableOperation(
             device_name=expression.role.name,
-            name=self.get_fresh_name("run_python_op"),
+            name=self.get_fresh_name("run_python_executable_op"),
             path=expression.path,
             inputs=inputs,
-            output=self.get_fresh_name("run_python"),
+            output=self.get_fresh_name("run_python_executable"),
         )
 
     def visit_CallPythonFnExpression(self, expression):
