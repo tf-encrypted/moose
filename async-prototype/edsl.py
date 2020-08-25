@@ -6,7 +6,7 @@ from typing import Union
 import dill
 
 from computation import AddOperation
-from computation import CallPythonFnOperation
+from computation import CallPythonFunctionOperation
 from computation import Computation
 from computation import ConstantOperation
 from computation import DivOperation
@@ -15,7 +15,7 @@ from computation import LoadOperation
 from computation import MulOperation
 from computation import Operation
 from computation import ReceiveOperation
-from computation import RunPythonExecutableOperation
+from computation import RunPythonScriptOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
@@ -87,7 +87,7 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
-class RunPythonExecutableExpression(Expression):
+class RunPythonScriptExpression(Expression):
     path: str
 
     def __hash__(self):
@@ -95,7 +95,7 @@ class RunPythonExecutableExpression(Expression):
 
 
 @dataclass
-class CallPythonFnExpression(Expression):
+class CallPythonFunctionExpression(Expression):
     fn: bytes
 
     def __hash__(self):
@@ -147,15 +147,15 @@ def div(lhs, rhs):
     )
 
 
-def run_python_program(path, *args):
-    return RunPythonExecutableExpression(
+def run_python_script(path, *args):
+    return RunPythonScriptExpression(
         role=get_current_role(), inputs=args, path=path
     )
 
 
 def call_python_fn(fn, *args):
     fn_ser = dill.dumps(fn)
-    return CallPythonFnExpression(role=get_current_role(), inputs=args, fn=fn_ser)
+    return CallPythonFunctionExpression(role=get_current_role(), inputs=args, fn=fn_ser)
 
 
 class Compiler:
@@ -261,36 +261,36 @@ class Compiler:
             output=self.get_fresh_name(f"{op_name}"),
         )
 
-    def visit_RunPythonExecutableExpression(self, expression):
+    def visit_RunPythonScriptExpression(self, expression):
         device = expression.role.name
         input_expression = expression.inputs
         inputs = {
             "inputs": [self.visit(expr, device).output for expr in input_expression]
         }
 
-        assert isinstance(expression, RunPythonExecutableExpression)
-        return RunPythonExecutableOperation(
+        assert isinstance(expression, RunPythonScriptExpression)
+        return RunPythonScriptOperation(
             device_name=expression.role.name,
-            name=self.get_fresh_name("run_python_executable_op"),
+            name=self.get_fresh_name("run_python_script_op"),
             path=expression.path,
             inputs=inputs,
-            output=self.get_fresh_name("run_python_executable"),
+            output=self.get_fresh_name("run_python_script"),
         )
 
-    def visit_CallPythonFnExpression(self, expression):
+    def visit_CallPythonFunctionExpression(self, expression):
         device = expression.role.name
         input_expression = expression.inputs
         inputs = {
             "inputs": [self.visit(expr, device).output for expr in input_expression]
         }
 
-        assert isinstance(expression, CallPythonFnExpression)
-        return CallPythonFnOperation(
+        assert isinstance(expression, CallPythonFunctionExpression)
+        return CallPythonFunctionOperation(
             device_name=expression.role.name,
-            name=self.get_fresh_name("run_call_fn_op"),
+            name=self.get_fresh_name("call_python_function_op"),
             fn=expression.fn,
             inputs=inputs,
-            output=self.get_fresh_name("run_call_fn"),
+            output=self.get_fresh_name("call_python_function"),
         )
 
 

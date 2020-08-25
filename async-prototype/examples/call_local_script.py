@@ -7,7 +7,7 @@ from edsl import computation
 from edsl import constant
 from edsl import load
 from edsl import mul
-from edsl import run_python_program
+from edsl import run_python_script
 from edsl import save
 from edsl import sub
 from logger import get_logger
@@ -29,11 +29,11 @@ def my_comp():
     with inputter0:
         c0_0 = constant(2)
         c1_0 = constant(3)
-        x0 = run_python_program("local_computation.py", c0_0, c1_0)
+        x0 = run_python_script("local_computation.py", c0_0, c1_0)
 
     with inputter1:
         c0_1 = constant(3)
-        x1 = run_python_program("local_computation.py", c0_1)
+        x1 = run_python_script("local_computation.py", c0_1)
 
     with aggregator:
         y = add(x0, x1)

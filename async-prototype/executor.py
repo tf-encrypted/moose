@@ -9,13 +9,13 @@ import dill
 from grpc.experimental import aio
 
 from computation import AddOperation
-from computation import CallPythonFnOperation
+from computation import CallPythonFunctionOperation
 from computation import ConstantOperation
 from computation import DivOperation
 from computation import LoadOperation
 from computation import MulOperation
 from computation import ReceiveOperation
-from computation import RunPythonExecutableOperation
+from computation import RunPythonScriptOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
@@ -110,7 +110,7 @@ class MulKernel(StrictKernel):
         return lhs * rhs
 
 
-class RunPythonExecutableKernel(StrictKernel):
+class RunPythonScriptKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
         python_script_path = op.path
         session_id_str = str(session_id)
@@ -149,7 +149,7 @@ class RunPythonExecutableKernel(StrictKernel):
         return output.set_result(outputs_dict[session_id_str])
 
 
-class CallPythonFnKernel(StrictKernel):
+class CallPythonFunctionKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
         python_fn = dill.loads(op.fn)
 
@@ -173,8 +173,8 @@ class KernelBasedExecutor:
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
-            RunPythonExecutableOperation: RunPythonExecutableKernel(),
-            CallPythonFnOperation: CallPythonFnKernel(),
+            RunPythonScriptOperation: RunPythonScriptKernel(),
+            CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }
 
     async def run_computation(self, logical_computation, role, session_id):
