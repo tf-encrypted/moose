@@ -266,13 +266,9 @@ class Compiler:
     def visit_RunPythonExpression(self, expression):
         device = expression.role.name
         input_expression = expression.inputs
-        if input_expression:
-            inputs = {
-                self.visit(expr, device).output: self.visit(expr, device).output
-                for expr in input_expression
-            }
-        else:
-            inputs = {}
+        inputs = {
+            "inputs": [self.visit(expr, device).output for expr in input_expression]
+        }
 
         assert isinstance(expression, RunPythonExpression)
         return RunPythonOperation(
@@ -286,14 +282,9 @@ class Compiler:
     def visit_CallPythonFnExpression(self, expression):
         device = expression.role.name
         input_expression = expression.inputs
-
-        if input_expression:
-            inputs = {
-                self.visit(expr, device).output: self.visit(expr, device).output
-                for expr in input_expression
-            }
-        else:
-            inputs = {}
+        inputs = {
+            "inputs": [self.visit(expr, device).output for expr in input_expression]
+        }
 
         assert isinstance(expression, CallPythonFnExpression)
         return CallPythonFnOperation(

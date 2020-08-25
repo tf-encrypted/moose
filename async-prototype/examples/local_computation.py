@@ -27,7 +27,7 @@ if __name__ == "__main__":
     else:
         with open(args.input_file, "r") as f:
             inputs = ast.literal_eval(f.read())
-        output = foo(*list(inputs.values()))
+        output = foo(*inputs)
 
     # [TODO] find a more agnostic way to serialize output
     output_dict = {args.session_id: output}

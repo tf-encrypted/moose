@@ -118,9 +118,12 @@ class RunPythonKernel(StrictKernel):
         inputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
         outputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
 
-        inputs_kwargs = {key: await value for key, value in kwargs.items()}
-        inputfile.write(str(inputs_kwargs).encode())
-        inputfile.seek(0)
+        if "inputs" in kwargs.keys():
+            inputs = await asyncio.gather(*kwargs["inputs"])
+            inputfile.write(str(inputs).encode())
+            inputfile.seek(0)
+        else:
+            inputfile = "None"
 
         process = subprocess.run(
             [
@@ -151,10 +154,12 @@ class RunPythonKernel(StrictKernel):
 class CallPythonFnKernel(StrictKernel):
     async def execute(self, op, session_id, output, **kwargs):
         python_fn = dill.loads(op.fn)
-        session_id_str = str(session_id)
 
-        inputs_kwargs = {key: await value for key, value in kwargs.items()}
-        out = python_fn(*list(inputs_kwargs.values()))
+        if "inputs" in kwargs.keys():
+            inputs = await asyncio.gather(*kwargs["inputs"])
+            out = python_fn(*inputs)
+        else:
+            out = python_fn()
         return output.set_result(out)
 
 
@@ -185,10 +190,15 @@ class KernelBasedExecutor:
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
+
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
             inputs = {
-                param_name: session_values[value_name]
+                param_name: (
+                    [session_values[var] for var in value_name]
+                    if isinstance(value_name, list)
+                    else session_values[value_name]
+                )
                 for (param_name, value_name) in op.inputs.items()
             }
 
