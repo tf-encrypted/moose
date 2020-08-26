@@ -111,36 +111,31 @@ class MulKernel(StrictKernel):
 
 class RunPythonScriptKernel(StrictKernel):
     async def execute(self, op, session_id, output, **inputs):
-        python_script_path = op.path
-        session_id_str = str(session_id)
-        tmp_dir = tempfile.TemporaryDirectory(dir="/tmp")
-        inputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
-        outputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
+        with tempfile.NamedTemporaryFile() as inputfile:
+            with tempfile.NamedTemporaryFile() as outputfile:
 
-        concrete_inputs = await asyncio.gather(*inputs.values())
-        inputfile.write(json.dumps(concrete_inputs).encode())
-        inputfile.flush()
+                concrete_inputs = await asyncio.gather(*inputs.values())
+                inputfile.write(json.dumps(concrete_inputs).encode())
+                inputfile.flush()
 
-        _ = subprocess.run(
-            [
-                "python",
-                python_script_path,
-                "--input-file",
-                inputfile.name,
-                "--output-file",
-                outputfile.name,
-                "--session-id",
-                session_id_str,
-                "--device",
-                op.device_name,
-            ],
-            stdout=subprocess.PIPE,
-            universal_newlines=True,
-        )
+                _ = subprocess.run(
+                    [
+                        "python",
+                        op.path,
+                        "--input-file",
+                        inputfile.name,
+                        "--output-file",
+                        outputfile.name,
+                        "--session-id",
+                        str(session_id),
+                        "--device",
+                        op.device_name,
+                    ],
+                    stdout=subprocess.PIPE,
+                    universal_newlines=True,
+                )
 
-        concrete_output = json.loads(outputfile.read())
-        inputfile.close()
-        outputfile.close()
+                concrete_output = json.loads(outputfile.read())
 
         return output.set_result(concrete_output)
 
