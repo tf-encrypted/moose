@@ -1,10 +1,8 @@
 import argparse
-import ast
 import json
 import logging
 
 from logger import get_logger
-from logger import set_logger
 
 get_logger().setLevel(level=logging.DEBUG)
 

@@ -1,7 +1,5 @@
-import ast
 import asyncio
 import json
-import os
 import subprocess
 import tempfile
 from collections import defaultdict
@@ -123,7 +121,7 @@ class RunPythonScriptKernel(StrictKernel):
         inputfile.write(json.dumps(concrete_inputs).encode())
         inputfile.flush()
 
-        process = subprocess.run(
+        _ = subprocess.run(
             [
                 "python",
                 python_script_path,
