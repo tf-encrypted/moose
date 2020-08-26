@@ -1,5 +1,6 @@
 absl-py==0.7.1
 black==19.10b0
+dill==0.3.2
 flake8-black==0.1.1
 flake8-isort==3.0.0
 flake8==3.8.3
