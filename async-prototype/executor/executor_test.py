@@ -1,15 +1,11 @@
 import logging
 import unittest
 
-from computation import Computation
 from edsl import Role
 from edsl import computation
 from edsl import constant
-from edsl import load
 from edsl import save
 from logger import get_logger
-from logger import set_logger
-from runtime import RemoteRuntime
 from runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
@@ -24,6 +20,7 @@ def create_test_runtimes(players):
     role_assignment = {players[i]: runtime.executors[i] for i in range(len(players))}
     return runtime, role_assignment
 
+
 def create_op_computation(players, op, *args):
     @computation
     def my_comp():
@@ -32,14 +29,16 @@ def create_op_computation(players, op, *args):
         with players[1]:
             res = save(out, "result")
         return res
+
     return my_comp
+
 
 class ExecutorTest(unittest.TestCase):
     def test_constant(self):
 
         players = create_test_players(2)
         runtime, role_assignment = create_test_runtimes(players)
-        
+
         my_comp = create_op_computation(players, constant, 5)
 
         concrete_comp = my_comp.trace_func()
