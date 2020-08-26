@@ -151,6 +151,7 @@ class CallPythonFunctionKernel(StrictKernel):
 class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
+        self.store = store
         self.kernels = {
             LoadOperation: LoadKernel(store),
             SaveOperation: SaveKernel(store),
@@ -200,6 +201,9 @@ class KernelBasedExecutor:
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
         return [node for node in comp.nodes() if node.device_name == role]
+
+    def get_store(self):
+        return self.store
 
 
 class RemoteExecutor:
