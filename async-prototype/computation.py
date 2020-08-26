@@ -71,6 +71,16 @@ class ReceiveOperation(Operation):
 
 
 @dataclass
+class RunPythonScriptOperation(Operation):
+    path: str
+
+
+@dataclass
+class CallPythonFunctionOperation(Operation):
+    fn: bytes
+
+
+@dataclass
 class Graph:
     nodes: Dict[str, Operation]
 
@@ -114,6 +124,8 @@ def register_op(op):
 
 # NOTE: this is only needed for gRPC so far
 register_op(AddOperation)
+register_op(CallPythonFunctionOperation)
+register_op(RunPythonScriptOperation)
 register_op(LoadOperation)
 register_op(ConstantOperation)
 register_op(DivOperation)

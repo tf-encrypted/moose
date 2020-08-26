@@ -1,9 +1,13 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import partial
 from typing import List
 from typing import Union
 
+import dill
+
 from computation import AddOperation
+from computation import CallPythonFunctionOperation
 from computation import Computation
 from computation import ConstantOperation
 from computation import DivOperation
@@ -12,6 +16,7 @@ from computation import LoadOperation
 from computation import MulOperation
 from computation import Operation
 from computation import ReceiveOperation
+from computation import RunPythonScriptOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
@@ -82,6 +87,22 @@ class BinaryOpExpression(Expression):
         return id(self)
 
 
+@dataclass
+class RunPythonScriptExpression(Expression):
+    path: str
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class CallPythonFunctionExpression(Expression):
+    fn: bytes
+
+    def __hash__(self):
+        return id(self)
+
+
 def load(key):
     return LoadExpression(role=get_current_role(), inputs=[], key=key)
 
@@ -125,6 +146,14 @@ def div(lhs, rhs):
     return BinaryOpExpression(
         op_type=DivOperation, role=get_current_role(), inputs=[lhs, rhs],
     )
+
+
+def run_python_script(path, *inputs):
+    return RunPythonScriptExpression(role=get_current_role(), inputs=inputs, path=path)
+
+
+def call_python_fn(fn, *inputs):
+    return CallPythonFunctionExpression(role=get_current_role(), inputs=inputs, fn=fn)
 
 
 class Compiler:
@@ -230,6 +259,36 @@ class Compiler:
             output=self.get_fresh_name(f"{op_name}"),
         )
 
+    def visit_RunPythonScriptExpression(self, expression):
+        device = expression.role.name
+        inputs = {
+            f"arg{i}": self.visit(expr, device).output
+            for i, expr in enumerate(expression.inputs)
+        }
+        assert isinstance(expression, RunPythonScriptExpression)
+        return RunPythonScriptOperation(
+            device_name=expression.role.name,
+            name=self.get_fresh_name("run_python_script_op"),
+            path=expression.path,
+            inputs=inputs,
+            output=self.get_fresh_name("run_python_script"),
+        )
+
+    def visit_CallPythonFunctionExpression(self, expression):
+        device = expression.role.name
+        inputs = {
+            f"arg{i}": self.visit(expr, device).output
+            for i, expr in enumerate(expression.inputs)
+        }
+        assert isinstance(expression, CallPythonFunctionExpression)
+        return CallPythonFunctionOperation(
+            device_name=expression.role.name,
+            name=self.get_fresh_name("call_python_function_op"),
+            fn=dill.dumps(expression.fn),
+            inputs=inputs,
+            output=self.get_fresh_name("call_python_function"),
+        )
+
 
 class AbstractComputation:
     def __init__(self, func):
@@ -247,3 +306,7 @@ class AbstractComputation:
 
 def computation(func):
     return AbstractComputation(func)
+
+
+def function(func):
+    return partial(call_python_fn, func)

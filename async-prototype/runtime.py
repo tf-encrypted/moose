@@ -7,8 +7,8 @@ from typing import Union
 from channels.memory import ChannelManager
 from cluster.cluster_spec import load_cluster_spec
 from computation import Computation
-from executor import KernelBasedExecutor
-from executor import RemoteExecutor
+from executor.executor import KernelBasedExecutor
+from executor.executor import RemoteExecutor
 
 
 class Runtime:

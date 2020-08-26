@@ -1,14 +1,20 @@
 import asyncio
+import json
+import subprocess
+import tempfile
 from collections import defaultdict
 
+import dill
 from grpc.experimental import aio
 
 from computation import AddOperation
+from computation import CallPythonFunctionOperation
 from computation import ConstantOperation
 from computation import DivOperation
 from computation import LoadOperation
 from computation import MulOperation
 from computation import ReceiveOperation
+from computation import RunPythonScriptOperation
 from computation import SaveOperation
 from computation import SendOperation
 from computation import SubOperation
@@ -103,6 +109,45 @@ class MulKernel(StrictKernel):
         return lhs * rhs
 
 
+class RunPythonScriptKernel(StrictKernel):
+    async def execute(self, op, session_id, output, **inputs):
+        with tempfile.NamedTemporaryFile() as inputfile:
+            with tempfile.NamedTemporaryFile() as outputfile:
+
+                concrete_inputs = await asyncio.gather(*inputs.values())
+                inputfile.write(json.dumps(concrete_inputs).encode())
+                inputfile.flush()
+
+                _ = subprocess.run(
+                    [
+                        "python",
+                        op.path,
+                        "--input-file",
+                        inputfile.name,
+                        "--output-file",
+                        outputfile.name,
+                        "--session-id",
+                        str(session_id),
+                        "--device",
+                        op.device_name,
+                    ],
+                    stdout=subprocess.PIPE,
+                    universal_newlines=True,
+                )
+
+                concrete_output = json.loads(outputfile.read())
+
+        return output.set_result(concrete_output)
+
+
+class CallPythonFunctionKernel(StrictKernel):
+    async def execute(self, op, session_id, output, **inputs):
+        python_fn = dill.loads(op.fn)
+        concrete_inputs = await asyncio.gather(*inputs.values())
+        concrete_output = python_fn(*concrete_inputs)
+        return output.set_result(concrete_output)
+
+
 class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
@@ -115,7 +160,8 @@ class KernelBasedExecutor:
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
-            DivOperation: DivKernel(),
+            RunPythonScriptOperation: RunPythonScriptKernel(),
+            CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }
 
     async def run_computation(self, logical_computation, role, session_id):
@@ -129,11 +175,13 @@ class KernelBasedExecutor:
             kernel = self.kernels.get(type(op))
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
+
             inputs = {
                 param_name: session_values[value_name]
                 for (param_name, value_name) in op.inputs.items()
             }
             output = session_values[op.output] if op.output else None
+
             get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(
