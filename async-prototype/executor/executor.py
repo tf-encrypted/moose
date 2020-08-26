@@ -122,7 +122,7 @@ class RunPythonScriptKernel(StrictKernel):
         if "inputs" in kwargs.keys():
             inputs = await asyncio.gather(*kwargs["inputs"])
             inputfile.write(json.dumps({"inputs": inputs}).encode())
-            inputfile.seek(0)
+            inputfile.flush()
 
         process = subprocess.run(
             [
