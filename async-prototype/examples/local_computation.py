@@ -26,12 +26,12 @@ if __name__ == "__main__":
         output = foo()
     else:
         with open(args.input_file, "r") as f:
-            inputs = json.loads(f.read())
-        output = foo(*inputs["inputs"])
+            inputs = json.load(f)
+
+        output = foo(*inputs)
 
     # [TODO] find a more agnostic way to serialize output
-    output_dict = {args.session_id: output}
     with open(args.output_file, "w") as f:
-        f.write(json.dumps(output_dict))
+        json.dump(output, f)
 
     get_logger().debug(f"Computation completed on device {args.device}")

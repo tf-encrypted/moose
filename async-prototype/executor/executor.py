@@ -112,17 +112,16 @@ class MulKernel(StrictKernel):
 
 
 class RunPythonScriptKernel(StrictKernel):
-    async def execute(self, op, session_id, output, **kwargs):
+    async def execute(self, op, session_id, output, **inputs):
         python_script_path = op.path
         session_id_str = str(session_id)
         tmp_dir = tempfile.TemporaryDirectory(dir="/tmp")
         inputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
         outputfile = tempfile.NamedTemporaryFile(dir=tmp_dir.name)
 
-        if "inputs" in kwargs.keys():
-            inputs = await asyncio.gather(*kwargs["inputs"])
-            inputfile.write(json.dumps({"inputs": inputs}).encode())
-            inputfile.flush()
+        concrete_inputs = await asyncio.gather(*inputs.values())
+        inputfile.write(json.dumps(concrete_inputs).encode())
+        inputfile.flush()
 
         process = subprocess.run(
             [
@@ -141,24 +140,19 @@ class RunPythonScriptKernel(StrictKernel):
             universal_newlines=True,
         )
 
-        outputs_dict = json.loads(outputfile.read())
+        concrete_output = json.loads(outputfile.read())
         inputfile.close()
         outputfile.close()
 
-        return output.set_result(outputs_dict[session_id_str])
+        return output.set_result(concrete_output)
 
 
 class CallPythonFunctionKernel(StrictKernel):
-    async def execute(self, op, session_id, output, **kwargs):
+    async def execute(self, op, session_id, output, **inputs):
         python_fn = dill.loads(op.fn)
-
-        if "inputs" in kwargs.keys():
-            inputs = await asyncio.gather(*kwargs["inputs"])
-        else:
-            inputs = []
-
-        out = python_fn(*inputs)
-        return output.set_result(out)
+        concrete_inputs = await asyncio.gather(*inputs.values())
+        concrete_output = python_fn(*concrete_inputs)
+        return output.set_result(concrete_output)
 
 
 class KernelBasedExecutor:
@@ -186,19 +180,15 @@ class KernelBasedExecutor:
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
-
             if not kernel:
                 get_logger().fatal(f"No kernel found for operation {type(op)}")
+
             inputs = {
-                param_name: (
-                    [session_values[var] for var in value_name]
-                    if isinstance(value_name, list)
-                    else session_values[value_name]
-                )
+                param_name: session_values[value_name]
                 for (param_name, value_name) in op.inputs.items()
             }
-
             output = session_values[op.output] if op.output else None
+
             get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(

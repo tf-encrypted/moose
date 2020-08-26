@@ -148,12 +148,12 @@ def div(lhs, rhs):
     )
 
 
-def run_python_script(path, *args):
-    return RunPythonScriptExpression(role=get_current_role(), inputs=args, path=path)
+def run_python_script(path, *inputs):
+    return RunPythonScriptExpression(role=get_current_role(), inputs=inputs, path=path)
 
 
-def call_python_fn(fn, *args):
-    return CallPythonFunctionExpression(role=get_current_role(), inputs=args, fn=fn)
+def call_python_fn(fn, *inputs):
+    return CallPythonFunctionExpression(role=get_current_role(), inputs=inputs, fn=fn)
 
 
 class Compiler:
@@ -261,11 +261,10 @@ class Compiler:
 
     def visit_RunPythonScriptExpression(self, expression):
         device = expression.role.name
-        input_expression = expression.inputs
         inputs = {
-            "inputs": [self.visit(expr, device).output for expr in input_expression]
+            f"arg{i}": self.visit(expr, device).output
+            for i, expr in enumerate(expression.inputs)
         }
-
         assert isinstance(expression, RunPythonScriptExpression)
         return RunPythonScriptOperation(
             device_name=expression.role.name,
@@ -277,11 +276,10 @@ class Compiler:
 
     def visit_CallPythonFunctionExpression(self, expression):
         device = expression.role.name
-        input_expression = expression.inputs
         inputs = {
-            "inputs": [self.visit(expr, device).output for expr in input_expression]
+            f"arg{i}": self.visit(expr, device).output
+            for i, expr in enumerate(expression.inputs)
         }
-
         assert isinstance(expression, CallPythonFunctionExpression)
         return CallPythonFunctionOperation(
             device_name=expression.role.name,
