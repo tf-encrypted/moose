@@ -161,6 +161,7 @@ class KernelBasedExecutor:
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
+            DivOperation: DivKernel(),
             RunPythonScriptOperation: RunPythonScriptKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }

@@ -1,51 +1,86 @@
 import logging
 import unittest
 
+from absl.testing import parameterized
+
 from edsl import Role
+from edsl import add
 from edsl import computation
 from edsl import constant
+from edsl import div
+from edsl import function
+from edsl import mul
 from edsl import save
+from edsl import sub
 from logger import get_logger
 from runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
 
-def create_test_players(number_of_players=2):
+def _create_test_players(number_of_players=2):
     return [Role(name=f"player_{i}") for i in range(number_of_players)]
 
 
-def create_test_runtimes(players):
+def _run_computation(comp, players):
     runtime = TestRuntime(num_workers=len(players))
     role_assignment = {players[i]: runtime.executors[i] for i in range(len(players))}
-    return runtime, role_assignment
+    concrete_comp = comp.trace_func()
+    runtime.evaluate_computation(concrete_comp, role_assignment=role_assignment)
+    computation_result = runtime.executors[-1].get_store()
+    return computation_result
 
 
-def create_op_computation(players, op, *args):
-    @computation
-    def my_comp():
-        with players[0]:
-            out = op(*args)
-        with players[1]:
-            res = save(out, "result")
-        return res
-
-    return my_comp
-
-
-class ExecutorTest(unittest.TestCase):
+class ExecutorTest(parameterized.TestCase):
     def test_constant(self):
+        players = _create_test_players(2)
 
-        players = create_test_players(2)
-        runtime, role_assignment = create_test_runtimes(players)
+        @computation
+        def my_comp():
+            with players[0]:
+                out = constant(5)
+            with players[1]:
+                res = save(out, "result")
+            return res
 
-        my_comp = create_op_computation(players, constant, 5)
+        comp_result = _run_computation(my_comp, players)
+        self.assertEqual(comp_result["result"], 5)
 
-        concrete_comp = my_comp.trace_func()
-        runtime.evaluate_computation(concrete_comp, role_assignment=role_assignment)
-        computation_result = runtime.executors[1].get_store()
+    @parameterized.parameters(
+        {"op": op, "expected_result": expected_result}
+        for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
+    )
+    def test_op(self, op, expected_result):
+        players = _create_test_players(2)
 
-        self.assertEqual(computation_result["result"], 5)
+        @computation
+        def my_comp():
+            with players[0]:
+                out = op(constant(5), constant(2))
+            with players[1]:
+                res = save(out, "result")
+            return res
+
+        comp_result = _run_computation(my_comp, players)
+        self.assertEqual(comp_result["result"], expected_result)
+
+    def test_call_python_function(self):
+        players = _create_test_players(2)
+
+        @function
+        def add_one(x):
+            return x + 1
+
+        @computation
+        def my_comp():
+            with players[0]:
+                out = add_one(constant(3))
+            with players[1]:
+                res = save(out, "result")
+            return res
+
+        comp_result = _run_computation(my_comp, players)
+        self.assertEqual(comp_result["result"], 4)
 
 
 if __name__ == "__main__":
