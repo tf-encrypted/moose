@@ -1,4 +1,5 @@
 import logging
+import os
 import unittest
 
 from absl.testing import parameterized
@@ -10,6 +11,7 @@ from edsl import constant
 from edsl import div
 from edsl import function
 from edsl import mul
+from edsl import run_python_script
 from edsl import save
 from edsl import sub
 from logger import get_logger
@@ -81,6 +83,25 @@ class ExecutorTest(parameterized.TestCase):
 
         comp_result = _run_computation(my_comp, players)
         self.assertEqual(comp_result["result"], 4)
+
+    def test_run_python_script(self):
+        players = _create_test_players(3)
+
+        @computation
+        def my_comp():
+            with players[0]:
+                c0 = constant(3)
+                c1 = constant(2)
+            with players[1]:
+                out = run_python_script(
+                    os.getcwd() + "/examples/local_computation.py", c0, c1
+                )
+            with players[1]:
+                res = save(out, "result")
+            return res
+
+        comp_result = _run_computation(my_comp, players)
+        self.assertEqual(comp_result["result"], 6)
 
 
 if __name__ == "__main__":
