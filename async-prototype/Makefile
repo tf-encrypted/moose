@@ -6,6 +6,6 @@ lint:
 	flake8 .
 
 test: lint 
-		pytest .
+	pytest .
 
 .PHONY: fmt lint test
