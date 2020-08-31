@@ -203,9 +203,6 @@ class KernelBasedExecutor:
         # ready for linking with kernels in `run_computation`
         return [node for node in comp.nodes() if node.device_name == role]
 
-    def get_store(self):
-        return self.store
-
 
 class RemoteExecutor:
     def __init__(self, endpoint):

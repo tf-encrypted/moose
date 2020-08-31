@@ -29,23 +29,23 @@ def _run_computation(comp, players):
     role_assignment = {players[i]: runtime.executors[i] for i in range(len(players))}
     concrete_comp = comp.trace_func()
     runtime.evaluate_computation(concrete_comp, role_assignment=role_assignment)
-    computation_result = runtime.executors[-1].get_store()
+    computation_result = runtime.executors[-1].store
     return computation_result
 
 
 class ExecutorTest(parameterized.TestCase):
     def test_constant(self):
-        players = _create_test_players(2)
+        player0, player1 = _create_test_players(2)
 
         @computation
         def my_comp():
-            with players[0]:
+            with player0:
                 out = constant(5)
-            with players[1]:
+            with player1:
                 res = save(out, "result")
             return res
 
-        comp_result = _run_computation(my_comp, players)
+        comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], 5)
 
     @parameterized.parameters(
@@ -53,21 +53,21 @@ class ExecutorTest(parameterized.TestCase):
         for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
     )
     def test_op(self, op, expected_result):
-        players = _create_test_players(2)
+        player0, player1 = _create_test_players(2)
 
         @computation
         def my_comp():
-            with players[0]:
+            with player0:
                 out = op(constant(5), constant(2))
-            with players[1]:
+            with player1:
                 res = save(out, "result")
             return res
 
-        comp_result = _run_computation(my_comp, players)
+        comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], expected_result)
 
     def test_call_python_function(self):
-        players = _create_test_players(2)
+        player0, player1 = _create_test_players(2)
 
         @function
         def add_one(x):
@@ -75,32 +75,32 @@ class ExecutorTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with players[0]:
+            with player0:
                 out = add_one(constant(3))
-            with players[1]:
+            with player1:
                 res = save(out, "result")
             return res
 
-        comp_result = _run_computation(my_comp, players)
+        comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], 4)
 
     def test_run_python_script(self):
-        players = _create_test_players(3)
+        player0, player1, player2 = _create_test_players(3)
 
         @computation
         def my_comp():
-            with players[0]:
+            with player0:
                 c0 = constant(3)
                 c1 = constant(2)
-            with players[1]:
+            with player1:
                 out = run_python_script(
                     os.getcwd() + "/examples/local_computation.py", c0, c1
                 )
-            with players[1]:
+            with player2:
                 res = save(out, "result")
             return res
 
-        comp_result = _run_computation(my_comp, players)
+        comp_result = _run_computation(my_comp, [player0, player1, player2])
         self.assertEqual(comp_result["result"], 6)
 
 

@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf8") as fh:
 
 setuptools.setup(
     name="runtime",
-    version="0.0.1",
+    version="0.0.0",
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
     install_requires=[],
