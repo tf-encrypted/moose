@@ -94,7 +94,7 @@ class ExecutorTest(parameterized.TestCase):
                 c1 = constant(2)
             with player1:
                 out = run_python_script(
-                    os.getcwd() + "/examples/local_computation.py", c0, c1
+                    os.getcwd() + "/executor/executor_test_fixtures.py", c0, c1
                 )
             with player2:
                 res = save(out, "result")
