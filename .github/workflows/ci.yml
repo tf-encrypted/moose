@@ -1,0 +1,97 @@
+name: Prototype Runtime CI
+
+on:
+  push:
+    branches: [ prototype ]
+  pull_request:
+    branches: [ prototype ]
+  workflow_dispatch:
+
+jobs:
+  ubuntu-ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}.
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up + activate virtual environment.
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+
+      - name: Install dependencies.
+        run: |
+          make pydep
+
+      - name: Cache the dependency environment.
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: ./venv/
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install runtime package.
+        run: |
+          make protolib
+          make pylib
+
+      - name: Lint the runtime package.
+        run: |
+          make lint
+
+      - name: Test the runtime.
+        run: |
+          make test
+
+  macos-ci:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        python-version: [3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}.
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Set up & activate virtual environment.
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+
+      - name: Install dependencies.
+        run: |
+          make pydep
+
+      - name: Cache the dependency environment.
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: ./venv/
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install runtime package.
+        run: |
+          make protolib
+          make pylib
+
+      - name: Lint the runtime package.
+        run: |
+          make lint
+
+      - name: Test the runtime.
+        run: |
+          make test
