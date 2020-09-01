@@ -10,6 +10,11 @@ Install dependencies:
 pip install -r requirements-dev.txt
 ```
 
+Install library:
+```
+pip install -e .
+```
+
 Compile protobuf files:
 
 ```

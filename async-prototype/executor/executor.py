@@ -151,6 +151,7 @@ class CallPythonFunctionKernel(StrictKernel):
 class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
+        self.store = store
         self.kernels = {
             LoadOperation: LoadKernel(store),
             SaveOperation: SaveKernel(store),
@@ -160,6 +161,7 @@ class KernelBasedExecutor:
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
+            DivOperation: DivKernel(),
             RunPythonScriptOperation: RunPythonScriptKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }

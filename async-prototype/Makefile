@@ -5,6 +5,7 @@ fmt:
 lint:
 	flake8 .
 
-test: lint
+test:
+	pytest .
 
 .PHONY: fmt lint test
