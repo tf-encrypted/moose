@@ -11,7 +11,7 @@ protolib:
 pylib:
 	pip install -e .
 
-bootstrap: pydep protolib pylib
+install: pydep protolib pylib
 
 fmt:
 	isort --atomic --recursive --skip protos/*.py .
@@ -25,4 +25,4 @@ test:
 
 ci: lint test
 
-.PHONY: bootstrap fmt lint test
+.PHONY: install fmt lint test ci
