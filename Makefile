@@ -14,11 +14,11 @@ pylib:
 install: pydep pylib
 
 fmt:
-	isort --atomic --recursive --skip protos/*.py .
+	isort .
 	black .
 
 lint:
-	flake8 . --exclude=protos,venv
+	flake8 .
 
 test: build
 	pytest .
