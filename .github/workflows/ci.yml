@@ -21,23 +21,28 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up + activate virtual environment.
-        run: |
-          python -m venv venv
-          . venv/bin/activate
-
-      - name: Install dependencies.
-        run: |
-          make pydep
-
       - name: Cache the dependency environment.
         uses: actions/cache@v2
-        id: cache
+        id: cache-deps
         with:
           path: ./venv/
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
+
+      - name: Create virtual environment.
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          python -m venv venv
+
+      - name: Activate virtual environment.
+        run: |
+          . venv/bin/activate
+
+      - name: Install dependencies.
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          make pydep
 
       - name: Install runtime package.
         run: |
@@ -65,23 +70,28 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Set up & activate virtual environment.
-        run: |
-          python -m venv venv
-          . venv/bin/activate
-
-      - name: Install dependencies.
-        run: |
-          make pydep
-
       - name: Cache the dependency environment.
         uses: actions/cache@v2
-        id: cache
+        id: cache-deps
         with:
           path: ./venv/
           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
           restore-keys: |
             ${{ runner.os }}-pip-
+
+      - name: Create virtual environment.
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          python -m venv venv
+
+      - name: Activate virtual environment.
+        run: |
+          . venv/bin/activate
+
+      - name: Install dependencies.
+        if: steps.cache-deps.outputs.cache-hit != 'true'
+        run: |
+          make pydep
 
       - name: Install runtime package.
         run: |
