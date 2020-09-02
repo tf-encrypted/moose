@@ -1,12 +1,12 @@
+build:
+	python -m grpc_tools.protoc \
+			--proto_path=. \
+			--python_out=. \
+			--grpc_python_out=. \
+			protos/*.proto
+
 pydep:
 	pip install -r requirements-dev.txt
-
-protolib:
-	python -m grpc_tools.protoc \
-      --proto_path=. \
-      --python_out=. \
-      --grpc_python_out=. \
-      protos/*.proto
 
 pylib:
 	pip install -e .
