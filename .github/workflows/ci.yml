@@ -34,26 +34,26 @@ jobs:
         run: |
           python -m venv venv
 
-      - name: Activate virtual environment.
-        run: |
-          . venv/bin/activate
-
       - name: Install dependencies.
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          . venv/bin/activate
           make pydep
 
       - name: Install runtime package.
         run: |
+          . venv/bin/activate
           make protolib
           make pylib
 
       - name: Lint the runtime package.
         run: |
+          . venv/bin/activate
           make lint
 
       - name: Test the runtime.
         run: |
+          . venv/bin/activate
           make test
 
   macos-ci:
@@ -82,24 +82,24 @@ jobs:
         run: |
           python -m venv venv
 
-      - name: Activate virtual environment.
-        run: |
-          . venv/bin/activate
-
       - name: Install dependencies.
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
+          . venv/bin/activate
           make pydep
 
       - name: Install runtime package.
         run: |
+          . venv/bin/activate
           make protolib
           make pylib
 
       - name: Lint the runtime package.
         run: |
+          . venv/bin/activate
           make lint
 
       - name: Test the runtime.
         run: |
+          . venv/bin/activate
           make test
