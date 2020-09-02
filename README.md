@@ -7,22 +7,23 @@
 Install dependencies:
 
 ```
-pip install -r requirements-dev.txt
+make pydep
 ```
 
-Install library:
+Install Python library:
 ```
-pip install -e .
+make pylib
+```
+
+These two can be wrapped into one command, if desired:
+```
+make install
 ```
 
 Compile protobuf files:
 
 ```
-python -m grpc_tools.protoc \
-      --proto_path=. \
-      --python_out=. \
-      --grpc_python_out=. \
-      protos/*.proto
+make build
 ```
 
 ### Running locally for testing
@@ -48,9 +49,13 @@ python main.py --runtime remote
 
 ### Developing
 
-We do not have any CI set up for this prototype so be careful to run all of the following commands before committing:
+To ensure your changes will pass our CI, it's wise to run the following commands before committing:
 
 ```
+make ci
+
+# or, more verbosely:
+
 make fmt
 make lint
 make test

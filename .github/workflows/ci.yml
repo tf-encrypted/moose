@@ -43,7 +43,6 @@ jobs:
       - name: Install runtime package.
         run: |
           . venv/bin/activate
-          make protolib
           make pylib
 
       - name: Lint the runtime package.
@@ -91,7 +90,6 @@ jobs:
       - name: Install runtime package.
         run: |
           . venv/bin/activate
-          make protolib
           make pylib
 
       - name: Lint the runtime package.

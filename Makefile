@@ -11,7 +11,7 @@ pydep:
 pylib:
 	pip install -e .
 
-install: pydep protolib pylib
+install: pydep pylib
 
 fmt:
 	isort --atomic --recursive --skip protos/*.py .
@@ -20,9 +20,9 @@ fmt:
 lint:
 	flake8 . --exclude=protos,venv
 
-test:
+test: build
 	pytest .
 
-ci: lint test
+ci: fmt lint test
 
-.PHONY: install fmt lint test ci
+.PHONY: build pydep pylib install fmt lint test ci
