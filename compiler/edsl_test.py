@@ -1,24 +1,24 @@
 import dill
 from absl.testing import parameterized
 
-from computation import AddOperation
-from computation import CallPythonFunctionOperation
-from computation import ConstantOperation
-from computation import DivOperation
-from computation import MulOperation
-from computation import ReceiveOperation
-from computation import RunPythonScriptOperation
-from computation import SendOperation
-from computation import SubOperation
-from edsl import Role
-from edsl import add
-from edsl import computation
-from edsl import constant
-from edsl import div
-from edsl import function
-from edsl import mul
-from edsl import run_python_script
-from edsl import sub
+from compiler.computation import AddOperation
+from compiler.computation import CallPythonFunctionOperation
+from compiler.computation import ConstantOperation
+from compiler.computation import DivOperation
+from compiler.computation import MulOperation
+from compiler.computation import ReceiveOperation
+from compiler.computation import RunPythonScriptOperation
+from compiler.computation import SendOperation
+from compiler.computation import SubOperation
+from compiler.edsl import Role
+from compiler.edsl import add
+from compiler.edsl import computation
+from compiler.edsl import constant
+from compiler.edsl import div
+from compiler.edsl import function
+from compiler.edsl import mul
+from compiler.edsl import run_python_script
+from compiler.edsl import sub
 
 
 class EdslTest(parameterized.TestCase):
@@ -113,9 +113,9 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        script_op = concrete_comp.graph.nodes["run_python_script_op0"]
+        script_py_op = concrete_comp.graph.nodes["run_python_script_op0"]
 
-        assert script_op == RunPythonScriptOperation(
+        assert script_py_op == RunPythonScriptOperation(
             device_name="player0",
             name="run_python_script_op0",
             inputs={"arg0": "constant0"},

@@ -6,20 +6,20 @@ from typing import Union
 
 import dill
 
-from computation import AddOperation
-from computation import CallPythonFunctionOperation
-from computation import Computation
-from computation import ConstantOperation
-from computation import DivOperation
-from computation import Graph
-from computation import LoadOperation
-from computation import MulOperation
-from computation import Operation
-from computation import ReceiveOperation
-from computation import RunPythonScriptOperation
-from computation import SaveOperation
-from computation import SendOperation
-from computation import SubOperation
+from compiler.computation import AddOperation
+from compiler.computation import CallPythonFunctionOperation
+from compiler.computation import Computation
+from compiler.computation import ConstantOperation
+from compiler.computation import DivOperation
+from compiler.computation import Graph
+from compiler.computation import LoadOperation
+from compiler.computation import MulOperation
+from compiler.computation import Operation
+from compiler.computation import ReceiveOperation
+from compiler.computation import RunPythonScriptOperation
+from compiler.computation import SaveOperation
+from compiler.computation import SendOperation
+from compiler.computation import SubOperation
 from runtime import get_runtime
 
 CURRENT_ROLE: List = []

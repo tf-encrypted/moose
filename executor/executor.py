@@ -7,17 +7,17 @@ from collections import defaultdict
 import dill
 from grpc.experimental import aio
 
-from computation import AddOperation
-from computation import CallPythonFunctionOperation
-from computation import ConstantOperation
-from computation import DivOperation
-from computation import LoadOperation
-from computation import MulOperation
-from computation import ReceiveOperation
-from computation import RunPythonScriptOperation
-from computation import SaveOperation
-from computation import SendOperation
-from computation import SubOperation
+from compiler.computation import AddOperation
+from compiler.computation import CallPythonFunctionOperation
+from compiler.computation import ConstantOperation
+from compiler.computation import DivOperation
+from compiler.computation import LoadOperation
+from compiler.computation import MulOperation
+from compiler.computation import ReceiveOperation
+from compiler.computation import RunPythonScriptOperation
+from compiler.computation import SaveOperation
+from compiler.computation import SendOperation
+from compiler.computation import SubOperation
 from logger import get_logger
 from protos import executor_pb2
 from protos import executor_pb2_grpc

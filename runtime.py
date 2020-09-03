@@ -6,7 +6,7 @@ from typing import Union
 
 from channels.memory import ChannelManager
 from cluster.cluster_spec import load_cluster_spec
-from computation import Computation
+from compiler.computation import Computation
 from executor.executor import KernelBasedExecutor
 from executor.executor import RemoteExecutor
 
