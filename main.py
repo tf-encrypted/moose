@@ -1,12 +1,12 @@
 import argparse
 import logging
 
-from edsl import Role
-from edsl import add
-from edsl import computation
-from edsl import constant
-from edsl import mul
-from edsl import save
+from compiler.edsl import Role
+from compiler.edsl import add
+from compiler.edsl import computation
+from compiler.edsl import constant
+from compiler.edsl import mul
+from compiler.edsl import save
 from logger import get_logger
 from runtime import RemoteRuntime
 from runtime import TestRuntime

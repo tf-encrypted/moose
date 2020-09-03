@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from grpc.experimental import aio
 
-from computation import Computation
+from compiler.computation import Computation
 from protos import executor_pb2
 from protos import executor_pb2_grpc
 
