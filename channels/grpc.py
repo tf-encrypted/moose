@@ -4,26 +4,6 @@ from protos import executor_pb2
 from protos import executor_pb2_grpc
 
 
-class ChannelManager:
-    def __init__(self, cluster_spec):
-        self.channels = {
-            player: Channel(endpoint) for player, endpoint in cluster_spec.items()
-        }
-
-    def get_channel(self, op):
-        return self.channels[op.sender]
-
-    async def send(self, value, op, session_id):
-        await self.get_channel(op).send(
-            value, rendezvous_key=op.rendezvous_key, session_id=session_id
-        )
-
-    async def receive(self, op, session_id):
-        return await self.get_channel(op).receive(
-            rendezvous_key=op.rendezvous_key, session_id=session_id
-        )
-
-
 class Channel:
     def __init__(self, endpoint):
         self._channel = aio.insecure_channel(endpoint)
@@ -42,4 +22,24 @@ class Channel:
             executor_pb2.SetValueRequest(
                 value=value, rendezvous_key=rendezvous_key, session_id=session_id
             )
+        )
+
+
+class ChannelManager:
+    def __init__(self, cluster_spec):
+        self.channels = {
+            player: Channel(endpoint) for player, endpoint in cluster_spec.items()
+        }
+
+    def get_channel(self, op):
+        return self.channels[op.sender]
+
+    async def receive(self, op, session_id):
+        return await self.get_channel(op).receive(
+            rendezvous_key=op.rendezvous_key, session_id=session_id
+        )
+
+    async def send(self, value, op, session_id):
+        await self.get_channel(op).send(
+            value, rendezvous_key=op.rendezvous_key, session_id=session_id
         )
