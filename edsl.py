@@ -25,17 +25,9 @@ from runtime import get_runtime
 CURRENT_ROLE: List = []
 
 
-def get_current_role():
-    global CURRENT_ROLE
-    return CURRENT_ROLE[-1]
-
-
 @dataclass
 class Role:
     name: str
-
-    def __hash__(self):
-        return hash(self.name)
 
     def __enter__(self):
         global CURRENT_ROLE
@@ -45,35 +37,19 @@ class Role:
         global CURRENT_ROLE
         CURRENT_ROLE.pop(-1)
 
+    def __hash__(self):
+        return hash(self.name)
+
+
+def get_current_role():
+    global CURRENT_ROLE
+    return CURRENT_ROLE[-1]
+
 
 @dataclass
 class Expression:
     role: Role
     inputs: List
-
-    def __hash__(self):
-        return id(self)
-
-
-@dataclass
-class LoadExpression(Expression):
-    key: str
-
-    def __hash__(self):
-        return id(self)
-
-
-@dataclass
-class SaveExpression(Expression):
-    key: str
-
-    def __hash__(self):
-        return id(self)
-
-
-@dataclass
-class ConstantExpression(Expression):
-    value: Union[int, float]
 
     def __hash__(self):
         return id(self)
@@ -88,6 +64,30 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
+class CallPythonFunctionExpression(Expression):
+    fn: bytes
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class ConstantExpression(Expression):
+    value: Union[int, float]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class LoadExpression(Expression):
+    key: str
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class RunPythonScriptExpression(Expression):
     path: str
 
@@ -96,24 +96,11 @@ class RunPythonScriptExpression(Expression):
 
 
 @dataclass
-class CallPythonFunctionExpression(Expression):
-    fn: bytes
+class SaveExpression(Expression):
+    key: str
 
     def __hash__(self):
         return id(self)
-
-
-def load(key):
-    return LoadExpression(role=get_current_role(), inputs=[], key=key)
-
-
-def constant(value):
-    return ConstantExpression(role=get_current_role(), inputs=[], value=value)
-
-
-def save(value, key):
-    assert isinstance(value, Expression)
-    return SaveExpression(role=get_current_role(), inputs=[value], key=key)
 
 
 def add(lhs, rhs):
@@ -124,20 +111,12 @@ def add(lhs, rhs):
     )
 
 
-def sub(lhs, rhs):
-    assert isinstance(lhs, Expression)
-    assert isinstance(rhs, Expression)
-    return BinaryOpExpression(
-        op_type=SubOperation, role=get_current_role(), inputs=[lhs, rhs]
-    )
+def call_python_fn(fn, *inputs):
+    return CallPythonFunctionExpression(role=get_current_role(), inputs=inputs, fn=fn)
 
 
-def mul(lhs, rhs):
-    assert isinstance(lhs, Expression)
-    assert isinstance(rhs, Expression)
-    return BinaryOpExpression(
-        op_type=MulOperation, role=get_current_role(), inputs=[lhs, rhs]
-    )
+def constant(value):
+    return ConstantExpression(role=get_current_role(), inputs=[], value=value)
 
 
 def div(lhs, rhs):
@@ -148,12 +127,33 @@ def div(lhs, rhs):
     )
 
 
+def load(key):
+    return LoadExpression(role=get_current_role(), inputs=[], key=key)
+
+
+def mul(lhs, rhs):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    return BinaryOpExpression(
+        op_type=MulOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
+
+
 def run_python_script(path, *inputs):
     return RunPythonScriptExpression(role=get_current_role(), inputs=inputs, path=path)
 
 
-def call_python_fn(fn, *inputs):
-    return CallPythonFunctionExpression(role=get_current_role(), inputs=inputs, fn=fn)
+def save(value, key):
+    assert isinstance(value, Expression)
+    return SaveExpression(role=get_current_role(), inputs=[value], key=key)
+
+
+def sub(lhs, rhs):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    return BinaryOpExpression(
+        op_type=SubOperation, role=get_current_role(), inputs=[lhs, rhs]
+    )
 
 
 class Compiler:
@@ -211,39 +211,6 @@ class Compiler:
             self.known_operations[expression] = {device: operation}
         return self.maybe_add_networking(expression, destination_device or device)
 
-    def visit_LoadExpression(self, load_expression):
-        assert isinstance(load_expression, LoadExpression)
-        return LoadOperation(
-            device_name=load_expression.role.name,
-            name=self.get_fresh_name("load_op"),
-            key=load_expression.key,
-            inputs={},
-            output=self.get_fresh_name("load"),
-        )
-
-    def visit_SaveExpression(self, save_expression):
-        assert isinstance(save_expression, SaveExpression)
-        save_device = save_expression.role.name
-        (value_expression,) = save_expression.inputs
-        value_operation = self.visit(value_expression, save_device)
-        return SaveOperation(
-            device_name=save_device,
-            name=self.get_fresh_name("save_op"),
-            key=save_expression.key,
-            inputs={"value": value_operation.output},
-            output=None,
-        )
-
-    def visit_ConstantExpression(self, constant_expression):
-        assert isinstance(constant_expression, ConstantExpression)
-        return ConstantOperation(
-            device_name=constant_expression.role.name,
-            name=self.get_fresh_name("constant_op"),
-            value=constant_expression.value,
-            inputs={},
-            output=self.get_fresh_name("constant"),
-        )
-
     def visit_BinaryOpExpression(self, expression):
         assert isinstance(expression, BinaryOpExpression)
         device = expression.role.name
@@ -257,6 +224,41 @@ class Compiler:
             name=self.get_fresh_name(f"{op_name}_op"),
             inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
             output=self.get_fresh_name(f"{op_name}"),
+        )
+
+    def visit_CallPythonFunctionExpression(self, expression):
+        device = expression.role.name
+        inputs = {
+            f"arg{i}": self.visit(expr, device).output
+            for i, expr in enumerate(expression.inputs)
+        }
+        assert isinstance(expression, CallPythonFunctionExpression)
+        return CallPythonFunctionOperation(
+            device_name=expression.role.name,
+            name=self.get_fresh_name("call_python_function_op"),
+            fn=dill.dumps(expression.fn),
+            inputs=inputs,
+            output=self.get_fresh_name("call_python_function"),
+        )
+
+    def visit_ConstantExpression(self, constant_expression):
+        assert isinstance(constant_expression, ConstantExpression)
+        return ConstantOperation(
+            device_name=constant_expression.role.name,
+            name=self.get_fresh_name("constant_op"),
+            value=constant_expression.value,
+            inputs={},
+            output=self.get_fresh_name("constant"),
+        )
+
+    def visit_LoadExpression(self, load_expression):
+        assert isinstance(load_expression, LoadExpression)
+        return LoadOperation(
+            device_name=load_expression.role.name,
+            name=self.get_fresh_name("load_op"),
+            key=load_expression.key,
+            inputs={},
+            output=self.get_fresh_name("load"),
         )
 
     def visit_RunPythonScriptExpression(self, expression):
@@ -274,19 +276,17 @@ class Compiler:
             output=self.get_fresh_name("run_python_script"),
         )
 
-    def visit_CallPythonFunctionExpression(self, expression):
-        device = expression.role.name
-        inputs = {
-            f"arg{i}": self.visit(expr, device).output
-            for i, expr in enumerate(expression.inputs)
-        }
-        assert isinstance(expression, CallPythonFunctionExpression)
-        return CallPythonFunctionOperation(
-            device_name=expression.role.name,
-            name=self.get_fresh_name("call_python_function_op"),
-            fn=dill.dumps(expression.fn),
-            inputs=inputs,
-            output=self.get_fresh_name("call_python_function"),
+    def visit_SaveExpression(self, save_expression):
+        assert isinstance(save_expression, SaveExpression)
+        save_device = save_expression.role.name
+        (value_expression,) = save_expression.inputs
+        value_operation = self.visit(value_expression, save_device)
+        return SaveOperation(
+            device_name=save_device,
+            name=self.get_fresh_name("save_op"),
+            key=save_expression.key,
+            inputs={"value": value_operation.output},
+            output=None,
         )
 
 
