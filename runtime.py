@@ -22,15 +22,6 @@ class Runtime:
         asyncio.get_event_loop().run_until_complete(joint_task)
 
 
-class TestRuntime(Runtime):
-    def __init__(self, num_workers) -> None:
-        channel_manager = ChannelManager()
-        self.executors = [
-            KernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
-            for i in range(num_workers)
-        ]
-
-
 class RemoteRuntime(Runtime):
     def __init__(self, cluster_spec: Union[Dict, str]) -> None:
         if isinstance(cluster_spec, str):
@@ -38,6 +29,15 @@ class RemoteRuntime(Runtime):
             cluster_spec = load_cluster_spec(cluster_spec)
         self.executors = [
             RemoteExecutor(endpoint) for _, endpoint in cluster_spec.items()
+        ]
+
+
+class TestRuntime(Runtime):
+    def __init__(self, num_workers) -> None:
+        channel_manager = ChannelManager()
+        self.executors = [
+            KernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
+            for i in range(num_workers)
         ]
 
 
