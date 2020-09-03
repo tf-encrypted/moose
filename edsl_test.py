@@ -1,10 +1,13 @@
-import logging
-import unittest
+import dill
+from absl.testing import parameterized
+
 from computation import AddOperation
+from computation import CallPythonFunctionOperation
 from computation import ConstantOperation
 from computation import DivOperation
 from computation import MulOperation
 from computation import ReceiveOperation
+from computation import RunPythonScriptOperation
 from computation import SendOperation
 from computation import SubOperation
 from edsl import Role
@@ -12,10 +15,10 @@ from edsl import add
 from edsl import computation
 from edsl import constant
 from edsl import div
+from edsl import function
 from edsl import mul
+from edsl import run_python_script
 from edsl import sub
-
-from absl.testing import parameterized
 
 
 class EdslTest(parameterized.TestCase):
@@ -98,4 +101,49 @@ class EdslTest(parameterized.TestCase):
             sender="player0",
             receiver="player1",
             rendezvous_key="rendezvous_key0",
+        )
+
+    def test_run_python_script(self):
+        player0 = Role(name="player0")
+
+        @computation
+        def my_comp():
+            with player0:
+                x0 = run_python_script("local_computation.py", constant(1))
+            return x0
+
+        concrete_comp = my_comp.trace_func()
+        script_op = concrete_comp.graph.nodes["run_python_script_op0"]
+
+        assert script_op == RunPythonScriptOperation(
+            device_name="player0",
+            name="run_python_script_op0",
+            inputs={"arg0": "constant0"},
+            output="run_python_script0",
+            path="local_computation.py",
+        )
+
+    def test_call_python_fn(self):
+        player0 = Role(name="player0")
+
+        @function
+        def add_one(x):
+            return x + 1
+
+        @computation
+        def my_comp():
+            with player0:
+                x0 = add_one(constant(1))
+            return x0
+
+        concrete_comp = my_comp.trace_func()
+        call_py_op = concrete_comp.graph.nodes["call_python_function_op0"]
+
+        call_py_op.fn = dill.dumps(add_one)
+        assert call_py_op == CallPythonFunctionOperation(
+            device_name="player0",
+            name="call_python_function_op0",
+            inputs={"arg0": "constant0"},
+            output="call_python_function0",
+            fn=dill.dumps(add_one),
         )
