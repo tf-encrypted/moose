@@ -24,37 +24,32 @@ from protos import executor_pb2_grpc
 
 
 class Kernel:
-    async def execute(self, op, session_id, **kwargs):
-        raise NotImplementedError()
-
-
-class StrictKernel(Kernel):
     async def execute(self, op, session_id, output, **kwargs):
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
-        concrete_output = self.strict_execute(
+        concrete_output = self.execute_synchronous_block(
             op=op, session_id=session_id, **concrete_kwargs
         )
         if output:
             output.set_result(concrete_output)
 
-    def strict_execute(self, op, session_id, **kwargs):
+    def execute_synchronous_block(self, op, session_id, **kwargs):
         raise NotImplementedError()
 
 
-class LoadKernel(StrictKernel):
+class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def strict_execute(self, op, session_id):
+    def execute_synchronous_block(self, op, session_id):
         assert isinstance(op, LoadOperation)
         return self.store[op.key]
 
 
-class SaveKernel(StrictKernel):
+class SaveKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def strict_execute(self, op, session_id, value):
+    def execute_synchronous_block(self, op, session_id, value):
         assert isinstance(op, SaveOperation)
         self.store[op.key] = value
         get_logger().debug(f"Saved {value}")
@@ -79,37 +74,37 @@ class ReceiveKernel(Kernel):
         output.set_result(value)
 
 
-class ConstantKernel(StrictKernel):
-    async def execute(self, op, session_id, output):
+class ConstantKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id):
         assert isinstance(op, ConstantOperation)
-        return output.set_result(op.value)
+        return op.value
 
 
-class AddKernel(StrictKernel):
-    def strict_execute(self, op, session_id, lhs, rhs):
+class AddKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
         assert isinstance(op, AddOperation)
         return lhs + rhs
 
 
-class DivKernel(StrictKernel):
-    def strict_execute(self, op, session_id, lhs, rhs):
+class DivKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
         assert isinstance(op, DivOperation)
         return lhs / rhs
 
 
-class SubKernel(StrictKernel):
-    def strict_execute(self, op, session_id, lhs, rhs):
+class SubKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
         assert isinstance(op, SubOperation)
         return lhs - rhs
 
 
-class MulKernel(StrictKernel):
-    def strict_execute(self, op, session_id, lhs, rhs):
+class MulKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
         assert isinstance(op, MulOperation)
         return lhs * rhs
 
 
-class RunPythonScriptKernel(StrictKernel):
+class RunPythonScriptKernel(Kernel):
     async def execute(self, op, session_id, output, **inputs):
         with tempfile.NamedTemporaryFile() as inputfile:
             with tempfile.NamedTemporaryFile() as outputfile:
@@ -140,7 +135,7 @@ class RunPythonScriptKernel(StrictKernel):
         return output.set_result(concrete_output)
 
 
-class CallPythonFunctionKernel(StrictKernel):
+class CallPythonFunctionKernel(Kernel):
     async def execute(self, op, session_id, output, **inputs):
         python_fn = dill.loads(op.fn)
         concrete_inputs = await asyncio.gather(*inputs.values())
