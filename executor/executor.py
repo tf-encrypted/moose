@@ -23,6 +23,17 @@ from protos import executor_pb2
 from protos import executor_pb2_grpc
 
 
+class AsyncStore:
+    def __init__(self, initial_values):
+        self.values = initial_values
+
+    async def load(self, key):
+        return self.values[key]
+
+    async def save(self, key, value):
+        self.values[key] = value
+
+
 class Kernel:
     async def execute(self, op, session_id, output, **kwargs):
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
@@ -36,6 +47,32 @@ class Kernel:
         raise NotImplementedError()
 
 
+class AddKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+        assert isinstance(op, AddOperation)
+        return lhs + rhs
+
+
+class CallPythonFunctionKernel(Kernel):
+    async def execute(self, op, session_id, output, **inputs):
+        python_fn = dill.loads(op.fn)
+        concrete_inputs = await asyncio.gather(*inputs.values())
+        concrete_output = python_fn(*concrete_inputs)
+        return output.set_result(concrete_output)
+
+
+class ConstantKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id):
+        assert isinstance(op, ConstantOperation)
+        return op.value
+
+
+class DivKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+        assert isinstance(op, DivOperation)
+        return lhs / rhs
+
+
 class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
@@ -45,23 +82,10 @@ class LoadKernel(Kernel):
         return self.store[op.key]
 
 
-class SaveKernel(Kernel):
-    def __init__(self, store):
-        self.store = store
-
-    def execute_synchronous_block(self, op, session_id, value):
-        assert isinstance(op, SaveOperation)
-        self.store[op.key] = value
-        get_logger().debug(f"Saved {value}")
-
-
-class SendKernel(Kernel):
-    def __init__(self, channel_manager):
-        self.channel_manager = channel_manager
-
-    async def execute(self, op, session_id, value, output=None):
-        assert isinstance(op, SendOperation)
-        await self.channel_manager.send(await value, op=op, session_id=session_id)
+class MulKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+        assert isinstance(op, MulOperation)
+        return lhs * rhs
 
 
 class ReceiveKernel(Kernel):
@@ -72,36 +96,6 @@ class ReceiveKernel(Kernel):
         assert isinstance(op, ReceiveOperation)
         value = await self.channel_manager.receive(op=op, session_id=session_id)
         output.set_result(value)
-
-
-class ConstantKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id):
-        assert isinstance(op, ConstantOperation)
-        return op.value
-
-
-class AddKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
-        assert isinstance(op, AddOperation)
-        return lhs + rhs
-
-
-class DivKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
-        assert isinstance(op, DivOperation)
-        return lhs / rhs
-
-
-class SubKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
-        assert isinstance(op, SubOperation)
-        return lhs - rhs
-
-
-class MulKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
-        assert isinstance(op, MulOperation)
-        return lhs * rhs
 
 
 class RunPythonScriptKernel(Kernel):
@@ -135,12 +129,29 @@ class RunPythonScriptKernel(Kernel):
         return output.set_result(concrete_output)
 
 
-class CallPythonFunctionKernel(Kernel):
-    async def execute(self, op, session_id, output, **inputs):
-        python_fn = dill.loads(op.fn)
-        concrete_inputs = await asyncio.gather(*inputs.values())
-        concrete_output = python_fn(*concrete_inputs)
-        return output.set_result(concrete_output)
+class SaveKernel(Kernel):
+    def __init__(self, store):
+        self.store = store
+
+    def execute_synchronous_block(self, op, session_id, value):
+        assert isinstance(op, SaveOperation)
+        self.store[op.key] = value
+        get_logger().debug(f"Saved {value}")
+
+
+class SendKernel(Kernel):
+    def __init__(self, channel_manager):
+        self.channel_manager = channel_manager
+
+    async def execute(self, op, session_id, value, output=None):
+        assert isinstance(op, SendOperation)
+        await self.channel_manager.send(await value, op=op, session_id=session_id)
+
+
+class SubKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+        assert isinstance(op, SubOperation)
+        return lhs - rhs
 
 
 class KernelBasedExecutor:
@@ -160,6 +171,10 @@ class KernelBasedExecutor:
             RunPythonScriptOperation: RunPythonScriptKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }
+
+    def compile_computation(self, logical_computation):
+        # TODO for now we don't do any compilation of computations
+        return logical_computation
 
     async def run_computation(self, logical_computation, role, session_id):
         physical_computation = self.compile_computation(logical_computation)
@@ -188,10 +203,6 @@ class KernelBasedExecutor:
             get_logger().debug(f"{self.name} playing {role}: Exit '{op.name}'")
         await asyncio.wait(tasks)
 
-    def compile_computation(self, logical_computation):
-        # TODO for now we don't do any compilation of computations
-        return logical_computation
-
     def schedule_execution(self, comp, role):
         # TODO(Morten) this is as simple and naive as it gets; we should at least
         # do some kind of topology sorting to make sure we have all async values
@@ -210,14 +221,3 @@ class RemoteExecutor:
             computation=comp_ser, role=role, session_id=session_id
         )
         _ = await self._stub.RunComputation(compute_request)
-
-
-class AsyncStore:
-    def __init__(self, initial_values):
-        self.values = initial_values
-
-    async def load(self, key):
-        return self.values[key]
-
-    async def save(self, key, value):
-        self.values[key] = value

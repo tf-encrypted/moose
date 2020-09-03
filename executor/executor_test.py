@@ -34,38 +34,6 @@ def _run_computation(comp, players):
 
 
 class ExecutorTest(parameterized.TestCase):
-    def test_constant(self):
-        player0, player1 = _create_test_players(2)
-
-        @computation
-        def my_comp():
-            with player0:
-                out = constant(5)
-            with player1:
-                res = save(out, "result")
-            return res
-
-        comp_result = _run_computation(my_comp, [player0, player1])
-        self.assertEqual(comp_result["result"], 5)
-
-    @parameterized.parameters(
-        {"op": op, "expected_result": expected_result}
-        for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
-    )
-    def test_op(self, op, expected_result):
-        player0, player1 = _create_test_players(2)
-
-        @computation
-        def my_comp():
-            with player0:
-                out = op(constant(5), constant(2))
-            with player1:
-                res = save(out, "result")
-            return res
-
-        comp_result = _run_computation(my_comp, [player0, player1])
-        self.assertEqual(comp_result["result"], expected_result)
-
     def test_call_python_function(self):
         player0, player1 = _create_test_players(2)
 
@@ -83,6 +51,40 @@ class ExecutorTest(parameterized.TestCase):
 
         comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], 4)
+
+    def test_constant(self):
+        player0, player1 = _create_test_players(2)
+
+        @computation
+        def my_comp():
+            with player0:
+                out = constant(5)
+            with player1:
+                res = save(out, "result")
+            return res
+
+        comp_result = _run_computation(my_comp, [player0, player1])
+        self.assertEqual(comp_result["result"], 5)
+
+    @parameterized.parameters(
+        *(
+            {"op": op, "expected_result": expected_result}
+            for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
+        )
+    )
+    def test_op(self, op, expected_result):
+        player0, player1 = _create_test_players(2)
+
+        @computation
+        def my_comp():
+            with player0:
+                out = op(constant(5), constant(2))
+            with player1:
+                res = save(out, "result")
+            return res
+
+        comp_result = _run_computation(my_comp, [player0, player1])
+        self.assertEqual(comp_result["result"], expected_result)
 
     def test_run_python_script(self):
         player0, player1, player2 = _create_test_players(3)

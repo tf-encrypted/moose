@@ -22,13 +22,13 @@ class Operation:
 
 
 @dataclass
-class LoadOperation(Operation):
-    key: str
+class AddOperation(Operation):
+    pass
 
 
 @dataclass
-class SaveOperation(Operation):
-    key: str
+class CallPythonFunctionOperation(Operation):
+    fn: bytes
 
 
 @dataclass
@@ -37,30 +37,18 @@ class ConstantOperation(Operation):
 
 
 @dataclass
-class AddOperation(Operation):
-    pass
-
-
-@dataclass
-class SubOperation(Operation):
-    pass
-
-
-@dataclass
-class MulOperation(Operation):
-    pass
-
-
-@dataclass
 class DivOperation(Operation):
     pass
 
 
 @dataclass
-class SendOperation(Operation):
-    sender: str
-    receiver: str
-    rendezvous_key: str
+class LoadOperation(Operation):
+    key: str
+
+
+@dataclass
+class MulOperation(Operation):
+    pass
 
 
 @dataclass
@@ -76,8 +64,20 @@ class RunPythonScriptOperation(Operation):
 
 
 @dataclass
-class CallPythonFunctionOperation(Operation):
-    fn: bytes
+class SaveOperation(Operation):
+    key: str
+
+
+@dataclass
+class SubOperation(Operation):
+    pass
+
+
+@dataclass
+class SendOperation(Operation):
+    sender: str
+    receiver: str
+    rendezvous_key: str
 
 
 @dataclass
@@ -109,6 +109,10 @@ class Computation:
         return Computation(Graph(nodes))
 
 
+def register_op(op):
+    OPS_REGISTER[op.identifier()] = op
+
+
 def select_op(op_name):
     name = op_name.split("_")[0]
     if "operation" in name:
@@ -116,10 +120,6 @@ def select_op(op_name):
     name = name[0].upper() + name[1:] + "Operation"
     op = OPS_REGISTER[name]
     return op
-
-
-def register_op(op):
-    OPS_REGISTER[op.identifier()] = op
 
 
 # NOTE: this is only needed for gRPC so far
