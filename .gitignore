@@ -1,6 +1,7 @@
 **/.mypy*
 **/__pycache__
 **/venv
+**/*.egg-info/
 
 **/*_pb2.py
 **/*_pb2_grpc.py
