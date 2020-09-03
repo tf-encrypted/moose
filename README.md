@@ -4,23 +4,19 @@
 
 ### Bootstrapping
 
-Install dependencies:
-
-```
-make pydep
-```
-
-Install Python library:
-```
-make pylib
-```
-
-These two can be wrapped into one command, if desired:
+To install the library and all of its dependencies, run:
 ```
 make install
 ```
 
-Compile protobuf files:
+This unwraps into two other targets, which are kept separate for purposes of caching in CI:
+
+```
+make pydep  # install dependencies
+make pylib  # install runtime Python library
+```
+
+You will also need to compile protobuf files before running any examples that use gRPC, which you can do via:
 
 ```
 make build
