@@ -15,7 +15,7 @@ from compiler.edsl import run_python_script
 from compiler.edsl import save
 from compiler.edsl import sub
 from logger import get_logger
-from runtime import TestRuntime
+from runtime import ReferenceRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
@@ -25,7 +25,7 @@ def _create_test_players(number_of_players=2):
 
 
 def _run_computation(comp, players):
-    runtime = TestRuntime(num_workers=len(players))
+    runtime = ReferenceRuntime(num_workers=len(players))
     role_assignment = {players[i]: runtime.executors[i] for i in range(len(players))}
     concrete_comp = comp.trace_func()
     runtime.evaluate_computation(concrete_comp, role_assignment=role_assignment)

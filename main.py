@@ -9,7 +9,7 @@ from compiler.edsl import mul
 from compiler.edsl import save
 from logger import get_logger
 from runtime import RemoteRuntime
-from runtime import TestRuntime
+from runtime import ReferenceRuntime
 
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
@@ -55,7 +55,7 @@ concrete_comp = my_comp.trace_func()
 if __name__ == "__main__":
 
     if args.runtime == "test":
-        runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+        runtime = ReferenceRuntime(num_workers=len(concrete_comp.devices()))
     elif args.runtime == "remote":
         runtime = RemoteRuntime("cluster/cluster-spec-localhost.yaml")
         assert len(runtime.executors) == len(concrete_comp.devices())

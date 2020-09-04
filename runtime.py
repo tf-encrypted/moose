@@ -32,8 +32,15 @@ class RemoteRuntime(Runtime):
         ]
 
 
-class TestRuntime(Runtime):
-    def __init__(self, num_workers) -> None:
+class ReferenceRuntime(Runtime):
+    """A reference runtime against which all other runtimes should be checked against.
+
+    Mostly useful for testing.
+
+    Args:
+        num_workers: number of workers to simulate
+    """
+    def __init__(self, num_workers: int) -> None:
         channel_manager = ChannelManager()
         self.executors = [
             KernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)

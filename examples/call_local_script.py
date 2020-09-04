@@ -7,7 +7,7 @@ from compiler.edsl import constant
 from compiler.edsl import run_python_script
 from compiler.edsl import save
 from compiler.logger import get_logger
-from compiler.runtime import TestRuntime
+from compiler.runtime import ReferenceRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
@@ -42,7 +42,7 @@ concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
 
-    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+    runtime = ReferenceRuntime(num_workers=len(concrete_comp.devices()))
 
     runtime.evaluate_computation(
         computation=concrete_comp,
