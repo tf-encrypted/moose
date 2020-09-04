@@ -22,25 +22,6 @@ from compiler.edsl import sub
 
 
 class EdslTest(parameterized.TestCase):
-    def test_constant(self):
-        player0 = Role(name="player0")
-
-        @computation
-        def my_comp():
-            with player0:
-                x0 = constant(1)
-            return x0
-
-        concrete_comp = my_comp.trace_func()
-        constant_op = concrete_comp.graph.nodes["constant_op0"]
-        assert constant_op == ConstantOperation(
-            device_name="player0",
-            name="constant_op0",
-            inputs={},
-            output="constant0",
-            value=1,
-        )
-
     @parameterized.parameters(
         {"op": op, "OP": OP, "op_name": op_name}
         for (op, OP, op_name) in zip(
@@ -65,6 +46,50 @@ class EdslTest(parameterized.TestCase):
             name=f"{op_name}operation_op0",
             inputs={"lhs": "constant0", "rhs": "constant1"},
             output=f"{op_name}operation0",
+        )
+
+    def test_call_python_fn(self):
+        player0 = Role(name="player0")
+
+        @function
+        def add_one(x):
+            return x + 1
+
+        @computation
+        def my_comp():
+            with player0:
+                x0 = add_one(constant(1))
+            return x0
+
+        concrete_comp = my_comp.trace_func()
+        call_py_op = concrete_comp.graph.nodes["call_python_function_op0"]
+
+        call_py_op.fn = dill.dumps(add_one)
+        assert call_py_op == CallPythonFunctionOperation(
+            device_name="player0",
+            name="call_python_function_op0",
+            inputs={"arg0": "constant0"},
+            output="call_python_function0",
+            fn=dill.dumps(add_one),
+        )
+
+    def test_constant(self):
+        player0 = Role(name="player0")
+
+        @computation
+        def my_comp():
+            with player0:
+                x0 = constant(1)
+            return x0
+
+        concrete_comp = my_comp.trace_func()
+        constant_op = concrete_comp.graph.nodes["constant_op0"]
+        assert constant_op == ConstantOperation(
+            device_name="player0",
+            name="constant_op0",
+            inputs={},
+            output="constant0",
+            value=1,
         )
 
     def test_send_receive(self):
@@ -121,29 +146,4 @@ class EdslTest(parameterized.TestCase):
             inputs={"arg0": "constant0"},
             output="run_python_script0",
             path="local_computation.py",
-        )
-
-    def test_call_python_fn(self):
-        player0 = Role(name="player0")
-
-        @function
-        def add_one(x):
-            return x + 1
-
-        @computation
-        def my_comp():
-            with player0:
-                x0 = add_one(constant(1))
-            return x0
-
-        concrete_comp = my_comp.trace_func()
-        call_py_op = concrete_comp.graph.nodes["call_python_function_op0"]
-
-        call_py_op.fn = dill.dumps(add_one)
-        assert call_py_op == CallPythonFunctionOperation(
-            device_name="player0",
-            name="call_python_function_op0",
-            inputs={"arg0": "constant0"},
-            output="call_python_function0",
-            fn=dill.dumps(add_one),
         )
