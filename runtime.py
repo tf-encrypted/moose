@@ -47,6 +47,13 @@ class ReferenceRuntime(Runtime):
             for i in range(num_workers)
         ]
 
+    def evaluate_computation(self, computation: Computation, role_assignment: Dict):
+        # Since, in general, we expect computations to be passed around to each worker
+        # (e.g. for auditing), we include one roundtrip of serialization for simulation
+        computation_json = computation.serialize()
+        roundtripped = Computation.deserialize(computation_json)
+        super().evaluate_computation(roundtripped, role_assignment)
+
 
 _RUNTIME: Optional[Runtime] = None
 
