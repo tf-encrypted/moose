@@ -4,16 +4,16 @@ import unittest
 
 from absl.testing import parameterized
 
-from edsl import Role
-from edsl import add
-from edsl import computation
-from edsl import constant
-from edsl import div
-from edsl import function
-from edsl import mul
-from edsl import run_python_script
-from edsl import save
-from edsl import sub
+from compiler.edsl import Role
+from compiler.edsl import add
+from compiler.edsl import computation
+from compiler.edsl import constant
+from compiler.edsl import div
+from compiler.edsl import function
+from compiler.edsl import mul
+from compiler.edsl import run_python_script
+from compiler.edsl import save
+from compiler.edsl import sub
 from logger import get_logger
 from runtime import TestRuntime
 

@@ -1,13 +1,13 @@
 import logging
 
-from edsl import Role
-from edsl import add
-from edsl import computation
-from edsl import constant
-from edsl import run_python_script
-from edsl import save
-from logger import get_logger
-from runtime import TestRuntime
+from compiler.edsl import Role
+from compiler.edsl import add
+from compiler.edsl import computation
+from compiler.edsl import constant
+from compiler.edsl import run_python_script
+from compiler.edsl import save
+from compiler.logger import get_logger
+from compiler.runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
