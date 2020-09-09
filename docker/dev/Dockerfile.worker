@@ -5,6 +5,7 @@ RUN apt update && apt upgrade -y
 # Basic tools
 RUN apt install -y build-essential curl wget git gnupg
 RUN apt install -y python3 python3-pip python3-venv
+RUN apt install -y openssl xz-utils
 
 # Rust and cargo
 ENV RUSTUP_HOME=/usr/local/rustup \
@@ -15,6 +16,10 @@ RUN wget -q https://static.rust-lang.org/rustup/rustup-init.sh; \
     ./rustup-init.sh -y --no-modify-path --default-toolchain stable; \
     chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
     rm rustup-init.sh
+
+# MPSPDZ
+COPY docker/dev/install-mpspdz.sh .
+RUN ["bash", "install-mpspdz.sh"]
 
 # watchexec
 RUN cargo install watchexec
