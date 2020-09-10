@@ -14,20 +14,4 @@ Alternatively, you can use `docker-compose up --detach` to run the cluster in de
 
 ## Rebuilding the image
 
-Run the following from this directory to rebuild the image used by the cluster.
-
-```
-docker build \
-  --file Dockerfile.worker \
-  --tag tfencrypted/runtime-dev-worker \
-  ../..
-```
-
-You can test the image manually using the folllwing:
-
-```
-docker run -it \
-  --env PORT=50000 \
-  --volume $(realpath ../..):/runtime \
-  tfencrypted/runtime-dev-worker:latest
-```
+Run `make build-worker-image` from this directory to rebuild the image used by the cluster. For testing you can use `make run-worker-image` to launch the image without running the worker.
