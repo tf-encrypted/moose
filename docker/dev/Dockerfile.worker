@@ -19,6 +19,13 @@ RUN wget -q https://static.rust-lang.org/rustup/rustup-init.sh; \
 # watchexec
 RUN cargo install watchexec
 
+# MPSPDZ
+RUN apt install -y openssl xz-utils
+RUN curl -L https://github.com/data61/MP-SPDZ/releases/download/v0.1.9/mp-spdz-0.1.9.tar.xz | tar xJv; \
+    mv mp-spdz-0.1.9 /MP-SPDZ; \
+    cd /MP-SPDZ; \
+    Scripts/tldr.sh
+
 # Dependencies
 COPY requirements-dev.txt .
 RUN pip3 install -r requirements-dev.txt
