@@ -6,7 +6,7 @@ from grpc.experimental import aio
 
 from channels.grpc import ChannelManager
 from cluster.cluster_spec import load_cluster_spec
-from executor import KernelBasedExecutor
+from executor.executor import KernelBasedExecutor
 from logger import get_logger
 from server import Server
 
