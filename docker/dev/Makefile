@@ -1,14 +1,17 @@
+
+WORKER_IMAGE?=tfencrypted/runtime-dev-worker:latest
+
 build-worker-image:
 	docker build \
 		--file Dockerfile.worker \
-		--tag tfencrypted/runtime-dev-worker \
+		--tag ${WORKER_IMAGE} \
 		../../
 
 run-worker-image:
 	docker run -it \
 		--env PORT=50000 \
 		--volume $(realpath ../..):/runtime \
-		tfencrypted/runtime-dev-worker:latest \
+		${WORKER_IMAGE} \
 		bash
 
 .PHONY: build-worker-image run-worker-image
