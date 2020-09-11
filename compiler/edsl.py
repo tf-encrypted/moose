@@ -22,6 +22,7 @@ from compiler.computation import RunProgramOperation
 from compiler.computation import SaveOperation
 from compiler.computation import SendOperation
 from compiler.computation import SubOperation
+from logger import get_logger
 from runtime import get_runtime
 
 CURRENT_PLACEMENT: List = []
@@ -59,6 +60,23 @@ class HostPlacement(Placement):
             inputs=inputs,
             output=context.get_fresh_name("call_python_function"),
         )
+
+
+@dataclass
+class MpspdzPlacement(Placement):
+    players: List[HostPlacement]
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def compile(self, context, fn, inputs, output_placements=None):
+        # TODO(Morten)
+        # This will likely emit call operations for two or more placements,
+        # together with either the .mpc file or bytecode needed for the
+        # MP-SPDZ runtime (bytecode is probably best)
+        get_logger().debug(f"Inputs: {inputs}")
+        get_logger().debug(f"Output placements: {output_placements}")
+        raise NotImplementedError()
 
 
 def get_current_placement():
@@ -187,7 +205,6 @@ def function(fn):
             inputs=inputs,
             output_placements=output_placements,
         )
-
     return wrapper
 
 
