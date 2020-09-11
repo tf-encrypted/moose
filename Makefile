@@ -20,7 +20,7 @@ fmt:
 lint:
 	flake8 .
 
-test: build
+test:
 	pytest .
 
 ci: fmt lint test
