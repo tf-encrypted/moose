@@ -29,7 +29,7 @@ class AddOperation(Operation):
 
 @dataclass
 class CallPythonFunctionOperation(Operation):
-    fn: bytes
+    pickled_fn: bytes
 
 
 @dataclass

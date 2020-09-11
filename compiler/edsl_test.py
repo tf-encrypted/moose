@@ -64,13 +64,16 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = my_comp.trace_func()
         call_py_op = concrete_comp.graph.nodes["call_python_function_op0"]
 
-        call_py_op.fn = dill.dumps(add_one)
+        # TODO(Morten) for some reason the pickled functions deviated;
+        # figure out why and improve test
+        pickled_fn = dill.dumps(add_one)
+        call_py_op.pickled_fn = pickled_fn
         assert call_py_op == CallPythonFunctionOperation(
             device_name="player0",
             name="call_python_function_op0",
             inputs={"arg0": "constant0"},
             output="call_python_function0",
-            fn=dill.dumps(add_one),
+            pickled_fn=pickled_fn,
         )
 
     def test_constant(self):

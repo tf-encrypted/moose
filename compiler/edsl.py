@@ -56,7 +56,7 @@ class HostPlacement(Placement):
         return CallPythonFunctionOperation(
             device_name=self.name,
             name=context.get_fresh_name("call_python_function_op"),
-            fn=dill.dumps(fn),
+            pickled_fn=dill.dumps(fn),
             inputs=inputs,
             output=context.get_fresh_name("call_python_function"),
         )

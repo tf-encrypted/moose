@@ -55,7 +55,7 @@ class AddKernel(Kernel):
 
 class CallPythonFunctionKernel(Kernel):
     async def execute(self, op, session_id, output, **inputs):
-        python_fn = dill.loads(op.fn)
+        python_fn = dill.loads(op.pickled_fn)
         concrete_inputs = await asyncio.gather(*inputs.values())
         concrete_output = python_fn(*concrete_inputs)
         return output.set_result(concrete_output)
