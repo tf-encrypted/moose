@@ -1,7 +1,9 @@
 from collections import defaultdict
 from dataclasses import dataclass
-from functools import partial
+from functools import wraps
+from typing import Callable
 from typing import List
+from typing import Optional
 from typing import Union
 
 import dill
@@ -40,6 +42,24 @@ class Placement:
     def __hash__(self):
         return hash(self.name)
 
+    def compile(self, context, fn, inputs, output_placements=None):
+        raise NotImplementedError()
+
+
+@dataclass
+class HostPlacement(Placement):
+    def __hash__(self):
+        return hash(self.name)
+
+    def compile(self, context, fn, inputs, output_placements=None):
+        return CallPythonFunctionOperation(
+            device_name=self.name,
+            name=context.get_fresh_name("call_python_function_op"),
+            fn=dill.dumps(fn),
+            inputs=inputs,
+            output=context.get_fresh_name("call_python_function"),
+        )
+
 
 def get_current_placement():
     global CURRENT_PLACEMENT
@@ -64,8 +84,9 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
-class CallPythonFunctionExpression(Expression):
-    fn: bytes
+class ApplyFunctionExpression(Expression):
+    fn: Callable
+    output_placements: Optional[List[Placement]]
 
     def __hash__(self):
         return id(self)
@@ -111,10 +132,6 @@ def add(lhs, rhs):
     )
 
 
-def call_python_fn(fn, *inputs):
-    return CallPythonFunctionExpression(placement=get_current_placement(), inputs=inputs, fn=fn)
-
-
 def constant(value):
     return ConstantExpression(placement=get_current_placement(), inputs=[], value=value)
 
@@ -156,6 +173,19 @@ def sub(lhs, rhs):
     return BinaryOpExpression(
         op_type=SubOperation, placement=get_current_placement(), inputs=[lhs, rhs]
     )
+
+
+def function(fn):
+    @wraps(fn)
+    def wrapper(*inputs, output_placements=None, **kwargs):
+        return ApplyFunctionExpression(
+            fn=fn,
+            placement=get_current_placement(),
+            inputs=inputs,
+            output_placements=output_placements,
+        )
+
+    return wrapper
 
 
 class Compiler:
@@ -228,19 +258,18 @@ class Compiler:
             output=self.get_fresh_name(f"{op_name}"),
         )
 
-    def visit_CallPythonFunctionExpression(self, expression):
-        device = expression.placement.name
+    def visit_ApplyFunctionExpression(self, expression):
+        assert isinstance(expression, ApplyFunctionExpression)
+        placement = expression.placement
         inputs = {
-            f"arg{i}": self.visit(expr, device).output
+            f"arg{i}": self.visit(expr, placement.name).output
             for i, expr in enumerate(expression.inputs)
         }
-        assert isinstance(expression, CallPythonFunctionExpression)
-        return CallPythonFunctionOperation(
-            device_name=expression.placement.name,
-            name=self.get_fresh_name("call_python_function_op"),
-            fn=dill.dumps(expression.fn),
+        return placement.compile(
+            context=self,
+            fn=expression.fn,
             inputs=inputs,
-            output=self.get_fresh_name("call_python_function"),
+            output_placements=expression.output_placements,
         )
 
     def visit_ConstantExpression(self, constant_expression):
@@ -264,12 +293,12 @@ class Compiler:
         )
 
     def visit_RunPythonScriptExpression(self, expression):
+        assert isinstance(expression, RunPythonScriptExpression)
         device = expression.placement.name
         inputs = {
             f"arg{i}": self.visit(expr, device).output
             for i, expr in enumerate(expression.inputs)
         }
-        assert isinstance(expression, RunPythonScriptExpression)
         return RunPythonScriptOperation(
             device_name=expression.placement.name,
             name=self.get_fresh_name("run_python_script_op"),
@@ -308,7 +337,3 @@ class AbstractComputation:
 
 def computation(func):
     return AbstractComputation(func)
-
-
-def function(func):
-    return partial(call_python_fn, func)

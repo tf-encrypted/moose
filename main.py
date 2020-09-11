@@ -1,7 +1,7 @@
 import argparse
 import logging
 
-from compiler.edsl import Placement
+from compiler.edsl import HostPlacement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
@@ -23,10 +23,10 @@ if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 
-inputter0 = Placement(name="inputter0")
-inputter1 = Placement(name="inputter1")
-aggregator = Placement(name="aggregator")
-outputter = Placement(name="outputter")
+inputter0 = HostPlacement(name="inputter0")
+inputter1 = HostPlacement(name="inputter1")
+aggregator = HostPlacement(name="aggregator")
+outputter = HostPlacement(name="outputter")
 
 
 @computation

@@ -4,7 +4,7 @@ import unittest
 
 from absl.testing import parameterized
 
-from compiler.edsl import Placement
+from compiler.edsl import HostPlacement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
@@ -21,7 +21,7 @@ get_logger().setLevel(level=logging.DEBUG)
 
 
 def _create_test_players(number_of_players=2):
-    return [Placement(name=f"player_{i}") for i in range(number_of_players)]
+    return [HostPlacement(name=f"player_{i}") for i in range(number_of_players)]
 
 
 def _run_computation(comp, players):
