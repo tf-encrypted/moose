@@ -14,7 +14,7 @@ from compiler.computation import DivOperation
 from compiler.computation import LoadOperation
 from compiler.computation import MulOperation
 from compiler.computation import ReceiveOperation
-from compiler.computation import RunPythonScriptOperation
+from compiler.computation import RunProgramOperation
 from compiler.computation import SaveOperation
 from compiler.computation import SendOperation
 from compiler.computation import SubOperation
@@ -98,7 +98,7 @@ class ReceiveKernel(Kernel):
         output.set_result(value)
 
 
-class RunPythonScriptKernel(Kernel):
+class RunProgramKernel(Kernel):
     async def execute(self, op, session_id, output, **inputs):
         with tempfile.NamedTemporaryFile() as inputfile:
             with tempfile.NamedTemporaryFile() as outputfile:
@@ -107,21 +107,21 @@ class RunPythonScriptKernel(Kernel):
                 inputfile.write(json.dumps(concrete_inputs).encode())
                 inputfile.flush()
 
+                args = [
+                    op.path,
+                    *op.args,
+                    "--input-file",
+                    inputfile.name,
+                    "--output-file",
+                    outputfile.name,
+                    "--session-id",
+                    str(session_id),
+                    "--device",
+                    op.device_name,
+                ]
+                get_logger().debug(f"Running external program: {args}")
                 _ = subprocess.run(
-                    [
-                        "python",
-                        op.path,
-                        "--input-file",
-                        inputfile.name,
-                        "--output-file",
-                        outputfile.name,
-                        "--session-id",
-                        str(session_id),
-                        "--device",
-                        op.device_name,
-                    ],
-                    stdout=subprocess.PIPE,
-                    universal_newlines=True,
+                    args, stdout=subprocess.PIPE, universal_newlines=True,
                 )
 
                 concrete_output = json.loads(outputfile.read())
@@ -168,7 +168,7 @@ class KernelBasedExecutor:
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
             DivOperation: DivKernel(),
-            RunPythonScriptOperation: RunPythonScriptKernel(),
+            RunProgramOperation: RunProgramKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }
 

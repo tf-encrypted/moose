@@ -11,7 +11,7 @@ from compiler.edsl import constant
 from compiler.edsl import div
 from compiler.edsl import function
 from compiler.edsl import mul
-from compiler.edsl import run_python_script
+from compiler.edsl import run_program
 from compiler.edsl import save
 from compiler.edsl import sub
 from logger import get_logger
@@ -90,7 +90,7 @@ class ExecutorTest(parameterized.TestCase):
         comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], expected_result)
 
-    def test_run_python_script(self):
+    def test_run_program(self):
         player0, player1, player2 = _create_test_players(3)
 
         @computation
@@ -99,8 +99,11 @@ class ExecutorTest(parameterized.TestCase):
                 c0 = constant(3)
                 c1 = constant(2)
             with player1:
-                out = run_python_script(
-                    os.getcwd() + "/executor/executor_test_fixtures.py", c0, c1
+                out = run_program(
+                    "python",
+                    [os.getcwd() + "/executor/executor_test_fixtures.py"],
+                    c0,
+                    c1,
                 )
             with player2:
                 res = save(out, "result")

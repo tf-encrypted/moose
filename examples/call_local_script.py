@@ -4,10 +4,10 @@ from compiler.edsl import HostPlacement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
-from compiler.edsl import run_python_script
+from compiler.edsl import run_program
 from compiler.edsl import save
-from compiler.logger import get_logger
-from compiler.runtime import TestRuntime
+from logger import get_logger
+from runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
@@ -23,11 +23,11 @@ def my_comp():
     with inputter0:
         c0_0 = constant(2)
         c1_0 = constant(3)
-        x0 = run_python_script("local_computation.py", c0_0, c1_0)
+        x0 = run_program("python", ["local_computation.py"], c0_0, c1_0)
 
     with inputter1:
         c0_1 = constant(3)
-        x1 = run_python_script("local_computation.py", c0_1)
+        x1 = run_program("python", ["local_computation.py"], c0_1)
 
     with aggregator:
         y = add(x0, x1)

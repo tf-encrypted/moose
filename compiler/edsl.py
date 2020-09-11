@@ -18,7 +18,7 @@ from compiler.computation import LoadOperation
 from compiler.computation import MulOperation
 from compiler.computation import Operation
 from compiler.computation import ReceiveOperation
-from compiler.computation import RunPythonScriptOperation
+from compiler.computation import RunProgramOperation
 from compiler.computation import SaveOperation
 from compiler.computation import SendOperation
 from compiler.computation import SubOperation
@@ -109,8 +109,9 @@ class LoadExpression(Expression):
 
 
 @dataclass
-class RunPythonScriptExpression(Expression):
+class RunProgramExpression(Expression):
     path: str
+    args: List[str]
 
     def __hash__(self):
         return id(self)
@@ -156,9 +157,11 @@ def mul(lhs, rhs):
     )
 
 
-def run_python_script(path, *inputs):
-    return RunPythonScriptExpression(
-        placement=get_current_placement(), inputs=inputs, path=path
+def run_program(path, args, *inputs):
+    assert isinstance(path, str)
+    assert isinstance(args, (list, tuple))
+    return RunProgramExpression(
+        path=path, args=args, placement=get_current_placement(), inputs=inputs,
     )
 
 
@@ -292,19 +295,20 @@ class Compiler:
             output=self.get_fresh_name("load"),
         )
 
-    def visit_RunPythonScriptExpression(self, expression):
-        assert isinstance(expression, RunPythonScriptExpression)
+    def visit_RunProgramExpression(self, expression):
+        assert isinstance(expression, RunProgramExpression)
         device = expression.placement.name
         inputs = {
             f"arg{i}": self.visit(expr, device).output
             for i, expr in enumerate(expression.inputs)
         }
-        return RunPythonScriptOperation(
+        return RunProgramOperation(
             device_name=expression.placement.name,
-            name=self.get_fresh_name("run_python_script_op"),
+            name=self.get_fresh_name("run_program_op"),
             path=expression.path,
+            args=expression.args,
             inputs=inputs,
-            output=self.get_fresh_name("run_python_script"),
+            output=self.get_fresh_name("run_program"),
         )
 
     def visit_SaveExpression(self, save_expression):
