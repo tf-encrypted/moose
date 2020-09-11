@@ -2,7 +2,6 @@ import logging
 
 from compiler.edsl import HostPlacement
 from compiler.edsl import MpspdzPlacement
-from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
 from compiler.edsl import function

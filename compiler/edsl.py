@@ -205,6 +205,7 @@ def function(fn):
             inputs=inputs,
             output_placements=output_placements,
         )
+
     return wrapper
 
 
