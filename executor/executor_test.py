@@ -4,7 +4,7 @@ import unittest
 
 from absl.testing import parameterized
 
-from compiler.edsl import Role
+from compiler.edsl import Placement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
@@ -21,14 +21,18 @@ get_logger().setLevel(level=logging.DEBUG)
 
 
 def _create_test_players(number_of_players=2):
-    return [Role(name=f"player_{i}") for i in range(number_of_players)]
+    return [Placement(name=f"player_{i}") for i in range(number_of_players)]
 
 
 def _run_computation(comp, players):
     runtime = TestRuntime(num_workers=len(players))
-    role_assignment = {players[i]: runtime.executors[i] for i in range(len(players))}
+    placement_assignment = {
+        players[i]: runtime.executors[i] for i in range(len(players))
+    }
     concrete_comp = comp.trace_func()
-    runtime.evaluate_computation(concrete_comp, role_assignment=role_assignment)
+    runtime.evaluate_computation(
+        concrete_comp, placement_assignment=placement_assignment
+    )
     computation_result = runtime.executors[-1].store
     return computation_result
 

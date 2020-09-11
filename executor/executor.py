@@ -176,9 +176,9 @@ class KernelBasedExecutor:
         # TODO for now we don't do any compilation of computations
         return logical_computation
 
-    async def run_computation(self, logical_computation, role, session_id):
+    async def run_computation(self, logical_computation, placement, session_id):
         physical_computation = self.compile_computation(logical_computation)
-        execution_plan = self.schedule_execution(physical_computation, role)
+        execution_plan = self.schedule_execution(physical_computation, placement)
         # lazily create futures for all edges in the graph
         session_values = defaultdict(asyncio.get_event_loop().create_future)
         # link futures together using kernels
@@ -194,20 +194,20 @@ class KernelBasedExecutor:
             }
             output = session_values[op.output] if op.output else None
 
-            get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
+            get_logger().debug(f"{self.name} as {placement}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session_id=session_id, output=output, **inputs)
                 )
             ]
-            get_logger().debug(f"{self.name} playing {role}: Exit '{op.name}'")
+            get_logger().debug(f"{self.name} as {placement}: Exit '{op.name}'")
         await asyncio.wait(tasks)
 
-    def schedule_execution(self, comp, role):
+    def schedule_execution(self, comp, placement):
         # TODO(Morten) this is as simple and naive as it gets; we should at least
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
-        return [node for node in comp.nodes() if node.device_name == role]
+        return [node for node in comp.nodes() if node.device_name == placement]
 
 
 class RemoteExecutor:
@@ -215,9 +215,9 @@ class RemoteExecutor:
         self.channel = aio.insecure_channel(endpoint)
         self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
 
-    async def run_computation(self, logical_computation, role, session_id):
+    async def run_computation(self, logical_computation, placement, session_id):
         comp_ser = logical_computation.serialize()
         compute_request = executor_pb2.RunComputationRequest(
-            computation=comp_ser, role=role, session_id=session_id
+            computation=comp_ser, placement=placement, session_id=session_id
         )
         _ = await self._stub.RunComputation(compute_request)

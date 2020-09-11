@@ -10,7 +10,7 @@ from compiler.computation import ReceiveOperation
 from compiler.computation import RunPythonScriptOperation
 from compiler.computation import SendOperation
 from compiler.computation import SubOperation
-from compiler.edsl import Role
+from compiler.edsl import Placement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
@@ -31,7 +31,7 @@ class EdslTest(parameterized.TestCase):
         )
     )
     def test_binary_op(self, op, OP, op_name):
-        player0 = Role(name="player0")
+        player0 = Placement(name="player0")
 
         @computation
         def my_comp():
@@ -49,7 +49,7 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_call_python_fn(self):
-        player0 = Role(name="player0")
+        player0 = Placement(name="player0")
 
         @function
         def add_one(x):
@@ -74,7 +74,7 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_constant(self):
-        player0 = Role(name="player0")
+        player0 = Placement(name="player0")
 
         @computation
         def my_comp():
@@ -93,8 +93,8 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_send_receive(self):
-        player0 = Role(name="player0")
-        player1 = Role(name="player1")
+        player0 = Placement(name="player0")
+        player1 = Placement(name="player1")
 
         @computation
         def my_comp():
@@ -129,7 +129,7 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_run_python_script(self):
-        player0 = Role(name="player0")
+        player0 = Placement(name="player0")
 
         @computation
         def my_comp():
