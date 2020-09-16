@@ -7,17 +7,17 @@ from compiler.computation import ConstantOperation
 from compiler.computation import DivOperation
 from compiler.computation import MulOperation
 from compiler.computation import ReceiveOperation
-from compiler.computation import RunPythonScriptOperation
+from compiler.computation import RunProgramOperation
 from compiler.computation import SendOperation
 from compiler.computation import SubOperation
-from compiler.edsl import Role
+from compiler.edsl import HostPlacement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
 from compiler.edsl import div
 from compiler.edsl import function
 from compiler.edsl import mul
-from compiler.edsl import run_python_script
+from compiler.edsl import run_program
 from compiler.edsl import sub
 
 
@@ -31,7 +31,7 @@ class EdslTest(parameterized.TestCase):
         )
     )
     def test_binary_op(self, op, OP, op_name):
-        player0 = Role(name="player0")
+        player0 = HostPlacement(name="player0")
 
         @computation
         def my_comp():
@@ -49,7 +49,7 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_call_python_fn(self):
-        player0 = Role(name="player0")
+        player0 = HostPlacement(name="player0")
 
         @function
         def add_one(x):
@@ -64,17 +64,20 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = my_comp.trace_func()
         call_py_op = concrete_comp.graph.nodes["call_python_function_op0"]
 
-        call_py_op.fn = dill.dumps(add_one)
+        # TODO(Morten) for some reason the pickled functions deviated;
+        # figure out why and improve test
+        pickled_fn = dill.dumps(add_one)
+        call_py_op.pickled_fn = pickled_fn
         assert call_py_op == CallPythonFunctionOperation(
             device_name="player0",
             name="call_python_function_op0",
             inputs={"arg0": "constant0"},
             output="call_python_function0",
-            fn=dill.dumps(add_one),
+            pickled_fn=pickled_fn,
         )
 
     def test_constant(self):
-        player0 = Role(name="player0")
+        player0 = HostPlacement(name="player0")
 
         @computation
         def my_comp():
@@ -93,8 +96,8 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_send_receive(self):
-        player0 = Role(name="player0")
-        player1 = Role(name="player1")
+        player0 = HostPlacement(name="player0")
+        player1 = HostPlacement(name="player1")
 
         @computation
         def my_comp():
@@ -128,22 +131,23 @@ class EdslTest(parameterized.TestCase):
             rendezvous_key="rendezvous_key0",
         )
 
-    def test_run_python_script(self):
-        player0 = Role(name="player0")
+    def test_run_program(self):
+        player0 = HostPlacement(name="player0")
 
         @computation
         def my_comp():
             with player0:
-                x0 = run_python_script("local_computation.py", constant(1))
+                x0 = run_program("python", ["local_computation.py"], constant(1))
             return x0
 
         concrete_comp = my_comp.trace_func()
-        script_py_op = concrete_comp.graph.nodes["run_python_script_op0"]
+        script_py_op = concrete_comp.graph.nodes["run_program_op0"]
 
-        assert script_py_op == RunPythonScriptOperation(
+        assert script_py_op == RunProgramOperation(
             device_name="player0",
-            name="run_python_script_op0",
+            name="run_program_op0",
             inputs={"arg0": "constant0"},
-            output="run_python_script0",
-            path="local_computation.py",
+            output="run_program0",
+            path="python",
+            args=["local_computation.py"],
         )

@@ -32,7 +32,7 @@ message GetValueResponse {
 
 message RunComputationRequest {
     bytes computation = 1;
-    string role = 2;
+    string placement = 2;
     int64 session_id = 3;
 }
 

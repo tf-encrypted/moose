@@ -12,11 +12,15 @@ from executor.executor import RemoteExecutor
 
 
 class Runtime:
-    def evaluate_computation(self, computation: Computation, role_assignment: Dict):
+    def evaluate_computation(
+        self, computation: Computation, placement_assignment: Dict
+    ):
         sid = random.randrange(2 ** 32)
         tasks = [
-            executor.run_computation(computation, role=role.name, session_id=sid)
-            for role, executor in role_assignment.items()
+            executor.run_computation(
+                computation, placement=placement.name, session_id=sid
+            )
+            for placement, executor in placement_assignment.items()
         ]
         joint_task = asyncio.wait(tasks)
         asyncio.get_event_loop().run_until_complete(joint_task)

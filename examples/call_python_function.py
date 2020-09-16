@@ -1,6 +1,6 @@
 import logging
 
-from compiler.edsl import Role
+from compiler.edsl import HostPlacement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
@@ -11,10 +11,10 @@ from runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
-inputter0 = Role(name="inputter0")
-inputter1 = Role(name="inputter1")
-aggregator = Role(name="aggregator")
-outputter = Role(name="outputter")
+inputter0 = HostPlacement(name="inputter0")
+inputter1 = HostPlacement(name="inputter1")
+aggregator = HostPlacement(name="aggregator")
+outputter = HostPlacement(name="outputter")
 
 
 @function
@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     runtime.evaluate_computation(
         computation=concrete_comp,
-        role_assignment={
+        placement_assignment={
             inputter0: runtime.executors[0],
             inputter1: runtime.executors[1],
             aggregator: runtime.executors[2],

@@ -1,20 +1,20 @@
 import logging
 
-from compiler.edsl import Role
+from compiler.edsl import HostPlacement
 from compiler.edsl import add
 from compiler.edsl import computation
 from compiler.edsl import constant
-from compiler.edsl import run_python_script
+from compiler.edsl import run_program
 from compiler.edsl import save
-from compiler.logger import get_logger
-from compiler.runtime import TestRuntime
+from logger import get_logger
+from runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
-inputter0 = Role(name="inputter0")
-inputter1 = Role(name="inputter1")
-aggregator = Role(name="aggregator")
-outputter = Role(name="outputter")
+inputter0 = HostPlacement(name="inputter0")
+inputter1 = HostPlacement(name="inputter1")
+aggregator = HostPlacement(name="aggregator")
+outputter = HostPlacement(name="outputter")
 
 
 @computation
@@ -23,11 +23,11 @@ def my_comp():
     with inputter0:
         c0_0 = constant(2)
         c1_0 = constant(3)
-        x0 = run_python_script("local_computation.py", c0_0, c1_0)
+        x0 = run_program("python", ["local_computation.py"], c0_0, c1_0)
 
     with inputter1:
         c0_1 = constant(3)
-        x1 = run_python_script("local_computation.py", c0_1)
+        x1 = run_program("python", ["local_computation.py"], c0_1)
 
     with aggregator:
         y = add(x0, x1)
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     runtime.evaluate_computation(
         computation=concrete_comp,
-        role_assignment={
+        placement_assignment={
             inputter0: runtime.executors[0],
             inputter1: runtime.executors[1],
             aggregator: runtime.executors[2],

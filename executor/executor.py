@@ -14,7 +14,7 @@ from compiler.computation import DivOperation
 from compiler.computation import LoadOperation
 from compiler.computation import MulOperation
 from compiler.computation import ReceiveOperation
-from compiler.computation import RunPythonScriptOperation
+from compiler.computation import RunProgramOperation
 from compiler.computation import SaveOperation
 from compiler.computation import SendOperation
 from compiler.computation import SubOperation
@@ -55,7 +55,7 @@ class AddKernel(Kernel):
 
 class CallPythonFunctionKernel(Kernel):
     async def execute(self, op, session_id, output, **inputs):
-        python_fn = dill.loads(op.fn)
+        python_fn = dill.loads(op.pickled_fn)
         concrete_inputs = await asyncio.gather(*inputs.values())
         concrete_output = python_fn(*concrete_inputs)
         return output.set_result(concrete_output)
@@ -98,7 +98,7 @@ class ReceiveKernel(Kernel):
         output.set_result(value)
 
 
-class RunPythonScriptKernel(Kernel):
+class RunProgramKernel(Kernel):
     async def execute(self, op, session_id, output, **inputs):
         with tempfile.NamedTemporaryFile() as inputfile:
             with tempfile.NamedTemporaryFile() as outputfile:
@@ -107,21 +107,21 @@ class RunPythonScriptKernel(Kernel):
                 inputfile.write(json.dumps(concrete_inputs).encode())
                 inputfile.flush()
 
+                args = [
+                    op.path,
+                    *op.args,
+                    "--input-file",
+                    inputfile.name,
+                    "--output-file",
+                    outputfile.name,
+                    "--session-id",
+                    str(session_id),
+                    "--device",
+                    op.device_name,
+                ]
+                get_logger().debug(f"Running external program: {args}")
                 _ = subprocess.run(
-                    [
-                        "python",
-                        op.path,
-                        "--input-file",
-                        inputfile.name,
-                        "--output-file",
-                        outputfile.name,
-                        "--session-id",
-                        str(session_id),
-                        "--device",
-                        op.device_name,
-                    ],
-                    stdout=subprocess.PIPE,
-                    universal_newlines=True,
+                    args, stdout=subprocess.PIPE, universal_newlines=True,
                 )
 
                 concrete_output = json.loads(outputfile.read())
@@ -168,7 +168,7 @@ class KernelBasedExecutor:
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
             DivOperation: DivKernel(),
-            RunPythonScriptOperation: RunPythonScriptKernel(),
+            RunProgramOperation: RunProgramKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }
 
@@ -176,9 +176,9 @@ class KernelBasedExecutor:
         # TODO for now we don't do any compilation of computations
         return logical_computation
 
-    async def run_computation(self, logical_computation, role, session_id):
+    async def run_computation(self, logical_computation, placement, session_id):
         physical_computation = self.compile_computation(logical_computation)
-        execution_plan = self.schedule_execution(physical_computation, role)
+        execution_plan = self.schedule_execution(physical_computation, placement)
         # lazily create futures for all edges in the graph
         session_values = defaultdict(asyncio.get_event_loop().create_future)
         # link futures together using kernels
@@ -194,20 +194,20 @@ class KernelBasedExecutor:
             }
             output = session_values[op.output] if op.output else None
 
-            get_logger().debug(f"{self.name} playing {role}: Enter '{op.name}'")
+            get_logger().debug(f"{self.name} as {placement}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session_id=session_id, output=output, **inputs)
                 )
             ]
-            get_logger().debug(f"{self.name} playing {role}: Exit '{op.name}'")
+            get_logger().debug(f"{self.name} as {placement}: Exit '{op.name}'")
         await asyncio.wait(tasks)
 
-    def schedule_execution(self, comp, role):
+    def schedule_execution(self, comp, placement):
         # TODO(Morten) this is as simple and naive as it gets; we should at least
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
-        return [node for node in comp.nodes() if node.device_name == role]
+        return [node for node in comp.nodes() if node.device_name == placement]
 
 
 class RemoteExecutor:
@@ -215,9 +215,9 @@ class RemoteExecutor:
         self.channel = aio.insecure_channel(endpoint)
         self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
 
-    async def run_computation(self, logical_computation, role, session_id):
+    async def run_computation(self, logical_computation, placement, session_id):
         comp_ser = logical_computation.serialize()
         compute_request = executor_pb2.RunComputationRequest(
-            computation=comp_ser, role=role, session_id=session_id
+            computation=comp_ser, placement=placement, session_id=session_id
         )
         _ = await self._stub.RunComputation(compute_request)

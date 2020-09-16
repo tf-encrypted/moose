@@ -25,9 +25,9 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
 
     async def RunComputation(self, request, context):
         computation = Computation.deserialize(request.computation)
-        role = request.role
+        placement = request.placement
         session_id = request.session_id
-        await self.executor.run_computation(computation, role, session_id)
+        await self.executor.run_computation(computation, placement, session_id)
         return executor_pb2.RunComputationResponse()
 
 

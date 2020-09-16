@@ -3,6 +3,7 @@ import re
 from dataclasses import asdict
 from dataclasses import dataclass
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Union
 
@@ -28,7 +29,7 @@ class AddOperation(Operation):
 
 @dataclass
 class CallPythonFunctionOperation(Operation):
-    fn: bytes
+    pickled_fn: bytes
 
 
 @dataclass
@@ -59,8 +60,9 @@ class ReceiveOperation(Operation):
 
 
 @dataclass
-class RunPythonScriptOperation(Operation):
+class RunProgramOperation(Operation):
     path: str
+    args: List[str]
 
 
 @dataclass
@@ -125,7 +127,7 @@ def select_op(op_name):
 # NOTE: this is only needed for gRPC so far
 register_op(AddOperation)
 register_op(CallPythonFunctionOperation)
-register_op(RunPythonScriptOperation)
+register_op(RunProgramOperation)
 register_op(LoadOperation)
 register_op(ConstantOperation)
 register_op(DivOperation)
