@@ -8,22 +8,22 @@ from typing import Union
 
 import dill
 
-from compiler.computation import AddOperation
-from compiler.computation import CallPythonFunctionOperation
-from compiler.computation import Computation
-from compiler.computation import ConstantOperation
-from compiler.computation import DivOperation
-from compiler.computation import Graph
-from compiler.computation import LoadOperation
-from compiler.computation import MulOperation
-from compiler.computation import Operation
-from compiler.computation import ReceiveOperation
-from compiler.computation import RunProgramOperation
-from compiler.computation import SaveOperation
-from compiler.computation import SendOperation
-from compiler.computation import SubOperation
-from logger import get_logger
-from runtime import get_runtime
+from moose.compiler.computation import AddOperation
+from moose.compiler.computation import CallPythonFunctionOperation
+from moose.compiler.computation import Computation
+from moose.compiler.computation import ConstantOperation
+from moose.compiler.computation import DivOperation
+from moose.compiler.computation import Graph
+from moose.compiler.computation import LoadOperation
+from moose.compiler.computation import MulOperation
+from moose.compiler.computation import Operation
+from moose.compiler.computation import ReceiveOperation
+from moose.compiler.computation import RunProgramOperation
+from moose.compiler.computation import SaveOperation
+from moose.compiler.computation import SendOperation
+from moose.compiler.computation import SubOperation
+from moose.logger import get_logger
+from moose.runtime import get_runtime
 
 CURRENT_PLACEMENT: List = []
 

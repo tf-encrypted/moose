@@ -3,7 +3,7 @@ build:
 			--proto_path=. \
 			--python_out=. \
 			--grpc_python_out=. \
-			protos/*.proto
+			moose/protos/*.proto
 
 pydep:
 	pip install -r requirements-dev.txt

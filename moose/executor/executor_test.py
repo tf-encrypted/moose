@@ -4,18 +4,18 @@ import unittest
 
 from absl.testing import parameterized
 
-from compiler.edsl import HostPlacement
-from compiler.edsl import add
-from compiler.edsl import computation
-from compiler.edsl import constant
-from compiler.edsl import div
-from compiler.edsl import function
-from compiler.edsl import mul
-from compiler.edsl import run_program
-from compiler.edsl import save
-from compiler.edsl import sub
-from logger import get_logger
-from runtime import TestRuntime
+from moose.compiler.edsl import HostPlacement
+from moose.compiler.edsl import add
+from moose.compiler.edsl import computation
+from moose.compiler.edsl import constant
+from moose.compiler.edsl import div
+from moose.compiler.edsl import function
+from moose.compiler.edsl import mul
+from moose.compiler.edsl import run_program
+from moose.compiler.edsl import save
+from moose.compiler.edsl import sub
+from moose.logger import get_logger
+from moose.runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
