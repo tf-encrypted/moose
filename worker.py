@@ -4,8 +4,8 @@ import logging
 
 from grpc.experimental import aio
 
-from cluster.cluster_spec import load_cluster_spec
 from moose.channels.grpc import ChannelManager
+from moose.cluster.cluster_spec import load_cluster_spec
 from moose.executor.executor import KernelBasedExecutor
 from moose.logger import get_logger
 from moose.server import Server
