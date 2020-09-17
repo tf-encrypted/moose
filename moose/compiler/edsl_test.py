@@ -1,24 +1,24 @@
 import dill
 from absl.testing import parameterized
 
-from compiler.computation import AddOperation
-from compiler.computation import CallPythonFunctionOperation
-from compiler.computation import ConstantOperation
-from compiler.computation import DivOperation
-from compiler.computation import MulOperation
-from compiler.computation import ReceiveOperation
-from compiler.computation import RunProgramOperation
-from compiler.computation import SendOperation
-from compiler.computation import SubOperation
-from compiler.edsl import HostPlacement
-from compiler.edsl import add
-from compiler.edsl import computation
-from compiler.edsl import constant
-from compiler.edsl import div
-from compiler.edsl import function
-from compiler.edsl import mul
-from compiler.edsl import run_program
-from compiler.edsl import sub
+from moose.compiler.computation import AddOperation
+from moose.compiler.computation import CallPythonFunctionOperation
+from moose.compiler.computation import ConstantOperation
+from moose.compiler.computation import DivOperation
+from moose.compiler.computation import MulOperation
+from moose.compiler.computation import ReceiveOperation
+from moose.compiler.computation import RunProgramOperation
+from moose.compiler.computation import SendOperation
+from moose.compiler.computation import SubOperation
+from moose.compiler.edsl import HostPlacement
+from moose.compiler.edsl import add
+from moose.compiler.edsl import computation
+from moose.compiler.edsl import constant
+from moose.compiler.edsl import div
+from moose.compiler.edsl import function
+from moose.compiler.edsl import mul
+from moose.compiler.edsl import run_program
+from moose.compiler.edsl import sub
 
 
 class EdslTest(parameterized.TestCase):

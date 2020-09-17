@@ -1,7 +1,7 @@
 from grpc.experimental import aio
 
-from protos import executor_pb2
-from protos import executor_pb2_grpc
+from moose.protos import executor_pb2
+from moose.protos import executor_pb2_grpc
 
 
 class Channel:

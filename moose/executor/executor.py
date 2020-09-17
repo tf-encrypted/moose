@@ -7,20 +7,20 @@ from collections import defaultdict
 import dill
 from grpc.experimental import aio
 
-from compiler.computation import AddOperation
-from compiler.computation import CallPythonFunctionOperation
-from compiler.computation import ConstantOperation
-from compiler.computation import DivOperation
-from compiler.computation import LoadOperation
-from compiler.computation import MulOperation
-from compiler.computation import ReceiveOperation
-from compiler.computation import RunProgramOperation
-from compiler.computation import SaveOperation
-from compiler.computation import SendOperation
-from compiler.computation import SubOperation
-from logger import get_logger
-from protos import executor_pb2
-from protos import executor_pb2_grpc
+from moose.compiler.computation import AddOperation
+from moose.compiler.computation import CallPythonFunctionOperation
+from moose.compiler.computation import ConstantOperation
+from moose.compiler.computation import DivOperation
+from moose.compiler.computation import LoadOperation
+from moose.compiler.computation import MulOperation
+from moose.compiler.computation import ReceiveOperation
+from moose.compiler.computation import RunProgramOperation
+from moose.compiler.computation import SaveOperation
+from moose.compiler.computation import SendOperation
+from moose.compiler.computation import SubOperation
+from moose.logger import get_logger
+from moose.protos import executor_pb2
+from moose.protos import executor_pb2_grpc
 
 
 class AsyncStore:
@@ -193,15 +193,19 @@ class KernelBasedExecutor:
                 for (param_name, value_name) in op.inputs.items()
             }
             output = session_values[op.output] if op.output else None
-
-            get_logger().debug(f"{self.name} as {placement}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session_id=session_id, output=output, **inputs)
                 )
             ]
-            get_logger().debug(f"{self.name} as {placement}: Exit '{op.name}'")
-        await asyncio.wait(tasks)
+        # execute kernels
+        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        # address any errors that may have occurred
+        exceptions = [task.exception() for task in done if task.exception()]
+        for e in exceptions:
+            get_logger().exception(e)
+        if exceptions:
+            raise Exception(f"One or more errors occurred in '{self.name}'")
 
     def schedule_execution(self, comp, placement):
         # TODO(Morten) this is as simple and naive as it gets; we should at least

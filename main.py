@@ -1,15 +1,15 @@
 import argparse
 import logging
 
-from compiler.edsl import HostPlacement
-from compiler.edsl import add
-from compiler.edsl import computation
-from compiler.edsl import constant
-from compiler.edsl import mul
-from compiler.edsl import save
-from logger import get_logger
-from runtime import RemoteRuntime
-from runtime import TestRuntime
+from moose.compiler.edsl import HostPlacement
+from moose.compiler.edsl import add
+from moose.compiler.edsl import computation
+from moose.compiler.edsl import constant
+from moose.compiler.edsl import mul
+from moose.compiler.edsl import save
+from moose.logger import get_logger
+from moose.runtime import RemoteRuntime
+from moose.runtime import TestRuntime
 
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")

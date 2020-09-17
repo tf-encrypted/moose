@@ -4,11 +4,11 @@ from typing import Dict
 from typing import Optional
 from typing import Union
 
-from channels.memory import ChannelManager
-from cluster.cluster_spec import load_cluster_spec
-from compiler.computation import Computation
-from executor.executor import KernelBasedExecutor
-from executor.executor import RemoteExecutor
+from moose.channels.memory import ChannelManager
+from moose.cluster.cluster_spec import load_cluster_spec
+from moose.compiler.computation import Computation
+from moose.executor.executor import KernelBasedExecutor
+from moose.executor.executor import RemoteExecutor
 
 
 class Runtime:
@@ -22,8 +22,12 @@ class Runtime:
             )
             for placement, executor in placement_assignment.items()
         ]
-        joint_task = asyncio.wait(tasks)
-        asyncio.get_event_loop().run_until_complete(joint_task)
+        joint_task = asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        done, _ = asyncio.get_event_loop().run_until_complete(joint_task)
+        if any(task.exception() for task in done):
+            raise Exception(
+                "One or more errors evaluting the computation, see log for details."
+            )
 
 
 class RemoteRuntime(Runtime):
