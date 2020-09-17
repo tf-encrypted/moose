@@ -193,15 +193,19 @@ class KernelBasedExecutor:
                 for (param_name, value_name) in op.inputs.items()
             }
             output = session_values[op.output] if op.output else None
-
-            get_logger().debug(f"{self.name} as {placement}: Enter '{op.name}'")
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session_id=session_id, output=output, **inputs)
                 )
             ]
-            get_logger().debug(f"{self.name} as {placement}: Exit '{op.name}'")
-        await asyncio.wait(tasks)
+        # execute kernels
+        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        # address any errors that may have occurred
+        exceptions = [task.exception() for task in done if task.exception()]
+        for e in exceptions:
+            get_logger().exception(e)
+        if exceptions:
+            raise Exception(f"One or more errors occurred in '{self.name}'")
 
     def schedule_execution(self, comp, placement):
         # TODO(Morten) this is as simple and naive as it gets; we should at least
