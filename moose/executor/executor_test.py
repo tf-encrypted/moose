@@ -1,5 +1,5 @@
 import logging
-import os
+import pathlib
 import unittest
 
 from absl.testing import parameterized
@@ -71,10 +71,8 @@ class ExecutorTest(parameterized.TestCase):
         self.assertEqual(comp_result["result"], 5)
 
     @parameterized.parameters(
-        *(
-            {"op": op, "expected_result": expected_result}
-            for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
-        )
+        {"op": op, "expected_result": expected_result}
+        for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
     )
     def test_op(self, op, expected_result):
         player0, player1 = _create_test_players(2)
@@ -92,6 +90,11 @@ class ExecutorTest(parameterized.TestCase):
 
     def test_run_program(self):
         player0, player1, player2 = _create_test_players(3)
+        test_fixtures_file = str(
+            pathlib.Path(__file__)
+            .parent.absolute()
+            .joinpath("executor_test_fixtures.py")
+        )
 
         @computation
         def my_comp():
@@ -99,12 +102,7 @@ class ExecutorTest(parameterized.TestCase):
                 c0 = constant(3)
                 c1 = constant(2)
             with player1:
-                out = run_program(
-                    "python",
-                    [os.getcwd() + "/executor/executor_test_fixtures.py"],
-                    c0,
-                    c1,
-                )
+                out = run_program("python", [test_fixtures_file], c0, c1,)
             with player2:
                 res = save(out, "result")
             return res
