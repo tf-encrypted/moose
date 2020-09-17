@@ -10,6 +10,7 @@ on:
 jobs:
   ubuntu-ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     strategy:
       matrix:
         python-version: [3.8]
@@ -62,6 +63,7 @@ jobs:
 
   macos-ci:
     runs-on: macos-latest
+    timeout-minutes: 2
     strategy:
       matrix:
         python-version: [3.8]
