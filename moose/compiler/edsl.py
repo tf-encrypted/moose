@@ -25,6 +25,7 @@ from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
 from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
+from moose.compiler.mpspdz.frontend import MpspdzFrontend
 from moose.logger import get_logger
 from moose.runtime import get_runtime
 
@@ -56,6 +57,10 @@ class HostPlacement(Placement):
         return hash(self.name)
 
     def compile(self, context, fn, inputs, output_placements=None, output_type=None):
+        inputs = {
+            f"arg{i}": self.visit(expr, self.name).output
+            for i, expr in enumerate(expression.inputs)
+        }
         return CallPythonFunctionOperation(
             device_name=self.name,
             name=context.get_fresh_name("call_python_function_op"),
@@ -74,14 +79,31 @@ class MpspdzPlacement(Placement):
         return hash(self.name)
 
     def compile(self, context, fn, inputs, output_placements=None):
+        print("***********************")
+        inputs = [
+            context.visit(expression) for expression in inputs
+        ]
+        inputs_players = [
+            op.device_name for op in inputs
+        ]
+        all_players = set(inputs_players) | set(player.name for player in self.players) | set(player.name for player in output_placements)
+        player_indices = { player_name: i for i, player_name in enumerate(all_players) }
+
+        fe = MpspdzFrontend()
+        print(fe.import_global_function(fn,
+            ins=[player_indices[player_name] for player_name in inputs_players],
+            outs=[player_indices[player.name] for player in output_placements]
+           ))
+        return None
         # TODO(Morten)
         # This will likely emit call operations for two or more placements,
         # together with either the .mpc file or bytecode needed for the
         # MP-SPDZ runtime (bytecode is probably best)
-        get_logger().debug(f"Inputs: {inputs}")
-        get_logger().debug(f"Output placements: {output_placements}")
-        raise NotImplementedError()
-
+        # return [
+        #     RunProgramOperation(device_name=player.name) for player in inputs_players
+        #     RunProgramOperation(),
+        #     RunProgramOperation(device_name=output_placements[0].name),
+        #    ]
 
 def get_current_placement():
     global CURRENT_PLACEMENT
@@ -316,15 +338,10 @@ class Compiler:
 
     def visit_ApplyFunctionExpression(self, expression):
         assert isinstance(expression, ApplyFunctionExpression)
-        placement = expression.placement
-        inputs = {
-            f"arg{i}": self.visit(expr, placement.name).output
-            for i, expr in enumerate(expression.inputs)
-        }
-        return placement.compile(
+        return expression.placement.compile(
             context=self,
             fn=expression.fn,
-            inputs=inputs,
+            inputs=expression.inputs,
             output_placements=expression.output_placements,
             output_type=expression.output_type,
         )

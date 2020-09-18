@@ -18,8 +18,8 @@ mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1])
 
 
 @function
-def my_function(x, y):
-    return x * y
+def my_function(x, y, z):
+    return x * y + z
 
 
 @computation
@@ -27,6 +27,7 @@ def my_comp():
 
     with inputter0:
         x = constant(1)
+        z = constant(3)
 
     with inputter1:
         y = constant(2)
@@ -43,10 +44,23 @@ def my_comp():
         # note also that we want to infer full type signatures in
         # the future, which should include expected output type and
         # hence placement information, making this less of an issue.
-        z = my_function(x, y, output_placements=[outputter])
+        v = my_function(x, y, z, output_placements=[outputter])
 
     with outputter:
-        res = save(z, "z")
+        res = save(v, "v")
+
+    # expect from MLIR as
+    """
+    !mpspdz.func @foo() {
+        %x = mpspdz.get_input_from 1: !mpspdz.sint
+        %y = mpspdz.get_input_from 2: !mpspdz.sint
+        %z = mpspdz.get_input_from 1: !mpspdz.sint
+        %t1 = mpspdz.mul %x, %y: !mpspdz.sint
+        %t2 = mpspdz.mul %t1, %z: !mpspdz.sint
+        %out = mpspdz.reveal.sint %t2: !mpspdz.sint to !mpspdz.cint
+        (maybe) mpspdz.reveal_to %t2 1: !mpspdz.unit
+    }
+    """
 
     return res
 
