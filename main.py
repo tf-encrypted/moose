@@ -23,30 +23,31 @@ if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 
-inputter0 = HostPlacement(name="inputter0")
-inputter1 = HostPlacement(name="inputter1")
-aggregator = HostPlacement(name="aggregator")
-outputter = HostPlacement(name="outputter")
+inputter0 = Principal(name="inputter0")
+inputter1 = Principal(name="inputter1")
 
+inputter0_plc = HostPlacement(principal=inputter0)
+inputter1_plc = HostPlacement(principal=inputter1)
+aggregator_plc = HostPlacement(name="aggregator")
+outputter_plc = HostPlacement(name="outputter")
+mpspdz_plc = MpspdzPlacement([aggregator_plc])
+
+
+@function
+def foo(x, y):
+    return x + y
 
 @computation
-def my_comp():
+def my_inner_comp(y):
+    z = mul(y, 2, placement=y.placement)
+    return z
 
-    with inputter0:
-        x0 = constant(5)
-
-    with inputter1:
-        x1 = constant(7)
-
-    with aggregator:
-        y0 = add(x0, x0)
-        y1 = mul(x1, x1)
-        y = add(y0, y1)
-
-    with outputter:
-        res = save(y, "y")
-
-    return res
+@computation
+def my_outer_comp():
+    x0 = constant(5, placement=inputter0_plc)
+    x1 = constant(7, placement=inputter1_plc)
+    y = apply(foo, (x0, x1), placement=mpspdz_plc)  # may compile into call
+    z = call(my_inner_comp, y)
 
 
 concrete_comp = my_comp.trace_func()
