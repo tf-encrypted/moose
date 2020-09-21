@@ -7,8 +7,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
-
-OPS_REGISTER = {}
+import moose.compiler.computation
 
 
 @dataclass
@@ -112,28 +111,11 @@ class Computation:
         return Computation(Graph(nodes))
 
 
-def register_op(op):
-    OPS_REGISTER[op.identifier()] = op
-
-
 def select_op(op_name):
     name = op_name.split("_")[0]
     if "operation" in name:
         name = re.sub("operation", "", name)
     name = name[0].upper() + name[1:] + "Operation"
-    op = OPS_REGISTER[name]
+    op = getattr(moose.compiler.computation, name)
     return op
 
-
-# NOTE: this is only needed for gRPC so far
-register_op(AddOperation)
-register_op(CallPythonFunctionOperation)
-register_op(RunProgramOperation)
-register_op(LoadOperation)
-register_op(ConstantOperation)
-register_op(DivOperation)
-register_op(MulOperation)
-register_op(SaveOperation)
-register_op(SendOperation)
-register_op(SubOperation)
-register_op(ReceiveOperation)
