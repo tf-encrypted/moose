@@ -26,7 +26,7 @@ class Runtime:
         done, _ = asyncio.get_event_loop().run_until_complete(joint_task)
         if any(task.exception() for task in done):
             raise Exception(
-                "One or more errors evaluting the computation, see log for details."
+                f"One or more errors evaluting the computation, see log for details: {done}"
             )
 
 
