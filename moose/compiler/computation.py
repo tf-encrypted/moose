@@ -1,4 +1,5 @@
 import json
+import marshal
 import re
 from dataclasses import asdict
 from dataclasses import dataclass
@@ -101,11 +102,11 @@ class Computation:
         return self.graph.nodes.get(name)
 
     def serialize(self):
-        return json.dumps(asdict(self)).encode("utf-8")
+        return marshal.dumps(asdict(self))
 
     @classmethod
     def deserialize(cls, bytes_stream):
-        computation_dict = json.loads(bytes_stream.decode("utf-8"))
+        computation_dict = marshal.loads(bytes_stream)
         nodes_dict = computation_dict["graph"]["nodes"]
         nodes = {node: select_op(node)(**args) for node, args in nodes_dict.items()}
         return Computation(Graph(nodes))
