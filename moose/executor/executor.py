@@ -1,5 +1,6 @@
 import asyncio
 import json
+import pickle
 import subprocess
 import tempfile
 from collections import defaultdict
@@ -73,8 +74,8 @@ class DeserializeKernel(Kernel):
     async def execute(self, op, session_id, value, output=None):
         assert isinstance(op, DeserializeOperation)
         value = await value
-        output.set_result(value)
-        return value
+        value = _deserialize(value, op.value_type)
+        return output.set_result(value)
 
 
 class DivKernel(Kernel):
@@ -153,8 +154,8 @@ class SerializeKernel(Kernel):
     async def execute(self, op, session_id, value, output=None):
         assert isinstance(op, SerializeOperation)
         value = await value
-        output.set_result(value)
-        return value
+        value = _serialize(value, op.value_type)
+        return output.set_result(value)
 
 
 class SendKernel(Kernel):
@@ -245,3 +246,19 @@ class RemoteExecutor:
             computation=comp_ser, placement=placement, session_id=session_id
         )
         _ = await self._stub.RunComputation(compute_request)
+
+
+def _serialize(value, value_type):
+    if value_type == 'numpy':
+        return value.dumps()
+    else:
+        # Handle float, int etc.
+        return pickle.dumps(value)
+
+def _deserialize(value, value_type):
+    if value_type == 'numpy':
+        # Use pcikle because np.loads will be deprecated
+        return pickle.loads(value)
+    else:
+        # Handle float, int etc.
+        return pickle.loads(value)

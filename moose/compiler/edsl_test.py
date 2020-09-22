@@ -114,7 +114,7 @@ class EdslTest(parameterized.TestCase):
         assert send_op == SendOperation(
             device_name="player0",
             name="send_op0",
-            inputs={"value": "constant0"},
+            inputs={"value": "serialize0"},
             output=None,
             sender="player0",
             receiver="player1",

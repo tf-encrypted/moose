@@ -14,7 +14,7 @@ service Executor {
 // handlers would be responsible for reconstructing 
 // object based on stream of bytes
 message SetValueRequest {
-    float value = 1;
+    bytes value = 1;
     string rendezvous_key = 2;
     int64 session_id = 3;
 }
@@ -27,7 +27,7 @@ message GetValueRequest {
 }
 
 message GetValueResponse {
-    float value = 1;
+    bytes value = 1;
 }
 
 message RunComputationRequest {

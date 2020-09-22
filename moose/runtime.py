@@ -29,7 +29,9 @@ class Runtime:
         for e in exceptions:
             get_logger().exception(e)
         if exceptions:
-            raise Exception("One or more errors evaluting the computation, see log for details")
+            raise Exception(
+                "One or more errors evaluting the computation, see log for details"
+            )
 
 
 class RemoteRuntime(Runtime):
