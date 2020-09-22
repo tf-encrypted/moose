@@ -9,6 +9,7 @@ from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import KernelBasedExecutor
 from moose.executor.executor import RemoteExecutor
+from moose.logger import get_logger
 
 
 class Runtime:
@@ -24,10 +25,11 @@ class Runtime:
         ]
         joint_task = asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
         done, _ = asyncio.get_event_loop().run_until_complete(joint_task)
-        if any(task.exception() for task in done):
-            raise Exception(
-                f"One or more errors evaluting the computation, see log for details: {done}"
-            )
+        exceptions = [task.exception() for task in done if task.exception()]
+        for e in exceptions:
+            get_logger().exception(e)
+        if exceptions:
+            raise Exception("One or more errors evaluting the computation, see log for details")
 
 
 class RemoteRuntime(Runtime):
