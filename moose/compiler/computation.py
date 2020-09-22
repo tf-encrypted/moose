@@ -112,10 +112,11 @@ class Computation:
 
 
 def select_op(op_name):
-    name = op_name.split("_")[0]
-    if "operation" in name:
-        name = re.sub("operation", "", name)
-    name = name[0].upper() + name[1:] + "Operation"
+    # To handle addoperation_op0, muloperation_op0 etc.
+    if "operation" in op_name:
+        op_name = re.sub("operation", "", op_name)
+    name = op_name.split("_")[:-1]
+    name = ''.join([n.title() for n in name]) + "Operation"
     op = getattr(moose.compiler.computation, name)
     return op
 
