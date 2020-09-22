@@ -12,6 +12,7 @@ from moose.compiler.computation import AddOperation
 from moose.compiler.computation import CallPythonFunctionOperation
 from moose.compiler.computation import Computation
 from moose.compiler.computation import ConstantOperation
+from moose.compiler.computation import DeserializeOperation
 from moose.compiler.computation import DivOperation
 from moose.compiler.computation import Graph
 from moose.compiler.computation import LoadOperation
@@ -21,6 +22,7 @@ from moose.compiler.computation import ReceiveOperation
 from moose.compiler.computation import RunProgramOperation
 from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
+from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
 from moose.logger import get_logger
 from moose.runtime import get_runtime
@@ -52,13 +54,14 @@ class HostPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
-    def compile(self, context, fn, inputs, output_placements=None):
+    def compile(self, context, fn, inputs, output_placements=None, output_type=None):
         return CallPythonFunctionOperation(
             device_name=self.name,
             name=context.get_fresh_name("call_python_function_op"),
             pickled_fn=dill.dumps(fn),
             inputs=inputs,
             output=context.get_fresh_name("call_python_function"),
+            output_type=output_type,
         )
 
 
@@ -105,6 +108,7 @@ class BinaryOpExpression(Expression):
 class ApplyFunctionExpression(Expression):
     fn: Callable
     output_placements: Optional[List[Placement]]
+    output_type: Optional
 
     def __hash__(self):
         return id(self)
@@ -196,17 +200,21 @@ def sub(lhs, rhs):
     )
 
 
-def function(fn):
-    @wraps(fn)
-    def wrapper(*inputs, output_placements=None, **kwargs):
-        return ApplyFunctionExpression(
-            fn=fn,
-            placement=get_current_placement(),
-            inputs=inputs,
-            output_placements=output_placements,
-        )
+def function(input_type=None, output_type=None):
+    def callable(fn):
+        @wraps(fn)
+        def wrapper(*inputs, output_placements=None, **kwargs):
+            return ApplyFunctionExpression(
+                fn=fn,
+                placement=get_current_placement(),
+                inputs=inputs,
+                output_placements=output_placements,
+                output_type=output_type,
+            )
 
-    return wrapper
+        return wrapper
+
+    return callable
 
 
 class Compiler:
@@ -233,10 +241,22 @@ class Compiler:
             assert source_device != destination_device
             operation_at_source = self.known_operations[expression][source_device]
             rendezvous_key = self.get_fresh_name("rendezvous_key")
+            # Get output type from pyfunction if any
+            value_type = getattr(expression, "output_type", None)
+            serialize_name = self.get_fresh_name("serialize")
+            receive_name = self.get_fresh_name("receive")
+            deserialize_name = self.get_fresh_name("deserialize")
+            serialize_operation = SerializeOperation(
+                device_name=source_device,
+                name=self.get_fresh_name("serialize_op"),
+                inputs={"value": operation_at_source.output},
+                output=serialize_name,
+                value_type=value_type,
+            )
             send_operation = SendOperation(
                 device_name=source_device,
                 name=self.get_fresh_name("send_op"),
-                inputs={"value": operation_at_source.output},
+                inputs={"value": serialize_name},
                 output=None,
                 sender=source_device,
                 receiver=destination_device,
@@ -249,10 +269,24 @@ class Compiler:
                 receiver=destination_device,
                 rendezvous_key=rendezvous_key,
                 inputs={},
-                output=self.get_fresh_name("receive"),
+                output=receive_name,
             )
-            self.operations += [send_operation, receive_operation]
-            self.known_operations[expression][destination_device] = receive_operation
+            deserialize_operation = DeserializeOperation(
+                device_name=destination_device,
+                name=self.get_fresh_name("deserialize_op"),
+                inputs={"value": receive_name},
+                output=deserialize_name,
+                value_type=value_type,
+            )
+            self.operations += [
+                serialize_operation,
+                send_operation,
+                receive_operation,
+                deserialize_operation,
+            ]
+            self.known_operations[expression][
+                destination_device
+            ] = deserialize_operation
         return self.known_operations[expression][destination_device]
 
     def visit(self, expression, destination_device=None):
@@ -286,11 +320,13 @@ class Compiler:
             f"arg{i}": self.visit(expr, placement.name).output
             for i, expr in enumerate(expression.inputs)
         }
+        output_type = expression.output_type
         return placement.compile(
             context=self,
             fn=expression.fn,
             inputs=inputs,
             output_placements=expression.output_placements,
+            output_type=output_type,
         )
 
     def visit_ConstantExpression(self, constant_expression):

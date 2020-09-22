@@ -1,6 +1,8 @@
 import argparse
 import logging
 
+import numpy as np
+
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
@@ -22,30 +24,49 @@ parser.add_argument(
 args = parser.parse_args()
 
 inputter0 = HostPlacement(name="inputter0")
-inputter1 = HostPlacement(name="inputter1")
+# inputter1 = HostPlacement(name="inputter1")
 aggregator = HostPlacement(name="aggregator")
 outputter = HostPlacement(name="outputter")
 
 
-@function
+@function()
 def mul_fn(x, y):
     return x * y
+
+
+@function(output_type="numpy")
+def load_data():
+    return np.array([3])
+
+
+# @computation
+# def my_comp():
+
+#     with inputter0:
+#         c0_0 = constant(1)
+#         c1_0 = constant(2)
+#         x0 = mul_fn(c0_0, c1_0)
+
+#     with inputter1:
+#         x1 = load_data()
+
+#     with aggregator:
+#         y = add(x0, x1)
+
+#     with outputter:
+#         res = save(y, "y")
+
+#     return res
 
 
 @computation
 def my_comp():
 
     with inputter0:
-        c0_0 = constant(1)
-        c1_0 = constant(2)
-        x0 = mul_fn(c0_0, c1_0)
-
-    with inputter1:
-        c0_1 = constant(2)
-        c1_1 = constant(3)
-        x1 = mul_fn(c0_1, c1_1)
+        x1 = load_data()
 
     with aggregator:
+        x0 = constant(3)
         y = add(x0, x1)
 
     with outputter:
@@ -55,6 +76,7 @@ def my_comp():
 
 
 concrete_comp = my_comp.trace_func()
+print(concrete_comp)
 
 if __name__ == "__main__":
 
@@ -68,11 +90,16 @@ if __name__ == "__main__":
 
     runtime.evaluate_computation(
         computation=concrete_comp,
+        # placement_assignment={
+        #     inputter0: runtime.executors[0],
+        #     inputter1: runtime.executors[1],
+        #     aggregator: runtime.executors[2],
+        #     outputter: runtime.executors[3],
+        # },
         placement_assignment={
             inputter0: runtime.executors[0],
-            inputter1: runtime.executors[1],
-            aggregator: runtime.executors[2],
-            outputter: runtime.executors[3],
+            aggregator: runtime.executors[1],
+            outputter: runtime.executors[2],
         },
     )
 

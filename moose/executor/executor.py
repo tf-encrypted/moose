@@ -10,6 +10,7 @@ from grpc.experimental import aio
 from moose.compiler.computation import AddOperation
 from moose.compiler.computation import CallPythonFunctionOperation
 from moose.compiler.computation import ConstantOperation
+from moose.compiler.computation import DeserializeOperation
 from moose.compiler.computation import DivOperation
 from moose.compiler.computation import LoadOperation
 from moose.compiler.computation import MulOperation
@@ -17,6 +18,7 @@ from moose.compiler.computation import ReceiveOperation
 from moose.compiler.computation import RunProgramOperation
 from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
+from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
 from moose.logger import get_logger
 from moose.protos import executor_pb2
@@ -65,6 +67,14 @@ class ConstantKernel(Kernel):
     def execute_synchronous_block(self, op, session_id):
         assert isinstance(op, ConstantOperation)
         return op.value
+
+
+class DeserializeKernel(Kernel):
+    async def execute(self, op, session_id, value, output=None):
+        assert isinstance(op, DeserializeOperation)
+        value = await value
+        output.set_result(value)
+        return value
 
 
 class DivKernel(Kernel):
@@ -139,6 +149,14 @@ class SaveKernel(Kernel):
         get_logger().debug(f"Saved {value}")
 
 
+class SerializeKernel(Kernel):
+    async def execute(self, op, session_id, value, output=None):
+        assert isinstance(op, SerializeOperation)
+        value = await value
+        output.set_result(value)
+        return value
+
+
 class SendKernel(Kernel):
     def __init__(self, channel_manager):
         self.channel_manager = channel_manager
@@ -163,6 +181,8 @@ class KernelBasedExecutor:
             SaveOperation: SaveKernel(store),
             SendOperation: SendKernel(channel_manager),
             ReceiveOperation: ReceiveKernel(channel_manager),
+            DeserializeOperation: DeserializeKernel(),
+            SerializeOperation: SerializeKernel(),
             ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),

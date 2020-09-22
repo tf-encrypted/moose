@@ -7,6 +7,7 @@ from typing import Dict
 from typing import List
 from typing import Optional
 from typing import Union
+
 import moose.compiler.computation
 
 
@@ -30,11 +31,17 @@ class AddOperation(Operation):
 @dataclass
 class CallPythonFunctionOperation(Operation):
     pickled_fn: bytes
+    output_type: Optional
 
 
 @dataclass
 class ConstantOperation(Operation):
     value: Union[int, float]
+
+
+@dataclass
+class DeserializeOperation(Operation):
+    value_type: str
 
 
 @dataclass
@@ -83,6 +90,11 @@ class SendOperation(Operation):
 
 
 @dataclass
+class SerializeOperation(Operation):
+    value_type: str
+
+
+@dataclass
 class Graph:
     nodes: Dict[str, Operation]
 
@@ -116,9 +128,8 @@ def select_op(op_name):
     if "operation" in op_name:
         op_name = re.sub("operation", "", op_name)
     name = op_name.split("_")[:-1]
-    name = ''.join([n.title() for n in name]) + "Operation"
+    name = "".join([n.title() for n in name]) + "Operation"
     op = getattr(moose.compiler.computation, name, None)
     if op is None:
         raise ValueError(f"Unknown Moose runtime operation '{name}'")
     return op
-
