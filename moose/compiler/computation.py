@@ -117,6 +117,8 @@ def select_op(op_name):
         op_name = re.sub("operation", "", op_name)
     name = op_name.split("_")[:-1]
     name = ''.join([n.title() for n in name]) + "Operation"
-    op = getattr(moose.compiler.computation, name)
+    op = getattr(moose.compiler.computation, name, None)
+    if op is None:
+        raise ValueError(f"Unknown Moose runtime operation '{name}'")
     return op
 
