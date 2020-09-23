@@ -1,5 +1,6 @@
 from collections import defaultdict
 from dataclasses import dataclass
+from functools import partial
 from functools import wraps
 from typing import Callable
 from typing import List
@@ -200,22 +201,21 @@ def sub(lhs, rhs):
     )
 
 
-def function(input_type=None, output_type=None):
-    def callable(fn):
-        @wraps(fn)
-        def wrapper(*inputs, output_placements=None, **kwargs):
-            return ApplyFunctionExpression(
-                fn=fn,
-                placement=get_current_placement(),
-                inputs=inputs,
-                output_placements=output_placements,
-                output_type=output_type,
-            )
+def function(fn=None, output_type=None):
+    if fn is None:
+        return partial(function, output_type=output_type)
+        
+    @wraps(fn)
+    def wrapper(*inputs, output_placements=None, **kwargs):
+        return ApplyFunctionExpression(
+            fn=fn,
+            placement=get_current_placement(),
+            inputs=inputs,
+            output_placements=output_placements,
+            output_type=output_type,
+        )
 
-        return wrapper
-
-    return callable
-
+    return wrapper
 
 class Compiler:
     def __init__(self):
