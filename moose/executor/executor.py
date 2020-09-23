@@ -8,6 +8,8 @@ from collections import defaultdict
 import dill
 from grpc.experimental import aio
 
+import tensorflow as tf
+
 from moose.compiler.computation import AddOperation
 from moose.compiler.computation import CallPythonFunctionOperation
 from moose.compiler.computation import ConstantOperation
@@ -249,10 +251,14 @@ class RemoteExecutor:
 
 
 def _serialize(value, value_type):
+    # breakpoint()
     if value_type == 'numpy':
         return value.dumps()
     elif value_type == 'keras_model':
-        return dill.dumps(value)
+        # Model with TF 2.3.0 can't be dill
+        model_json = value.to_json()
+        weights = value.get_weights()
+        return dill.dumps((model_json, weights))
     else:
         # Handle float, int etc.
         return dill.dumps(value)
@@ -262,7 +268,10 @@ def _deserialize(value, value_type):
         # Use pcikle because np.loads will be deprecated
         return pickle.loads(value)
     elif value_type == 'keras_model':
-        return dill.loads(value)
+        model_json, weights = dill.loads(value)
+        model = tf.keras.models.model_from_json(model_json)
+        model.set_weights(weights)
+        return model
     else:
         # Handle float, int etc.
         return dill.loads(value)
