@@ -251,14 +251,18 @@ class RemoteExecutor:
 def _serialize(value, value_type):
     if value_type == 'numpy':
         return value.dumps()
+    elif value_type == 'keras_model':
+        return dill.dumps(value)
     else:
         # Handle float, int etc.
-        return pickle.dumps(value)
+        return dill.dumps(value)
 
 def _deserialize(value, value_type):
     if value_type == 'numpy':
         # Use pcikle because np.loads will be deprecated
         return pickle.loads(value)
+    elif value_type == 'keras_model':
+        return dill.loads(value)
     else:
         # Handle float, int etc.
-        return pickle.loads(value)
+        return dill.loads(value)
