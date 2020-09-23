@@ -135,56 +135,64 @@ class SaveExpression(Expression):
         return id(self)
 
 
-def add(lhs, rhs):
+def add(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
     return BinaryOpExpression(
-        op_type=AddOperation, placement=get_current_placement(), inputs=[lhs, rhs]
+        op_type=AddOperation, placement=placement, inputs=[lhs, rhs]
     )
 
 
-def constant(value):
-    return ConstantExpression(placement=get_current_placement(), inputs=[], value=value)
+def constant(value, placement=None):
+    placement = placement or get_current_placement()
+    return ConstantExpression(placement=placement, inputs=[], value=value)
 
 
-def div(lhs, rhs):
+def div(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
     return BinaryOpExpression(
-        op_type=DivOperation, placement=get_current_placement(), inputs=[lhs, rhs],
+        op_type=DivOperation, placement=placement, inputs=[lhs, rhs],
     )
 
 
-def load(key):
-    return LoadExpression(placement=get_current_placement(), inputs=[], key=key)
+def load(key, placement=None):
+    placement = placement or get_current_placement()
+    return LoadExpression(placement=placement, inputs=[], key=key)
 
 
-def mul(lhs, rhs):
+def mul(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
     return BinaryOpExpression(
-        op_type=MulOperation, placement=get_current_placement(), inputs=[lhs, rhs]
+        op_type=MulOperation, placement=placement, inputs=[lhs, rhs]
     )
 
 
-def run_program(path, args, *inputs):
+def run_program(path, args, *inputs, placement=None):
     assert isinstance(path, str)
     assert isinstance(args, (list, tuple))
+    placement = placement or get_current_placement()
     return RunProgramExpression(
-        path=path, args=args, placement=get_current_placement(), inputs=inputs,
+        path=path, args=args, placement=placement, inputs=inputs,
     )
 
 
-def save(value, key):
+def save(value, key, placement=None):
     assert isinstance(value, Expression)
-    return SaveExpression(placement=get_current_placement(), inputs=[value], key=key)
+    placement = placement or get_current_placement()
+    return SaveExpression(placement=placement, inputs=[value], key=key)
 
 
-def sub(lhs, rhs):
+def sub(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
     return BinaryOpExpression(
-        op_type=SubOperation, placement=get_current_placement(), inputs=[lhs, rhs]
+        op_type=SubOperation, placement=placement, inputs=[lhs, rhs]
     )
 
 
