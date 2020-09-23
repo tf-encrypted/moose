@@ -31,13 +31,13 @@ outputter = HostPlacement(name="outputter")
 
 # We should probably introduce a type instead of having 
 # this ugly string for output type
-@function(output_type="numpy")
+@function(output_type="numpy.array")
 def load_data():
     import numpy
     return numpy.array([5])
 
 
-@function(output_type="keras_model")
+@function(output_type="tf.keras.model")
 def load_model():
     import tensorflow as tf
     model = tf.keras.models.Sequential([tf.keras.layers.Dense(1)])
@@ -45,7 +45,7 @@ def load_model():
     return model
 
 
-@function(output_type="numpy")
+@function(output_type="numpy.array")
 def model_predict(model, input):
     import tensorflow
     return model.predict(input)

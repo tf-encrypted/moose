@@ -320,13 +320,12 @@ class Compiler:
             f"arg{i}": self.visit(expr, placement.name).output
             for i, expr in enumerate(expression.inputs)
         }
-        output_type = expression.output_type
         return placement.compile(
             context=self,
             fn=expression.fn,
             inputs=inputs,
             output_placements=expression.output_placements,
-            output_type=output_type,
+            output_type=expression.output_type,
         )
 
     def visit_ConstantExpression(self, constant_expression):

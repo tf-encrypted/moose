@@ -1,6 +1,5 @@
 import asyncio
 import json
-import pickle
 import subprocess
 import tempfile
 from collections import defaultdict
@@ -76,8 +75,21 @@ class DeserializeKernel(Kernel):
     async def execute(self, op, session_id, value, output=None):
         assert isinstance(op, DeserializeOperation)
         value = await value
-        value = _deserialize(value, op.value_type)
-        return output.set_result(value)
+        value_type = op.value_type
+        # value = _deserialize(value, op.value_type)
+        if value_type == 'numpy.array':
+            # Use pcikle because np.loads will be deprecated
+            value = dill.loads(value)
+            return output.set_result(value)
+        elif value_type == 'tf.keras.model':
+            model_json, weights = dill.loads(value)
+            model = tf.keras.models.model_from_json(model_json)
+            model.set_weights(weights)
+            return output.set_result(model)
+        else:
+            # Handle float, int etc.
+            value = dill.loads(value)
+            return output.set_result(value)
 
 
 class DivKernel(Kernel):
@@ -156,8 +168,20 @@ class SerializeKernel(Kernel):
     async def execute(self, op, session_id, value, output=None):
         assert isinstance(op, SerializeOperation)
         value = await value
-        value = _serialize(value, op.value_type)
-        return output.set_result(value)
+        value_type = op.value_type
+        if value_type == 'numpy.array':
+            value_ser = dill.dumps(value)
+            return output.set_result(value_ser)
+        elif value_type == 'tf.keras.model':
+        # Model with TF 2.3.0 can't be dilled
+            model_json = value.to_json()
+            weights = value.get_weights()
+            value_ser = dill.dumps((model_json, weights))
+            return output.set_result(value_ser)
+        else:
+        # Handle float, int etc.
+            value_ser = dill.dumps(value)
+            return output.set_result(value_ser)
 
 
 class SendKernel(Kernel):
@@ -249,29 +273,3 @@ class RemoteExecutor:
         )
         _ = await self._stub.RunComputation(compute_request)
 
-
-def _serialize(value, value_type):
-    # breakpoint()
-    if value_type == 'numpy':
-        return value.dumps()
-    elif value_type == 'keras_model':
-        # Model with TF 2.3.0 can't be dill
-        model_json = value.to_json()
-        weights = value.get_weights()
-        return dill.dumps((model_json, weights))
-    else:
-        # Handle float, int etc.
-        return dill.dumps(value)
-
-def _deserialize(value, value_type):
-    if value_type == 'numpy':
-        # Use pcikle because np.loads will be deprecated
-        return pickle.loads(value)
-    elif value_type == 'keras_model':
-        model_json, weights = dill.loads(value)
-        model = tf.keras.models.model_from_json(model_json)
-        model.set_weights(weights)
-        return model
-    else:
-        # Handle float, int etc.
-        return dill.loads(value)
