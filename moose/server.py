@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 
 from grpc.experimental import aio
 
@@ -9,18 +8,19 @@ from moose.protos import executor_pb2_grpc
 
 
 class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
-    def __init__(self, executor=None):
-        self.buffer = defaultdict(asyncio.get_event_loop().create_future)
+    def __init__(self, executor, buffer):
+        self.buffer = buffer
         self.executor = executor
 
     async def GetValue(self, request, context):
+        get_logger().debug(f"Received value for key {request.rendezvous_key} for session {request.session_id}")
         key = (request.session_id, request.rendezvous_key)
-        value = await self.buffer[key]
+        value = await self.buffer.get(key)
         return executor_pb2.GetValueResponse(value=value)
 
     async def SetValue(self, request, context):
         key = (request.session_id, request.rendezvous_key)
-        self.buffer[key].set_result(request.value)
+        await self.buffer.put(key, request.value)
         return executor_pb2.SetValueResponse()
 
     async def RunComputation(self, request, context):
@@ -34,7 +34,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
 class Server:
     def __init__(self, host, port, executor):
         self._endpoint = f"{host}:{port}"
-        self._servicer = ExecutorServicer(executor)
+        self._servicer = ExecutorServicer(executor, AsyncStore())
         self._server = None
 
     async def start(self):
