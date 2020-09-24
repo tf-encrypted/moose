@@ -1,11 +1,10 @@
 import ast
 import inspect
-import sys
 import textwrap
-import traceback
 from dataclasses import dataclass
 from typing import List
 
+from moose.compiler.computation import RunProgramOperation
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import Placement
 from moose.logger import get_logger
@@ -19,9 +18,9 @@ class MpspdzPlacement(Placement):
         return hash(self.name)
 
     def compile(self, context, fn, inputs, output_placements=None):
-        print("***********************")
-        inputs = [context.visit(expression) for expression in inputs]
-        inputs_players = [op.device_name for op in inputs]
+        input_ops = [context.visit(expression) for expression in inputs]
+
+        inputs_players = [op.device_name for op in input_ops]
         all_players = (
             set(inputs_players)
             | set(player.name for player in self.players)
@@ -29,250 +28,246 @@ class MpspdzPlacement(Placement):
         )
         player_indices = {player_name: i for i, player_name in enumerate(all_players)}
 
-        fe = MpspdzFrontend()
-        print(
-            fe.import_global_function(
-                fn,
-                ins=[player_indices[player_name] for player_name in inputs_players],
-                outs=[player_indices[player.name] for player in output_placements],
-            )
+        input_indices = [player_indices[player_name] for player_name in inputs_players]
+        (output_index,) = [player_indices[player.name] for player in output_placements]
+        mlir_string = compile_to_mlir(fn, input_indices, output_index)
+        get_logger().debug(mlir_string)
+
+        for player_name, player_index in player_indices.items():
+            # operations for saving the player's inputs to disk locally
+            context.operations += [
+                RunProgramOperation(
+                    device_name=player_name,
+                    name=context.get_fresh_name("mpspdz_input_op"),
+                    path="cat",
+                    args=[],
+                    inputs=input_op.name,
+                    output=None,
+                )
+                for input_op in input_ops
+                if input_op.device_name == player_name
+            ]
+            # operation for the player to execute MP-SPDZ
+            context.operations += [
+                RunProgramOperation(
+                    device_name=player_name,
+                    name=context.get_fresh_name("mpspdz_call_op"),
+                    path="./mpspdz",
+                    args=["--mlir", mlir_string],
+                    inputs=[],  # TODO would be nice with control deps or unit values!
+                    output=None,
+                )
+            ]
+
+        for op in context.operations:
+            get_logger().debug(op)
+
+        # operation for loading the output (we assume there's only one)
+        (output_player,) = output_placements
+        output_op = RunProgramOperation(
+            device_name=output_player,
+            name=context.get_fresh_name("mpspdz_output_op"),
+            path="./mpspdz",
+            args=[],
+            inputs=[],  # TODO would be nice with control deps or unit values!
+            output=context.get_fresh_name("mpspdz_output"),
         )
-        return None
-        # TODO(Morten)
-        # This will likely emit call operations for two or more placements,
-        # together with either the .mpc file or bytecode needed for the
-        # MP-SPDZ runtime (bytecode is probably best)
-        # return [
-        #     RunProgramOperation(device_name=player.name) for player in inputs_players
-        #     RunProgramOperation(),
-        #     RunProgramOperation(device_name=output_placements[0].name),
-        #    ]
+        return output_op
 
 
-class FunctionContext:
-    """Accounting information for importing a function."""
+def compile_to_mlir(fn, input_indices, output_index):
+    fn_ast = extract_ast(fn)
+    input_names = [arg.arg for arg in fn_ast.args.args]
 
-    def __init__(self, func_name):  # pass args
-        self.variable_counter = 0
-        self.mlir_string = ""
-        self.func_name = func_name
+    module = MlirModule()
 
-    def update_io(self, in_ids, out_ids):
-        self.in_ids = in_ids
-        self.out_ids = out_ids
+    # add main function
+    main_function = MlirFunction(name="main", args=[], type=None)
+    get_input_ops = [
+        MlirOperation(
+            name=arg_name, value=f"mpspdz.get_input_from {index}", type="!mpspdz.sint",
+        )
+        for arg_name, index in zip(input_names, input_indices)
+    ]
+    call_op = MlirOperation(
+        name=main_function.get_fresh_name(),
+        value=f"mpspdz.call @{fn_ast.name} %x, %y, %z",
+        type="!mpspdz.sint",
+    )
+    reveal_op = MlirOperation(
+        name=None,
+        value=f"mpspdz.reveal_to %{call_op.name} {output_index}",
+        type="!mpspdz.sint -> !mpspdz.cint",
+    )
+    main_function.add_operations(*get_input_ops, call_op, reveal_op)
+    module.add_function(main_function)
 
-    def get_fresh_name(self) -> str:
-        self.variable_counter += 1
-        return "v" + str(self.variable_counter)
+    # add function for `fn`
+    function_visitor = FunctionVisitor(module)
+    function_visitor.visit(fn_ast)
 
-    def emit_mlir(self, instruction):
-        self.mlir_string += instruction + "\n"
-        get_logger().debug(f"\n{self.mlir_string}")
+    # emit and return MLIR code
+    return module.emit_mlir()
 
-    def emit_final_mlir(self):
+
+def extract_ast(fn):
+    filename = inspect.getsourcefile(fn)
+    source_lines, start_lineno = inspect.getsourcelines(fn)
+    source = "".join(source_lines)
+    source = textwrap.dedent(source)
+    ast_root = ast.parse(source, filename=filename)
+    ast.increment_lineno(ast_root, start_lineno - 1)
+    ast_fn = ast_root.body[0]
+    return ast_fn
+
+
+class MlirModule:
+    def __init__(self, name=None):
+        self.name = name
+        self.functions = []
+        self.tmp_counter = 0
+
+    def add_function(self, function):
+        self.functions.append(function)
+
+    def emit_mlir(self, indent_spaces=0):
+        indent = " " * indent_spaces
+        name = f" @{self.name}" if self.name else ""
         return (
-            "module {\n"
-            + f"mpspdz.func @{self.func_name}()"
-            + " {\n"
-            + f"{self.mlir_string}"
-            + "\n}"
-            + "}"
+            f"{indent}module{name} {{\n"
+            + "\n".join(
+                function.emit_mlir(indent_spaces + 2) for function in self.functions
+            )
+            + f"\n{indent}}}"
         )
 
-    def emit_mlir_private_inputs(self, var_names):
-        party_ids = self.in_ids
-        assert len(party_ids) == len(var_names)
-        for i in range(len(party_ids)):
-            self.mlir_string += (
-                f"%{var_names[i].arg} = mpspdz.get_input_from %{party_ids[i]}: !mpspdz.sint"
-                + "\n"
-            )
 
-    def emlit_mlir_private_output(self, var_name):
-        for party_id in self.out_ids:
-            self.mlir_string += (
-                f"!mpspdz.reveal_to %{var_name} {party_id}: !mpspdz.unit \n"
-            )
+class MlirFunction:
+    def __init__(self, name, args, type):
+        self.name = name
+        self.args = args
+        self.type = type
+        self.ops = []
+        self.tmp_counter = 0
 
+    def names(self):
+        return [op.name for op in self.ops] + [arg.name for arg in self.args]
 
-class MpspdzFrontend:
-    """Frontend for importing various entities into a Module."""
+    def get_fresh_name(self):
+        while f"tmp{self.tmp_counter}" in self.names():
+            self.tmp_counter += 1
+        return f"tmp{self.tmp_counter}"
 
-    def __init__(self):
-        pass
+    def add_operation(self, operation):
+        self.ops.append(operation)
 
-    def import_global_function(self, f, ins, outs):
-        print("Indices printing")
-        print(ins)
-        print(str(outs))
-        filename = inspect.getsourcefile(f)
-        source_lines, start_lineno = inspect.getsourcelines(f)
-        source = "".join(source_lines)
-        source = textwrap.dedent(source)
-        ast_root = ast.parse(source, filename=filename)
-        ast.increment_lineno(ast_root, start_lineno - 1)
-        ast_fd = ast_root.body[0]
-        # ast_fd.args.args
+    def add_operations(self, *operations):
+        self.ops.extend(operations)
 
-        fctx = FunctionContext(func_name="foo")
-        fdimport = FunctionDefImporter(fctx, ast_fd)
-
-        return fdimport.import_body(ins, outs)
+    def emit_mlir(self, indent_spaces):
+        indent = " " * indent_spaces
+        args = ", ".join(arg.emit_mlir() for arg in self.args)
+        return_type = f" -> {self.type}" if self.type else ""
+        ops = "\n".join(op.emit_mlir(indent_spaces + 2) for op in self.ops)
+        return (
+            f"{indent}mpspdz.func @{self.name}({args}){return_type} {{\n"
+            + f"{ops}\n"
+            + f"{indent}}}"
+        )
 
 
-class BaseNodeVisitor(ast.NodeVisitor):
-    """Base class of a node visitor that aborts on unhandled nodes."""
+class MlirOperation:
+    def __init__(self, name, value, type):
+        self.name = name
+        self.value = value
+        self.type = type
 
-    IMPORTER_TYPE = "<unknown>"
+    def emit_mlir(self, indent_spaces):
+        indent = " " * indent_spaces
+        prefix = f"%{self.name} = " if self.name else ""
+        postfix = f" : {self.type}" if self.type else ""
+        return f"{indent}{prefix}{self.value}{postfix}"
 
-    def __init__(self, fctx):
-        super().__init__()
-        self.fctx = fctx
 
-    def visit(self, node):
-        return super().visit(node)
+class MlirArg:
+    def __init__(self, name, type):
+        self.name = name
+        self.type = type
+
+    def emit_mlir(self):
+        type_annotation = f": {self.type}" if self.type else ""
+        return f"{self.name} {type_annotation}"
+
+
+class FunctionVisitor(ast.NodeVisitor):
+    def __init__(self, module):
+        self.module = module
+        self.function = None
 
     def generic_visit(self, ast_node):
-        get_logger().debug("UNHANDLED NODE: {}", ast.dump(ast_node))
+        get_logger().error(f"Unhandled: {ast.dump(ast_node)}")
+
+    def visit_FunctionDef(self, ast_node):
+        arg_names = [arg.arg for arg in ast_node.args.args]
+        self.function = MlirFunction(
+            name=ast_node.name,
+            args=[
+                MlirArg(name=arg_name, type="!mpspdz.sint") for arg_name in arg_names
+            ],
+            type="!mpspdz.sint",
+        )
+        for ast_stmt in ast_node.body:
+            self.visit(ast_stmt)
+        self.module.add_function(self.function)
+
+    def visit_Expr(self, ast_node):
+        expression_visitor = ExpressionVisitor(self.function)
+        expression_visitor.visit(ast_node.value)
+
+    def visit_Return(self, ast_node):
+        expression_visitor = ExpressionVisitor(self.function)
+        expression_visitor.visit(ast_node.value)
+        self.function.add_operation(
+            MlirOperation(
+                name=None,
+                value=f"mpspdz.return %{expression_visitor.value}",
+                type=None,
+            )
+        )
 
 
-class ExpressionImporter(BaseNodeVisitor):
-    """Imports expression nodes.
-
-  Visitor methods should either raise an exception or set self.value to the
-  IR value that the expression lowers to.
-  """
-
-    IMPORTER_TYPE = "expression"
-    __slots__ = [
-        "value",
-    ]
-
-    def __init__(self, fctx):
-        super().__init__(fctx)
+class ExpressionVisitor(ast.NodeVisitor):
+    def __init__(self, function):
+        self.function = function
         self.value = None
 
-    def visit(self, node):
-        super().visit(node)
-        # assert self.value, ("ExpressionImporter did not assign a value (%r)" %
-        #                    (ast.dump(node),))
-
-    def sub_evaluate(self, sub_node):
-        sub_importer = ExpressionImporter(self.fctx)
+    def sub_visit(self, sub_node):
+        sub_importer = ExpressionVisitor(self.function)
         sub_importer.visit(sub_node)
         return sub_importer.value
 
-    def emit_constant(self, value):
-        env = self.fctx.environment
-        ir_const_value = env.code_py_value_as_const(value)
-        if ir_const_value is NotImplemented:
-            self.fctx.abort("unknown constant type '%r'" % (value,))
-        self.value = ir_const_value
-
-    def visit_Attribute(self, ast_node):
-        # Import the attribute's value recursively as a partial eval if possible.
-        get_logger().debug("visit_Attribute")
-
     def visit_BinOp(self, ast_node):
-        get_logger().debug("visit_BinOp")
-        left = self.sub_evaluate(ast_node.left)
-        right = self.sub_evaluate(ast_node.right)
-        self.value = self.fctx.get_fresh_name()
-        op_string = None
+        left = self.sub_visit(ast_node.left)
+        right = self.sub_visit(ast_node.right)
+        self.value = self.function.get_fresh_name()
         if isinstance(ast_node.op, ast.Mult):
-            op_string = "mult"
+            self.function.add_operation(
+                MlirOperation(
+                    name=self.value,
+                    value=f"mpspdz.mul %{left} %{right}",
+                    type="!mpspdz.sint",
+                )
+            )
         elif isinstance(ast_node.op, ast.Add):
-            op_string = "add"
-        assert op_string is not None
-        self.fctx.emit_mlir(
-            f"%{self.value} = !mpspdz.{op_string} %{left} %{right}: !mpspdz.sint"
-        )
-
-    def visit_Call(self, ast_node):
-        # Evaluate positional args.
-        evaluated_args = []
-        for raw_arg in ast_node.args:
-            evaluated_args.append(self.sub_evaluate(raw_arg))
-
-        # Evaluate keyword args.
-        keyword_args = []
-        for raw_kw_arg in ast_node.keywords:
-            keyword_args.append((raw_kw_arg.arg, self.sub_evaluate(raw_kw_arg.value)))
-
-        # Perform partial evaluation of the callee.
-        get_logger().debug("visit_Call, please revisit: {}", ast.dump(ast_node))
+            self.function.add_operation(
+                MlirOperation(
+                    name=self.value,
+                    value=f"mpspdz.add %{left} %{right}",
+                    type="!mpspdz.sint",
+                )
+            )
+        else:
+            raise NotImplementedError()
 
     def visit_Name(self, ast_node):
         self.value = ast_node.id
-
-    def visit_UnaryOp(self, ast_node):
-        op = ast_node.op
-        operand_value = self.sub_evaluate(ast_node.operand)
-        get_logger().debug("vist_UnaryOp: {}", ast.dump(ast_node))
-
-    if sys.version_info < (3, 8, 0):
-        # <3.8 breaks these out into separate AST classes.
-        def visit_Num(self, ast_node):
-            self.emit_constant(ast_node.n)
-
-        def visit_Str(self, ast_node):
-            self.emit_constant(ast_node.s)
-
-        def visit_Bytes(self, ast_node):
-            self.emit_constant(ast_node.s)
-
-        def visit_NameConstant(self, ast_node):
-            self.emit_constant(ast_node.value)
-
-    else:
-
-        def visit_Constant(self, ast_node):
-            self.emit_constant(ast_node.value)
-
-
-class FunctionDefImporter(BaseNodeVisitor):
-    """AST visitor for importing a function's statements.
-
-  Handles nodes that are direct children of a FunctionDef.
-  """
-
-    IMPORTER_TYPE = "statement"
-    __slots__ = [
-        "ast_fd",
-        "_last_was_return",
-    ]
-    # (TODO) fctx should be created inside the class
-
-    def __init__(self, fctx, ast_fd):
-        super().__init__(fctx)
-        self.fctx = fctx
-        self.ast_fd = ast_fd
-        self._last_was_return = False
-
-    def import_body(self, ins, outs):
-        self.fctx.update_io(ins, outs)
-        self.fctx.emit_mlir_private_inputs(self.ast_fd.args.args)
-        for ast_stmt in self.ast_fd.body:
-            self._last_was_return = False
-            self.visit(ast_stmt)
-        return self.fctx.emit_final_mlir()
-
-    def visit_Assign(self, ast_node):
-        get_logger().debug("visit_Assign")
-        pass
-
-    def visit_Expr(self, ast_node):
-        # Evaluate the expression in the exec body.
-        expr = ExpressionImporter(self.fctx)
-        expr.visit(ast_node.value)
-
-    def visit_Pass(self, ast_node):
-        get_logger().debug("visit_Pass")
-        pass
-
-    def visit_Return(self, ast_node):
-        expr = ExpressionImporter(self.fctx)
-        expr.visit(ast_node.value)
-        get_logger().debug(f"visit_Return: {expr.value}")
-        self.fctx.emlit_mlir_private_output(expr.value)
-        self._last_was_return = True
