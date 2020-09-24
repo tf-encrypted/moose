@@ -25,7 +25,6 @@ from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
 from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
-from moose.logger import get_logger
 from moose.runtime import get_runtime
 
 CURRENT_PLACEMENT: List = []
@@ -57,8 +56,8 @@ class HostPlacement(Placement):
 
     def compile(self, context, fn, inputs, output_placements=None, output_type=None):
         inputs = {
-            f"arg{i}": self.visit(expr, self.name).output
-            for i, expr in enumerate(expression.inputs)
+            f"arg{i}": context.visit(expr, self.name).output
+            for i, expr in enumerate(inputs)
         }
         return CallPythonFunctionOperation(
             device_name=self.name,
