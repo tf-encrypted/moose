@@ -76,9 +76,10 @@ class DeserializeKernel(Kernel):
         assert isinstance(op, DeserializeOperation)
         value = await value
         value_type = op.value_type
-        # value = _deserialize(value, op.value_type)
         if value_type == 'numpy.array':
-            # Use pcikle because np.loads will be deprecated
+            value = dill.loads(value)
+            return output.set_result(value)
+        elif value_type == 'tf.tensor':
             value = dill.loads(value)
             return output.set_result(value)
         elif value_type == 'tf.keras.model':
@@ -87,7 +88,6 @@ class DeserializeKernel(Kernel):
             model.set_weights(weights)
             return output.set_result(model)
         else:
-            # Handle float, int etc.
             value = dill.loads(value)
             return output.set_result(value)
 
@@ -170,6 +170,9 @@ class SerializeKernel(Kernel):
         value = await value
         value_type = op.value_type
         if value_type == 'numpy.ndarray':
+            value_ser = dill.dumps(value)
+            return output.set_result(value_ser)
+        elif value_type == 'tf.tensor':
             value_ser = dill.dumps(value)
             return output.set_result(value_ser)
         elif value_type == 'tf.keras.model':
