@@ -33,7 +33,7 @@ aggregator = HostPlacement(name="aggregator")
 outputter = HostPlacement(name="outputter")
 
 
-@function(output_type="numpy.array")
+@function(output_type="numpy.ndarray")
 def load_data():
     import numpy
     return numpy.array([5])
@@ -52,7 +52,7 @@ def get_weights(model):
     return model.trainable_weights
 
 
-@function(output_type="numpy.array")
+@function(output_type="numpy.ndarray")
 def model_predict(model, input, weights):
     import tensorflow
     return model.predict(input)

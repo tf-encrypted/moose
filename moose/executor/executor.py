@@ -169,17 +169,16 @@ class SerializeKernel(Kernel):
         assert isinstance(op, SerializeOperation)
         value = await value
         value_type = op.value_type
-        if value_type == 'numpy.array':
+        if value_type == 'numpy.ndarray':
             value_ser = dill.dumps(value)
             return output.set_result(value_ser)
         elif value_type == 'tf.keras.model':
-        # Model with TF 2.3.0 can't be dilled
+            # Model with TF 2.3.0 can't be dilled
             model_json = value.to_json()
             weights = value.get_weights()
             value_ser = dill.dumps((model_json, weights))
             return output.set_result(value_ser)
         else:
-        # Handle float, int etc.
             value_ser = dill.dumps(value)
             return output.set_result(value_ser)
 
