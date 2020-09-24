@@ -1,7 +1,7 @@
 import logging
 
 from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import MpspdzPlacement
+from moose.compiler.mpspdz import MpspdzPlacement
 from moose.compiler.edsl import computation
 from moose.compiler.edsl import constant
 from moose.compiler.edsl import function

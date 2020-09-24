@@ -25,7 +25,6 @@ from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
 from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
-from moose.compiler.mpspdz.frontend import MpspdzFrontend
 from moose.logger import get_logger
 from moose.runtime import get_runtime
 
@@ -70,40 +69,6 @@ class HostPlacement(Placement):
             output_type=output_type,
         )
 
-
-@dataclass
-class MpspdzPlacement(Placement):
-    players: List[HostPlacement]
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def compile(self, context, fn, inputs, output_placements=None):
-        print("***********************")
-        inputs = [
-            context.visit(expression) for expression in inputs
-        ]
-        inputs_players = [
-            op.device_name for op in inputs
-        ]
-        all_players = set(inputs_players) | set(player.name for player in self.players) | set(player.name for player in output_placements)
-        player_indices = { player_name: i for i, player_name in enumerate(all_players) }
-
-        fe = MpspdzFrontend()
-        print(fe.import_global_function(fn,
-            ins=[player_indices[player_name] for player_name in inputs_players],
-            outs=[player_indices[player.name] for player in output_placements]
-           ))
-        return None
-        # TODO(Morten)
-        # This will likely emit call operations for two or more placements,
-        # together with either the .mpc file or bytecode needed for the
-        # MP-SPDZ runtime (bytecode is probably best)
-        # return [
-        #     RunProgramOperation(device_name=player.name) for player in inputs_players
-        #     RunProgramOperation(),
-        #     RunProgramOperation(device_name=output_placements[0].name),
-        #    ]
 
 def get_current_placement():
     global CURRENT_PLACEMENT

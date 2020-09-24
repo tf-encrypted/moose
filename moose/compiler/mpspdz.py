@@ -1,16 +1,85 @@
 import ast
+from dataclasses import dataclass
 import inspect
 import textwrap
-import logging
+import traceback
 import sys
 from typing import List
-from dataclasses import dataclass
 
-from compiler.mpspdz import importer
-from .importer import FunctionContext
+from moose.compiler.edsl import HostPlacement
+from moose.compiler.edsl import Placement
+from moose.logger import get_logger
 
 
-logging.basicConfig(level=logging.DEBUG)
+@dataclass
+class MpspdzPlacement(Placement):
+    players: List[HostPlacement]
+
+    def __hash__(self):
+        return hash(self.name)
+
+    def compile(self, context, fn, inputs, output_placements=None):
+        print("***********************")
+        inputs = [
+            context.visit(expression) for expression in inputs
+        ]
+        inputs_players = [
+            op.device_name for op in inputs
+        ]
+        all_players = set(inputs_players) | set(player.name for player in self.players) | set(player.name for player in output_placements)
+        player_indices = { player_name: i for i, player_name in enumerate(all_players) }
+
+        fe = MpspdzFrontend()
+        print(fe.import_global_function(fn,
+            ins=[player_indices[player_name] for player_name in inputs_players],
+            outs=[player_indices[player.name] for player in output_placements]
+           ))
+        return None
+        # TODO(Morten)
+        # This will likely emit call operations for two or more placements,
+        # together with either the .mpc file or bytecode needed for the
+        # MP-SPDZ runtime (bytecode is probably best)
+        # return [
+        #     RunProgramOperation(device_name=player.name) for player in inputs_players
+        #     RunProgramOperation(),
+        #     RunProgramOperation(device_name=output_placements[0].name),
+        #    ]
+
+
+class FunctionContext:
+  """Accounting information for importing a function."""
+
+  def __init__(self, func_name): # pass args
+    self.variable_counter = 0
+    self.mlir_string = ""
+    self.func_name = func_name
+
+  def update_io(self, in_ids, out_ids):
+    self.in_ids = in_ids
+    self.out_ids = out_ids
+
+  def get_fresh_name(self) -> str:
+    self.variable_counter += 1
+    return "v" + str(self.variable_counter)
+
+  def emit_mlir(self, instruction):
+    self.mlir_string += instruction + "\n"
+    get_logger().debug(f"\n{self.mlir_string}")
+  
+  def emit_final_mlir(self):
+    return "module {\n" + f"mpspdz.func @{self.func_name}()" + " {\n" + f"{self.mlir_string}" + "\n}" + "}"
+  
+  def emit_mlir_private_inputs(self, var_names):
+    party_ids = self.in_ids
+    assert(len(party_ids) == len(var_names))
+    for i in range(len(party_ids)):
+      self.mlir_string += f"%{var_names[i].arg} = mpspdz.get_input_from %{party_ids[i]}: !mpspdz.sint" + "\n"
+  
+  def emlit_mlir_private_output(self, var_name):
+    for party_id in self.out_ids:
+      self.mlir_string += f"!mpspdz.reveal_to %{var_name} {party_id}: !mpspdz.unit \n"
+    
+
 
 class MpspdzFrontend:
     """Frontend for importing various entities into a Module."""
@@ -49,7 +118,7 @@ class BaseNodeVisitor(ast.NodeVisitor):
     return super().visit(node)
 
   def generic_visit(self, ast_node):
-    logging.debug("UNHANDLED NODE: {}", ast.dump(ast_node))
+    get_logger().debug("UNHANDLED NODE: {}", ast.dump(ast_node))
 
 
 class ExpressionImporter(BaseNodeVisitor):
@@ -86,10 +155,10 @@ class ExpressionImporter(BaseNodeVisitor):
 
   def visit_Attribute(self, ast_node):
     # Import the attribute's value recursively as a partial eval if possible.
-    logging.debug("visit_Attribute")
+    get_logger().debug("visit_Attribute")
 
   def visit_BinOp(self, ast_node):
-    logging.debug("visit_BinOp")
+    get_logger().debug("visit_BinOp")
     left = self.sub_evaluate(ast_node.left)
     right = self.sub_evaluate(ast_node.right)
     self.value = self.fctx.get_fresh_name()
@@ -113,7 +182,7 @@ class ExpressionImporter(BaseNodeVisitor):
       keyword_args.append((raw_kw_arg.arg, self.sub_evaluate(raw_kw_arg.value)))
 
     # Perform partial evaluation of the callee.
-    logging.debug("visit_Call, please revisit: {}", ast.dump(ast_node))
+    get_logger().debug("visit_Call, please revisit: {}", ast.dump(ast_node))
 
   def visit_Name(self, ast_node):
     self.value = ast_node.id
@@ -121,7 +190,7 @@ class ExpressionImporter(BaseNodeVisitor):
   def visit_UnaryOp(self, ast_node):
     op = ast_node.op
     operand_value = self.sub_evaluate(ast_node.operand)
-    logging.debug("vist_UnaryOp: {}", ast.dump(ast_node))
+    get_logger().debug("vist_UnaryOp: {}", ast.dump(ast_node))
 
   if sys.version_info < (3, 8, 0):
     # <3.8 breaks these out into separate AST classes.
@@ -170,7 +239,7 @@ class FunctionDefImporter(BaseNodeVisitor):
     return self.fctx.emit_final_mlir()
 
   def visit_Assign(self, ast_node):
-    logging.debug("visit_Assign")
+    get_logger().debug("visit_Assign")
     pass
 
   def visit_Expr(self, ast_node):
@@ -179,13 +248,13 @@ class FunctionDefImporter(BaseNodeVisitor):
     expr.visit(ast_node.value)
 
   def visit_Pass(self, ast_node):
-    logging.debug("visit_Pass")
+    get_logger().debug("visit_Pass")
     pass
 
   def visit_Return(self, ast_node):
     expr = ExpressionImporter(self.fctx)
     expr.visit(ast_node.value)
-    logging.debug(f"visit_Return: {expr.value}")
+    get_logger().debug(f"visit_Return: {expr.value}")
     self.fctx.emlit_mlir_private_output(expr.value)
     self._last_was_return = True
 
