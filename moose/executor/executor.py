@@ -161,16 +161,23 @@ class KernelBasedExecutor:
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
         }
 
-    def compile_computation(self, logical_computation):
-        # TODO for now we don't do any compilation of computations
-        return logical_computation
+    async def run_computation(self, computation, placement, session_id):
+        execution_plan = self.compile_execution_plan(computation, placement)
+        return await self.enter_computation(execution_plan, session_id)
 
-    async def run_computation(self, logical_computation, placement, session_id):
-        physical_computation = self.compile_computation(logical_computation)
-        execution_plan = self.schedule_execution(physical_computation, placement)
-        # lazily create futures for all edges in the graph
-        # link futures together using kernels
+    def compile_execution_plan(self, logical_computation, placement):
+        # TODO for now we don't do any compilation of computations
+        physical_computation = logical_computation
+        # TODO(Morten) this is as simple and naive as it gets; we should at least
+        # do some kind of topology sorting to make sure we have all async values
+        # ready for linking with kernels in `run_computation`
+        return [node for node in physical_computation.nodes() if node.device_name == placement]
+
+    async def enter_computation(self, execution_plan, session_id):
+        get_logger().debug(f"Entering into execution of session '{session_id}")
+        # allocate temporary storage for values produced in this session
         session_values = AsyncStore()
+        # schedule kernel evaluations from operations in computation
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
@@ -194,13 +201,8 @@ class KernelBasedExecutor:
         for e in exceptions:
             get_logger().exception(e)
         if exceptions:
-            raise Exception(f"One or more errors occurred in '{self.name}'")
-
-    def schedule_execution(self, comp, placement):
-        # TODO(Morten) this is as simple and naive as it gets; we should at least
-        # do some kind of topology sorting to make sure we have all async values
-        # ready for linking with kernels in `run_computation`
-        return [node for node in comp.nodes() if node.device_name == placement]
+            raise exceptions[0]
+            # raise Exception(f"One or more errors occurred in '{self.name}'")
 
 
 class RemoteExecutor:

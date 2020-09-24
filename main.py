@@ -3,6 +3,7 @@ import logging
 
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
+from moose.compiler.edsl import call
 from moose.compiler.edsl import computation
 from moose.compiler.edsl import constant
 from moose.compiler.edsl import mul
@@ -30,26 +31,22 @@ outputter = HostPlacement(name="outputter")
 
 
 @computation
-def my_comp():
+def inner_comp(x0, x1):
+    five = constant(5, placement=inputter0)
+    x0_prime = add(x0, five, placement=inputter0)
+    y = add(x0_prime, x1, placement=aggregator)
+    return y
 
-    with inputter0:
-        x0 = constant(5)
-
-    with inputter1:
-        x1 = constant(7)
-
-    with aggregator:
-        y0 = add(x0, x0)
-        y1 = mul(x1, x1)
-        y = add(y0, y1)
-
-    with outputter:
-        res = save(y, "y")
-
+@computation
+def outer_comp():
+    x0 = constant(5, placement=inputter0)
+    x1 = constant(7, placement=inputter1)
+    y = call(inner_comp, args=(x0, x1), placements=[inputter0, aggregator])
+    res = save(y, "y", placement=outputter)
     return res
 
 
-concrete_comp = my_comp.trace_func()
+concrete_comp = outer_comp.trace_func()
 
 
 if __name__ == "__main__":

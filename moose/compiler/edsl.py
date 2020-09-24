@@ -204,6 +204,10 @@ def sub(lhs, rhs, placement=None):
     )
 
 
+def call(comp, args, placements):
+    raise NotImplementedError()
+
+
 def function(fn):
     @wraps(fn)
     def wrapper(*inputs, output_placements=None, **kwargs):
