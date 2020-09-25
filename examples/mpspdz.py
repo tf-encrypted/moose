@@ -14,7 +14,14 @@ get_logger().setLevel(level=logging.DEBUG)
 inputter0 = HostPlacement(name="inputter0")
 inputter1 = HostPlacement(name="inputter1")
 outputter = HostPlacement(name="outputter")
-mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1])
+
+# NOTE:
+# All players must be listed in the MP-SPDZ placement, even if they only send
+# inputs or receive outputs (and don't perform compute). This is because the
+# setup for the placement needs to know ahead of time who to generate key pairs
+# for. In the near future this is ideally something that we can infer automati-
+# cally during compilation from logical to physical computation.
+mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1, outputter])
 
 
 @function

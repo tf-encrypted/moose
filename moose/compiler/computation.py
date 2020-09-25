@@ -95,6 +95,23 @@ class SerializeOperation(Operation):
 
 
 @dataclass
+class MpspdzSaveInputOperation(Operation):
+    player_index: int
+
+
+@dataclass
+class MpspdzCallOperation(Operation):
+    player_index: int
+    mlir: str
+    bytecode: Optional[bytes]
+
+
+@dataclass
+class MpspdzLoadOutputOperation(Operation):
+    player_index: int
+
+
+@dataclass
 class Graph:
     nodes: Dict[str, Operation]
 

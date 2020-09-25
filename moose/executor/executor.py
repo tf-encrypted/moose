@@ -14,6 +14,9 @@ from moose.compiler.computation import ConstantOperation
 from moose.compiler.computation import DeserializeOperation
 from moose.compiler.computation import DivOperation
 from moose.compiler.computation import LoadOperation
+from moose.compiler.computation import MpspdzCallOperation
+from moose.compiler.computation import MpspdzLoadOutputOperation
+from moose.compiler.computation import MpspdzSaveInputOperation
 from moose.compiler.computation import MulOperation
 from moose.compiler.computation import ReceiveOperation
 from moose.compiler.computation import RunProgramOperation
@@ -200,6 +203,31 @@ class SubKernel(Kernel):
         return lhs - rhs
 
 
+class MpspdzSaveInputKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, **inputs):
+        assert isinstance(op, MpspdzSaveInputOperation)
+        get_logger().debug(
+            f"Executing MpspdzSaveInputKernel, op:{op}, session_id:{session_id}, inputs:{inputs}"
+        )
+
+
+class MpspdzCallKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id):
+        assert isinstance(op, MpspdzCallOperation)
+        get_logger().debug(
+            f"Executing MpspdzCallKernel, op:{op}, session_id:{session_id}"
+        )
+
+
+class MpspdzLoadOutputKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id):
+        assert isinstance(op, MpspdzLoadOutputOperation)
+        get_logger().debug(
+            f"Executing MpspdzLoadOutputKernel, op:{op}, session_id:{session_id}"
+        )
+        return 0
+
+
 class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
@@ -218,6 +246,9 @@ class KernelBasedExecutor:
             DivOperation: DivKernel(),
             RunProgramOperation: RunProgramKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
+            MpspdzSaveInputOperation: MpspdzSaveInputKernel(),
+            MpspdzCallOperation: MpspdzCallKernel(),
+            MpspdzLoadOutputOperation: MpspdzLoadOutputKernel(),
         }
 
     def compile_computation(self, logical_computation):
@@ -234,7 +265,7 @@ class KernelBasedExecutor:
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
             if not kernel:
-                get_logger().fatal(f"No kernel found for operation {type(op)}")
+                raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
             inputs = {
                 param_name: session_values[value_name]

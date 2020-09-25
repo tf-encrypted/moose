@@ -4,7 +4,9 @@ import textwrap
 from dataclasses import dataclass
 from typing import List
 
-from moose.compiler.computation import RunProgramOperation
+from moose.compiler.computation import MpspdzCallOperation
+from moose.compiler.computation import MpspdzLoadOutputOperation
+from moose.compiler.computation import MpspdzSaveInputOperation
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import Placement
 from moose.logger import get_logger
@@ -20,59 +22,69 @@ class MpspdzPlacement(Placement):
     def compile(self, context, fn, inputs, output_placements=None, output_type=None):
         input_ops = [context.visit(expression) for expression in inputs]
 
-        inputs_players = [op.device_name for op in input_ops]
-        all_players = (
-            set(inputs_players)
-            | set(player.name for player in self.players)
-            | set(player.name for player in output_placements)
-        )
-        player_indices = {player_name: i for i, player_name in enumerate(all_players)}
+        # NOTE the following two could be precomputed
+        known_player_names = set(player.name for player in self.players)
+        player_name_index_map = {
+            player.name: i for i, player in enumerate(self.players)
+        }
 
-        input_indices = [player_indices[player_name] for player_name in inputs_players]
-        (output_index,) = [player_indices[player.name] for player in output_placements]
-        mlir_string = compile_to_mlir(fn, input_indices, output_index)
+        # NOTE output_players and output_placement can be extracted from output_type once
+        # we have placements in types
+        input_player_names = [op.device_name for op in input_ops]
+        [output_player_name,] = [player.name for player in output_placements]
+        participating_player_names = set(input_player_names) | set([output_player_name])
+        assert participating_player_names.issubset(known_player_names)
+
+        mlir_string = compile_to_mlir(
+            fn,
+            input_indices=[
+                player_name_index_map[player_name] for player_name in input_player_names
+            ],
+            output_index=player_name_index_map[output_player_name],
+        )
         get_logger().debug(mlir_string)
 
-        for player_name, player_index in player_indices.items():
-            # operations for saving the player's inputs to disk locally
-            context.operations += [
-                RunProgramOperation(
-                    device_name=player_name,
-                    name=context.get_fresh_name("mpspdz_input_op"),
-                    path="cat",
-                    args=[],
-                    inputs=input_op.name,
-                    output=None,
-                )
-                for input_op in input_ops
-                if input_op.device_name == player_name
-            ]
-            # operation for the player to execute MP-SPDZ
-            context.operations += [
-                RunProgramOperation(
-                    device_name=player_name,
-                    name=context.get_fresh_name("mpspdz_call_op"),
-                    path="./mpspdz",
-                    args=["--mlir", mlir_string],
-                    inputs=[],  # TODO would be nice with control deps or unit values!
-                    output=None,
-                )
-            ]
+        # generate operations for saving input players values to disk
+        save_input_ops = [
+            MpspdzSaveInputOperation(
+                device_name=input_op.device_name,
+                name=context.get_fresh_name("mpspdz_input_op"),
+                inputs={"value": input_op.output},
+                output=None,
+                player_index=player_name_index_map[input_op.device_name],
+            )
+            for input_op in input_ops
+        ]
 
-        for op in context.operations:
-            get_logger().debug(op)
+        # generate operations for all participating players to invoke MP-SPDZ
+        # TODO we probably need to have a control dependency of some sort here
+        # operation for the player to execute MP-SPDZ; I suggest we take the Chain
+        # approach used in TFRT (which is similar to units)
+        call_ops = [
+            MpspdzCallOperation(
+                device_name=player_name,
+                name=context.get_fresh_name("mpspdz_call_op"),
+                inputs={},  # TODO control dependency
+                output=None,
+                player_index=player_name_index_map[player_name],
+                mlir=mlir_string,
+                bytecode=None,  # TODO
+            )
+            for player_name in participating_player_names
+        ]
 
-        # operation for loading the output (we assume there's only one)
-        (output_player,) = output_placements
-        output_op = RunProgramOperation(
-            device_name=output_player,
-            name=context.get_fresh_name("mpspdz_output_op"),
-            path="./mpspdz",
-            args=[],
-            inputs=[],  # TODO would be nice with control deps or unit values!
+        # operation for loading the output
+        # TODO also need control dependency here
+        load_output_op = MpspdzLoadOutputOperation(
+            device_name=output_player_name,
+            name=context.get_fresh_name("mpspdz_load_output_op"),
+            inputs={},  # TODO control dependency
             output=context.get_fresh_name("mpspdz_output"),
+            player_index=player_name_index_map[output_player_name],
         )
-        return output_op
+
+        context.operations += save_input_ops + call_ops
+        return load_output_op
 
 
 def compile_to_mlir(fn, input_indices, output_index):
