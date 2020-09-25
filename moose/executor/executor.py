@@ -5,11 +5,13 @@ import tempfile
 from collections import defaultdict
 
 import dill
+import tensorflow as tf
 from grpc.experimental import aio
 
 from moose.compiler.computation import AddOperation
 from moose.compiler.computation import CallPythonFunctionOperation
 from moose.compiler.computation import ConstantOperation
+from moose.compiler.computation import DeserializeOperation
 from moose.compiler.computation import DivOperation
 from moose.compiler.computation import LoadOperation
 from moose.compiler.computation import MulOperation
@@ -17,6 +19,7 @@ from moose.compiler.computation import ReceiveOperation
 from moose.compiler.computation import RunProgramOperation
 from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
+from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
 from moose.logger import get_logger
 from moose.protos import executor_pb2
@@ -65,6 +68,27 @@ class ConstantKernel(Kernel):
     def execute_synchronous_block(self, op, session_id):
         assert isinstance(op, ConstantOperation)
         return op.value
+
+
+class DeserializeKernel(Kernel):
+    async def execute(self, op, session_id, value, output=None):
+        assert isinstance(op, DeserializeOperation)
+        value = await value
+        value_type = op.value_type
+        if value_type == "numpy.array":
+            value = dill.loads(value)
+            return output.set_result(value)
+        elif value_type == "tf.tensor":
+            value = dill.loads(value)
+            return output.set_result(value)
+        elif value_type == "tf.keras.model":
+            model_json, weights = dill.loads(value)
+            model = tf.keras.models.model_from_json(model_json)
+            model.set_weights(weights)
+            return output.set_result(model)
+        else:
+            value = dill.loads(value)
+            return output.set_result(value)
 
 
 class DivKernel(Kernel):
@@ -139,6 +163,28 @@ class SaveKernel(Kernel):
         get_logger().debug(f"Saved {value}")
 
 
+class SerializeKernel(Kernel):
+    async def execute(self, op, session_id, value, output=None):
+        assert isinstance(op, SerializeOperation)
+        value = await value
+        value_type = op.value_type
+        if value_type == "numpy.ndarray":
+            value_ser = dill.dumps(value)
+            return output.set_result(value_ser)
+        elif value_type == "tf.tensor":
+            value_ser = dill.dumps(value)
+            return output.set_result(value_ser)
+        elif value_type == "tf.keras.model":
+            # Model with TF 2.3.0 can't be dilled
+            model_json = value.to_json()
+            weights = value.get_weights()
+            value_ser = dill.dumps((model_json, weights))
+            return output.set_result(value_ser)
+        else:
+            value_ser = dill.dumps(value)
+            return output.set_result(value_ser)
+
+
 class SendKernel(Kernel):
     def __init__(self, channel_manager):
         self.channel_manager = channel_manager
@@ -163,6 +209,8 @@ class KernelBasedExecutor:
             SaveOperation: SaveKernel(store),
             SendOperation: SendKernel(channel_manager),
             ReceiveOperation: ReceiveKernel(channel_manager),
+            DeserializeOperation: DeserializeKernel(),
+            SerializeOperation: SerializeKernel(),
             ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),

@@ -1,6 +1,9 @@
 import argparse
 import logging
 
+import numpy as np
+import tensorflow as tf
+
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
@@ -29,26 +32,46 @@ aggregator = HostPlacement(name="aggregator")
 outputter = HostPlacement(name="outputter")
 
 
+@function(output_type="numpy.ndarray")
+def load_data():
+    import numpy
+
+    return numpy.array([5])
+
+
+@function(output_type="tf.keras.model")
+def load_model():
+    import tensorflow as tf
+
+    model = tf.keras.models.Sequential([tf.keras.layers.Dense(1)])
+    model.build(input_shape=[1, 1])
+    return model
+
+
 @function
-def mul_fn(x, y):
-    return x * y
+def get_weights(model):
+    return model.trainable_weights
+
+
+@function(output_type="numpy.ndarray")
+def model_predict(model, input, weights):
+    import tensorflow
+
+    return model.predict(input)
 
 
 @computation
 def my_comp():
 
     with inputter0:
-        c0_0 = constant(1)
-        c1_0 = constant(2)
-        x0 = mul_fn(c0_0, c1_0)
+        model = load_model()
+        weights = get_weights(model)
 
     with inputter1:
-        c0_1 = constant(2)
-        c1_1 = constant(3)
-        x1 = mul_fn(c0_1, c1_1)
+        x = load_data()
 
     with aggregator:
-        y = add(x0, x1)
+        y = model_predict(model, x, weights)
 
     with outputter:
         res = save(y, "y")
@@ -57,6 +80,7 @@ def my_comp():
 
 
 concrete_comp = my_comp.trace_func()
+
 
 if __name__ == "__main__":
 

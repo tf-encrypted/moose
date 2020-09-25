@@ -1,4 +1,5 @@
 import json
+import marshal
 import re
 from dataclasses import asdict
 from dataclasses import dataclass
@@ -7,7 +8,7 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-OPS_REGISTER = {}
+import moose.compiler.computation
 
 
 @dataclass
@@ -30,11 +31,17 @@ class AddOperation(Operation):
 @dataclass
 class CallPythonFunctionOperation(Operation):
     pickled_fn: bytes
+    output_type: Optional
 
 
 @dataclass
 class ConstantOperation(Operation):
     value: Union[int, float]
+
+
+@dataclass
+class DeserializeOperation(Operation):
+    value_type: str
 
 
 @dataclass
@@ -83,6 +90,11 @@ class SendOperation(Operation):
 
 
 @dataclass
+class SerializeOperation(Operation):
+    value_type: str
+
+
+@dataclass
 class Graph:
     nodes: Dict[str, Operation]
 
@@ -101,38 +113,23 @@ class Computation:
         return self.graph.nodes.get(name)
 
     def serialize(self):
-        return json.dumps(asdict(self)).encode("utf-8")
+        return marshal.dumps(asdict(self))
 
     @classmethod
     def deserialize(cls, bytes_stream):
-        computation_dict = json.loads(bytes_stream.decode("utf-8"))
+        computation_dict = marshal.loads(bytes_stream)
         nodes_dict = computation_dict["graph"]["nodes"]
         nodes = {node: select_op(node)(**args) for node, args in nodes_dict.items()}
         return Computation(Graph(nodes))
 
 
-def register_op(op):
-    OPS_REGISTER[op.identifier()] = op
-
-
 def select_op(op_name):
-    name = op_name.split("_")[0]
-    if "operation" in name:
-        name = re.sub("operation", "", name)
-    name = name[0].upper() + name[1:] + "Operation"
-    op = OPS_REGISTER[name]
+    # To handle addoperation_op0, muloperation_op0 etc.
+    if "operation" in op_name:
+        op_name = re.sub("operation", "", op_name)
+    name = op_name.split("_")[:-1]
+    name = "".join([n.title() for n in name]) + "Operation"
+    op = getattr(moose.compiler.computation, name, None)
+    if op is None:
+        raise ValueError(f"Unknown Moose runtime operation '{name}'")
     return op
-
-
-# NOTE: this is only needed for gRPC so far
-register_op(AddOperation)
-register_op(CallPythonFunctionOperation)
-register_op(RunProgramOperation)
-register_op(LoadOperation)
-register_op(ConstantOperation)
-register_op(DivOperation)
-register_op(MulOperation)
-register_op(SaveOperation)
-register_op(SendOperation)
-register_op(SubOperation)
-register_op(ReceiveOperation)

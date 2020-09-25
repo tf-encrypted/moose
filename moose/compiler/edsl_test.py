@@ -74,6 +74,7 @@ class EdslTest(parameterized.TestCase):
             inputs={"arg0": "constant0"},
             output="call_python_function0",
             pickled_fn=pickled_fn,
+            output_type=None,
         )
 
     def test_constant(self):
@@ -114,7 +115,7 @@ class EdslTest(parameterized.TestCase):
         assert send_op == SendOperation(
             device_name="player0",
             name="send_op0",
-            inputs={"value": "constant0"},
+            inputs={"value": "serialize0"},
             output=None,
             sender="player0",
             receiver="player1",
