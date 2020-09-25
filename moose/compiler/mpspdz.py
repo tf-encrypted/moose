@@ -17,7 +17,7 @@ class MpspdzPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
-    def compile(self, context, fn, inputs, output_placements=None):
+    def compile(self, context, fn, inputs, output_placements=None, output_type=None):
         input_ops = [context.visit(expression) for expression in inputs]
 
         inputs_players = [op.device_name for op in input_ops]
