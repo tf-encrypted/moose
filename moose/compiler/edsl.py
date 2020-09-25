@@ -25,6 +25,7 @@ from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
 from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
+from moose.logger import get_logger
 from moose.runtime import get_runtime
 
 CURRENT_PLACEMENT: List = []
@@ -208,7 +209,7 @@ class Compiler:
     def __init__(self):
         self.operations = []
         self.name_counters = defaultdict(int)
-        self.known_operations = {}
+        self.known_operations = defaultdict(dict)
 
     def compile(self, expression: Expression) -> Computation:
         _ = self.visit(expression)
@@ -222,68 +223,76 @@ class Compiler:
         self.name_counters[prefix] += 1
         return f"{prefix}{count}"
 
-    def maybe_add_networking(self, expression, destination_device):
-        if destination_device not in self.known_operations[expression]:
-            source_device = expression.placement.name
-            assert source_device != destination_device
-            operation_at_source = self.known_operations[expression][source_device]
-            rendezvous_key = self.get_fresh_name("rendezvous_key")
-            # Get output type from pyfunction if any
-            value_type = getattr(expression, "output_type", None)
-            serialize_name = self.get_fresh_name("serialize")
-            receive_name = self.get_fresh_name("receive")
-            deserialize_name = self.get_fresh_name("deserialize")
-            serialize_operation = SerializeOperation(
-                device_name=source_device,
-                name=self.get_fresh_name("serialize_op"),
-                inputs={"value": operation_at_source.output},
-                output=serialize_name,
-                value_type=value_type,
-            )
-            send_operation = SendOperation(
-                device_name=source_device,
-                name=self.get_fresh_name("send_op"),
-                inputs={"value": serialize_name},
-                output=None,
-                sender=source_device,
-                receiver=destination_device,
-                rendezvous_key=rendezvous_key,
-            )
-            receive_operation = ReceiveOperation(
-                device_name=destination_device,
-                name=self.get_fresh_name("receive_op"),
-                sender=source_device,
-                receiver=destination_device,
-                rendezvous_key=rendezvous_key,
-                inputs={},
-                output=receive_name,
-            )
-            deserialize_operation = DeserializeOperation(
-                device_name=destination_device,
-                name=self.get_fresh_name("deserialize_op"),
-                inputs={"value": receive_name},
-                output=deserialize_name,
-                value_type=value_type,
-            )
-            self.operations += [
-                serialize_operation,
-                send_operation,
-                receive_operation,
-                deserialize_operation,
-            ]
-            self.known_operations[expression][
-                destination_device
-            ] = deserialize_operation
-        return self.known_operations[expression][destination_device]
+    def add_networking(self, expression, source_operation, destination_device):
+        source_device = source_operation.device_name
+        assert source_device != destination_device, f"No need to add networking!"
+        rendezvous_key = self.get_fresh_name("rendezvous_key")
+        # Get output type from pyfunction if any
+        value_type = getattr(expression, "output_type", None)
+        serialize_name = self.get_fresh_name("serialize")
+        receive_name = self.get_fresh_name("receive")
+        deserialize_name = self.get_fresh_name("deserialize")
+        serialize_operation = SerializeOperation(
+            device_name=source_device,
+            name=self.get_fresh_name("serialize_op"),
+            inputs={"value": source_operation.output},
+            output=serialize_name,
+            value_type=value_type,
+        )
+        send_operation = SendOperation(
+            device_name=source_device,
+            name=self.get_fresh_name("send_op"),
+            inputs={"value": serialize_name},
+            output=None,
+            sender=source_device,
+            receiver=destination_device,
+            rendezvous_key=rendezvous_key,
+        )
+        receive_operation = ReceiveOperation(
+            device_name=destination_device,
+            name=self.get_fresh_name("receive_op"),
+            sender=source_device,
+            receiver=destination_device,
+            rendezvous_key=rendezvous_key,
+            inputs={},
+            output=receive_name,
+        )
+        deserialize_operation = DeserializeOperation(
+            device_name=destination_device,
+            name=self.get_fresh_name("deserialize_op"),
+            inputs={"value": receive_name},
+            output=deserialize_name,
+            value_type=value_type,
+        )
+        self.operations += [
+            serialize_operation,
+            send_operation,
+            receive_operation,
+            deserialize_operation,
+        ]
+        return deserialize_operation
 
-    def visit(self, expression, destination_device=None):
-        device = expression.placement.name
+    def visit(self, expression, destination_placement=None):
+        logical_placement = expression.placement.name
         if expression not in self.known_operations:
             visit_fn = getattr(self, f"visit_{type(expression).__name__}")
             operation = visit_fn(expression)
             self.operations += [operation]
-            self.known_operations[expression] = {device: operation}
-        return self.maybe_add_networking(expression, destination_device or device)
+            self.known_operations[expression][logical_placement] = operation
+            self.known_operations[expression][operation.device_name] = operation
+        assert expression in self.known_operations
+        assert logical_placement in self.known_operations[expression]
+        destination_placement = destination_placement or logical_placement
+        if destination_placement not in self.known_operations[expression]:
+            source_operation = self.known_operations[expression][logical_placement]
+            destination_operation = self.add_networking(
+                expression, source_operation, destination_placement
+            )
+            self.known_operations[expression][
+                destination_placement
+            ] = destination_operation
+        assert destination_placement in self.known_operations[expression]
+        return self.known_operations[expression][destination_placement]
 
     def visit_BinaryOpExpression(self, expression):
         assert isinstance(expression, BinaryOpExpression)
