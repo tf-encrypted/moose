@@ -44,6 +44,8 @@ class MpspdzPlacement(Placement):
         )
         get_logger().debug(mlir_string)
 
+        invocation_key = context.get_fresh_name("invocation_key")
+
         # generate one save operation for each input player
         save_input_ops = [
             MpspdzSaveInputOperation(
@@ -59,6 +61,7 @@ class MpspdzPlacement(Placement):
                 },
                 output=context.get_fresh_name("mpspdz_save_input"),
                 player_index=player_name_index_map[player_name],
+                invocation_key=invocation_key,
             )
             for player_name in set(input_player_names)
         ]
@@ -81,6 +84,7 @@ class MpspdzPlacement(Placement):
                 player_index=player_name_index_map[player_name],
                 mlir=mlir_string,
                 bytecode=None,  # TODO
+                invocation_key=invocation_key,
             )
             for player_name in participating_player_names
         ]
@@ -99,6 +103,7 @@ class MpspdzPlacement(Placement):
             },
             output=context.get_fresh_name("mpspdz_output"),
             player_index=player_name_index_map[output_player_name],
+            invocation_key=invocation_key,
         )
 
         context.operations += save_input_ops + call_ops

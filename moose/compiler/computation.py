@@ -96,6 +96,7 @@ class SerializeOperation(Operation):
 @dataclass
 class MpspdzSaveInputOperation(Operation):
     player_index: int
+    invocation_key: str
 
 
 @dataclass
@@ -103,11 +104,13 @@ class MpspdzCallOperation(Operation):
     player_index: int
     mlir: str
     bytecode: Optional[bytes]
+    invocation_key: str
 
 
 @dataclass
 class MpspdzLoadOutputOperation(Operation):
     player_index: int
+    invocation_key: str
 
 
 @dataclass
