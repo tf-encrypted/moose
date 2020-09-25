@@ -44,16 +44,23 @@ class MpspdzPlacement(Placement):
         )
         get_logger().debug(mlir_string)
 
-        # generate operations for saving input players values to disk
+        # generate one save operation for each input player
         save_input_ops = [
             MpspdzSaveInputOperation(
-                device_name=input_op.device_name,
-                name=context.get_fresh_name("mpspdz_input_op"),
-                inputs={"value": input_op.output},
+                device_name=player_name,
+                name=context.get_fresh_name("mpspdz_save_input_op"),
+                inputs={
+                    f"arg{i}": matching_input_op.output
+                    for i, matching_input_op in enumerate(
+                        input_op
+                        for input_op in input_ops
+                        if input_op.device_name == player_name
+                    )
+                },
                 output=None,
-                player_index=player_name_index_map[input_op.device_name],
+                player_index=player_name_index_map[player_name],
             )
-            for input_op in input_ops
+            for player_name in set(input_player_names)
         ]
 
         # generate operations for all participating players to invoke MP-SPDZ
