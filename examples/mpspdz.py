@@ -14,6 +14,7 @@ get_logger().setLevel(level=logging.DEBUG)
 inputter0 = HostPlacement(name="inputter0")
 inputter1 = HostPlacement(name="inputter1")
 outputter = HostPlacement(name="outputter")
+saver = HostPlacement(name="saver")
 
 # NOTE:
 # All players must be listed in the MP-SPDZ placement, even if they only send
@@ -53,7 +54,7 @@ def my_comp():
         # hence placement information, making this less of an issue.
         v = my_function(x, y, z, output_placements=[outputter])
 
-    with outputter:
+    with saver:
         res = save(v, "v")
 
     # expect from MLIR as
