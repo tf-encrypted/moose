@@ -5,9 +5,8 @@ import tempfile
 from collections import defaultdict
 
 import dill
-from grpc.experimental import aio
-
 import tensorflow as tf
+from grpc.experimental import aio
 
 from moose.compiler.computation import AddOperation
 from moose.compiler.computation import CallPythonFunctionOperation
@@ -76,13 +75,13 @@ class DeserializeKernel(Kernel):
         assert isinstance(op, DeserializeOperation)
         value = await value
         value_type = op.value_type
-        if value_type == 'numpy.array':
+        if value_type == "numpy.array":
             value = dill.loads(value)
             return output.set_result(value)
-        elif value_type == 'tf.tensor':
+        elif value_type == "tf.tensor":
             value = dill.loads(value)
             return output.set_result(value)
-        elif value_type == 'tf.keras.model':
+        elif value_type == "tf.keras.model":
             model_json, weights = dill.loads(value)
             model = tf.keras.models.model_from_json(model_json)
             model.set_weights(weights)
@@ -169,13 +168,13 @@ class SerializeKernel(Kernel):
         assert isinstance(op, SerializeOperation)
         value = await value
         value_type = op.value_type
-        if value_type == 'numpy.ndarray':
+        if value_type == "numpy.ndarray":
             value_ser = dill.dumps(value)
             return output.set_result(value_ser)
-        elif value_type == 'tf.tensor':
+        elif value_type == "tf.tensor":
             value_ser = dill.dumps(value)
             return output.set_result(value_ser)
-        elif value_type == 'tf.keras.model':
+        elif value_type == "tf.keras.model":
             # Model with TF 2.3.0 can't be dilled
             model_json = value.to_json()
             weights = value.get_weights()
@@ -274,4 +273,3 @@ class RemoteExecutor:
             computation=comp_ser, placement=placement, session_id=session_id
         )
         _ = await self._stub.RunComputation(compute_request)
-

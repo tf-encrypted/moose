@@ -204,7 +204,7 @@ def sub(lhs, rhs):
 def function(fn=None, output_type=None):
     if fn is None:
         return partial(function, output_type=output_type)
-        
+
     @wraps(fn)
     def wrapper(*inputs, output_placements=None, **kwargs):
         return ApplyFunctionExpression(
@@ -216,6 +216,7 @@ def function(fn=None, output_type=None):
         )
 
     return wrapper
+
 
 class Compiler:
     def __init__(self):

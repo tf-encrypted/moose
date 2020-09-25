@@ -14,7 +14,6 @@ from moose.logger import get_logger
 from moose.runtime import RemoteRuntime
 from moose.runtime import TestRuntime
 
-
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
@@ -23,7 +22,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-if args.verbose:    
+if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 
@@ -36,12 +35,14 @@ outputter = HostPlacement(name="outputter")
 @function(output_type="numpy.ndarray")
 def load_data():
     import numpy
+
     return numpy.array([5])
 
 
 @function(output_type="tf.keras.model")
 def load_model():
     import tensorflow as tf
+
     model = tf.keras.models.Sequential([tf.keras.layers.Dense(1)])
     model.build(input_shape=[1, 1])
     return model
@@ -55,6 +56,7 @@ def get_weights(model):
 @function(output_type="numpy.ndarray")
 def model_predict(model, input, weights):
     import tensorflow
+
     return model.predict(input)
 
 

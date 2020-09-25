@@ -11,7 +11,6 @@ from moose.logger import get_logger
 from moose.runtime import RemoteRuntime
 from moose.runtime import TestRuntime
 
-
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
@@ -20,7 +19,7 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-if args.verbose:    
+if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 
