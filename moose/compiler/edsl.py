@@ -223,12 +223,15 @@ class Compiler:
         self.name_counters[prefix] += 1
         return f"{prefix}{count}"
 
-    def add_networking(self, expression, source_operation, destination_device):
+    def maybe_add_networking(self, source_operation, destination_device):
         source_device = source_operation.device_name
-        assert source_device != destination_device, f"No need to add networking!"
+        if source_device == destination_device:
+            # no need for networking
+            return source_operation
+
         rendezvous_key = self.get_fresh_name("rendezvous_key")
-        # Get output type from pyfunction if any
-        value_type = getattr(expression, "output_type", None)
+        # Get output type from if any
+        value_type = getattr(source_operation, "output_type", None)
         serialize_name = self.get_fresh_name("serialize")
         receive_name = self.get_fresh_name("receive")
         deserialize_name = self.get_fresh_name("deserialize")
@@ -285,8 +288,8 @@ class Compiler:
         destination_placement = destination_placement or logical_placement
         if destination_placement not in self.known_operations[expression]:
             source_operation = self.known_operations[expression][logical_placement]
-            destination_operation = self.add_networking(
-                expression, source_operation, destination_placement
+            destination_operation = self.maybe_add_networking(
+                source_operation, destination_placement
             )
             self.known_operations[expression][
                 destination_placement

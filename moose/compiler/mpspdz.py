@@ -57,7 +57,7 @@ class MpspdzPlacement(Placement):
                         if input_op.device_name == player_name
                     )
                 },
-                output=None,
+                output=context.get_fresh_name("mpspdz_save_input"),
                 player_index=player_name_index_map[player_name],
             )
             for player_name in set(input_player_names)
@@ -71,8 +71,13 @@ class MpspdzPlacement(Placement):
             MpspdzCallOperation(
                 device_name=player_name,
                 name=context.get_fresh_name("mpspdz_call_op"),
-                inputs={},  # TODO control dependency
-                output=None,
+                inputs={
+                    f"call_control{i}": context.maybe_add_networking(
+                        save_op, player_name
+                    ).output
+                    for i, save_op in enumerate(save_input_ops)
+                },
+                output=context.get_fresh_name("mpspdz_call"),
                 player_index=player_name_index_map[player_name],
                 mlir=mlir_string,
                 bytecode=None,  # TODO
@@ -85,7 +90,13 @@ class MpspdzPlacement(Placement):
         load_output_op = MpspdzLoadOutputOperation(
             device_name=output_player_name,
             name=context.get_fresh_name("mpspdz_load_output_op"),
-            inputs={},  # TODO control dependency
+            inputs={
+                f"load_control{i}": context.maybe_add_networking(
+                    call_op, output_player_name
+                ).output
+                for i, call_op in enumerate(call_ops)
+                if call_op.device_name == output_player_name
+            },
             output=context.get_fresh_name("mpspdz_output"),
             player_index=player_name_index_map[output_player_name],
         )

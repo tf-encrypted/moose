@@ -204,28 +204,24 @@ class SubKernel(Kernel):
 
 
 class MpspdzSaveInputKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, **inputs):
+    async def execute(self, op, session_id, output, **inputs):
         assert isinstance(op, MpspdzSaveInputOperation)
-        get_logger().debug(
-            f"Executing MpspdzSaveInputKernel, op:{op}, session_id:{session_id}, inputs:{inputs}"
-        )
+        concrete_inputs = await asyncio.gather(*inputs.values())
+        output.set_result(0)
 
 
 class MpspdzCallKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id):
+    async def execute(self, op, session_id, output, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
-        get_logger().debug(
-            f"Executing MpspdzCallKernel, op:{op}, session_id:{session_id}"
-        )
+        concrete_inputs = await asyncio.gather(*control_inputs.values())
+        output.set_result(0)
 
 
 class MpspdzLoadOutputKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id):
+    async def execute(self, op, session_id, output, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
-        get_logger().debug(
-            f"Executing MpspdzLoadOutputKernel, op:{op}, session_id:{session_id}"
-        )
-        return 0
+        concrete_inputs = await asyncio.gather(*control_inputs.values())
+        output.set_result(0)
 
 
 class KernelBasedExecutor:
