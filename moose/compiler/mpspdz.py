@@ -132,9 +132,14 @@ def compile_to_mlir(fn, input_indices, output_index):
     reveal_op = MlirOperation(
         name=None,
         value=f"mpspdz.reveal_to %{call_op.name} {output_index}",
-        type="!mpspdz.sint -> !mpspdz.cint",
+        type="!mpspdz.sint",
     )
-    main_function.add_operations(*get_input_ops, call_op, reveal_op)
+    return_op = MlirOperation(
+        name=None,
+        value="mpspdz.return",
+        type=None,
+    )
+    main_function.add_operations(*get_input_ops, call_op, reveal_op, return_op)
     module.add_function(main_function)
 
     # add function for `fn`
@@ -231,7 +236,7 @@ class MlirArg:
 
     def emit_mlir(self):
         type_annotation = f": {self.type}" if self.type else ""
-        return f"{self.name} {type_annotation}"
+        return f"%{self.name} {type_annotation}"
 
 
 class FunctionVisitor(ast.NodeVisitor):
@@ -289,7 +294,7 @@ class ExpressionVisitor(ast.NodeVisitor):
             self.function.add_operation(
                 MlirOperation(
                     name=self.value,
-                    value=f"mpspdz.mul %{left} %{right}",
+                    value=f"mpspdz.mul %{left}, %{right}",
                     type="!mpspdz.sint",
                 )
             )
@@ -297,7 +302,7 @@ class ExpressionVisitor(ast.NodeVisitor):
             self.function.add_operation(
                 MlirOperation(
                     name=self.value,
-                    value=f"mpspdz.add %{left} %{right}",
+                    value=f"mpspdz.add %{left}, %{right}",
                     type="!mpspdz.sint",
                 )
             )
