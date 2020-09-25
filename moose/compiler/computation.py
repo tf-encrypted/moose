@@ -1,4 +1,3 @@
-import json
 import marshal
 import re
 from dataclasses import asdict

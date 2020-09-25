@@ -28,8 +28,8 @@ class MpspdzPlacement(Placement):
             player.name: i for i, player in enumerate(self.players)
         }
 
-        # NOTE output_players and output_placement can be extracted from output_type once
-        # we have placements in types
+        # NOTE output_players and output_placement can be extracted from output_type
+        # once we have placements in types
         input_player_names = [op.device_name for op in input_ops]
         [output_player_name,] = [player.name for player in output_placements]
         participating_player_names = set(input_player_names) | set([output_player_name])

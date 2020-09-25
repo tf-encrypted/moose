@@ -64,7 +64,7 @@ class CallPythonFunctionKernel(Kernel):
         python_fn = dill.loads(op.pickled_fn)
         concrete_inputs = await asyncio.gather(*inputs.values())
         concrete_output = python_fn(*concrete_inputs)
-        return output.set_result(concrete_output)
+        output.set_result(concrete_output)
 
 
 class ConstantKernel(Kernel):
@@ -88,10 +88,10 @@ class DeserializeKernel(Kernel):
             model_json, weights = dill.loads(value)
             model = tf.keras.models.model_from_json(model_json)
             model.set_weights(weights)
-            return output.set_result(model)
+            output.set_result(model)
         else:
             value = dill.loads(value)
-            return output.set_result(value)
+            output.set_result(value)
 
 
 class DivKernel(Kernel):
@@ -153,7 +153,7 @@ class RunProgramKernel(Kernel):
 
                 concrete_output = json.loads(outputfile.read())
 
-        return output.set_result(concrete_output)
+        output.set_result(concrete_output)
 
 
 class SaveKernel(Kernel):
@@ -204,24 +204,26 @@ class SubKernel(Kernel):
 
 
 class MpspdzSaveInputKernel(Kernel):
-    async def execute(self, op, session_id, output, **inputs):
+    def execute_synchronous_block(self, op, session_id, **inputs):
         assert isinstance(op, MpspdzSaveInputOperation)
-        concrete_inputs = await asyncio.gather(*inputs.values())
-        output.set_result(0)
+        # TODO write inputs to file
+        # return dummy value as control dependency
+        return 0
 
 
 class MpspdzCallKernel(Kernel):
-    async def execute(self, op, session_id, output, **control_inputs):
+    def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
-        concrete_inputs = await asyncio.gather(*control_inputs.values())
-        output.set_result(0)
+        # TODO call out to MP-SPDZ
+        # return dummy value as control dependency
+        return 0
 
 
 class MpspdzLoadOutputKernel(Kernel):
-    async def execute(self, op, session_id, output, **control_inputs):
+    def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
-        concrete_inputs = await asyncio.gather(*control_inputs.values())
-        output.set_result(0)
+        # TODO return actual value
+        return 0
 
 
 class KernelBasedExecutor:
