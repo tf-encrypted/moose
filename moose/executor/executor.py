@@ -2,7 +2,6 @@ import asyncio
 import json
 import subprocess
 import tempfile
-from collections import defaultdict
 
 import dill
 import tensorflow as tf
@@ -27,17 +26,7 @@ from moose.compiler.computation import SubOperation
 from moose.logger import get_logger
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
-
-
-class AsyncStore:
-    def __init__(self, initial_values):
-        self.values = initial_values
-
-    async def load(self, key):
-        return self.values[key]
-
-    async def save(self, key, value):
-        self.values[key] = value
+from moose.storage import AsyncStore
 
 
 class Kernel:
@@ -264,9 +253,8 @@ class KernelBasedExecutor:
     async def run_computation(self, logical_computation, placement, session_id):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
-        # lazily create futures for all edges in the graph
-        session_values = defaultdict(asyncio.get_event_loop().create_future)
         # link futures together using kernels
+        session_values = AsyncStore()
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
@@ -274,10 +262,10 @@ class KernelBasedExecutor:
                 raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
             inputs = {
-                param_name: session_values[value_name]
+                param_name: session_values.get_future(key=value_name)
                 for (param_name, value_name) in op.inputs.items()
             }
-            output = session_values[op.output] if op.output else None
+            output = session_values.get_future(key=op.output) if op.output else None
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session_id=session_id, output=output, **inputs)

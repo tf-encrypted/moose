@@ -1,22 +1,19 @@
-import asyncio
 from collections import defaultdict
+
+from moose.storage import AsyncStore
 
 
 class Channel:
     def __init__(self):
-        # TODO(Morten) having an async dict-like structure
-        # would probably be better ...
-        self.queues = defaultdict(asyncio.Queue)
+        self.buffer = AsyncStore()
 
     async def receive(self, rendezvous_key, session_id):
-        queue_key = (session_id, rendezvous_key)
-        queue = self.queues[queue_key]
-        return await queue.get()
+        key = (session_id, rendezvous_key)
+        return await self.buffer.get(key)
 
     async def send(self, value, rendezvous_key, session_id):
-        queue_key = (session_id, rendezvous_key)
-        queue = self.queues[queue_key]
-        return await queue.put(value)
+        key = (session_id, rendezvous_key)
+        return await self.buffer.put(key, value)
 
 
 class ChannelManager:
