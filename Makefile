@@ -26,9 +26,3 @@ test:
 ci: fmt lint test
 
 .PHONY: build pydep pylib install fmt lint test ci
-
-build-base-worker-image:
-	docker build \
-		--file docker/Dockerfile.base-worker \
-		--tag tfencrypted/runtime-base-worker:latest \
-		.
