@@ -14,6 +14,9 @@ from moose.compiler.computation import ConstantOperation
 from moose.compiler.computation import DeserializeOperation
 from moose.compiler.computation import DivOperation
 from moose.compiler.computation import LoadOperation
+from moose.compiler.computation import MpspdzCallOperation
+from moose.compiler.computation import MpspdzLoadOutputOperation
+from moose.compiler.computation import MpspdzSaveInputOperation
 from moose.compiler.computation import MulOperation
 from moose.compiler.computation import ReceiveOperation
 from moose.compiler.computation import RunProgramOperation
@@ -61,7 +64,7 @@ class CallPythonFunctionKernel(Kernel):
         python_fn = dill.loads(op.pickled_fn)
         concrete_inputs = await asyncio.gather(*inputs.values())
         concrete_output = python_fn(*concrete_inputs)
-        return output.set_result(concrete_output)
+        output.set_result(concrete_output)
 
 
 class ConstantKernel(Kernel):
@@ -85,10 +88,10 @@ class DeserializeKernel(Kernel):
             model_json, weights = dill.loads(value)
             model = tf.keras.models.model_from_json(model_json)
             model.set_weights(weights)
-            return output.set_result(model)
+            output.set_result(model)
         else:
             value = dill.loads(value)
-            return output.set_result(value)
+            output.set_result(value)
 
 
 class DivKernel(Kernel):
@@ -150,7 +153,7 @@ class RunProgramKernel(Kernel):
 
                 concrete_output = json.loads(outputfile.read())
 
-        return output.set_result(concrete_output)
+        output.set_result(concrete_output)
 
 
 class SaveKernel(Kernel):
@@ -200,6 +203,37 @@ class SubKernel(Kernel):
         return lhs - rhs
 
 
+class MpspdzSaveInputKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, **inputs):
+        assert isinstance(op, MpspdzSaveInputOperation)
+        # Player-Data/Input-P0-0
+        mpspdz_dir = "/MP-SPDZ/Player-Data/Input-P"
+        thread_no = 0 # assume inputs are happening in the main thread
+        mpspdz_input_file = f"{mpspdz_dir}{op.player_index}-{thread_no}"
+
+        with open(mpspdz_input_file, "a") as f:
+            for arg in inputs.keys():
+                f.write(str(inputs[arg]) + " ")
+        get_logger().debug(
+            f"Executing MpspdzSaveInputKernel, op:{op}, session_id:{session_id}, inputs:{inputs}"
+        )
+
+
+class MpspdzCallKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, **control_inputs):
+        assert isinstance(op, MpspdzCallOperation)
+        # TODO call out to MP-SPDZ
+        # return dummy value as control dependency
+        return 0
+
+
+class MpspdzLoadOutputKernel(Kernel):
+    def execute_synchronous_block(self, op, session_id, **control_inputs):
+        assert isinstance(op, MpspdzLoadOutputOperation)
+        # TODO return actual value
+        return 0
+
+
 class KernelBasedExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
@@ -218,6 +252,9 @@ class KernelBasedExecutor:
             DivOperation: DivKernel(),
             RunProgramOperation: RunProgramKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
+            MpspdzSaveInputOperation: MpspdzSaveInputKernel(),
+            MpspdzCallOperation: MpspdzCallKernel(),
+            MpspdzLoadOutputOperation: MpspdzLoadOutputKernel(),
         }
 
     def compile_computation(self, logical_computation):
@@ -234,7 +271,7 @@ class KernelBasedExecutor:
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
             if not kernel:
-                get_logger().fatal(f"No kernel found for operation {type(op)}")
+                raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
             inputs = {
                 param_name: session_values[value_name]

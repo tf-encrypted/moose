@@ -1,11 +1,11 @@
 import logging
 
 from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import MpspdzPlacement
 from moose.compiler.edsl import computation
 from moose.compiler.edsl import constant
 from moose.compiler.edsl import function
 from moose.compiler.edsl import save
+from moose.compiler.mpspdz import MpspdzPlacement
 from moose.logger import get_logger
 from moose.runtime import TestRuntime
 
@@ -14,12 +14,20 @@ get_logger().setLevel(level=logging.DEBUG)
 inputter0 = HostPlacement(name="inputter0")
 inputter1 = HostPlacement(name="inputter1")
 outputter = HostPlacement(name="outputter")
-mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1])
+saver = HostPlacement(name="saver")
+
+# NOTE:
+# All players must be listed in the MP-SPDZ placement, even if they only send
+# inputs or receive outputs (and don't perform compute). This is because the
+# setup for the placement needs to know ahead of time who to generate key pairs
+# for. In the near future this is ideally something that we can infer automati-
+# cally during compilation from logical to physical computation.
+mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1, outputter])
 
 
 @function
-def my_function(x, y):
-    return x * y
+def my_function(x, y, z):
+    return x * y + z
 
 
 @computation
@@ -27,6 +35,7 @@ def my_comp():
 
     with inputter0:
         x = constant(1)
+        z = constant(3)
 
     with inputter1:
         y = constant(2)
@@ -43,10 +52,23 @@ def my_comp():
         # note also that we want to infer full type signatures in
         # the future, which should include expected output type and
         # hence placement information, making this less of an issue.
-        z = my_function(x, y, output_placements=[outputter])
+        v = my_function(x, y, z, output_placements=[outputter])
 
-    with outputter:
-        res = save(z, "z")
+    with saver:
+        res = save(v, "v")
+
+    # expect from MLIR as
+    """
+    !mpspdz.func @foo() {
+        %x = mpspdz.get_input_from 1: !mpspdz.sint
+        %y = mpspdz.get_input_from 2: !mpspdz.sint
+        %z = mpspdz.get_input_from 1: !mpspdz.sint
+        %t1 = mpspdz.mul %x, %y: !mpspdz.sint
+        %t2 = mpspdz.mul %t1, %z: !mpspdz.sint
+        %out = mpspdz.reveal.sint %t2: !mpspdz.sint to !mpspdz.cint
+        (maybe) mpspdz.reveal_to %t2 1: !mpspdz.unit
+    }
+    """
 
     return res
 

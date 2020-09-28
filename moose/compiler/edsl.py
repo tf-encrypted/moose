@@ -56,6 +56,10 @@ class HostPlacement(Placement):
         return hash(self.name)
 
     def compile(self, context, fn, inputs, output_placements=None, output_type=None):
+        inputs = {
+            f"arg{i}": context.visit(expr, self.name).output
+            for i, expr in enumerate(inputs)
+        }
         return CallPythonFunctionOperation(
             device_name=self.name,
             name=context.get_fresh_name("call_python_function_op"),
@@ -64,23 +68,6 @@ class HostPlacement(Placement):
             output=context.get_fresh_name("call_python_function"),
             output_type=output_type,
         )
-
-
-@dataclass
-class MpspdzPlacement(Placement):
-    players: List[HostPlacement]
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def compile(self, context, fn, inputs, output_placements=None):
-        # TODO(Morten)
-        # This will likely emit call operations for two or more placements,
-        # together with either the .mpc file or bytecode needed for the
-        # MP-SPDZ runtime (bytecode is probably best)
-        get_logger().debug(f"Inputs: {inputs}")
-        get_logger().debug(f"Output placements: {output_placements}")
-        raise NotImplementedError()
 
 
 def get_current_placement():
@@ -222,7 +209,7 @@ class Compiler:
     def __init__(self):
         self.operations = []
         self.name_counters = defaultdict(int)
-        self.known_operations = {}
+        self.known_operations = defaultdict(dict)
 
     def compile(self, expression: Expression) -> Computation:
         _ = self.visit(expression)
@@ -236,68 +223,79 @@ class Compiler:
         self.name_counters[prefix] += 1
         return f"{prefix}{count}"
 
-    def maybe_add_networking(self, expression, destination_device):
-        if destination_device not in self.known_operations[expression]:
-            source_device = expression.placement.name
-            assert source_device != destination_device
-            operation_at_source = self.known_operations[expression][source_device]
-            rendezvous_key = self.get_fresh_name("rendezvous_key")
-            # Get output type from pyfunction if any
-            value_type = getattr(expression, "output_type", None)
-            serialize_name = self.get_fresh_name("serialize")
-            receive_name = self.get_fresh_name("receive")
-            deserialize_name = self.get_fresh_name("deserialize")
-            serialize_operation = SerializeOperation(
-                device_name=source_device,
-                name=self.get_fresh_name("serialize_op"),
-                inputs={"value": operation_at_source.output},
-                output=serialize_name,
-                value_type=value_type,
-            )
-            send_operation = SendOperation(
-                device_name=source_device,
-                name=self.get_fresh_name("send_op"),
-                inputs={"value": serialize_name},
-                output=None,
-                sender=source_device,
-                receiver=destination_device,
-                rendezvous_key=rendezvous_key,
-            )
-            receive_operation = ReceiveOperation(
-                device_name=destination_device,
-                name=self.get_fresh_name("receive_op"),
-                sender=source_device,
-                receiver=destination_device,
-                rendezvous_key=rendezvous_key,
-                inputs={},
-                output=receive_name,
-            )
-            deserialize_operation = DeserializeOperation(
-                device_name=destination_device,
-                name=self.get_fresh_name("deserialize_op"),
-                inputs={"value": receive_name},
-                output=deserialize_name,
-                value_type=value_type,
-            )
-            self.operations += [
-                serialize_operation,
-                send_operation,
-                receive_operation,
-                deserialize_operation,
-            ]
-            self.known_operations[expression][
-                destination_device
-            ] = deserialize_operation
-        return self.known_operations[expression][destination_device]
+    def maybe_add_networking(self, source_operation, destination_device):
+        source_device = source_operation.device_name
+        if source_device == destination_device:
+            # no need for networking
+            return source_operation
 
-    def visit(self, expression, destination_device=None):
-        device = expression.placement.name
+        rendezvous_key = self.get_fresh_name("rendezvous_key")
+        # Get output type from if any
+        value_type = getattr(source_operation, "output_type", None)
+        serialize_name = self.get_fresh_name("serialize")
+        receive_name = self.get_fresh_name("receive")
+        deserialize_name = self.get_fresh_name("deserialize")
+        serialize_operation = SerializeOperation(
+            device_name=source_device,
+            name=self.get_fresh_name("serialize_op"),
+            inputs={"value": source_operation.output},
+            output=serialize_name,
+            value_type=value_type,
+        )
+        send_operation = SendOperation(
+            device_name=source_device,
+            name=self.get_fresh_name("send_op"),
+            inputs={"value": serialize_name},
+            output=None,
+            sender=source_device,
+            receiver=destination_device,
+            rendezvous_key=rendezvous_key,
+        )
+        receive_operation = ReceiveOperation(
+            device_name=destination_device,
+            name=self.get_fresh_name("receive_op"),
+            sender=source_device,
+            receiver=destination_device,
+            rendezvous_key=rendezvous_key,
+            inputs={},
+            output=receive_name,
+        )
+        deserialize_operation = DeserializeOperation(
+            device_name=destination_device,
+            name=self.get_fresh_name("deserialize_op"),
+            inputs={"value": receive_name},
+            output=deserialize_name,
+            value_type=value_type,
+        )
+        self.operations += [
+            serialize_operation,
+            send_operation,
+            receive_operation,
+            deserialize_operation,
+        ]
+        return deserialize_operation
+
+    def visit(self, expression, destination_placement=None):
+        logical_placement = expression.placement.name
         if expression not in self.known_operations:
             visit_fn = getattr(self, f"visit_{type(expression).__name__}")
             operation = visit_fn(expression)
             self.operations += [operation]
-            self.known_operations[expression] = {device: operation}
-        return self.maybe_add_networking(expression, destination_device or device)
+            self.known_operations[expression][logical_placement] = operation
+            self.known_operations[expression][operation.device_name] = operation
+        assert expression in self.known_operations
+        assert logical_placement in self.known_operations[expression]
+        destination_placement = destination_placement or logical_placement
+        if destination_placement not in self.known_operations[expression]:
+            source_operation = self.known_operations[expression][logical_placement]
+            destination_operation = self.maybe_add_networking(
+                source_operation, destination_placement
+            )
+            self.known_operations[expression][
+                destination_placement
+            ] = destination_operation
+        assert destination_placement in self.known_operations[expression]
+        return self.known_operations[expression][destination_placement]
 
     def visit_BinaryOpExpression(self, expression):
         assert isinstance(expression, BinaryOpExpression)
@@ -316,15 +314,10 @@ class Compiler:
 
     def visit_ApplyFunctionExpression(self, expression):
         assert isinstance(expression, ApplyFunctionExpression)
-        placement = expression.placement
-        inputs = {
-            f"arg{i}": self.visit(expr, placement.name).output
-            for i, expr in enumerate(expression.inputs)
-        }
-        return placement.compile(
+        return expression.placement.compile(
             context=self,
             fn=expression.fn,
-            inputs=inputs,
+            inputs=expression.inputs,
             output_placements=expression.output_placements,
             output_type=expression.output_type,
         )

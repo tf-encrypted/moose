@@ -1,4 +1,3 @@
-import json
 import marshal
 import re
 from dataclasses import asdict
@@ -92,6 +91,26 @@ class SendOperation(Operation):
 @dataclass
 class SerializeOperation(Operation):
     value_type: str
+
+
+@dataclass
+class MpspdzSaveInputOperation(Operation):
+    player_index: int
+    invocation_key: str
+
+
+@dataclass
+class MpspdzCallOperation(Operation):
+    player_index: int
+    mlir: str
+    bytecode: Optional[bytes]
+    invocation_key: str
+
+
+@dataclass
+class MpspdzLoadOutputOperation(Operation):
+    player_index: int
+    invocation_key: str
 
 
 @dataclass
