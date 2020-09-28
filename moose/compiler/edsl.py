@@ -391,7 +391,10 @@ class AbstractComputation:
     def trace_func(self, *args, **kwargs):
         expression = self.func(*args, **kwargs)
         compiler = Compiler()
-        return compiler.compile(expression)
+        concrete_comp = compiler.compile(expression)
+        for op_name, op in concrete_comp.graph.nodes.items():
+            get_logger().debug(f"Computation: {op}")
+        return concrete_comp
 
 
 def computation(func):
