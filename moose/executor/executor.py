@@ -24,9 +24,9 @@ from moose.compiler.computation import SendOperation
 from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
 from moose.logger import get_logger
-from moose.storage import AsyncStore
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
+from moose.storage import AsyncStore
 
 
 class Kernel:
@@ -253,7 +253,6 @@ class KernelBasedExecutor:
     async def run_computation(self, logical_computation, placement, session_id):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
-        # lazily create futures for all edges in the graph
         # link futures together using kernels
         session_values = AsyncStore()
         tasks = []

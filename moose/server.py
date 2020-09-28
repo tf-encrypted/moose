@@ -1,14 +1,12 @@
-import asyncio
-
 from grpc.experimental import aio
 
 from moose.channels.grpc import ChannelManager
 from moose.compiler.computation import Computation
 from moose.executor.executor import KernelBasedExecutor
 from moose.logger import get_logger
-from moose.storage import AsyncStore
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
+from moose.storage import AsyncStore
 
 
 class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
@@ -17,7 +15,10 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
         self.executor = executor
 
     async def GetValue(self, request, context):
-        get_logger().debug(f"Received value for key {request.rendezvous_key} for session {request.session_id}")
+        get_logger().debug(
+            f"Received value for key {request.rendezvous_key} "
+            f"for session {request.session_id}"
+        )
         key = (request.session_id, request.rendezvous_key)
         value = await self.buffer.get(key)
         return executor_pb2.GetValueResponse(value=value)
