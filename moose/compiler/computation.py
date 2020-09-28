@@ -103,7 +103,6 @@ class MpspdzSaveInputOperation(Operation):
 class MpspdzCallOperation(Operation):
     player_index: int
     mlir: str
-    bytecode: Optional[bytes]
     invocation_key: str
 
 

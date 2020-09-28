@@ -14,9 +14,7 @@ from moose.runtime import TestRuntime
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument(
-    "--cluster-spec", default="./moose/cluster/cluster-spec-localhost.yaml"
-)
+parser.add_argument("--cluster-spec", default="cluster-spec-main.yaml")
 args = parser.parse_args()
 
 if args.verbose:

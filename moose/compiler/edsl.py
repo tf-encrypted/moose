@@ -25,6 +25,7 @@ from moose.compiler.computation import SaveOperation
 from moose.compiler.computation import SendOperation
 from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
+from moose.logger import get_logger
 from moose.runtime import get_runtime
 
 CURRENT_PLACEMENT: List = []

@@ -12,9 +12,6 @@ from moose.runtime import TestRuntime
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument(
-    "--cluster-spec", default="./moose/cluster/cluster-spec-localhost.yaml"
-)
 args = parser.parse_args()
 
 if args.verbose:
@@ -80,7 +77,7 @@ if __name__ == "__main__":
     if args.runtime == "test":
         runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
     elif args.runtime == "remote":
-        runtime = RemoteRuntime(args.cluster_spec)
+        runtime = RemoteRuntime("./cluster-spec-main.yaml")
         assert len(runtime.executors) == len(concrete_comp.devices())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
