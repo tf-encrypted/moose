@@ -1,0 +1,6 @@
+FROM tfencrypted/runtime-base-worker:latest
+
+# Copy over example files
+COPY cluster-spec-worker.yaml worker.py ./
+
+CMD python3 worker.py --verbose --port $PORT

@@ -1,0 +1,47 @@
+version: "3.7"
+
+services:
+
+  worker0:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50000:50000
+    environment:
+      PORT: 50000
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50001:50001
+    environment:
+      PORT: 50001
+
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50002:50002
+    environment:
+      PORT: 50002
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../..:/runtime"
+    ports:
+      - 50003:50003
+    environment:
+      PORT: 50003

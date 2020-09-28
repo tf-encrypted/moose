@@ -2,7 +2,9 @@ import argparse
 import logging
 
 from moose.compiler.edsl import HostPlacement
+from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
+from moose.compiler.edsl import constant
 from moose.compiler.edsl import function
 from moose.compiler.edsl import save
 from moose.logger import get_logger
@@ -12,9 +14,7 @@ from moose.runtime import TestRuntime
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument(
-    "--cluster-spec", default="./moose/cluster/cluster-spec-localhost.yaml"
-)
+parser.add_argument("--cluster-spec", default="cluster-spec-main.yaml")
 args = parser.parse_args()
 
 if args.verbose:
@@ -27,44 +27,26 @@ aggregator = HostPlacement(name="aggregator")
 outputter = HostPlacement(name="outputter")
 
 
-@function(output_type="numpy.ndarray")
-def load_data():
-    import numpy
-
-    return numpy.array([5])
-
-
-@function(output_type="tf.keras.model")
-def load_model():
-    import tensorflow as tf
-
-    model = tf.keras.models.Sequential([tf.keras.layers.Dense(1)])
-    model.build(input_shape=[1, 1])
-    return model
-
-
 @function
-def get_weights(model):
-    return model.trainable_weights
-
-
-@function(output_type="numpy.ndarray")
-def model_predict(model, input, weights):
-    return model.predict(input)
+def mul_fn(x, y):
+    return x * y
 
 
 @computation
 def my_comp():
 
     with inputter0:
-        model = load_model()
-        weights = get_weights(model)
+        c0_0 = constant(1)
+        c1_0 = constant(2)
+        x0 = mul_fn(c0_0, c1_0)
 
     with inputter1:
-        x = load_data()
+        c0_1 = constant(2)
+        c1_1 = constant(3)
+        x1 = mul_fn(c0_1, c1_1)
 
     with aggregator:
-        y = model_predict(model, x, weights)
+        y = add(x0, x1)
 
     with outputter:
         res = save(y, "y")
@@ -73,7 +55,6 @@ def my_comp():
 
 
 concrete_comp = my_comp.trace_func()
-
 
 if __name__ == "__main__":
 
