@@ -4,7 +4,6 @@ import subprocess
 import tempfile
 
 import dill
-import tensorflow as tf
 from grpc.experimental import aio
 
 from moose.compiler.computation import AddOperation
@@ -74,6 +73,7 @@ class DeserializeKernel(Kernel):
             value = dill.loads(value)
             return output.set_result(value)
         elif value_type == "tf.keras.model":
+            import tensorflow as tf
             model_json, weights = dill.loads(value)
             model = tf.keras.models.model_from_json(model_json)
             model.set_weights(weights)
