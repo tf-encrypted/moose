@@ -271,8 +271,40 @@ class MpspdzCallKernel(Kernel):
 class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
+
+        # this is a bit ugly, inspiration from here: https://github.com/data61/MP-SPDZ/issues/104
+        # but really, it can be much nicer if the flag in
+        # https://github.com/data61/MP-SPDZ/blob/master/Processor/Instruction.hpp#L1229
+        # is set to true (ie human readable)
+
+        # in the future we might need to use the print_ln_to instruction
+
+        # default value of prime
+        prime = 170141183460469231731687303715885907969
+        # default R of Montgomery representation
+        R = 2 ** 128
+        # Inverse mod prime to get clear value Integer
+        invR = 96651956244403355751989957128965938997
+
+        mpspdz_dir = (
+            f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/Player-Data/Private-Output"
+        )
+        mpspdz_output_file = f"{mpspdz_dir}-{op.player_index}"
+
+        outputs = list()
+        with open(mpspdz_output_file, "rb") as f:
+            while (byte := f.read(16)) :
+                # As integer
+                tmp = int.from_bytes(byte, byteorder="little")
+                # Invert "Montgomery"
+                clear = (tmp * invR) % prime
+                outputs.append(clear)
+
+        get_logger().debug(
+            f"Executing LoadOutputCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
+        )
         # TODO return actual value
-        return 0
+        return outputs
 
 
 class KernelBasedExecutor:
