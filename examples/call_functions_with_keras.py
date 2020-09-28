@@ -1,13 +1,8 @@
 import argparse
 import logging
 
-import numpy as np
-import tensorflow as tf
-
 from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
 from moose.compiler.edsl import function
 from moose.compiler.edsl import save
 from moose.logger import get_logger
@@ -55,8 +50,6 @@ def get_weights(model):
 
 @function(output_type="numpy.ndarray")
 def model_predict(model, input, weights):
-    import tensorflow
-
     return model.predict(input)
 
 

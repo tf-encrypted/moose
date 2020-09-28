@@ -31,7 +31,7 @@ class MpspdzPlacement(Placement):
         # NOTE output_players and output_placement can be extracted from output_type
         # once we have placements in types
         input_player_names = [op.device_name for op in input_ops]
-        [output_player_name,] = [player.name for player in output_placements]
+        (output_player_name,) = [player.name for player in output_placements]
         participating_player_names = set(input_player_names) | set([output_player_name])
         assert participating_player_names.issubset(known_player_names)
 
@@ -134,11 +134,7 @@ def compile_to_mlir(fn, input_indices, output_index):
         value=f"mpspdz.reveal_to %{call_op.name} {output_index}",
         type="!mpspdz.sint",
     )
-    return_op = MlirOperation(
-        name=None,
-        value="mpspdz.return",
-        type=None,
-    )
+    return_op = MlirOperation(name=None, value="mpspdz.return", type=None,)
     main_function.add_operations(*get_input_ops, call_op, reveal_op, return_op)
     module.add_function(main_function)
 
