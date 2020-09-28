@@ -77,7 +77,7 @@ if __name__ == "__main__":
     if args.runtime == "test":
         runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
     elif args.runtime == "remote":
-        runtime = RemoteRuntime("./docker-compose-main.yaml")
+        runtime = RemoteRuntime("./cluster-spec-main.yaml")
         assert len(runtime.executors) == len(concrete_comp.devices())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
