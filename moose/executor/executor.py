@@ -197,7 +197,16 @@ class MpspdzSaveInputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **inputs):
         assert isinstance(op, MpspdzSaveInputOperation)
         # Player-Data/Input-P0-0
-        mpspdz_dir = "/MP-SPDZ/Player-Data/Input-P"
+        output = subprocess.call(
+            [
+                "./runtime/moose/third-party/mpspdz-links.sh",
+                f"{session_id}",
+                f"{op.invocation_key}",
+            ]
+        )
+        mpspdz_dir = (
+            f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/Player-Data/Input-P"
+        )
         thread_no = 0  # assume inputs are happening in the main thread
         mpspdz_input_file = f"{mpspdz_dir}{op.player_index}-{thread_no}"
 
@@ -214,6 +223,9 @@ class MpspdzSaveInputKernel(Kernel):
 
 class MpspdzCallKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
+        get_logger().debug(
+            f"Executing MpspdzCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
+        )
         assert isinstance(op, MpspdzCallOperation)
         # TODO call out to MP-SPDZ
         # return dummy value as control dependency
