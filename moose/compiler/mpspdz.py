@@ -83,7 +83,6 @@ class MpspdzPlacement(Placement):
                 output=context.get_fresh_name("mpspdz_call"),
                 player_index=player_name_index_map[player_name],
                 mlir=mlir_string,
-                bytecode=None,  # TODO
                 invocation_key=invocation_key,
             )
             for player_name in participating_player_names
@@ -116,6 +115,11 @@ def compile_to_mlir(fn, input_indices, output_index):
 
     module = MlirModule()
 
+    # add function for `fn`
+    function_visitor = FunctionVisitor(module)
+    function_visitor.visit(fn_ast)
+    fn_mlir = function_visitor.function
+
     # add main function
     main_function = MlirFunction(name="main", args=[], type=None)
     get_input_ops = [
@@ -124,23 +128,21 @@ def compile_to_mlir(fn, input_indices, output_index):
         )
         for arg_name, index in zip(input_names, input_indices)
     ]
+    arg_names = ", ".join(f"%{arg.name}" for arg in fn_mlir.args)
+    arg_types = ", ".join(arg.type for arg in fn_mlir.args)
     call_op = MlirOperation(
         name=main_function.get_fresh_name(),
-        value=f"mpspdz.call @{fn_ast.name} %x, %y, %z",
-        type="!mpspdz.sint",
+        value=f"mpspdz.call @{fn_mlir.name}({arg_names})",
+        type=f"({arg_types}) -> {fn_mlir.type}",
     )
     reveal_op = MlirOperation(
         name=None,
         value=f"mpspdz.reveal_to %{call_op.name} {output_index}",
         type="!mpspdz.sint",
     )
-    return_op = MlirOperation(name=None, value="mpspdz.return", type=None,)
+    return_op = MlirOperation(name=None, value="mpspdz.return", type=None)
     main_function.add_operations(*get_input_ops, call_op, reveal_op, return_op)
     module.add_function(main_function)
-
-    # add function for `fn`
-    function_visitor = FunctionVisitor(module)
-    function_visitor.visit(fn_ast)
 
     # emit and return MLIR code
     return module.emit_mlir()
@@ -267,7 +269,7 @@ class FunctionVisitor(ast.NodeVisitor):
             MlirOperation(
                 name=None,
                 value=f"mpspdz.return %{expression_visitor.value}",
-                type=None,
+                type="!mpspdz.sint",
             )
         )
 

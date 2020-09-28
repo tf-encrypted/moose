@@ -217,7 +217,43 @@ class MpspdzCallKernel(Kernel):
         assert isinstance(op, MpspdzCallOperation)
         # TODO call out to MP-SPDZ
         # return dummy value as control dependency
+
+        write_bytecode(self.compile_to_mpc(op.mlir), root_directory)
         return 0
+
+    def compile_to_mpc(mlir, elk_binary="./elk-to-mpc"):
+        with tempfile.NamedTemporaryFile(mode="wt") as mlir_file:
+            with tempfile.NamedTemporaryFile(mode="rt", delete=False) as mpc_file:
+
+                mlir_file.write(mlir)
+                mlir_file.flush()
+
+                args = [
+                    elk_binary,
+                    mlir_file.name,
+                    "-o",
+                    mpc_file.name,
+                ]
+                get_logger().debug(f"Running external program: {args}")
+                _ = subprocess.run(
+                    args, stdout=subprocess.PIPE, universal_newlines=True,
+                )
+
+                return mpc_file.read()
+
+    def write_bytecode(mpc, mpspdz_compiler="./MP-SPDZ/compile.py"):
+        with tempfile.NamedTemporaryFile(mode="wt") as mpc_file:
+            mpc_file.write(mpc)
+            mpc_file.flush()
+
+            args = [
+                mpspdz_compiler,
+                mpc_file.name,
+            ]
+            get_logger().debug(f"Running external program: {args}")
+            _ = subprocess.run(
+                args, stdout=subprocess.PIPE, universal_newlines=True,
+            )
 
 
 class MpspdzLoadOutputKernel(Kernel):
