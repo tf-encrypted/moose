@@ -206,9 +206,17 @@ class SubKernel(Kernel):
 class MpspdzSaveInputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **inputs):
         assert isinstance(op, MpspdzSaveInputOperation)
-        # TODO write inputs to file
-        # return dummy value as control dependency
-        return 0
+        # Player-Data/Input-P0-0
+        mpspdz_dir = "/MP-SPDZ/Player-Data/Input-P"
+        thread_no = 0 # assume inputs are happening in the main thread
+        mpspdz_input_file = f"{mpspdz_dir}{op.player_index}-{thread_no}"
+
+        with open(mpspdz_input_file, "a") as f:
+            for arg in inputs.keys():
+                f.write(str(inputs[arg]) + " ")
+        get_logger().debug(
+            f"Executing MpspdzSaveInputKernel, op:{op}, session_id:{session_id}, inputs:{inputs}"
+        )
 
 
 class MpspdzCallKernel(Kernel):
