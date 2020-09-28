@@ -1,0 +1,5 @@
+workers:
+- worker0: worker0:50000
+- worker1: worker1:50001
+- worker2: worker2:50002
+- worker3: worker3:50003

@@ -1,0 +1,5 @@
+workers:
+- inputter0: localhost:50000
+- inputter1: localhost:50001
+- outputter: localhost:50002
+- saver: localhost:50003

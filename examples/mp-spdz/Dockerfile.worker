@@ -1,0 +1,13 @@
+FROM tfencrypted/runtime-base-worker:latest
+
+# MP-SPDZ
+RUN apt install -y openssl xz-utils
+RUN curl -L https://github.com/data61/MP-SPDZ/releases/download/v0.1.9/mp-spdz-0.1.9.tar.xz | tar xJv; \
+    mv mp-spdz-0.1.9 /MP-SPDZ; \
+    cd /MP-SPDZ; \
+    Scripts/tldr.sh
+
+# Copy over example files
+COPY cluster-spec-worker.yaml worker.py ./
+
+CMD python3 worker.py --verbose --port $PORT

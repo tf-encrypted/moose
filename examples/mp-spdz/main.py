@@ -57,19 +57,6 @@ def my_comp():
     with saver:
         res = save(v, "v")
 
-    # expect from MLIR as
-    """
-    !mpspdz.func @foo() {
-        %x = mpspdz.get_input_from 1: !mpspdz.sint
-        %y = mpspdz.get_input_from 2: !mpspdz.sint
-        %z = mpspdz.get_input_from 1: !mpspdz.sint
-        %t1 = mpspdz.mul %x, %y: !mpspdz.sint
-        %t2 = mpspdz.mul %t1, %z: !mpspdz.sint
-        %out = mpspdz.reveal.sint %t2: !mpspdz.sint to !mpspdz.cint
-        (maybe) mpspdz.reveal_to %t2 1: !mpspdz.unit
-    }
-    """
-
     return res
 
 

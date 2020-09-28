@@ -1,0 +1,5 @@
+workers:
+- worker0: localhost:50000
+- worker1: localhost:50001
+- worker2: localhost:50002
+- worker3: localhost:50003
