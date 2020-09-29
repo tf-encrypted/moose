@@ -297,7 +297,13 @@ class MpspdzCallKernel(Kernel):
 class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
-
+        output = subprocess.call(
+            [
+                "./mpspdz-links.sh",
+                f"{session_id}",
+                f"{op.invocation_key}",
+            ]
+        )
         # this is a bit ugly, inspiration from here: https://github.com/data61/MP-SPDZ/issues/104
         # but really, it can be much nicer if the flag in
         # https://github.com/data61/MP-SPDZ/blob/master/Processor/Instruction.hpp#L1229
@@ -330,8 +336,8 @@ class MpspdzLoadOutputKernel(Kernel):
         get_logger().debug(
             f"Executing LoadOutputCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
         )
-        print("XXXXXXXXXXXXXXXXXXX OUTPUTS")
-        print(outputs)
+        get_logger().debug("XXXXXXXXXXXXXXXXXXX OUTPUTS")
+        get_logger().debug(f"results are: {outputs}")
         # TODO return actual value
         return outputs
 
