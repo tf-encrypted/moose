@@ -1,5 +1,6 @@
 import asyncio
 import json
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -233,21 +234,20 @@ class MpspdzCallKernel(Kernel):
         prog_name = self.write_bytecode(self.compile_to_mpc(op.mlir))
         #  ./mascot-party.x -p 1 -N 2 -I mult
 
-        mpspdz_executable = './mascot-party.x'
+        mpspdz_executable = "./mascot-party.x"
         args = [
             mpspdz_executable,
             "-p",
             str(op.player_index),
             "-N",
-            '3',
-            "tmpqn7pdnv4"
+            "3",
+            os.path.splitext(prog_name)[0],
         ]
         get_logger().debug(f"Running external program: {args}")
 
-        p = pathlib.Path('/MP-SPDZ')
+        p = pathlib.Path("/MP-SPDZ")
         _ = subprocess.Popen(
-            args, stdout=subprocess.PIPE, universal_newlines=True,
-            cwd=p
+            args, stdout=subprocess.PIPE, universal_newlines=True, cwd=p
         )
 
         return 0
@@ -270,11 +270,14 @@ class MpspdzCallKernel(Kernel):
                     args, stdout=subprocess.PIPE, universal_newlines=True,
                 )
 
-                return mpc_file.read()
+                mpc_with_main = mpc_file.read() + "\n" + "main()"
+                return mpc_with_main
 
     def write_bytecode(self, mpc, mpspdz_compiler="./MP-SPDZ/compile.py"):
         mpc_file_name = None
-        with tempfile.NamedTemporaryFile(mode="wt", suffix='.mpc', dir='/MP-SPDZ/Programs/Source', delete=False) as mpc_file:
+        with tempfile.NamedTemporaryFile(
+            mode="wt", suffix=".mpc", dir="/MP-SPDZ/Programs/Source", delete=False
+        ) as mpc_file:
             mpc_file.write(mpc)
             mpc_file.flush()
 
@@ -282,11 +285,9 @@ class MpspdzCallKernel(Kernel):
                 mpspdz_compiler,
                 mpc_file.name,
             ]
-            mpc_file_name = mpc_file.name.split('/')[-1]
+            mpc_file_name = mpc_file.name.split("/")[-1]
             get_logger().debug(f"Running external program: {args}")
-            _ = subprocess.run(
-                args, stdout=subprocess.PIPE, universal_newlines=True,
-            )
+            _ = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True,)
         return mpc_file_name
 
 
