@@ -235,6 +235,13 @@ class MpspdzCallKernel(Kernel):
         assert isinstance(op, MpspdzCallOperation)
         prog_name = await self.write_bytecode(await self.compile_to_mpc(op.mlir))
 
+        cmd2 = f"./mpspdz-links.sh {session_id} {op.invocation_key}"
+        proc2 = await asyncio.create_subprocess_shell(
+            cmd2,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
+        await proc2.communicate()
+ 
         mpspdz_executable = "./mascot-party.x"
         args = [
             mpspdz_executable,
@@ -261,6 +268,7 @@ class MpspdzCallKernel(Kernel):
             stderr=asyncio.subprocess.PIPE)
         await proc.communicate()
         get_logger().debug(f"Running external program: Done")
+
         output.set_result(0)
 
     async def compile_to_mpc(self, mlir, elk_binary="./elk-to-mpc"):
@@ -307,13 +315,6 @@ class MpspdzLoadOutputKernel(Kernel):
         assert isinstance(op, MpspdzLoadOutputOperation)
         get_logger().debug(
             f"Executing MpspdzLoadOutputKernel, session_id:{session_id}, inputs:{control_inputs}"
-        )
-        output = subprocess.call(
-            [
-                "./mpspdz-links.sh",
-                f"{session_id}",
-                f"{op.invocation_key}",
-            ]
         )
         # this is a bit ugly, inspiration from here: https://github.com/data61/MP-SPDZ/issues/104
         # but really, it can be much nicer if the flag in
