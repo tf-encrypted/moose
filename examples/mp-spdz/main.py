@@ -7,6 +7,7 @@ from moose.compiler.edsl import function
 from moose.compiler.edsl import save
 from moose.compiler.mpspdz import MpspdzPlacement
 from moose.logger import get_logger
+from moose.runtime import RemoteRuntime
 from moose.runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
@@ -63,8 +64,9 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
+    runtime = RemoteRuntime("cluster-spec.yaml")
 
-    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+#    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
 
     runtime.evaluate_computation(
         computation=concrete_comp,

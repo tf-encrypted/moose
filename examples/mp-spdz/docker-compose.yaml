@@ -6,6 +6,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
     ports:
       - 50000:50000
     environment:
@@ -15,6 +17,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
     ports:
       - 50001:50001
     environment:
@@ -24,6 +28,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
     ports:
       - 50002:50002
     environment:
@@ -33,7 +39,18 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
     ports:
       - 50003:50003
     environment:
       PORT: 50003
+  
+  main:
+    build:
+      context: .
+      dockerfile: Dockerfile.main
+    volumes:
+      - "../../moose:/moose"
+ 
+

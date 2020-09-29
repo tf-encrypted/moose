@@ -12,7 +12,7 @@ RUN apt install -y libtinfo5
 COPY elk-to-mpc ./
 
 # Copy over example files
-COPY cluster-spec.yaml worker.py ./
+COPY cluster-spec.yaml main.py ./
 COPY * ./
 
-CMD python3 worker.py --verbose --port $PORT
+CMD python3 main.py --verbose

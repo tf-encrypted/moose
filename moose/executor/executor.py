@@ -201,7 +201,7 @@ class MpspdzSaveInputKernel(Kernel):
         # Player-Data/Input-P0-0
         output = subprocess.call(
             [
-                "./runtime/moose/third-party/mpspdz-links.sh",
+                "./mpspdz-links.sh",
                 f"{session_id}",
                 f"{op.invocation_key}",
             ]
@@ -241,15 +241,18 @@ class MpspdzCallKernel(Kernel):
             str(op.player_index),
             "-N",
             "3",
+            "-h",
+            "inputter1",
             os.path.splitext(prog_name)[0],
         ]
         get_logger().debug(f"Running external program: {args}")
 
         p = pathlib.Path("/MP-SPDZ")
-        _ = subprocess.Popen(
+        _ = subprocess.run(
             args, stdout=subprocess.PIPE, universal_newlines=True, cwd=p
         )
 
+        get_logger().debug(f"RAN MP-SPDZ")
         return 0
 
     def compile_to_mpc(self, mlir, elk_binary="./elk-to-mpc"):
@@ -314,6 +317,7 @@ class MpspdzLoadOutputKernel(Kernel):
         )
         mpspdz_output_file = f"{mpspdz_dir}-{op.player_index}"
 
+        get_logger().debug(f"Reading Private-Output")
         outputs = list()
         with open(mpspdz_output_file, "rb") as f:
             while (byte := f.read(16)) :
@@ -326,6 +330,8 @@ class MpspdzLoadOutputKernel(Kernel):
         get_logger().debug(
             f"Executing LoadOutputCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
         )
+        print("XXXXXXXXXXXXXXXXXXX OUTPUTS")
+        print(outputs)
         # TODO return actual value
         return outputs
 
