@@ -1,6 +1,6 @@
 build-base-worker-image:
 	docker build \
-		--file docker/Dockerfile.base-worker \
+		--file Dockerfile.base-worker \
 		--tag tfencrypted/runtime-base-worker:latest \
 		..
 
