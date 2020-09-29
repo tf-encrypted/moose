@@ -224,15 +224,16 @@ class MpspdzSaveInputKernel(Kernel):
 
 
 class MpspdzCallKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, **control_inputs):
+    async def execute(self, op, session_id, **kwargs):
+
+        concrete_kwargs = {key: await value for key, value in kwargs.items()}
+        control_inputs = concrete_kwargs
+
         get_logger().debug(
             f"Executing MpspdzCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
         )
         assert isinstance(op, MpspdzCallOperation)
-        # TODO call out to MP-SPDZ
-        # return dummy value as control dependency
         prog_name = self.write_bytecode(self.compile_to_mpc(op.mlir))
-        #  ./mascot-party.x -p 1 -N 2 -I mult
 
         mpspdz_executable = "./mascot-party.x"
         args = [
@@ -243,16 +244,28 @@ class MpspdzCallKernel(Kernel):
             "3",
             "-h",
             "inputter0",
+            "-pn",
+            "12000",
             os.path.splitext(prog_name)[0],
         ]
+        args = f"./mascot-party.x -p {op.player_index} -N 3 -h inputter0"
+
         get_logger().debug(f"Running external program: {args}")
 
         p = pathlib.Path("/MP-SPDZ")
-        _ = subprocess.run(
-            args, stdout=subprocess.PIPE, universal_newlines=True, cwd=p
-        )
 
-        get_logger().debug(f"RAN MP-SPDZ")
+        cmd = "cd /MP-SPDZ;" + args
+        proc = await asyncio.create_subprocess_shell.run(
+            cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE)
+
+        print(f'[{cmd!r} exited with {proc.returncode}]')
+        if stdout:
+            print(f'[stdout]\n{stdout.decode()}')
+        if stderr:
+            print(f'[stderr]\n{stderr.decode()}')
+        
         return 0
 
     def compile_to_mpc(self, mlir, elk_binary="./elk-to-mpc"):
