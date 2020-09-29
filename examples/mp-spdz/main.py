@@ -73,9 +73,10 @@ if __name__ == "__main__":
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_assignment={
-            inputter0: runtime.executors[0],
-            inputter1: runtime.executors[1],
-            outputter: runtime.executors[2],
+            inputter0: runtime.executors["inputter0"],
+            inputter1: runtime.executors["inputter1"],
+            outputter: runtime.executors["outputter"],
+            saver: runtime.executors["saver"],
         },
     )
 

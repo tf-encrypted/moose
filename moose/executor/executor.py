@@ -242,7 +242,7 @@ class MpspdzCallKernel(Kernel):
             "-N",
             "3",
             "-h",
-            "inputter1",
+            "inputter0",
             os.path.splitext(prog_name)[0],
         ]
         get_logger().debug(f"Running external program: {args}")

@@ -27,6 +27,7 @@ class MpspdzPlacement(Placement):
         player_name_index_map = {
             player.name: i for i, player in enumerate(self.players)
         }
+        get_logger().debug(f"Player indices: {player_name_index_map}")
 
         # NOTE output_players and output_placement can be extracted from output_type
         # once we have placements in types
