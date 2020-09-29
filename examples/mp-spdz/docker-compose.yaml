@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile.worker
     volumes:
       - "../../moose:/moose"
+      - ".:/examples/mp-spdz"
 
   inputter1:
     build:
@@ -15,6 +16,7 @@ services:
       dockerfile: Dockerfile.worker
     volumes:
       - "../../moose:/moose"
+      - ".:/examples/mp-spdz"
 
   outputter:
     build:
@@ -22,6 +24,7 @@ services:
       dockerfile: Dockerfile.worker
     volumes:
       - "../../moose:/moose"
+      - ".:/examples/mp-spdz"
 
   saver:
     build:
@@ -29,3 +32,4 @@ services:
       dockerfile: Dockerfile.worker
     volumes:
       - "../../moose:/moose"
+      - ".:/examples/mp-spdz"

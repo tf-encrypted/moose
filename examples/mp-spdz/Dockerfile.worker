@@ -7,12 +7,7 @@ RUN curl -L https://github.com/data61/MP-SPDZ/releases/download/v0.1.9/mp-spdz-0
     cd /MP-SPDZ; \
     Scripts/tldr.sh
 
-# Install Elk
+# Elk dependency
 RUN apt install -y libtinfo5
-COPY elk-to-mpc ./
 
-# Copy over example files
-COPY cluster-spec.yaml worker.py ./
-COPY * ./
-
-CMD python3 worker.py --verbose --port $PORT
+CMD cd /examples/mp-spdz && python3 worker.py --verbose

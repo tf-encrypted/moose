@@ -1,3 +1,4 @@
+import argparse
 import logging
 import time
 
@@ -11,7 +12,13 @@ from moose.logger import get_logger
 from moose.runtime import RemoteRuntime
 from moose.runtime import TestRuntime
 
-get_logger().setLevel(level=logging.DEBUG)
+parser = argparse.ArgumentParser(description="Launch worker")
+parser.add_argument("--verbose", action="store_true")
+parser.add_argument("--cluster-spec", default="cluster-spec.yaml")
+args = parser.parse_args()
+
+if args.verbose:
+    get_logger().setLevel(level=logging.DEBUG)
 
 inputter0 = HostPlacement(name="inputter0")
 inputter1 = HostPlacement(name="inputter1")
@@ -65,8 +72,7 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
-    time.sleep(5)
-    runtime = RemoteRuntime("cluster-spec.yaml")
+    runtime = RemoteRuntime(args.cluster_spec)
 
 #    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
 

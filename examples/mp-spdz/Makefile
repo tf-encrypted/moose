@@ -1,16 +1,13 @@
 
-WORKER_IMAGE?=tfencrypted/runtime-dev-worker:latest
+MAIN_IMAGE?=tfencrypted/runtime-base-worker:latest
 
-build-worker-image:
-	docker build \
-		--file Dockerfile.worker \
-		--tag ${WORKER_IMAGE} .
+run:
+	docker run \
+		--tty \
+		--network mp-spdz_default \
+		--volume $(realpath ../../moose):/moose \
+		--volume $(realpath .):/examples/mp-spdz \
+		${MAIN_IMAGE} \
+		sh -c "python3 /examples/mp-spdz/main.py --verbose --cluster-spec /examples/mp-spdz/cluster-spec.yaml"
 
-run-worker-image:
-	docker run -it \
-		--env PORT=50000 \
-		--volume $(realpath ../..):/runtime \
-		${WORKER_IMAGE} \
-		bash
-
-.PHONY: build-worker-image run-worker-image
+.PHONY: run
