@@ -255,13 +255,11 @@ class MpspdzCallKernel(Kernel):
             "12000",
             os.path.splitext(prog_name)[0],
         ]
-        args = f"./mascot-party.x -p {op.player_index} -N 3 -h inputter0"
-
         get_logger().debug(f"Running external program: {args}")
 
         p = pathlib.Path("/MP-SPDZ")
 
-        cmd = "cd /MP-SPDZ;" + args
+        cmd = "cd /MP-SPDZ;" + " ".join(args)
         proc = await asyncio.create_subprocess_shell(
             cmd,
             stdout=asyncio.subprocess.PIPE,
