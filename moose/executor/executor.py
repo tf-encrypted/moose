@@ -221,19 +221,19 @@ class MpspdzSaveInputKernel(Kernel):
             f"session_id:{session_id}, "
             f"inputs:{inputs}"
         )
+        return 0
 
 
 class MpspdzCallKernel(Kernel):
-    async def execute(self, op, session_id, **kwargs):
-
+    async def execute(self, op, session_id, output, **kwargs):
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
         control_inputs = concrete_kwargs
 
         get_logger().debug(
-            f"Executing MpspdzCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
+            f"Executing MpspdzCallKernel, session_id:{session_id}, inputs:{control_inputs}"
         )
         assert isinstance(op, MpspdzCallOperation)
-        prog_name = self.write_bytecode(self.compile_to_mpc(op.mlir))
+        prog_name = await self.write_bytecode(await self.compile_to_mpc(op.mlir))
 
         mpspdz_executable = "./mascot-party.x"
         args = [
@@ -255,20 +255,15 @@ class MpspdzCallKernel(Kernel):
         p = pathlib.Path("/MP-SPDZ")
 
         cmd = "cd /MP-SPDZ;" + args
-        proc = await asyncio.create_subprocess_shell.run(
+        proc = await asyncio.create_subprocess_shell(
             cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
+        await proc.communicate()
+        get_logger().debug(f"Running external program: Done")
+        output.set_result(0)
 
-        print(f'[{cmd!r} exited with {proc.returncode}]')
-        if stdout:
-            print(f'[stdout]\n{stdout.decode()}')
-        if stderr:
-            print(f'[stderr]\n{stderr.decode()}')
-        
-        return 0
-
-    def compile_to_mpc(self, mlir, elk_binary="./elk-to-mpc"):
+    async def compile_to_mpc(self, mlir, elk_binary="./elk-to-mpc"):
         with tempfile.NamedTemporaryFile(mode="wt") as mlir_file:
             with tempfile.NamedTemporaryFile(mode="rt", delete=False) as mpc_file:
 
@@ -289,7 +284,7 @@ class MpspdzCallKernel(Kernel):
                 mpc_with_main = mpc_file.read() + "\n" + "main()"
                 return mpc_with_main
 
-    def write_bytecode(self, mpc, mpspdz_compiler="./compile.py"):
+    async def write_bytecode(self, mpc, mpspdz_compiler="./compile.py"):
         mpc_file_name = None
         with tempfile.NamedTemporaryFile(
             mode="wt", suffix=".mpc", dir="/MP-SPDZ/Programs/Source", delete=False
@@ -310,6 +305,9 @@ class MpspdzCallKernel(Kernel):
 class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
+        get_logger().debug(
+            f"Executing MpspdzLoadOutputKernel, session_id:{session_id}, inputs:{control_inputs}"
+        )
         output = subprocess.call(
             [
                 "./mpspdz-links.sh",
