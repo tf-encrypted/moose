@@ -276,7 +276,7 @@ class MpspdzCallKernel(Kernel):
                 mpc_with_main = mpc_file.read() + "\n" + "main()"
                 return mpc_with_main
 
-    def write_bytecode(self, mpc, mpspdz_compiler="./MP-SPDZ/compile.py"):
+    def write_bytecode(self, mpc, mpspdz_compiler="./compile.py"):
         mpc_file_name = None
         with tempfile.NamedTemporaryFile(
             mode="wt", suffix=".mpc", dir="/MP-SPDZ/Programs/Source", delete=False
@@ -290,7 +290,7 @@ class MpspdzCallKernel(Kernel):
             ]
             mpc_file_name = mpc_file.name.split("/")[-1]
             get_logger().debug(f"Running external program: {args}")
-            _ = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True,)
+            _ = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True, cwd='/MP-SPDZ')
         return mpc_file_name
 
 
