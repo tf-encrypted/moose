@@ -1,4 +1,6 @@
 import asyncio
+import binascii
+import hashlib
 import json
 import os
 import pathlib
@@ -28,6 +30,7 @@ from moose.logger import get_logger
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
 from moose.storage import AsyncStore
+
 
 
 class Kernel:
@@ -224,6 +227,8 @@ class MpspdzSaveInputKernel(Kernel):
         return 0
 
 
+PORT_OFFSET = 10000
+
 class MpspdzCallKernel(Kernel):
     async def execute(self, op, session_id, output, **kwargs):
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
@@ -241,6 +246,10 @@ class MpspdzCallKernel(Kernel):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE)
         await proc2.communicate()
+
+        h = hashlib.new('sha256')
+        h.update(f"{session_id} {op.invocation_key}".encode('utf-8'))
+        port_number =int(binascii.hexlify(h.digest()), 16) % PORT_OFFSET # suppose we don't have more than 10000 different ports
  
         mpspdz_executable = "./mascot-party.x"
         args = [
@@ -252,12 +261,10 @@ class MpspdzCallKernel(Kernel):
             "-h",
             "inputter0",
             "-pn",
-            "12000",
+            str(port_number + PORT_OFFSET), # offset the port by 10000
             os.path.splitext(prog_name)[0],
         ]
         get_logger().debug(f"Running external program: {args}")
-
-        p = pathlib.Path("/MP-SPDZ")
 
         cmd = "cd /MP-SPDZ;" + " ".join(args)
         proc = await asyncio.create_subprocess_shell(
@@ -346,8 +353,6 @@ class MpspdzLoadOutputKernel(Kernel):
         get_logger().debug(
             f"Executing LoadOutputCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
         )
-        get_logger().debug("XXXXXXXXXXXXXXXXXXX OUTPUTS")
-        get_logger().debug(f"results are: {outputs}")
         # TODO return actual value
         return outputs
 
