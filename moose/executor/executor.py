@@ -230,90 +230,84 @@ class MpspdzSaveInputKernel(Kernel):
         return 0
 
 
-PORT_OFFSET = 10000
+async def prepare_mpspdz_directory(op, session_id):
+    await run_external_program(
+        args=["./mpspdz-links.sh", str(session_id), str(op.invocation_key)]
+    )
+
+
+async def run_external_program(args, cwd=None):
+    get_logger().debug(f"Run external program, launch: {args}")
+    cmd = " ".join(args)
+    proc = await asyncio.create_subprocess_shell(
+        cmd, cwd=cwd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )
+    await proc.communicate()
+    get_logger().debug(f"Run external program, finish: {args}")
 
 
 class MpspdzCallKernel(Kernel):
     async def execute(self, op, session_id, output, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
-        await asyncio.gather(*control_inputs.values())
+        _ = await asyncio.gather(*control_inputs.values())
 
-        prog_name = await self.write_bytecode(await self.compile_to_mpc(op.mlir))
+        await prepare_mpspdz_directory(op, session_id)
 
-        cmd2 = f"./mpspdz-links.sh {session_id} {op.invocation_key}"
-        proc2 = await asyncio.create_subprocess_shell(
-            cmd2, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-        )
-        await proc2.communicate()
-
-        h = hashlib.new("sha256")
-        h.update(f"{session_id} {op.invocation_key}".encode("utf-8"))
-        # suppose we don't have more than 10000 different ports
-        port_number = int(binascii.hexlify(h.digest()), 16) % PORT_OFFSET
-
-        mpspdz_executable = "./mascot-party.x"
-        args = [
-            mpspdz_executable,
-            "-p",
-            str(op.player_index),
-            "-N",
-            "3",
-            "-h",
-            "inputter0",
-            "-pn",
-            str(port_number + PORT_OFFSET),  # offset the port by 10000
-            os.path.splitext(prog_name)[0],
-        ]
-        get_logger().debug(f"Running external program: {args}")
-
-        cmd = "cd /MP-SPDZ;" + " ".join(args)
-        proc = await asyncio.create_subprocess_shell(
-            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
-        )
-        await proc.communicate()
-        get_logger().debug("Running external program: Done")
+        with tempfile.NamedTemporaryFile(
+            mode="wt", suffix=".mpc", dir="/MP-SPDZ/Programs/Source"
+        ) as mpc_file:
+            mpc = await self.compile_mpc(op.mlir)
+            mpc_file.write(mpc)
+            mpc_file.flush()
+            bytecode_filename = await self.compile_and_write_bytecode(mpc_file.name)
+            await self.run_mpspdz(
+                player_index=op.player_index,
+                port_number=self.derive_port_number(op, session_id),
+                bytecode_filename=bytecode_filename,
+            )
 
         output.set_result(0)
 
-    async def compile_to_mpc(self, mlir, elk_binary="./elk-to-mpc"):
-        with tempfile.NamedTemporaryFile(mode="wt") as mlir_file:
-            with tempfile.NamedTemporaryFile(mode="rt", delete=False) as mpc_file:
-
+    async def compile_mpc(self, mlir):
+        with tempfile.NamedTemporaryFile(mode="rt") as mpc_file:
+            with tempfile.NamedTemporaryFile(mode="wt") as mlir_file:
                 mlir_file.write(mlir)
                 mlir_file.flush()
-
-                args = [
-                    elk_binary,
-                    mlir_file.name,
-                    "-o",
-                    mpc_file.name,
-                ]
-                get_logger().debug(f"Running external program: {args}")
-                _ = subprocess.run(
-                    args, stdout=subprocess.PIPE, universal_newlines=True,
+                await run_external_program(
+                    args=["./elk-to-mpc", mlir_file.name, "-o", mpc_file.name]
                 )
+                mpc_without_main = mpc_file.read()
+                return mpc_without_main + "\n" + "main()"
 
-                mpc_with_main = mpc_file.read() + "\n" + "main()"
-                return mpc_with_main
+    async def compile_and_write_bytecode(self, mpc_filename):
+        await run_external_program(
+            args=["./compile.py", mpc_filename], cwd="/MP-SPDZ",
+        )
+        return os.path.splitext(mpc_filename.split("/")[-1])[0]
 
-    async def write_bytecode(self, mpc, mpspdz_compiler="./compile.py"):
-        mpc_file_name = None
-        with tempfile.NamedTemporaryFile(
-            mode="wt", suffix=".mpc", dir="/MP-SPDZ/Programs/Source", delete=False
-        ) as mpc_file:
-            mpc_file.write(mpc)
-            mpc_file.flush()
-
-            args = [
-                mpspdz_compiler,
-                mpc_file.name,
+    async def run_mpspdz(self, player_index, port_number, bytecode_filename):
+        await run_external_program(
+            args=[
+                "cd /MP-SPDZ; ./mascot-party.x",
+                "-p",
+                str(player_index),
+                "-N",
+                "3",
+                "-h",
+                "inputter0",
+                "-pn",
+                str(port_number),
+                bytecode_filename,
             ]
-            mpc_file_name = mpc_file.name.split("/")[-1]
-            get_logger().debug(f"Running external program: {args}")
-            _ = subprocess.run(
-                args, stdout=subprocess.PIPE, universal_newlines=True, cwd="/MP-SPDZ"
-            )
-        return mpc_file_name
+        )
+
+    def derive_port_number(self, op, session_id, min_port=10000, max_port=20000):
+        h = hashlib.new("sha256")
+        h.update(f"{session_id} {op.invocation_key}".encode("utf-8"))
+        hash_value = binascii.hexlify(h.digest())
+        # map into [min_port; max_port)
+        port_number = int(hash_value, 16) % (max_port - min_port) + min_port
+        return port_number
 
 
 class MpspdzLoadOutputKernel(Kernel):
@@ -339,6 +333,7 @@ class MpspdzLoadOutputKernel(Kernel):
             f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/Player-Data/Private-Output"
         )
         mpspdz_output_file = f"{mpspdz_dir}-{op.player_index}"
+        get_logger().debug(f"Loading values from {mpspdz_output_file}")
 
         outputs = list()
         with open(mpspdz_output_file, "rb") as f:
