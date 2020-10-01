@@ -3,7 +3,6 @@ import binascii
 import hashlib
 import json
 import os
-import pathlib
 import subprocess
 import tempfile
 
@@ -32,12 +31,23 @@ from moose.protos import executor_pb2_grpc
 from moose.storage import AsyncStore
 
 
-
 class Kernel:
     async def execute(self, op, session_id, output, **kwargs):
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
+        get_logger().debug(
+            f"Ready to execute kernel:"
+            f" op:{op},"
+            f" session_id:{session_id},"
+            f" inputs:{concrete_kwargs}"
+        )
         concrete_output = self.execute_synchronous_block(
             op=op, session_id=session_id, **concrete_kwargs
+        )
+        get_logger().debug(
+            f"Done executing kernel:"
+            f" op:{op},"
+            f" session_id:{session_id},"
+            f" output:{concrete_output}"
         )
         if output:
             output.set_result(concrete_output)
@@ -201,56 +211,44 @@ class SubKernel(Kernel):
 class MpspdzSaveInputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **inputs):
         assert isinstance(op, MpspdzSaveInputOperation)
-        # Player-Data/Input-P0-0
-        output = subprocess.call(
-            [
-                "./mpspdz-links.sh",
-                f"{session_id}",
-                f"{op.invocation_key}",
-            ]
-        )
-        mpspdz_dir = (
-            f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/Player-Data/Input-P"
-        )
+
+        args = ["./mpspdz-links.sh", f"{session_id}", f"{op.invocation_key}"]
+        subprocess.call(args)
+
         thread_no = 0  # assume inputs are happening in the main thread
-        mpspdz_input_file = f"{mpspdz_dir}{op.player_index}-{thread_no}"
+        mpspdz_input_file = (
+            f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/"
+            f"Player-Data/Input-P{op.player_index}-{thread_no}"
+        )
 
         with open(mpspdz_input_file, "a") as f:
             for arg in inputs.keys():
                 f.write(str(inputs[arg]) + " ")
-        get_logger().debug(
-            f"Executing MpspdzSaveInputKernel, "
-            f"op:{op}, "
-            f"session_id:{session_id}, "
-            f"inputs:{inputs}"
-        )
+
         return 0
 
 
 PORT_OFFSET = 10000
 
-class MpspdzCallKernel(Kernel):
-    async def execute(self, op, session_id, output, **kwargs):
-        concrete_kwargs = {key: await value for key, value in kwargs.items()}
-        control_inputs = concrete_kwargs
 
-        get_logger().debug(
-            f"Executing MpspdzCallKernel, session_id:{session_id}, inputs:{control_inputs}"
-        )
+class MpspdzCallKernel(Kernel):
+    async def execute(self, op, session_id, output, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
+        await asyncio.gather(*control_inputs.values())
+
         prog_name = await self.write_bytecode(await self.compile_to_mpc(op.mlir))
 
         cmd2 = f"./mpspdz-links.sh {session_id} {op.invocation_key}"
         proc2 = await asyncio.create_subprocess_shell(
-            cmd2,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE)
+            cmd2, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
         await proc2.communicate()
 
-        h = hashlib.new('sha256')
-        h.update(f"{session_id} {op.invocation_key}".encode('utf-8'))
-        port_number =int(binascii.hexlify(h.digest()), 16) % PORT_OFFSET # suppose we don't have more than 10000 different ports
- 
+        h = hashlib.new("sha256")
+        h.update(f"{session_id} {op.invocation_key}".encode("utf-8"))
+        # suppose we don't have more than 10000 different ports
+        port_number = int(binascii.hexlify(h.digest()), 16) % PORT_OFFSET
+
         mpspdz_executable = "./mascot-party.x"
         args = [
             mpspdz_executable,
@@ -261,18 +259,17 @@ class MpspdzCallKernel(Kernel):
             "-h",
             "inputter0",
             "-pn",
-            str(port_number + PORT_OFFSET), # offset the port by 10000
+            str(port_number + PORT_OFFSET),  # offset the port by 10000
             os.path.splitext(prog_name)[0],
         ]
         get_logger().debug(f"Running external program: {args}")
 
         cmd = "cd /MP-SPDZ;" + " ".join(args)
         proc = await asyncio.create_subprocess_shell(
-            cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE)
+            cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+        )
         await proc.communicate()
-        get_logger().debug(f"Running external program: Done")
+        get_logger().debug("Running external program: Done")
 
         output.set_result(0)
 
@@ -311,7 +308,9 @@ class MpspdzCallKernel(Kernel):
             ]
             mpc_file_name = mpc_file.name.split("/")[-1]
             get_logger().debug(f"Running external program: {args}")
-            _ = subprocess.run(args, stdout=subprocess.PIPE, universal_newlines=True, cwd='/MP-SPDZ')
+            _ = subprocess.run(
+                args, stdout=subprocess.PIPE, universal_newlines=True, cwd="/MP-SPDZ"
+            )
         return mpc_file_name
 
 
@@ -319,9 +318,12 @@ class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
         get_logger().debug(
-            f"Executing MpspdzLoadOutputKernel, session_id:{session_id}, inputs:{control_inputs}"
+            f"Executing MpspdzLoadOutputKernel,"
+            f" session_id:{session_id},"
+            f" inputs:{control_inputs}"
         )
-        # this is a bit ugly, inspiration from here: https://github.com/data61/MP-SPDZ/issues/104
+        # this is a bit ugly, inspiration from here:
+        # https://github.com/data61/MP-SPDZ/issues/104
         # but really, it can be much nicer if the flag in
         # https://github.com/data61/MP-SPDZ/blob/master/Processor/Instruction.hpp#L1229
         # is set to true (ie human readable)
@@ -340,10 +342,12 @@ class MpspdzLoadOutputKernel(Kernel):
         )
         mpspdz_output_file = f"{mpspdz_dir}-{op.player_index}"
 
-        get_logger().debug(f"Reading Private-Output")
         outputs = list()
         with open(mpspdz_output_file, "rb") as f:
-            while (byte := f.read(16)) :
+            while True:
+                byte = f.read(16)
+                if not byte:
+                    break
                 # As integer
                 tmp = int.from_bytes(byte, byteorder="little")
                 # Invert "Montgomery"
@@ -351,9 +355,12 @@ class MpspdzLoadOutputKernel(Kernel):
                 outputs.append(clear)
 
         get_logger().debug(
-            f"Executing LoadOutputCallKernel, op:{op}, session_id:{session_id}, inputs:{control_inputs}"
+            f"Executing LoadOutputCallKernel,"
+            f" op:{op},"
+            f" session_id:{session_id},"
+            f" inputs:{control_inputs}"
         )
-        # TODO return actual value
+
         return outputs
 
 

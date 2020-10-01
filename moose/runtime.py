@@ -40,7 +40,8 @@ class RemoteRuntime(Runtime):
             # assume `cluster_spec` is given as a path
             cluster_spec = load_cluster_spec(cluster_spec)
         self.executors = {
-            placement_name: RemoteExecutor(endpoint) for placement_name, endpoint in cluster_spec.items()
+            placement_name: RemoteExecutor(endpoint)
+            for placement_name, endpoint in cluster_spec.items()
         }
 
 

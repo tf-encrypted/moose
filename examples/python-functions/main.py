@@ -1,6 +1,5 @@
 import argparse
 import logging
-import time
 
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add

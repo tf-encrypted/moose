@@ -1,6 +1,5 @@
 import argparse
 import logging
-import time
 
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import computation
@@ -74,7 +73,7 @@ concrete_comp = my_comp.trace_func()
 if __name__ == "__main__":
     runtime = RemoteRuntime(args.cluster_spec)
 
-#    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+    #    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
 
     runtime.evaluate_computation(
         computation=concrete_comp,
