@@ -1,6 +1,8 @@
 import argparse
 import logging
 
+from grpc.experimental import aio
+
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import computation
 from moose.compiler.edsl import constant
@@ -71,6 +73,7 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
+    aio.init_grpc_aio()
     runtime = RemoteRuntime(args.cluster_spec)
 
     #    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
