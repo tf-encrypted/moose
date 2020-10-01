@@ -35,7 +35,8 @@ class Kernel:
     async def execute(self, op, session_id, output, **kwargs):
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
         get_logger().debug(
-            f"Ready to execute kernel:"
+            f"Executing:"
+            f" kernel:{self.__class__.__name__},"
             f" op:{op},"
             f" session_id:{session_id},"
             f" inputs:{concrete_kwargs}"
@@ -44,7 +45,8 @@ class Kernel:
             op=op, session_id=session_id, **concrete_kwargs
         )
         get_logger().debug(
-            f"Done executing kernel:"
+            f"Done executing:"
+            f" kernel:{self.__class__.__name__},"
             f" op:{op},"
             f" session_id:{session_id},"
             f" output:{concrete_output}"
@@ -317,11 +319,7 @@ class MpspdzCallKernel(Kernel):
 class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
-        get_logger().debug(
-            f"Executing MpspdzLoadOutputKernel,"
-            f" session_id:{session_id},"
-            f" inputs:{control_inputs}"
-        )
+
         # this is a bit ugly, inspiration from here:
         # https://github.com/data61/MP-SPDZ/issues/104
         # but really, it can be much nicer if the flag in
@@ -353,14 +351,6 @@ class MpspdzLoadOutputKernel(Kernel):
                 # Invert "Montgomery"
                 clear = (tmp * invR) % prime
                 outputs.append(clear)
-
-        get_logger().debug(
-            f"Executing LoadOutputCallKernel,"
-            f" op:{op},"
-            f" session_id:{session_id},"
-            f" inputs:{control_inputs}"
-        )
-
         return outputs
 
 

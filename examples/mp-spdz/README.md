@@ -8,7 +8,7 @@ We recommend running the example using the included docker-compose.yaml file to 
 docker-compose up --build
 ```
 
-Then run the following to execute `main.py` against there:
+Then run the following to execute `main.py` against these:
 
 ```
 make run

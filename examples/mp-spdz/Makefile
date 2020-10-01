@@ -1,4 +1,3 @@
-
 MAIN_IMAGE?=tfencrypted/runtime-base-worker:latest
 
 run:

@@ -20,8 +20,6 @@ mkdir -p $data_dir
 if simlink? "${data_dir}/Player-Data"; then
   echo ${data_dir}/Player-Data is a symlink
 else
-  echo creating the symlink ${data_dir}/Player-Data
-  ln -s $SPDZROOT/Player-Data/ $data_dir
+  echo Creating symlink ${data_dir}/Player-Data
+  ln -s $SPDZROOT/Player-Data $data_dir
 fi
-
-
