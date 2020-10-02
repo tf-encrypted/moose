@@ -1,5 +1,8 @@
 import asyncio
+import binascii
+import hashlib
 import json
+import os
 import subprocess
 import tempfile
 
@@ -31,8 +34,22 @@ from moose.storage import AsyncStore
 class Kernel:
     async def execute(self, op, session_id, output, **kwargs):
         concrete_kwargs = {key: await value for key, value in kwargs.items()}
+        get_logger().debug(
+            f"Executing:"
+            f" kernel:{self.__class__.__name__},"
+            f" op:{op},"
+            f" session_id:{session_id},"
+            f" inputs:{concrete_kwargs}"
+        )
         concrete_output = self.execute_synchronous_block(
             op=op, session_id=session_id, **concrete_kwargs
+        )
+        get_logger().debug(
+            f"Done executing:"
+            f" kernel:{self.__class__.__name__},"
+            f" op:{op},"
+            f" session_id:{session_id},"
+            f" output:{concrete_output}"
         )
         if output:
             output.set_result(concrete_output)
@@ -196,71 +213,138 @@ class SubKernel(Kernel):
 class MpspdzSaveInputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **inputs):
         assert isinstance(op, MpspdzSaveInputOperation)
-        # Player-Data/Input-P0-0
-        mpspdz_dir = "/MP-SPDZ/Player-Data/Input-P"
+
+        args = ["./mpspdz-links.sh", f"{session_id}", f"{op.invocation_key}"]
+        subprocess.call(args)
+
         thread_no = 0  # assume inputs are happening in the main thread
-        mpspdz_input_file = f"{mpspdz_dir}{op.player_index}-{thread_no}"
+        mpspdz_input_file = (
+            f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/"
+            f"Player-Data/Input-P{op.player_index}-{thread_no}"
+        )
 
         with open(mpspdz_input_file, "a") as f:
             for arg in inputs.keys():
                 f.write(str(inputs[arg]) + " ")
-        get_logger().debug(
-            f"Executing MpspdzSaveInputKernel, "
-            f"op:{op}, "
-            f"session_id:{session_id}, "
-            f"inputs:{inputs}"
-        )
+
+        return 0
+
+
+async def prepare_mpspdz_directory(op, session_id):
+    await run_external_program(
+        args=["./mpspdz-links.sh", str(session_id), str(op.invocation_key)]
+    )
+
+
+async def run_external_program(args, cwd=None):
+    get_logger().debug(f"Run external program, launch: {args}")
+    cmd = " ".join(args)
+    proc = await asyncio.create_subprocess_shell(
+        cmd, cwd=cwd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )
+    await proc.communicate()
+    get_logger().debug(f"Run external program, finish: {args}")
 
 
 class MpspdzCallKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, **control_inputs):
+    async def execute(self, op, session_id, output, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
-        # TODO call out to MP-SPDZ
-        # return dummy value as control dependency
+        _ = await asyncio.gather(*control_inputs.values())
 
-        write_bytecode(self.compile_to_mpc(op.mlir), root_directory)
-        return 0
+        await prepare_mpspdz_directory(op, session_id)
 
-    def compile_to_mpc(mlir, elk_binary="./elk-to-mpc"):
-        with tempfile.NamedTemporaryFile(mode="wt") as mlir_file:
-            with tempfile.NamedTemporaryFile(mode="rt", delete=False) as mpc_file:
-
-                mlir_file.write(mlir)
-                mlir_file.flush()
-
-                args = [
-                    elk_binary,
-                    mlir_file.name,
-                    "-o",
-                    mpc_file.name,
-                ]
-                get_logger().debug(f"Running external program: {args}")
-                _ = subprocess.run(
-                    args, stdout=subprocess.PIPE, universal_newlines=True,
-                )
-
-                return mpc_file.read()
-
-    def write_bytecode(mpc, mpspdz_compiler="./MP-SPDZ/compile.py"):
-        with tempfile.NamedTemporaryFile(mode="wt") as mpc_file:
+        with tempfile.NamedTemporaryFile(
+            mode="wt", suffix=".mpc", dir="/MP-SPDZ/Programs/Source"
+        ) as mpc_file:
+            mpc = await self.compile_mpc(op.mlir)
             mpc_file.write(mpc)
             mpc_file.flush()
-
-            args = [
-                mpspdz_compiler,
-                mpc_file.name,
-            ]
-            get_logger().debug(f"Running external program: {args}")
-            _ = subprocess.run(
-                args, stdout=subprocess.PIPE, universal_newlines=True,
+            bytecode_filename = await self.compile_and_write_bytecode(mpc_file.name)
+            await self.run_mpspdz(
+                player_index=op.player_index,
+                port_number=self.derive_port_number(op, session_id),
+                bytecode_filename=bytecode_filename,
             )
+
+        output.set_result(0)
+
+    async def compile_mpc(self, mlir):
+        with tempfile.NamedTemporaryFile(mode="rt") as mpc_file:
+            with tempfile.NamedTemporaryFile(mode="wt") as mlir_file:
+                mlir_file.write(mlir)
+                mlir_file.flush()
+                await run_external_program(
+                    args=["./elk-to-mpc", mlir_file.name, "-o", mpc_file.name]
+                )
+                mpc_without_main = mpc_file.read()
+                return mpc_without_main + "\n" + "main()"
+
+    async def compile_and_write_bytecode(self, mpc_filename):
+        await run_external_program(
+            args=["./compile.py", mpc_filename], cwd="/MP-SPDZ",
+        )
+        return os.path.splitext(mpc_filename.split("/")[-1])[0]
+
+    async def run_mpspdz(self, player_index, port_number, bytecode_filename):
+        await run_external_program(
+            args=[
+                "cd /MP-SPDZ; ./mascot-party.x",
+                "-p",
+                str(player_index),
+                "-N",
+                "3",
+                "-h",
+                "inputter0",
+                "-pn",
+                str(port_number),
+                bytecode_filename,
+            ]
+        )
+
+    def derive_port_number(self, op, session_id, min_port=10000, max_port=20000):
+        h = hashlib.new("sha256")
+        h.update(f"{session_id} {op.invocation_key}".encode("utf-8"))
+        hash_value = binascii.hexlify(h.digest())
+        # map into [min_port; max_port)
+        port_number = int(hash_value, 16) % (max_port - min_port) + min_port
+        return port_number
 
 
 class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
-        # TODO return actual value
-        return 0
+
+        # this is a bit ugly, inspiration from here:
+        # https://github.com/data61/MP-SPDZ/issues/104
+        # but really, it can be much nicer if the flag in
+        # https://github.com/data61/MP-SPDZ/blob/master/Processor/Instruction.hpp#L1229
+        # is set to true (ie human readable)
+
+        # in the future we might need to use the print_ln_to instruction
+
+        # default value of prime
+        prime = 170141183460469231731687303715885907969
+        # Inverse mod prime to get clear value Integer
+        invR = 96651956244403355751989957128965938997 # (2^128^-1 mod prime)
+
+        mpspdz_dir = (
+            f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/Player-Data/Private-Output"
+        )
+        mpspdz_output_file = f"{mpspdz_dir}-{op.player_index}"
+        get_logger().debug(f"Loading values from {mpspdz_output_file}")
+
+        outputs = list()
+        with open(mpspdz_output_file, "rb") as f:
+            while True:
+                byte = f.read(16)
+                if not byte:
+                    break
+                # As integer
+                tmp = int.from_bytes(byte, byteorder="little")
+                # Invert "Montgomery"
+                clear = (tmp * invR) % prime
+                outputs.append(clear)
+        return outputs
 
 
 class KernelBasedExecutor:

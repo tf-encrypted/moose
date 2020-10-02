@@ -1,4 +1,7 @@
+import argparse
 import logging
+
+from grpc.experimental import aio
 
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import computation
@@ -7,9 +10,15 @@ from moose.compiler.edsl import function
 from moose.compiler.edsl import save
 from moose.compiler.mpspdz import MpspdzPlacement
 from moose.logger import get_logger
-from moose.runtime import TestRuntime
+from moose.runtime import RemoteRuntime
 
-get_logger().setLevel(level=logging.DEBUG)
+parser = argparse.ArgumentParser(description="Run example")
+parser.add_argument("--verbose", action="store_true")
+parser.add_argument("--cluster-spec", default="cluster-spec.yaml")
+args = parser.parse_args()
+
+if args.verbose:
+    get_logger().setLevel(level=logging.DEBUG)
 
 inputter0 = HostPlacement(name="inputter0")
 inputter1 = HostPlacement(name="inputter1")
@@ -63,15 +72,15 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
-
-    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
-
+    aio.init_grpc_aio()
+    runtime = RemoteRuntime(args.cluster_spec)
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_assignment={
-            inputter0: runtime.executors[0],
-            inputter1: runtime.executors[1],
-            outputter: runtime.executors[2],
+            inputter0: runtime.executors["inputter0"],
+            inputter1: runtime.executors["inputter1"],
+            outputter: runtime.executors["outputter"],
+            saver: runtime.executors["saver"],
         },
     )
 

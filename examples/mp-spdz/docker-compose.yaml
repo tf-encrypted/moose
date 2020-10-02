@@ -6,34 +6,30 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    ports:
-      - 50000:50000
-    environment:
-      PORT: 50000
+    volumes:
+      - "../../moose:/moose"
+      - ".:/examples/mp-spdz"
 
   inputter1:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    ports:
-      - 50001:50001
-    environment:
-      PORT: 50001
+    volumes:
+      - "../../moose:/moose"
+      - ".:/examples/mp-spdz"
 
   outputter:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    ports:
-      - 50002:50002
-    environment:
-      PORT: 50002
+    volumes:
+      - "../../moose:/moose"
+      - ".:/examples/mp-spdz"
 
   saver:
     build:
       context: .
       dockerfile: Dockerfile.worker
-    ports:
-      - 50003:50003
-    environment:
-      PORT: 50003
+    volumes:
+      - "../../moose:/moose"
+      - ".:/examples/mp-spdz"
