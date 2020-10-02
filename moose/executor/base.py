@@ -37,4 +37,4 @@ async def run_external_program(args, cwd=None):
         cmd, cwd=cwd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
     )
     await proc.communicate()
-    get_logger().debug(f"Run external program, finished")
+    get_logger().debug("Run external program, finished")

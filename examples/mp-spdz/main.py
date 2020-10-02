@@ -4,6 +4,7 @@ import logging
 from grpc.experimental import aio
 
 from moose.compiler.edsl import HostPlacement
+from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
 from moose.compiler.edsl import constant
 from moose.compiler.edsl import function
@@ -62,9 +63,10 @@ def my_comp():
         # the future, which should include expected output type and
         # hence placement information, making this less of an issue.
         v = my_function(x, y, z, output_placements=[outputter])
+        w = my_function(x, y, z, output_placements=[outputter])
 
     with saver:
-        res = save(v, "v")
+        res = save(add(v, w), "v")
 
     return res
 
