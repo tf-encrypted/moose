@@ -49,7 +49,9 @@ class TestRuntime(Runtime):
     def __init__(self, workers) -> None:
         channel_manager = ChannelManager()
         self.executors = {
-            placement_name: KernelBasedExecutor(name=placement_name, channel_manager=channel_manager)
+            placement_name: KernelBasedExecutor(
+                name=placement_name, channel_manager=channel_manager
+            )
             for placement_name in workers
         }
 
