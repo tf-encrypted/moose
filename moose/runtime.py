@@ -46,12 +46,14 @@ class RemoteRuntime(Runtime):
 
 
 class TestRuntime(Runtime):
-    def __init__(self, num_workers) -> None:
+    def __init__(self, workers) -> None:
         channel_manager = ChannelManager()
-        self.executors = [
-            KernelBasedExecutor(name=f"worker{i}", channel_manager=channel_manager)
-            for i in range(num_workers)
-        ]
+        self.executors = {
+            placement_name: KernelBasedExecutor(
+                name=placement_name, channel_manager=channel_manager
+            )
+            for placement_name in workers
+        }
 
 
 _RUNTIME: Optional[Runtime] = None

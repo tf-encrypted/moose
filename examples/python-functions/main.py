@@ -58,20 +58,20 @@ concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
     if args.runtime == "test":
-        runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+        runtime = TestRuntime(workers=concrete_comp.devices())
     elif args.runtime == "remote":
         runtime = RemoteRuntime(args.cluster_spec)
-        assert len(runtime.executors) == len(concrete_comp.devices())
+        assert set(concrete_comp.devices()).subset(runtime.executors.keys())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
 
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_assignment={
-            inputter0: runtime.executors[0],
-            inputter1: runtime.executors[1],
-            aggregator: runtime.executors[2],
-            outputter: runtime.executors[3],
+            inputter0: runtime.executors["inputter0"],
+            inputter1: runtime.executors["inputter1"],
+            aggregator: runtime.executors["aggregator"],
+            outputter: runtime.executors["outputter"],
         },
     )
 

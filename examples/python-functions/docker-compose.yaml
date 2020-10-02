@@ -6,6 +6,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+        - "../../moose:/moose"
+        - ".:/examples/python-functions"
     ports:
       - 50000:50000
     environment:
@@ -15,6 +18,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+        - "../../moose:/moose"
+        - ".:/examples/python-functions"
     ports:
       - 50001:50001
     environment:
@@ -24,6 +30,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+        - "../../moose:/moose"
+        - ".:/examples/python-functions"
     ports:
       - 50002:50002
     environment:
@@ -33,6 +42,9 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.worker
+    volumes:
+        - "../../moose:/moose"
+        - ".:/examples/python-functions"
     ports:
       - 50003:50003
     environment:
