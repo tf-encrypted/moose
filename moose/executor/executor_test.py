@@ -27,7 +27,7 @@ def _create_test_players(number_of_players=2):
 def _run_computation(comp, players):
     runtime = TestRuntime([worker.name for worker in players])
     placement_assignment = {
-        players[i]: runtime.executors[players[i].name] for i in range(len(players))
+        player: runtime.executors[player.name] for player in players
     }
     concrete_comp = comp.trace_func()
     runtime.evaluate_computation(

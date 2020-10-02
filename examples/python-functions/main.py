@@ -26,8 +26,6 @@ inputter1 = HostPlacement(name="inputter1")
 aggregator = HostPlacement(name="aggregator")
 outputter = HostPlacement(name="outputter")
 
-all_placements = [inputter0, inputter1, aggregator, outputter]
-
 
 @function
 def mul_fn(x, y):
@@ -70,8 +68,10 @@ if __name__ == "__main__":
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_assignment={
-            placement: runtime.executors[placement.name]
-                for placement in all_placements
+            inputter0: runtime.executors["inputter0"],
+            inputter1: runtime.executors["inputter1"],
+            aggregator: runtime.executors["aggregator"],
+            outputter: runtime.executors["outputter"],
         },
     )
 
