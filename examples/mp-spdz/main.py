@@ -51,7 +51,7 @@ def my_comp():
         y = constant(2)
 
     with mpspdz:
-        # note that this illustrates one issue with function calls:
+        # Note that this illustrates one issue with function calls:
         # what does the role assignment indicate? is it where the
         # function is evaluated (in which case, how to we specify
         # placement of (revealed) outputs)? or is it the placement
@@ -59,9 +59,12 @@ def my_comp():
         # outputs on different placements)? here we are opting for
         # the former which seems to match better with graphs.
         #
-        # note also that we want to infer full type signatures in
+        # Note also that we want to infer full type signatures in
         # the future, which should include expected output type and
         # hence placement information, making this less of an issue.
+        #
+        # Finally, note that the two function applications are being
+        # executed concurrently in different sessions by MP-SPDZ.
         v = my_function(x, y, z, output_placements=[outputter])
         w = my_function(x, y, z, output_placements=[outputter])
 
