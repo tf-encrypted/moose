@@ -26,6 +26,8 @@ inputter1 = HostPlacement(name="inputter1")
 aggregator = HostPlacement(name="aggregator")
 outputter = HostPlacement(name="outputter")
 
+all_placements = [inputter0, inputter1, aggregator, outputter]
+
 
 @function
 def mul_fn(x, y):
@@ -61,17 +63,15 @@ if __name__ == "__main__":
         runtime = TestRuntime(workers=concrete_comp.devices())
     elif args.runtime == "remote":
         runtime = RemoteRuntime(args.cluster_spec)
-        assert set(runtime.executors.keys() == set(concrete_comp.devices()))
+        assert set(concrete_comp.devices()).subset(runtime.executors.keys())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
 
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_assignment={
-            inputter0: runtime.executors["inputter0"],
-            inputter1: runtime.executors["inputter1"],
-            aggregator: runtime.executors["aggregator"],
-            outputter: runtime.executors["outputter"],
+            placement: runtime.executors[placement.name]
+                for placement in all_placements
         },
     )
 
