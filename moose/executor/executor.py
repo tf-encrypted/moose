@@ -324,10 +324,8 @@ class MpspdzLoadOutputKernel(Kernel):
 
         # default value of prime
         prime = 170141183460469231731687303715885907969
-        # default R of Montgomery representation
-        R = 2 ** 128
         # Inverse mod prime to get clear value Integer
-        invR = 96651956244403355751989957128965938997
+        invR = 96651956244403355751989957128965938997 # (2^128^-1 mod prime)
 
         mpspdz_dir = (
             f"/MP-SPDZ/tmp/{session_id}/{op.invocation_key}/Player-Data/Private-Output"
