@@ -13,7 +13,7 @@ jobs:
     timeout-minutes: 2
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.8.5]
 
     steps:
       - uses: actions/checkout@v2
@@ -66,7 +66,7 @@ jobs:
     timeout-minutes: 2
     strategy:
       matrix:
-        python-version: [3.8]
+        python-version: [3.8.5]
 
     steps:
       - uses: actions/checkout@v2
@@ -79,7 +79,7 @@ jobs:
         id: cache-deps
         with:
           path: ./venv/
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}-${{ matrix.python-version }}
           restore-keys: |
             ${{ runner.os }}-pip-
 
