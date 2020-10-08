@@ -1,5 +1,0 @@
-workers:
-- inputter0: localhost:50000
-- inputter1: localhost:50001
-- aggregator: localhost:50002
-- outputter: localhost:50003

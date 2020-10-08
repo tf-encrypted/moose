@@ -9,8 +9,6 @@ services:
     volumes:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
-    ports:
-      - 50000:50000
     environment:
       PORT: 50000
 
@@ -21,8 +19,6 @@ services:
     volumes:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
-    ports:
-      - 50001:50001
     environment:
       PORT: 50001
 
@@ -33,8 +29,6 @@ services:
     volumes:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
-    ports:
-      - 50002:50002
     environment:
       PORT: 50002
 
@@ -45,7 +39,5 @@ services:
     volumes:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
-    ports:
-      - 50003:50003
     environment:
       PORT: 50003

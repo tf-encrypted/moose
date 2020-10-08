@@ -1,6 +1,8 @@
 import argparse
 import logging
 
+from grpc.experimental import aio
+
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
@@ -57,11 +59,12 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
+    aio.init_grpc_aio()
     if args.runtime == "test":
         runtime = TestRuntime(workers=concrete_comp.devices())
     elif args.runtime == "remote":
         runtime = RemoteRuntime(args.cluster_spec)
-        assert set(concrete_comp.devices()).subset(runtime.executors.keys())
+        assert set(concrete_comp.devices()).issubset(runtime.executors.keys())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
 
