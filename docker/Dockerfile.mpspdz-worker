@@ -6,7 +6,16 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 RUN apt install -y automake build-essential git libboost-dev libboost-thread-dev libsodium-dev libssl-dev libtool m4 python texinfo yasm
 
+# install GMP and NTL since NTL depends on GMP
+RUN curl -O https://gmplib.org/download/gmp/gmp-6.2.0.tar.xz; \
+    tar -xvf gmp-6.2.0.tar.xz; \
+    cd gmp-6.2.0; \
+    ./configure && make -j8 && make install; \
+    curl -O https://shoup.net/ntl/ntl-11.4.3.tar.gz; \
+    tar -xvf ntl-11.4.3.tar.gz; \
+    cd ntl-11.4.3/src && ./configure && make -j8 && make install
+
 RUN git clone https://github.com/data61/MP-SPDZ.git; \
     cd /MP-SPDZ; \
-    make -j 8 tldr
+    make -j8 static/mascot-party.x
 
