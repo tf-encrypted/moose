@@ -1,0 +1,12 @@
+FROM tfencrypted/runtime-base-worker:latest
+
+# the next two lines are for installing tzdata non-interactively
+ENV TZ=Europe/Bucharest
+RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+
+RUN apt install -y automake build-essential git libboost-dev libboost-thread-dev libsodium-dev libssl-dev libtool m4 python texinfo yasm
+
+RUN git clone https://github.com/data61/MP-SPDZ.git; \
+    cd /MP-SPDZ; \
+    make -j 8 tldr
+
