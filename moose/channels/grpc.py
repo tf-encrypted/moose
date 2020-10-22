@@ -27,9 +27,7 @@ class Channel:
 
 class ChannelManager:
     def __init__(self, cluster_spec):
-        self.endpoints = {
-            player: endpoint for player, endpoint in cluster_spec.items()
-        }
+        self.endpoints = {player: endpoint for player, endpoint in cluster_spec.items()}
         self.channels = {
             player: Channel(endpoint) for player, endpoint in cluster_spec.items()
         }
