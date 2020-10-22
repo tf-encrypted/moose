@@ -93,6 +93,7 @@ class MpspdzCallKernel(Kernel):
         )
         get_logger().debug(f"Compiled program: {program_name}")
 
+        # TODO remove assumtion that op.coordinator (player name) is also the hostname!
         await run_external_program(
             cwd=str(isolated_dir),
             args=[
