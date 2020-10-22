@@ -14,7 +14,7 @@ from moose.logger import get_logger
 
 def prepare_mpspdz_directory(op, session_id, mpspdz_dirname="/MP-SPDZ"):
     mpspdz = Path(mpspdz_dirname)
-    root = Path(tempfile.gettempdir()) / str(session_id) / str(op.invocation_key)
+    root = Path(tempfile.gettempdir()) / str(op.player_index) / str(session_id) / str(op.invocation_key)
 
     if not root.exists():
         root.mkdir(parents=True)
@@ -74,7 +74,7 @@ class MpspdzCallKernel(Kernel):
             mlir_file.write(op.mlir)
         get_logger().debug(f"Wrote .mlir file: {mlir_filename}")
 
-        mpc_filename = str(isolated_dir / "source.mpc")
+        mpc_filename = str(isolated_dir / f"source.mpc")
         await run_external_program(
             args=["./elk-to-mpc", mlir_filename, "-o", mpc_filename]
         )
@@ -82,7 +82,7 @@ class MpspdzCallKernel(Kernel):
             mpc_file.write("\n" + "main()")
         get_logger().debug(f"Wrote .mpc file: {mpc_filename}")
 
-        program_name = f"{session_id}-{op.invocation_key}"
+        program_name = f"{session_id}-{op.invocation_key}-{op.player_index}"
         mpc_symlink = mpspdz_dir / "Programs" / "Source" / f"{program_name}.mpc"
         mpc_symlink.symlink_to(mpc_filename)
         get_logger().debug(f"Linked {mpc_symlink.name} to {mpc_filename}")
@@ -92,6 +92,7 @@ class MpspdzCallKernel(Kernel):
         )
         get_logger().debug(f"Compiled program: {program_name}")
 
+        #TODO: replace hostname with localhost if it's testruntime
         await run_external_program(
             cwd=str(isolated_dir),
             args=[

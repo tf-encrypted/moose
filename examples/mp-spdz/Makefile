@@ -1,4 +1,4 @@
-MAIN_IMAGE?=tfencrypted/runtime-base-worker:latest
+MAIN_IMAGE?=tfencrypted/runtime-mpspdz-worker:latest
 
 run:
 	docker run \
@@ -15,6 +15,6 @@ test-localhost:
 		--volume $(realpath ../../moose):/moose \
 		--volume $(realpath .):/examples/mp-spdz \
 		${MAIN_IMAGE} \
-		sh -c "python3 /examples/mp-spdz/main.py --runtime test --verbose "
+		sh -c "apt install -y libtinfo5 && cp /MP-SPDZ/static/mascot-party.x /MP-SPDZ/mascot-party.x && cp /examples/mp-spdz/elk-to-mpc . && python3 /examples/mp-spdz/main.py --runtime test --verbose "
 
 .PHONY: run

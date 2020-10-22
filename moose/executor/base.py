@@ -36,5 +36,10 @@ async def run_external_program(args, cwd=None):
     proc = await asyncio.create_subprocess_shell(
         cmd, cwd=cwd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
     )
-    await proc.communicate()
+    stdout, stderr = await proc.communicate()
+    get_logger().debug(f'[{cmd!r} exited with {proc.returncode}]')
+    if stdout:
+        get_logger().debug(f'[stdout]\n{stdout.decode()}')
+    if stderr:
+        get_logger().debug(f'[stderr]\n{stderr.decode()}')
     get_logger().debug("Run external program, finished")
