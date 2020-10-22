@@ -65,8 +65,9 @@ class MpspdzCallKernel(Kernel):
         assert isinstance(op, MpspdzCallOperation)
         _ = await asyncio.gather(*control_inputs.values())
 
+        script_filename=f"{op.protocol}-party.x"
         isolated_dir, mpspdz_dir = prepare_mpspdz_directory(
-            op=op, session_id=session_id, script_filename="mascot-party.x",
+            op=op, session_id=session_id, script_filename=script_filename,
         )
 
         mlir_filename = str(isolated_dir / "source.mlir")
@@ -85,7 +86,7 @@ class MpspdzCallKernel(Kernel):
         program_name = f"{session_id}-{op.invocation_key}"
         mpc_symlink = mpspdz_dir / "Programs" / "Source" / f"{program_name}.mpc"
         mpc_symlink.symlink_to(mpc_filename)
-        get_logger().debug(f"Linking {mpc_symlink.name} to {mpc_filename}")
+        get_logger().debug(f"Linked {mpc_symlink.name} to {mpc_filename}")
 
         await run_external_program(
             args=["./compile.py", mpc_symlink.name], cwd=str(mpspdz_dir),
@@ -95,14 +96,14 @@ class MpspdzCallKernel(Kernel):
         await run_external_program(
             cwd=str(isolated_dir),
             args=[
-                "./mascot-party.x",
-                "-p",
+                f"./{script_filename}",
+                "--player",
                 str(op.player_index),
-                "-N",
-                "3",
-                "-h",
-                "inputter0",
-                "-pn",
+                "--nparties",
+                str(op.num_players),
+                "--hostname",
+                op.coordinator,
+                "--portnumbase",
                 str(self.derive_port_number(op, session_id)),
                 program_name,
             ],

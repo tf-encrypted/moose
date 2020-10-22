@@ -66,9 +66,6 @@ class MpspdzPlacement(Placement):
         ]
 
         # generate operations for all participating players to invoke MP-SPDZ
-        # TODO we probably need to have a control dependency of some sort here
-        # operation for the player to execute MP-SPDZ; I suggest we take the Chain
-        # approach used in TFRT (which is similar to units)
         call_ops = [
             MpspdzCallOperation(
                 device_name=player_name,
@@ -81,14 +78,16 @@ class MpspdzPlacement(Placement):
                 },
                 output=context.get_fresh_name("mpspdz_call"),
                 player_index=player_name_index_map[player_name],
+                num_players=len(participating_player_names),
                 mlir=mlir_string,
                 invocation_key=invocation_key,
+                coordinator="inputter0",  # TODO
+                protocol="mascot",
             )
             for player_name in participating_player_names
         ]
 
         # operation for loading the output
-        # TODO also need control dependency here
         load_output_op = MpspdzLoadOutputOperation(
             device_name=output_player_name,
             name=context.get_fresh_name("mpspdz_load_output_op"),
