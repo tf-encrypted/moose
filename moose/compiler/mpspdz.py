@@ -29,7 +29,9 @@ class MpspdzPlacement(Placement):
         # once we have placements in types
         input_player_names = [op.device_name for op in input_ops]
         (output_player_name,) = [player.name for player in output_placements]
-        participating_player_names = list(set(input_player_names + [output_player_name]))
+        participating_player_names = list(
+            set(input_player_names + [output_player_name])
+        )
         assert known_player_names.issuperset(participating_player_names)
 
         player_name_index_map = {

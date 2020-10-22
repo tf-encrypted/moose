@@ -65,7 +65,7 @@ class MpspdzCallKernel(Kernel):
         assert isinstance(op, MpspdzCallOperation)
         _ = await asyncio.gather(*control_inputs.values())
 
-        script_filename=f"{op.protocol}-party.x"
+        script_filename = f"{op.protocol}-party.x"
         isolated_dir, mpspdz_dir = prepare_mpspdz_directory(
             op=op, session_id=session_id, script_filename=script_filename,
         )
