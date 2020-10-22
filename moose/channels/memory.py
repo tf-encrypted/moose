@@ -20,6 +20,9 @@ class ChannelManager:
     def __init__(self):
         self.channels = defaultdict(Channel)
 
+    def get_hostname(self, player_name):
+        return "localhost"
+
     def get_channel(self, op):
         channel_key = (op.sender, op.receiver)
         return self.channels[channel_key]

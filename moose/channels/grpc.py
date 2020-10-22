@@ -27,9 +27,17 @@ class Channel:
 
 class ChannelManager:
     def __init__(self, cluster_spec):
+        self.endpoints = {
+            player: endpoint for player, endpoint in cluster_spec.items()
+        }
         self.channels = {
             player: Channel(endpoint) for player, endpoint in cluster_spec.items()
         }
+
+    def get_hostname(self, player_name):
+        endpoint = self.endpoints.get(player_name)
+        host, port = endpoint.split(":")
+        return host
 
     def get_channel(self, op):
         return self.channels[op.sender]

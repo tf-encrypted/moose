@@ -61,6 +61,9 @@ class MpspdzSaveInputKernel(Kernel):
 
 
 class MpspdzCallKernel(Kernel):
+    def __init__(self, channel_manager):
+        self.channel_manager = channel_manager
+
     async def execute(self, op, session_id, output, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
         _ = await asyncio.gather(*control_inputs.values())
@@ -93,7 +96,6 @@ class MpspdzCallKernel(Kernel):
         )
         get_logger().debug(f"Compiled program: {program_name}")
 
-        # TODO remove assumtion that op.coordinator (player name) is also the hostname!
         await run_external_program(
             cwd=str(isolated_dir),
             args=[
@@ -103,7 +105,7 @@ class MpspdzCallKernel(Kernel):
                 "--nparties",
                 str(op.num_players),
                 "--hostname",
-                op.coordinator,
+                self.channel_manager.get_hostname(op.coordinator),
                 "--portnumbase",
                 str(self.derive_port_number(op, session_id)),
                 program_name,
