@@ -12,9 +12,7 @@ from moose.executor.base import run_external_program
 from moose.logger import get_logger
 
 
-def prepare_mpspdz_directory(
-    op, session_id, script_filename, mpspdz_dirname="/MP-SPDZ"
-):
+def prepare_mpspdz_directory(op, session_id, mpspdz_dirname="/MP-SPDZ"):
     mpspdz = Path(mpspdz_dirname)
     root = Path(tempfile.gettempdir()) / str(session_id) / str(op.invocation_key)
 
@@ -25,6 +23,7 @@ def prepare_mpspdz_directory(
     if not player_data.exists():
         player_data.mkdir()
 
+    script_filename = f"{op.protocol}-party.x"
     script = root / script_filename
     if not script.exists():
         # TODO can this be a symlink instead?
@@ -34,7 +33,7 @@ def prepare_mpspdz_directory(
     if not programs.exists():
         programs.symlink_to(mpspdz / "Programs")
 
-    return root, mpspdz
+    return root, mpspdz, script_filename
 
 
 class MpspdzSaveInputKernel(Kernel):
@@ -42,9 +41,7 @@ class MpspdzSaveInputKernel(Kernel):
         assert isinstance(op, MpspdzSaveInputOperation)
         concrete_inputs = {key: await value for key, value in inputs.items()}
 
-        isolated_dir, _ = prepare_mpspdz_directory(
-            op=op, session_id=session_id, script_filename="mascot-party.x",
-        )
+        isolated_dir, _, _ = prepare_mpspdz_directory(op=op, session_id=session_id)
 
         thread_no = 0  # assume inputs are happening in the main thread
         input_filename = str(
@@ -68,9 +65,8 @@ class MpspdzCallKernel(Kernel):
         assert isinstance(op, MpspdzCallOperation)
         _ = await asyncio.gather(*control_inputs.values())
 
-        script_filename = f"{op.protocol}-party.x"
-        isolated_dir, mpspdz_dir = prepare_mpspdz_directory(
-            op=op, session_id=session_id, script_filename=script_filename,
+        isolated_dir, mpspdz_dir, script_filename = prepare_mpspdz_directory(
+            op=op, session_id=session_id,
         )
 
         mlir_filename = str(isolated_dir / "source.mlir")
@@ -127,9 +123,7 @@ class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session_id, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
 
-        isolated_dir, _ = prepare_mpspdz_directory(
-            op=op, session_id=session_id, script_filename="mascot-party.x",
-        )
+        isolated_dir, _, _ = prepare_mpspdz_directory(op=op, session_id=session_id)
 
         # this is a bit ugly, inspiration from here:
         # https://github.com/data61/MP-SPDZ/issues/104
