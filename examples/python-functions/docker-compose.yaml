@@ -10,7 +10,7 @@ services:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
     environment:
-      PORT: 50000
+      NAME: inputter0
 
   inputter1:
     build:
@@ -20,7 +20,7 @@ services:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
     environment:
-      PORT: 50001
+      NAME: inputter1
 
   aggregator:
     build:
@@ -30,7 +30,7 @@ services:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
     environment:
-      PORT: 50002
+      NAME: aggregator
 
   outputter:
     build:
@@ -40,4 +40,4 @@ services:
         - "../../moose:/moose"
         - ".:/examples/python-functions"
     environment:
-      PORT: 50003
+      NAME: outputter
