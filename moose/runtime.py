@@ -8,7 +8,7 @@ from moose.channels.memory import ChannelManager
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import KernelBasedExecutor
-from moose.executor.executor import RemoteExecutor
+from moose.executor.proxy import RemoteExecutor
 from moose.logger import get_logger
 
 

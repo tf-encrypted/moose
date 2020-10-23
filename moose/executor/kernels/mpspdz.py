@@ -7,8 +7,8 @@ from pathlib import Path
 from moose.compiler.computation import MpspdzCallOperation
 from moose.compiler.computation import MpspdzLoadOutputOperation
 from moose.compiler.computation import MpspdzSaveInputOperation
-from moose.executor.base import Kernel
-from moose.executor.base import run_external_program
+from moose.executor.kernels.base import Kernel
+from moose.executor.kernels.base import run_external_program
 from moose.logger import get_logger
 
 
