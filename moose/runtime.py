@@ -7,7 +7,7 @@ from typing import Union
 from moose.channels.memory import ChannelManager
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
-from moose.executor.executor import KernelBasedExecutor
+from moose.executor.executor import AsyncExecutor
 from moose.executor.proxy import RemoteExecutor
 from moose.logger import get_logger
 
@@ -49,7 +49,7 @@ class TestRuntime(Runtime):
     def __init__(self, workers) -> None:
         channel_manager = ChannelManager()
         self.executors = {
-            placement_name: KernelBasedExecutor(
+            placement_name: AsyncExecutor(
                 name=placement_name, channel_manager=channel_manager
             )
             for placement_name in workers

@@ -36,7 +36,7 @@ from moose.logger import get_logger
 from moose.storage import AsyncStore
 
 
-class KernelBasedExecutor:
+class AsyncExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
         self.store = store

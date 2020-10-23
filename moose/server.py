@@ -2,7 +2,7 @@ from grpc.experimental import aio
 
 from moose.channels.grpc import ChannelManager
 from moose.compiler.computation import Computation
-from moose.executor.executor import KernelBasedExecutor
+from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
@@ -39,7 +39,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
 class Server:
     def __init__(self, host, port, cluster_spec):
         channel_manager = ChannelManager(cluster_spec)
-        executor = KernelBasedExecutor(name="remote", channel_manager=channel_manager)
+        executor = AsyncExecutor(name="remote", channel_manager=channel_manager)
         self._endpoint = f"{host}:{port}"
         self._servicer = ExecutorServicer(executor, AsyncStore())
         self._server = None
