@@ -24,7 +24,7 @@ if __name__ == "__main__":
 
     get_logger().info(f"Starting on {args.host}:{args.port}")
     cluster_spec = load_cluster_spec(args.cluster_spec)
-    worker = Worker(args.host, args.port, cluster_spec)
+    worker = Worker(args.name, args.host, args.port, cluster_spec)
 
     asyncio.get_event_loop().run_until_complete(worker.start())
     get_logger().info("Started")

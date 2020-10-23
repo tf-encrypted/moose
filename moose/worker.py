@@ -37,17 +37,17 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
 
 
 class Worker:
-    def __init__(self, host, port, cluster_spec):
+    def __init__(self, name, host, port, cluster_spec):
         channel_manager = ChannelManager(cluster_spec)
-        executor = AsyncExecutor(name="remote", channel_manager=channel_manager)
+        executor = AsyncExecutor(name=name, channel_manager=channel_manager)
         self._endpoint = f"{host}:{port}"
         self._servicer = ExecutorServicer(executor, AsyncStore())
         self._server = None
 
     async def start(self):
         self._server = aio.server()
-        executor_pb2_grpc.add_ExecutorServicer_to_server(self._servicer, self._server)
         self._server.add_insecure_port(self._endpoint)
+        executor_pb2_grpc.add_ExecutorServicer_to_server(self._servicer, self._server)
         await self._server.start()
 
     async def wait(self):
