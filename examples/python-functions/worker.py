@@ -6,7 +6,7 @@ from grpc.experimental import aio
 
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.logger import get_logger
-from moose.server import Server
+from moose.worker import Worker
 
 parser = argparse.ArgumentParser(description="Launch worker")
 parser.add_argument("--name", type=str, default="Worker")
@@ -24,10 +24,10 @@ if __name__ == "__main__":
 
     get_logger().info(f"Starting on {args.host}:{args.port}")
     cluster_spec = load_cluster_spec(args.cluster_spec)
-    server = Server(args.host, args.port, cluster_spec)
+    worker = Worker(args.host, args.port, cluster_spec)
 
-    asyncio.get_event_loop().run_until_complete(server.start())
+    asyncio.get_event_loop().run_until_complete(worker.start())
     get_logger().info("Started")
 
-    asyncio.get_event_loop().run_until_complete(server.wait())
+    asyncio.get_event_loop().run_until_complete(worker.wait())
     get_logger().info("Stopped")

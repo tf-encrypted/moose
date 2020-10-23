@@ -36,7 +36,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
         return executor_pb2.RunComputationResponse()
 
 
-class Server:
+class Worker:
     def __init__(self, host, port, cluster_spec):
         channel_manager = ChannelManager(cluster_spec)
         executor = AsyncExecutor(name="remote", channel_manager=channel_manager)
