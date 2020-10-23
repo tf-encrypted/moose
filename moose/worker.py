@@ -8,7 +8,6 @@ from moose.protos import channel_manager_pb2
 from moose.protos import channel_manager_pb2_grpc
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
-from moose.storage import AsyncStore
 
 
 class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
@@ -24,8 +23,8 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
 
 
 class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
-    def __init__(self, buffer):
-        self.buffer = buffer
+    def __init__(self, channel_manager):
+        self.channel_manager = channel_manager
 
     async def GetValue(self, request, context):
         get_logger().debug(
@@ -33,26 +32,24 @@ class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
             f"for session {request.session_id}"
         )
         key = (request.session_id, request.rendezvous_key)
-        value = await self.buffer.get(key)
+        value = await self.channel_manager.buffer.get(key)  # TODO(Morten) leaking impl
         return channel_manager_pb2.GetValueResponse(value=value)
-
-    async def SetValue(self, request, context):
-        key = (request.session_id, request.rendezvous_key)
-        await self.buffer.put(key, request.value)
-        return channel_manager_pb2.SetValueResponse()
 
 
 class Worker:
     def __init__(self, name, host, port, cluster_spec):
+        # core components
         channel_manager = ChannelManager(cluster_spec)
         executor = AsyncExecutor(name=name, channel_manager=channel_manager)
+
+        # set up gRPC server exposing core components
         self._server = aio.server()
         self._server.add_insecure_port(f"{host}:{port}")
         executor_pb2_grpc.add_ExecutorServicer_to_server(
-            ExecutorServicer(executor), self._server
+            ExecutorServicer(executor), self._server,
         )
         channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(
-            ChannelManagerServicer(AsyncStore()), self._server
+            ChannelManagerServicer(channel_manager), self._server,
         )
 
     async def start(self):

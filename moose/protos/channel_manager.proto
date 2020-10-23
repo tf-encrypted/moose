@@ -3,7 +3,6 @@ syntax = "proto3";
 package moose;
 
 service ChannelManager {
-    rpc SetValue(SetValueRequest) returns(SetValueResponse) {}
     rpc GetValue(GetValueRequest) returns(GetValueResponse) {}
 }
 
@@ -11,13 +10,6 @@ service ChannelManager {
 // Should be a message holding a stream of bytes
 // handlers would be responsible for reconstructing 
 // object based on stream of bytes
-message SetValueRequest {
-    bytes value = 1;
-    string rendezvous_key = 2;
-    int64 session_id = 3;
-}
-
-message SetValueResponse {}
 
 message GetValueRequest {
     string rendezvous_key = 1;

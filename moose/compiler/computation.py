@@ -30,7 +30,7 @@ class AddOperation(Operation):
 
 @dataclass
 class CallPythonFunctionOperation(Operation):
-    pickled_fn: bytes
+    pickled_fn: bytes = field(repr=False)
     output_type: Optional
 
 

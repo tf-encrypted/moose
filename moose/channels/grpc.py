@@ -2,10 +2,12 @@ from grpc.experimental import aio
 
 from moose.protos import channel_manager_pb2
 from moose.protos import channel_manager_pb2_grpc
+from moose.storage import AsyncStore
 
 
 class Channel:
-    def __init__(self, endpoint):
+    def __init__(self, endpoint, buffer):
+        self._buffer = buffer
         self._channel = aio.insecure_channel(endpoint)
         self._stub = channel_manager_pb2_grpc.ChannelManagerStub(self._channel)
 
@@ -18,18 +20,17 @@ class Channel:
         return reply.value
 
     async def send(self, value, rendezvous_key, session_id):
-        await self._stub.SetValue(
-            channel_manager_pb2.SetValueRequest(
-                value=value, rendezvous_key=rendezvous_key, session_id=session_id
-            )
-        )
+        key = (session_id, rendezvous_key)
+        await self._buffer.put(key, value)
 
 
 class ChannelManager:
     def __init__(self, cluster_spec):
+        self.buffer = AsyncStore()
         self.endpoints = {player: endpoint for player, endpoint in cluster_spec.items()}
         self.channels = {
-            player: Channel(endpoint) for player, endpoint in cluster_spec.items()
+            player: Channel(endpoint, self.buffer)
+            for player, endpoint in cluster_spec.items()
         }
 
     def get_hostname(self, player_name):
