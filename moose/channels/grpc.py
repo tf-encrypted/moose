@@ -1,17 +1,17 @@
 from grpc.experimental import aio
 
-from moose.protos import executor_pb2
-from moose.protos import executor_pb2_grpc
+from moose.protos import channel_manager_pb2
+from moose.protos import channel_manager_pb2_grpc
 
 
 class Channel:
     def __init__(self, endpoint):
         self._channel = aio.insecure_channel(endpoint)
-        self._stub = executor_pb2_grpc.ExecutorStub(self._channel)
+        self._stub = channel_manager_pb2_grpc.ChannelManagerStub(self._channel)
 
     async def receive(self, rendezvous_key, session_id):
         reply = await self._stub.GetValue(
-            executor_pb2.GetValueRequest(
+            channel_manager_pb2.GetValueRequest(
                 rendezvous_key=rendezvous_key, session_id=session_id
             )
         )
@@ -19,7 +19,7 @@ class Channel:
 
     async def send(self, value, rendezvous_key, session_id):
         await self._stub.SetValue(
-            executor_pb2.SetValueRequest(
+            channel_manager_pb2.SetValueRequest(
                 value=value, rendezvous_key=rendezvous_key, session_id=session_id
             )
         )

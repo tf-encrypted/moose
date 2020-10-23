@@ -4,29 +4,16 @@ from moose.channels.grpc import ChannelManager
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
+from moose.protos import channel_manager_pb2
+from moose.protos import channel_manager_pb2_grpc
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
 from moose.storage import AsyncStore
 
 
 class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
-    def __init__(self, executor, buffer):
-        self.buffer = buffer
+    def __init__(self, executor):
         self.executor = executor
-
-    async def GetValue(self, request, context):
-        get_logger().debug(
-            f"Received value for key {request.rendezvous_key} "
-            f"for session {request.session_id}"
-        )
-        key = (request.session_id, request.rendezvous_key)
-        value = await self.buffer.get(key)
-        return executor_pb2.GetValueResponse(value=value)
-
-    async def SetValue(self, request, context):
-        key = (request.session_id, request.rendezvous_key)
-        await self.buffer.put(key, request.value)
-        return executor_pb2.SetValueResponse()
 
     async def RunComputation(self, request, context):
         computation = Computation.deserialize(request.computation)
@@ -36,20 +23,40 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
         return executor_pb2.RunComputationResponse()
 
 
+class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
+    def __init__(self, buffer):
+        self.buffer = buffer
+
+    async def GetValue(self, request, context):
+        get_logger().debug(
+            f"Received value for key {request.rendezvous_key} "
+            f"for session {request.session_id}"
+        )
+        key = (request.session_id, request.rendezvous_key)
+        value = await self.buffer.get(key)
+        return channel_manager_pb2.GetValueResponse(value=value)
+
+    async def SetValue(self, request, context):
+        key = (request.session_id, request.rendezvous_key)
+        await self.buffer.put(key, request.value)
+        return channel_manager_pb2.SetValueResponse()
+
+
 class Worker:
     def __init__(self, name, host, port, cluster_spec):
         channel_manager = ChannelManager(cluster_spec)
         executor = AsyncExecutor(name=name, channel_manager=channel_manager)
-        self._endpoint = f"{host}:{port}"
-        self._servicer = ExecutorServicer(executor, AsyncStore())
-        self._server = None
+        self._server = aio.server()
+        self._server.add_insecure_port(f"{host}:{port}")
+        executor_pb2_grpc.add_ExecutorServicer_to_server(
+            ExecutorServicer(executor), self._server
+        )
+        channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(
+            ChannelManagerServicer(AsyncStore()), self._server
+        )
 
     async def start(self):
-        self._server = aio.server()
-        self._server.add_insecure_port(self._endpoint)
-        executor_pb2_grpc.add_ExecutorServicer_to_server(self._servicer, self._server)
         await self._server.start()
 
     async def wait(self):
         await self._server.wait_for_termination()
-        self._server = None
