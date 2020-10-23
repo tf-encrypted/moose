@@ -2,6 +2,7 @@ import marshal
 import re
 from dataclasses import asdict
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Dict
 from typing import List
 from typing import Optional
@@ -101,9 +102,12 @@ class MpspdzSaveInputOperation(Operation):
 
 @dataclass
 class MpspdzCallOperation(Operation):
+    num_players: int
     player_index: int
-    mlir: str
+    mlir: str = field(repr=False)
     invocation_key: str
+    coordinator: str
+    protocol: str
 
 
 @dataclass

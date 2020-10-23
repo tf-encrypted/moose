@@ -203,7 +203,7 @@ class KernelBasedExecutor:
             RunProgramOperation: RunProgramKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
             MpspdzSaveInputOperation: MpspdzSaveInputKernel(),
-            MpspdzCallOperation: MpspdzCallKernel(),
+            MpspdzCallOperation: MpspdzCallKernel(channel_manager),
             MpspdzLoadOutputOperation: MpspdzLoadOutputKernel(),
         }
 
