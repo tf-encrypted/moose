@@ -12,24 +12,16 @@ certs:
 	certstrap --depot-path certs sign --CA ca aggregator
 	certstrap --depot-path certs request-cert --domain outputter --passphrase ""
 	certstrap --depot-path certs sign --CA ca outputter
+	certstrap --depot-path certs request-cert --domain coordinator --passphrase ""
+	certstrap --depot-path certs sign --CA ca coordinator
+
+up:
+	docker-compose up --build
+
+down:
+	docker-compose down --remove-orphans
 
 run:
-	docker run \
-		--tty \
-        --network python-functions_default \
-		--volume $(realpath ../../moose):/moose \
-		--volume $(realpath .):/examples/python-functions \
-		${MAIN_IMAGE} \
-		sh -c "python3 /examples/python-functions/main.py --runtime remote --verbose --cluster-spec /examples/python-functions/cluster-spec.yaml"
+	docker-compose exec coordinator sh -c "python3 /example/main.py --verbose --runtime remote"
 
-test-localhost:
-	docker run \
-		--tty \
-		--volume $(realpath ../../moose):/moose \
-		--volume $(realpath .):/examples/python-functions \
-		${MAIN_IMAGE} \
-		sh -c "python3 /examples/python-functions/main.py --runtime test --verbose "
-
-
-
-.PHONY: certs run test-localhost
+.PHONY: certs up down run

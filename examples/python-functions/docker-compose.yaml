@@ -41,3 +41,16 @@ services:
       - ".:/example"
     environment:
       NAME: outputter
+
+  coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.coordinator
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      NAME: coordinator
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/coordinator.crt
+      IDENT_KEY: ./certs/coordinator.key
