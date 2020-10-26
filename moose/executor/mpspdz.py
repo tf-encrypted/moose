@@ -86,7 +86,7 @@ class MpspdzCallKernel(Kernel):
 
         mpc_filename = str(isolated_dir / "source.mpc")
         await run_external_program(
-            args=["./elk-to-mpc", mlir_filename, "-o", mpc_filename]
+            args=["elk-to-mpc", mlir_filename, "-o", mpc_filename]
         )
         with open(mpc_filename, "at") as mpc_file:
             mpc_file.write("\n" + "main()")

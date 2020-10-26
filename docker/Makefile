@@ -1,17 +1,24 @@
 build-base-worker-image:
 	docker build \
-		--file Dockerfile.base-worker \
-		--tag tfencrypted/runtime-base-worker:latest --no-cache \
+		--file ./base/Dockerfile.worker \
+		--tag tfencrypted/runtime-base-worker:latest \
+		--no-cache \
 		..
+
+.PHONY: build-base-worker-image
 
 build-mpspdz-worker-image:
 	docker build \
-		--file Dockerfile.mpspdz-worker \
-		--tag tfencrypted/runtime-mpspdz-worker:latest --no-cache \
+		--file ./mpspdz/Dockerfile.worker \
+		--tag tfencrypted/runtime-mpspdz-worker:latest \
+		--no-cache \
 		..
 
 push-mpspdz-worker-image:
-	docker push tfencrypted/runtime-mpspdz-worker
+	docker push tfencrypted/runtime-mpspdz-worker:latest
 
+.PHONY: build-mpspdz-worker-image push-mpspdz-worker-image
 
-.PHONY: build-base-worker-image build-mpspdz-worker-image
+build: build-base-worker-image build-mpspdz-worker-image
+
+.PHONY: build

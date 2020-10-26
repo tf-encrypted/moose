@@ -4,20 +4,28 @@ FROM tfencrypted/runtime-base-worker:latest
 ENV TZ=Europe/Bucharest
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# libtinfo5 is required by mlir
-RUN apt install -y automake build-essential git libboost-dev libboost-thread-dev libsodium-dev libssl-dev libtool m4 python texinfo yasm libtinfo5
+# install basic tools (libtinfo5 is required by MLIR)
+RUN apt install -y \
+    automake build-essential git \
+    libboost-dev libboost-thread-dev \
+    libsodium-dev libssl-dev libtool m4 python texinfo yasm \
+    libtinfo5
 
 # install GMP and NTL since NTL depends on GMP
 RUN curl -O https://gmplib.org/download/gmp/gmp-6.2.0.tar.xz && \
     tar -xvf gmp-6.2.0.tar.xz && \
     cd gmp-6.2.0 && \
-    ./configure && make -j8 && make install && \
-    curl -O https://shoup.net/ntl/ntl-11.4.3.tar.gz && \
+    ./configure && make -j8 && make install
+RUN curl -O https://shoup.net/ntl/ntl-11.4.3.tar.gz && \
     tar -xvf ntl-11.4.3.tar.gz && \
-    cd ntl-11.4.3/src && ./configure && make -j8 && make install
+    cd ntl-11.4.3/src && \
+    ./configure && make -j8 && make install
 
+# install MP-SPDZ (from source)
 RUN git clone https://github.com/data61/MP-SPDZ.git && \
     cd /MP-SPDZ && \
     make -j8 mpir && make static-dir && make -j8 static/mascot-party.x
 
-
+# install Elk 
+COPY docker/mpspdz/elk-to-mpc /elk/
+ENV PATH=/elk:$PATH
