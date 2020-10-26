@@ -37,6 +37,33 @@ class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
         return channel_manager_pb2.GetValueResponse(value=value)
 
 
+# class MyInterceptor(aio.ServerInterceptor):
+#     def __init__(self):
+#         self.handler_type = {
+#             (False, False): grpc.unary_unary_rpc_method_handler,
+#         }
+
+#     async def intercept_service(self, continuation, handler_call_details):
+#         handler = await continuation(handler_call_details)
+
+#         async def intercepted_handler(request, context):
+#             get_logger().debug(
+#                 f"Incoming gRPC, method:'{handler_call_details.method}', peer:'{context.peer()}', peer_identities:'{context.peer_identities()}'"
+#             )
+#             return await handler.unary_unary(request, context)
+
+#         handler_type = self.handler_type.get(
+#             (handler.request_streaming, handler.response_streaming), None
+#         )
+#         if not handler_type:
+#             raise NotImplementedError(f"Unknown handler {handler}")
+#         return handler_type(
+#             intercepted_handler,
+#             handler.request_deserializer,
+#             handler.response_serializer,
+#         )
+
+
 class Worker:
     def __init__(
         self,
@@ -63,6 +90,7 @@ class Worker:
         executor = AsyncExecutor(name=name, channel_manager=channel_manager)
 
         # set up server
+        # self._server = aio.server(interceptors=(MyInterceptor(),))
         self._server = aio.server()
 
         if ident_cert and ident_key:
