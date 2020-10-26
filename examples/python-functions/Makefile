@@ -22,6 +22,6 @@ down:
 	docker-compose down --remove-orphans
 
 run:
-	docker-compose exec coordinator sh -c "python3 /example/main.py --verbose --runtime remote"
+	docker-compose exec coordinator sh -c "python3 main.py --verbose --runtime remote"
 
 .PHONY: certs up down run

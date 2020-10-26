@@ -1,5 +1,5 @@
 FROM tfencrypted/runtime-base-worker:latest
 
-WORKDIR /moose
+WORKDIR /example
 
-CMD watchexec -e py -r "cd /example; python3 worker.py --verbose --name $NAME"
+CMD watchexec -e py -r "python3 worker.py --verbose --name $NAME"
