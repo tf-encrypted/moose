@@ -1,7 +1,5 @@
 FROM tfencrypted/runtime-mpspdz-worker:latest
 
-# Elk dependency
+WORKDIR /example
 
-COPY elk-to-mpc ./
-
-CMD cd /examples/mp-spdz && python3 worker.py --verbose
+CMD python3 worker.py --verbose
