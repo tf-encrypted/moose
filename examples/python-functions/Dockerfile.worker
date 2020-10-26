@@ -1,7 +1,5 @@
 FROM tfencrypted/runtime-base-worker:latest
 
-# Copy over example files
-COPY cluster-spec.yaml worker.py ./
 WORKDIR /moose
 
 CMD watchexec -e py -r "cd /example; python3 worker.py --verbose --name $NAME"
