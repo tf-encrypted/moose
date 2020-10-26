@@ -27,12 +27,9 @@ class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
         self.channel_manager = channel_manager
 
     async def GetValue(self, request, context):
-        get_logger().debug(
-            f"Received value for key {request.rendezvous_key} "
-            f"for session {request.session_id}"
+        value = await self.channel_manager.get_value(
+            rendezvous_key=request.rendezvous_key, session_id=request.session_id,
         )
-        key = (request.session_id, request.rendezvous_key)
-        value = await self.channel_manager.buffer.get(key)  # TODO(Morten) leaking impl
         return channel_manager_pb2.GetValueResponse(value=value)
 
 

@@ -41,6 +41,11 @@ class ChannelManager:
     def get_channel(self, op):
         return self.channels[op.sender]
 
+    async def get_value(self, rendezvous_key, session_id):
+        # TODO(Morten) should take caller identity as an argument
+        key = (session_id, rendezvous_key)
+        return await self.buffer.get(key)
+
     async def receive(self, op, session_id):
         return await self.get_channel(op).receive(
             rendezvous_key=op.rendezvous_key, session_id=session_id
