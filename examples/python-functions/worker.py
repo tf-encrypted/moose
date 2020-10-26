@@ -2,8 +2,6 @@ import argparse
 import asyncio
 import logging
 
-from grpc.experimental import aio
-
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.logger import get_logger
 from moose.worker import Worker
@@ -20,7 +18,6 @@ if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 if __name__ == "__main__":
-    aio.init_grpc_aio()
 
     get_logger().info(f"Starting on {args.host}:{args.port}")
     cluster_spec = load_cluster_spec(args.cluster_spec)

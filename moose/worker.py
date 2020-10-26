@@ -40,6 +40,7 @@ class Worker:
     def __init__(self, name, host, port, cluster_spec):
         # core components
         channel_manager = ChannelManager(cluster_spec)
+        aio.init_grpc_aio()
         executor = AsyncExecutor(name=name, channel_manager=channel_manager)
 
         # set up gRPC server exposing core components
