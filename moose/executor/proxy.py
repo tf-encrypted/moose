@@ -7,6 +7,7 @@ from moose.protos import executor_pb2_grpc
 
 class RemoteExecutor:
     def __init__(self, endpoint, ca_cert, ident_cert, ident_key):
+        aio.init_grpc_aio()
         if ca_cert:
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=ca_cert,

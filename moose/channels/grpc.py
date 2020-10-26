@@ -10,6 +10,7 @@ class Channel:
     def __init__(self, endpoint, buffer, ca_cert, ident_cert, ident_key):
         self._buffer = buffer
 
+        aio.init_grpc_aio()
         if ca_cert:
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=ca_cert,

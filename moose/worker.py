@@ -79,8 +79,6 @@ class Worker:
         ident_key_filename,
         allow_insecure_networking=False,
     ):
-        aio.init_grpc_aio()
-
         ca_cert = load_certificate(ca_cert_filename)
         ident_cert = load_certificate(ident_cert_filename)
         ident_key = load_certificate(ident_key_filename)
@@ -93,6 +91,7 @@ class Worker:
         executor = AsyncExecutor(name=name, channel_manager=channel_manager)
 
         # set up server
+        aio.init_grpc_aio()
         # self._server = aio.server(interceptors=(MyInterceptor(),))
         self._server = aio.server()
 
