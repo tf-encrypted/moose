@@ -129,7 +129,7 @@ class RunProgramKernel(Kernel):
                 ]
                 get_logger().debug(f"Running external program: {args}")
                 _ = subprocess.run(
-                    args, stdout=subprocess.PIPE, universal_newlines=True,
+                    args, stdout=subprocess.PIPE, universal_newlines=True
                 )
 
                 concrete_output = json.loads(outputfile.read())

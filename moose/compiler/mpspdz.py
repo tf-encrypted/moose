@@ -125,7 +125,7 @@ def compile_to_mlir(fn, input_indices, output_index):
     main_function = MlirFunction(name="main", args=[], type=None)
     get_input_ops = [
         MlirOperation(
-            name=arg_name, value=f"mpspdz.get_input_from {index}", type="!mpspdz.sint",
+            name=arg_name, value=f"mpspdz.get_input_from {index}", type="!mpspdz.sint"
         )
         for arg_name, index in zip(input_names, input_indices)
     ]

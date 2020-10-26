@@ -12,9 +12,16 @@ from moose.executor.base import run_external_program
 from moose.logger import get_logger
 
 
-def prepare_mpspdz_directory(op, session_id, mpspdz_dirname="/MP-SPDZ", protocol_name=None):
+def prepare_mpspdz_directory(
+    op, session_id, mpspdz_dirname="/MP-SPDZ", protocol_name=None
+):
     mpspdz = Path(mpspdz_dirname)
-    root = Path(tempfile.gettempdir()) / str(op.device_name) / str(session_id) / str(op.invocation_key)
+    root = (
+        Path(tempfile.gettempdir())
+        / str(op.device_name)
+        / str(session_id)
+        / str(op.invocation_key)
+    )
 
     if not root.exists():
         root.mkdir(parents=True)
@@ -90,11 +97,11 @@ class MpspdzCallKernel(Kernel):
         get_logger().debug(f"Linked {mpc_symlink.name} to {mpc_filename}")
 
         await run_external_program(
-            args=["./compile.py", mpc_symlink.name], cwd=str(mpspdz_dir),
+            args=["./compile.py", mpc_symlink.name], cwd=str(mpspdz_dir)
         )
         get_logger().debug(f"Compiled program: {program_name}")
 
-        #TODO: replace hostname with localhost if it's testruntime
+        # TODO: replace hostname with localhost if it's testruntime
         await run_external_program(
             cwd=str(isolated_dir),
             args=[
