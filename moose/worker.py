@@ -1,6 +1,8 @@
+import grpc
 from grpc.experimental import aio
 
 from moose.channels.grpc import ChannelManager
+from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
@@ -8,6 +10,7 @@ from moose.protos import channel_manager_pb2
 from moose.protos import channel_manager_pb2_grpc
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
+from moose.utils import load_certificate
 
 
 class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
@@ -15,10 +18,11 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
         self.executor = executor
 
     async def RunComputation(self, request, context):
-        computation = Computation.deserialize(request.computation)
-        placement = request.placement
-        session_id = request.session_id
-        await self.executor.run_computation(computation, placement, session_id)
+        await self.executor.run_computation(
+            logical_computation=Computation.deserialize(request.computation),
+            placement=request.placement,
+            session_id=request.session_id,
+        )
         return executor_pb2.RunComputationResponse()
 
 
@@ -34,18 +38,52 @@ class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
 
 
 class Worker:
-    def __init__(self, name, host, port, cluster_spec):
-        # core components
-        channel_manager = ChannelManager(cluster_spec)
+    def __init__(
+        self,
+        name,
+        host,
+        port,
+        cluster_spec_filename,
+        ca_cert_filename,
+        ident_cert_filename,
+        ident_key_filename,
+        allow_insecure_networking=False,
+    ):
         aio.init_grpc_aio()
+
+        ca_cert = load_certificate(ca_cert_filename)
+        ident_cert = load_certificate(ident_cert_filename)
+        ident_key = load_certificate(ident_key_filename)
+
+        cluster_spec = load_cluster_spec(cluster_spec_filename)
+
+        channel_manager = ChannelManager(
+            cluster_spec, ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
+        )
         executor = AsyncExecutor(name=name, channel_manager=channel_manager)
 
-        # set up gRPC server exposing core components
+        # set up server
         self._server = aio.server()
-        self._server.add_insecure_port(f"{host}:{port}")
+
+        if ident_cert and ident_key:
+            get_logger().info(f"Setting up server at {host}:{port}")
+            credentials = grpc.ssl_server_credentials(
+                [(ident_key, ident_cert)],
+                root_certificates=ca_cert,
+                require_client_auth=True,
+            )
+            self._server.add_secure_port(f"{host}:{port}", credentials)
+        else:
+            assert allow_insecure_networking
+            get_logger().warning(
+                f"Setting up server at {host}:{port} with insecure networking"
+            )
+            self._server.add_insecure_port(f"{host}:{port}")
+
         executor_pb2_grpc.add_ExecutorServicer_to_server(
             ExecutorServicer(executor), self._server,
         )
+
         channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(
             ChannelManagerServicer(channel_manager), self._server,
         )

@@ -11,6 +11,9 @@ services:
       - ".:/example"
     environment:
       NAME: inputter0
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/inputter0.crt
+      IDENT_KEY: ./certs/inputter0.key
 
   inputter1:
     build:
@@ -21,6 +24,9 @@ services:
       - ".:/example"
     environment:
       NAME: inputter1
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/inputter1.crt
+      IDENT_KEY: ./certs/inputter1.key
 
   aggregator:
     build:
@@ -31,6 +37,9 @@ services:
       - ".:/example"
     environment:
       NAME: aggregator
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/aggregator.crt
+      IDENT_KEY: ./certs/aggregator.key
 
   outputter:
     build:
@@ -41,6 +50,9 @@ services:
       - ".:/example"
     environment:
       NAME: outputter
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/outputter.crt
+      IDENT_KEY: ./certs/outputter.key
 
   coordinator:
     build:
