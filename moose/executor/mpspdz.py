@@ -12,9 +12,9 @@ from moose.executor.base import run_external_program
 from moose.logger import get_logger
 
 
-def prepare_mpspdz_directory(op, session_id, mpspdz_dirname="/MP-SPDZ"):
+def prepare_mpspdz_directory(op, session_id, mpspdz_dirname="/MP-SPDZ", protocol_name=None):
     mpspdz = Path(mpspdz_dirname)
-    root = Path(tempfile.gettempdir()) / str(op.player_index) / str(session_id) / str(op.invocation_key)
+    root = Path(tempfile.gettempdir()) / str(op.device_name) / str(session_id) / str(op.invocation_key)
 
     if not root.exists():
         root.mkdir(parents=True)
@@ -23,11 +23,13 @@ def prepare_mpspdz_directory(op, session_id, mpspdz_dirname="/MP-SPDZ"):
     if not player_data.exists():
         player_data.mkdir()
 
-    script_filename = f"{op.protocol}-party.x"
-    script = root / script_filename
-    if not script.exists():
-        # TODO can this be a symlink instead?
-        (mpspdz / script_filename).link_to(script)
+    script_filename = None
+    if protocol_name is not None:
+        script_filename = f"{op.protocol}-party.x"
+        script = root / script_filename
+        if not script.exists():
+            # TODO can this be a symlink instead?
+            (mpspdz / script_filename).link_to(script)
 
     programs = root / "Programs"
     if not programs.exists():
@@ -66,7 +68,7 @@ class MpspdzCallKernel(Kernel):
         _ = await asyncio.gather(*control_inputs.values())
 
         isolated_dir, mpspdz_dir, script_filename = prepare_mpspdz_directory(
-            op=op, session_id=session_id,
+            op=op, session_id=session_id, protocol_name=op.protocol
         )
 
         mlir_filename = str(isolated_dir / "source.mlir")
@@ -74,7 +76,7 @@ class MpspdzCallKernel(Kernel):
             mlir_file.write(op.mlir)
         get_logger().debug(f"Wrote .mlir file: {mlir_filename}")
 
-        mpc_filename = str(isolated_dir / f"source.mpc")
+        mpc_filename = str(isolated_dir / "source.mpc")
         await run_external_program(
             args=["./elk-to-mpc", mlir_filename, "-o", mpc_filename]
         )
