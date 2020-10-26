@@ -1,13 +1,7 @@
-FROM tfencrypted/runtime-base-worker:latest
-
-# MP-SPDZ
-RUN apt install -y openssl xz-utils
-RUN curl -L https://github.com/data61/MP-SPDZ/releases/download/v0.1.9/mp-spdz-0.1.9.tar.xz | tar xJv; \
-    mv mp-spdz-0.1.9 /MP-SPDZ; \
-    cd /MP-SPDZ; \
-    Scripts/tldr.sh
+FROM tfencrypted/runtime-mpspdz-worker:latest
 
 # Elk dependency
 RUN apt install -y libtinfo5
 
+RUN cp /MP-SPDZ/static/mascot-party.x /MP-SPDZ/mascot-party.x # copy main static executable into main directory
 CMD cd /examples/mp-spdz && python3 worker.py --verbose
