@@ -7,8 +7,8 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
       NAME: inputter0
 
@@ -17,8 +17,8 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
       NAME: inputter1
 
@@ -27,8 +27,8 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
       NAME: aggregator
 
@@ -37,7 +37,7 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
       NAME: outputter
