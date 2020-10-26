@@ -84,7 +84,7 @@ if __name__ == "__main__":
         runtime = TestRuntime(workers=concrete_comp.devices())
     elif args.runtime == "remote":
         runtime = RemoteRuntime(args.cluster_spec)
-        assert set(concrete_comp.devices()).subset(runtime.executors.keys())
+        assert set(concrete_comp.devices()).issubset(runtime.executors.keys())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
 
