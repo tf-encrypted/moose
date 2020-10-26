@@ -3,7 +3,6 @@ from grpc.experimental import aio
 
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
-from moose.utils import load_certificate
 
 
 class RemoteExecutor:

@@ -48,7 +48,10 @@ class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
 
 #         async def intercepted_handler(request, context):
 #             get_logger().debug(
-#                 f"Incoming gRPC, method:'{handler_call_details.method}', peer:'{context.peer()}', peer_identities:'{context.peer_identities()}'"
+#                 f"Incoming gRPC, "
+#                 f"method:'{handler_call_details.method}', "
+#                 f"peer:'{context.peer()}', "
+#                 f"peer_identities:'{context.peer_identities()}'"
 #             )
 #             return await handler.unary_unary(request, context)
 
