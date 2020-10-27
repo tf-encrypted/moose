@@ -74,9 +74,9 @@ class Worker:
         host,
         port,
         cluster_spec_filename,
-        ca_cert_filename,
-        ident_cert_filename,
-        ident_key_filename,
+        ca_cert_filename=None,
+        ident_cert_filename=None,
+        ident_key_filename=None,
         allow_insecure_networking=False,
     ):
         ca_cert = load_certificate(ca_cert_filename)

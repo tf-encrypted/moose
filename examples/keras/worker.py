@@ -2,7 +2,6 @@ import argparse
 import asyncio
 import logging
 
-from moose.cluster.cluster_spec import load_cluster_spec
 from moose.logger import get_logger
 from moose.worker import Worker
 
@@ -18,9 +17,13 @@ if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 if __name__ == "__main__":
-    get_logger().info(f"Starting on {args.host}:{args.port}")
-    cluster_spec = load_cluster_spec(args.cluster_spec)
-    worker = Worker(args.name, args.host, args.port, cluster_spec)
+    worker = Worker(
+        name=args.name,
+        host=args.host,
+        part=args.port,
+        cluster_spec_filename=args.cluster_spec,
+        allow_insecure_networking=True,  # TODO
+    )
 
     asyncio.get_event_loop().run_until_complete(worker.start())
     get_logger().info("Started")
