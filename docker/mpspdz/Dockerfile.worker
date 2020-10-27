@@ -24,7 +24,7 @@ RUN curl -O https://shoup.net/ntl/ntl-11.4.3.tar.gz && \
 RUN git clone https://github.com/data61/MP-SPDZ.git && \
     cd /MP-SPDZ && \
     git checkout 53f9b023dc80d5d7077fcc62fedc52f170d6af1e && \
-    make -j8 mpir && make static-dir && make -j8 static/mascot-party.x
+    make -j8 mpir && echo LDLIBS += -lgmp >> CONFIG && echo USE_NTL=1 >> CONFIG.mine && make -j8 static-release
 
 # install Elk 
 COPY docker/mpspdz/elk-to-mpc /elk/
