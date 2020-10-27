@@ -12,8 +12,10 @@ from moose.compiler.edsl import save
 from moose.compiler.mpspdz import MpspdzPlacement
 from moose.logger import get_logger
 from moose.runtime import RemoteRuntime
+from moose.runtime import TestRuntime
 
 parser = argparse.ArgumentParser(description="Run example")
+parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
 parser.add_argument("--cluster-spec", default="cluster-spec.yaml")
 args = parser.parse_args()
@@ -78,7 +80,14 @@ concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
     aio.init_grpc_aio()
-    runtime = RemoteRuntime(args.cluster_spec)
+    if args.runtime == "test":
+        runtime = TestRuntime(workers=concrete_comp.devices())
+    elif args.runtime == "remote":
+        runtime = RemoteRuntime(args.cluster_spec)
+        assert set(concrete_comp.devices()).issubset(runtime.executors.keys())
+    else:
+        raise ValueError(f"Unknown runtime '{args.runtime}'")
+
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_assignment={

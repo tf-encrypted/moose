@@ -102,7 +102,7 @@ class ExecutorTest(parameterized.TestCase):
                 c0 = constant(3)
                 c1 = constant(2)
             with player1:
-                out = run_program("python", [test_fixtures_file], c0, c1,)
+                out = run_program("python", [test_fixtures_file], c0, c1)
             with player2:
                 res = save(out, "result")
             return res

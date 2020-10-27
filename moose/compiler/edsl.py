@@ -154,7 +154,7 @@ def div(lhs, rhs, placement=None):
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
     return BinaryOpExpression(
-        op_type=DivOperation, placement=placement, inputs=[lhs, rhs],
+        op_type=DivOperation, placement=placement, inputs=[lhs, rhs]
     )
 
 
@@ -177,7 +177,7 @@ def run_program(path, args, *inputs, placement=None):
     assert isinstance(args, (list, tuple))
     placement = placement or get_current_placement()
     return RunProgramExpression(
-        path=path, args=args, placement=placement, inputs=inputs,
+        path=path, args=args, placement=placement, inputs=inputs
     )
 
 

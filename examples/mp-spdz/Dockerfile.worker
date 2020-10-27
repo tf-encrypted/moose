@@ -1,7 +1,5 @@
 FROM tfencrypted/runtime-mpspdz-worker:latest
 
-# Elk dependency
-RUN apt install -y libtinfo5
+WORKDIR /example
 
-RUN cp /MP-SPDZ/static/mascot-party.x /MP-SPDZ/mascot-party.x # copy main static executable into main directory
-CMD cd /examples/mp-spdz && python3 worker.py --verbose
+CMD python3 worker.py --verbose

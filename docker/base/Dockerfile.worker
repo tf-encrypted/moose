@@ -1,0 +1,15 @@
+FROM ubuntu:20.04
+
+RUN apt update && apt upgrade -y
+
+# Basic tools
+RUN apt install -y \
+    build-essential curl git gnupg \
+    python3 python3-pip
+
+# Install Moose
+COPY Makefile README.md requirements-dev.txt setup.py ./
+COPY moose /moose
+RUN pip3 install -r requirements-dev.txt && \
+    make build && \
+    pip install -e .
