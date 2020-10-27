@@ -1,6 +1,3 @@
-
-MAIN_IMAGE?=tfencrypted/runtime-base-worker:latest
-
 certs:
 	rm -rf certs/
 	certstrap --depot-path certs init --common-name ca --passphrase ""
