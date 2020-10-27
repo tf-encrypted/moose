@@ -60,8 +60,8 @@ class MpspdzSaveInputKernel(Kernel):
         get_logger().debug(f"Saving inputs to {input_filename}")
 
         with open(input_filename, "a") as f:
-            # TODO make sure we sort by key
-            for key, value in concrete_inputs.items():
+            for key in sorted(concrete_inputs.keys()):
+                value = concrete_inputs[key]
                 f.write(str(value) + " ")
 
         output.set_result(0)
@@ -102,7 +102,6 @@ class MpspdzCallKernel(Kernel):
         )
         get_logger().debug(f"Compiled program: {program_name}")
 
-        # TODO: replace hostname with localhost if it's testruntime
         await run_external_program(
             cwd=str(isolated_dir),
             args=[

@@ -6,9 +6,8 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # install basic tools (libtinfo5 is required by MLIR)
 RUN apt install -y \
-    automake build-essential git \
-    libboost-dev libboost-thread-dev \
-    libsodium-dev libssl-dev libtool m4 python texinfo yasm \
+    automake libboost-dev libboost-thread-dev \
+    libsodium-dev libssl-dev libtool m4 texinfo yasm \
     libtinfo5
 
 # install GMP and NTL since NTL depends on GMP
