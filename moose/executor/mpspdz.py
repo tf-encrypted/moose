@@ -37,7 +37,7 @@ def prepare_mpspdz_directory(
         if not script.exists():
             # TODO can this be a symlink instead?
             # all mpspdz executables are statically built
-            (mpspdz / f"static" / script_filename).link_to(script)
+            (mpspdz / "static" / script_filename).link_to(script)
 
     programs = root / "Programs"
     if not programs.exists():
