@@ -1,7 +1,6 @@
 import argparse
 import logging
-
-from grpc.experimental import aio
+import os
 
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
@@ -16,7 +15,10 @@ from moose.runtime import TestRuntime
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument("--cluster-spec", default="cluster-spec-main.yaml")
+parser.add_argument("--cluster-spec", default="cluster-spec.yaml")
+parser.add_argument("--ca-cert", default=os.environ.get("CA_CERT", None))
+parser.add_argument("--ident-cert", default=os.environ.get("IDENT_CERT", None))
+parser.add_argument("--ident-key", default=os.environ.get("IDENT_KEY", None))
 args = parser.parse_args()
 
 if args.verbose:
@@ -59,11 +61,15 @@ def my_comp():
 concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
-    aio.init_grpc_aio()
     if args.runtime == "test":
         runtime = TestRuntime(workers=concrete_comp.devices())
     elif args.runtime == "remote":
-        runtime = RemoteRuntime(args.cluster_spec)
+        runtime = RemoteRuntime(
+            args.cluster_spec,
+            ca_cert_filename=args.ca_cert,
+            ident_cert_filename=args.ident_cert,
+            ident_key_filename=args.ident_key,
+        )
         assert set(concrete_comp.devices()).issubset(runtime.executors.keys())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")

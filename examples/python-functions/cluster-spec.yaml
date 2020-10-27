@@ -1,5 +1,5 @@
 workers:
 - inputter0: inputter0:50000
-- inputter1: inputter1:50001
-- aggregator: aggregator:50002
-- outputter: outputter:50003
+- inputter1: inputter1:50000
+- aggregator: aggregator:50000
+- outputter: outputter:50000

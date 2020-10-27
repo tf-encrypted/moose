@@ -1,6 +1,5 @@
 FROM tfencrypted/runtime-base-worker:latest
 
-# Copy over example files
-COPY cluster-spec.yaml worker.py ./
+WORKDIR /example
 
-CMD python3 worker.py --verbose --port $PORT
+CMD watchexec -e py -r "python3 worker.py --verbose --name $NAME"
