@@ -1,22 +1,31 @@
 # Calling Python Functions from Moose
 
-This example shows you how you can call Python functions within Moose.
+This example shows how you can use Moose to call Python functions on workers.
 
-We recommend running the example using the included Docker Compose file to start up the needed workers, and docker for running `main.py`. To do so, first run the following from this directory to start up the required workers:
+We recommend running the example using Docker Compose by executing the following commands from this directory.
 
-TODO can be run very simply with `python main.py --runtime test --verbose` without networking
+First we must generate certificates for all participants (note that you must have [certstrap](https://github.com/square/certstrap) installed):
 
-
-TODO `certstrap` and `make certs`
-
-```
-docker-compose up --build
+```sh
+make certs
 ```
 
-Then run the following to execute `main.py` against there:
+Then we can spin up a local cluster of containers using:
 
+```sh
+make up
 ```
+
+This will block the current terminal, so launch a new one to execute the remaining commands.
+
+To execute a computation on the cluster we can finally run the following, which may be done repeatedly without re-running the steps above:
+
+```sh
 make run
 ```
 
-To stop the workers again run `docker-compose down`.
+Once we a done we can shut down the cluster again:
+
+```
+make down
+```
