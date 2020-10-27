@@ -114,6 +114,8 @@ class MpspdzCallKernel(Kernel):
                 self.channel_manager.get_hostname(op.coordinator),
                 "--portnumbase",
                 str(self.derive_port_number(op, session_id)),
+                "--output-file",
+                "Player-Data/Private-Output",
                 program_name,
             ],
         )
@@ -135,34 +137,15 @@ class MpspdzLoadOutputKernel(Kernel):
 
         isolated_dir, _, _ = prepare_mpspdz_directory(op=op, session_id=session_id)
 
-        # this is a bit ugly, inspiration from here:
-        # https://github.com/data61/MP-SPDZ/issues/104
-        # but really, it can be much nicer if the flag in
-        # https://github.com/data61/MP-SPDZ/blob/master/Processor/Instruction.hpp#L1229
-        # is set to true (ie human readable)
-
-        # in the future we might need to use the print_ln_to instruction
-
-        # default value of prime
-        prime = 170141183460469231731687303715885907969
-        # Inverse mod prime to get clear value Integer
-        invR = 96651956244403355751989957128965938997  # (2^128^-1 mod prime)
-
         output_filename = (
-            isolated_dir / "Player-Data" / f"Private-Output-{op.player_index}"
+            isolated_dir / "Player-Data" / f"Private-Output-P{op.player_index}-0"
         )
         get_logger().debug(f"Loading values from {output_filename}")
 
         outputs = list()
-        with open(output_filename, "rb") as output_file:
-            while True:
-                byte = output_file.read(16)
-                if not byte:
-                    break
-                # As integer
-                tmp = int.from_bytes(byte, byteorder="little")
-                # Invert "Montgomery"
-                clear = (tmp * invR) % prime
-                outputs.append(clear)
+        with open(output_filename, "r") as output_file:
+            for line in output_file.readlines():
+                # For now everything is an integer
+                outputs.append(int(line))
 
         return outputs
