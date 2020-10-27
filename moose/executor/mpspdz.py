@@ -32,12 +32,12 @@ def prepare_mpspdz_directory(
 
     script_filename = None
     if protocol_name is not None:
-        script_filename = f"{op.protocol}-party.x" 
+        script_filename = f"{op.protocol}-party.x"
         script = root / script_filename
         if not script.exists():
             # TODO can this be a symlink instead?
             # all mpspdz executables are statically built
-            (mpspdz / f'static' / script_filename).link_to(script)
+            (mpspdz / f"static" / script_filename).link_to(script)
 
     programs = root / "Programs"
     if not programs.exists():
