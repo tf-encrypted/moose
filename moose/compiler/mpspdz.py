@@ -44,6 +44,7 @@ class MpspdzPlacement(Placement):
             input_indices=[
                 player_name_index_map[player_name] for player_name in input_player_names
             ],
+            input_ops=input_ops,
             output_index=player_name_index_map[output_player_name],
         )
         invocation_key = context.get_fresh_name("invocation_key")
@@ -110,7 +111,7 @@ class MpspdzPlacement(Placement):
         return load_output_op
 
 
-def compile_to_mlir(fn, input_indices, output_index):
+def compile_to_mlir(fn, input_indices, input_ops, output_index):
     fn_ast = extract_ast(fn)
     input_names = [arg.arg for arg in fn_ast.args.args]
 
@@ -125,9 +126,9 @@ def compile_to_mlir(fn, input_indices, output_index):
     main_function = MlirFunction(name="main", args=[], type=None)
     get_input_ops = [
         MlirOperation(
-            name=arg_name, value=f"mpspdz.get_input_from {index}", type="!mpspdz.sint"
+            name=arg_name, value=f"mpspdz.get_input_from {index}", type=f"!mpspdz.{input_op.mpspdz_type}"
         )
-        for arg_name, index in zip(input_names, input_indices)
+        for arg_name, index, input_op in zip(input_names, input_indices, input_ops)
     ]
     arg_names = ", ".join(f"%{arg.name}" for arg in fn_mlir.args)
     arg_types = ", ".join(arg.type for arg in fn_mlir.args)

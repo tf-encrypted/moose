@@ -17,6 +17,7 @@ class Operation:
     name: str
     inputs: Dict[str, str]
     output: Optional[str]
+    mpspdz_type: Optional[str]
 
     @classmethod
     def identifier(cls):

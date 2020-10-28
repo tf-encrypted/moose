@@ -44,7 +44,7 @@ def my_function(x, y, z):
 def my_comp():
 
     with inputter0:
-        x = constant(1)
+        x = constant(1.5)
         z = constant(3)
 
     with inputter1:

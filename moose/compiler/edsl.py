@@ -105,6 +105,7 @@ class ApplyFunctionExpression(Expression):
 @dataclass
 class ConstantExpression(Expression):
     value: Union[int, float]
+    mpspdz_type: str
 
     def __hash__(self):
         return id(self)
@@ -146,7 +147,10 @@ def add(lhs, rhs, placement=None):
 
 def constant(value, placement=None):
     placement = placement or get_current_placement()
-    return ConstantExpression(placement=placement, inputs=[], value=value)
+    if not isinstance(value, int) and not isinstance(value, float):
+        raise NotImplementedError()
+    mpspdz_type = 'sint' if isinstance(value, int) else 'sfix'
+    return ConstantExpression(placement=placement, inputs=[], value=value, mpspdz_type=mpspdz_type)
 
 
 def div(lhs, rhs, placement=None):
@@ -338,6 +342,7 @@ class Compiler:
             value=constant_expression.value,
             inputs={},
             output=self.get_fresh_name("constant"),
+            mpspdz_type=constant_expression.mpspdz_type
         )
 
     def visit_LoadExpression(self, load_expression):
