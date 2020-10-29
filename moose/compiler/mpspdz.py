@@ -12,12 +12,20 @@ from moose.compiler.edsl import Placement
 from moose.logger import get_logger
 
 
+def map_to_mpspdz_type(t):
+    if t == "int":
+        return "!mpspdz.sint"
+    if t == "float":
+        return "!mpspdz.sfix"
+    raise NotImplementedError()
+
 @dataclass
 class MpspdzPlacement(Placement):
     players: List[HostPlacement]
 
     def __hash__(self):
         return hash(self.name)
+
 
     def compile(self, context, fn, inputs, output_placements=None, output_type=None):
         input_ops = [context.visit(expression) for expression in inputs]
@@ -63,6 +71,7 @@ class MpspdzPlacement(Placement):
                     )
                 },
                 output=context.get_fresh_name("mpspdz_save_input"),
+                output_type=None,
                 player_index=player_name_index_map[player_name],
                 invocation_key=invocation_key,
             )
@@ -81,6 +90,7 @@ class MpspdzPlacement(Placement):
                     for i, save_op in enumerate(save_input_ops)
                 },
                 output=context.get_fresh_name("mpspdz_call"),
+                output_type=None,
                 player_index=player_name_index_map[player_name],
                 num_players=len(participating_player_names),
                 mlir=mlir_string,
@@ -103,6 +113,7 @@ class MpspdzPlacement(Placement):
                 if call_op.device_name == output_player_name
             },
             output=context.get_fresh_name("mpspdz_output"),
+            output_type=None,
             player_index=player_name_index_map[output_player_name],
             invocation_key=invocation_key,
         )
@@ -126,7 +137,7 @@ def compile_to_mlir(fn, input_indices, input_ops, output_index):
     main_function = MlirFunction(name="main", args=[], type=None)
     get_input_ops = [
         MlirOperation(
-            name=arg_name, value=f"mpspdz.get_input_from {index}", type=f"!mpspdz.{input_op.mpspdz_type}"
+            name=arg_name, value=f"mpspdz.get_input_from {index}", type=map_to_mpspdz_type(input_op.output_type)
         )
         for arg_name, index, input_op in zip(input_names, input_indices, input_ops)
     ]
@@ -249,12 +260,13 @@ class FunctionVisitor(ast.NodeVisitor):
 
     def visit_FunctionDef(self, ast_node):
         arg_names = [arg.arg for arg in ast_node.args.args]
+        arg_types = [arg.annotation.id for arg in ast_node.args.args]
         self.function = MlirFunction(
             name=ast_node.name,
             args=[
-                MlirArg(name=arg_name, type="!mpspdz.sint") for arg_name in arg_names
+                MlirArg(name=arg_name, type=map_to_mpspdz_type(arg_type)) for arg_name, arg_type in zip(arg_names, arg_types)
             ],
-            type="!mpspdz.sint",
+            type=map_to_mpspdz_type(ast_node.returns.id),
         )
         for ast_stmt in ast_node.body:
             self.visit(ast_stmt)

@@ -36,7 +36,7 @@ mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1, outputter
 
 
 @function
-def my_function(x, y, z):
+def my_function(x: float, y: int, z: int) -> float:
     return x * y + z
 
 

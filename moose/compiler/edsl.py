@@ -105,7 +105,7 @@ class ApplyFunctionExpression(Expression):
 @dataclass
 class ConstantExpression(Expression):
     value: Union[int, float]
-    mpspdz_type: str
+    output_type: str
 
     def __hash__(self):
         return id(self)
@@ -147,10 +147,7 @@ def add(lhs, rhs, placement=None):
 
 def constant(value, placement=None):
     placement = placement or get_current_placement()
-    if not isinstance(value, int) and not isinstance(value, float):
-        raise NotImplementedError()
-    mpspdz_type = 'sint' if isinstance(value, int) else 'sfix'
-    return ConstantExpression(placement=placement, inputs=[], value=value, mpspdz_type=mpspdz_type)
+    return ConstantExpression(placement=placement, inputs=[], value=value, output_type=type(value).__name__)
 
 
 def div(lhs, rhs, placement=None):
@@ -252,6 +249,7 @@ class Compiler:
             name=self.get_fresh_name("serialize_op"),
             inputs={"value": source_operation.output},
             output=serialize_name,
+            output_type=None,
             value_type=value_type,
         )
         send_operation = SendOperation(
@@ -259,6 +257,7 @@ class Compiler:
             name=self.get_fresh_name("send_op"),
             inputs={"value": serialize_name},
             output=None,
+            output_type=None,
             sender=source_device,
             receiver=destination_device,
             rendezvous_key=rendezvous_key,
@@ -271,6 +270,7 @@ class Compiler:
             rendezvous_key=rendezvous_key,
             inputs={},
             output=receive_name,
+            output_type=None,
         )
         deserialize_operation = DeserializeOperation(
             device_name=destination_device,
@@ -278,6 +278,7 @@ class Compiler:
             inputs={"value": receive_name},
             output=deserialize_name,
             value_type=value_type,
+            output_type=None,
         )
         self.operations += [
             serialize_operation,
@@ -322,6 +323,7 @@ class Compiler:
             name=self.get_fresh_name(f"{op_name}_op"),
             inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
             output=self.get_fresh_name(f"{op_name}"),
+            output_type=None,
         )
 
     def visit_ApplyFunctionExpression(self, expression):
@@ -342,7 +344,7 @@ class Compiler:
             value=constant_expression.value,
             inputs={},
             output=self.get_fresh_name("constant"),
-            mpspdz_type=constant_expression.mpspdz_type
+            output_type=constant_expression.output_type
         )
 
     def visit_LoadExpression(self, load_expression):
@@ -353,6 +355,7 @@ class Compiler:
             key=load_expression.key,
             inputs={},
             output=self.get_fresh_name("load"),
+            output_type=None,
         )
 
     def visit_RunProgramExpression(self, expression):
@@ -369,6 +372,7 @@ class Compiler:
             args=expression.args,
             inputs=inputs,
             output=self.get_fresh_name("run_program"),
+            output_type=None,
         )
 
     def visit_SaveExpression(self, save_expression):
@@ -382,6 +386,7 @@ class Compiler:
             key=save_expression.key,
             inputs={"value": value_operation.output},
             output=None,
+            output_type=None,
         )
 
 
