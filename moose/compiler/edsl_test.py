@@ -35,8 +35,11 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                x0 = op(constant(1), constant(1))
+            x0 = op(
+                constant(1, placement=player0),
+                constant(1, placement=player0),
+                placement=player0,
+            )
             return x0
 
         concrete_comp = my_comp.trace_func()
@@ -57,8 +60,7 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                x0 = add_one(constant(1))
+            x0 = add_one(constant(1, placement=player0), placement=player0)
             return x0
 
         concrete_comp = my_comp.trace_func()
@@ -82,8 +84,7 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                x0 = constant(1)
+            x0 = constant(1, placement=player0)
             return x0
 
         concrete_comp = my_comp.trace_func()
@@ -102,10 +103,8 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                x0 = constant(1)
-            with player1:
-                x1 = add(x0, x0)
+            x0 = constant(1, placement=player0)
+            x1 = add(x0, x0, placement=player1)
 
             return x1
 
@@ -137,8 +136,12 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                x0 = run_program("python", ["local_computation.py"], constant(1))
+            x0 = run_program(
+                "python",
+                ["local_computation.py"],
+                constant(1, placement=player0),
+                placement=player0,
+            )
             return x0
 
         concrete_comp = my_comp.trace_func()
