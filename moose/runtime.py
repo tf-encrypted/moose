@@ -4,7 +4,7 @@ from typing import Dict
 from typing import Optional
 from typing import Union
 
-from moose.channels.memory import ChannelManager
+from moose.networking.memory import ChannelManager
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor

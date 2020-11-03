@@ -1,7 +1,7 @@
 import grpc
 from grpc.experimental import aio
 
-from moose.channels.grpc import ChannelManager
+from moose.networking.grpc import ChannelManager
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
