@@ -1,0 +1,41 @@
+version: "3.7"
+
+services:
+
+  worker0:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      NAME: worker0
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      NAME: worker1
+
+  broker:
+    build:
+      context: .
+      dockerfile: Dockerfile.broker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+
+  coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.coordinator
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      NAME: coordinator
