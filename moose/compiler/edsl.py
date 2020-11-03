@@ -201,10 +201,10 @@ def function(fn=None, output_type=None):
         return partial(function, output_type=output_type)
 
     @wraps(fn)
-    def wrapper(*inputs, output_placements=None, **kwargs):
+    def wrapper(*inputs, placement=None, output_placements=None, **kwargs):
         return ApplyFunctionExpression(
             fn=fn,
-            placement=get_current_placement(),
+            placement=placement or get_current_placement(),
             inputs=inputs,
             output_placements=output_placements,
             output_type=output_type,

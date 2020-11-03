@@ -47,10 +47,8 @@ class ExecutorTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                out = add_one(constant(3))
-            with player1:
-                res = save(out, "result")
+            out = add_one(constant(3, placement=player0), placement=player0)
+            res = save(out, "result", placement=player1)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1])
@@ -61,10 +59,8 @@ class ExecutorTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                out = constant(5)
-            with player1:
-                res = save(out, "result")
+            out = constant(5, placement=player0)
+            res = save(out, "result", placement=player1)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1])
@@ -79,10 +75,12 @@ class ExecutorTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                out = op(constant(5), constant(2))
-            with player1:
-                res = save(out, "result")
+            out = op(
+                constant(5, placement=player0),
+                constant(2, placement=player0),
+                placement=player0,
+            )
+            res = save(out, "result", placement=player1)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1])
@@ -98,13 +96,10 @@ class ExecutorTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            with player0:
-                c0 = constant(3)
-                c1 = constant(2)
-            with player1:
-                out = run_program("python", [test_fixtures_file], c0, c1)
-            with player2:
-                res = save(out, "result")
+            c0 = constant(3, placement=player0)
+            c1 = constant(2, placement=player0)
+            out = run_program("python", [test_fixtures_file], c0, c1, placement=player1)
+            res = save(out, "result", placement=player2)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1, player2])
