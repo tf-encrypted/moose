@@ -1,11 +1,11 @@
 import grpc
 from grpc.experimental import aio
 
-from moose.networking.grpc import ChannelManager
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
+from moose.networking.grpc_direct import ChannelManager
 from moose.protos import channel_manager_pb2
 from moose.protos import channel_manager_pb2_grpc
 from moose.protos import executor_pb2

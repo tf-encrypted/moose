@@ -4,12 +4,12 @@ from typing import Dict
 from typing import Optional
 from typing import Union
 
-from moose.networking.memory import ChannelManager
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.executor.proxy import RemoteExecutor
 from moose.logger import get_logger
+from moose.networking.memory import ChannelManager
 from moose.utils import load_certificate
 
 

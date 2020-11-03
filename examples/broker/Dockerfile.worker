@@ -1,0 +1,5 @@
+FROM tfencrypted/runtime-base-worker:latest
+
+WORKDIR /example
+
+CMD watchexec -e py -r "python3 worker.py --verbose --name $NAME"

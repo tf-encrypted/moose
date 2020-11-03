@@ -1,0 +1,34 @@
+import argparse
+import asyncio
+import logging
+import os
+
+from moose.logger import get_logger
+from moose.worker import Worker
+
+parser = argparse.ArgumentParser(description="Launch worker")
+parser.add_argument("--name", type=str, default="Worker")
+parser.add_argument("--host", type=str, default="0.0.0.0")
+parser.add_argument("--port", type=str, default="50000")
+parser.add_argument("--verbose", action="store_true")
+parser.add_argument("--cluster-spec", default="cluster-spec.yaml")
+args = parser.parse_args()
+
+if args.verbose:
+    get_logger().setLevel(level=logging.DEBUG)
+
+if __name__ == "__main__":
+
+    worker = Worker(
+        name=args.name,
+        host=args.host,
+        port=args.port,
+        cluster_spec_filename=args.cluster_spec,
+        allow_insecure_networking=True,
+    )
+
+    asyncio.get_event_loop().run_until_complete(worker.start())
+    get_logger().info("Started")
+
+    asyncio.get_event_loop().run_until_complete(worker.wait())
+    get_logger().info("Stopped")

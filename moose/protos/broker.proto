@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package moose.broker;
+
+service Board {
+    rpc Pub(stream SetValueRequest) returns(SetValueResponse) {}
+    rpc Sub(GetValueRequest) returns(stream GetValueResponse) {}
+}
+
+message SetValueRequest {
+    int64 session_id = 1;
+    string rendezvous_key = 2;
+    bytes value = 3;
+}
+
+message SetValueResponse {}
+
+message GetValueRequest {
+    string receiver = 1;
+}
+
+message GetValueResponse {
+    int64 session_id = 1;
+    string rendezvous_key = 2;
+    bytes value = 3;
+}
