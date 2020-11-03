@@ -7,37 +7,62 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
-      PORT: 50000
+      NAME: inputter0
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/inputter0.crt
+      IDENT_KEY: ./certs/inputter0.key
 
   inputter1:
     build:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
-      PORT: 50001
+      NAME: inputter1
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/inputter1.crt
+      IDENT_KEY: ./certs/inputter1.key
 
   aggregator:
     build:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
-      PORT: 50002
+      NAME: aggregator
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/aggregator.crt
+      IDENT_KEY: ./certs/aggregator.key
 
   outputter:
     build:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-        - "../../moose:/moose"
-        - ".:/examples/python-functions"
+      - "../../moose:/moose"
+      - ".:/example"
     environment:
-      PORT: 50003
+      NAME: outputter
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/outputter.crt
+      IDENT_KEY: ./certs/outputter.key
+
+  coordinator:
+    build:
+      context: .
+      dockerfile: Dockerfile.coordinator
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      NAME: coordinator
+      CA_CERT: ./certs/ca.crt
+      IDENT_CERT: ./certs/coordinator.crt
+      IDENT_KEY: ./certs/coordinator.key

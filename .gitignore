@@ -8,3 +8,8 @@
 
 **/.vscode
 **/.DS_Store
+
+**/*.crt
+**/*.crl
+**/*.csr
+**/*.key

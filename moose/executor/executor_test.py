@@ -15,7 +15,7 @@ from moose.compiler.edsl import run_program
 from moose.compiler.edsl import save
 from moose.compiler.edsl import sub
 from moose.logger import get_logger
-from moose.runtime import TestRuntime
+from moose.runtime import TestRuntime as Runtime
 
 get_logger().setLevel(level=logging.DEBUG)
 
@@ -25,7 +25,7 @@ def _create_test_players(number_of_players=2):
 
 
 def _run_computation(comp, players):
-    runtime = TestRuntime([worker.name for worker in players])
+    runtime = Runtime([worker.name for worker in players])
     placement_assignment = {
         player: runtime.executors[player.name] for player in players
     }

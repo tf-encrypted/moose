@@ -7,9 +7,10 @@ from typing import Union
 from moose.channels.memory import ChannelManager
 from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
-from moose.executor.executor import KernelBasedExecutor
-from moose.executor.executor import RemoteExecutor
+from moose.executor.executor import AsyncExecutor
+from moose.executor.proxy import RemoteExecutor
 from moose.logger import get_logger
+from moose.utils import load_certificate
 
 
 class Runtime:
@@ -35,12 +36,23 @@ class Runtime:
 
 
 class RemoteRuntime(Runtime):
-    def __init__(self, cluster_spec: Union[Dict, str]) -> None:
+    def __init__(
+        self,
+        cluster_spec: Union[Dict, str],
+        ca_cert_filename=None,
+        ident_cert_filename=None,
+        ident_key_filename=None,
+    ) -> None:
         if isinstance(cluster_spec, str):
             # assume `cluster_spec` is given as a path
             cluster_spec = load_cluster_spec(cluster_spec)
+        ca_cert = load_certificate(ca_cert_filename)
+        ident_cert = load_certificate(ident_cert_filename)
+        ident_key = load_certificate(ident_key_filename)
         self.executors = {
-            placement_name: RemoteExecutor(endpoint)
+            placement_name: RemoteExecutor(
+                endpoint, ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
+            )
             for placement_name, endpoint in cluster_spec.items()
         }
 
@@ -49,7 +61,7 @@ class TestRuntime(Runtime):
     def __init__(self, workers) -> None:
         channel_manager = ChannelManager()
         self.executors = {
-            placement_name: KernelBasedExecutor(
+            placement_name: AsyncExecutor(
                 name=placement_name, channel_manager=channel_manager
             )
             for placement_name in workers
