@@ -73,7 +73,7 @@ class AsyncExecutor:
         return logical_computation
 
     async def run_computation(
-        self, logical_computation, placement, session_id, placement_instantiation
+        self, logical_computation, placement_instantiation, placement, session_id
     ):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)

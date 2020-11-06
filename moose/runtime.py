@@ -18,7 +18,7 @@ class Runtime:
         sid = random.randrange(2 ** 32)
         tasks = [
             executor.run_computation(
-                computation, placement=placement.name, session_id=sid
+                computation, placement_instantiation=TODO, placement=placement.name, session_id=sid,
             )
             for placement, executor in placement_assignment.items()
         ]

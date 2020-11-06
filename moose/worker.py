@@ -19,6 +19,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
     async def RunComputation(self, request, context):
         await self.executor.run_computation(
             logical_computation=Computation.deserialize(request.computation),
+            placement_instantiation=TODO,
             placement=request.placement,
             session_id=request.session_id,
         )
