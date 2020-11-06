@@ -94,8 +94,8 @@ class ReceiveKernel(Kernel):
     async def execute(self, op, session, output):
         assert isinstance(op, ReceiveOperation)
         value = await self.channel_manager.receive(
-            sender=op.sender,
-            receiver=op.receiver,
+            sender=session.placement_instantiation.get(op.sender),
+            receiver=session.placement_instantiation.get(op.receiver),
             rendezvous_key=op.rendezvous_key,
             session_id=session.session_id,
         )
@@ -126,9 +126,7 @@ class RunProgramKernel(Kernel):
                 ]
                 get_logger().debug(f"Running external program: {args}")
                 _ = subprocess.run(
-                    args,
-                    stdout=subprocess.PIPE,
-                    universal_newlines=True,
+                    args, stdout=subprocess.PIPE, universal_newlines=True,
                 )
 
                 concrete_output = json.loads(outputfile.read())
@@ -176,8 +174,8 @@ class SendKernel(Kernel):
         assert isinstance(op, SendOperation)
         await self.channel_manager.send(
             await value,
-            sender=op.sender,
-            receiver=op.receiver,
+            sender=session.placement_instantiation.get(op.sender),
+            receiver=session.placement_instantiation.get(op.receiver),
             rendezvous_key=op.rendezvous_key,
             session_id=session.session_id,
         )

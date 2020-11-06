@@ -19,9 +19,14 @@ class RemoteExecutor:
             self.channel = aio.insecure_channel(endpoint)
         self._stub = executor_pb2_grpc.ExecutorStub(self.channel)
 
-    async def run_computation(self, logical_computation, placement, session_id):
+    async def run_computation(
+        self, logical_computation, placement, placement_instantiation, session_id
+    ):
         comp_ser = logical_computation.serialize()
         compute_request = executor_pb2.RunComputationRequest(
-            computation=comp_ser, placement=placement, session_id=session_id
+            computation=comp_ser,
+            placement=placement,
+            placement_instantiation=placement_instantiation,
+            session_id=session_id,
         )
         _ = await self._stub.RunComputation(compute_request)

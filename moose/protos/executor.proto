@@ -10,6 +10,7 @@ message RunComputationRequest {
     bytes computation = 1;
     string placement = 2;
     int64 session_id = 3;
+    map<string, string> placement_instantiation = 4;
 }
 
 message RunComputationResponse {}

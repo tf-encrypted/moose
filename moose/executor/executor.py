@@ -1,4 +1,6 @@
 import asyncio
+import dataclasses
+from typing import Dict
 
 from moose.compiler.computation import AddOperation
 from moose.compiler.computation import CallPythonFunctionOperation
@@ -36,14 +38,11 @@ from moose.logger import get_logger
 from moose.storage import AsyncStore
 
 
+@dataclasses.dataclass
 class Session:
-    def __init__(self, session_id, placement_instantiation, values):
-        self.session_id = session_id
-        self.placement_instantiation = placement_instantiation
-        self.values = values
-
-    def __repr__(self):
-        return f"{self.session_id}"
+    session_id: int
+    placement_instantiation: Dict[str, str]
+    values: AsyncStore = dataclasses.field(repr=False)
 
 
 class AsyncExecutor:
@@ -73,15 +72,17 @@ class AsyncExecutor:
         # TODO for now we don't do any compilation of computations
         return logical_computation
 
-    async def run_computation(self, logical_computation, placement, session_id, placement_instantiation):
+    async def run_computation(
+        self, logical_computation, placement, session_id, placement_instantiation
+    ):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
-        # create context for session
         session = Session(
             session_id=session_id,
             placement_instantiation=placement_instantiation,
             values=AsyncStore(),
         )
+        get_logger().debug(f"Entering computation, session:{session}")
         # link futures together using kernels
         tasks = []
         for op in execution_plan:
@@ -96,11 +97,12 @@ class AsyncExecutor:
             output = session.values.get_future(key=op.output) if op.output else None
             tasks += [
                 asyncio.create_task(
-                    kernel.execute(op, context=context, session=session, output=output, **inputs)
+                    kernel.execute(op, session=session, output=output, **inputs)
                 )
             ]
         # execute kernels
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+        get_logger().debug(f"Exiting computation, session:{session}")
         # address any errors that may have occurred
         exceptions = [task.exception() for task in done if task.exception()]
         for e in exceptions:

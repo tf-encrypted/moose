@@ -51,7 +51,9 @@ class MpspdzSaveInputKernel(Kernel):
         assert isinstance(op, MpspdzSaveInputOperation)
         concrete_inputs = {key: await value for key, value in inputs.items()}
 
-        isolated_dir, _, _ = prepare_mpspdz_directory(op=op, session_id=session.session_id)
+        isolated_dir, _, _ = prepare_mpspdz_directory(
+            op=op, session_id=session.session_id
+        )
 
         thread_no = 0  # assume inputs are happening in the main thread
         input_filename = str(
@@ -135,7 +137,9 @@ class MpspdzLoadOutputKernel(Kernel):
     def execute_synchronous_block(self, op, session, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
 
-        isolated_dir, _, _ = prepare_mpspdz_directory(op=op, session_id=session.session_id)
+        isolated_dir, _, _ = prepare_mpspdz_directory(
+            op=op, session_id=session.session_id
+        )
 
         output_filename = (
             isolated_dir / "Player-Data" / f"Private-Output-P{op.player_index}-0"
