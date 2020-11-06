@@ -10,7 +10,7 @@ class Kernel:
             f"Executing:"
             f" kernel:{self.__class__.__name__},"
             f" op:{op},"
-            f" session:{session},"
+            f" session_id:{session.session_id},"
             f" inputs:{concrete_kwargs}"
         )
         concrete_output = self.execute_synchronous_block(
@@ -20,7 +20,7 @@ class Kernel:
             f"Done executing:"
             f" kernel:{self.__class__.__name__},"
             f" op:{op},"
-            f" session:{session},"
+            f" session_id:{session.session_id},"
             f" output:{concrete_output}"
         )
         if output:
