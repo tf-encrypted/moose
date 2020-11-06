@@ -32,7 +32,8 @@ class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
 
     async def GetValue(self, request, context):
         value = await self.channel_manager.get_value(
-            rendezvous_key=request.rendezvous_key, session_id=request.session_id,
+            rendezvous_key=request.rendezvous_key,
+            session_id=request.session_id,
         )
         return channel_manager_pb2.GetValueResponse(value=value)
 
@@ -110,11 +111,13 @@ class Worker:
             self._server.add_insecure_port(f"{host}:{port}")
 
         executor_pb2_grpc.add_ExecutorServicer_to_server(
-            ExecutorServicer(executor), self._server,
+            ExecutorServicer(executor),
+            self._server,
         )
 
         channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(
-            ChannelManagerServicer(channel_manager), self._server,
+            ChannelManagerServicer(channel_manager),
+            self._server,
         )
 
     async def start(self):

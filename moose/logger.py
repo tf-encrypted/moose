@@ -12,5 +12,5 @@ def set_logger(logger):
     _LOGGER = logger
 
 
-set_logger(logging.getLogger("runtime"))
+set_logger(logging.getLogger("moose"))
 logging.basicConfig()

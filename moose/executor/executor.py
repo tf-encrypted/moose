@@ -36,6 +36,16 @@ from moose.logger import get_logger
 from moose.storage import AsyncStore
 
 
+class Session:
+    def __init__(self, session_id, placement_instantiation, values):
+        self.session_id = session_id
+        self.placement_instantiation = placement_instantiation
+        self.values = values
+
+    def __repr__(self):
+        return f"{self.session_id}"
+
+
 class AsyncExecutor:
     def __init__(self, name, channel_manager, store={}):
         self.name = name
@@ -63,11 +73,16 @@ class AsyncExecutor:
         # TODO for now we don't do any compilation of computations
         return logical_computation
 
-    async def run_computation(self, logical_computation, placement, session_id):
+    async def run_computation(self, logical_computation, placement, session_id, placement_instantiation):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
+        # create context for session
+        session = Session(
+            session_id=session_id,
+            placement_instantiation=placement_instantiation,
+            values=AsyncStore(),
+        )
         # link futures together using kernels
-        session_values = AsyncStore()
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
@@ -75,13 +90,13 @@ class AsyncExecutor:
                 raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
             inputs = {
-                param_name: session_values.get_future(key=value_name)
+                param_name: session.values.get_future(key=value_name)
                 for (param_name, value_name) in op.inputs.items()
             }
-            output = session_values.get_future(key=op.output) if op.output else None
+            output = session.values.get_future(key=op.output) if op.output else None
             tasks += [
                 asyncio.create_task(
-                    kernel.execute(op, session_id=session_id, output=output, **inputs)
+                    kernel.execute(op, context=context, session=session, output=output, **inputs)
                 )
             ]
         # execute kernels
