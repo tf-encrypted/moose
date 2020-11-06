@@ -113,7 +113,9 @@ class MpspdzCallKernel(Kernel):
                 "--nparties",
                 str(op.num_players),
                 "--hostname",
-                self.channel_manager.get_hostname(op.coordinator),
+                self.channel_manager.get_hostname(
+                    session.placement_instantiation.get(op.coordinator)
+                ),
                 "--portnumbase",
                 str(self.derive_port_number(op, session.session_id)),
                 "--output-file",
