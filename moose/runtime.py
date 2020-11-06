@@ -2,10 +2,8 @@ import asyncio
 import random
 from typing import Dict
 from typing import Optional
-from typing import Union
 
 from moose.channels.memory import ChannelManager
-from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.executor.proxy import RemoteExecutor
@@ -38,22 +36,19 @@ class Runtime:
 class RemoteRuntime(Runtime):
     def __init__(
         self,
-        cluster_spec: Union[Dict, str],
+        executor_endpoints,
         ca_cert_filename=None,
         ident_cert_filename=None,
         ident_key_filename=None,
     ) -> None:
-        if isinstance(cluster_spec, str):
-            # assume `cluster_spec` is given as a path
-            cluster_spec = load_cluster_spec(cluster_spec)
         ca_cert = load_certificate(ca_cert_filename)
         ident_cert = load_certificate(ident_cert_filename)
         ident_key = load_certificate(ident_key_filename)
         self.executors = {
-            placement_name: RemoteExecutor(
+            endpoint: RemoteExecutor(
                 endpoint, ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
             )
-            for placement_name, endpoint in cluster_spec.items()
+            for endpoint in executor_endpoints
         }
 
 

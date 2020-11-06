@@ -10,7 +10,6 @@ parser.add_argument("--name", type=str, default="Worker")
 parser.add_argument("--host", type=str, default="0.0.0.0")
 parser.add_argument("--port", type=str, default="50000")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument("--cluster-spec", default="cluster-spec-worker.yaml")
 args = parser.parse_args()
 
 if args.verbose:
@@ -21,7 +20,6 @@ if __name__ == "__main__":
         name=args.name,
         host=args.host,
         part=args.port,
-        cluster_spec_filename=args.cluster_spec,
         allow_insecure_networking=True,  # TODO
     )
 

@@ -20,7 +20,7 @@ class ChannelManager:
     def __init__(self):
         self.channels = defaultdict(Channel)
 
-    def get_hostname(self, player_name):
+    def get_hostname(self, placement):
         return "localhost"
 
     async def receive(self, sender, receiver, rendezvous_key, session_id):

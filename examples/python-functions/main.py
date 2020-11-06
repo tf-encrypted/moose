@@ -65,7 +65,12 @@ if __name__ == "__main__":
         runtime = TestRuntime(workers=concrete_comp.devices())
     elif args.runtime == "remote":
         runtime = RemoteRuntime(
-            args.cluster_spec,
+            [
+                "inputter0:50000",
+                "inputter1:50000",
+                "aggregator:50000",
+                "outputter:50000",
+            ],
             ca_cert_filename=args.ca_cert,
             ident_cert_filename=args.ident_cert,
             ident_key_filename=args.ident_key,

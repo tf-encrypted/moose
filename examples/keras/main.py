@@ -77,7 +77,14 @@ if __name__ == "__main__":
     if args.runtime == "test":
         runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
     elif args.runtime == "remote":
-        runtime = RemoteRuntime("./cluster-spec-main.yaml")
+        runtime = RemoteRuntime(
+            [
+                "inputter0:50000",
+                "inputter1:50000",
+                "aggregator:50000",
+                "outputter:50000",
+            ]
+        )
         assert len(runtime.executors) == len(concrete_comp.devices())
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")

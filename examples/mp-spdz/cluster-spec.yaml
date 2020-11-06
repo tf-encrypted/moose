@@ -1,5 +1,0 @@
-workers:
-- inputter0: inputter0:50000
-- inputter1: inputter1:50000
-- outputter: outputter:50000
-- saver: saver:50000
