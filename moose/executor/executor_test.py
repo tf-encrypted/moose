@@ -26,9 +26,7 @@ def _create_test_players(number_of_players=2):
 
 def _run_computation(comp, players):
     runtime = Runtime()
-    placement_instantiation = {
-        player.name: player.name for player in players
-    }
+    placement_instantiation = {player: player.name for player in players}
     concrete_comp = comp.trace_func()
     runtime.evaluate_computation(
         concrete_comp, placement_instantiation=placement_instantiation

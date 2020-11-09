@@ -28,6 +28,10 @@ class RemoteRuntime:
     def evaluate_computation(
         self, computation: Computation, placement_instantiation: Dict
     ):
+        placement_instantiation = {
+            placement.name if not isinstance(placement, str) else placement: endpoint
+            for placement, endpoint in placement_instantiation.items()
+        }
         placement_executors = dict()
         for placement, endpoint in placement_instantiation.items():
             if endpoint not in self.existing_executors:
@@ -68,6 +72,10 @@ class TestRuntime:
     def evaluate_computation(
         self, computation: Computation, placement_instantiation: Dict
     ):
+        placement_instantiation = {
+            placement.name if not isinstance(placement, str) else placement: endpoint
+            for placement, endpoint in placement_instantiation.items()
+        }
         placement_executors = dict()
         for placement, name in placement_instantiation.items():
             if name not in self.existing_executors:

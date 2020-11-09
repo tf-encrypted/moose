@@ -75,10 +75,10 @@ if __name__ == "__main__":
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_instantiation={
-            inputter0.name: "inputter0:50000",
-            inputter1.name: "inputter1:50000",
-            aggregator.name: "aggregator:50000",
-            outputter.name: "outputter:50000",
+            inputter0: "inputter0:50000",
+            inputter1: "inputter1:50000",
+            aggregator: "aggregator:50000",
+            outputter: "outputter:50000",
         },
     )
 

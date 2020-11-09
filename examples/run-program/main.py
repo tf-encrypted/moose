@@ -47,10 +47,10 @@ if __name__ == "__main__":
     runtime.evaluate_computation(
         computation=concrete_comp,
         placement_instantiation={
-            inputter0.name: "inputter0",
-            inputter1.name: "inputter1",
-            aggregator.name: "aggregator",
-            outputter.name: "outputter",
+            inputter0: "inputter0",
+            inputter1: "inputter1",
+            aggregator: "aggregator",
+            outputter: "outputter",
         },
     )
 
