@@ -26,7 +26,6 @@ from moose.compiler.computation import SendOperation
 from moose.compiler.computation import SerializeOperation
 from moose.compiler.computation import SubOperation
 from moose.logger import get_logger
-from moose.runtime import get_runtime
 
 CURRENT_PLACEMENT: List = []
 
@@ -384,9 +383,10 @@ class AbstractComputation:
     def __init__(self, func):
         self.func = func
 
-    def __call__(self, *args, **kwargs):
-        comp = self.trace_func(*args, **kwargs)
-        get_runtime().evaluate_computation(comp)
+    # TODO(Morten) we could bring this back later for eg RemoteRuntime only
+    # def __call__(self, *args, **kwargs):
+    #     comp = self.trace_func(*args, **kwargs)
+    #     get_runtime().evaluate_computation(comp)
 
     def trace_func(self, *args, **kwargs):
         expression = self.func(*args, **kwargs)

@@ -75,27 +75,19 @@ concrete_comp = my_comp.trace_func()
 if __name__ == "__main__":
 
     if args.runtime == "test":
-        runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+        runtime = TestRuntime()
     elif args.runtime == "remote":
-        runtime = RemoteRuntime(
-            [
-                "inputter0:50000",
-                "inputter1:50000",
-                "aggregator:50000",
-                "outputter:50000",
-            ]
-        )
-        assert len(runtime.executors) == len(concrete_comp.devices())
+        runtime = RemoteRuntime()
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
 
     runtime.evaluate_computation(
         computation=concrete_comp,
-        placement_assignment={
-            inputter0: runtime.executors[0],
-            inputter1: runtime.executors[1],
-            aggregator: runtime.executors[2],
-            outputter: runtime.executors[3],
+        placement_instantiation={
+            inputter0.name: "inputter0:50000",
+            inputter1.name: "inputter1:50000",
+            aggregator.name: "aggregator:50000",
+            outputter.name: "outputter:50000",
         },
     )
 

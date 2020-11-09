@@ -42,15 +42,15 @@ concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
 
-    runtime = TestRuntime(num_workers=len(concrete_comp.devices()))
+    runtime = TestRuntime()
 
     runtime.evaluate_computation(
         computation=concrete_comp,
-        placement_assignment={
-            inputter0: runtime.executors[0],
-            inputter1: runtime.executors[1],
-            aggregator: runtime.executors[2],
-            outputter: runtime.executors[3],
+        placement_instantiation={
+            inputter0.name: "inputter0",
+            inputter1.name: "inputter1",
+            aggregator.name: "aggregator",
+            outputter.name: "outputter",
         },
     )
 

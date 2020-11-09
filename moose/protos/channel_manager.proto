@@ -6,11 +6,6 @@ service ChannelManager {
     rpc GetValue(GetValueRequest) returns(GetValueResponse) {}
 }
 
-// TODO Reduce the number of messages
-// Should be a message holding a stream of bytes
-// handlers would be responsible for reconstructing 
-// object based on stream of bytes
-
 message GetValueRequest {
     string rendezvous_key = 1;
     int64 session_id = 2;
