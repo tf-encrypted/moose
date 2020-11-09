@@ -2,28 +2,12 @@ import grpc
 from grpc.experimental import aio
 
 from moose.channels.grpc import ChannelManager
-from moose.compiler.computation import Computation
+from moose.choreography.grpc import ExecutorServicer
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.protos import channel_manager_pb2
 from moose.protos import channel_manager_pb2_grpc
-from moose.protos import executor_pb2
-from moose.protos import executor_pb2_grpc
 from moose.utils import load_certificate
-
-
-class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
-    def __init__(self, executor):
-        self.executor = executor
-
-    async def RunComputation(self, request, context):
-        await self.executor.run_computation(
-            logical_computation=Computation.deserialize(request.computation),
-            placement_instantiation=request.placement_instantiation,
-            placement=request.placement,
-            session_id=request.session_id,
-        )
-        return executor_pb2.RunComputationResponse()
 
 
 class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
@@ -85,7 +69,6 @@ class Worker:
         channel_manager = ChannelManager(
             ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
         )
-        executor = AsyncExecutor(name=name, channel_manager=channel_manager)
 
         # set up server
         aio.init_grpc_aio()
@@ -106,13 +89,13 @@ class Worker:
             )
             self._server.add_insecure_port(f"{host}:{port}")
 
-        executor_pb2_grpc.add_ExecutorServicer_to_server(
-            ExecutorServicer(executor), self._server,
-        )
-
         channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(
             ChannelManagerServicer(channel_manager), self._server,
         )
+
+        executor = AsyncExecutor(name=name, channel_manager=channel_manager)
+        executor_servicer = ExecutorServicer(executor)
+        executor_servicer.add_to_server(self._server)
 
     async def start(self):
         await self._server.start()

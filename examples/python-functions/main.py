@@ -2,6 +2,7 @@ import argparse
 import logging
 import os
 
+from moose.choreography.grpc import RemoteRuntime
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
@@ -9,7 +10,6 @@ from moose.compiler.edsl import constant
 from moose.compiler.edsl import function
 from moose.compiler.edsl import save
 from moose.logger import get_logger
-from moose.runtime import RemoteRuntime
 from moose.runtime import TestRuntime
 
 parser = argparse.ArgumentParser(description="Run example")
