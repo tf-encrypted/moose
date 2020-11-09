@@ -5,12 +5,12 @@ from typing import Dict
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-from moose.networking.memory import ChannelManager
+from moose.networking.memory import Networking
 
 
 class TestRuntime:
     def __init__(self) -> None:
-        self.channel_manager = ChannelManager()
+        self.networking = Networking()
         self.existing_executors = dict()
 
     def evaluate_computation(
@@ -24,7 +24,7 @@ class TestRuntime:
         for placement, name in placement_instantiation.items():
             if name not in self.existing_executors:
                 self.existing_executors[name] = AsyncExecutor(
-                    name=name, channel_manager=self.channel_manager
+                    name=name, networking=self.networking
                 )
             placement_executors[placement] = self.existing_executors[name]
 

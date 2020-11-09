@@ -1,8 +1,8 @@
 import grpc
 from grpc.experimental import aio
 
-from moose.protos import channel_manager_pb2
-from moose.protos import channel_manager_pb2_grpc
+from moose.protos import networking_pb2
+from moose.protos import networking_pb2_grpc
 from moose.storage import AsyncStore
 
 
@@ -21,11 +21,11 @@ class Channel:
         else:
             self._channel = aio.insecure_channel(endpoint)
 
-        self._stub = channel_manager_pb2_grpc.ChannelManagerStub(self._channel)
+        self._stub = networking_pb2_grpc.NetworkingStub(self._channel)
 
     async def receive(self, rendezvous_key, session_id):
         reply = await self._stub.GetValue(
-            channel_manager_pb2.GetValueRequest(
+            networking_pb2.GetValueRequest(
                 rendezvous_key=rendezvous_key, session_id=session_id
             )
         )
@@ -36,7 +36,7 @@ class Channel:
         await self._buffer.put(key, value)
 
 
-class ChannelManager:
+class Networking:
     def __init__(self, ca_cert, ident_cert, ident_key):
         self.buffer = AsyncStore()
         self.channels = dict()
@@ -76,15 +76,15 @@ class ChannelManager:
         )
 
 
-class NetworkingServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
-    def __init__(self, channel_manager):
-        self.channel_manager = channel_manager
+class NetworkingServicer(networking_pb2_grpc.NetworkingServicer):
+    def __init__(self, networking):
+        self.networking = networking
 
     def add_to_server(self, server):
-        channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(self, server)
+        networking_pb2_grpc.add_NetworkingServicer_to_server(self, server)
 
     async def GetValue(self, request, context):
-        value = await self.channel_manager.get_value(
+        value = await self.networking.get_value(
             rendezvous_key=request.rendezvous_key, session_id=request.session_id,
         )
-        return channel_manager_pb2.GetValueResponse(value=value)
+        return networking_pb2.GetValueResponse(value=value)

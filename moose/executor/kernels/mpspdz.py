@@ -70,8 +70,8 @@ class MpspdzSaveInputKernel(Kernel):
 
 
 class MpspdzCallKernel(Kernel):
-    def __init__(self, channel_manager):
-        self.channel_manager = channel_manager
+    def __init__(self, networking):
+        self.networking = networking
 
     async def execute(self, op, session, output, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
@@ -113,7 +113,7 @@ class MpspdzCallKernel(Kernel):
                 "--nparties",
                 str(op.num_players),
                 "--hostname",
-                self.channel_manager.get_hostname(
+                self.networking.get_hostname(
                     session.placement_instantiation.get(op.coordinator)
                 ),
                 "--portnumbase",

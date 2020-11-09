@@ -46,14 +46,14 @@ class Session:
 
 
 class AsyncExecutor:
-    def __init__(self, name, channel_manager, store={}):
+    def __init__(self, name, networking, store={}):
         self.name = name
         self.store = store
         self.kernels = {
             LoadOperation: LoadKernel(store),
             SaveOperation: SaveKernel(store),
-            SendOperation: SendKernel(channel_manager),
-            ReceiveOperation: ReceiveKernel(channel_manager),
+            SendOperation: SendKernel(networking),
+            ReceiveOperation: ReceiveKernel(networking),
             DeserializeOperation: DeserializeKernel(),
             SerializeOperation: SerializeKernel(),
             ConstantOperation: ConstantKernel(),
@@ -64,7 +64,7 @@ class AsyncExecutor:
             RunProgramOperation: RunProgramKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
             MpspdzSaveInputOperation: MpspdzSaveInputKernel(),
-            MpspdzCallOperation: MpspdzCallKernel(channel_manager),
+            MpspdzCallOperation: MpspdzCallKernel(networking),
             MpspdzLoadOutputOperation: MpspdzLoadOutputKernel(),
         }
 

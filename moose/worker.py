@@ -4,7 +4,7 @@ from grpc.experimental import aio
 from moose.choreography.grpc import ExecutorServicer
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-from moose.networking.grpc import ChannelManager
+from moose.networking.grpc import Networking
 from moose.networking.grpc import NetworkingServicer
 from moose.utils import DebugInterceptor
 from moose.utils import load_certificate
@@ -44,13 +44,13 @@ class Worker:
             )
             self._server.add_insecure_port(f"{host}:{port}")
 
-        networking = ChannelManager(
+        networking = Networking(
             ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
         )
         networking_servicer = NetworkingServicer(networking)
         networking_servicer.add_to_server(self._server)
 
-        executor = AsyncExecutor(name=name, channel_manager=networking)
+        executor = AsyncExecutor(name=name, networking=networking)
         executor_servicer = ExecutorServicer(executor)
         executor_servicer.add_to_server(self._server)
 

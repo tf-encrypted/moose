@@ -16,7 +16,7 @@ class Channel:
         return await self.buffer.put(key, value)
 
 
-class ChannelManager:
+class Networking:
     def __init__(self):
         self.channels = defaultdict(Channel)
 
