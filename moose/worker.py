@@ -2,7 +2,6 @@ import grpc
 from grpc.experimental import aio
 
 from moose.channels.grpc import ChannelManager
-from moose.cluster.cluster_spec import load_cluster_spec
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
@@ -20,6 +19,7 @@ class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
     async def RunComputation(self, request, context):
         await self.executor.run_computation(
             logical_computation=Computation.deserialize(request.computation),
+            placement_instantiation=request.placement_instantiation,
             placement=request.placement,
             session_id=request.session_id,
         )
@@ -73,7 +73,6 @@ class Worker:
         name,
         host,
         port,
-        cluster_spec_filename,
         ca_cert_filename=None,
         ident_cert_filename=None,
         ident_key_filename=None,
@@ -83,10 +82,8 @@ class Worker:
         ident_cert = load_certificate(ident_cert_filename)
         ident_key = load_certificate(ident_key_filename)
 
-        cluster_spec = load_cluster_spec(cluster_spec_filename)
-
         channel_manager = ChannelManager(
-            cluster_spec, ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
+            ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
         )
         executor = AsyncExecutor(name=name, channel_manager=channel_manager)
 

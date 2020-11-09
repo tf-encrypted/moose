@@ -20,19 +20,17 @@ class ChannelManager:
     def __init__(self):
         self.channels = defaultdict(Channel)
 
-    def get_hostname(self, player_name):
+    def get_hostname(self, placement):
         return "localhost"
 
-    def get_channel(self, op):
-        channel_key = (op.sender, op.receiver)
-        return self.channels[channel_key]
-
-    async def receive(self, op, session_id):
-        return await self.get_channel(op).receive(
-            rendezvous_key=op.rendezvous_key, session_id=session_id
+    async def receive(self, sender, receiver, rendezvous_key, session_id):
+        channel_key = (sender, receiver)
+        return await self.channels[channel_key].receive(
+            rendezvous_key=rendezvous_key, session_id=session_id
         )
 
-    async def send(self, value, op, session_id):
-        await self.get_channel(op).send(
-            value, rendezvous_key=op.rendezvous_key, session_id=session_id
+    async def send(self, value, sender, receiver, rendezvous_key, session_id):
+        channel_key = (sender, receiver)
+        await self.channels[channel_key].send(
+            value, rendezvous_key=rendezvous_key, session_id=session_id
         )

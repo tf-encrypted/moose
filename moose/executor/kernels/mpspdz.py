@@ -47,11 +47,13 @@ def prepare_mpspdz_directory(
 
 
 class MpspdzSaveInputKernel(Kernel):
-    async def execute(self, op, session_id, output, **inputs):
+    async def execute(self, op, session, output, **inputs):
         assert isinstance(op, MpspdzSaveInputOperation)
         concrete_inputs = {key: await value for key, value in inputs.items()}
 
-        isolated_dir, _, _ = prepare_mpspdz_directory(op=op, session_id=session_id)
+        isolated_dir, _, _ = prepare_mpspdz_directory(
+            op=op, session_id=session.session_id
+        )
 
         thread_no = 0  # assume inputs are happening in the main thread
         input_filename = str(
@@ -71,12 +73,12 @@ class MpspdzCallKernel(Kernel):
     def __init__(self, channel_manager):
         self.channel_manager = channel_manager
 
-    async def execute(self, op, session_id, output, **control_inputs):
+    async def execute(self, op, session, output, **control_inputs):
         assert isinstance(op, MpspdzCallOperation)
         _ = await asyncio.gather(*control_inputs.values())
 
         isolated_dir, mpspdz_dir, script_filename = prepare_mpspdz_directory(
-            op=op, session_id=session_id, protocol_name=op.protocol
+            op=op, session_id=session.session_id, protocol_name=op.protocol
         )
 
         mlir_filename = str(isolated_dir / "source.mlir")
@@ -92,7 +94,7 @@ class MpspdzCallKernel(Kernel):
             mpc_file.write("\n" + "main()")
         get_logger().debug(f"Wrote .mpc file: {mpc_filename}")
 
-        program_name = f"{session_id}-{op.invocation_key}-{op.player_index}"
+        program_name = f"{session.session_id}-{op.invocation_key}-{op.player_index}"
         mpc_symlink = mpspdz_dir / "Programs" / "Source" / f"{program_name}.mpc"
         mpc_symlink.symlink_to(mpc_filename)
         get_logger().debug(f"Linked {mpc_symlink.name} to {mpc_filename}")
@@ -111,9 +113,11 @@ class MpspdzCallKernel(Kernel):
                 "--nparties",
                 str(op.num_players),
                 "--hostname",
-                self.channel_manager.get_hostname(op.coordinator),
+                self.channel_manager.get_hostname(
+                    session.placement_instantiation.get(op.coordinator)
+                ),
                 "--portnumbase",
-                str(self.derive_port_number(op, session_id)),
+                str(self.derive_port_number(op, session.session_id)),
                 "--output-file",
                 "Player-Data/Private-Output",
                 program_name,
@@ -132,10 +136,12 @@ class MpspdzCallKernel(Kernel):
 
 
 class MpspdzLoadOutputKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, **control_inputs):
+    def execute_synchronous_block(self, op, session, **control_inputs):
         assert isinstance(op, MpspdzLoadOutputOperation)
 
-        isolated_dir, _, _ = prepare_mpspdz_directory(op=op, session_id=session_id)
+        isolated_dir, _, _ = prepare_mpspdz_directory(
+            op=op, session_id=session.session_id
+        )
 
         output_filename = (
             isolated_dir / "Player-Data" / f"Private-Output-P{op.player_index}-0"

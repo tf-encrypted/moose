@@ -25,16 +25,13 @@ def _create_test_players(number_of_players=2):
 
 
 def _run_computation(comp, players):
-    runtime = Runtime([worker.name for worker in players])
-    placement_assignment = {
-        player: runtime.executors[player.name] for player in players
-    }
+    runtime = Runtime()
+    placement_instantiation = {player: player.name for player in players}
     concrete_comp = comp.trace_func()
     runtime.evaluate_computation(
-        concrete_comp, placement_assignment=placement_assignment
+        concrete_comp, placement_instantiation=placement_instantiation
     )
-    computation_result = runtime.executors[players[-1].name].store
-    return computation_result
+    return runtime.get_executor(players[-1].name).store
 
 
 class ExecutorTest(parameterized.TestCase):

@@ -11,7 +11,6 @@ parser.add_argument("--name", type=str, default="Worker")
 parser.add_argument("--host", type=str, default="0.0.0.0")
 parser.add_argument("--port", type=str, default="50000")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument("--cluster-spec", default="cluster-spec.yaml")
 parser.add_argument("--ca-cert", default=os.environ.get("CA_CERT", None))
 parser.add_argument("--ident-cert", default=os.environ.get("IDENT_CERT", None))
 parser.add_argument("--ident-key", default=os.environ.get("IDENT_KEY", None))
@@ -26,7 +25,6 @@ if __name__ == "__main__":
         name=args.name,
         host=args.host,
         port=args.port,
-        cluster_spec_filename=args.cluster_spec,
         ca_cert_filename=args.ca_cert,
         ident_cert_filename=args.ident_cert,
         ident_key_filename=args.ident_key,

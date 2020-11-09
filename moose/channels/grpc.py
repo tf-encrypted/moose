@@ -37,39 +37,40 @@ class Channel:
 
 
 class ChannelManager:
-    def __init__(self, cluster_spec, ca_cert, ident_cert, ident_key):
+    def __init__(self, ca_cert, ident_cert, ident_key):
         self.buffer = AsyncStore()
-        self.endpoints = {player: endpoint for player, endpoint in cluster_spec.items()}
-        self.channels = {
-            player: Channel(
-                endpoint,
-                self.buffer,
-                ca_cert=ca_cert,
-                ident_cert=ident_cert,
-                ident_key=ident_key,
-            )
-            for player, endpoint in cluster_spec.items()
-        }
+        self.channels = dict()
+        self.ca_cert = ca_cert
+        self.ident_cert = ident_cert
+        self.ident_key = ident_key
 
-    def get_hostname(self, player_name):
-        endpoint = self.endpoints.get(player_name)
+    def get_hostname(self, placement):
+        endpoint = placement
         host, port = endpoint.split(":")
         return host
-
-    def get_channel(self, op):
-        return self.channels[op.sender]
 
     async def get_value(self, rendezvous_key, session_id):
         # TODO(Morten) should take caller identity as an argument
         key = (session_id, rendezvous_key)
         return await self.buffer.get(key)
 
-    async def receive(self, op, session_id):
-        return await self.get_channel(op).receive(
-            rendezvous_key=op.rendezvous_key, session_id=session_id
+    def get_channel(self, endpoint):
+        if endpoint not in self.channels:
+            self.channels[endpoint] = Channel(
+                endpoint,
+                self.buffer,
+                ca_cert=self.ca_cert,
+                ident_cert=self.ident_cert,
+                ident_key=self.ident_key,
+            )
+        return self.channels[endpoint]
+
+    async def receive(self, sender, receiver, rendezvous_key, session_id):
+        return await self.get_channel(sender).receive(
+            rendezvous_key=rendezvous_key, session_id=session_id
         )
 
-    async def send(self, value, op, session_id):
-        await self.get_channel(op).send(
-            value, rendezvous_key=op.rendezvous_key, session_id=session_id
+    async def send(self, value, sender, receiver, rendezvous_key, session_id):
+        await self.get_channel(sender).send(
+            value, rendezvous_key=rendezvous_key, session_id=session_id
         )

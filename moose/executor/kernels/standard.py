@@ -23,13 +23,13 @@ from moose.logger import get_logger
 
 
 class AddKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+    def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, AddOperation)
         return lhs + rhs
 
 
 class CallPythonFunctionKernel(Kernel):
-    async def execute(self, op, session_id, output, **inputs):
+    async def execute(self, op, session, output, **inputs):
         assert isinstance(op, CallPythonFunctionOperation)
         python_fn = dill.loads(op.pickled_fn)
         concrete_inputs = await asyncio.gather(*inputs.values())
@@ -38,13 +38,13 @@ class CallPythonFunctionKernel(Kernel):
 
 
 class ConstantKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id):
+    def execute_synchronous_block(self, op, session):
         assert isinstance(op, ConstantOperation)
         return op.value
 
 
 class DeserializeKernel(Kernel):
-    async def execute(self, op, session_id, value, output=None):
+    async def execute(self, op, session, value, output=None):
         assert isinstance(op, DeserializeOperation)
         value = await value
         value_type = op.value_type
@@ -67,7 +67,7 @@ class DeserializeKernel(Kernel):
 
 
 class DivKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+    def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, DivOperation)
         return lhs / rhs
 
@@ -76,13 +76,13 @@ class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session_id):
+    def execute_synchronous_block(self, op, session):
         assert isinstance(op, LoadOperation)
         return self.store[op.key]
 
 
 class MulKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+    def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, MulOperation)
         return lhs * rhs
 
@@ -91,14 +91,19 @@ class ReceiveKernel(Kernel):
     def __init__(self, channel_manager):
         self.channel_manager = channel_manager
 
-    async def execute(self, op, session_id, output):
+    async def execute(self, op, session, output):
         assert isinstance(op, ReceiveOperation)
-        value = await self.channel_manager.receive(op=op, session_id=session_id)
+        value = await self.channel_manager.receive(
+            sender=session.placement_instantiation.get(op.sender),
+            receiver=session.placement_instantiation.get(op.receiver),
+            rendezvous_key=op.rendezvous_key,
+            session_id=session.session_id,
+        )
         output.set_result(value)
 
 
 class RunProgramKernel(Kernel):
-    async def execute(self, op, session_id, output, **inputs):
+    async def execute(self, op, session, output, **inputs):
         assert isinstance(op, RunProgramOperation)
         with tempfile.NamedTemporaryFile() as inputfile:
             with tempfile.NamedTemporaryFile() as outputfile:
@@ -115,7 +120,7 @@ class RunProgramKernel(Kernel):
                     "--output-file",
                     outputfile.name,
                     "--session-id",
-                    str(session_id),
+                    str(session.session_id),
                     "--device",
                     op.device_name,
                 ]
@@ -133,14 +138,14 @@ class SaveKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session_id, value):
+    def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, SaveOperation)
         self.store[op.key] = value
         get_logger().debug(f"Saved {value}")
 
 
 class SerializeKernel(Kernel):
-    async def execute(self, op, session_id, value, output=None):
+    async def execute(self, op, session, value, output=None):
         assert isinstance(op, SerializeOperation)
         value = await value
         value_type = op.value_type
@@ -165,12 +170,18 @@ class SendKernel(Kernel):
     def __init__(self, channel_manager):
         self.channel_manager = channel_manager
 
-    async def execute(self, op, session_id, value, output=None):
+    async def execute(self, op, session, value, output=None):
         assert isinstance(op, SendOperation)
-        await self.channel_manager.send(await value, op=op, session_id=session_id)
+        await self.channel_manager.send(
+            await value,
+            sender=session.placement_instantiation.get(op.sender),
+            receiver=session.placement_instantiation.get(op.receiver),
+            rendezvous_key=op.rendezvous_key,
+            session_id=session.session_id,
+        )
 
 
 class SubKernel(Kernel):
-    def execute_synchronous_block(self, op, session_id, lhs, rhs):
+    def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, SubOperation)
         return lhs - rhs

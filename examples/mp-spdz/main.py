@@ -15,7 +15,6 @@ from moose.runtime import TestRuntime
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")
 parser.add_argument("--verbose", action="store_true")
-parser.add_argument("--cluster-spec", default="cluster-spec.yaml")
 args = parser.parse_args()
 
 if args.verbose:
@@ -78,20 +77,19 @@ concrete_comp = my_comp.trace_func()
 
 if __name__ == "__main__":
     if args.runtime == "test":
-        runtime = TestRuntime(workers=concrete_comp.devices())
+        runtime = TestRuntime()
     elif args.runtime == "remote":
-        runtime = RemoteRuntime(args.cluster_spec)
-        assert set(concrete_comp.devices()).issubset(runtime.executors.keys())
+        runtime = RemoteRuntime()
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
 
     runtime.evaluate_computation(
         computation=concrete_comp,
-        placement_assignment={
-            inputter0: runtime.executors["inputter0"],
-            inputter1: runtime.executors["inputter1"],
-            outputter: runtime.executors["outputter"],
-            saver: runtime.executors["saver"],
+        placement_instantiation={
+            inputter0: "inputter0:50000",
+            inputter1: "inputter1:50000",
+            outputter: "outputter:50000",
+            saver: "saver:50000",
         },
     )
 
