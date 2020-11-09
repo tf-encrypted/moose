@@ -9,16 +9,13 @@ from moose.compiler.computation import Computation
 from moose.logger import get_logger
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
-from moose.utils import load_certificate
 
 
-class RemoteRuntime:
-    def __init__(
-        self, ca_cert_filename=None, ident_cert_filename=None, ident_key_filename=None,
-    ) -> None:
-        self.ca_cert = load_certificate(ca_cert_filename)
-        self.ident_cert = load_certificate(ident_cert_filename)
-        self.ident_key = load_certificate(ident_key_filename)
+class Choreographer:
+    def __init__(self, ca_cert=None, ident_cert=None, ident_key=None,) -> None:
+        self.ca_cert = ca_cert
+        self.ident_cert = ident_cert
+        self.ident_key = ident_key
         self.existing_executors = dict()
 
     def evaluate_computation(
@@ -31,7 +28,7 @@ class RemoteRuntime:
         placement_executors = dict()
         for placement, endpoint in placement_instantiation.items():
             if endpoint not in self.existing_executors:
-                self.existing_executors[endpoint] = RemoteExecutor(
+                self.existing_executors[endpoint] = ExecutorProxy(
                     endpoint,
                     ca_cert=self.ca_cert,
                     ident_cert=self.ident_cert,
@@ -60,7 +57,7 @@ class RemoteRuntime:
             )
 
 
-class RemoteExecutor:
+class ExecutorProxy:
     def __init__(self, endpoint, ca_cert, ident_cert, ident_key):
         grpc_aio.init_grpc_aio()
         if ca_cert:
@@ -87,12 +84,18 @@ class RemoteExecutor:
         _ = await self._stub.RunComputation(compute_request)
 
 
-class ExecutorServicer(executor_pb2_grpc.ExecutorServicer):
+class Choreography:
+    def __init__(
+        self, executor, grpc_server,
+    ):
+        executor_pb2_grpc.add_ExecutorServicer_to_server(
+            Servicer(executor), grpc_server
+        )
+
+
+class Servicer(executor_pb2_grpc.ExecutorServicer):
     def __init__(self, executor):
         self.executor = executor
-
-    def add_to_server(self, server):
-        executor_pb2_grpc.add_ExecutorServicer_to_server(self, server)
 
     async def RunComputation(self, request, context):
         await self.executor.run_computation(

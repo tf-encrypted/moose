@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 
-from moose.choreography.grpc import RemoteRuntime
+from moose.choreography.grpc import Choreographer as GrpcChoreographer
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     if args.runtime == "test":
         runtime = TestRuntime()
     elif args.runtime == "remote":
-        runtime = RemoteRuntime(
+        runtime = GrpcChoreographer(
             ca_cert_filename=args.ca_cert,
             ident_cert_filename=args.ident_cert,
             ident_key_filename=args.ident_key,

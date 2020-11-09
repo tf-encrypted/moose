@@ -1,6 +1,7 @@
 import argparse
 import logging
 
+from moose.choreography.grpc import Choreographer as GrpcChoreographer
 from moose.compiler.edsl import HostPlacement
 from moose.compiler.edsl import add
 from moose.compiler.edsl import computation
@@ -9,7 +10,6 @@ from moose.compiler.edsl import function
 from moose.compiler.edsl import save
 from moose.compiler.mpspdz import MpspdzPlacement
 from moose.logger import get_logger
-from moose.runtime import RemoteRuntime
 from moose.runtime import TestRuntime
 
 parser = argparse.ArgumentParser(description="Run example")
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     if args.runtime == "test":
         runtime = TestRuntime()
     elif args.runtime == "remote":
-        runtime = RemoteRuntime()
+        runtime = GrpcChoreographer()
     else:
         raise ValueError(f"Unknown runtime '{args.runtime}'")
 

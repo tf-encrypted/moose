@@ -1,11 +1,10 @@
 import grpc
-from grpc.experimental import aio
+from grpc.experimental import aio as grpc_aio
 
-from moose.choreography.grpc import ExecutorServicer
+from moose.choreography.grpc import Choreography
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.grpc import Networking
-from moose.networking.grpc import NetworkingServicer
 from moose.utils import DebugInterceptor
 from moose.utils import load_certificate
 
@@ -13,9 +12,8 @@ from moose.utils import load_certificate
 class Worker:
     def __init__(
         self,
-        name,
-        host,
         port,
+        host="0.0.0.0",
         ca_cert_filename=None,
         ident_cert_filename=None,
         ident_key_filename=None,
@@ -25,37 +23,58 @@ class Worker:
         ident_cert = load_certificate(ident_cert_filename)
         ident_key = load_certificate(ident_key_filename)
 
-        # set up server
-        aio.init_grpc_aio()
-        self._server = aio.server(interceptors=(DebugInterceptor(),))
+        self.grpc_server = self.setup_server(
+            port=port,
+            host=host,
+            ca_cert=ca_cert,
+            ident_cert=ident_cert,
+            ident_key=ident_key,
+            allow_insecure_networking=allow_insecure_networking,
+        )
+        self.networking = Networking(
+            grpc_server=self.grpc_server,
+            ca_cert=ca_cert,
+            ident_cert=ident_cert,
+            ident_key=ident_key,
+        )
+        self.executor = AsyncExecutor(networking=self.networking)
+        self.choreography = Choreography(
+            executor=self.executor, grpc_server=self.grpc_server,
+        )
+
+    def setup_server(
+        self,
+        port,
+        host,
+        ca_cert,
+        ident_cert,
+        ident_key,
+        allow_insecure_networking,
+        debug=False,
+    ):
+        grpc_aio.init_grpc_aio()
+        if debug:
+            grpc_server = grpc_aio.server(interceptors=(DebugInterceptor(),))
+        else:
+            grpc_server = grpc_aio.server()
 
         if ident_cert and ident_key:
-            get_logger().info(f"Setting up server at {host}:{port}")
+            get_logger().debug(f"Setting up secure server at {host}:{port}")
             credentials = grpc.ssl_server_credentials(
                 [(ident_key, ident_cert)],
                 root_certificates=ca_cert,
                 require_client_auth=True,
             )
-            self._server.add_secure_port(f"{host}:{port}", credentials)
+            grpc_server.add_secure_port(f"{host}:{port}", credentials)
         else:
             assert allow_insecure_networking
-            get_logger().warning(
-                f"Setting up server at {host}:{port} with insecure networking"
-            )
-            self._server.add_insecure_port(f"{host}:{port}")
+            get_logger().warning(f"Setting up insecure server at {host}:{port}")
+            grpc_server.add_insecure_port(f"{host}:{port}")
 
-        networking = Networking(
-            ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
-        )
-        networking_servicer = NetworkingServicer(networking)
-        networking_servicer.add_to_server(self._server)
-
-        executor = AsyncExecutor(name=name, networking=networking)
-        executor_servicer = ExecutorServicer(executor)
-        executor_servicer.add_to_server(self._server)
+        return grpc_server
 
     async def start(self):
-        await self._server.start()
+        await self.grpc_server.start()
 
-    async def wait(self):
-        await self._server.wait_for_termination()
+    async def wait_for_termination(self):
+        await self.grpc_server.wait_for_termination()

@@ -46,8 +46,7 @@ class Session:
 
 
 class AsyncExecutor:
-    def __init__(self, name, networking, store={}):
-        self.name = name
+    def __init__(self, networking, store={}):
         self.store = store
         self.kernels = {
             LoadOperation: LoadKernel(store),
@@ -82,7 +81,9 @@ class AsyncExecutor:
             placement_instantiation=placement_instantiation,
             values=AsyncStore(),
         )
-        get_logger().debug(f"Entering computation, session:{session}")
+        get_logger().debug(
+            "Entering computation, " f"placement:{placement}, " f"session:{session}"
+        )
         # link futures together using kernels
         tasks = []
         for op in execution_plan:
@@ -102,13 +103,15 @@ class AsyncExecutor:
             ]
         # execute kernels
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-        get_logger().debug(f"Exiting computation, session:{session}")
+        get_logger().debug(
+            "Exiting computation, " f"placement:{placement}, " f"session:{session}"
+        )
         # address any errors that may have occurred
         exceptions = [task.exception() for task in done if task.exception()]
         for e in exceptions:
             get_logger().exception(e)
         if exceptions:
-            raise Exception(f"One or more errors occurred in '{self.name}'")
+            raise Exception(f"One or more errors occurred in '{placement}'")
 
     def schedule_execution(self, comp, placement):
         # TODO(Morten) this is as simple and naive as it gets; we should at least
