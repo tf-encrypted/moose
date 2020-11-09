@@ -74,3 +74,17 @@ class ChannelManager:
         await self.get_channel(sender).send(
             value, rendezvous_key=rendezvous_key, session_id=session_id
         )
+
+
+class NetworkingServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
+    def __init__(self, channel_manager):
+        self.channel_manager = channel_manager
+
+    def add_to_server(self, server):
+        channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(self, server)
+
+    async def GetValue(self, request, context):
+        value = await self.channel_manager.get_value(
+            rendezvous_key=request.rendezvous_key, session_id=request.session_id,
+        )
+        return channel_manager_pb2.GetValueResponse(value=value)

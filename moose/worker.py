@@ -1,54 +1,13 @@
 import grpc
 from grpc.experimental import aio
 
-from moose.channels.grpc import ChannelManager
 from moose.choreography.grpc import ExecutorServicer
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-from moose.protos import channel_manager_pb2
-from moose.protos import channel_manager_pb2_grpc
+from moose.networking.grpc import ChannelManager
+from moose.networking.grpc import NetworkingServicer
+from moose.utils import DebugInterceptor
 from moose.utils import load_certificate
-
-
-class ChannelManagerServicer(channel_manager_pb2_grpc.ChannelManagerServicer):
-    def __init__(self, channel_manager):
-        self.channel_manager = channel_manager
-
-    async def GetValue(self, request, context):
-        value = await self.channel_manager.get_value(
-            rendezvous_key=request.rendezvous_key, session_id=request.session_id,
-        )
-        return channel_manager_pb2.GetValueResponse(value=value)
-
-
-class DebugInterceptor(aio.ServerInterceptor):
-    def __init__(self):
-        self.handler_type = {
-            (False, False): grpc.unary_unary_rpc_method_handler,
-        }
-
-    async def intercept_service(self, continuation, handler_call_details):
-        handler = await continuation(handler_call_details)
-
-        async def intercepted_handler(request, context):
-            get_logger().debug(
-                f"Incoming gRPC, "
-                f"method:'{handler_call_details.method}', "
-                f"peer:'{context.peer()}', "
-                f"peer_identities:'{context.peer_identities()}'"
-            )
-            return await handler.unary_unary(request, context)
-
-        handler_type = self.handler_type.get(
-            (handler.request_streaming, handler.response_streaming), None
-        )
-        if not handler_type:
-            raise NotImplementedError(f"Unknown handler {handler}")
-        return handler_type(
-            intercepted_handler,
-            handler.request_deserializer,
-            handler.response_serializer,
-        )
 
 
 class Worker:
@@ -65,10 +24,6 @@ class Worker:
         ca_cert = load_certificate(ca_cert_filename)
         ident_cert = load_certificate(ident_cert_filename)
         ident_key = load_certificate(ident_key_filename)
-
-        channel_manager = ChannelManager(
-            ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
-        )
 
         # set up server
         aio.init_grpc_aio()
@@ -89,11 +44,13 @@ class Worker:
             )
             self._server.add_insecure_port(f"{host}:{port}")
 
-        channel_manager_pb2_grpc.add_ChannelManagerServicer_to_server(
-            ChannelManagerServicer(channel_manager), self._server,
+        networking = ChannelManager(
+            ca_cert=ca_cert, ident_cert=ident_cert, ident_key=ident_key
         )
+        networking_servicer = NetworkingServicer(networking)
+        networking_servicer.add_to_server(self._server)
 
-        executor = AsyncExecutor(name=name, channel_manager=channel_manager)
+        executor = AsyncExecutor(name=name, channel_manager=networking)
         executor_servicer = ExecutorServicer(executor)
         executor_servicer.add_to_server(self._server)
 

@@ -2,10 +2,10 @@ import asyncio
 import random
 from typing import Dict
 
-from moose.channels.memory import ChannelManager
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
+from moose.networking.memory import ChannelManager
 
 
 class TestRuntime:
