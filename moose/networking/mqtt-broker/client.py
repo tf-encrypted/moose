@@ -1,6 +1,7 @@
 import gmqtt
 
 from moose.logger import get_logger
+from moose.storage import AsyncStore
 
 
 class ChannelManager:
@@ -11,7 +12,6 @@ class ChannelManager:
         self.client = None
 
     async def setup_client(self):
-
         def on_connect(client, flags, rc, properties):
             get_logger().debug("Connected")
             client.subscribe(f"{self.ident}/#", qos=1)
@@ -24,10 +24,10 @@ class ChannelManager:
             await self.receive_buffer.put(key, payload)
             return gmqtt.mqtt.constants.PubRecReasonCode.SUCCESS
 
-        client = gmqtt.MQTTClient(self.ident)
+        client = gmqtt.Client(self.ident)
         client.on_message = on_message
         client.on_connect = on_connect
-        await client.connect(broker_host, port=1883, ssl=False, keepalive=60)
+        await client.connect(self.broker_host, port=1883, ssl=False, keepalive=60)
         return client
 
     def get_hostname(self, player_name):
@@ -41,7 +41,7 @@ class ChannelManager:
             # TODO potential race condition in multi-threaded scenario
             self.client = await self.setup_client()
         key = (session_id, op.rendezvous_key)
-        await self.receive_buffer.get(key)
+        return await self.receive_buffer.get(key)
 
     async def send(self, value, op, session_id):
         if not self.client:
