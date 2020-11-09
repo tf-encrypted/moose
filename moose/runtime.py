@@ -3,9 +3,9 @@ import random
 from typing import Dict
 
 from moose.channels.memory import ChannelManager
+from moose.choreography.grpc import RemoteExecutor
 from moose.compiler.computation import Computation
 from moose.executor.executor import AsyncExecutor
-from moose.executor.proxy import RemoteExecutor
 from moose.logger import get_logger
 from moose.utils import load_certificate
 
