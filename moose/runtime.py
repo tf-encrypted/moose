@@ -24,7 +24,7 @@ class TestRuntime:
         for placement, name in placement_instantiation.items():
             if name not in self.existing_executors:
                 self.existing_executors[name] = AsyncExecutor(
-                    name=name, networking=self.networking
+                    networking=self.networking
                 )
             placement_executors[placement] = self.existing_executors[name]
 
