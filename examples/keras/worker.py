@@ -6,9 +6,8 @@ from moose.logger import get_logger
 from moose.worker import Worker
 
 parser = argparse.ArgumentParser(description="Launch worker")
-parser.add_argument("--name", type=str, default="Worker")
 parser.add_argument("--host", type=str, default="0.0.0.0")
-parser.add_argument("--port", type=str, default="50000")
+parser.add_argument("--port", type=int, default=50000)
 parser.add_argument("--verbose", action="store_true")
 args = parser.parse_args()
 
@@ -17,14 +16,11 @@ if args.verbose:
 
 if __name__ == "__main__":
     worker = Worker(
-        name=args.name,
-        host=args.host,
-        part=args.port,
-        allow_insecure_networking=True,  # TODO
+        host=args.host, port=args.port, allow_insecure_networking=True,  # TODO
     )
 
     asyncio.get_event_loop().run_until_complete(worker.start())
     get_logger().info("Started")
 
-    asyncio.get_event_loop().run_until_complete(worker.wait())
+    asyncio.get_event_loop().run_until_complete(worker.wait_for_termination())
     get_logger().info("Stopped")

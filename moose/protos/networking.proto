@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package moose;
 
-service ChannelManager {
+service Networking {
     rpc GetValue(GetValueRequest) returns(GetValueResponse) {}
 }
 

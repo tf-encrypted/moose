@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
 
-  inputter0:
+  worker0:
     build:
       context: .
       dockerfile: Dockerfile.worker
@@ -10,12 +10,11 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      NAME: inputter0
       CA_CERT: ./certs/ca.crt
-      IDENT_CERT: ./certs/inputter0.crt
-      IDENT_KEY: ./certs/inputter0.key
+      IDENT_CERT: ./certs/worker0.crt
+      IDENT_KEY: ./certs/worker0.key
 
-  inputter1:
+  worker1:
     build:
       context: .
       dockerfile: Dockerfile.worker
@@ -23,12 +22,11 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      NAME: inputter1
       CA_CERT: ./certs/ca.crt
-      IDENT_CERT: ./certs/inputter1.crt
-      IDENT_KEY: ./certs/inputter1.key
+      IDENT_CERT: ./certs/worker1.crt
+      IDENT_KEY: ./certs/worker1.key
 
-  aggregator:
+  worker2:
     build:
       context: .
       dockerfile: Dockerfile.worker
@@ -36,12 +34,11 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      NAME: aggregator
       CA_CERT: ./certs/ca.crt
-      IDENT_CERT: ./certs/aggregator.crt
-      IDENT_KEY: ./certs/aggregator.key
+      IDENT_CERT: ./certs/worker2.crt
+      IDENT_KEY: ./certs/worker2.key
 
-  outputter:
+  worker3:
     build:
       context: .
       dockerfile: Dockerfile.worker
@@ -49,20 +46,18 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      NAME: outputter
       CA_CERT: ./certs/ca.crt
-      IDENT_CERT: ./certs/outputter.crt
-      IDENT_KEY: ./certs/outputter.key
+      IDENT_CERT: ./certs/worker3.crt
+      IDENT_KEY: ./certs/worker3.key
 
-  coordinator:
+  choreographer:
     build:
       context: .
-      dockerfile: Dockerfile.coordinator
+      dockerfile: Dockerfile.choreographer
     volumes:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      NAME: coordinator
       CA_CERT: ./certs/ca.crt
-      IDENT_CERT: ./certs/coordinator.crt
-      IDENT_KEY: ./certs/coordinator.key
+      IDENT_CERT: ./certs/choreographer.crt
+      IDENT_KEY: ./certs/choreographer.key

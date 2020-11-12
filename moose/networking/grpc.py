@@ -1,8 +1,8 @@
 import grpc
-from grpc.experimental import aio
+from grpc.experimental import aio as grpc_aio
 
-from moose.protos import channel_manager_pb2
-from moose.protos import channel_manager_pb2_grpc
+from moose.protos import networking_pb2
+from moose.protos import networking_pb2_grpc
 from moose.storage import AsyncStore
 
 
@@ -10,22 +10,22 @@ class Channel:
     def __init__(self, endpoint, buffer, ca_cert, ident_cert, ident_key):
         self._buffer = buffer
 
-        aio.init_grpc_aio()
+        grpc_aio.init_grpc_aio()
         if ca_cert:
             credentials = grpc.ssl_channel_credentials(
                 root_certificates=ca_cert,
                 private_key=ident_key,
                 certificate_chain=ident_cert,
             )
-            self._channel = aio.secure_channel(endpoint, credentials)
+            self._channel = grpc_aio.secure_channel(endpoint, credentials)
         else:
-            self._channel = aio.insecure_channel(endpoint)
+            self._channel = grpc_aio.insecure_channel(endpoint)
 
-        self._stub = channel_manager_pb2_grpc.ChannelManagerStub(self._channel)
+        self._stub = networking_pb2_grpc.NetworkingStub(self._channel)
 
     async def receive(self, rendezvous_key, session_id):
         reply = await self._stub.GetValue(
-            channel_manager_pb2.GetValueRequest(
+            networking_pb2.GetValueRequest(
                 rendezvous_key=rendezvous_key, session_id=session_id
             )
         )
@@ -36,13 +36,18 @@ class Channel:
         await self._buffer.put(key, value)
 
 
-class ChannelManager:
-    def __init__(self, ca_cert, ident_cert, ident_key):
+class Networking:
+    def __init__(
+        self, grpc_server, ca_cert=None, ident_cert=None, ident_key=None,
+    ):
         self.buffer = AsyncStore()
         self.channels = dict()
         self.ca_cert = ca_cert
         self.ident_cert = ident_cert
         self.ident_key = ident_key
+        networking_pb2_grpc.add_NetworkingServicer_to_server(
+            Servicer(self), grpc_server
+        )
 
     def get_hostname(self, placement):
         endpoint = placement
@@ -57,8 +62,8 @@ class ChannelManager:
     def get_channel(self, endpoint):
         if endpoint not in self.channels:
             self.channels[endpoint] = Channel(
-                endpoint,
-                self.buffer,
+                endpoint=endpoint,
+                buffer=self.buffer,
                 ca_cert=self.ca_cert,
                 ident_cert=self.ident_cert,
                 ident_key=self.ident_key,
@@ -74,3 +79,14 @@ class ChannelManager:
         await self.get_channel(sender).send(
             value, rendezvous_key=rendezvous_key, session_id=session_id
         )
+
+
+class Servicer(networking_pb2_grpc.NetworkingServicer):
+    def __init__(self, networking):
+        self.networking = networking
+
+    async def GetValue(self, request, context):
+        value = await self.networking.get_value(
+            rendezvous_key=request.rendezvous_key, session_id=request.session_id,
+        )
+        return networking_pb2.GetValueResponse(value=value)

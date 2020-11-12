@@ -88,12 +88,12 @@ class MulKernel(Kernel):
 
 
 class ReceiveKernel(Kernel):
-    def __init__(self, channel_manager):
-        self.channel_manager = channel_manager
+    def __init__(self, networking):
+        self.networking = networking
 
     async def execute(self, op, session, output):
         assert isinstance(op, ReceiveOperation)
-        value = await self.channel_manager.receive(
+        value = await self.networking.receive(
             sender=session.placement_instantiation.get(op.sender),
             receiver=session.placement_instantiation.get(op.receiver),
             rendezvous_key=op.rendezvous_key,
@@ -167,12 +167,12 @@ class SerializeKernel(Kernel):
 
 
 class SendKernel(Kernel):
-    def __init__(self, channel_manager):
-        self.channel_manager = channel_manager
+    def __init__(self, networking):
+        self.networking = networking
 
     async def execute(self, op, session, value, output=None):
         assert isinstance(op, SendOperation)
-        await self.channel_manager.send(
+        await self.networking.send(
             await value,
             sender=session.placement_instantiation.get(op.sender),
             receiver=session.placement_instantiation.get(op.receiver),
