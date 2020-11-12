@@ -16,7 +16,7 @@ if args.verbose:
 
 if __name__ == "__main__":
     worker = Worker(
-        host=args.host, part=args.port, allow_insecure_networking=True,  # TODO
+        host=args.host, port=args.port, allow_insecure_networking=True,  # TODO
     )
 
     asyncio.get_event_loop().run_until_complete(worker.start())
