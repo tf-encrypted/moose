@@ -17,12 +17,32 @@ pub enum CommOperator {
 }
 
 #[derive(Debug, Clone)]
+pub enum PlainDataType {
+    I32,
+    I64,
+}
+
+type Shape = Vec<u32>;
+
+#[derive(Debug, Clone)]
+pub enum PlainType {
+    Scalar(PlainDataType),
+    Tensor(PlainDataType, Shape),
+}
+
+#[derive(Debug, Clone)]
+pub enum PlainValue<T> {
+    Scalar(T),
+    Tensor,
+}
+
+#[derive(Debug, Clone)]
 pub enum PlainOperator {
-    Constant(i32),
-    Add,
-    Sub,
-    Mul,
-    Div,
+    Constant(PlainValue, PlainType),
+    Add(PlainType),
+    Sub(PlainType),
+    Mul(PlainType),
+    Div(PlainType),
 }
 
 #[derive(Debug, Clone)]
@@ -36,7 +56,10 @@ pub enum RingOperator {
 
 impl Default for Operator {
     fn default() -> Self {
-        Operator::Plain(Box::new(PlainOperator::Constant(0)))
+        Operator::Plain(Box::new(PlainOperator::Constant(
+            PlainValue::Scalar(0_i32),
+            PlainType::Scalar(i32),
+        )))
     }
 }
 
