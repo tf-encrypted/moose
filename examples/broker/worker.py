@@ -28,7 +28,7 @@ if __name__ == "__main__":
     grpc_aio.init_grpc_aio()
     grpc_server = grpc_aio.server()
     grpc_server.add_insecure_port(f"0.0.0.0:{args.port}")
-    choreography = Choreography(executor=executor, grpc_server=grpc_server,)
+    choreography = Choreography(executor=executor, grpc_server=grpc_server)
 
     asyncio.get_event_loop().run_until_complete(grpc_server.start())
     logger.info("Worker started")

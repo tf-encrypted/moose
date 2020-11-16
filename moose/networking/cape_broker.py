@@ -21,21 +21,21 @@ class Networking:
             if i > 0:
                 await asyncio.sleep(delay)
             try:
-                res = await loop.run_in_executor(None, self.session.get, endpoint,)
+                res = await loop.run_in_executor(None, self.session.get, endpoint)
             except requests.exceptions.ConnectionError:
                 continue
+            if res.status_code == requests.codes.ok:
+                get_logger().debug(f"GET success; endpoint:'{endpoint}', attempts:{i}")
+                return res.content
             if res.status_code == requests.codes.not_found:
                 continue
-            if res.status_code == requests.codes.ok:
-                get_logger().debug(f"GET success: endpoint:'{endpoint}', attempts:{i}")
-                return res.content
             get_logger().error(
-                f"Unknown error getting value:"
+                f"GET unhandled error:"
                 f" endpoint:'{endpoint}',"
                 f" status_code:{res.status_code}"
             )
         get_logger().error(
-            f"Max attempts reached getting value:"
+            f"GET failure: max attempts reached;"
             f" endpoint:'{endpoint}',"
             f" attempts:{i}"
         )
@@ -46,12 +46,17 @@ class Networking:
         for i in range(max_attempts):
             if i > 0:
                 await asyncio.sleep(delay)
-            res = await loop.run_in_executor(None, self.session.post, endpoint, value,)
+            res = await loop.run_in_executor(None, self.session.post, endpoint, value)
             if res.status_code == requests.codes.ok:
-                get_logger().debug(f"POST success: endpoint:'{endpoint}', attempts:{i}")
+                get_logger().debug(f"POST success; endpoint:'{endpoint}', attempts:{i}")
                 return
+            get_logger().error(
+                f"POST unhandled error:"
+                f" endpoint:'{endpoint}',"
+                f" status_code:{res.status_code}"
+            )
         get_logger().error(
-            f"Max attempts reached putting value:"
+            f"POST failure: max attempts reached;"
             f" endpoint:'{endpoint}',"
             f" max_attempts:{max_attempts}"
         )
