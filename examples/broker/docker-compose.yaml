@@ -49,8 +49,6 @@ services:
     volumes:
       - "../../moose:/moose"
       - ".:/example"
-    environment:
-      BROKER: broker:8080
 
   broker:
     image: capeprivacy/broker
