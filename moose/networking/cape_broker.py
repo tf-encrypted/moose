@@ -20,17 +20,15 @@ class Networking:
         for i in range(max_attempts):
             if i > 0:
                 await asyncio.sleep(delay)
-            get_logger().debug(f"Getting value: endpoint:'{endpoint}'")
             try:
                 res = await loop.run_in_executor(None, self.session.get, endpoint,)
             except requests.exceptions.ConnectionError:
-                get_logger().debug(f"Connection not ready yet: endpoint:'{endpoint}'")
+                continue
+            if res.status_code == requests.codes.not_found:
                 continue
             if res.status_code == requests.codes.ok:
-                return res
-            if res.status_code == requests.codes.not_found:
-                get_logger().debug(f"Value not ready yet: endpoint:'{endpoint}'")
-                continue
+                get_logger().debug(f"GET success: endpoint:'{endpoint}', attempts:{i}")
+                return res.content
             get_logger().error(
                 f"Unknown error getting value:"
                 f" endpoint:'{endpoint}',"
@@ -39,27 +37,19 @@ class Networking:
         get_logger().error(
             f"Max attempts reached getting value:"
             f" endpoint:'{endpoint}',"
-            f" max_attempts:{max_attempts}"
+            f" attempts:{i}"
         )
         raise IOError()
 
-    async def _put(self, endpoint, value, delay=1.0, max_attempts=60):
+    async def _post(self, endpoint, value, delay=1.0, max_attempts=60):
         loop = asyncio.get_event_loop()
         for i in range(max_attempts):
             if i > 0:
                 await asyncio.sleep(delay)
-            get_logger().debug(f"Putting value: endpoint:'{endpoint}'")
-            res = await loop.run_in_executor(
-                None, self.session.put, endpoint, data=value,
-            )
+            res = await loop.run_in_executor(None, self.session.post, endpoint, value,)
             if res.status_code == requests.codes.ok:
+                get_logger().debug(f"POST success: endpoint:'{endpoint}', attempts:{i}")
                 return
-            else:
-                get_logger().error(
-                    f"Unknown error putting value:"
-                    f" endpoint:'{endpoint}',"
-                    f" status_code:{res.status_code}"
-                )
         get_logger().error(
             f"Max attempts reached putting value:"
             f" endpoint:'{endpoint}',"
@@ -73,6 +63,6 @@ class Networking:
         )
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
-        await self._put(
+        await self._post(
             f"http://{self.broker_host}/{session_id}/{rendezvous_key}", value
         )
