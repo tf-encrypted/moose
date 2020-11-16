@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import logging
+import os
 
 from grpc.experimental import aio as grpc_aio
 
@@ -11,6 +12,7 @@ from moose.networking.cape_broker import Networking
 
 parser = argparse.ArgumentParser(description="Launch worker")
 parser.add_argument("--port", type=int, default=50000)
+parser.add_argument("--broker", default=os.environ.get("BROKER", None))
 parser.add_argument("--verbose", action="store_true")
 args = parser.parse_args()
 
@@ -22,7 +24,7 @@ if args.verbose:
 
 if __name__ == "__main__":
 
-    networking = Networking(broker_host="broker:8080")
+    networking = Networking(broker_host=args.broker)
     executor = AsyncExecutor(networking=networking)
 
     grpc_aio.init_grpc_aio()
