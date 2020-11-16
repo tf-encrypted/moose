@@ -1,0 +1,46 @@
+version: "3.7"
+
+services:
+
+  worker0:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+
+  choreographer:
+    build:
+      context: .
+      dockerfile: Dockerfile.choreographer
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+
+  broker:
+    image: capeprivacy/broker
