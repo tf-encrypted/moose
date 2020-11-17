@@ -12,7 +12,9 @@ from moose.networking.cape_broker import Networking
 
 parser = argparse.ArgumentParser(description="Launch worker")
 parser.add_argument("--port", type=int, default=50000)
-parser.add_argument("--broker", default=os.environ.get("BROKER", None))
+parser.add_argument("--name", default=os.environ.get("CAPE_NAME", None))
+parser.add_argument("--broker", default=os.environ.get("CAPE_BROKER", None))
+parser.add_argument("--token", default=os.environ.get("CAPE_TOKEN", None))
 parser.add_argument("--verbose", action="store_true")
 args = parser.parse_args()
 
@@ -24,7 +26,9 @@ if args.verbose:
 
 if __name__ == "__main__":
 
-    networking = Networking(broker_host=args.broker)
+    networking = Networking(
+        broker_host=args.broker, own_name=args.name, auth_token=args.token
+    )
     executor = AsyncExecutor(networking=networking)
 
     grpc_aio.init_grpc_aio()

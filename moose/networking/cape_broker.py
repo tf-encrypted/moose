@@ -1,4 +1,5 @@
 import asyncio
+import socket
 
 import requests
 
@@ -6,9 +7,11 @@ from moose.logger import get_logger
 
 
 class Networking:
-    def __init__(self, broker_host):
+    def __init__(self, broker_host, own_name=None, auth_token=None):
         self.broker_host = broker_host
         self.session = requests.Session()
+        # TODO(Morten) how should we authenticate?
+        self.session.auth = (own_name or socket.gethostname(), auth_token or "")
 
     def get_hostname(self, placement):
         endpoint = placement
@@ -16,10 +19,10 @@ class Networking:
         return host
 
     def _get_wrapper(self, endpoint):
-        return self.session.get(url=endpoint, allow_redirects=True)
+        return self.session.get(url=endpoint)
 
     def _post_wrapper(self, endpoint, value):
-        return self.session.post(url=endpoint, data=value, allow_redirects=True)
+        return self.session.post(url=endpoint, data=value)
 
     async def _get(self, endpoint, delay=1.0, max_attempts=60):
         loop = asyncio.get_event_loop()
