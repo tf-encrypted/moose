@@ -1,5 +1,5 @@
 [package]
-name = "engine"
+name = "crypto"
 version = "0.1.0"
 license = "MIT/Apache-2.0"
 authors = [""]
@@ -23,6 +23,7 @@ maplit = "~1.0"
 ndarray = "~0.13"
 petgraph = "~0.5"
 rand = "~0.7"
+ramp = "~0.5"
 smallvec = "~1.4"
 tokio = "~0.3"
 vec-utils = "~0.3"
