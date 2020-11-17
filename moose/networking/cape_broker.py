@@ -43,12 +43,13 @@ class Networking:
                 f" endpoint:'{endpoint}',"
                 f" status_code:{res.status_code}"
             )
-        get_logger().error(
+        ex = Exception(
             f"GET failure: max attempts reached;"
             f" endpoint:'{endpoint}',"
             f" attempts:{i}"
         )
-        raise IOError()
+        get_logger().exception(ex)
+        raise ex
 
     async def _post(self, endpoint, value, delay=1.0, max_attempts=60):
         loop = asyncio.get_event_loop()
@@ -64,12 +65,13 @@ class Networking:
                 f" endpoint:'{endpoint}',"
                 f" status_code:{res.status_code}"
             )
-        get_logger().error(
+        ex = Exception(
             f"POST failure: max attempts reached;"
             f" endpoint:'{endpoint}',"
             f" max_attempts:{max_attempts}"
         )
-        raise IOError()
+        get_logger().exception(ex)
+        raise ex
 
     async def receive(self, sender, receiver, rendezvous_key, session_id):
         return await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
