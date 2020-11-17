@@ -25,6 +25,7 @@ petgraph = "~0.5"
 rand = "~0.7"
 ramp = "~0.5"
 smallvec = "~1.4"
+sodiumoxide = "~0.2"
 tokio = "~0.3"
 vec-utils = "~0.3"
 
