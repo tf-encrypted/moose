@@ -9,7 +9,7 @@ pub struct Ring64Vector(Array1<Wrapping<u64>>);
 impl From<Vec<u64>> for Ring64Vector {
     fn from(v: Vec<u64>) -> Ring64Vector {
         use vec_utils::VecExt;
-        let v_wrapped: Vec<_> = v.map(|vi| Wrapping(vi));
+        let v_wrapped: Vec<_> = v.map(Wrapping);
         Ring64Vector(Array1::from(v_wrapped))
     }
 }
@@ -38,7 +38,8 @@ impl Mul<Ring64Vector> for Ring64Vector {
 pub struct Replicated<T>(T, T, T);
 
 impl<T> Mul<Replicated<T>> for Replicated<T>
-where T: Mul<T, Output=T>
+where
+    T: Mul<T, Output = T>,
 {
     type Output = Replicated<T>;
     fn mul(self, other: Replicated<T>) -> Self::Output {
