@@ -1,6 +1,6 @@
-use crypto::{Ring64Vector};
-use::ndarray::Ix1;
-use numpy::{PyReadonlyArrayDyn, PyArray, ToPyArray};
+use ::ndarray::Ix1;
+use crypto::Ring64Vector;
+use numpy::{PyArray, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::prelude::{pymodule, PyModule, PyResult, Python};
 
 #[pymodule]
