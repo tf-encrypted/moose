@@ -14,6 +14,13 @@ impl From<Vec<u64>> for Ring64Vector {
     }
 }
 
+impl From<Ring64Vector> for Vec<u64> {
+    fn from(r: Ring64Vector) -> Vec<u64> {
+        use vec_utils::VecExt;
+        r.0.into_raw_vec().map(|x| x.0)
+    }
+}
+
 impl From<&[u64]> for Ring64Vector {
     fn from(v: &[u64]) -> Ring64Vector {
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
