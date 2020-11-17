@@ -15,3 +15,7 @@
 **/*.key
 
 *.png
+
+# Rust
+**/target
+**/Cargo.lock

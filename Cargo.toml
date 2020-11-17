@@ -1,4 +1,6 @@
 [workspace]
 members = [
+  "cli",
+  "crypto",
   "engine",
 ]
