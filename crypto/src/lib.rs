@@ -38,7 +38,8 @@ impl Mul<Ring64Vector> for Ring64Vector {
 pub struct Replicated<T>(T, T, T);
 
 impl<T> Mul<Replicated<T>> for Replicated<T>
-where T: Mul<T, Output=T>
+where
+    T: Mul<T, Output = T>,
 {
     type Output = Replicated<T>;
     fn mul(self, other: Replicated<T>) -> Self::Output {
