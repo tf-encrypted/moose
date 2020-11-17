@@ -9,7 +9,7 @@ pub struct Ring64Vector(Array1<Wrapping<u64>>);
 impl From<Vec<u64>> for Ring64Vector {
     fn from(v: Vec<u64>) -> Ring64Vector {
         use vec_utils::VecExt;
-        let v_wrapped: Vec<_> = v.map(|vi| Wrapping(vi));
+        let v_wrapped: Vec<_> = v.map(Wrapping);
         Ring64Vector(Array1::from(v_wrapped))
     }
 }
