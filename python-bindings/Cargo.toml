@@ -1,5 +1,5 @@
 [package]
-name = "ring-ext"
+name = "python-bindings"
 version = "0.1.0"
 license = "MIT/Apache-2.0"
 authors = [""]
@@ -11,11 +11,11 @@ categories = ["", ""]
 edition = "2018"
 
 [lib]
-name = "ring_ext"
+name = "moose_kernels"
 crate-type = ["cdylib"]
 
 [dependencies]
-numpy = ">= 0.12"
+numpy = "~0.12"
 ndarray = ">= 0.12"
 
 [dependencies.crypto]

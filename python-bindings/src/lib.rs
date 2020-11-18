@@ -1,10 +1,11 @@
-use ::ndarray::Ix1;
 use crypto::Ring64Vector;
-use numpy::{PyArray, PyReadonlyArrayDyn, ToPyArray};
-use pyo3::prelude::{pymodule, PyModule, PyResult, Python};
+use ndarray::prelude::*;
+use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
+use pyo3::prelude::*;
+use std::num::Wrapping;
 
 #[pymodule]
-fn ring_ext(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     // immutable example
     fn ring_add_impl(x: Vec<u64>, y: Vec<u64>) -> Vec<u64> {
         let rx = Ring64Vector::from(x);

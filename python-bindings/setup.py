@@ -7,11 +7,11 @@ install_requires = ['numpy']
 test_requires = install_requires + ['pytest']
 
 setup(
-    name='ring_ext',
+    name='moose_kernels',
     version='0.1.0',
     description='Example of python-extension using rust-numpy',
     rust_extensions=[RustExtension(
-        'ring_ext.ring_ext',
+        'moose_kernels.moose_kernels',
         './Cargo.toml',
     )],
     install_requires=install_requires,

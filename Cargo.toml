@@ -3,5 +3,5 @@ members = [
   "cli",
   "crypto",
   "engine",
-  "ring-ext",
+  "python-bindings",
 ]
