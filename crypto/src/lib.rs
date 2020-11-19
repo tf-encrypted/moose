@@ -1,39 +1,8 @@
-use ndarray::prelude::*;
-mod prng; 
-use std::num::Wrapping;
-use std::ops::{Add, Mul};
+// mod prng;
+pub mod ring;
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct Ring64Vector(Array1<Wrapping<u64>>);
-
-impl From<Vec<u64>> for Ring64Vector {
-    fn from(v: Vec<u64>) -> Ring64Vector {
-        use vec_utils::VecExt;
-        let v_wrapped: Vec<_> = v.map(Wrapping);
-        Ring64Vector(Array1::from(v_wrapped))
-    }
-}
-
-impl From<&[u64]> for Ring64Vector {
-    fn from(v: &[u64]) -> Ring64Vector {
-        let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        Ring64Vector(Array1::from(v_wrapped))
-    }
-}
-
-impl Add<Ring64Vector> for Ring64Vector {
-    type Output = Ring64Vector;
-    fn add(self, other: Ring64Vector) -> Self::Output {
-        Ring64Vector(self.0.add(other.0))
-    }
-}
-
-impl Mul<Ring64Vector> for Ring64Vector {
-    type Output = Ring64Vector;
-    fn mul(self, other: Ring64Vector) -> Self::Output {
-        Ring64Vector(self.0.mul(other.0))
-    }
-}
+use ring::Ring64Vector;
+use std::ops::{Mul};
 
 pub struct Replicated<T>(T, T, T);
 
