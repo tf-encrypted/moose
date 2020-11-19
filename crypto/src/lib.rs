@@ -4,20 +4,13 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ring64Vector(Array1<Wrapping<u64>>);
+pub struct Ring64Vector(pub Array1<Wrapping<u64>>);
 
 impl From<Vec<u64>> for Ring64Vector {
     fn from(v: Vec<u64>) -> Ring64Vector {
         use vec_utils::VecExt;
         let v_wrapped: Vec<_> = v.map(Wrapping);
         Ring64Vector(Array1::from(v_wrapped))
-    }
-}
-
-impl From<Ring64Vector> for Vec<u64> {
-    fn from(r: Ring64Vector) -> Vec<u64> {
-        use vec_utils::VecExt;
-        r.0.into_raw_vec().map(|x| x.0)
     }
 }
 

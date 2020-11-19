@@ -1,29 +1,39 @@
 use crypto::Ring64Vector;
-use ndarray::prelude::*;
+use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::prelude::*;
 use std::num::Wrapping;
 
 #[pymodule]
 fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    // immutable example
-    fn ring_add_impl(x: Vec<u64>, y: Vec<u64>) -> Vec<u64> {
-        let rx = Ring64Vector::from(x);
-        let ry = Ring64Vector::from(y);
-        Vec::from(rx + ry)
+    fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Vector {
+        let vec = arr.reshape([arr.len()]).unwrap();
+        let arr_vec = unsafe {
+            // D:
+            vec.as_array()
+        };
+        let arr_wrap = arr_vec.mapv(Wrapping);
+        Ring64Vector(arr_wrap)
     }
 
-    // wrapper of `ring_add`
+    fn ring64_to_array(r: Ring64Vector, shape: &[usize]) -> ArrayD<u64> {
+        let inner_arr = r.0;
+        let unwrapped = inner_arr.mapv(|x| x.0);
+        unwrapped.into_shape(shape).unwrap()
+    }
+
     #[pyfn(m, "ring_add")]
     fn ring_add<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
         y: PyReadonlyArrayDyn<u64>,
-    ) -> &'py PyArray<u64, Ix1> {
-        let x = x.to_vec().expect("Input array `x` must be contiguous.");
-        let y = y.to_vec().expect("Input array `y` must be contiguous.");
-        let addn = ring_add_impl(x, y);
-        addn.to_pyarray(py)
+    ) -> &'py PyArrayDyn<u64> {
+        let x_shape = x.shape();
+        let x_ring = dynarray_to_ring64(&x);
+        let y_ring = dynarray_to_ring64(&y);
+        let addn = x_ring + y_ring;
+        let res = ring64_to_array(addn, x_shape);
+        res.to_pyarray(py)
     }
 
     Ok(())
