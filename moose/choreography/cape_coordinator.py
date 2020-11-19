@@ -21,6 +21,7 @@ class Choreography:
         auth_token=None,
         poll_delay=10.0,
     ):
+        self.client = Client('http://localhost:8080', '01EQGWBW34R470QN9SGRPS389N,ARTRvDP1rY89u2wp3lkHvkii4UvH9k5OWA')
         self.executor = executor
         self.coordinator_host = coordinator_host
         self.own_name = own_name or socket.gethostname()
@@ -68,35 +69,17 @@ class Choreography:
         get_logger().debug(f"Launched new computation; session_id:{session_id}")
 
     async def poll(self):
-        query = """
-            query GetNextSessions($workerName: String!) {
-                getNextSessions(workerName: $workerName) {
-                    id
-                    computation {
-                        computation
-                    }
-                    placementInstantiation {
-                        label
-                        endpoint
-                    }
-                    status
-                }
-            }
-        """
-        variables = {"workerName": self.own_name}
-        res = await self.graphql_request(query, variables)
-        get_logger().debug(res)
+        sessions = self.client.get_next_sessions()
+        print(sessions)
 
     async def run(self):
-        client = Client('http://localhost:8080', '01EQGWBW34R470QN9SGRPS389N,ARTRvDP1rY89u2wp3lkHvkii4UvH9k5OWA')
-        client.login()
-        client.get_next_sessions()
-        # await self.poll()
-        # for i in itertools.count(start=1):
-        #     if i > 0:
-        #         await asyncio.sleep(self.poll_delay)
-        #     sessions = await self.poll()
-        #     # TODO(Morten) launch sessions
+        self.client.login()
+        await self.poll()
+        for i in itertools.count(start=1):
+            if i > 0:
+                await asyncio.sleep(self.poll_delay)
+                await self.poll()
+        # TODO(Morten) launch sessions
 
     def login(self, token):
         payload = {'token_id': token}
