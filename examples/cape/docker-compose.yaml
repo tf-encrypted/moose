@@ -1,0 +1,12 @@
+version: "3.7"
+
+services:
+
+  worker0:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      CAPE_BROKER: https://demo.capeprivacy.com/broker
+      CAPE_COORDINATOR: https://demo.capeprivacy.com
+      CAPE_TOKEN: ${CAPE_TOKEN}

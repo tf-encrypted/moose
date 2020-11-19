@@ -18,7 +18,7 @@ fmt:
 	black .
 
 lint:
-	flake8 .
+	flake8 --extend-exclude=venv* .
 
 test:
 	pytest .

@@ -82,10 +82,11 @@ class AsyncExecutor:
             values=AsyncStore(),
         )
         get_logger().debug(
-            "Entering computation, " f"placement:{placement}, " f"session:{session}"
+            f"Entering computation; placement:{placement}, session:{session}"
         )
         # link futures together using kernels
         tasks = []
+        print("plan", execution_plan)
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
             if not kernel:
@@ -101,17 +102,23 @@ class AsyncExecutor:
                     kernel.execute(op, session=session, output=output, **inputs)
                 )
             ]
+        get_logger().debug(f"Exiting computation; session_id:{session.session_id}")
+        # check that there's something to do since `asyncio.wait` will block otherwise
+        if not tasks:
+            get_logger().warn(
+                f"Computation had no tasks; session_id:{session.session_id}"
+            )
+            return
         # execute kernels
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-        get_logger().debug(
-            "Exiting computation, " f"placement:{placement}, " f"session:{session}"
-        )
         # address any errors that may have occurred
         exceptions = [task.exception() for task in done if task.exception()]
         for e in exceptions:
             get_logger().exception(e)
         if exceptions:
-            raise Exception(f"One or more errors occurred in '{placement}'")
+            raise Exception(
+                f"One or more errors occurred in '{placement}: {exceptions}'"
+            )
 
     def schedule_execution(self, comp, placement):
         # TODO(Morten) this is as simple and naive as it gets; we should at least
