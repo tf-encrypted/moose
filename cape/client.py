@@ -48,4 +48,4 @@ class Client:
             'variables': variables
         })
 
-        print('done', r.json())
+        return r.json()['data']['getNextSessions']
