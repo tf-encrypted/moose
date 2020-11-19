@@ -3,11 +3,12 @@ import functools
 import itertools
 import random
 import socket
+from pprint import pprint
 from typing import Dict
 
 import requests
 
-from cape.client import Client
+from cape.network.client import Client
 from moose.compiler.computation import Computation
 from moose.logger import get_logger
 
@@ -21,7 +22,7 @@ class Choreography:
         auth_token=None,
         poll_delay=10.0,
     ):
-        self.client = Client('http://localhost:8080', '01EQGWBW34R470QN9SGRPS389N,ARTRvDP1rY89u2wp3lkHvkii4UvH9k5OWA')
+        self.client = Client('http://localhost:8080', '01EQH4JG0SN0T54KSGTMFB5A78,ARNQECvDHC_8uZkBKi5W_nSGha7VyktYCQ')
         self.executor = executor
         self.coordinator_host = coordinator_host
         self.own_name = own_name or socket.gethostname()
@@ -70,7 +71,7 @@ class Choreography:
 
     async def poll(self):
         sessions = self.client.get_next_sessions()
-        print(sessions)
+        print('run sessions', pprint(sessions))
 
     async def run(self):
         self.client.login()
