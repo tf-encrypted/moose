@@ -1,5 +1,5 @@
 use ndarray::prelude::*;
-
+mod prng; 
 use std::num::Wrapping;
 use std::ops::{Add, Mul};
 
