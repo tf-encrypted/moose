@@ -107,6 +107,9 @@ class Client:
                     label
                     endpoint
                 }
+                task {
+                    computation
+                }
             }
         }
         """
