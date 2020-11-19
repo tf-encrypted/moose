@@ -7,6 +7,7 @@ from typing import Dict
 
 import requests
 
+from cape.client import Client
 from moose.compiler.computation import Computation
 from moose.logger import get_logger
 
@@ -32,9 +33,9 @@ class Choreography:
         r = await loop.run_in_executor(
             None,
             functools.partial(
-                func=self.requests_session.post,
-                url=f"{self.coordinator_host}/v1/query",
-                json={"query": query, "variables": variables},
+                self.requests_session.post,
+                f"{self.coordinator_host}/v1/query",
+                {"query": query, "variables": variables},
             ),
         )
         try:
@@ -86,9 +87,18 @@ class Choreography:
         res = await self.graphql_request(query, variables)
         get_logger().debug(res)
 
-    async def run():
-        for i in itertools.count(start=1):
-            if i > 0:
-                await asyncio.sleep(self.poll_delay)
-            sessions = await self.poll()
-            # TODO(Morten) launch sessions
+    async def run(self):
+        client = Client('http://localhost:8080', '01EQGWBW34R470QN9SGRPS389N,ARTRvDP1rY89u2wp3lkHvkii4UvH9k5OWA')
+        client.login()
+        client.get_next_sessions()
+        # await self.poll()
+        # for i in itertools.count(start=1):
+        #     if i > 0:
+        #         await asyncio.sleep(self.poll_delay)
+        #     sessions = await self.poll()
+        #     # TODO(Morten) launch sessions
+
+    def login(self, token):
+        payload = {'token_id': token}
+        resp = requests.post('http://localhost:8080/v1/login', data=payload)
+        print(resp)
