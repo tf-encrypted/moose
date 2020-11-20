@@ -2,6 +2,7 @@ from base64 import urlsafe_b64decode
 from base64 import urlsafe_b64encode
 from typing import Union
 
+
 # This implements a similar wrapped as network has in golang.
 # It stores the bytes and converts it to encoded string as needed.
 # The python base64 package appends padding when encoding but

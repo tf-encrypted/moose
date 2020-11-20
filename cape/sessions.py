@@ -9,14 +9,14 @@ def sessions():
     pass
 
 
-@click.command('create')
-@click.argument('task_id')
+@click.command("create")
+@click.argument("task_id")
 def sessions_create(task_id):
-    client = Client('http://localhost:8080', token)
+    client = Client("http://localhost:8080", token)
     client.login()
 
     resp = client.initialize_session(task_id)
-    print('res', resp)
+    print("res", resp)
 
 
 sessions.add_command(sessions_create)
