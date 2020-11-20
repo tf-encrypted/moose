@@ -4,7 +4,7 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ring64Vector(Array1<Wrapping<u64>>);
+pub struct Ring64Vector(pub Array1<Wrapping<u64>>);
 
 impl From<Vec<u64>> for Ring64Vector {
     fn from(v: Vec<u64>) -> Ring64Vector {
