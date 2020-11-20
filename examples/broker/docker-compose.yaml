@@ -10,7 +10,7 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      BROKER: broker:8080
+      CAPE_BROKER: http://broker:8080
 
   worker1:
     build:
@@ -20,7 +20,7 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      BROKER: broker:8080
+      CAPE_BROKER: http://broker:8080
 
   worker2:
     build:
@@ -30,7 +30,7 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      BROKER: broker:8080
+      CAPE_BROKER: http://broker:8080
 
   worker3:
     build:
@@ -40,7 +40,7 @@ services:
       - "../../moose:/moose"
       - ".:/example"
     environment:
-      BROKER: broker:8080
+      CAPE_BROKER: http://broker:8080
 
   choreographer:
     build:
