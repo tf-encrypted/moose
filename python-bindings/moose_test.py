@@ -1,5 +1,5 @@
 import numpy as np
-from moose_kernels import ring_add
+from moose import ring_add
 
 
 def test_ring_add_usual():

@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use std::num::Wrapping;
 
 #[pymodule]
-fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn moose(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Vector {
         let vec = arr.reshape([arr.len()]).unwrap();
         let arr_vec = unsafe {
