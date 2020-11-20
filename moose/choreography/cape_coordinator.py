@@ -6,8 +6,6 @@ import socket
 from pprint import pprint
 from typing import Dict
 
-import requests
-
 from cape.network.client import Client
 from moose.compiler.computation import Computation
 from moose.logger import get_logger
@@ -22,43 +20,19 @@ class Choreography:
         auth_token=None,
         poll_delay=10.0,
     ):
-        self.client = Client(
-            "http://localhost:8080",
-            "01EQH4JG0SN0T54KSGTMFB5A78,ARNQECvDHC_8uZkBKi5W_nSGha7VyktYCQ",
-        )
+        self.client = Client(coordinator_host, auth_token)
         self.executor = executor
-        self.coordinator_host = coordinator_host
         self.own_name = own_name or socket.gethostname()
-        self.requests_session = requests.Session()
-        self.session_tasks = dict()
         self.poll_delay = poll_delay
-
-    async def graphql_request(self, query, variables):
-        loop = asyncio.get_event_loop()
-        r = await loop.run_in_executor(
-            None,
-            functools.partial(
-                self.requests_session.post,
-                f"{self.coordinator_host}/v1/query",
-                {"query": query, "variables": variables},
-            ),
-        )
-        try:
-            j = r.json()
-        except ValueError:
-            r.raise_for_status()
-
-        if "errors" in j:
-            raise Exception(j["errors"])
-
-        return j["data"]
+        self.session_tasks = dict()
 
     def launch_session(
         self, session_id, computation, placement_instantiation, placement
     ):
         if session_id in self.session_tasks:
             get_logger().debug(
-                f"Ignoring session since it already exists; session_id:{session_id}"
+                f"Ignoring session since it already exists;"
+                f" session_id:{session_id}"
             )
             return
         task = asyncio.create_task(
@@ -73,19 +47,24 @@ class Choreography:
         get_logger().debug(f"Launched new computation; session_id:{session_id}")
 
     async def poll(self):
-        sessions = self.client.get_next_sessions()
-        print("run sessions", pprint(sessions))
+        loop = asyncio.get_event_loop()
+        sessions = await loop.run_in_executor(
+            None, self.client.get_next_sessions, self.own_name,
+        )
+        get_logger().debug(f"Polled sessions; sessions:{sessions}")
+        return sessions
+
+    async def login(self):
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(
+            None, self.client.login,
+        )
+        get_logger().debug("Logged in successfullly")
 
     async def run(self):
-        self.client.login()
-        await self.poll()
+        await self.login()
         for i in itertools.count(start=1):
             if i > 0:
                 await asyncio.sleep(self.poll_delay)
-                await self.poll()
-        # TODO(Morten) launch sessions
-
-    def login(self, token):
-        payload = {"token_id": token}
-        resp = requests.post("http://localhost:8080/v1/login", data=payload)
-        print(resp)
+            sessions = await self.poll()
+            # TODO(Morten) do something with sessions
