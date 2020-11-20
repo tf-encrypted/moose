@@ -41,7 +41,12 @@ class Choreography:
         )
         self.session_tasks[session_id] = task
 
-    async def poll(self):
+        def done_handler(task):
+            get_logger().debug(f"Session done; session_id:{session_id}")
+
+        task.add_done_callback(done_handler)
+
+    async def poll_sessions(self):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None, self.client.get_next_sessions, self.own_name,
@@ -59,7 +64,7 @@ class Choreography:
         for i in itertools.count(start=1):
             if i > 0:
                 await asyncio.sleep(self.poll_delay)
-            sessions = await self.poll()
+            sessions = await self.poll_sessions()
             for session in sessions:
                 session_id = session["id"]
                 if session_id in self.session_tasks:

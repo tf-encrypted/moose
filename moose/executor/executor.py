@@ -82,7 +82,7 @@ class AsyncExecutor:
             values=AsyncStore(),
         )
         get_logger().debug(
-            "Entering computation, " f"placement:{placement}, " f"session:{session}"
+            f"Entering computation; placement:{placement}, session:{session}"
         )
         # link futures together using kernels
         tasks = []
@@ -101,10 +101,14 @@ class AsyncExecutor:
                     kernel.execute(op, session=session, output=output, **inputs)
                 )
             ]
+        # check that there's something to do since `asyncio.wait` will block otherwise
+        if not tasks:
+            get_logger().warn(f"Exiting computation, nothing to do, session:{session}")
+            return
         # execute kernels
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
         get_logger().debug(
-            "Exiting computation, " f"placement:{placement}, " f"session:{session}"
+            "Exiting computation, placement:{placement}, session:{session}"
         )
         # address any errors that may have occurred
         exceptions = [task.exception() for task in done if task.exception()]
