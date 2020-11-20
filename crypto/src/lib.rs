@@ -1,4 +1,4 @@
-// mod prng;
+pub mod prng;
 pub mod ring;
 
 use ring::Ring64Vector;
