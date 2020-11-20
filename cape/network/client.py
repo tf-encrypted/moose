@@ -102,7 +102,7 @@ class Client:
             {"task_id": task_id},
         )
 
-    def get_next_sessions(self):
+    def get_next_sessions(self, workerName):
         query = """
         query GetNextSessions($workerName: String!) {
             getNextSessions(workerName: $workerName) {
@@ -118,7 +118,7 @@ class Client:
         }
         """
 
-        variables = {"workerName": "inputter0"}
+        variables = {"workerName": workerName}
         r = self.session.post(
             self.gql_endpoint, json={"query": query, "variables": variables}
         )
