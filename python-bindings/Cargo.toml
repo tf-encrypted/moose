@@ -1,0 +1,26 @@
+[package]
+name = "python-bindings"
+version = "0.1.0"
+license = "MIT/Apache-2.0"
+authors = [""]
+description = ""
+repository = ""
+homepage = ""
+keywords = ["", ""]
+categories = ["", ""]
+edition = "2018"
+
+[lib]
+name = "moose"
+crate-type = ["cdylib"]
+
+[dependencies]
+numpy = "~0.12"
+ndarray = "~0.13"
+
+[dependencies.crypto]
+path = "../crypto"
+
+[dependencies.pyo3]
+version = "0.12"
+features = ["extension-module"]
