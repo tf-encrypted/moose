@@ -22,7 +22,10 @@ class Choreography:
         auth_token=None,
         poll_delay=10.0,
     ):
-        self.client = Client('http://localhost:8080', '01EQH4JG0SN0T54KSGTMFB5A78,ARNQECvDHC_8uZkBKi5W_nSGha7VyktYCQ')
+        self.client = Client(
+            "http://localhost:8080",
+            "01EQH4JG0SN0T54KSGTMFB5A78,ARNQECvDHC_8uZkBKi5W_nSGha7VyktYCQ",
+        )
         self.executor = executor
         self.coordinator_host = coordinator_host
         self.own_name = own_name or socket.gethostname()
@@ -71,7 +74,7 @@ class Choreography:
 
     async def poll(self):
         sessions = self.client.get_next_sessions()
-        print('run sessions', pprint(sessions))
+        print("run sessions", pprint(sessions))
 
     async def run(self):
         self.client.login()
@@ -83,6 +86,6 @@ class Choreography:
         # TODO(Morten) launch sessions
 
     def login(self, token):
-        payload = {'token_id': token}
-        resp = requests.post('http://localhost:8080/v1/login', data=payload)
+        payload = {"token_id": token}
+        resp = requests.post("http://localhost:8080/v1/login", data=payload)
         print(resp)
