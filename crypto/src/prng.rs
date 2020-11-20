@@ -1,11 +1,11 @@
 use aes::cipher::generic_array::GenericArray;
 use aes::cipher::{BlockCipher, NewBlockCipher};
-use aes::Aes128;
 use rand::{CryptoRng, Error, RngCore, SeedableRng};
 
-const N: usize = 16;
-pub struct AesRngSeed(pub [u8; N]);
-pub struct AesRngState(pub [u8; N]);
+const AES_BLK_SIZE: usize = 16;
+const PIPELINES: usize = 8;
+pub struct AesRngSeed(pub [u8; AES_BLK_SIZE]);
+pub struct AesRngState(pub [u8; AES_BLK_SIZE * PIPELINES]);
 
 struct AesRng {
     // state has same type as AesRngSeed
@@ -15,13 +15,13 @@ struct AesRng {
 
 impl Default for AesRngSeed {
     fn default() -> AesRngSeed {
-        AesRngSeed([0; N])
+        AesRngSeed([0; AES_BLK_SIZE])
     }
 }
 
 impl Default for AesRngState {
     fn default() -> AesRngState {
-        AesRngState([0; N])
+        AesRngState([0; AES_BLK_SIZE * PIPELINES])
     }
 }
 
@@ -37,17 +37,35 @@ impl AsMut<[u8]> for AesRngState {
     }
 }
 
+fn inc_be(val: GenericArray<u8, U16>) -> () {
+}
+
 impl SeedableRng for AesRng {
             type Seed = AesRngSeed;
 
             #[inline]
             fn from_seed(seed: Self::Seed) -> Self {
+                let mut block = GenericArray::clone_from_slice(&[0u8; 16]);
+                let mut block8 = GenericArray::clone_from_slice(&[block; 8]);
+                // let state = GenericArray::clone_from_slice(&[tmp; 8]);
+                // for p in 0..PIPELINES {
+                //     inc_be(state[p]);
+                // }
                 AesRng {
-                    state: AesRngState([0;16]),
+                    state: AesRngState([0;AES_BLK_SIZE*PIPELINES]),
                     seed: seed
                 }
             }
     }
+
+trait Next {
+    fn getNext(&mut self) -> ();
+}
+impl Next for AesRng {
+    fn getNext(&mut self) -> () {
+        
+    }
+}
 
 impl RngCore for AesRng {
     fn next_u32(&mut self) -> u32 {
