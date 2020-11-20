@@ -29,30 +29,23 @@ class Choreography:
     def launch_session(
         self, session_id, computation, placement_instantiation, placement
     ):
-        if session_id in self.session_tasks:
-            get_logger().debug(
-                f"Ignoring session since it already exists;"
-                f" session_id:{session_id}"
-            )
-            return
+        assert session_id not in self.session_tasks, session_id
+        get_logger().debug(f"Launching computation; session_id:{session_id}")
         task = asyncio.create_task(
             self.executor.run_computation(
-                logical_computation=Computation.deserialize(computation),
+                logical_computation=computation,
                 placement_instantiation=placement_instantiation,
                 placement=placement,
                 session_id=session_id,
             )
         )
         self.session_tasks[session_id] = task
-        get_logger().debug(f"Launched new computation; session_id:{session_id}")
 
     async def poll(self):
         loop = asyncio.get_event_loop()
-        sessions = await loop.run_in_executor(
+        return await loop.run_in_executor(
             None, self.client.get_next_sessions, self.own_name,
         )
-        get_logger().debug(f"Polled sessions; sessions:{sessions}")
-        return sessions
 
     async def login(self):
         loop = asyncio.get_event_loop()
@@ -67,4 +60,21 @@ class Choreography:
             if i > 0:
                 await asyncio.sleep(self.poll_delay)
             sessions = await self.poll()
-            # TODO(Morten) do something with sessions
+            for session in sessions:
+                session_id = session["id"]
+                if session_id in self.session_tasks:
+                    get_logger().debug(
+                        f"Ignoring session since it already exists;"
+                        f" session_id:{session_id}"
+                    )
+                    continue
+                placement_instantiation = session["placementInstantiation"]
+                placement = None  # TODO we should receive a placement as well
+                task = session["task"]
+                computation = Computation.deserialize(task["computation"])
+                self.launch_session(
+                    session_id=session_id,
+                    computation=computation,
+                    placement_instantiation=placement_instantiation,
+                    placement=placement,
+                )
