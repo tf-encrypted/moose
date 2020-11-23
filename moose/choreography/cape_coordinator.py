@@ -2,6 +2,7 @@ import asyncio
 import itertools
 import socket
 
+from cape.network import base64
 from cape.network.client import Client
 from moose.compiler.computation import Computation
 from moose.logger import get_logger
@@ -80,7 +81,9 @@ class Choreography:
                 placement_instantiation = session["placementInstantiation"]
                 placement = None  # TODO we should receive a placement as well
                 task = session["task"]
-                computation = Computation.deserialize(task["computation"])
+                base64comp = task["computation"]
+                bytes_comp = bytes(base64.from_string(base64comp))
+                computation = Computation.deserialize(bytes_comp)
                 status = session["status"]
 
                 task = asyncio.create_task(
