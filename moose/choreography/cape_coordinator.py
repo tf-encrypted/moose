@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import itertools
 import socket
 
@@ -80,7 +81,9 @@ class Choreography:
                 placement_instantiation = session["placementInstantiation"]
                 placement = None  # TODO we should receive a placement as well
                 task = session["task"]
-                computation = Computation.deserialize(task["computation"])
+
+                computation_bytes = base64.b64decode(task["computation"])
+                computation = Computation.deserialize(computation_bytes)
                 status = session["status"]
 
                 task = asyncio.create_task(
