@@ -121,8 +121,8 @@ class RunProgramKernel(Kernel):
                     outputfile.name,
                     "--session-id",
                     str(session.session_id),
-                    "--device",
-                    op.device_name,
+                    "--placement",
+                    op.placement_name,
                 ]
                 get_logger().debug(f"Running external program: {args}")
                 _ = subprocess.run(

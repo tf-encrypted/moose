@@ -60,7 +60,7 @@ class HostPlacement(Placement):
             for i, expr in enumerate(inputs)
         }
         return CallPythonFunctionOperation(
-            device_name=self.name,
+            placement_name=self.name,
             name=context.get_fresh_name("call_python_function_op"),
             pickled_fn=dill.dumps(fn),
             inputs=inputs,
@@ -230,9 +230,9 @@ class Compiler:
         self.name_counters[prefix] += 1
         return f"{prefix}{count}"
 
-    def maybe_add_networking(self, source_operation, destination_device):
-        source_device = source_operation.device_name
-        if source_device == destination_device:
+    def maybe_add_networking(self, source_operation, destination_placement):
+        source_placement = source_operation.placement_name
+        if source_placement == destination_placement:
             # no need for networking
             return source_operation
 
@@ -243,32 +243,32 @@ class Compiler:
         receive_name = self.get_fresh_name("receive")
         deserialize_name = self.get_fresh_name("deserialize")
         serialize_operation = SerializeOperation(
-            device_name=source_device,
+            placement_name=source_placement,
             name=self.get_fresh_name("serialize_op"),
             inputs={"value": source_operation.output},
             output=serialize_name,
             value_type=value_type,
         )
         send_operation = SendOperation(
-            device_name=source_device,
+            placement_name=source_placement,
             name=self.get_fresh_name("send_op"),
             inputs={"value": serialize_name},
             output=None,
-            sender=source_device,
-            receiver=destination_device,
+            sender=source_placement,
+            receiver=destination_placement,
             rendezvous_key=rendezvous_key,
         )
         receive_operation = ReceiveOperation(
-            device_name=destination_device,
+            placement_name=destination_placement,
             name=self.get_fresh_name("receive_op"),
-            sender=source_device,
-            receiver=destination_device,
+            sender=source_placement,
+            receiver=destination_placement,
             rendezvous_key=rendezvous_key,
             inputs={},
             output=receive_name,
         )
         deserialize_operation = DeserializeOperation(
-            device_name=destination_device,
+            placement_name=destination_placement,
             name=self.get_fresh_name("deserialize_op"),
             inputs={"value": receive_name},
             output=deserialize_name,
@@ -289,7 +289,7 @@ class Compiler:
             operation = visit_fn(expression)
             self.operations += [operation]
             self.known_operations[expression][logical_placement] = operation
-            self.known_operations[expression][operation.device_name] = operation
+            self.known_operations[expression][operation.placement_name] = operation
         assert expression in self.known_operations
         assert logical_placement in self.known_operations[expression]
         destination_placement = destination_placement or logical_placement
@@ -306,14 +306,14 @@ class Compiler:
 
     def visit_BinaryOpExpression(self, expression):
         assert isinstance(expression, BinaryOpExpression)
-        device = expression.placement.name
+        placement = expression.placement.name
         lhs_expression, rhs_expression = expression.inputs
-        lhs_operation = self.visit(lhs_expression, device)
-        rhs_operation = self.visit(rhs_expression, device)
+        lhs_operation = self.visit(lhs_expression, placement)
+        rhs_operation = self.visit(rhs_expression, placement)
         op_type = expression.op_type
         op_name = op_type.__name__.lower()
         return op_type(
-            device_name=device,
+            placement_name=placement,
             name=self.get_fresh_name(f"{op_name}_op"),
             inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
             output=self.get_fresh_name(f"{op_name}"),
@@ -332,7 +332,7 @@ class Compiler:
     def visit_ConstantExpression(self, constant_expression):
         assert isinstance(constant_expression, ConstantExpression)
         return ConstantOperation(
-            device_name=constant_expression.placement.name,
+            placement_name=constant_expression.placement.name,
             name=self.get_fresh_name("constant_op"),
             value=constant_expression.value,
             inputs={},
@@ -342,7 +342,7 @@ class Compiler:
     def visit_LoadExpression(self, load_expression):
         assert isinstance(load_expression, LoadExpression)
         return LoadOperation(
-            device_name=load_expression.placement.name,
+            placement_name=load_expression.placement.name,
             name=self.get_fresh_name("load_op"),
             key=load_expression.key,
             inputs={},
@@ -351,13 +351,13 @@ class Compiler:
 
     def visit_RunProgramExpression(self, expression):
         assert isinstance(expression, RunProgramExpression)
-        device = expression.placement.name
+        placement_name = expression.placement.name
         inputs = {
-            f"arg{i}": self.visit(expr, device).output
+            f"arg{i}": self.visit(expr, placement_name).output
             for i, expr in enumerate(expression.inputs)
         }
         return RunProgramOperation(
-            device_name=expression.placement.name,
+            placement_name=expression.placement.name,
             name=self.get_fresh_name("run_program_op"),
             path=expression.path,
             args=expression.args,
@@ -367,11 +367,11 @@ class Compiler:
 
     def visit_SaveExpression(self, save_expression):
         assert isinstance(save_expression, SaveExpression)
-        save_device = save_expression.placement.name
+        placement_name = save_expression.placement.name
         (value_expression,) = save_expression.inputs
-        value_operation = self.visit(value_expression, save_device)
+        value_operation = self.visit(value_expression, placement_name)
         return SaveOperation(
-            device_name=save_device,
+            placement_name=placement_name,
             name=self.get_fresh_name("save_op"),
             key=save_expression.key,
             inputs={"value": value_operation.output},

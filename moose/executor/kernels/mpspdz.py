@@ -18,7 +18,7 @@ def prepare_mpspdz_directory(
     mpspdz = Path(mpspdz_dirname)
     root = (
         Path(tempfile.gettempdir())
-        / str(op.device_name)
+        / str(op.placement_name)
         / str(session_id)
         / str(op.invocation_key)
     )

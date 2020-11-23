@@ -45,7 +45,7 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = my_comp.trace_func()
         binary_op = concrete_comp.graph.nodes[f"{op_name}operation_op0"]
         assert binary_op == OP(
-            device_name="player0",
+            placement_name="player0",
             name=f"{op_name}operation_op0",
             inputs={"lhs": "constant0", "rhs": "constant1"},
             output=f"{op_name}operation0",
@@ -71,7 +71,7 @@ class EdslTest(parameterized.TestCase):
         pickled_fn = dill.dumps(add_one)
         call_py_op.pickled_fn = pickled_fn
         assert call_py_op == CallPythonFunctionOperation(
-            device_name="player0",
+            placement_name="player0",
             name="call_python_function_op0",
             inputs={"arg0": "constant0"},
             output="call_python_function0",
@@ -90,7 +90,7 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = my_comp.trace_func()
         constant_op = concrete_comp.graph.nodes["constant_op0"]
         assert constant_op == ConstantOperation(
-            device_name="player0",
+            placement_name="player0",
             name="constant_op0",
             inputs={},
             output="constant0",
@@ -112,7 +112,7 @@ class EdslTest(parameterized.TestCase):
 
         send_op = concrete_comp.graph.nodes["send_op0"]
         assert send_op == SendOperation(
-            device_name="player0",
+            placement_name="player0",
             name="send_op0",
             inputs={"value": "serialize0"},
             output=None,
@@ -122,7 +122,7 @@ class EdslTest(parameterized.TestCase):
         )
         receive_op = concrete_comp.graph.nodes["receive_op0"]
         assert receive_op == ReceiveOperation(
-            device_name="player1",
+            placement_name="player1",
             name="receive_op0",
             inputs={},
             output="receive0",
@@ -148,7 +148,7 @@ class EdslTest(parameterized.TestCase):
         script_py_op = concrete_comp.graph.nodes["run_program_op0"]
 
         assert script_py_op == RunProgramOperation(
-            device_name="player0",
+            placement_name="player0",
             name="run_program_op0",
             inputs={"arg0": "constant0"},
             output="run_program0",

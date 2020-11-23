@@ -13,7 +13,7 @@ import moose.compiler.computation
 
 @dataclass
 class Operation:
-    device_name: str
+    placement_name: str
     name: str
     inputs: Dict[str, str]
     output: Optional[str]
@@ -125,8 +125,8 @@ class Graph:
 class Computation:
     graph: Graph
 
-    def devices(self):
-        return set(node.device_name for node in self.graph.nodes.values())
+    def placements(self):
+        return set(node.placement for node in self.graph.nodes.values())
 
     def nodes(self):
         return self.graph.nodes.values()
