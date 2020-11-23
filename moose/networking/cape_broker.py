@@ -1,6 +1,7 @@
 import asyncio
 import socket
 
+import pysodium
 import requests
 from opentelemetry import trace
 from opentelemetry.launcher import configure_opentelemetry
@@ -14,6 +15,8 @@ class Networking:
         self.session = requests.Session()
         # TODO(Morten) how should we authenticate?
         self.session.auth = (own_name or socket.gethostname(), auth_token or "")
+        self._my_public_key = None
+        self._my_secret_key = None
 
     def get_hostname(self, placement):
         endpoint = placement
@@ -76,10 +79,23 @@ class Networking:
         raise ex
 
     async def receive(self, sender, receiver, rendezvous_key, session_id):
-        return await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        encrypted_value = await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        # Decrypt value with libsodium
+        # run an hash function on it to generate the nonce.
+        n = bytes(rendezvous_key + session_id)
+        sender_public_key = self._other_parties_public_key[sender]
+        decrypted_value = pysodium.crypto_box_open(encrypted_value, n, sender_public_key, self._my_secret_key)
+        return decrypted_value
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
-        await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", value)
+        # Encrypt value with libsodium
+        n = bytes(rendezvous_key + session_id)
+        receiver_public_key = self._other_parties_public_key[receiver]
+        encrypted_value = pysodium.crypto_box(value, nonce, receiver_public_key, self._my_secret_key)
+        await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", encrypted_value)
+
+    def setup_keys(self):
+        self._my_public_key, self._my_secret_key = pysodium.crypto_box_keypair()
 
 
 class TelemetryNetworking(Networking):
@@ -103,5 +119,3 @@ def get_networking(broker_host, own_name=None, auth_token=None, telemetry_enable
         return TelemetryNetworking(
             broker_host, own_name=own_name, auth_token=auth_token
         )
-
-    return Networking(broker_host, own_name=own_name, auth_token=auth_token)

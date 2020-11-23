@@ -37,7 +37,7 @@ class Choreographer:
                     ident_key=self.ident_key,
                 )
             placement_executors[placement] = self.existing_executors[endpoint]
-
+        # go to every executor and ask for pk. (executor.get_public_key)
         sid = random.randrange(2 ** 32)
         tasks = [
             executor.run_computation(
