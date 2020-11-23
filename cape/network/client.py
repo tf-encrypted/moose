@@ -1,5 +1,4 @@
 from pprint import pprint
-from typing import Dict
 
 import requests
 
@@ -102,7 +101,17 @@ class Client:
             {"task_id": task_id},
         )
 
-    def get_next_sessions(self, workerName):
+    def report_session_status(self, session_id, worker_name, status):
+        return self.gql_req(
+            """
+            mutation ReportSessionStatus($session_id: String!, $workerName: String!, $status: ComputationStatus!) {
+                reportSessionStatus(session_id: $session_id, workerName: $workerName, status: $status)
+            }
+            """,
+            {"session_id": session_id, "workerName": worker_name, "status": status,},
+        )
+
+    def get_next_sessions(self, worker_name):
         query = """
         query GetNextSessions($workerName: String!) {
             getNextSessions(workerName: $workerName) {
@@ -118,7 +127,7 @@ class Client:
         }
         """
 
-        variables = {"workerName": workerName}
+        variables = {"workerName": worker_name}
         r = self.session.post(
             self.gql_endpoint, json={"query": query, "variables": variables}
         )
