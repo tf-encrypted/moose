@@ -3,8 +3,6 @@ import asyncio
 import logging
 import os
 
-from grpc.experimental import aio as grpc_aio
-
 from moose.choreography.cape_coordinator import Choreography
 from moose.executor import AsyncExecutor
 from moose.logger import get_logger
