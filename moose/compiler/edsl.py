@@ -230,9 +230,9 @@ class Compiler:
         self.name_counters[prefix] += 1
         return f"{prefix}{count}"
 
-    def maybe_add_networking(self, source_operation, destination_placement):
-        source_placement = source_operation.placement_name
-        if source_placement == destination_placement:
+    def maybe_add_networking(self, source_operation, destination_placement_name):
+        source_placement_name = source_operation.placement_name
+        if source_placement_name == destination_placement_name:
             # no need for networking
             return source_operation
 
@@ -243,32 +243,32 @@ class Compiler:
         receive_name = self.get_fresh_name("receive")
         deserialize_name = self.get_fresh_name("deserialize")
         serialize_operation = SerializeOperation(
-            placement_name=source_placement,
+            placement_name=source_placement_name,
             name=self.get_fresh_name("serialize_op"),
             inputs={"value": source_operation.output},
             output=serialize_name,
             value_type=value_type,
         )
         send_operation = SendOperation(
-            placement_name=source_placement,
+            placement_name=source_placement_name,
             name=self.get_fresh_name("send_op"),
             inputs={"value": serialize_name},
             output=None,
-            sender=source_placement,
-            receiver=destination_placement,
+            sender=source_placement_name,
+            receiver=destination_placement_name,
             rendezvous_key=rendezvous_key,
         )
         receive_operation = ReceiveOperation(
-            placement_name=destination_placement,
+            placement_name=destination_placement_name,
             name=self.get_fresh_name("receive_op"),
-            sender=source_placement,
-            receiver=destination_placement,
+            sender=source_placement_name,
+            receiver=destination_placement_name,
             rendezvous_key=rendezvous_key,
             inputs={},
             output=receive_name,
         )
         deserialize_operation = DeserializeOperation(
-            placement_name=destination_placement,
+            placement_name=destination_placement_name,
             name=self.get_fresh_name("deserialize_op"),
             inputs={"value": receive_name},
             output=deserialize_name,
@@ -282,38 +282,40 @@ class Compiler:
         ]
         return deserialize_operation
 
-    def visit(self, expression, destination_placement=None):
-        logical_placement = expression.placement.name
+    def visit(self, expression, destination_placement_name=None):
+        logical_placement_name = expression.placement.name
         if expression not in self.known_operations:
             visit_fn = getattr(self, f"visit_{type(expression).__name__}")
             operation = visit_fn(expression)
             self.operations += [operation]
-            self.known_operations[expression][logical_placement] = operation
+            self.known_operations[expression][logical_placement_name] = operation
             self.known_operations[expression][operation.placement_name] = operation
         assert expression in self.known_operations
-        assert logical_placement in self.known_operations[expression]
-        destination_placement = destination_placement or logical_placement
-        if destination_placement not in self.known_operations[expression]:
-            source_operation = self.known_operations[expression][logical_placement]
+        assert logical_placement_name in self.known_operations[expression]
+        destination_placement_name = (
+            destination_placement_name or logical_placement_name
+        )
+        if destination_placement_name not in self.known_operations[expression]:
+            source_operation = self.known_operations[expression][logical_placement_name]
             destination_operation = self.maybe_add_networking(
-                source_operation, destination_placement
+                source_operation, destination_placement_name
             )
             self.known_operations[expression][
-                destination_placement
+                destination_placement_name
             ] = destination_operation
-        assert destination_placement in self.known_operations[expression]
-        return self.known_operations[expression][destination_placement]
+        assert destination_placement_name in self.known_operations[expression]
+        return self.known_operations[expression][destination_placement_name]
 
     def visit_BinaryOpExpression(self, expression):
         assert isinstance(expression, BinaryOpExpression)
-        placement = expression.placement.name
+        placement_name = expression.placement.name
         lhs_expression, rhs_expression = expression.inputs
-        lhs_operation = self.visit(lhs_expression, placement)
-        rhs_operation = self.visit(rhs_expression, placement)
+        lhs_operation = self.visit(lhs_expression, placement_name)
+        rhs_operation = self.visit(rhs_expression, placement_name)
         op_type = expression.op_type
         op_name = op_type.__name__.lower()
         return op_type(
-            placement_name=placement,
+            placement_name=placement_name,
             name=self.get_fresh_name(f"{op_name}_op"),
             inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
             output=self.get_fresh_name(f"{op_name}"),
