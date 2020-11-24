@@ -4,6 +4,7 @@ package moose;
 
 service Executor {
     rpc RunComputation(RunComputationRequest) returns(RunComputationResponse) {}
+    rpc GetPublicKey(GetPublicKeyRequest) returns(GetPublicKeyResponse) {}
 }
 
 message RunComputationRequest {
@@ -14,3 +15,9 @@ message RunComputationRequest {
 }
 
 message RunComputationResponse {}
+
+message GetPublicKeyRequest {}
+
+message GetPublicKeyResponse {
+    bytes value = 1;
+}

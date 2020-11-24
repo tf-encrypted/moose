@@ -48,6 +48,7 @@ class Session:
 class AsyncExecutor:
     def __init__(self, networking, store={}):
         self.store = store
+        self.networking = networking
         self.kernels = {
             ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),

@@ -15,8 +15,8 @@ class Networking:
         self.session = requests.Session()
         # TODO(Morten) how should we authenticate?
         self.session.auth = (own_name or socket.gethostname(), auth_token or "")
-        self.public_key = public_key
-        self.secret_key = secret_key
+        self.public_key = public_key.decode('latin')
+        self.secret_key = secret_key.decode('latin')
 
     def get_hostname(self, placement):
         endpoint = placement

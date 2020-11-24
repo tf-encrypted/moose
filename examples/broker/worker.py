@@ -29,12 +29,13 @@ if __name__ == "__main__":
     # Generate the keys()
     # pass them to the networking module
     public_key, secret_key = pysodium.crypto_box_keypair()
+    
     networking = Networking(
         broker_host=args.broker, own_name=args.name, auth_token=args.token, public_key=public_key,
         secret_key=secret_key
     )
     executor = AsyncExecutor(networking=networking)
-
+    
     grpc_aio.init_grpc_aio()
     grpc_server = grpc_aio.server()
     grpc_server.add_insecure_port(f"0.0.0.0:{args.port}")

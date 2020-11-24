@@ -38,6 +38,10 @@ class Choreographer:
                 )
             placement_executors[placement] = self.existing_executors[endpoint]
         # go to every executor and ask for pk. (executor.get_public_key)
+        # for placement, executor in placement_instantiation.items():
+        #     public_key = executor.get_public_key()
+        #     placement_instanciation[placement] = placement_instanciation[placement] + \
+        #           ":" + public_key
         sid = random.randrange(2 ** 32)
         tasks = [
             executor.run_computation(
@@ -85,6 +89,9 @@ class ExecutorProxy:
         )
         _ = await self._stub.RunComputation(compute_request)
 
+    async def get_public_key(self):
+        return await self._stub.GetPublicKey(executor_pb2.GetPublicKeyRequest)
+
 
 class Choreography:
     def __init__(
@@ -107,3 +114,7 @@ class Servicer(executor_pb2_grpc.ExecutorServicer):
             session_id=request.session_id,
         )
         return executor_pb2.RunComputationResponse()
+
+    async def GetPublicKey(self, request, context):
+        public_key = executor.networking.public_key
+        return executor_pb2.GetPublicKeyResponse(public_key)
