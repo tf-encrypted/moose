@@ -8,6 +8,8 @@ from typing import List
 from typing import Optional
 from typing import Union
 
+from graphviz import Digraph
+
 import moose.compiler.computation
 
 
@@ -142,6 +144,50 @@ class Computation:
         nodes_dict = computation_dict["graph"]["nodes"]
         nodes = {node: select_op(node)(**args) for node, args in nodes_dict.items()}
         return Computation(Graph(nodes))
+
+    def render(self, filename_prefix="computation-graph"):
+        color_scheme = [
+            "#336699",
+            "#ff0000",
+            "#ff6600",
+            "#92cd00",
+            "#ffcc00",
+        ]
+        placement_colors = dict()
+
+        def pick_color(placement):
+            if placement not in placement_colors:
+                color_index = len(placement_colors) % len(color_scheme)
+                placement_colors[placement] = color_scheme[color_index]
+            return placement_colors[placement]
+
+        dot = Digraph()
+        # add nodes for ops
+        for _, op in self.graph.nodes.items():
+            dot.node(
+                op.name,
+                f"{op.name}: {type(op).__name__}",
+                color=pick_color(op.placement_name),
+            )
+        # add edges for explicit dependencies
+        for _, op in self.graph.nodes.items():
+            for _, input_name in op.inputs.items():
+                dot.edge(input_name, op.name)
+        # add edges for implicit dependencies
+        for _, recv_op in self.graph.nodes.items():
+            if not isinstance(recv_op, ReceiveOperation):
+                continue
+            for _, send_op in self.graph.nodes.items():
+                if not isinstance(send_op, SendOperation):
+                    continue
+                if send_op.rendezvous_key == recv_op.rendezvous_key:
+                    dot.edge(
+                        send_op.name,
+                        recv_op.name,
+                        label=send_op.rendezvous_key,
+                        style="dotted",
+                    )
+        dot.render(filename_prefix, format="png")
 
 
 def select_op(op_name):
