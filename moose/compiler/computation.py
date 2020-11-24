@@ -128,14 +128,22 @@ class Computation:
     def placements(self):
         return set(node.placement for node in self.graph.nodes.values())
 
-    def nodes(self):
+    def operations(self):
         return self.graph.nodes.values()
 
-    def node(self, name):
+    def operation(self, name):
         return self.graph.nodes.get(name)
 
     def serialize(self):
         return marshal.dumps(asdict(self))
+
+    def add_operation(self, op):
+        assert op.name not in self.graph.nodes, op.name
+        self.graph.nodes[op.name] = op
+
+    def add_operations(self, ops):
+        for op in ops:
+            self.add_operation(op)
 
     @classmethod
     def deserialize(cls, bytes_stream):
@@ -162,21 +170,22 @@ class Computation:
 
         dot = Digraph()
         # add nodes for ops
-        for _, op in self.graph.nodes.items():
+        for op in self.operations():
+            op_type = type(op).__name__
+            if op_type.endswith("Operation"):
+                op_type = op_type[: -len("Operation")]
             dot.node(
-                op.name,
-                f"{op.name}: {type(op).__name__}",
-                color=pick_color(op.placement_name),
+                op.name, f"{op.name}: {op_type}", color=pick_color(op.placement_name)
             )
         # add edges for explicit dependencies
-        for _, op in self.graph.nodes.items():
+        for op in self.operations():
             for _, input_name in op.inputs.items():
                 dot.edge(input_name, op.name)
         # add edges for implicit dependencies
-        for _, recv_op in self.graph.nodes.items():
+        for recv_op in self.operations():
             if not isinstance(recv_op, ReceiveOperation):
                 continue
-            for _, send_op in self.graph.nodes.items():
+            for send_op in self.operations():
                 if not isinstance(send_op, SendOperation):
                     continue
                 if send_op.rendezvous_key == recv_op.rendezvous_key:

@@ -73,9 +73,7 @@ class MpspdzPlacement(Placement):
                 placement_name=player_name,
                 name=context.get_fresh_name("mpspdz_call"),
                 inputs={
-                    f"call_control{i}": context.maybe_add_networking(
-                        save_op, player_name
-                    ).name
+                    f"call_control{i}": save_op.name
                     for i, save_op in enumerate(save_input_ops)
                 },
                 player_index=player_name_index_map[player_name],
@@ -93,9 +91,7 @@ class MpspdzPlacement(Placement):
             placement_name=output_player_name,
             name=context.get_fresh_name("mpspdz_load_output"),
             inputs={
-                f"load_control{i}": context.maybe_add_networking(
-                    call_op, output_player_name
-                ).name
+                f"load_control{i}": call_op.name
                 for i, call_op in enumerate(call_ops)
                 if call_op.placement_name == output_player_name
             },

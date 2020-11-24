@@ -43,7 +43,7 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        binary_op = concrete_comp.graph.nodes[f"{op_name}_0"]
+        binary_op = concrete_comp.operation(f"{op_name}_0")
         assert binary_op == OP(
             placement_name="player0",
             name=f"{op_name}_0",
@@ -63,7 +63,7 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        call_py_op = concrete_comp.graph.nodes["call_python_function_0"]
+        call_py_op = concrete_comp.operation("call_python_function_0")
 
         # TODO(Morten) for some reason the pickled functions deviated;
         # figure out why and improve test
@@ -86,7 +86,7 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        constant_op = concrete_comp.graph.nodes["constant_0"]
+        constant_op = concrete_comp.operation("constant_0")
         assert constant_op == ConstantOperation(
             placement_name="player0", name="constant_0", inputs={}, value=1,
         )
@@ -104,7 +104,7 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = my_comp.trace_func()
 
-        send_op = concrete_comp.graph.nodes["send_0"]
+        send_op = concrete_comp.operation("send_0")
         assert send_op == SendOperation(
             placement_name="player0",
             name="send_0",
@@ -113,7 +113,7 @@ class EdslTest(parameterized.TestCase):
             receiver="player1",
             rendezvous_key="rendezvous_key_0",
         )
-        receive_op = concrete_comp.graph.nodes["receive_0"]
+        receive_op = concrete_comp.operation("receive_0")
         assert receive_op == ReceiveOperation(
             placement_name="player1",
             name="receive_0",
@@ -137,7 +137,7 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        script_py_op = concrete_comp.graph.nodes["run_program_0"]
+        script_py_op = concrete_comp.operation("run_program_0")
 
         assert script_py_op == RunProgramOperation(
             placement_name="player0",
@@ -146,3 +146,31 @@ class EdslTest(parameterized.TestCase):
             path="python",
             args=["local_computation.py"],
         )
+
+    def test_pass_networking(self):
+        alice = HostPlacement(name="alice")
+        bob = HostPlacement(name="bob")
+        carole = HostPlacement(name="carole")
+        dave = HostPlacement(name="dave")
+
+        @computation
+        def my_comp():
+            a = constant(1, placement=alice)
+            b = constant(2, placement=bob)
+            c1 = add(a, b, placement=carole)
+            c2 = add(a, b, placement=carole)
+            c3 = mul(c1, c2, placement=carole)
+            d = add(a, c3, placement=dave)
+            return d
+
+        concrete_comp = my_comp.trace_func()
+
+        send_ops = [
+            op for op in concrete_comp.operations() if isinstance(op, SendOperation)
+        ]
+        assert len(send_ops) == 4, [f"{op.sender} -> {op.receiver}" for op in send_ops]
+
+        recv_ops = [
+            op for op in concrete_comp.operations() if isinstance(op, ReceiveOperation)
+        ]
+        assert len(recv_ops) == 4, [f"{op.sender} -> {op.receiver}" for op in recv_ops]

@@ -117,4 +117,4 @@ class AsyncExecutor:
         # TODO(Morten) this is as simple and naive as it gets; we should at least
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
-        return [node for node in comp.nodes() if node.placement_name == placement]
+        return [op for op in comp.operations() if op.placement_name == placement]
