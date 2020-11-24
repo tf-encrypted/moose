@@ -56,15 +56,14 @@ class HostPlacement(Placement):
 
     def compile(self, context, fn, inputs, output_placements=None, output_type=None):
         inputs = {
-            f"arg{i}": context.visit(expr, self.name).output
+            f"arg{i}": context.visit(expr, self.name).name
             for i, expr in enumerate(inputs)
         }
         return CallPythonFunctionOperation(
             placement_name=self.name,
-            name=context.get_fresh_name("call_python_function_op"),
+            name=context.get_fresh_name("call_python_function"),
             pickled_fn=dill.dumps(fn),
             inputs=inputs,
-            output=context.get_fresh_name("call_python_function"),
             output_type=output_type,
         )
 
@@ -228,7 +227,7 @@ class Compiler:
     def get_fresh_name(self, prefix):
         count = self.name_counters[prefix]
         self.name_counters[prefix] += 1
-        return f"{prefix}{count}"
+        return f"{prefix}_{count}"
 
     def maybe_add_networking(self, source_operation, destination_placement_name):
         source_placement_name = source_operation.placement_name
@@ -244,34 +243,30 @@ class Compiler:
         deserialize_name = self.get_fresh_name("deserialize")
         serialize_operation = SerializeOperation(
             placement_name=source_placement_name,
-            name=self.get_fresh_name("serialize_op"),
-            inputs={"value": source_operation.output},
-            output=serialize_name,
+            name=serialize_name,
+            inputs={"value": source_operation.name},
             value_type=value_type,
         )
         send_operation = SendOperation(
             placement_name=source_placement_name,
-            name=self.get_fresh_name("send_op"),
+            name=self.get_fresh_name("send"),
             inputs={"value": serialize_name},
-            output=None,
             sender=source_placement_name,
             receiver=destination_placement_name,
             rendezvous_key=rendezvous_key,
         )
         receive_operation = ReceiveOperation(
             placement_name=destination_placement_name,
-            name=self.get_fresh_name("receive_op"),
+            name=receive_name,
             sender=source_placement_name,
             receiver=destination_placement_name,
             rendezvous_key=rendezvous_key,
             inputs={},
-            output=receive_name,
         )
         deserialize_operation = DeserializeOperation(
             placement_name=destination_placement_name,
-            name=self.get_fresh_name("deserialize_op"),
+            name=deserialize_name,
             inputs={"value": receive_name},
-            output=deserialize_name,
             value_type=value_type,
         )
         self.operations += [
@@ -316,9 +311,8 @@ class Compiler:
         op_name = op_type.__name__.lower()
         return op_type(
             placement_name=placement_name,
-            name=self.get_fresh_name(f"{op_name}_op"),
-            inputs={"lhs": lhs_operation.output, "rhs": rhs_operation.output},
-            output=self.get_fresh_name(f"{op_name}"),
+            name=self.get_fresh_name(f"{op_name}"),
+            inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
         )
 
     def visit_ApplyFunctionExpression(self, expression):
@@ -335,36 +329,33 @@ class Compiler:
         assert isinstance(constant_expression, ConstantExpression)
         return ConstantOperation(
             placement_name=constant_expression.placement.name,
-            name=self.get_fresh_name("constant_op"),
+            name=self.get_fresh_name("constant"),
             value=constant_expression.value,
             inputs={},
-            output=self.get_fresh_name("constant"),
         )
 
     def visit_LoadExpression(self, load_expression):
         assert isinstance(load_expression, LoadExpression)
         return LoadOperation(
             placement_name=load_expression.placement.name,
-            name=self.get_fresh_name("load_op"),
+            name=self.get_fresh_name("load"),
             key=load_expression.key,
             inputs={},
-            output=self.get_fresh_name("load"),
         )
 
     def visit_RunProgramExpression(self, expression):
         assert isinstance(expression, RunProgramExpression)
         placement_name = expression.placement.name
         inputs = {
-            f"arg{i}": self.visit(expr, placement_name).output
+            f"arg{i}": self.visit(expr, placement_name).name
             for i, expr in enumerate(expression.inputs)
         }
         return RunProgramOperation(
             placement_name=expression.placement.name,
-            name=self.get_fresh_name("run_program_op"),
+            name=self.get_fresh_name("run_program"),
             path=expression.path,
             args=expression.args,
             inputs=inputs,
-            output=self.get_fresh_name("run_program"),
         )
 
     def visit_SaveExpression(self, save_expression):
@@ -374,10 +365,9 @@ class Compiler:
         value_operation = self.visit(value_expression, placement_name)
         return SaveOperation(
             placement_name=placement_name,
-            name=self.get_fresh_name("save_op"),
+            name=self.get_fresh_name("save"),
             key=save_expression.key,
-            inputs={"value": value_operation.output},
-            output=None,
+            inputs={"value": value_operation.name},
         )
 
 

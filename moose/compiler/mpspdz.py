@@ -52,16 +52,15 @@ class MpspdzPlacement(Placement):
         save_input_ops = [
             MpspdzSaveInputOperation(
                 placement_name=player_name,
-                name=context.get_fresh_name("mpspdz_save_input_op"),
+                name=context.get_fresh_name("mpspdz_save_input"),
                 inputs={
-                    f"arg{i}": matching_input_op.output
+                    f"arg{i}": matching_input_op.name
                     for i, matching_input_op in enumerate(
                         input_op
                         for input_op in input_ops
                         if input_op.placement_name == player_name
                     )
                 },
-                output=context.get_fresh_name("mpspdz_save_input"),
                 player_index=player_name_index_map[player_name],
                 invocation_key=invocation_key,
             )
@@ -72,14 +71,13 @@ class MpspdzPlacement(Placement):
         call_ops = [
             MpspdzCallOperation(
                 placement_name=player_name,
-                name=context.get_fresh_name("mpspdz_call_op"),
+                name=context.get_fresh_name("mpspdz_call"),
                 inputs={
                     f"call_control{i}": context.maybe_add_networking(
                         save_op, player_name
-                    ).output
+                    ).name
                     for i, save_op in enumerate(save_input_ops)
                 },
-                output=context.get_fresh_name("mpspdz_call"),
                 player_index=player_name_index_map[player_name],
                 num_players=len(participating_player_names),
                 mlir=mlir_string,
@@ -93,15 +91,14 @@ class MpspdzPlacement(Placement):
         # operation for loading the output
         load_output_op = MpspdzLoadOutputOperation(
             placement_name=output_player_name,
-            name=context.get_fresh_name("mpspdz_load_output_op"),
+            name=context.get_fresh_name("mpspdz_load_output"),
             inputs={
                 f"load_control{i}": context.maybe_add_networking(
                     call_op, output_player_name
-                ).output
+                ).name
                 for i, call_op in enumerate(call_ops)
                 if call_op.placement_name == output_player_name
             },
-            output=context.get_fresh_name("mpspdz_output"),
             player_index=player_name_index_map[output_player_name],
             invocation_key=invocation_key,
         )

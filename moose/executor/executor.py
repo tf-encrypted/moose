@@ -95,7 +95,7 @@ class AsyncExecutor:
                 param_name: session.values.get_future(key=value_name)
                 for (param_name, value_name) in op.inputs.items()
             }
-            output = session.values.get_future(key=op.output) if op.output else None
+            output = session.values.get_future(key=op.name)
             tasks += [
                 asyncio.create_task(
                     kernel.execute(op, session=session, output=output, **inputs)

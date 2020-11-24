@@ -16,7 +16,6 @@ class Operation:
     placement_name: str
     name: str
     inputs: Dict[str, str]
-    output: Optional[str]
 
     @classmethod
     def identifier(cls):
@@ -153,5 +152,5 @@ def select_op(op_name):
     name = "".join([n.title() for n in name]) + "Operation"
     op = getattr(moose.compiler.computation, name, None)
     if op is None:
-        raise ValueError(f"Unknown Moose runtime operation '{name}'")
+        raise ValueError(f"Failed to map operation '{op_name}'")
     return op

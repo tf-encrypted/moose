@@ -43,12 +43,11 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        binary_op = concrete_comp.graph.nodes[f"{op_name}operation_op0"]
+        binary_op = concrete_comp.graph.nodes[f"{op_name}operation_0"]
         assert binary_op == OP(
             placement_name="player0",
-            name=f"{op_name}operation_op0",
-            inputs={"lhs": "constant0", "rhs": "constant1"},
-            output=f"{op_name}operation0",
+            name=f"{op_name}operation_0",
+            inputs={"lhs": "constant_0", "rhs": "constant_1"},
         )
 
     def test_call_python_fn(self):
@@ -64,7 +63,7 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        call_py_op = concrete_comp.graph.nodes["call_python_function_op0"]
+        call_py_op = concrete_comp.graph.nodes["call_python_function_0"]
 
         # TODO(Morten) for some reason the pickled functions deviated;
         # figure out why and improve test
@@ -72,9 +71,8 @@ class EdslTest(parameterized.TestCase):
         call_py_op.pickled_fn = pickled_fn
         assert call_py_op == CallPythonFunctionOperation(
             placement_name="player0",
-            name="call_python_function_op0",
-            inputs={"arg0": "constant0"},
-            output="call_python_function0",
+            name="call_python_function_0",
+            inputs={"arg0": "constant_0"},
             pickled_fn=pickled_fn,
             output_type=None,
         )
@@ -88,13 +86,9 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        constant_op = concrete_comp.graph.nodes["constant_op0"]
+        constant_op = concrete_comp.graph.nodes["constant_0"]
         assert constant_op == ConstantOperation(
-            placement_name="player0",
-            name="constant_op0",
-            inputs={},
-            output="constant0",
-            value=1,
+            placement_name="player0", name="constant_0", inputs={}, value=1,
         )
 
     def test_send_receive(self):
@@ -110,25 +104,23 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = my_comp.trace_func()
 
-        send_op = concrete_comp.graph.nodes["send_op0"]
+        send_op = concrete_comp.graph.nodes["send_0"]
         assert send_op == SendOperation(
             placement_name="player0",
-            name="send_op0",
-            inputs={"value": "serialize0"},
-            output=None,
+            name="send_0",
+            inputs={"value": "serialize_0"},
             sender="player0",
             receiver="player1",
-            rendezvous_key="rendezvous_key0",
+            rendezvous_key="rendezvous_key_0",
         )
-        receive_op = concrete_comp.graph.nodes["receive_op0"]
+        receive_op = concrete_comp.graph.nodes["receive_0"]
         assert receive_op == ReceiveOperation(
             placement_name="player1",
-            name="receive_op0",
+            name="receive_0",
             inputs={},
-            output="receive0",
             sender="player0",
             receiver="player1",
-            rendezvous_key="rendezvous_key0",
+            rendezvous_key="rendezvous_key_0",
         )
 
     def test_run_program(self):
@@ -145,13 +137,12 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        script_py_op = concrete_comp.graph.nodes["run_program_op0"]
+        script_py_op = concrete_comp.graph.nodes["run_program_0"]
 
         assert script_py_op == RunProgramOperation(
             placement_name="player0",
-            name="run_program_op0",
-            inputs={"arg0": "constant0"},
-            output="run_program0",
+            name="run_program_0",
+            inputs={"arg0": "constant_0"},
             path="python",
             args=["local_computation.py"],
         )
