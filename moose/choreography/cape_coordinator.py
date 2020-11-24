@@ -4,6 +4,7 @@ import itertools
 import socket
 
 from cape.network.client import Client
+
 from moose.compiler.computation import Computation
 from moose.logger import get_logger
 
@@ -41,7 +42,9 @@ class Choreography:
                 session_id=session_id,
             )
         except Exception as ex:
-            get_logger().error(f"Error occured during execution; session_id:{session_id}, ex:{ex}")
+            get_logger().error(
+                f"Error occured during execution; session_id:{session_id}, ex:{ex}"
+            )
             await self._report_session_status(session_id, self.own_name, "Error")
             return
 
