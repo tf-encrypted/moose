@@ -43,10 +43,10 @@ class EdslTest(parameterized.TestCase):
             return x0
 
         concrete_comp = my_comp.trace_func()
-        binary_op = concrete_comp.graph.nodes[f"{op_name}operation_0"]
+        binary_op = concrete_comp.graph.nodes[f"{op_name}_0"]
         assert binary_op == OP(
             placement_name="player0",
-            name=f"{op_name}operation_0",
+            name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
         )
 

@@ -308,7 +308,7 @@ class Compiler:
         lhs_operation = self.visit(lhs_expression, placement_name)
         rhs_operation = self.visit(rhs_expression, placement_name)
         op_type = expression.op_type
-        op_name = op_type.__name__.lower()
+        op_name = op_type.__name__.lower().rstrip("operation")
         return op_type(
             placement_name=placement_name,
             name=self.get_fresh_name(f"{op_name}"),

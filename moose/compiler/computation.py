@@ -1,5 +1,4 @@
 import marshal
-import re
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import field
@@ -191,9 +190,6 @@ class Computation:
 
 
 def select_op(op_name):
-    # To handle addoperation_op0, muloperation_op0 etc.
-    if "operation" in op_name:
-        op_name = re.sub("operation", "", op_name)
     name = op_name.split("_")[:-1]
     name = "".join([n.title() for n in name]) + "Operation"
     op = getattr(moose.compiler.computation, name, None)
