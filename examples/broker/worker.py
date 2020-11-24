@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import logging
 import os
+import pysodium
 
 from grpc.experimental import aio as grpc_aio
 
@@ -27,8 +28,10 @@ if args.verbose:
 if __name__ == "__main__":
     # Generate the keys()
     # pass them to the networking module
+    public_key, secret_key = pysodium.crypto_box_keypair()
     networking = Networking(
-        broker_host=args.broker, own_name=args.name, auth_token=args.token
+        broker_host=args.broker, own_name=args.name, auth_token=args.token, public_key=public_key,
+        secret_key=secret_key
     )
     executor = AsyncExecutor(networking=networking)
 
