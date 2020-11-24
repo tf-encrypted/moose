@@ -1,9 +1,9 @@
-use std::fmt;
-use aes::cipher::generic_array::{typenum::U8,typenum::U16,GenericArray};
+use aes::cipher::generic_array::{typenum::U16, typenum::U8, GenericArray};
 use aes::cipher::{BlockCipher, NewBlockCipher};
-use rand::{CryptoRng, Error, RngCore, SeedableRng};
 use aes::Aes128;
 use byteorder::{ByteOrder, LittleEndian};
+use rand::{CryptoRng, Error, RngCore, SeedableRng};
+use std::fmt;
 
 const AES_BLK_SIZE: usize = 16;
 const PIPELINES_U128: u128 = 8;
@@ -22,7 +22,7 @@ pub struct AesRngState {
 
 impl Default for AesRngState {
     fn default() -> Self {
-       AesRngState::from_counter(0)
+        AesRngState::from_counter(0)
     }
 }
 
@@ -33,21 +33,27 @@ impl AesRngState {
 
         let mut state: [u8; 8 * 16] = [0u8; 8 * 16];
         for pipe_index in 0u128..PIPELINES_U128 {
-            LittleEndian::write_u128(&mut state[i*AES_BLK_SIZE..(i+1)*AES_BLK_SIZE], counter+pipe_index);
+            LittleEndian::write_u128(
+                &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
+                counter + pipe_index,
+            );
             i += 1;
         }
         AesRngState {
             state_bytes: state,
             counter: counter + PIPELINES_U128,
-            used_bytes: 0
+            used_bytes: 0,
         }
     }
-    fn from_counter_no_alloc(counter: u128, state: &mut [u8; 8*16]) -> u128 {
+    fn from_counter_no_alloc(counter: u128, state: &mut [u8; 8 * 16]) -> u128 {
         let mut i: usize = 0;
         for pipe_index in 0u128..PIPELINES_U128 {
-            LittleEndian::write_u128(&mut state[i*AES_BLK_SIZE..(i+1)*AES_BLK_SIZE], counter+pipe_index);
+            LittleEndian::write_u128(
+                &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
+                counter + pipe_index,
+            );
             i += 1;
-        };
+        }
         counter + PIPELINES_U128
     }
     fn next(&mut self) {
@@ -89,7 +95,7 @@ impl SeedableRng for AesRng {
         AesRng {
             state: AesRngState::default(),
             seed: seed,
-            cipher: Aes128::new(&key)
+            cipher: Aes128::new(&key),
         }
     }
 }
@@ -102,37 +108,34 @@ impl Next for AesRng {
         // can we do something like self.state = AesRngState::from_counter()?
         let counter = self.state.counter;
         let mut state = self.state.state_bytes;
-        let mut state_in_blocks = Block128x8::from_exact_iter(
-            (0..PIPELINES_USIZE).map(
-                | p | {
-                    let sliced_state = &mut state[p * 16..(p+1) * 16];
-                    let block = GenericArray::from_mut_slice(sliced_state);
-                    *block
-                }
-            )
-        ).unwrap();
+        let mut state_in_blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|p| {
+            let sliced_state = &mut state[p * 16..(p + 1) * 16];
+            let block = GenericArray::from_mut_slice(sliced_state);
+            *block
+        }))
+        .unwrap();
         self.state = AesRngState::from_counter(counter);
         self.cipher.encrypt_blocks(&mut state_in_blocks);
     }
 }
- 
+
 impl RngCore for AesRng {
     fn next_u32(&mut self) -> u32 {
-        if self.state.used_bytes >= RAND_SIZE-4 {
+        if self.state.used_bytes >= RAND_SIZE - 4 {
             self.getNext();
         }
         let used_bytes = self.state.used_bytes;
         self.state.used_bytes += 4; // update number of used bytes
-        LittleEndian::read_u32(&mut self.state.state_bytes[used_bytes..used_bytes+4])
+        LittleEndian::read_u32(&mut self.state.state_bytes[used_bytes..used_bytes + 4])
     }
 
     fn next_u64(&mut self) -> u64 {
-        if self.state.used_bytes >= RAND_SIZE-8 {
+        if self.state.used_bytes >= RAND_SIZE - 8 {
             self.getNext();
         }
         let used_bytes = self.state.used_bytes;
         self.state.used_bytes += 8; // update number of used bytes
-        LittleEndian::read_u64(&mut self.state.state_bytes[used_bytes..used_bytes+8])
+        LittleEndian::read_u64(&mut self.state.state_bytes[used_bytes..used_bytes + 8])
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
@@ -158,7 +161,6 @@ impl RngCore for AesRng {
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
         Ok(self.fill_bytes(dest))
     }
-        
 }
 impl CryptoRng for AesRng {}
 
@@ -170,6 +172,9 @@ mod tests {
     fn it_works() {
         let seed = AesRngSeed([0u8; 16]);
         let rng = AesRng::from_seed(seed);
+        let out = [0u8; 16];
+        rng.try_fill_bytes(&mut out);
+        println!("{:?}", out);
         assert!(false);
     }
 }
