@@ -31,30 +31,35 @@ class Choreography:
         placement,
         max_report_attempts=10,
     ):
+        await self._report_session_status(session_id, self.own_name, "Started")
         get_logger().debug(f"Starting execution; session_id:{session_id}")
-        await self.executor.run_computation(
-            logical_computation=computation,
-            placement_instantiation=placement_instantiation,
-            placement=placement,
-            session_id=session_id,
-        )
-        get_logger().debug(f"Finished execution; session_id:{session_id}")
-        await self._report_done(session_id)
-        get_logger().debug(
-            f"Reported execution result; session_id:'{session_id}', attempts:{i}"
-        )
+        try:
+            await self.executor.run_computation(
+                logical_computation=computation,
+                placement_instantiation=placement_instantiation,
+                placement=placement,
+                session_id=session_id,
+            )
+        except Exception as ex:
+            get_logger().error(f"Error occured during execution; session_id:{session_id}, ex:{ex}")
+            await self._report_session_status(session_id, self.own_name, "Error")
+            return
 
-    async def _poll_sessions(self):
+        get_logger().debug(f"Finished execution; session_id:{session_id}")
+        await self._report_session_status(session_id, self.own_name, "Completed")
+
+    async def _get_next_sessions(self):
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
             None, self.client.get_next_sessions, self.own_name,
         )
 
-    async def _report_done(self, session_id):
+    async def _report_session_status(self, session_id, status):
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, self.client.report_session_status, session_id, self.own_name,
+        await loop.run_in_executor(
+            None, self.client.report_session_status, session_id, self.own_name, status
         )
+        get_logger().debug("Reported successfullly")
 
     async def _login(self):
         loop = asyncio.get_event_loop()
@@ -68,7 +73,8 @@ class Choreography:
         for i in itertools.count(start=1):
             if i > 0:
                 await asyncio.sleep(self.poll_delay)
-            sessions = await self._poll_sessions()
+
+            sessions = await self._get_next_sessions()
             for session in sessions:
                 session_id = session["id"]
                 if session_id in self.session_tasks:
@@ -80,9 +86,7 @@ class Choreography:
 
                 placement_instantiation = session["placementInstantiation"]
                 placement = None  # TODO we should receive a placement as well
-                task = session["task"]
-
-                computation_bytes = base64.b64decode(task["computation"])
+                computation_bytes = base64.b64decode(session["task"]["computation"])
                 computation = Computation.deserialize(computation_bytes)
                 status = session["status"]
 

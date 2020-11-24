@@ -1,5 +1,7 @@
 FROM ubuntu:20.04
 
+ARG GITHUB_TOKEN
+
 RUN apt update && apt upgrade -y
 
 # Basic tools
@@ -13,6 +15,12 @@ RUN curl -s \
     -o watchexec.deb \
     && apt install -y ./watchexec.deb \
     && rm watchexec.deb
+
+# Install Cape
+RUN git clone https://${GITHUB_TOKEN}@github.com/capeprivacy/coordinator-client.git && \
+    cd coordinator-client && \
+    git checkout 
+    pip3 install -e .
 
 # Install Moose
 COPY Makefile README.md requirements-dev.txt setup.py ./

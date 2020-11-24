@@ -5,6 +5,7 @@ build-base-worker-image:
 		--file ./base/Dockerfile.worker \
 		--tag ${BASE_WORKER_IMAGE} \
 		--no-cache \
+		--build-arg GITHUB_TOKEN \
 		..
 
 push-base-worker-image:
