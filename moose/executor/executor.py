@@ -101,15 +101,13 @@ class AsyncExecutor:
                     kernel.execute(op, session=session, output=output, **inputs)
                 )
             ]
+        get_logger().debug(f"Exiting computation; session_id:{session.session_id}")
         # check that there's something to do since `asyncio.wait` will block otherwise
         if not tasks:
-            get_logger().warn(f"Exiting computation, nothing to do, session:{session}")
+            get_logger().warn(f"Computation had no tasks; session_id:{session.session_id}")
             return
         # execute kernels
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-        get_logger().debug(
-            "Exiting computation, placement:{placement}, session:{session}"
-        )
         # address any errors that may have occurred
         exceptions = [task.exception() for task in done if task.exception()]
         for e in exceptions:

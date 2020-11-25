@@ -32,6 +32,7 @@ class Choreography:
         placement,
         max_report_attempts=10,
     ):
+        get_logger().debug(f"Handling new session; session_id:{session_id}")
         await self._report_session_status(session_id, "Started")
         get_logger().debug(f"Starting execution; session_id:{session_id}")
         try:
@@ -53,18 +54,27 @@ class Choreography:
 
     async def _get_next_sessions(self):
         loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, self.client.get_next_sessions, self.own_name,
-        )
+        try:
+            return await loop.run_in_executor(
+                None, self.client.get_next_sessions, self.own_name,
+            )
+        except Exception as ex:
+            get_logger().error(f"Failed getting next sessions; ex:{ex}")
 
     async def _report_session_status(self, session_id, status):
         loop = asyncio.get_event_loop()
-        res = await loop.run_in_executor(
-            None, self.client.report_session_status, session_id, self.own_name, status
-        )
-        # TODO(Morten) error handling
-        # res.raise_for_status()
-        get_logger().debug("Reported successfully")
+        try:
+            await loop.run_in_executor(
+                None, self.client.report_session_status, session_id, self.own_name, status
+            )
+            get_logger().debug("Reported successfully")
+        except Exception as ex:
+            get_logger().error(
+                f"Failed to report session status;"
+                f" session_id:{session_id},"
+                f" status:{status},"
+                f" ex:{ex}"
+            )
 
     async def _login(self):
         loop = asyncio.get_event_loop()
