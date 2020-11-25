@@ -32,7 +32,7 @@ class Choreography:
         placement,
         max_report_attempts=10,
     ):
-        await self._report_session_status(session_id, self.own_name, "Started")
+        await self._report_session_status(session_id, "Started")
         get_logger().debug(f"Starting execution; session_id:{session_id}")
         try:
             await self.executor.run_computation(
@@ -45,11 +45,11 @@ class Choreography:
             get_logger().error(
                 f"Error occured during execution; session_id:{session_id}, ex:{ex}"
             )
-            await self._report_session_status(session_id, self.own_name, "Error")
+            await self._report_session_status(session_id, "Error")
             return
 
         get_logger().debug(f"Finished execution; session_id:{session_id}")
-        await self._report_session_status(session_id, self.own_name, "Completed")
+        await self._report_session_status(session_id, "Completed")
 
     async def _get_next_sessions(self):
         loop = asyncio.get_event_loop()
@@ -59,21 +59,23 @@ class Choreography:
 
     async def _report_session_status(self, session_id, status):
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
+        res = await loop.run_in_executor(
             None, self.client.report_session_status, session_id, self.own_name, status
         )
-        get_logger().debug("Reported successfullly")
+        # TODO(Morten) error handling
+        # res.raise_for_status()
+        get_logger().debug("Reported successfully")
 
     async def _login(self):
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(
             None, self.client.login,
         )
-        get_logger().debug("Logged in successfullly")
+        get_logger().debug("Logged in successfully")
 
     async def run(self):
         await self._login()
-        for i in itertools.count(start=1):
+        for i in itertools.count(start=0):
             if i > 0:
                 await asyncio.sleep(self.poll_delay)
 
@@ -91,7 +93,6 @@ class Choreography:
                 placement = None  # TODO we should receive a placement as well
                 computation_bytes = base64.b64decode(session["task"]["computation"])
                 computation = Computation.deserialize(computation_bytes)
-                status = session["status"]
 
                 task = asyncio.create_task(
                     self._handle_session(

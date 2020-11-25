@@ -11,9 +11,9 @@ from moose.networking.cape_broker import Networking
 parser = argparse.ArgumentParser(description="Launch worker")
 parser.add_argument("--port", type=int, default=50000)
 parser.add_argument("--name", default=os.environ.get("NAME", None))
-parser.add_argument("--broker", default=os.environ.get("BROKER", None))
-parser.add_argument("--coordinator", default=os.environ.get("COORDINATOR", None))
-parser.add_argument("--token", default=os.environ.get("TOKEN", None))
+parser.add_argument("--broker", default=os.environ.get("CAPE_BROKER", None))
+parser.add_argument("--coordinator", default=os.environ.get("CAPE_COORDINATOR", None))
+parser.add_argument("--token", default=os.environ.get("CAPE_TOKEN", None))
 parser.add_argument("--verbose", action="store_true")
 args = parser.parse_args()
 
