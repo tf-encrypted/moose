@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import socket
 
 import pysodium
@@ -15,8 +16,8 @@ class Networking:
         self.session = requests.Session()
         # TODO(Morten) how should we authenticate?
         self.session.auth = (own_name or socket.gethostname(), auth_token or "")
-        self.public_key = public_key.decode('latin')
-        self.secret_key = secret_key.decode('latin')
+        self.public_key = public_key
+        self.secret_key = secret_key
 
     def get_hostname(self, placement):
         endpoint = placement
@@ -79,24 +80,19 @@ class Networking:
         raise ex
 
     async def receive(self, sender, receiver, rendezvous_key, session_id):
-        # encrypted_value = await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
-        # Decrypt value with libsodium
-        # run an hash function on it to generate the nonce.
-        # n = bytes(rendezvous_key + session_id)
-        # sender_public_key = self._other_parties_public_key[sender]
-        # decrypted_value = pysodium.crypto_box_open(encrypted_value, n, sender_public_key, self._my_secret_key)
-        # return decrypted_value
-        return await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        encrypted_value = await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        session_key_hashed = hashlib.sha256()
+        session_key_hashed.update((str(session_id) + str(rendezvous_key)).encode())
+        nonce = session_key_hashed.digest()[:24]
+        decrypted_value = pysodium.crypto_box_open(encrypted_value, nonce, sender.public_key, self.secret_key)
+        return decrypted_value
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
-        # n = bytes(rendezvous_key + session_id)
-        # receiver_public_key = self._other_parties_public_key[receiver]
-        # encrypted_value = pysodium.crypto_box(value, nonce, receiver_public_key, self._my_secret_key)
-        # await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", encrypted_value)
-        return await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", value)
-
-    def setup_keys(self):
-        self._my_public_key, self._my_secret_key = pysodium.crypto_box_keypair()
+        session_key_hashed = hashlib.sha256()
+        session_key_hashed.update((str(session_id) + str(rendezvous_key)).encode())
+        nonce = session_key_hashed.digest()[:24]
+        encrypted_value = pysodium.crypto_box(value, nonce, receiver.public_key, self.secret_key)
+        return await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", encrypted_value)
 
 
 class TelemetryNetworking(Networking):

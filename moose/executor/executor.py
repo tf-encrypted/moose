@@ -35,13 +35,14 @@ from moose.executor.kernels.standard import SendKernel
 from moose.executor.kernels.standard import SerializeKernel
 from moose.executor.kernels.standard import SubKernel
 from moose.logger import get_logger
+from moose.protos import executor_pb2
 from moose.storage import AsyncStore
 
 
 @dataclasses.dataclass
 class Session:
     session_id: int
-    placement_instantiation: Dict[str, str]
+    placement_instantiation: Dict[str, executor_pb2.HostInfo]
     values: AsyncStore = dataclasses.field(repr=False)
 
 

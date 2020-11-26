@@ -37,11 +37,15 @@ class Choreographer:
                     ident_key=self.ident_key,
                 )
             placement_executors[placement] = self.existing_executors[endpoint]
-        # go to every executor and ask for pk. (executor.get_public_key)
-        # for placement, executor in placement_instantiation.items():
-        #     public_key = executor.get_public_key()
-        #     placement_instanciation[placement] = placement_instanciation[placement] + \
-        #           ":" + public_key
+        
+        public_keys = {placement: asyncio.get_event_loop().run_until_complete(executor.get_public_key()).value for 
+            placement, executor in placement_executors.items()}
+
+    
+        placement_instantiation = {placement: executor_pb2.HostInfo(endpoint=endpoint, public_key=public_keys[placement])
+            for placement, endpoint in placement_instantiation.items()}
+        
+        # breakpoint()
         sid = random.randrange(2 ** 32)
         tasks = [
             executor.run_computation(
@@ -90,7 +94,7 @@ class ExecutorProxy:
         _ = await self._stub.RunComputation(compute_request)
 
     async def get_public_key(self):
-        return await self._stub.GetPublicKey(executor_pb2.GetPublicKeyRequest)
+        return await self._stub.GetPublicKey(executor_pb2.GetPublicKeyRequest())
 
 
 class Choreography:
@@ -115,6 +119,6 @@ class Servicer(executor_pb2_grpc.ExecutorServicer):
         )
         return executor_pb2.RunComputationResponse()
 
-    async def GetPublicKey(self, request, context):
-        public_key = executor.networking.public_key
-        return executor_pb2.GetPublicKeyResponse(public_key)
+    def GetPublicKey(self, request, context):
+        public_key = self.executor.networking.public_key
+        return executor_pb2.GetPublicKeyResponse(value=public_key)

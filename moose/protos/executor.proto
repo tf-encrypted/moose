@@ -11,7 +11,12 @@ message RunComputationRequest {
     bytes computation = 1;
     string placement = 2;
     int64 session_id = 3;
-    map<string, string> placement_instantiation = 4;
+    map<string, HostInfo> placement_instantiation = 4;
+}
+
+message HostInfo{
+    string endpoint = 1;
+    bytes public_key = 2;
 }
 
 message RunComputationResponse {}
