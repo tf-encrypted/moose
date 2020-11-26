@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser(description="Local computation")
 parser.add_argument("--input-file", type=str, default="None")
 parser.add_argument("--output-file", type=str, default=".")
 parser.add_argument("--session-id", type=str, default=0)
-parser.add_argument("--device", type=str, default="inputter0")
+parser.add_argument("--placement", type=str, default="inputter0")
 
 args = parser.parse_args()
 
@@ -32,4 +32,4 @@ if __name__ == "__main__":
     with open(args.output_file, "w") as f:
         json.dump(output, f)
 
-    get_logger().debug(f"Computation completed on device {args.device}")
+    get_logger().debug(f"Computation completed on placement {args.placement}")

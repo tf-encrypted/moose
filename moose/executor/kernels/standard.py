@@ -44,7 +44,7 @@ class ConstantKernel(Kernel):
 
 
 class DeserializeKernel(Kernel):
-    async def execute(self, op, session, value, output=None):
+    async def execute(self, op, session, value, output):
         assert isinstance(op, DeserializeOperation)
         value = await value
         value_type = op.value_type
@@ -121,8 +121,8 @@ class RunProgramKernel(Kernel):
                     outputfile.name,
                     "--session-id",
                     str(session.session_id),
-                    "--device",
-                    op.device_name,
+                    "--placement",
+                    op.placement_name,
                 ]
                 get_logger().debug(f"Running external program: {args}")
                 _ = subprocess.run(
@@ -145,7 +145,7 @@ class SaveKernel(Kernel):
 
 
 class SerializeKernel(Kernel):
-    async def execute(self, op, session, value, output=None):
+    async def execute(self, op, session, value, output):
         assert isinstance(op, SerializeOperation)
         value = await value
         value_type = op.value_type
@@ -170,7 +170,7 @@ class SendKernel(Kernel):
     def __init__(self, networking):
         self.networking = networking
 
-    async def execute(self, op, session, value, output=None):
+    async def execute(self, op, session, value, output):
         assert isinstance(op, SendOperation)
         await self.networking.send(
             await value,
@@ -179,6 +179,7 @@ class SendKernel(Kernel):
             rendezvous_key=op.rendezvous_key,
             session_id=session.session_id,
         )
+        output.set_result(None)
 
 
 class SubKernel(Kernel):

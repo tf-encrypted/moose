@@ -1,5 +1,4 @@
 import marshal
-import re
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import field
@@ -8,15 +7,16 @@ from typing import List
 from typing import Optional
 from typing import Union
 
+from graphviz import Digraph
+
 import moose.compiler.computation
 
 
 @dataclass
 class Operation:
-    device_name: str
+    placement_name: str
     name: str
     inputs: Dict[str, str]
-    output: Optional[str]
 
     @classmethod
     def identifier(cls):
@@ -125,17 +125,25 @@ class Graph:
 class Computation:
     graph: Graph
 
-    def devices(self):
-        return set(node.device_name for node in self.graph.nodes.values())
+    def placements(self):
+        return set(node.placement for node in self.graph.nodes.values())
 
-    def nodes(self):
+    def operations(self):
         return self.graph.nodes.values()
 
-    def node(self, name):
+    def operation(self, name):
         return self.graph.nodes.get(name)
 
     def serialize(self):
         return marshal.dumps(asdict(self))
+
+    def add_operation(self, op):
+        assert op.name not in self.graph.nodes, op.name
+        self.graph.nodes[op.name] = op
+
+    def add_operations(self, ops):
+        for op in ops:
+            self.add_operation(op)
 
     @classmethod
     def deserialize(cls, bytes_stream):
@@ -144,14 +152,56 @@ class Computation:
         nodes = {node: select_op(node)(**args) for node, args in nodes_dict.items()}
         return Computation(Graph(nodes))
 
+    def render(self, filename_prefix="computation-graph"):
+        color_scheme = [
+            "#336699",
+            "#ff0000",
+            "#ff6600",
+            "#92cd00",
+            "#ffcc00",
+        ]
+        placement_colors = dict()
+
+        def pick_color(placement):
+            if placement not in placement_colors:
+                color_index = len(placement_colors) % len(color_scheme)
+                placement_colors[placement] = color_scheme[color_index]
+            return placement_colors[placement]
+
+        dot = Digraph()
+        # add nodes for ops
+        for op in self.operations():
+            op_type = type(op).__name__
+            if op_type.endswith("Operation"):
+                op_type = op_type[: -len("Operation")]
+            dot.node(
+                op.name, f"{op.name}: {op_type}", color=pick_color(op.placement_name)
+            )
+        # add edges for explicit dependencies
+        for op in self.operations():
+            for _, input_name in op.inputs.items():
+                dot.edge(input_name, op.name)
+        # add edges for implicit dependencies
+        for recv_op in self.operations():
+            if not isinstance(recv_op, ReceiveOperation):
+                continue
+            for send_op in self.operations():
+                if not isinstance(send_op, SendOperation):
+                    continue
+                if send_op.rendezvous_key == recv_op.rendezvous_key:
+                    dot.edge(
+                        send_op.name,
+                        recv_op.name,
+                        label=send_op.rendezvous_key,
+                        style="dotted",
+                    )
+        dot.render(filename_prefix, format="png")
+
 
 def select_op(op_name):
-    # To handle addoperation_op0, muloperation_op0 etc.
-    if "operation" in op_name:
-        op_name = re.sub("operation", "", op_name)
     name = op_name.split("_")[:-1]
     name = "".join([n.title() for n in name]) + "Operation"
     op = getattr(moose.compiler.computation, name, None)
     if op is None:
-        raise ValueError(f"Unknown Moose runtime operation '{name}'")
+        raise ValueError(f"Failed to map operation '{op_name}'")
     return op

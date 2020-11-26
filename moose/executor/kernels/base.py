@@ -23,8 +23,7 @@ class Kernel:
             f" session_id:{session.session_id},"
             f" output:{concrete_output}"
         )
-        if output:
-            output.set_result(concrete_output)
+        output.set_result(concrete_output)
 
     def execute_synchronous_block(self, op, session, **kwargs):
         raise NotImplementedError()
