@@ -296,14 +296,16 @@ class Compiler:
         self.name_counters = defaultdict(int)
         self.known_operations = defaultdict(dict)
 
-    def compile(self, expression: Expression) -> Computation:
+    def compile(self, expression: Expression, render=False) -> Computation:
         _ = self.visit(expression)
         graph = Graph(nodes={op.name: op for op in self.operations})
         computation = Computation(graph=graph)
-        computation.render("Logical")
+        if render:
+            computation.render("Logical")
         for compiler_pass in self.passes:
             computation = compiler_pass.process(computation, context=self)
-            computation.render(f"{type(compiler_pass).__name__}")
+            if render:
+                computation.render(f"{type(compiler_pass).__name__}")
         return computation
 
     def get_fresh_name(self, prefix):
