@@ -1,5 +1,10 @@
 BASE_WORKER_IMAGE?=tfencrypted/runtime-base-worker:latest
 
+# The following is needed to install the Cape Coordinator client into the image
+ifndef GITHUB_TOKEN
+$(error GITHUB_TOKEN is not set.)
+endif
+
 build-base-worker-image:
 	docker build \
 		--file ./base/Dockerfile.worker \
