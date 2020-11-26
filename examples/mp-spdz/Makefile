@@ -1,5 +1,11 @@
 MAIN_IMAGE?=tfencrypted/runtime-mpspdz-worker:latest
 
+up:
+	docker-compose up --build --remove-orphans
+
+down:
+	docker-compose down --remove-orphans
+
 run:
 	docker run \
 		--tty \
