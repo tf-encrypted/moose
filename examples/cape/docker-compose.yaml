@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile.worker
     environment:
       CAPE_BROKER: https://demo.capeprivacy.com/broker
+      CAPE_COORDINATOR: https://demo.capeprivacy.com
 
   worker1:
     build:
@@ -15,6 +16,7 @@ services:
       dockerfile: Dockerfile.worker
     environment:
       CAPE_BROKER: https://demo.capeprivacy.com/broker
+      CAPE_COORDINATOR: https://demo.capeprivacy.com
 
   worker2:
     build:
@@ -22,6 +24,7 @@ services:
       dockerfile: Dockerfile.worker
     environment:
       CAPE_BROKER: https://demo.capeprivacy.com/broker
+      CAPE_COORDINATOR: https://demo.capeprivacy.com
 
   worker3:
     build:
@@ -29,8 +32,4 @@ services:
       dockerfile: Dockerfile.worker
     environment:
       CAPE_BROKER: https://demo.capeprivacy.com/broker
-
-  choreographer:
-    build:
-      context: .
-      dockerfile: Dockerfile.choreographer
+      CAPE_COORDINATOR: https://demo.capeprivacy.com

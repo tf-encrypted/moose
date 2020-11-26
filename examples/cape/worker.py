@@ -10,7 +10,6 @@ from moose.networking.cape_broker import Networking
 
 parser = argparse.ArgumentParser(description="Launch worker")
 parser.add_argument("--port", type=int, default=50000)
-parser.add_argument("--name", default=os.environ.get("NAME", None))
 parser.add_argument("--broker", default=os.environ.get("CAPE_BROKER", None))
 parser.add_argument("--coordinator", default=os.environ.get("CAPE_COORDINATOR", None))
 parser.add_argument("--token", default=os.environ.get("CAPE_TOKEN", None))
@@ -26,13 +25,12 @@ if args.verbose:
 if __name__ == "__main__":
 
     networking = Networking(
-        broker_host=args.broker, own_name=args.name, auth_token=args.token
+        broker_host=args.broker, auth_token=args.token
     )
     executor = AsyncExecutor(networking=networking)
     choreography = Choreography(
         executor=executor,
         coordinator_host=args.coordinator,
-        own_name=args.name,
         auth_token=args.token,
     )
     asyncio.get_event_loop().run_until_complete(choreography.run())
