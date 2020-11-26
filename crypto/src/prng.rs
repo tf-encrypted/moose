@@ -29,14 +29,14 @@ impl Default for AesRngState {
 impl AesRngState {
     // this always allocates a new array. we should do this just once.
     fn write_to_state(counter: u128, state: &mut [u8; 8 * 16]) {
-        for i in  0..PIPELINES_USIZE {
+        for i in 0..PIPELINES_USIZE {
             LittleEndian::write_u128(
                 &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
-                counter + i as u128
+                counter + i as u128,
             );
         }
     }
- 
+
     fn from_counter(counter: u128) -> Self {
         let mut state: [u8; 8 * 16] = [0u8; 8 * 16];
         AesRngState::write_to_state(counter, &mut state);
@@ -48,8 +48,8 @@ impl AesRngState {
     }
 
     fn from_counter_no_alloc(counter: u128, state: &mut [u8; 8 * 16]) -> u128 {
-       AesRngState::write_to_state(counter, state);
-       counter + PIPELINES_U128
+        AesRngState::write_to_state(counter, state);
+        counter + PIPELINES_U128
     }
 
     fn next(&mut self) {
@@ -189,12 +189,12 @@ mod tests {
     fn it_works() {
         let seed = AesRngSeed([0u8; 16]);
         let mut rng = AesRng::from_seed(seed);
-        let mut out = [0u8; 16 * 8+1];
-        rng.try_fill_bytes(&mut out);
+        let mut out = [0u8; 16 * 8 + 1];
+        rng.try_fill_bytes(&mut out).expect("");
         println!("out: {:?}", out);
         // rng.try_fill_bytes(&mut out);
         // println!("out: {:?}", out);
- 
+
         assert!(false);
     }
 }
