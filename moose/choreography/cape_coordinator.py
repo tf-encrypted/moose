@@ -65,7 +65,11 @@ class Choreography:
         loop = asyncio.get_event_loop()
         try:
             await loop.run_in_executor(
-                None, self.client.report_session_status, session_id, self.own_name, status
+                None,
+                self.client.report_session_status,
+                session_id,
+                self.own_name,
+                status,
             )
             get_logger().debug("Reported successfully")
         except Exception as ex:

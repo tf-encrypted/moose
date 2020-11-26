@@ -24,13 +24,9 @@ if args.verbose:
 
 if __name__ == "__main__":
 
-    networking = Networking(
-        broker_host=args.broker, auth_token=args.token
-    )
+    networking = Networking(broker_host=args.broker, auth_token=args.token)
     executor = AsyncExecutor(networking=networking)
     choreography = Choreography(
-        executor=executor,
-        coordinator_host=args.coordinator,
-        auth_token=args.token,
+        executor=executor, coordinator_host=args.coordinator, auth_token=args.token,
     )
     asyncio.get_event_loop().run_until_complete(choreography.run())
