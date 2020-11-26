@@ -95,50 +95,40 @@ impl SeedableRng for AesRng {
 }
 
 trait Hash {
+    fn store_state(&mut self, _state: &mut Block128x8);
     fn next(&mut self);
     fn init(&mut self);
+    fn encrypt_state(&mut self, _state: &mut [u8; 8 * 16]);
 }
 impl Hash for AesRng {
-    fn init(&mut self) {
-//        let mut state = self.state.bytes;
-        let mut slice_b0: [u8;16] = [0; 16];
-        let mut slice_b1: [u8;16] = [0; 16];
-        let mut slice_b2: [u8;16] = [0; 16];
-        let mut slice_b3: [u8;16] = [0; 16];
-        let mut slice_b4: [u8;16] = [0; 16];
-        let mut slice_b5: [u8;16] = [0; 16];
-
-        let mut slice_b6: [u8;16] = [0; 16];
-        let mut slice_b7: [u8;16] = [0; 16];
-
-        let mut b0 = Block128::from_mut_slice(&mut slice_b0);
-        let mut b1 = Block128::from_mut_slice(&mut slice_b1);
-        let mut b2 = Block128::from_mut_slice(&mut slice_b2);
-        let mut b3 = Block128::from_mut_slice(&mut slice_b3);
-        let mut b4 = Block128::from_mut_slice(&mut slice_b4);
-        let mut b5 = Block128::from_mut_slice(&mut slice_b5);
-        let mut b6 = Block128::from_mut_slice(&mut slice_b6);
-        let mut b7 = Block128::from_mut_slice(&mut slice_b7);
-
-        println!("b0 ::: {:?}", b0);
-        let mut array: [&Block128; 8] = [b0, b1, b2, b3, b4, b5, b6, b7];
-
-        let mut block8 = Block128x8::from_mut_slice(&mut array[0..8]); // FIXME
-        // array[0][0] += 1;
-
-        // self.cipher.encrypt_blocks(&mut block8);
-        println!("array[0] ::: {:?}", array[0]);
-        println!("slice_b0 ::: {:?}", slice_b0);
+    fn store_state(&mut self, _state: &mut Block128x8) {
+        for i in 0..PIPELINES_USIZE {
+            for j in 0..AES_BLK_SIZE {
+                self.state.bytes[i * AES_BLK_SIZE + j] = _state[i][j];
+            }
+        }
     }
-    fn next(&mut self) {
-        self.state.next();
+
+    fn encrypt_state(&mut self, _state: &mut [u8; 8 * 16]) {
         let mut state_in_blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|p| {
-            let sliced_state = &mut self.state.bytes[p * 16..(p + 1) * 16];
+            let sliced_state = &mut _state[p * 16..(p + 1) * 16];
             let block = GenericArray::from_mut_slice(sliced_state);
             *block
         }))
         .unwrap();
         self.cipher.encrypt_blocks(&mut state_in_blocks);
+        self.store_state(&mut state_in_blocks);
+    }
+
+    fn init(&mut self) {
+        let mut state_in_bytes = self.state.bytes;
+        self.encrypt_state(&mut state_in_bytes);
+    }
+
+    fn next(&mut self) {
+        self.state.next();
+        let mut state_in_bytes = self.state.bytes;
+        self.encrypt_state(&mut state_in_bytes);
     }
 }
 
@@ -167,9 +157,7 @@ impl RngCore for AesRng {
         let mut index = 0;
         let mut read_len = RAND_SIZE - self.state.used_bytes;
 
-        println!("{:?}", read_len);
         while read_len < dest.len() {
-            println!("Hey2");
             for i in self.state.used_bytes..RAND_SIZE {
                 dest[index] = self.state.bytes[i];
                 index += 1;
@@ -177,10 +165,10 @@ impl RngCore for AesRng {
             self.next();
             read_len += RAND_SIZE;
         }
-        let mut start_index = 0;
+        let mut start_index = self.state.used_bytes;
         for i in index..dest.len() {
             dest[i] = self.state.bytes[start_index];
-            println!("{:?}", dest[i]);
+            // println!("{:?}", dest[i]);
             start_index += 1;
             self.state.used_bytes += 1;
         }
@@ -201,9 +189,12 @@ mod tests {
     fn it_works() {
         let seed = AesRngSeed([0u8; 16]);
         let mut rng = AesRng::from_seed(seed);
-        let mut out = [0u8; 16];
+        let mut out = [0u8; 16 * 8+1];
         rng.try_fill_bytes(&mut out);
-        println!("{:?}", out);
+        println!("out: {:?}", out);
+        // rng.try_fill_bytes(&mut out);
+        // println!("out: {:?}", out);
+ 
         assert!(false);
     }
 }
