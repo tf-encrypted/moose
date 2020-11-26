@@ -55,9 +55,7 @@ class Choreography:
     async def _get_next_sessions(self):
         loop = asyncio.get_event_loop()
         try:
-            return await loop.run_in_executor(
-                None, self.client.get_next_sessions, self.own_name,
-            )
+            return await loop.run_in_executor(None, self.client.get_next_sessions)
         except Exception as ex:
             get_logger().error(f"Failed getting next sessions; ex:{ex}")
 
