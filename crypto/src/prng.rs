@@ -58,7 +58,7 @@ impl AesRngState {
     }
 }
 
-struct AesRng {
+pub struct AesRng {
     state: AesRngState,
     cipher: Aes128,
 }
