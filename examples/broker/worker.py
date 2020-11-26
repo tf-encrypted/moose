@@ -2,8 +2,8 @@ import argparse
 import asyncio
 import logging
 import os
-import pysodium
 
+import pysodium
 from grpc.experimental import aio as grpc_aio
 
 from moose.choreography.grpc import Choreography
@@ -30,11 +30,14 @@ if __name__ == "__main__":
     public_key, secret_key = pysodium.crypto_box_keypair()
 
     networking = Networking(
-        broker_host=args.broker, own_name=args.name, auth_token=args.token, public_key=public_key,
-        secret_key=secret_key
+        broker_host=args.broker,
+        own_name=args.name,
+        auth_token=args.token,
+        public_key=public_key,
+        secret_key=secret_key,
     )
     executor = AsyncExecutor(networking=networking)
-    
+
     grpc_aio.init_grpc_aio()
     grpc_server = grpc_aio.server()
     grpc_server.add_insecure_port(f"0.0.0.0:{args.port}")

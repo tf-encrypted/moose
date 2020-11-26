@@ -11,7 +11,14 @@ from moose.logger import get_logger
 
 
 class Networking:
-    def __init__(self, broker_host, own_name=None, auth_token=None, public_key=None, secret_key=None):
+    def __init__(
+        self,
+        broker_host,
+        own_name=None,
+        auth_token=None,
+        public_key=None,
+        secret_key=None,
+    ):
         self.broker_host = broker_host
         self.session = requests.Session()
         # TODO(Morten) how should we authenticate?
@@ -80,19 +87,27 @@ class Networking:
         raise ex
 
     async def receive(self, sender, receiver, rendezvous_key, session_id):
-        encrypted_value = await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        encrypted_value = await self._get(
+            f"{self.broker_host}/{session_id}/{rendezvous_key}"
+        )
         session_key_hashed = hashlib.sha256()
         session_key_hashed.update((str(session_id) + str(rendezvous_key)).encode())
         nonce = session_key_hashed.digest()[:24]
-        decrypted_value = pysodium.crypto_box_open(encrypted_value, nonce, sender.public_key, self.secret_key)
+        decrypted_value = pysodium.crypto_box_open(
+            encrypted_value, nonce, sender.public_key, self.secret_key
+        )
         return decrypted_value
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
         session_key_hashed = hashlib.sha256()
         session_key_hashed.update((str(session_id) + str(rendezvous_key)).encode())
         nonce = session_key_hashed.digest()[:24]
-        encrypted_value = pysodium.crypto_box(value, nonce, receiver.public_key, self.secret_key)
-        return await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", encrypted_value)
+        encrypted_value = pysodium.crypto_box(
+            value, nonce, receiver.public_key, self.secret_key
+        )
+        return await self._post(
+            f"{self.broker_host}/{session_id}/{rendezvous_key}", encrypted_value
+        )
 
 
 class TelemetryNetworking(Networking):
@@ -116,4 +131,3 @@ def get_networking(broker_host, own_name=None, auth_token=None, telemetry_enable
         return TelemetryNetworking(
             broker_host, own_name=own_name, auth_token=auth_token
         )
-

@@ -37,15 +37,22 @@ class Choreographer:
                     ident_key=self.ident_key,
                 )
             placement_executors[placement] = self.existing_executors[endpoint]
-        
-        public_keys = {placement: asyncio.get_event_loop().run_until_complete(executor.get_public_key()).value for 
-            placement, executor in placement_executors.items()}
 
-    
-        placement_instantiation = {placement: executor_pb2.HostInfo(endpoint=endpoint, public_key=public_keys[placement])
-            for placement, endpoint in placement_instantiation.items()}
-        
-        # breakpoint()
+        # TODO should probably done as a task
+        public_keys = {
+            placement: asyncio.get_event_loop()
+            .run_until_complete(executor.get_public_key())
+            .value
+            for placement, executor in placement_executors.items()
+        }
+
+        placement_instantiation = {
+            placement: executor_pb2.HostInfo(
+                endpoint=endpoint, public_key=public_keys[placement]
+            )
+            for placement, endpoint in placement_instantiation.items()
+        }
+
         sid = random.randrange(2 ** 32)
         tasks = [
             executor.run_computation(
