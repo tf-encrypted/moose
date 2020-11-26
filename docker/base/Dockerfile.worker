@@ -28,3 +28,6 @@ COPY moose /moose
 RUN pip3 install -r requirements-dev.txt && \
     make build && \
     pip install -e .
+
+# install libsodium
+RUN apt-get install -y libsodium-dev

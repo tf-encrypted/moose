@@ -38,14 +38,15 @@ class Choreographer:
                 )
             placement_executors[placement] = self.existing_executors[endpoint]
 
-        # TODO should probably done as a task
+        # TODO should probably be done as a task
         public_keys = {
             placement: asyncio.get_event_loop()
             .run_until_complete(executor.get_public_key())
             .value
             for placement, executor in placement_executors.items()
         }
-
+        # TODO should be refactored so we don't
+        # create placement_instantiation two times!
         placement_instantiation = {
             placement: executor_pb2.HostInfo(
                 endpoint=endpoint, public_key=public_keys[placement]
