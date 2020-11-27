@@ -1,20 +1,7 @@
-import ast
-import inspect
-import textwrap
-from dataclasses import dataclass
-from typing import List
-from typing import Tuple
+# TODO(Morten) refactoring to not have this pass here
+class ReplicatedPass:
+    def run(self, computation, context):
+        for op in computation.operations():
+            print(op.placement_name)
 
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import Placement
-from moose.logger import get_logger
-
-
-@dataclass
-class ReplicatedPlacement(Placement):
-    player0: HostPlacement
-    player1: HostPlacement
-    player2: HostPlacement
-
-    def __hash__(self):
-        return hash(self.name)
+        return computation

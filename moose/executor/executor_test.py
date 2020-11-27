@@ -4,16 +4,17 @@ import unittest
 
 from absl.testing import parameterized
 
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
-from moose.compiler.edsl import div
-from moose.compiler.edsl import function
-from moose.compiler.edsl import mul
-from moose.compiler.edsl import run_program
-from moose.compiler.edsl import save
-from moose.compiler.edsl import sub
+from moose.computation.host import HostPlacement
+from moose.edsl.base import add
+from moose.edsl.base import computation
+from moose.edsl.base import constant
+from moose.edsl.base import div
+from moose.edsl.base import function
+from moose.edsl.base import mul
+from moose.edsl.base import run_program
+from moose.edsl.base import save
+from moose.edsl.base import sub
+from moose.edsl.tracer import trace
 from moose.logger import get_logger
 from moose.runtime import TestRuntime as Runtime
 
@@ -27,7 +28,7 @@ def _create_test_players(number_of_players=2):
 def _run_computation(comp, players):
     runtime = Runtime()
     placement_instantiation = {player: player.name for player in players}
-    concrete_comp = comp.trace_func()
+    concrete_comp = trace(comp)
     runtime.evaluate_computation(
         concrete_comp, placement_instantiation=placement_instantiation
     )

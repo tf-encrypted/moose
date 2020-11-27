@@ -1,25 +1,16 @@
 import ast
 import inspect
 import textwrap
-from dataclasses import dataclass
-from typing import List
 
-from moose.compiler.computation import MpspdzCallOperation
-from moose.compiler.computation import MpspdzLoadOutputOperation
-from moose.compiler.computation import MpspdzSaveInputOperation
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import Placement
+from moose.computation.mpspdz import MpspdzCallOperation
+from moose.computation.mpspdz import MpspdzLoadOutputOperation
+from moose.computation.mpspdz import MpspdzSaveInputOperation
 from moose.logger import get_logger
 
 
-@dataclass
-class MpspdzPlacement(Placement):
-    players: List[HostPlacement]
-
-    def __hash__(self):
-        return hash(self.name)
-
-    def compile(self, context, fn, inputs, output_placements=None, output_type=None):
+class MpspdzLoweringPass:
+    # TODO(Morten)
+    def run(self, context, fn, inputs, output_placements=None, output_type=None):
         input_ops = [context.visit(expression) for expression in inputs]
 
         # NOTE the following could be precomputed

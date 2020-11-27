@@ -1,25 +1,14 @@
-import dill
 from absl.testing import parameterized
 
-from moose.compiler.computation import AddOperation
-from moose.compiler.computation import CallPythonFunctionOperation
-from moose.compiler.computation import ConstantOperation
-from moose.compiler.computation import DivOperation
-from moose.compiler.computation import MulOperation
-from moose.compiler.computation import ReceiveOperation
-from moose.compiler.computation import RunProgramOperation
-from moose.compiler.computation import SendOperation
-from moose.compiler.computation import SubOperation
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
-from moose.compiler.edsl import div
-from moose.compiler.edsl import function
-from moose.compiler.edsl import mul
-from moose.compiler.edsl import run_program
-from moose.compiler.edsl import sub
-from moose.compiler.replicated import ReplicatedPlacement
+from moose.computation.host import HostPlacement
+from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.standard import ReceiveOperation
+from moose.computation.standard import SendOperation
+from moose.edsl.base import add
+from moose.edsl.base import computation
+from moose.edsl.base import constant
+from moose.edsl.base import mul
+from moose.edsl.tracer import trace
 
 
 class ReplicatedTest(parameterized.TestCase):
@@ -39,15 +28,14 @@ class ReplicatedTest(parameterized.TestCase):
             w = add(z, v, placement=dave)
             return w
 
-        concrete_comp = my_comp.trace_func(render=True)
-        concrete_comp.render()
+        concrete_comp = trace(my_comp)
 
         send_ops = [
             op for op in concrete_comp.operations() if isinstance(op, SendOperation)
         ]
-        assert len(send_ops) == 4, [f"{op.sender} -> {op.receiver}" for op in send_ops]
+        assert len(send_ops) == 3, [f"{op.sender} -> {op.receiver}" for op in send_ops]
 
         recv_ops = [
             op for op in concrete_comp.operations() if isinstance(op, ReceiveOperation)
         ]
-        assert len(recv_ops) == 4, [f"{op.sender} -> {op.receiver}" for op in recv_ops]
+        assert len(recv_ops) == 3, [f"{op.sender} -> {op.receiver}" for op in recv_ops]

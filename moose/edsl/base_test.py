@@ -1,24 +1,25 @@
 import dill
 from absl.testing import parameterized
 
-from moose.compiler.computation import AddOperation
-from moose.compiler.computation import CallPythonFunctionOperation
-from moose.compiler.computation import ConstantOperation
-from moose.compiler.computation import DivOperation
-from moose.compiler.computation import MulOperation
-from moose.compiler.computation import ReceiveOperation
-from moose.compiler.computation import RunProgramOperation
-from moose.compiler.computation import SendOperation
-from moose.compiler.computation import SubOperation
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
-from moose.compiler.edsl import div
-from moose.compiler.edsl import function
-from moose.compiler.edsl import mul
-from moose.compiler.edsl import run_program
-from moose.compiler.edsl import sub
+from moose.computation.host import CallPythonFunctionOperation
+from moose.computation.host import HostPlacement
+from moose.computation.host import RunProgramOperation
+from moose.computation.standard import AddOperation
+from moose.computation.standard import ConstantOperation
+from moose.computation.standard import DivOperation
+from moose.computation.standard import MulOperation
+from moose.computation.standard import ReceiveOperation
+from moose.computation.standard import SendOperation
+from moose.computation.standard import SubOperation
+from moose.edsl.base import add
+from moose.edsl.base import computation
+from moose.edsl.base import constant
+from moose.edsl.base import div
+from moose.edsl.base import function
+from moose.edsl.base import mul
+from moose.edsl.base import run_program
+from moose.edsl.base import sub
+from moose.edsl.tracer import trace
 
 
 class EdslTest(parameterized.TestCase):
@@ -42,7 +43,7 @@ class EdslTest(parameterized.TestCase):
             )
             return x0
 
-        concrete_comp = my_comp.trace_func()
+        concrete_comp = trace(my_comp)
         binary_op = concrete_comp.operation(f"{op_name}_0")
         assert binary_op == OP(
             placement_name="player0",
@@ -59,11 +60,13 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            x0 = add_one(constant(1, placement=player0), placement=player0)
-            return x0
+            x = constant(1, placement=player0)
+            y = add_one(x, placement=player0)
+            z = add(x, y, placement=player0)
+            return z
 
-        concrete_comp = my_comp.trace_func()
-        call_py_op = concrete_comp.operation("call_python_function_0")
+        concrete_comp = trace(my_comp)
+        call_py_op = concrete_comp.operation("apply_function_0")
 
         # TODO(Morten) for some reason the pickled functions deviated;
         # figure out why and improve test
@@ -71,7 +74,7 @@ class EdslTest(parameterized.TestCase):
         call_py_op.pickled_fn = pickled_fn
         assert call_py_op == CallPythonFunctionOperation(
             placement_name="player0",
-            name="call_python_function_0",
+            name="apply_function_0",
             inputs={"arg0": "constant_0"},
             pickled_fn=pickled_fn,
             output_type=None,
@@ -85,7 +88,7 @@ class EdslTest(parameterized.TestCase):
             x0 = constant(1, placement=player0)
             return x0
 
-        concrete_comp = my_comp.trace_func()
+        concrete_comp = trace(my_comp)
         constant_op = concrete_comp.operation("constant_0")
         assert constant_op == ConstantOperation(
             placement_name="player0", name="constant_0", inputs={}, value=1,
@@ -98,11 +101,12 @@ class EdslTest(parameterized.TestCase):
         @computation
         def my_comp():
             x0 = constant(1, placement=player0)
-            x1 = add(x0, x0, placement=player1)
+            x1 = constant(1, placement=player0)
+            x2 = add(x0, x1, placement=player1)
 
-            return x1
+            return x2
 
-        concrete_comp = my_comp.trace_func()
+        concrete_comp = trace(my_comp)
 
         send_op = concrete_comp.operation("send_0")
         assert send_op == SendOperation(
@@ -136,7 +140,7 @@ class EdslTest(parameterized.TestCase):
             )
             return x0
 
-        concrete_comp = my_comp.trace_func()
+        concrete_comp = trace(my_comp)
         script_py_op = concrete_comp.operation("run_program_0")
 
         assert script_py_op == RunProgramOperation(
@@ -163,7 +167,7 @@ class EdslTest(parameterized.TestCase):
             d = add(a, c3, placement=dave)
             return d
 
-        concrete_comp = my_comp.trace_func()
+        concrete_comp = trace(my_comp)
 
         send_ops = [
             op for op in concrete_comp.operations() if isinstance(op, SendOperation)

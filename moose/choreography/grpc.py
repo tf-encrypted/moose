@@ -5,7 +5,7 @@ from typing import Dict
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.compiler.computation import Computation
+from moose.compiler.base import Computation
 from moose.logger import get_logger
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
