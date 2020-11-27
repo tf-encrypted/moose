@@ -22,6 +22,27 @@ def test_post(event_loop):
         f"{broker_host}/{id}/{key}"
     )
 
-    n = Networking("http://localhost:5050", "http://localhost:8080", auth_token="01ER53JZCDYD399K068PQD1GGJ,AaP5ZUfmPypMOnKM_aVV03qeGhHwcXWdkg")
+    n = Networking("http://localhost:5050", "http://localhost:8080", auth_token=token)
 
     event_loop.run_until_complete(n.send("value", None, None, key, id))
+
+
+@responses.activate
+def test_get(event_loop):
+    exp_token = "ABCD"
+    key = "key"
+    id = "id"
+    responses.add(
+        responses.POST,
+        f"{coor_host}/v1/login",
+        json={"token": exp_token},
+    )
+    responses.add(
+        responses.GET,
+        f"{broker_host}/{id}/{key}",
+        body="value",
+    )
+
+    n = Networking("http://localhost:5050", "http://localhost:8080", auth_token=token)
+
+    event_loop.run_until_complete(n.receive(None, None, key, id))
