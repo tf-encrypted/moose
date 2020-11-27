@@ -2,8 +2,6 @@ from absl.testing import parameterized
 
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import ReceiveOperation
-from moose.computation.standard import SendOperation
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
@@ -29,9 +27,4 @@ class ReplicatedTest(parameterized.TestCase):
             return w
 
         concrete_comp = trace(my_comp)
-
-        send_ops = concrete_comp.find_operations_of_type(SendOperation)
-        assert len(send_ops) == 3, [f"{op.sender} -> {op.receiver}" for op in send_ops]
-
-        recv_ops = concrete_comp.find_operations_of_type(ReceiveOperation)
-        assert len(recv_ops) == 3, [f"{op.sender} -> {op.receiver}" for op in recv_ops]
+        del concrete_comp

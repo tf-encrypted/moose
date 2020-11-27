@@ -21,11 +21,13 @@ class Compiler:
 
     def run_passes(self, computation: Computation, render=False) -> Computation:
         if render:
-            render_computation(computation, "Logical")
-        for compiler_pass in self.passes:
+            render_computation(computation, "pass-0-logical")
+        for i, compiler_pass in enumerate(self.passes):
             computation = compiler_pass.run(computation, context=self)
             if render:
-                render_computation(computation, f"{type(compiler_pass).__name__}")
+                render_computation(
+                    computation, f"pass-{i+1}-{type(compiler_pass).__name__.lower()}"
+                )
         return computation
 
     def get_fresh_name(self, prefix):

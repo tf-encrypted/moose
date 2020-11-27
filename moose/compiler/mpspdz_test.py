@@ -32,7 +32,7 @@ class MpspdzTest(parameterized.TestCase):
             w = mul(v, v, placement=carole)
             return w
 
-        concrete_comp = trace(my_comp, render=True)
+        concrete_comp = trace(my_comp)
 
         save_ops = concrete_comp.find_operations_of_type(MpspdzSaveInputOperation)
         assert len(save_ops) == 2

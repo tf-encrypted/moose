@@ -8,8 +8,6 @@ from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import MulOperation
-from moose.computation.standard import ReceiveOperation
-from moose.computation.standard import SendOperation
 from moose.computation.standard import SubOperation
 from moose.edsl.base import add
 from moose.edsl.base import computation
@@ -94,39 +92,6 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0", name="constant_0", inputs={}, value=1,
         )
 
-    def test_send_receive(self):
-        player0 = HostPlacement(name="player0")
-        player1 = HostPlacement(name="player1")
-
-        @computation
-        def my_comp():
-            x0 = constant(1, placement=player0)
-            x1 = constant(1, placement=player0)
-            x2 = add(x0, x1, placement=player1)
-
-            return x2
-
-        concrete_comp = trace(my_comp)
-
-        send_op = concrete_comp.operation("send_0")
-        assert send_op == SendOperation(
-            placement_name="player0",
-            name="send_0",
-            inputs={"value": "serialize_0"},
-            sender="player0",
-            receiver="player1",
-            rendezvous_key="rendezvous_key_0",
-        )
-        receive_op = concrete_comp.operation("receive_0")
-        assert receive_op == ReceiveOperation(
-            placement_name="player1",
-            name="receive_0",
-            inputs={},
-            sender="player0",
-            receiver="player1",
-            rendezvous_key="rendezvous_key_0",
-        )
-
     def test_run_program(self):
         player0 = HostPlacement(name="player0")
 
@@ -150,27 +115,3 @@ class EdslTest(parameterized.TestCase):
             path="python",
             args=["local_computation.py"],
         )
-
-    def test_pass_networking(self):
-        alice = HostPlacement(name="alice")
-        bob = HostPlacement(name="bob")
-        carole = HostPlacement(name="carole")
-        dave = HostPlacement(name="dave")
-
-        @computation
-        def my_comp():
-            a = constant(1, placement=alice)
-            b = constant(2, placement=bob)
-            c1 = add(a, b, placement=carole)
-            c2 = add(a, b, placement=carole)
-            c3 = mul(c1, c2, placement=carole)
-            d = add(a, c3, placement=dave)
-            return d
-
-        concrete_comp = trace(my_comp)
-
-        send_ops = concrete_comp.find_operations_of_type(SendOperation)
-        assert len(send_ops) == 4, [f"{op.sender} -> {op.receiver}" for op in send_ops]
-
-        recv_ops = concrete_comp.find_operations_of_type(ReceiveOperation)
-        assert len(recv_ops) == 4, [f"{op.sender} -> {op.receiver}" for op in recv_ops]
