@@ -1,6 +1,7 @@
 import dill
 
 from moose.computation.host import CallPythonFunctionOperation
+from moose.computation.host import HostPlacement
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import ReceiveOperation
@@ -10,8 +11,15 @@ from moose.computation.standard import SerializeOperation
 
 class HostApplyFunctionPass:
     def run(self, computation, context):
-        ops_to_replace = computation.find_operations_of_type(ApplyFunctionOperation)
-        # TODO(Morten) filter for ops on HostPlacements
+        ops_to_replace = []
+        for op in computation.operations.values():
+            if not isinstance(op, ApplyFunctionOperation):
+                continue
+            placement = computation.placement(op.placement_name)
+            if not isinstance(placement, HostPlacement):
+                continue
+            ops_to_replace += [op]
+
         for op in ops_to_replace:
             new_op = CallPythonFunctionOperation(
                 placement_name=op.placement_name,
@@ -33,10 +41,11 @@ class NetworkingPass:
 
     def run(self, computation, context):
         # we first find all edges to cut since we cannot mutate dict while traversing
-        # TODO(Morten) this could probably be improved
         edges_to_cut = []
         for dst_op in computation.operations.values():
-            # TODO(Morten) filter by HostPlacements
+            dst_placement = computation.placement(dst_op.placement_name)
+            if not isinstance(dst_placement, HostPlacement):
+                continue
             for input_key, input_name in dst_op.inputs.items():
                 src_op = computation.operation(input_name)
                 if src_op.placement_name != dst_op.placement_name:
