@@ -10,6 +10,7 @@ from typing import Union
 from graphviz import Digraph
 
 import moose.compiler.computation
+from moose.compiler.edsl import Placement
 
 
 @dataclass
@@ -124,6 +125,7 @@ class Graph:
 @dataclass
 class Computation:
     graph: Graph
+    placements: Dict[str, Placement]
 
     def placements(self):
         return set(node.placement for node in self.graph.nodes.values())
@@ -152,7 +154,7 @@ class Computation:
         nodes = {node: select_op(node)(**args) for node, args in nodes_dict.items()}
         return Computation(Graph(nodes))
 
-    def render(self, filename_prefix="computation-graph"):
+    def render(self, filename_prefix="Physical"):
         color_scheme = [
             "#336699",
             "#ff0000",

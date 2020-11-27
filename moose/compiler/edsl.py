@@ -289,9 +289,18 @@ class NetworkingPass:
         return deserialize_operation, extra_ops
 
 
+# TODO(Morten) refactoring to not have this pass here
+class ReplicatedPass:
+    def process(self, computation, context):
+        for op in computation.operations():
+            print(op.placement_name)
+
+        return computation
+
+
 class Compiler:
     def __init__(self, passes=None):
-        self.passes = passes or [NetworkingPass()]
+        self.passes = passes or [ReplicatedPass(), NetworkingPass()]
         self.operations = []
         self.name_counters = defaultdict(int)
         self.known_operations = defaultdict(dict)
@@ -398,10 +407,10 @@ class AbstractComputation:
     #     comp = self.trace_func(*args, **kwargs)
     #     get_runtime().evaluate_computation(comp)
 
-    def trace_func(self, *args, **kwargs):
+    def trace_func(self, *args, render=False, **kwargs):
         expression = self.func(*args, **kwargs)
         compiler = Compiler()
-        concrete_comp = compiler.compile(expression)
+        concrete_comp = compiler.compile(expression, render=render)
         for op in concrete_comp.operations():
             get_logger().debug(f"Computation: {op}")
         return concrete_comp
