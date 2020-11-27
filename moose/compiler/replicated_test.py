@@ -30,12 +30,8 @@ class ReplicatedTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
 
-        send_ops = [
-            op for op in concrete_comp.operations() if isinstance(op, SendOperation)
-        ]
+        send_ops = concrete_comp.find_operations_of_type(SendOperation)
         assert len(send_ops) == 3, [f"{op.sender} -> {op.receiver}" for op in send_ops]
 
-        recv_ops = [
-            op for op in concrete_comp.operations() if isinstance(op, ReceiveOperation)
-        ]
+        recv_ops = concrete_comp.find_operations_of_type(ReceiveOperation)
         assert len(recv_ops) == 3, [f"{op.sender} -> {op.receiver}" for op in recv_ops]

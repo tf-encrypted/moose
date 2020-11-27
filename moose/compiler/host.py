@@ -8,9 +8,10 @@ from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
 
 
-class ApplyFunctionPass:
+class HostApplyFunctionPass:
     def run(self, computation, context):
-        ops_to_replace = computation.operations_of_type(ApplyFunctionOperation)
+        ops_to_replace = computation.find_operations_of_type(ApplyFunctionOperation)
+        # TODO(Morten) filter for ops on HostPlacements
         for op in ops_to_replace:
             new_op = CallPythonFunctionOperation(
                 placement_name=op.placement_name,
@@ -34,7 +35,8 @@ class NetworkingPass:
         # we first find all edges to cut since we cannot mutate dict while traversing
         # TODO(Morten) this could probably be improved
         edges_to_cut = []
-        for dst_op in computation.operations():
+        for dst_op in computation.operations.values():
+            # TODO(Morten) filter by HostPlacements
             for input_key, input_name in dst_op.inputs.items():
                 src_op = computation.operation(input_name)
                 if src_op.placement_name != dst_op.placement_name:

@@ -22,20 +22,20 @@ def render_computation(computation, filename_prefix="Physical", cleanup=True):
 
     dot = Digraph()
     # add nodes for ops
-    for op in computation.operations():
+    for op in computation.operations.values():
         op_type = type(op).__name__
         if op_type.endswith("Operation"):
             op_type = op_type[: -len("Operation")]
         dot.node(op.name, f"{op.name}: {op_type}", color=pick_color(op.placement_name))
     # add edges for explicit dependencies
-    for op in computation.operations():
+    for op in computation.operations.values():
         for _, input_name in op.inputs.items():
             dot.edge(input_name, op.name)
     # add edges for implicit dependencies
-    for recv_op in computation.operations():
+    for recv_op in computation.operations.values():
         if not isinstance(recv_op, ReceiveOperation):
             continue
-        for send_op in computation.operations():
+        for send_op in computation.operations.values():
             if not isinstance(send_op, SendOperation):
                 continue
             if send_op.rendezvous_key == recv_op.rendezvous_key:

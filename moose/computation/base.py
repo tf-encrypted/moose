@@ -33,39 +33,56 @@ class Operation:
 
 
 @dataclass
-class Graph:
-    nodes: Dict[str, Operation]
-
-
-@dataclass
 class Computation:
-    graph: Graph
+    operations: Dict[str, Operation]
     placements: Dict[str, Placement]
 
-    def placements(self):
-        return set(node.placement for node in self.graph.nodes.values())
+    def find_destinations(self, op):
+        destination_ops = []
+        for candidate_op in self.operations.values():
+            if op.name in candidate_op.inputs.values():
+                destination_ops += [candidate_op]
+        return destination_ops
 
-    def operations(self):
-        return self.graph.nodes.values()
+    def find_sources(self, op):
+        source_ops = []
+        for input_op_name in op.inputs.values():
+            op = self.operation(input_op_name)
+            source_ops += [op]
+        return source_ops
 
-    def operations_of_type(self, op_type):
-        return [op for op in self.operations() if isinstance(op, op_type)]
+    def placement(self, name):
+        return self.placements.get(name)
+
+    def maybe_add_placement(self, placement):
+        if placement.name in self.placements:
+            assert placement == self.placements[placement.name]
+            return
+        self.add_placement(placement)
+
+    def add_placement(self, placement):
+        assert placement.name not in self.placements
+        self.placements[placement.name] = placement
+
+    def find_operations_of_type(self, op_type):
+        return [op for op in self.operations.values() if isinstance(op, op_type)]
 
     def operation(self, name):
-        return self.graph.nodes.get(name)
+        return self.operations.get(name)
 
     def add_operation(self, op):
-        assert op.name not in self.graph.nodes, op.name
-        self.graph.nodes[op.name] = op
+        assert op.name not in self.operations, op.name
+        assert op.placement_name in self.placements, op.placement_name
+        self.operations[op.name] = op
+
+    def add_operations(self, ops):
+        for op in ops:
+            self.add_operation(op)
 
     def remove_operation(self, op):
-        del self.graph.nodes[op.name]
+        del self.operations[op.name]
 
     def replace_operation(self, old_op, new_op):
         assert new_op.name == old_op.name
         self.remove_operation(old_op)
         self.add_operation(new_op)
-
-    def add_operations(self, ops):
-        for op in ops:
-            self.add_operation(op)

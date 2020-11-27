@@ -4,94 +4,124 @@ import textwrap
 
 from moose.computation.mpspdz import MpspdzCallOperation
 from moose.computation.mpspdz import MpspdzLoadOutputOperation
+from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.mpspdz import MpspdzSaveInputOperation
+from moose.computation.standard import ApplyFunctionOperation
 from moose.logger import get_logger
 
 
-class MpspdzLoweringPass:
-    # TODO(Morten)
-    def run(self, context, fn, inputs, output_placements=None, output_type=None):
-        input_ops = [context.visit(expression) for expression in inputs]
+class MpspdzApplyFunctionPass:
+    def run(self, computation, context):
+        ops_to_replace = []
+        for op in computation.operations.values():
+            if not isinstance(op, ApplyFunctionOperation):
+                continue
+            placement = computation.placement(op.placement_name)
+            if not isinstance(placement, MpspdzPlacement):
+                continue
+            ops_to_replace += [op]
 
-        # NOTE the following could be precomputed
-        known_player_names = set(player.name for player in self.players)
+        for op in ops_to_replace:
+            self.lower(
+                op=op, computation=computation, context=context,
+            )
 
-        # NOTE output_players and output_placement can be extracted from output_type
-        # once we have placements in types
-        input_player_names = [op.placement_name for op in input_ops]
-        (output_player_name,) = [player.name for player in output_placements]
-        participating_player_names = list(
-            set(input_player_names + [output_player_name])
+        return computation
+
+    def lower(self, op, computation, context):
+        mpspdz_placement = computation.placement(op.placement_name)
+        input_ops = computation.find_sources(op)
+        output_ops = computation.find_destinations(op)
+
+        input_placement_names = [op.placement_name for op in input_ops]
+        output_placement_names = [op.placement_name for op in output_ops]
+        compute_placement_names = [
+            placement.name for placement in mpspdz_placement.players
+        ]
+        assert set(compute_placement_names) == set(
+            input_placement_names + output_placement_names
         )
-        assert known_player_names.issuperset(participating_player_names)
 
-        player_name_index_map = {
-            player_name: i for i, player_name in enumerate(participating_player_names)
+        assert len(output_ops) == 1  # required by MP-SPDZ
+        output_op = output_ops[0]
+        assert len(output_placement_names) == 1  # required by MP-SPDZ
+        output_placement_name = output_placement_names[0]
+
+        index_map = {
+            placement_name: i
+            for i, placement_name in enumerate(compute_placement_names)
         }
-        coordinator = participating_player_names[0]  # this is required by MP-SPDZ
+        coordinator = compute_placement_names[0]  # required by MP-SPDZ
 
         mlir_string = compile_to_mlir(
-            fn,
+            op.fn,
             input_indices=[
-                player_name_index_map[player_name] for player_name in input_player_names
+                index_map[placement_name] for placement_name in input_placement_names
             ],
-            output_index=player_name_index_map[output_player_name],
+            output_index=index_map[output_placement_name],
         )
         invocation_key = context.get_fresh_name("invocation_key")
 
         # generate one save operation for each input player
         save_input_ops = [
             MpspdzSaveInputOperation(
-                placement_name=player_name,
+                placement_name=placement_name,
                 name=context.get_fresh_name("mpspdz_save_input"),
                 inputs={
                     f"arg{i}": matching_input_op.name
                     for i, matching_input_op in enumerate(
                         input_op
                         for input_op in input_ops
-                        if input_op.placement_name == player_name
+                        if input_op.placement_name == placement_name
                     )
                 },
-                player_index=player_name_index_map[player_name],
+                player_index=index_map[placement_name],
                 invocation_key=invocation_key,
             )
-            for player_name in set(input_player_names)
+            for placement_name in set(input_placement_names)
         ]
+        computation.add_operations(save_input_ops)
 
         # generate operations for all participating players to invoke MP-SPDZ
         call_ops = [
             MpspdzCallOperation(
-                placement_name=player_name,
+                placement_name=placement,
                 name=context.get_fresh_name("mpspdz_call"),
                 inputs={
                     f"call_control{i}": save_op.name
                     for i, save_op in enumerate(save_input_ops)
                 },
-                player_index=player_name_index_map[player_name],
-                num_players=len(participating_player_names),
+                player_index=index_map[placement],
+                num_players=len(compute_placement_names),
                 mlir=mlir_string,
                 invocation_key=invocation_key,
                 coordinator=coordinator,
                 protocol="mascot",
             )
-            for player_name in participating_player_names
+            for placement in compute_placement_names
         ]
+        computation.add_operations(call_ops)
 
         # operation for loading the output
         load_output_op = MpspdzLoadOutputOperation(
-            placement_name=output_player_name,
+            placement_name=output_placement_name,
             name=context.get_fresh_name("mpspdz_load_output"),
             inputs={
                 f"load_control{i}": call_op.name
                 for i, call_op in enumerate(call_ops)
-                if call_op.placement_name == output_player_name
+                if call_op.placement_name == output_placement_name
             },
-            player_index=player_name_index_map[output_player_name],
+            player_index=index_map[output_placement_name],
             invocation_key=invocation_key,
         )
+        computation.add_operation(load_output_op)
 
-        context.operations += save_input_ops + call_ops
-        return load_output_op
+        # rewire output
+        for arg_name in output_op.inputs.keys():
+            op_name = output_op.inputs[arg_name]
+            if op_name == op.name:
+                output_op.inputs[arg_name] = load_output_op.name
+        computation.remove_operation(op)
 
 
 def compile_to_mlir(fn, input_indices, output_index):

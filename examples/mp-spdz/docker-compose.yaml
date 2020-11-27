@@ -25,11 +25,3 @@ services:
     volumes:
       - "../../moose:/moose"
       - ".:/example"
-
-  saver:
-    build:
-      context: .
-      dockerfile: Dockerfile.worker
-    volumes:
-      - "../../moose:/moose"
-      - ".:/example"

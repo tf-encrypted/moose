@@ -1,19 +1,21 @@
 from collections import defaultdict
 
-from moose.compiler import host
-from moose.compiler import replicated
+from moose.compiler.host import HostApplyFunctionPass
+from moose.compiler.host import NetworkingPass
+from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.render import render_computation
+from moose.compiler.replicated import ReplicatedPass
 from moose.computation.base import Computation
 
 
 class Compiler:
     def __init__(self, passes=None):
         self.passes = passes or [
-            host.ApplyFunctionPass(),
-            replicated.ReplicatedPass(),
-            host.NetworkingPass(),
+            MpspdzApplyFunctionPass(),
+            HostApplyFunctionPass(),
+            ReplicatedPass(),
+            NetworkingPass(),
         ]
-        self.operations = []
         self.name_counters = defaultdict(int)
         self.known_operations = defaultdict(dict)
 
