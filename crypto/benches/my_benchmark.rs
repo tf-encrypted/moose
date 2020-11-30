@@ -3,32 +3,41 @@ use crypto::prng::{AesRng, AesRngSeed};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-pub fn criterion_benchmark(c: &mut Criterion) {
-
-    let bench = Benchmark::new("my_bench", |b| {
+pub fn aes_benchmark(c: &mut Criterion) {
+    let bench = Benchmark::new("bench_rng_aes", |b| {
         let seed = AesRngSeed([0u8; 16]);
         let mut rng = AesRng::from_seed(seed);
-        let mut output = vec![0u8; 2 * 1024 * 1024 * 10];
+        let mut output = vec![0u8; 2 * 1024 * 1024 * 1024];
         b.iter(|| {
             black_box(rng.try_fill_bytes(&mut output).unwrap());
         })
     });
-    c.bench("my_bench", bench);
+    c.bench("bench_rng_aes", bench);
 }
-
-pub fn criterion_benchmark_chacha(c: &mut Criterion) {
-
-    let bench = Benchmark::new("my_bench_chacha", |b| {
+pub fn chacha_benchmark(c: &mut Criterion) {
+    let bench = Benchmark::new("bench_rng_chacha", |b| {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
-        let mut output = vec![0u8; 2 * 1024 * 1024 * 10];
+        let mut output = vec![0u8; 2 * 1024 * 1024 * 1024];
         b.iter(|| {
             black_box(rng.try_fill_bytes(&mut output).unwrap());
         })
     });
-    c.bench("my_bench_chacha", bench);
+    c.bench("bench_rng_chacha", bench);
 }
 
+pub fn aes64_benchmark(c: &mut Criterion) {
+    let bench = Benchmark::new("bench_rng_aes64", |b| {
+        let seed = AesRngSeed([0u8; 16]);
+        let mut rng = AesRng::from_seed(seed);
+        let n: u64 = 1000000000;
+        b.iter(|| {
+            black_box(for i in 0..n {
+                let x = rng.next_u64();
+            });
+        })
+    });
+    c.bench("bench_rng_aes64", bench);
+}
 
-
-criterion_group!(benches, criterion_benchmark, criterion_benchmark_chacha);
+criterion_group!(benches, aes64_benchmark);
 criterion_main!(benches);

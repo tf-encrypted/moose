@@ -1,8 +1,8 @@
 use ndarray::prelude::*;
 use rand::prelude::*;
+use rand_chacha::ChaCha20Rng;
 use std::num::Wrapping;
 use std::ops::{Add, Mul};
-use rand_chacha::ChaCha20Rng;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ring64Vector(Array1<Wrapping<u64>>);

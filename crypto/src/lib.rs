@@ -2,7 +2,7 @@ pub mod prng;
 pub mod ring;
 
 use ring::Ring64Vector;
-use std::ops::{Mul};
+use std::ops::Mul;
 
 pub struct Replicated<T>(T, T, T);
 
