@@ -26,7 +26,7 @@ if args.verbose:
 
 
 if __name__ == "__main__":
-    # Generate libsodium keys()
+
     public_key, secret_key = pysodium.crypto_box_keypair()
 
     networking = Networking(

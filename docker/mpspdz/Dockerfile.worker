@@ -20,9 +20,6 @@ RUN curl -O https://shoup.net/ntl/ntl-11.4.3.tar.gz && \
     cd ntl-11.4.3/src && \
     ./configure && make -j8 && make install
 
-# install libsodium
-RUN apt-get install -y libsodium-dev
-
 # install MP-SPDZ (from source)
 RUN git clone https://github.com/data61/MP-SPDZ.git && \
     cd /MP-SPDZ && \
@@ -32,4 +29,3 @@ RUN git clone https://github.com/data61/MP-SPDZ.git && \
 # install Elk 
 COPY docker/mpspdz/elk-to-mpc /elk/
 ENV PATH=/elk:$PATH
-
