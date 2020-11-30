@@ -1,6 +1,5 @@
 import asyncio
 import dataclasses
-from typing import Dict
 from typing import Optional
 
 from moose.computation.host import CallPythonFunctionOperation
@@ -49,7 +48,6 @@ class Session:
 class AsyncExecutor:
     def __init__(self, networking, store={}):
         self.store = store
-        self.networking = networking
         self.kernels = {
             ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),

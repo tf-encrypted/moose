@@ -106,17 +106,16 @@ class ExecutorProxy:
 
 
 class Choreography:
-    def __init__(
-        self, executor, grpc_server,
-    ):
+    def __init__(self, executor, grpc_server, public_key=None):
         executor_pb2_grpc.add_ExecutorServicer_to_server(
-            Servicer(executor), grpc_server
+            Servicer(executor, public_key), grpc_server
         )
 
 
 class Servicer(executor_pb2_grpc.ExecutorServicer):
-    def __init__(self, executor):
+    def __init__(self, executor, public_key=None):
         self.executor = executor
+        self.public_key = public_key
 
     async def RunComputation(self, request, context):
         await self.executor.run_computation(
@@ -128,5 +127,4 @@ class Servicer(executor_pb2_grpc.ExecutorServicer):
         return executor_pb2.RunComputationResponse()
 
     def GetPublicKey(self, request, context):
-        public_key = self.executor.networking.public_key
-        return executor_pb2.GetPublicKeyResponse(value=public_key)
+        return executor_pb2.GetPublicKeyResponse(value=self.public_key)

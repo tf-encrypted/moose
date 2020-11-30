@@ -92,7 +92,7 @@ class Networking:
         )
         session_key_hashed = hashlib.sha256()
         session_key_hashed.update(f"{session_id}/{rendezvous_key}".encode())
-        nonce = session_key_hashed.digest()[:pysodium.crypto_box_NONCEBYTES]
+        nonce = session_key_hashed.digest()[: pysodium.crypto_box_NONCEBYTES]
         decrypted_value = pysodium.crypto_box_open(
             encrypted_value, nonce, sender.public_key, self.secret_key
         )
@@ -101,7 +101,7 @@ class Networking:
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
         session_key_hashed = hashlib.sha256()
         session_key_hashed.update(f"{session_id}/{rendezvous_key}".encode())
-        nonce = session_key_hashed.digest()[:pysodium.crypto_box_NONCEBYTES]
+        nonce = session_key_hashed.digest()[: pysodium.crypto_box_NONCEBYTES]
         encrypted_value = pysodium.crypto_box(
             value, nonce, receiver.public_key, self.secret_key
         )
