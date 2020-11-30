@@ -8,6 +8,7 @@ graphviz==0.15
 grpcio==1.33.1
 grpcio-tools==1.33.1
 isort==5.4.2
+opentelemetry-launcher==0.15b0
 pip==20.2.2
 pytest==6.0.1
 pyyaml==5.1.2

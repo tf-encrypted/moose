@@ -2,6 +2,8 @@ import asyncio
 import socket
 
 import requests
+from opentelemetry import trace
+from opentelemetry.launcher import configure_opentelemetry
 
 from moose.logger import get_logger
 
@@ -78,3 +80,28 @@ class Networking:
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
         await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", value)
+
+
+class TelemetryNetworking(Networking):
+    def __init__(self, broker_host, own_name=None, auth_token=None):
+        configure_opentelemetry(service_name="worker-broker-client")
+
+        self.tracer = trace.get_tracer(__name__)
+        super().__init__(broker_host, own_name, auth_token)
+
+    def _get_wrapper(self, endpoint):
+        with self.tracer.start_as_current_span("get"):
+            return super().session.get(url=endpoint)
+
+    def _post_wrapper(self, endpoint, value):
+        with self.tracer.start_as_current_span("post"):
+            return super().session.post(url=endpoint, data=value)
+
+
+def get_networking(broker_host, own_name=None, auth_token=None, telemetry_enable=False):
+    if telemetry_enable:
+        return TelemetryNetworking(
+            broker_host, own_name=own_name, auth_token=auth_token
+        )
+
+    return Networking(broker_host, own_name=own_name, auth_token=auth_token)
