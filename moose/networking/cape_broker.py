@@ -96,3 +96,12 @@ class TelemetryNetworking(Networking):
     def _post_wrapper(self, endpoint, value):
         with self.tracer.start_as_current_span("post"):
             return super().session.post(url=endpoint, data=value)
+
+
+def get_networking(broker_host, own_name=None, auth_token=None, telemetry_enable=False):
+    if telemetry_enable:
+        return TelemetryNetworking(
+            broker_host, own_name=own_name, auth_token=auth_token
+        )
+
+    return Networking(broker_host, own_name=own_name, auth_token=auth_token)
