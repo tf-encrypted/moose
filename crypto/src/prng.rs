@@ -7,11 +7,11 @@ use std::mem;
 use std::slice;
 
 const AES_BLK_SIZE: usize = 16;
+const AES_SEED_SIZE: usize = AES_BLK_SIZE;
 const PIPELINES_U128: u128 = 8;
 const PIPELINES_USIZE: usize = 8;
 const RAND_SIZE: usize = PIPELINES_USIZE * AES_BLK_SIZE;
 
-pub struct AesRngSeed(pub [u8; AES_BLK_SIZE]);
 type Block128 = GenericArray<u8, U16>;
 type Block128x8 = GenericArray<Block128, U8>;
 
@@ -75,20 +75,8 @@ pub struct AesRng {
     cipher: Aes128,
 }
 
-impl Default for AesRngSeed {
-    fn default() -> AesRngSeed {
-        AesRngSeed([0; AES_BLK_SIZE])
-    }
-}
-
-impl AsMut<[u8]> for AesRngSeed {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
 impl SeedableRng for AesRng {
-    type Seed = AesRngSeed;
+    type Seed = [u8; AES_SEED_SIZE];
 
     #[inline]
     fn from_seed(seed: Self::Seed) -> Self {
@@ -96,7 +84,7 @@ impl SeedableRng for AesRng {
         // 8 blocks of 128 bits, each block is divided
         // arrays [ [0, 0...., 0], [0, 0, .., 1], [0,...,0010], ... [0,...0111]]
         // TODO: Can we replace this with copy from slice?
-        let key: Block128 = GenericArray::clone_from_slice(&(seed.0));
+        let key: Block128 = GenericArray::clone_from_slice(&seed);
         let mut out = AesRng {
             state: AesRngState::default(),
             cipher: Aes128::new(&key),
@@ -178,8 +166,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let seed = AesRngSeed([0u8; 16]);
-        let mut rng = AesRng::from_seed(seed);
+        let mut rng = AesRng::from_seed([0u8; 16]);
         let mut out = [0u8; 16 * 8 * 2 + 1];
         rng.try_fill_bytes(&mut out).expect("");
         println!("out: {:?}", out);
