@@ -1,6 +1,6 @@
 import asyncio
 import dataclasses
-from typing import Optional
+from typing import Any
 
 from moose.computation.host import CallPythonFunctionOperation
 from moose.computation.host import RunProgramOperation
@@ -41,7 +41,7 @@ from moose.storage import AsyncStore
 @dataclasses.dataclass
 class Session:
     session_id: int
-    placement_instantiation: Optional
+    placement_instantiation: Any
     values: AsyncStore = dataclasses.field(repr=False)
 
 
