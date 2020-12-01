@@ -23,12 +23,12 @@ class Choreographer:
     def evaluate_computation(
         self, computation: Computation, placement_instantiation: Dict
     ):
-        placement_instantiation = {
+        placement_endpoint_mapping = {
             placement.name if not isinstance(placement, str) else placement: endpoint
             for placement, endpoint in placement_instantiation.items()
         }
         placement_executors = dict()
-        for placement, endpoint in placement_instantiation.items():
+        for placement, endpoint in placement_endpoint_mapping.items():
             if endpoint not in self.existing_executors:
                 self.existing_executors[endpoint] = ExecutorProxy(
                     endpoint,
@@ -41,13 +41,11 @@ class Choreographer:
         public_keys_tasks = _gather_public_keys(placement_executors)
         public_keys = asyncio.get_event_loop().run_until_complete(public_keys_tasks)
 
-        # TODO should be refactored so we don't
-        # create placement_instantiation two times!
         placement_instantiation = {
             placement: executor_pb2.HostInfo(
                 endpoint=endpoint, public_key=public_keys[placement].value
             )
-            for placement, endpoint in placement_instantiation.items()
+            for placement, endpoint in placement_endpoint_mapping.items()
         }
 
         sid = random.randrange(2 ** 32)
