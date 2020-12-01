@@ -93,11 +93,7 @@ impl SeedableRng for AesRng {
     }
 }
 
-trait Hash {
-    fn next(&mut self);
-    fn init(&mut self);
-}
-impl Hash for AesRng {
+impl AesRng {
     fn init(&mut self) {
         self.cipher.encrypt_blocks(&mut self.state.blocks);
     }
