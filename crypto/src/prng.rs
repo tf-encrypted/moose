@@ -5,6 +5,7 @@ use byteorder::{ByteOrder, LittleEndian};
 use rand::{CryptoRng, Error, RngCore, SeedableRng};
 use std::mem;
 use std::slice;
+use sodiumoxide::randombytes::{randombytes_into};
 
 const AES_BLK_SIZE: usize = 16;
 const PIPELINES_U128: u128 = 8;
@@ -27,6 +28,23 @@ impl Default for AesRngState {
     }
 }
 
+// dumps 0, 1, ... PIPELINES_SIZE-1 into Block128 object
+// then unifies it into a Block128x8
+// this could probably be done faster in a similar manner to as_mut_bytes
+fn create_init_state() -> Block128x8 {
+    let mut state = [0_u8; STATE_SIZE];
+    Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
+        LittleEndian::write_u128(
+            &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
+            i as u128,
+        );
+        let sliced_state = &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE];
+        let block = GenericArray::from_mut_slice(sliced_state);
+        *block
+    }))
+    .unwrap()
+}
+
 impl AesRngState {
     fn as_mut_bytes(&mut self) -> &mut [u8] {
         #[allow(unsafe_code)]
@@ -36,21 +54,8 @@ impl AesRngState {
     }
 
     fn init() -> Self {
-        // TODO: This has to be done in manner similar to as_mut_bytes
-        let mut state = [0_u8; STATE_SIZE];
-        let blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
-            LittleEndian::write_u128(
-                &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
-                i as u128,
-            );
-            let sliced_state = &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE];
-            let block = GenericArray::from_mut_slice(sliced_state);
-            *block
-        }))
-        .unwrap();
-
         AesRngState {
-            blocks,
+            blocks:create_init_state(),
             next_index: PIPELINES_U128,
             used_bytes: 0,
         }
@@ -84,6 +89,24 @@ impl SeedableRng for AesRng {
         // 8 blocks of 128 bits, each block is divided
         // arrays [ [0, 0...., 0], [0, 0, .., 1], [0,...,0010], ... [0,...0111]]
         // TODO: Can we replace this with copy from slice?
+        let key: Block128 = GenericArray::clone_from_slice(&seed);
+        let mut out = AesRng {
+            state: AesRngState::default(),
+            cipher: Aes128::new(&key),
+        };
+        out.init();
+        out
+    }
+}
+
+trait SeededRng {
+    fn get_seeded() -> Self;
+}
+
+impl SeededRng for AesRng {
+    fn get_seeded() -> Self {
+        let mut seed = [0u8; SEED_SIZE];
+        randombytes_into(&mut seed);
         let key: Block128 = GenericArray::clone_from_slice(&seed);
         let mut out = AesRng {
             state: AesRngState::default(),
@@ -162,12 +185,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let mut rng = AesRng::from_seed([0u8; SEED_SIZE]);
-        let mut out = [0u8; 16 * 8 * 2 + 1];
-        rng.try_fill_bytes(&mut out).expect("");
-        println!("out: {:?}", out);
+    fn test_prng() {
+        // test whether prng output matches AES calls
+        let seed = [0u8; SEED_SIZE];
+        let key: Block128 = GenericArray::clone_from_slice(&seed);
+        let cipher = Aes128::new(&key);
 
-        assert!(false);
+        let mut blocks = create_init_state();
+        // create encryptions Enc_{seed}(0)...Enc_{seed}(7)
+        cipher.encrypt_blocks(&mut blocks);
+ 
+        let mut rng = AesRng::from_seed(seed);
+        let mut out = [0u8; 16 * 8];
+        rng.try_fill_bytes(&mut out).expect("");
+        assert!(rng.state.used_bytes == 16 * 8); // counter works well
+
+        assert!(rng.state.blocks == blocks); // encryptions produced initially match aes output
+
+        let _ = rng.next_u32();
+        assert!(rng.state.used_bytes == 4); // check used_bytes increments properly after obtaining a fresh state
+
+    }
+    #[test]
+    fn test_seeded_prng() {
+        sodiumoxide::init().unwrap();
+        let mut rng: AesRng = SeededRng::get_seeded();
+        rng.next_u32();
     }
 }
