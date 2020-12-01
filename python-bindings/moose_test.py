@@ -27,3 +27,11 @@ def test_ring_sub_usual():
     c2 = ring_sub(b, a)
 
     np.testing.assert_array_equal(c1, c2)
+
+
+def test_ring_add_more_dim():
+    a = np.ones((2, 2), dtype=np.uint64)
+    b1 = 2 * a
+    b2 = ring_add(a, a)
+
+    np.testing.assert_array_equal(b1, b2)

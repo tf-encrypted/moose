@@ -37,10 +37,10 @@ impl Mul<Ring64Tensor> for Ring64Tensor {
     }
 }
 
-impl Sub<Ring64Vector> for Ring64Vector {
-    type Output = Ring64Vector;
-    fn sub(self, other: Ring64Vector) -> Self::Output {
-        Ring64Vector(self.0.sub(other.0))
+impl Sub<Ring64Tensor> for Ring64Tensor {
+    type Output = Ring64Tensor;
+    fn sub(self, other: Ring64Tensor) -> Self::Output {
+        Ring64Tensor(self.0.sub(other.0))
     }
 }
 
