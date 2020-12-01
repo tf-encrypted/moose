@@ -90,18 +90,14 @@ class Networking:
         encrypted_value = await self._get(
             f"{self.broker_host}/{session_id}/{rendezvous_key}"
         )
-        session_key_hashed = hashlib.sha256()
-        session_key_hashed.update(f"{session_id}/{rendezvous_key}".encode())
-        nonce = session_key_hashed.digest()[: pysodium.crypto_box_NONCEBYTES]
+        nonce = _generate_nonce(session_id, rendezvous_key)
         decrypted_value = pysodium.crypto_box_open(
             encrypted_value, nonce, sender.public_key, self.secret_key
         )
         return decrypted_value
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
-        session_key_hashed = hashlib.sha256()
-        session_key_hashed.update(f"{session_id}/{rendezvous_key}".encode())
-        nonce = session_key_hashed.digest()[: pysodium.crypto_box_NONCEBYTES]
+        nonce = _generate_nonce(session_id, rendezvous_key)
         encrypted_value = pysodium.crypto_box(
             value, nonce, receiver.public_key, self.secret_key
         )
@@ -131,3 +127,10 @@ def get_networking(broker_host, own_name=None, auth_token=None, telemetry_enable
         return TelemetryNetworking(
             broker_host, own_name=own_name, auth_token=auth_token
         )
+
+
+def _generate_nonce(session_id, rendezvous_key):
+    session_key_hashed = hashlib.sha256()
+    session_key_hashed.update(f"{session_id}/{rendezvous_key}".encode())
+    nonce = session_key_hashed.digest()[: pysodium.crypto_box_NONCEBYTES]
+    return nonce
