@@ -43,5 +43,5 @@ fn chacha_rng(c: &mut Criterion) {
     });
 }
 
-criterion_group!(benches, chacha_rng, aes_rng,);
+criterion_group!(benches, chacha_rng, aes_rng);
 criterion_main!(benches);

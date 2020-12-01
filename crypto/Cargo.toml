@@ -38,5 +38,5 @@ lazy_static = "~1.4"
 proptest = "~0.10"
 
 [[bench]]
-name = "my_benchmark"
+name = "rng"
 harness = false
