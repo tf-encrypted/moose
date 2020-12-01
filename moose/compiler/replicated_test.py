@@ -19,12 +19,14 @@ class ReplicatedTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            x = constant(3, placement=alice)
-            y = constant(4, placement=bob)
-            z = mul(x, y, placement=replicated)
-            v = constant(1, placement=dave)
+            x = constant(1, placement=alice)
+            y = constant(2, placement=bob)
+            z = add(x, y, placement=replicated)
+            v = constant(3, placement=dave)
             w = add(z, v, placement=dave)
             return w
 
-        concrete_comp = trace(my_comp)
+        concrete_comp = trace(my_comp, render=True)
         del concrete_comp
+
+        assert False
