@@ -7,7 +7,6 @@ use std::mem;
 use std::slice;
 
 const AES_BLK_SIZE: usize = 16;
-const AES_SEED_SIZE: usize = AES_BLK_SIZE;
 const PIPELINES_U128: u128 = 8;
 const PIPELINES_USIZE: usize = 8;
 const RAND_SIZE: usize = PIPELINES_USIZE * AES_BLK_SIZE;
@@ -37,7 +36,7 @@ impl AesRngState {
 
     fn init() -> Self {
         // TODO: This has to be done in manner similar to as_mut_bytes
-        let mut state: [u8; 8 * 16] = [0u8; 8 * 16];
+        let mut state = [0_u8; 8 * 16];
         let par_blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
             LittleEndian::write_u128(
                 &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
@@ -76,7 +75,7 @@ pub struct AesRng {
 }
 
 impl SeedableRng for AesRng {
-    type Seed = [u8; AES_SEED_SIZE];
+    type Seed = [u8; AES_BLK_SIZE];
 
     #[inline]
     fn from_seed(seed: Self::Seed) -> Self {
@@ -158,6 +157,7 @@ impl RngCore for AesRng {
         Ok(())
     }
 }
+
 impl CryptoRng for AesRng {}
 
 #[cfg(test)]
