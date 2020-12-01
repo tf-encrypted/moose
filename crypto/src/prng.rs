@@ -9,9 +9,9 @@ use std::slice;
 const AES_BLK_SIZE: usize = 16;
 const PIPELINES_U128: u128 = 8;
 const PIPELINES_USIZE: usize = 8;
-const RAND_SIZE: usize = PIPELINES_USIZE * AES_BLK_SIZE;
+const STATE_SIZE: usize = PIPELINES_USIZE * AES_BLK_SIZE;
+pub const SEED_SIZE: usize = AES_BLK_SIZE;
 
-pub struct AesRngSeed(pub [u8; AES_BLK_SIZE]);
 type Block128 = GenericArray<u8, U16>;
 type Block128x8 = GenericArray<Block128, U8>;
 
@@ -31,26 +31,26 @@ impl AesRngState {
     fn as_mut_bytes(&mut self) -> &mut [u8] {
         #[allow(unsafe_code)]
         unsafe {
-            slice::from_raw_parts_mut(&mut self.blocks as *mut Block128x8 as *mut u8, 8 * 16)
+            slice::from_raw_parts_mut(&mut self.blocks as *mut Block128x8 as *mut u8, STATE_SIZE)
         }
     }
 
     fn init() -> Self {
         // TODO: This has to be done in manner similar to as_mut_bytes
-        let mut state: [u8; 8 * 16] = [0u8; 8 * 16];
-        let par_blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
+        let mut state = [0_u8; STATE_SIZE];
+        let blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
             LittleEndian::write_u128(
                 &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
                 i as u128,
             );
-            let sliced_state = &mut state[i * 16..(i + 1) * 16];
+            let sliced_state = &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE];
             let block = GenericArray::from_mut_slice(sliced_state);
             *block
         }))
         .unwrap();
 
         AesRngState {
-            blocks: par_blocks,
+            blocks,
             next_index: PIPELINES_U128,
             used_bytes: 0,
         }
@@ -75,20 +75,8 @@ pub struct AesRng {
     cipher: Aes128,
 }
 
-impl Default for AesRngSeed {
-    fn default() -> AesRngSeed {
-        AesRngSeed([0; AES_BLK_SIZE])
-    }
-}
-
-impl AsMut<[u8]> for AesRngSeed {
-    fn as_mut(&mut self) -> &mut [u8] {
-        &mut self.0
-    }
-}
-
 impl SeedableRng for AesRng {
-    type Seed = AesRngSeed;
+    type Seed = [u8; SEED_SIZE];
 
     #[inline]
     fn from_seed(seed: Self::Seed) -> Self {
@@ -96,7 +84,7 @@ impl SeedableRng for AesRng {
         // 8 blocks of 128 bits, each block is divided
         // arrays [ [0, 0...., 0], [0, 0, .., 1], [0,...,0010], ... [0,...0111]]
         // TODO: Can we replace this with copy from slice?
-        let key: Block128 = GenericArray::clone_from_slice(&(seed.0));
+        let key: Block128 = GenericArray::clone_from_slice(&seed);
         let mut out = AesRng {
             state: AesRngState::default(),
             cipher: Aes128::new(&key),
@@ -106,11 +94,7 @@ impl SeedableRng for AesRng {
     }
 }
 
-trait Hash {
-    fn next(&mut self);
-    fn init(&mut self);
-}
-impl Hash for AesRng {
+impl AesRng {
     fn init(&mut self) {
         self.cipher.encrypt_blocks(&mut self.state.blocks);
     }
@@ -124,7 +108,7 @@ impl Hash for AesRng {
 impl RngCore for AesRng {
     fn next_u32(&mut self) -> u32 {
         let u32_size = mem::size_of::<u32>();
-        if self.state.used_bytes >= RAND_SIZE - u32_size {
+        if self.state.used_bytes >= STATE_SIZE - u32_size {
             self.next();
         }
         let used_bytes = self.state.used_bytes;
@@ -135,7 +119,7 @@ impl RngCore for AesRng {
 
     fn next_u64(&mut self) -> u64 {
         let u64_size = mem::size_of::<u64>();
-        if self.state.used_bytes >= RAND_SIZE - u64_size {
+        if self.state.used_bytes >= STATE_SIZE - u64_size {
             self.next();
         }
         let used_bytes = self.state.used_bytes;
@@ -144,16 +128,16 @@ impl RngCore for AesRng {
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        let mut read_len = RAND_SIZE - self.state.used_bytes;
+        let mut read_len = STATE_SIZE - self.state.used_bytes;
         let mut dest_start = 0;
 
         while read_len < dest.len() {
             let src_start = self.state.used_bytes;
             dest[dest_start..read_len]
-                .copy_from_slice(&self.state.as_mut_bytes()[src_start..RAND_SIZE]);
+                .copy_from_slice(&self.state.as_mut_bytes()[src_start..STATE_SIZE]);
             self.next();
             dest_start = read_len;
-            read_len += RAND_SIZE;
+            read_len += STATE_SIZE;
         }
 
         let src_start = self.state.used_bytes;
@@ -170,6 +154,7 @@ impl RngCore for AesRng {
         Ok(())
     }
 }
+
 impl CryptoRng for AesRng {}
 
 #[cfg(test)]
@@ -178,8 +163,7 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let seed = AesRngSeed([0u8; 16]);
-        let mut rng = AesRng::from_seed(seed);
+        let mut rng = AesRng::from_seed([0u8; SEED_SIZE]);
         let mut out = [0u8; 16 * 8 * 2 + 1];
         rng.try_fill_bytes(&mut out).expect("");
         println!("out: {:?}", out);
