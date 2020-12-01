@@ -3,8 +3,9 @@ import base64
 import itertools
 import socket
 
+from cape.api.session import ComputationStatus
+from cape.api.session import Session
 from cape.cape import Cape
-from cape.api.session import Session, ComputationStatus
 
 from moose.compiler.computation import Computation
 from moose.logger import get_logger
@@ -27,11 +28,7 @@ class Choreography:
         self.session_tasks = dict()
 
     async def _handle_session(
-        self,
-        session: Session,
-        computation,
-        placement_instantiation,
-        placement,
+        self, session: Session, computation, placement_instantiation, placement,
     ):
         get_logger().debug(f"Handling new session; session_id:{session.id}")
         await self._report_session_status(session, ComputationStatus.Started)
@@ -64,10 +61,7 @@ class Choreography:
         loop = asyncio.get_event_loop()
         try:
             await loop.run_in_executor(
-                None,
-                self.cape.report_session_status,
-                session,
-                status,
+                None, self.cape.report_session_status, session, status,
             )
             get_logger().debug("Reported successfully")
         except Exception as ex:
@@ -92,9 +86,7 @@ class Choreography:
                 await asyncio.sleep(self.poll_delay)
 
             sessions = await self._get_next_sessions()
-            count = 0
             for session in sessions:
-                count += 1
                 session_id = session.id
                 if session_id in self.session_tasks:
                     get_logger().debug(
@@ -118,4 +110,4 @@ class Choreography:
                 )
                 self.session_tasks[session.id] = task
 
-            print(f'saw {count} sessions')
+            get_logger().debug(f"Saw {len(sessions)} sessions")
