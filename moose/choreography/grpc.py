@@ -38,18 +38,16 @@ class Choreographer:
                 )
             placement_executors[placement] = self.existing_executors[endpoint]
 
-        public_keys_tasks = asyncio.gather(
-            *[executor.get_public_key() for _, executor in placement_executors.items()]
-        )
+        public_keys_tasks = _gather_public_keys(placement_executors)
         public_keys = asyncio.get_event_loop().run_until_complete(public_keys_tasks)
 
         # TODO should be refactored so we don't
         # create placement_instantiation two times!
         placement_instantiation = {
             placement: executor_pb2.HostInfo(
-                endpoint=endpoint, public_key=public_keys[i].value
+                endpoint=endpoint, public_key=public_keys[placement].value
             )
-            for i, (placement, endpoint) in enumerate(placement_instantiation.items())
+            for placement, endpoint in placement_instantiation.items()
         }
 
         sid = random.randrange(2 ** 32)
@@ -126,3 +124,18 @@ class Servicer(executor_pb2_grpc.ExecutorServicer):
 
     def GetPublicKey(self, request, context):
         return executor_pb2.GetPublicKeyResponse(value=self.public_key)
+
+
+async def _gather_public_keys(placement_executors: dict):
+    async def get_public_key(placement, executor):
+        return placement, await executor.get_public_key()
+
+    return {
+        placement: public_key
+        for placement, public_key in await asyncio.gather(
+            *(
+                get_public_key(placement, executor)
+                for placement, executor in placement_executors.items()
+            )
+        )
+    }
