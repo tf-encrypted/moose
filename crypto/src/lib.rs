@@ -4,34 +4,36 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul, Sub};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ring64Vector(pub Array1<Wrapping<u64>>);
+pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
 
-impl From<Vec<u64>> for Ring64Vector {
-    fn from(v: Vec<u64>) -> Ring64Vector {
+impl From<Vec<u64>> for Ring64Tensor {
+    fn from(v: Vec<u64>) -> Ring64Tensor {
+        let ix = IxDyn(&[v.len()]);
         use vec_utils::VecExt;
         let v_wrapped: Vec<_> = v.map(Wrapping);
-        Ring64Vector(Array1::from(v_wrapped))
+        Ring64Tensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
 
-impl From<&[u64]> for Ring64Vector {
-    fn from(v: &[u64]) -> Ring64Vector {
+impl From<&[u64]> for Ring64Tensor {
+    fn from(v: &[u64]) -> Ring64Tensor {
+        let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        Ring64Vector(Array1::from(v_wrapped))
+        Ring64Tensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
 
-impl Add<Ring64Vector> for Ring64Vector {
-    type Output = Ring64Vector;
-    fn add(self, other: Ring64Vector) -> Self::Output {
-        Ring64Vector(self.0.add(other.0))
+impl Add<Ring64Tensor> for Ring64Tensor {
+    type Output = Ring64Tensor;
+    fn add(self, other: Ring64Tensor) -> Self::Output {
+        Ring64Tensor(self.0.add(other.0))
     }
 }
 
-impl Mul<Ring64Vector> for Ring64Vector {
-    type Output = Ring64Vector;
-    fn mul(self, other: Ring64Vector) -> Self::Output {
-        Ring64Vector(self.0.mul(other.0))
+impl Mul<Ring64Tensor> for Ring64Tensor {
+    type Output = Ring64Tensor;
+    fn mul(self, other: Ring64Tensor) -> Self::Output {
+        Ring64Tensor(self.0.mul(other.0))
     }
 }
 
@@ -55,7 +57,7 @@ where
     }
 }
 
-pub fn share(x: &Ring64Vector) -> Replicated<Ring64Vector> {
+pub fn share(x: &Ring64Tensor) -> Replicated<Ring64Tensor> {
     // TODO
     Replicated(x.clone(), x.clone(), x.clone())
 }
@@ -71,14 +73,14 @@ mod tests {
 
     #[test]
     fn it_works() {
-        let a = Ring64Vector::from(vec![1, 2, 3]);
-        let b = Ring64Vector::from(vec![4, 5, 6]);
+        let a = Ring64Tensor::from(vec![1, 2, 3]);
+        let b = Ring64Tensor::from(vec![4, 5, 6]);
 
         let a_shared = share(&a);
         let b_shared = share(&b);
 
         let c_shared = a_shared * b_shared;
-        let c: Ring64Vector = reconstruct(c_shared);
+        let c: Ring64Tensor = reconstruct(c_shared);
         assert_eq!(c, a * b);
     }
 }
