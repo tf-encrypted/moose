@@ -38,7 +38,7 @@ impl AesRngState {
     fn init() -> Self {
         // TODO: This has to be done in manner similar to as_mut_bytes
         let mut state = [0_u8; STATE_SIZE];
-        let par_blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
+        let blocks = Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
             LittleEndian::write_u128(
                 &mut state[i * AES_BLK_SIZE..(i + 1) * AES_BLK_SIZE],
                 i as u128,
@@ -50,7 +50,7 @@ impl AesRngState {
         .unwrap();
 
         AesRngState {
-            blocks: par_blocks,
+            blocks,
             next_index: PIPELINES_U128,
             used_bytes: 0,
         }

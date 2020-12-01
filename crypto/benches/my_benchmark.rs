@@ -27,7 +27,7 @@ pub fn chacha_benchmark(c: &mut Criterion) {
 pub fn aes64_benchmark(c: &mut Criterion) {
     let bench = Benchmark::new("bench_rng_aes64", |b| {
         let mut rng = AesRng::from_seed([0u8; SEED_SIZE]);
-        let n: u64 = 10000;
+        let n: u64 = 1000;
         b.iter(|| {
             black_box(for _ in 0..n {
                 let _ = rng.next_u64();
