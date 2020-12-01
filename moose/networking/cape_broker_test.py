@@ -32,6 +32,7 @@ def test_get(event_loop):
     exp_token = "ABCD"
     key = "key"
     id = "id"
+    value = "value"
     responses.add(
         responses.POST,
         f"{coor_host}/v1/login",
@@ -40,9 +41,11 @@ def test_get(event_loop):
     responses.add(
         responses.GET,
         f"{broker_host}/{id}/{key}",
-        body="value",
+        body=value,
     )
 
     n = Networking("http://localhost:5050", "http://localhost:8080", auth_token=token)
 
-    event_loop.run_until_complete(n.receive(None, None, key, id))
+    res = event_loop.run_until_complete(n.receive(None, None, key, id))
+
+    assert res.decode('ascii') == value
