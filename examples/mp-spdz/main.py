@@ -23,7 +23,6 @@ if args.verbose:
 inputter0 = HostPlacement(name="inputter0")
 inputter1 = HostPlacement(name="inputter1")
 outputter = HostPlacement(name="outputter")
-saver = HostPlacement(name="saver")
 
 # NOTE:
 # All players must be listed in the MP-SPDZ placement, even if they only send
@@ -67,7 +66,7 @@ def my_comp():
         v = my_function(x, y, z, output_placements=[outputter])
         w = my_function(x, y, z, output_placements=[outputter])
 
-    with saver:
+    with outputter:
         res = save(add(v, w), "v")
 
     return res
@@ -89,7 +88,6 @@ if __name__ == "__main__":
             inputter0: "inputter0:50000",
             inputter1: "inputter1:50000",
             outputter: "outputter:50000",
-            saver: "saver:50000",
         },
     )
 

@@ -2,34 +2,34 @@ import asyncio
 import dataclasses
 from typing import Dict
 
-from moose.compiler.computation import AddOperation
-from moose.compiler.computation import CallPythonFunctionOperation
-from moose.compiler.computation import ConstantOperation
-from moose.compiler.computation import DeserializeOperation
-from moose.compiler.computation import DivOperation
-from moose.compiler.computation import LoadOperation
-from moose.compiler.computation import MpspdzCallOperation
-from moose.compiler.computation import MpspdzLoadOutputOperation
-from moose.compiler.computation import MpspdzSaveInputOperation
-from moose.compiler.computation import MulOperation
-from moose.compiler.computation import ReceiveOperation
-from moose.compiler.computation import RunProgramOperation
-from moose.compiler.computation import SaveOperation
-from moose.compiler.computation import SendOperation
-from moose.compiler.computation import SerializeOperation
-from moose.compiler.computation import SubOperation
+from moose.computation.host import CallPythonFunctionOperation
+from moose.computation.host import RunProgramOperation
+from moose.computation.mpspdz import MpspdzCallOperation
+from moose.computation.mpspdz import MpspdzLoadOutputOperation
+from moose.computation.mpspdz import MpspdzSaveInputOperation
+from moose.computation.standard import AddOperation
+from moose.computation.standard import ConstantOperation
+from moose.computation.standard import DeserializeOperation
+from moose.computation.standard import DivOperation
+from moose.computation.standard import LoadOperation
+from moose.computation.standard import MulOperation
+from moose.computation.standard import ReceiveOperation
+from moose.computation.standard import SaveOperation
+from moose.computation.standard import SendOperation
+from moose.computation.standard import SerializeOperation
+from moose.computation.standard import SubOperation
+from moose.executor.kernels.host import CallPythonFunctionKernel
+from moose.executor.kernels.host import RunProgramKernel
 from moose.executor.kernels.mpspdz import MpspdzCallKernel
 from moose.executor.kernels.mpspdz import MpspdzLoadOutputKernel
 from moose.executor.kernels.mpspdz import MpspdzSaveInputKernel
 from moose.executor.kernels.standard import AddKernel
-from moose.executor.kernels.standard import CallPythonFunctionKernel
 from moose.executor.kernels.standard import ConstantKernel
 from moose.executor.kernels.standard import DeserializeKernel
 from moose.executor.kernels.standard import DivKernel
 from moose.executor.kernels.standard import LoadKernel
 from moose.executor.kernels.standard import MulKernel
 from moose.executor.kernels.standard import ReceiveKernel
-from moose.executor.kernels.standard import RunProgramKernel
 from moose.executor.kernels.standard import SaveKernel
 from moose.executor.kernels.standard import SendKernel
 from moose.executor.kernels.standard import SerializeKernel
@@ -49,17 +49,17 @@ class AsyncExecutor:
     def __init__(self, networking, store={}):
         self.store = store
         self.kernels = {
-            LoadOperation: LoadKernel(store),
-            SaveOperation: SaveKernel(store),
-            SendOperation: SendKernel(networking),
-            ReceiveOperation: ReceiveKernel(networking),
-            DeserializeOperation: DeserializeKernel(),
-            SerializeOperation: SerializeKernel(),
             ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
             DivOperation: DivKernel(),
+            LoadOperation: LoadKernel(store),
+            SaveOperation: SaveKernel(store),
+            SendOperation: SendKernel(networking),
+            ReceiveOperation: ReceiveKernel(networking),
+            SerializeOperation: SerializeKernel(),
+            DeserializeOperation: DeserializeKernel(),
             RunProgramOperation: RunProgramKernel(),
             CallPythonFunctionOperation: CallPythonFunctionKernel(),
             MpspdzSaveInputOperation: MpspdzSaveInputKernel(),
@@ -117,4 +117,4 @@ class AsyncExecutor:
         # TODO(Morten) this is as simple and naive as it gets; we should at least
         # do some kind of topology sorting to make sure we have all async values
         # ready for linking with kernels in `run_computation`
-        return [op for op in comp.operations() if op.placement_name == placement]
+        return [op for op in comp.operations.values() if op.placement_name == placement]
