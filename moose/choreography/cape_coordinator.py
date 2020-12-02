@@ -66,23 +66,13 @@ class Choreography:
                 f" ex:{ex}"
             )
 
-    # async def _login(self):
-    #     loop = asyncio.get_event_loop()
-    #     await loop.run_in_executor(
-    #         None, self.client.login,
-    #     )
-    #     get_logger().debug("Logged in successfully")
-
     async def run(self):
-        # await self._login()
         for i in itertools.count(start=0):
             if i > 0:
                 await asyncio.sleep(self.poll_delay)
 
             sessions = await self._get_next_sessions()
-            count = 0
             for session in sessions:
-                count += 1
                 session_id = session.id
                 if session_id in self.session_tasks:
                     get_logger().debug(
@@ -112,5 +102,3 @@ class Choreography:
                     )
                 )
                 self.session_tasks[session.id] = task
-
-            print(f"saw {count} sessions")

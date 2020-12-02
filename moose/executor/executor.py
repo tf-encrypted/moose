@@ -86,7 +86,6 @@ class AsyncExecutor:
         )
         # link futures together using kernels
         tasks = []
-        print("plan", execution_plan)
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
             if not kernel:
