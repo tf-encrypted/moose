@@ -45,8 +45,22 @@ fn moose(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let x_shape = x.shape();
         let x_ring = dynarray_to_ring64(&x);
         let y_ring = dynarray_to_ring64(&y);
-        let addn = x_ring * y_ring;
-        let res = ring64_to_array(addn, x_shape);
+        let prod = x_ring * y_ring;
+        let res = ring64_to_array(prod, x_shape);
+        res.to_pyarray(py)
+    }
+
+    #[pyfn(m, "ring_sub")]
+    fn ring_sub<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        y: PyReadonlyArrayDyn<u64>,
+    ) -> &'py PyArrayDyn<u64> {
+        let x_shape = x.shape();
+        let x_ring = dynarray_to_ring64(&x);
+        let y_ring = dynarray_to_ring64(&y);
+        let diff = x_ring - y_ring;
+        let res = ring64_to_array(diff, x_shape);
         res.to_pyarray(py)
     }
 

@@ -1,7 +1,7 @@
 use ndarray::prelude::*;
 
 use std::num::Wrapping;
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ring64Vector(pub Array1<Wrapping<u64>>);
@@ -32,6 +32,13 @@ impl Mul<Ring64Vector> for Ring64Vector {
     type Output = Ring64Vector;
     fn mul(self, other: Ring64Vector) -> Self::Output {
         Ring64Vector(self.0.mul(other.0))
+    }
+}
+
+impl Sub<Ring64Vector> for Ring64Vector {
+    type Output = Ring64Vector;
+    fn sub(self, other: Ring64Vector) -> Self::Output {
+        Ring64Vector(self.0.sub(other.0))
     }
 }
 
