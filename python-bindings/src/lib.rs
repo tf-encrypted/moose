@@ -17,18 +17,27 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         unwrapped.into_shape(shape).unwrap()
     }
 
+    fn binary_pyfn<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        y: PyReadonlyArrayDyn<u64>,
+        binary_op: &dyn Fn(Ring64Tensor, Ring64Tensor) -> Ring64Tensor,
+    ) -> &'py PyArrayDyn<u64> {
+        let x_shape = x.shape();
+        let x_ring = dynarray_to_ring64(&x);
+        let y_ring = dynarray_to_ring64(&y);
+        let res = binary_op(x_ring, y_ring);
+        let res_array = ring64_to_array(res, x_shape);
+        res_array.to_pyarray(py)
+    }
+
     #[pyfn(m, "ring_add")]
     fn ring_add<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
         y: PyReadonlyArrayDyn<u64>,
     ) -> &'py PyArrayDyn<u64> {
-        let x_shape = x.shape();
-        let x_ring = dynarray_to_ring64(&x);
-        let y_ring = dynarray_to_ring64(&y);
-        let addn = x_ring + y_ring;
-        let res = ring64_to_array(addn, x_shape);
-        res.to_pyarray(py)
+        binary_pyfn(py, x, y, &|a, b| a + b)
     }
 
     #[pyfn(m, "ring_mul")]
@@ -37,12 +46,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u64>,
         y: PyReadonlyArrayDyn<u64>,
     ) -> &'py PyArrayDyn<u64> {
-        let x_shape = x.shape();
-        let x_ring = dynarray_to_ring64(&x);
-        let y_ring = dynarray_to_ring64(&y);
-        let prod = x_ring * y_ring;
-        let res = ring64_to_array(prod, x_shape);
-        res.to_pyarray(py)
+        binary_pyfn(py, x, y, &|a, b| a * b)
     }
 
     #[pyfn(m, "ring_sub")]
@@ -51,12 +55,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u64>,
         y: PyReadonlyArrayDyn<u64>,
     ) -> &'py PyArrayDyn<u64> {
-        let x_shape = x.shape();
-        let x_ring = dynarray_to_ring64(&x);
-        let y_ring = dynarray_to_ring64(&y);
-        let diff = x_ring - y_ring;
-        let res = ring64_to_array(diff, x_shape);
-        res.to_pyarray(py)
+        binary_pyfn(py, x, y, &|a, b| a - b)
     }
 
     Ok(())
