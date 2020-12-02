@@ -11,7 +11,7 @@ categories = ["", ""]
 edition = "2018"
 
 [lib]
-name = "moose"
+name = "moose_kernels"
 crate-type = ["cdylib"]
 
 [dependencies]
