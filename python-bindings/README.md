@@ -10,7 +10,7 @@ pytest .
 ### Usage
 
 ```python
-from moose import ring_add
+from moose_kernels import ring_add
 import numpy as np
 
 a = np.array([1, 2, 3], dtype=np.uint64)
