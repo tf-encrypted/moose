@@ -1,8 +1,4 @@
 from dataclasses import dataclass
-from typing import List
-from typing import Tuple
-
-import numpy as np
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
@@ -17,3 +13,8 @@ class ReplicatedPlacement(Placement):
 
     def __hash__(self):
         return hash(self.name)
+
+
+@dataclass
+class ShareOperation(Operation):
+    pass
