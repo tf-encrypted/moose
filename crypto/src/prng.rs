@@ -31,7 +31,7 @@ impl Default for AesRngState {
 // AES_{seed}(ctr), convert ctr to an AES input
 // 8 blocks of 128 bits, each block is divided
 // arrays [ [0, 0...., 0], [0, 0, .., 1], [0,...,0010], ... [0,...0111]]
- 
+
 // dumps 0, 1, ... PIPELINES_SIZE-1 into Block128 object
 // then unifies it into a Block128x8
 // this could probably be done faster in a similar manner to as_mut_bytes
@@ -86,7 +86,7 @@ pub struct AesRng {
 
 impl SeedableRng for AesRng {
     type Seed = [u8; SEED_SIZE];
-    
+
     // Ideally this should be passed as a reference as we want
     // to avoid copying the seed around. However this is probably going
     // to be used few times, by default we should go with AesRng::from_random_seed

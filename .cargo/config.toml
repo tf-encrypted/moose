@@ -1,2 +1,5 @@
 [build]
 rustflags = ["-Ctarget-feature=+aes"]
+
+[doc]
+rustdocflags = ["-Ctarget-feature=+aes"]
