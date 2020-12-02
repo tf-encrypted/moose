@@ -20,6 +20,7 @@ class HostApplyFunctionPass:
                 continue
             ops_to_replace += [op]
 
+        performed_changes = False
         for op in ops_to_replace:
             new_op = CallPythonFunctionOperation(
                 placement_name=op.placement_name,
@@ -29,8 +30,9 @@ class HostApplyFunctionPass:
                 output_type=op.output_type,
             )
             computation.replace_operation(op, new_op)
+            performed_changes = True
 
-        return computation
+        return computation, performed_changes
 
 
 class NetworkingPass:
@@ -53,14 +55,16 @@ class NetworkingPass:
 
         # cut each edge and replace with networking ops
         # we keep a cache of certain ops to avoid redundancy
+        performed_changes = False
         for src_op, dst_op, input_key in edges_to_cut:
             patched_src_op, extra_ops = self.add_networking(
                 context, src_op, dst_op.placement_name
             )
             computation.add_operations(extra_ops)
             dst_op.inputs[input_key] = patched_src_op.name
+            performed_changes = True
 
-        return computation
+        return computation, performed_changes
 
     def add_networking(self, context, source_operation, destination_placement_name):
         extra_ops = []

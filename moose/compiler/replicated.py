@@ -4,4 +4,5 @@ class ReplicatedPass:
         for op in computation.operations.values():
             print(op.placement_name)
 
-        return computation
+        performed_changes = False
+        return computation, performed_changes

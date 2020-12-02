@@ -23,8 +23,8 @@ class Compiler:
         if render:
             render_computation(computation, "pass-0-logical")
         for i, compiler_pass in enumerate(self.passes):
-            computation = compiler_pass.run(computation, context=self)
-            if render:
+            computation, performed_changes = compiler_pass.run(computation, context=self)
+            if render and performed_changes:
                 render_computation(
                     computation, f"pass-{i+1}-{type(compiler_pass).__name__.lower()}"
                 )

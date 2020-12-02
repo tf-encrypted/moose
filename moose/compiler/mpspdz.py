@@ -21,12 +21,14 @@ class MpspdzApplyFunctionPass:
                 continue
             ops_to_replace += [op]
 
+        performed_changes = False
         for op in ops_to_replace:
             self.lower(
                 op=op, computation=computation, context=context,
             )
+            performed_changes = True
 
-        return computation
+        return computation, performed_changes
 
     def lower(self, op, computation, context):
         mpspdz_placement = computation.placement(op.placement_name)
