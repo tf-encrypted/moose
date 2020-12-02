@@ -87,22 +87,34 @@ class Networking:
         raise ex
 
     async def receive(self, sender, receiver, rendezvous_key, session_id):
-        encrypted_value = await self._get(
-            f"{self.broker_host}/{session_id}/{rendezvous_key}"
-        )
-        nonce = _generate_nonce(session_id, rendezvous_key)
-        decrypted_value = pysodium.crypto_box_open(
-            encrypted_value, nonce, sender.public_key, self.secret_key
-        )
-        return decrypted_value
+        value = await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        if sender.public_key and self.secret_key:
+            nonce = _generate_nonce(session_id, rendezvous_key)
+            value = pysodium.crypto_box_open(
+                value, nonce, sender.public_key, self.secret_key
+            )
+        else:
+            get_logger().warning(
+                f"Channel between {sender.endpoint} and {receiver.endpoint} "
+                f"is not secure. Validate both enpoints supplied a public and "
+                f"a secret libsodium key."
+            )
+        return value
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
-        nonce = _generate_nonce(session_id, rendezvous_key)
-        encrypted_value = pysodium.crypto_box(
-            value, nonce, receiver.public_key, self.secret_key
-        )
+        if receiver.public_key and self.secret_key:
+            nonce = _generate_nonce(session_id, rendezvous_key)
+            value = pysodium.crypto_box(
+                value, nonce, receiver.public_key, self.secret_key
+            )
+        else:
+            get_logger().warning(
+                f"Channel between {sender.endpoint} and {receiver.endpoint} "
+                f"is not secure. Validate both enpoints supplied a public and "
+                f"a secret libsodium key."
+            )
         return await self._post(
-            f"{self.broker_host}/{session_id}/{rendezvous_key}", encrypted_value
+            f"{self.broker_host}/{session_id}/{rendezvous_key}", value
         )
 
 
