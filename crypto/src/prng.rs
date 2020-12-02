@@ -3,9 +3,9 @@ use aes::cipher::{BlockCipher, NewBlockCipher};
 use aes::Aes128;
 use byteorder::{ByteOrder, LittleEndian};
 use rand::{CryptoRng, Error, RngCore, SeedableRng};
+use sodiumoxide::randombytes::randombytes_into;
 use std::mem;
 use std::slice;
-use sodiumoxide::randombytes::{randombytes_into};
 
 const AES_BLK_SIZE: usize = 16;
 const PIPELINES_U128: u128 = 8;
@@ -55,7 +55,7 @@ impl AesRngState {
 
     fn init() -> Self {
         AesRngState {
-            blocks:create_init_state(),
+            blocks: create_init_state(),
             next_index: PIPELINES_U128,
             used_bytes: 0,
         }
@@ -194,7 +194,7 @@ mod tests {
         let mut blocks = create_init_state();
         // create encryptions Enc_{seed}(0)...Enc_{seed}(7)
         cipher.encrypt_blocks(&mut blocks);
- 
+
         let mut rng = AesRng::from_seed(seed);
         let mut out = [0u8; 16 * 8];
         rng.try_fill_bytes(&mut out).expect("");
@@ -204,7 +204,6 @@ mod tests {
 
         let _ = rng.next_u32();
         assert!(rng.state.used_bytes == 4); // check used_bytes increments properly after obtaining a fresh state
-
     }
     #[test]
     fn test_seeded_prng() {
