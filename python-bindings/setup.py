@@ -7,11 +7,11 @@ install_requires = ['numpy']
 test_requires = install_requires + ['pytest']
 
 setup(
-    name='moose',
+    name='moose_kernels',
     version='0.1.0',
     description='Example of python extension using rust-numpy',
     rust_extensions=[RustExtension(
-        'moose.moose',
+        'moose_kernels.moose_kernels',
         './Cargo.toml',
     )],
     install_requires=install_requires,

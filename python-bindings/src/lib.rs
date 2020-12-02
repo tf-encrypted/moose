@@ -5,7 +5,7 @@ use pyo3::prelude::*;
 use std::num::Wrapping;
 
 #[pymodule]
-fn moose(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
         let arr_wrap = arr.as_array().mapv(Wrapping);
         Ring64Tensor(arr_wrap)
