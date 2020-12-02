@@ -28,6 +28,10 @@ impl Default for AesRngState {
     }
 }
 
+// AES_{seed}(ctr), convert ctr to an AES input
+// 8 blocks of 128 bits, each block is divided
+// arrays [ [0, 0...., 0], [0, 0, .., 1], [0,...,0010], ... [0,...0111]]
+ 
 // dumps 0, 1, ... PIPELINES_SIZE-1 into Block128 object
 // then unifies it into a Block128x8
 // this could probably be done faster in a similar manner to as_mut_bytes
@@ -82,31 +86,12 @@ pub struct AesRng {
 
 impl SeedableRng for AesRng {
     type Seed = [u8; SEED_SIZE];
-
+    
+    // Ideally this should be passed as a reference as we want
+    // to avoid copying the seed around. However this is probably going
+    // to be used few times, by default we should go with AesRng::from_random_seed
     #[inline]
     fn from_seed(seed: Self::Seed) -> Self {
-        // AES_{seed}(ctr), convert ctr to an AES input
-        // 8 blocks of 128 bits, each block is divided
-        // arrays [ [0, 0...., 0], [0, 0, .., 1], [0,...,0010], ... [0,...0111]]
-        // TODO: Can we replace this with copy from slice?
-        let key: Block128 = GenericArray::clone_from_slice(&seed);
-        let mut out = AesRng {
-            state: AesRngState::default(),
-            cipher: Aes128::new(&key),
-        };
-        out.init();
-        out
-    }
-}
-
-trait SeededRng {
-    fn get_seeded() -> Self;
-}
-
-impl SeededRng for AesRng {
-    fn get_seeded() -> Self {
-        let mut seed = [0u8; SEED_SIZE];
-        randombytes_into(&mut seed);
         let key: Block128 = GenericArray::clone_from_slice(&seed);
         let mut out = AesRng {
             state: AesRngState::default(),
@@ -125,6 +110,18 @@ impl AesRng {
     fn next(&mut self) {
         self.state.next();
         self.cipher.encrypt_blocks(&mut self.state.blocks);
+    }
+
+    fn from_random_seed() -> Self {
+        let mut seed = [0u8; SEED_SIZE];
+        randombytes_into(&mut seed);
+        let key: Block128 = GenericArray::clone_from_slice(&seed);
+        let mut out = AesRng {
+            state: AesRngState::default(),
+            cipher: Aes128::new(&key),
+        };
+        out.init();
+        out
     }
 }
 
@@ -198,17 +195,25 @@ mod tests {
         let mut rng = AesRng::from_seed(seed);
         let mut out = [0u8; 16 * 8];
         rng.try_fill_bytes(&mut out).expect("");
-        assert!(rng.state.used_bytes == 16 * 8); // counter works well
 
-        assert!(rng.state.blocks == blocks); // encryptions produced initially match aes output
+        // counter works well
+        assert_eq!(rng.state.used_bytes, 16 * 8);
+
+        // encryptions produced initially match aes output
+        assert_eq!(rng.state.blocks, blocks);
 
         let _ = rng.next_u32();
-        assert!(rng.state.used_bytes == 4); // check used_bytes increments properly after obtaining a fresh state
+        // check used_bytes increments properly
+        // after obtaining a fresh state
+        assert_eq!(rng.state.used_bytes, 3);
     }
+
     #[test]
     fn test_seeded_prng() {
-        sodiumoxide::init().unwrap();
-        let mut rng: AesRng = SeededRng::get_seeded();
-        rng.next_u32();
+        let _ = sodiumoxide::init();
+        let mut rng: AesRng = AesRng::from_random_seed();
+        // test whether two consecutive calls can be done
+        let _ = rng.next_u32();
+        let _ = rng.next_u64();
     }
 }
