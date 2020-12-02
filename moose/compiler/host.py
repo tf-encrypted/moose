@@ -75,7 +75,7 @@ class NetworkingPass:
 
         derialize_cache_key = (source_operation.name, destination_placement_name)
         if self.reuse_when_possible and derialize_cache_key in self.deserialize_cache:
-            # nothing do do, we can reuse everything
+            # nothing to do, we can reuse everything
             return self.deserialize_cache[derialize_cache_key], extra_ops
 
         # maybe we can reuse the serialized value

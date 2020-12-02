@@ -17,16 +17,20 @@ class Compiler:
             NetworkingPass(),
         ]
         self.name_counters = defaultdict(int)
-        self.known_operations = defaultdict(dict)
 
-    def run_passes(self, computation: Computation, render=False) -> Computation:
+    def run_passes(
+        self, computation: Computation, render=False, render_prefix="pass"
+    ) -> Computation:
         if render:
-            render_computation(computation, "pass-0-logical")
+            render_computation(computation, f"{render_prefix}-0-logical")
         for i, compiler_pass in enumerate(self.passes):
-            computation, performed_changes = compiler_pass.run(computation, context=self)
+            computation, performed_changes = compiler_pass.run(
+                computation, context=self
+            )
             if render and performed_changes:
                 render_computation(
-                    computation, f"pass-{i+1}-{type(compiler_pass).__name__.lower()}"
+                    computation,
+                    f"{render_prefix}-{i+1}-{type(compiler_pass).__name__.lower()}",
                 )
         return computation
 
