@@ -1,3 +1,66 @@
+//! Pure Rust implementation of a PRNG based on Advanced Encryption Standard
+//!
+//! The underlying implementation is based on the pipelined version of AES from
+//! [`aes`] create.
+//! The PRNG supports two version can take a seed either given by the user
+//! or taken from /dev/random or dev/urandom using [`sodiumoxide`].
+//!
+//! By default the package is compiled with AES-NI implementation
+//! for `i686`/`x86_64` target architectures with `target-feature=+aes`.
+//!
+//! The underlying algorithms are inspired from [MP-SPDZ] and [SCALE-MAMBA]
+//! implementations which generate randomness in batches of 8 * 16 bytes
+//! i.e. select a random key k and compute AES_k(0), ..., AES_k(7) giving out
+//! 128 bytes of randomness as long as the key is random since AES acts as a [PRF].
+//! At the next iteration AES_k(8), ..., AES_k(15) is computed and so on.
+//!
+//! # Usage example for already seeded PRNG
+//! ```
+//! use crypto::prng::{AesRng}
+//!
+//! // required for generating the random seed (AES key)
+//! let _ = sodiumoxide::init();
+//!
+//! // initialize PRNG seed
+//! let mut rng: AesRng = AesRng::from_random_seed();
+//! // gets 32 random bits
+//! let output32 = rng.next_u32();
+//! // gets 64 random bits
+//! let output64 = rng.next_u64()
+//! // gets 2 output bytes
+//! let mut out = [0u8; 2];
+//! rng.try_fill_bytes(&mut out).expect("");
+//!
+//! ```
+//!
+//! # Usage example for setting manually the PRNG seed
+//! ```
+//! use crypto::prng::{AesRng, SEED_SIZE};
+//! use rand::{RngCore, SeedableRng}
+//! // seed is full of zeroes here, note this would be insecure
+//! // in an actual implementation
+//! let mut rng = AesRng::from_seed([0u8; SEED_SIZE])
+//!
+//! // gets 32 random bits
+//! let output32 = rng.next_u32();
+//! // gets 64 random bits
+//! let output64 = rng.next_u64()
+//! ```
+//!
+//! For implementations of block cipher modes of operation see
+//! [`block-modes`] crate.
+//!
+//! [fixslicing]: https://eprint.iacr.org/2020/1123.pdf
+//! [AES-NI]: https://en.wikipedia.org/wiki/AES_instruction_set
+//! [`block-modes`]: https://docs.rs/block-modes
+//!
+//! [`aes`]: aes
+//! [`sodiumoxide`]: sodiumoxide
+//! [MP-SPDZ]: https://github.com/data61/MP-SPDZ
+//! [SCALE-MAMBA]: https://github.com/KULeuven-COSIC/SCALE-MAMBA
+//! [PRF]: https://en.wikipedia.org/wiki/Pseudorandom_function_family
+//!
+
 use aes::cipher::generic_array::{typenum::U16, typenum::U8, GenericArray};
 use aes::cipher::{BlockCipher, NewBlockCipher};
 use aes::Aes128;
@@ -28,13 +91,9 @@ impl Default for AesRngState {
     }
 }
 
-// AES_{seed}(ctr), convert ctr to an AES input
-// 8 blocks of 128 bits, each block is divided
-// arrays [ [0, 0...., 0], [0, 0, .., 1], [0,...,0010], ... [0,...0111]]
-
-// dumps 0, 1, ... PIPELINES_SIZE-1 into Block128 object
-// then unifies it into a Block128x8
-// this could probably be done faster in a similar manner to as_mut_bytes
+/// Dumps 0, 1, ... PIPELINES_SIZE-1 into Block128 object
+/// then unifies it into a Block128x8
+/// this could probably be done faster in a similar manner to as_mut_bytes
 fn create_init_state() -> Block128x8 {
     let mut state = [0_u8; STATE_SIZE];
     Block128x8::from_exact_iter((0..PIPELINES_USIZE).map(|i| {
@@ -50,6 +109,7 @@ fn create_init_state() -> Block128x8 {
 }
 
 impl AesRngState {
+    /// Unsafe method which converts from a Block128x8 to a mutable u8 array
     fn as_mut_bytes(&mut self) -> &mut [u8] {
         #[allow(unsafe_code)]
         unsafe {
@@ -57,6 +117,7 @@ impl AesRngState {
         }
     }
 
+    /// Initialize state
     fn init() -> Self {
         AesRngState {
             blocks: create_init_state(),
@@ -65,6 +126,8 @@ impl AesRngState {
         }
     }
 
+    /// Computes the next state by looking at the counter of the current state
+    /// Writes the next counters into bytes over the u8 state array
     fn next(&mut self) {
         let counter = self.next_index;
         let blocks_bytes = self.as_mut_bytes();
@@ -79,6 +142,7 @@ impl AesRngState {
     }
 }
 
+/// Necessary data to compute randomness, a state and an initialized AES blockcipher.
 pub struct AesRng {
     state: AesRngState,
     cipher: Aes128,
@@ -87,9 +151,9 @@ pub struct AesRng {
 impl SeedableRng for AesRng {
     type Seed = [u8; SEED_SIZE];
 
-    // Ideally this should be passed as a reference as we want
-    // to avoid copying the seed around. However this is probably going
-    // to be used few times, by default we should go with AesRng::from_random_seed
+    /// Ideally this should be passed as a reference as we want
+    /// to avoid copying the seed around. However this is probably going
+    /// to be used few times, by default we should go with AesRng::from_random_seed
     #[inline]
     fn from_seed(seed: Self::Seed) -> Self {
         let key: Block128 = GenericArray::clone_from_slice(&seed);
@@ -103,15 +167,23 @@ impl SeedableRng for AesRng {
 }
 
 impl AesRng {
+    /// useful for encrypting the initial state and obtain
+    /// initial random byte output
     fn init(&mut self) {
         self.cipher.encrypt_blocks(&mut self.state.blocks);
     }
 
+    /// To compute the next chunk of random bytes
+    /// First we compute the next state according to its counter
+    /// and then we encrypt it using AES.
     fn next(&mut self) {
         self.state.next();
         self.cipher.encrypt_blocks(&mut self.state.blocks);
     }
 
+    /// Method to fetch a PRNG where its seed is taken from /dev/random
+    /// or /dev/urandom if /dev/random doesn't have enough entropy
+    /// The entropy selection is done automatically by sodiumoxide
     fn from_random_seed() -> Self {
         let mut seed = [0u8; SEED_SIZE];
         randombytes_into(&mut seed);
@@ -126,6 +198,7 @@ impl AesRng {
 }
 
 impl RngCore for AesRng {
+    /// fetches 32 bits of randomness
     fn next_u32(&mut self) -> u32 {
         let u32_size = mem::size_of::<u32>();
         if self.state.used_bytes >= STATE_SIZE - u32_size {
@@ -137,6 +210,7 @@ impl RngCore for AesRng {
         LittleEndian::read_u32(&blocks_bytes[used_bytes..used_bytes + u32_size])
     }
 
+    /// fetches 64 bits of randomness
     fn next_u64(&mut self) -> u64 {
         let u64_size = mem::size_of::<u64>();
         if self.state.used_bytes >= STATE_SIZE - u64_size {
@@ -147,6 +221,7 @@ impl RngCore for AesRng {
         LittleEndian::read_u64(&self.state.as_mut_bytes()[used_bytes..used_bytes + u64_size])
     }
 
+    /// Fills in an array of bytes with randomness
     fn fill_bytes(&mut self, dest: &mut [u8]) {
         let mut read_len = STATE_SIZE - self.state.used_bytes;
         let mut dest_start = 0;
