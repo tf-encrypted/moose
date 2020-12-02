@@ -1,4 +1,4 @@
-use crypto::Ring64Vector;
+use crypto::Ring64Tensor;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::prelude::*;
@@ -6,17 +6,12 @@ use std::num::Wrapping;
 
 #[pymodule]
 fn moose(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Vector {
-        let vec = arr.reshape([arr.len()]).unwrap();
-        let arr_vec = unsafe {
-            // D:
-            vec.as_array()
-        };
-        let arr_wrap = arr_vec.mapv(Wrapping);
-        Ring64Vector(arr_wrap)
+    fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
+        let arr_wrap = arr.as_array().mapv(Wrapping);
+        Ring64Tensor(arr_wrap)
     }
 
-    fn ring64_to_array(r: Ring64Vector, shape: &[usize]) -> ArrayD<u64> {
+    fn ring64_to_array(r: Ring64Tensor, shape: &[usize]) -> ArrayD<u64> {
         let inner_arr = r.0;
         let unwrapped = inner_arr.mapv(|x| x.0);
         unwrapped.into_shape(shape).unwrap()
