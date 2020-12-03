@@ -18,10 +18,7 @@
 //! ```
 //! use crypto::prng::{AesRng}
 //!
-//! // required for generating the random seed (AES key)
-//! let _ = sodiumoxide::init();
-//!
-//! // initialize PRNG seed
+//! // initialize PRNG seed using sodiumoxide entropy pool
 //! let mut rng: AesRng = AesRng::from_random_seed();
 //! // gets 32 random bits
 //! let output32 = rng.next_u32();
