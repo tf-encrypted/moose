@@ -4,7 +4,7 @@ from setuptools_rust import RustExtension
 
 setup_requires = ['setuptools-rust~=0.11.5']
 install_requires = ['numpy']
-test_requires = install_requires + ['pytest']
+test_requires = install_requires + ['pytest', 'absl-py']
 
 setup(
     name='moose_kernels',
