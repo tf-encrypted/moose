@@ -7,7 +7,7 @@ from cape.api.session import ComputationStatus
 from cape.api.session import Session
 from cape.cape import Cape
 
-from moose.compiler.computation import Computation
+from moose.computation.utils import deserialize_computation
 from moose.logger import get_logger
 
 
@@ -84,7 +84,7 @@ class Choreography:
                 all_placements = session.placement_instantiation["All"]
                 placement = session.placement_instantiation["You"]
                 computation_bytes = base64.b64decode(session.task.computation)
-                computation = Computation.deserialize(computation_bytes)
+                computation = deserialize_computation(computation_bytes)
 
                 placement_instantiation = {}
                 for p in all_placements:
