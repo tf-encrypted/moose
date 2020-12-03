@@ -3,12 +3,13 @@ import logging
 import os
 
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
-from moose.compiler.edsl import function
-from moose.compiler.edsl import save
+from moose.edsl import add
+from moose.edsl import computation
+from moose.edsl import constant
+from moose.edsl import function
+from moose.edsl import host_placement
+from moose.edsl import save
+from moose.edsl import trace
 from moose.logger import get_logger
 from moose.runtime import TestRuntime
 from moose.utils import load_certificate
@@ -25,10 +26,10 @@ if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 
-inputter0 = HostPlacement(name="inputter0")
-inputter1 = HostPlacement(name="inputter1")
-aggregator = HostPlacement(name="aggregator")
-outputter = HostPlacement(name="outputter")
+inputter0 = host_placement(name="inputter0")
+inputter1 = host_placement(name="inputter1")
+aggregator = host_placement(name="aggregator")
+outputter = host_placement(name="outputter")
 
 
 @function
@@ -58,7 +59,7 @@ def my_comp():
     return res
 
 
-concrete_comp = my_comp.trace_func()
+concrete_comp = trace(my_comp)
 
 if __name__ == "__main__":
     if args.runtime == "test":

@@ -141,7 +141,7 @@ def replicated_add(x: ReplicatedTensor, y: ReplicatedTensor, placement_name):
     else:
         replicated_placement = computation.placement(placement_name)
         assert isinstance(replicated_placement, ReplicatedPlacement)
-        player0 = computation.maybe_add_placement(replicated_placement.player0).name
+        player0 = replicated_placement.player_names[0]
     z0_on_0 = ring_add(x0_on_0, y0_on_0, placement_name=player0)
     z2_on_0 = ring_add(x2_on_0, y2_on_0, placement_name=player0)
 
@@ -153,7 +153,7 @@ def replicated_add(x: ReplicatedTensor, y: ReplicatedTensor, placement_name):
     else:
         replicated_placement = computation.placement(placement_name)
         assert isinstance(replicated_placement, ReplicatedPlacement)
-        player1 = computation.maybe_add_placement(replicated_placement.player1).name
+        player1 = replicated_placement.player_names[1]
     z1_on_1 = ring_add(x1_on_1, y1_on_1, placement_name=player1)
     z0_on_1 = ring_add(x0_on_1, y0_on_1, placement_name=player1)
 
@@ -165,7 +165,7 @@ def replicated_add(x: ReplicatedTensor, y: ReplicatedTensor, placement_name):
     else:
         replicated_placement = computation.placement(placement_name)
         assert isinstance(replicated_placement, ReplicatedPlacement)
-        player2 = computation.maybe_add_placement(replicated_placement.player2).name
+        player2 = replicated_placement.player_names[2]
     z2_on_2 = ring_add(x2_on_2, y2_on_2, placement_name=player2)
     z1_on_2 = ring_add(x1_on_2, y1_on_2, placement_name=player2)
 

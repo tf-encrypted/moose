@@ -6,19 +6,8 @@ from typing import Dict
 class Placement:
     name: str
 
-    def __enter__(self):
-        global CURRENT_PLACEMENT
-        CURRENT_PLACEMENT.append(self)
-
-    def __exit__(self, type, value, traceback):
-        global CURRENT_PLACEMENT
-        CURRENT_PLACEMENT.pop(-1)
-
     def __hash__(self):
         return hash(self.name)
-
-    def compile(self, context, fn, inputs, output_placements=None):
-        raise NotImplementedError()
 
 
 @dataclass
@@ -55,6 +44,7 @@ class Computation:
         return self.placements.get(name)
 
     def add_placement(self, placement):
+        assert isinstance(placement, Placement)
         assert placement.name not in self.placements
         self.placements[placement.name] = placement
         return placement
@@ -72,6 +62,7 @@ class Computation:
         return self.operations.get(name)
 
     def add_operation(self, op):
+        assert isinstance(op, Operation)
         assert op.name not in self.operations, op.name
         assert op.placement_name in self.placements, op.placement_name
         self.operations[op.name] = op

@@ -2,13 +2,14 @@ import argparse
 import logging
 
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
-from moose.compiler.edsl import function
-from moose.compiler.edsl import save
-from moose.compiler.mpspdz import MpspdzPlacement
+from moose.edsl import add
+from moose.edsl import computation
+from moose.edsl import constant
+from moose.edsl import function
+from moose.edsl import host_placement
+from moose.edsl import mpspdz_placement
+from moose.edsl import save
+from moose.edsl import trace
 from moose.logger import get_logger
 from moose.runtime import TestRuntime
 
@@ -20,9 +21,9 @@ args = parser.parse_args()
 if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
-inputter0 = HostPlacement(name="inputter0")
-inputter1 = HostPlacement(name="inputter1")
-outputter = HostPlacement(name="outputter")
+inputter0 = host_placement(name="inputter0")
+inputter1 = host_placement(name="inputter1")
+outputter = host_placement(name="outputter")
 
 # NOTE:
 # All players must be listed in the MP-SPDZ placement, even if they only send
@@ -30,7 +31,7 @@ outputter = HostPlacement(name="outputter")
 # setup for the placement needs to know ahead of time who to generate key pairs
 # for. In the near future this is ideally something that we can infer automati-
 # cally during compilation from logical to physical computation.
-mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1, outputter])
+mpspdz = mpspdz_placement(name="mpspdz", players=[inputter0, inputter1, outputter])
 
 
 @function
@@ -72,7 +73,7 @@ def my_comp():
     return res
 
 
-concrete_comp = my_comp.trace_func()
+concrete_comp = trace(my_comp)
 
 if __name__ == "__main__":
     if args.runtime == "test":

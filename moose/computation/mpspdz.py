@@ -4,12 +4,12 @@ from typing import List
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
-from moose.computation.host import HostPlacement
 
 
 @dataclass
 class MpspdzPlacement(Placement):
-    players: List[HostPlacement]
+    player_names: List[str]
+    type_: str = "mpspdz"
 
     def __hash__(self):
         return hash(self.name)
@@ -19,6 +19,7 @@ class MpspdzPlacement(Placement):
 class MpspdzSaveInputOperation(Operation):
     player_index: int
     invocation_key: str
+    type_: str = "mpspdz::save_input"
 
 
 @dataclass
@@ -29,9 +30,11 @@ class MpspdzCallOperation(Operation):
     invocation_key: str
     coordinator: str
     protocol: str
+    type_: str = "mpspdz::call"
 
 
 @dataclass
 class MpspdzLoadOutputOperation(Operation):
     player_index: int
     invocation_key: str
+    type_: str = "mpspdz::load_output"

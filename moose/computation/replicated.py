@@ -1,15 +1,14 @@
 from dataclasses import dataclass
+from typing import List
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
-from moose.computation.host import HostPlacement
 
 
 @dataclass
 class ReplicatedPlacement(Placement):
-    player0: HostPlacement
-    player1: HostPlacement
-    player2: HostPlacement
+    player_names: List[str]
+    type_: str = "replicated"
 
     def __hash__(self):
         return hash(self.name)
@@ -17,4 +16,4 @@ class ReplicatedPlacement(Placement):
 
 @dataclass
 class ShareOperation(Operation):
-    pass
+    type_: str = "replicated::share"

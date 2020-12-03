@@ -10,12 +10,16 @@ from moose.computation.base import Computation
 
 class Compiler:
     def __init__(self, passes=None):
-        self.passes = passes or [
-            MpspdzApplyFunctionPass(),
-            HostApplyFunctionPass(),
-            ReplicatedLoweringPass(),
-            NetworkingPass(),
-        ]
+        self.passes = (
+            passes
+            if passes is not None
+            else [
+                MpspdzApplyFunctionPass(),
+                HostApplyFunctionPass(),
+                ReplicatedLoweringPass(),
+                NetworkingPass(),
+            ]
+        )
         self.name_counters = defaultdict(int)
 
     def run_passes(

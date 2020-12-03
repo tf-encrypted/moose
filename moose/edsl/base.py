@@ -6,9 +6,54 @@ from typing import List
 from typing import Optional
 from typing import Union
 
-from moose.computation.base import Placement
-
 CURRENT_PLACEMENT: List = []
+
+
+@dataclass
+class PlacementExpression:
+    name: str
+
+    def __enter__(self):
+        global CURRENT_PLACEMENT
+        CURRENT_PLACEMENT.append(self)
+
+    def __exit__(self, type, value, traceback):
+        global CURRENT_PLACEMENT
+        CURRENT_PLACEMENT.pop(-1)
+
+
+@dataclass
+class HostPlacementExpression(PlacementExpression):
+    def __hash__(self):
+        return hash(self.name)
+
+
+@dataclass
+class MpspdzPlacementExpression(PlacementExpression):
+    players: List[PlacementExpression]
+
+    def __hash__(self):
+        return hash(self.name)
+
+
+@dataclass
+class ReplicatedPlacementExpression(PlacementExpression):
+    players: List[PlacementExpression]
+
+    def __hash__(self):
+        return hash(self.name)
+
+
+def host_placement(name):
+    return HostPlacementExpression(name=name)
+
+
+def mpspdz_placement(name, players):
+    return MpspdzPlacementExpression(name=name, players=players)
+
+
+def replicated_placement(name, players):
+    return ReplicatedPlacementExpression(name=name, players=players)
 
 
 def get_current_placement():
@@ -18,7 +63,7 @@ def get_current_placement():
 
 @dataclass
 class Expression:
-    placement: Placement
+    placement: PlacementExpression
     inputs: List
 
     def __hash__(self):
@@ -60,7 +105,7 @@ class SaveExpression(Expression):
 @dataclass
 class ApplyFunctionExpression(Expression):
     fn: Callable
-    output_placements: Optional[List[Placement]]
+    output_placements: Optional[List[PlacementExpression]]
     output_type: Optional
 
     def __hash__(self):

@@ -1,19 +1,19 @@
 from absl.testing import parameterized
 
-from moose.computation.host import HostPlacement
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SendOperation
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
+from moose.edsl.base import host_placement
 from moose.edsl.base import mul
 from moose.edsl.tracer import trace
 
 
 class HostTest(parameterized.TestCase):
     def test_send_receive(self):
-        player0 = HostPlacement(name="player0")
-        player1 = HostPlacement(name="player1")
+        player0 = host_placement(name="player0")
+        player1 = host_placement(name="player1")
 
         @computation
         def my_comp():
@@ -45,10 +45,10 @@ class HostTest(parameterized.TestCase):
         )
 
     def test_pass_networking(self):
-        alice = HostPlacement(name="alice")
-        bob = HostPlacement(name="bob")
-        carole = HostPlacement(name="carole")
-        dave = HostPlacement(name="dave")
+        alice = host_placement(name="alice")
+        bob = host_placement(name="bob")
+        carole = host_placement(name="carole")
+        dave = host_placement(name="dave")
 
         @computation
         def my_comp():

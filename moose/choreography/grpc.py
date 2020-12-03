@@ -5,7 +5,9 @@ from typing import Dict
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.compiler.base import Computation
+from moose.computation.base import Computation
+from moose.computation.utils import deserialize_computation
+from moose.computation.utils import serialize_computation
 from moose.logger import get_logger
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc
@@ -74,7 +76,7 @@ class ExecutorProxy:
     async def run_computation(
         self, logical_computation, placement_instantiation, placement, session_id
     ):
-        comp_ser = logical_computation.serialize()
+        comp_ser = serialize_computation(logical_computation)
         compute_request = executor_pb2.RunComputationRequest(
             computation=comp_ser,
             placement_instantiation=placement_instantiation,
@@ -99,7 +101,7 @@ class Servicer(executor_pb2_grpc.ExecutorServicer):
 
     async def RunComputation(self, request, context):
         await self.executor.run_computation(
-            logical_computation=Computation.deserialize(request.computation),
+            logical_computation=deserialize_computation(request.computation),
             placement_instantiation=request.placement_instantiation,
             placement=request.placement,
             session_id=request.session_id,
