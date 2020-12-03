@@ -10,7 +10,7 @@ from moose.computation.base import Computation
 
 class Compiler:
     def __init__(self, passes=None):
-        self.passes = passes or [
+        self.passes = passes if passes is not None else [
             MpspdzApplyFunctionPass(),
             HostApplyFunctionPass(),
             ReplicatedLoweringPass(),
