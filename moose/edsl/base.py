@@ -15,7 +15,7 @@ class PlacementExpression:
 
     def __enter__(self):
         global CURRENT_PLACEMENT
-        CURRENT_PLACEMENT.append(self.placement)
+        CURRENT_PLACEMENT.append(self)
 
     def __exit__(self, type, value, traceback):
         global CURRENT_PLACEMENT
