@@ -19,6 +19,7 @@ class MpspdzPlacement(Placement):
 class MpspdzSaveInputOperation(Operation):
     player_index: int
     invocation_key: str
+    ty: str = "mpspdz::save_input"
 
 
 @dataclass
@@ -29,9 +30,11 @@ class MpspdzCallOperation(Operation):
     invocation_key: str
     coordinator: str
     protocol: str
+    ty: str = "mpspdz::call"
 
 
 @dataclass
 class MpspdzLoadOutputOperation(Operation):
     player_index: int
     invocation_key: str
+    ty: str = "mpspdz::load_output"

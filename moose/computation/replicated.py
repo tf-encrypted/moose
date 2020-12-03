@@ -16,4 +16,4 @@ class ReplicatedPlacement(Placement):
 
 @dataclass
 class ShareOperation(Operation):
-    pass
+    ty: str = "replicated::share"

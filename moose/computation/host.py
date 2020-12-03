@@ -19,9 +19,11 @@ class HostPlacement(Placement):
 class CallPythonFunctionOperation(Operation):
     pickled_fn: bytes = field(repr=False)
     output_type: Optional
+    ty: str = "host::call_python_function"
 
 
 @dataclass
 class RunProgramOperation(Operation):
     path: str
     args: List[str]
+    ty: str = "host::run_program"
