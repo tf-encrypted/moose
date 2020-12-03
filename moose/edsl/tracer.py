@@ -3,6 +3,7 @@ from collections import defaultdict
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
 from moose.computation.host import RunProgramOperation
+from moose.computation.replicated import ShareOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import ConstantOperation
@@ -63,6 +64,20 @@ class AstTracer:
             name=self.get_fresh_name("constant"),
             value=constant_expression.value,
             inputs={},
+        )
+        self.computation.add_operation(op)
+        return op
+
+    # TODO(Morten) should not be here
+    def visit_ShareExpression(self, share_expression):
+        (value_expression,) = share_expression.inputs
+        value_operation = self.visit(value_expression)
+        placement = share_expression.placement
+        self.computation.maybe_add_placement(placement)
+        op = ShareOperation(
+            placement_name=placement.name,
+            name=self.get_fresh_name("share"),
+            inputs={"value": value_operation.name},
         )
         self.computation.add_operation(op)
         return op

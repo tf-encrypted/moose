@@ -54,15 +54,16 @@ class Computation:
     def placement(self, name):
         return self.placements.get(name)
 
-    def maybe_add_placement(self, placement):
-        if placement.name in self.placements:
-            assert placement == self.placements[placement.name]
-            return
-        self.add_placement(placement)
-
     def add_placement(self, placement):
         assert placement.name not in self.placements
         self.placements[placement.name] = placement
+        return placement
+
+    def maybe_add_placement(self, placement):
+        if placement.name in self.placements:
+            assert placement == self.placements[placement.name]
+            return placement
+        return self.add_placement(placement)
 
     def find_operations_of_type(self, op_type):
         return [op for op in self.operations.values() if isinstance(op, op_type)]
@@ -74,6 +75,7 @@ class Computation:
         assert op.name not in self.operations, op.name
         assert op.placement_name in self.placements, op.placement_name
         self.operations[op.name] = op
+        return op
 
     def add_operations(self, ops):
         for op in ops:

@@ -4,7 +4,7 @@ from moose.compiler.host import HostApplyFunctionPass
 from moose.compiler.host import NetworkingPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.render import render_computation
-from moose.compiler.replicated import ReplicatedPass
+from moose.compiler.replicated import ReplicatedLoweringPass
 from moose.computation.base import Computation
 
 
@@ -13,7 +13,7 @@ class Compiler:
         self.passes = passes or [
             MpspdzApplyFunctionPass(),
             HostApplyFunctionPass(),
-            ReplicatedPass(),
+            ReplicatedLoweringPass(),
             NetworkingPass(),
         ]
         self.name_counters = defaultdict(int)

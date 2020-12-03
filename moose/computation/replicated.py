@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from moose.computation.base import Operation
 from moose.computation.base import Placement
 from moose.computation.host import HostPlacement
 
@@ -12,3 +13,8 @@ class ReplicatedPlacement(Placement):
 
     def __hash__(self):
         return hash(self.name)
+
+
+@dataclass
+class ShareOperation(Operation):
+    pass
