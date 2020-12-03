@@ -5,7 +5,6 @@ from moose.computation.replicated import ReplicatedPlacement
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
-from moose.edsl.base import mul
 from moose.edsl.base import share
 from moose.edsl.tracer import trace
 
@@ -16,7 +15,7 @@ class ReplicatedTest(parameterized.TestCase):
         bob = HostPlacement(name="bob")
         carole = HostPlacement(name="carole")
         replicated = ReplicatedPlacement("replicated", alice, bob, carole)
-        dave = HostPlacement(name="dave")
+        # dave = HostPlacement(name="dave")
 
         @computation
         def my_comp():
@@ -32,7 +31,7 @@ class ReplicatedTest(parameterized.TestCase):
             # return w
             return z_bar
 
-        concrete_comp = trace(my_comp, render=True)
+        concrete_comp = trace(my_comp)
         del concrete_comp
 
-        assert False
+        # assert False
