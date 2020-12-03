@@ -1,11 +1,13 @@
 import logging
 
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
-from moose.compiler.edsl import run_program
-from moose.compiler.edsl import save
+from moose.computation import HostPlacement
+from moose.edsl import add
+from moose.edsl import computation
+from moose.edsl import constant
+from moose.edsl import default_placement
+from moose.edsl import run_program
+from moose.edsl import save
+from moose.edsl import trace
 from moose.logger import get_logger
 from moose.runtime import TestRuntime
 
@@ -20,25 +22,25 @@ outputter = HostPlacement(name="outputter")
 @computation
 def my_comp():
 
-    with inputter0:
+    with default_placement(inputter0):
         c0_0 = constant(2)
         c1_0 = constant(3)
         x0 = run_program("python", ["local_computation.py"], c0_0, c1_0)
 
-    with inputter1:
+    with default_placement(inputter1):
         c0_1 = constant(3)
         x1 = run_program("python", ["local_computation.py"], c0_1)
 
-    with aggregator:
+    with default_placement(aggregator):
         y = add(x0, x1)
 
-    with outputter:
+    with default_placement(outputter):
         res = save(y, "y")
 
     return res
 
 
-concrete_comp = my_comp.trace_func()
+concrete_comp = trace(my_comp)
 
 if __name__ == "__main__":
 

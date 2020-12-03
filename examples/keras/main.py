@@ -2,10 +2,12 @@ import argparse
 import logging
 
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import function
-from moose.compiler.edsl import save
+from moose.computation import HostPlacement
+from moose.edsl import computation
+from moose.edsl import default_placement
+from moose.edsl import function
+from moose.edsl import save
+from moose.edsl import trace
 from moose.logger import get_logger
 from moose.runtime import TestRuntime
 
@@ -53,23 +55,23 @@ def model_predict(model, input, weights):
 @computation
 def my_comp():
 
-    with inputter0:
+    with default_placement(inputter0):
         model = load_model()
         weights = get_weights(model)
 
-    with inputter1:
+    with default_placement(inputter1):
         x = load_data()
 
-    with aggregator:
+    with default_placement(aggregator):
         y = model_predict(model, x, weights)
 
-    with outputter:
+    with default_placement(outputter):
         res = save(y, "y")
 
     return res
 
 
-concrete_comp = my_comp.trace_func()
+concrete_comp = trace(my_comp)
 
 
 if __name__ == "__main__":

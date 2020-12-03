@@ -2,13 +2,15 @@ import argparse
 import logging
 
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.compiler.edsl import HostPlacement
-from moose.compiler.edsl import add
-from moose.compiler.edsl import computation
-from moose.compiler.edsl import constant
-from moose.compiler.edsl import function
-from moose.compiler.edsl import save
-from moose.compiler.mpspdz import MpspdzPlacement
+from moose.computation import HostPlacement
+from moose.computation import MpspdzPlacement
+from moose.edsl import add
+from moose.edsl import computation
+from moose.edsl import constant
+from moose.edsl import default_placement
+from moose.edsl import function
+from moose.edsl import save
+from moose.edsl import trace
 from moose.logger import get_logger
 from moose.runtime import TestRuntime
 
@@ -41,14 +43,14 @@ def my_function(x, y, z):
 @computation
 def my_comp():
 
-    with inputter0:
+    with default_placement(inputter0):
         x = constant(1)
         z = constant(3)
 
-    with inputter1:
+    with default_placement(inputter1):
         y = constant(2)
 
-    with mpspdz:
+    with default_placement(mpspdz):
         # Note that this illustrates one issue with function calls:
         # what does the role assignment indicate? is it where the
         # function is evaluated (in which case, how to we specify
@@ -66,13 +68,13 @@ def my_comp():
         v = my_function(x, y, z, output_placements=[outputter])
         w = my_function(x, y, z, output_placements=[outputter])
 
-    with outputter:
+    with default_placement(outputter):
         res = save(add(v, w), "v")
 
     return res
 
 
-concrete_comp = my_comp.trace_func()
+concrete_comp = trace(my_comp)
 
 if __name__ == "__main__":
     if args.runtime == "test":
