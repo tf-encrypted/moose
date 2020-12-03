@@ -37,9 +37,7 @@ class MpspdzApplyFunctionPass:
 
         input_placement_names = [op.placement_name for op in input_ops]
         output_placement_names = [op.placement_name for op in output_ops]
-        compute_placement_names = [
-            placement.name for placement in mpspdz_placement.players
-        ]
+        compute_placement_names = mpspdz_placement.player_names
         assert set(compute_placement_names) == set(
             input_placement_names + output_placement_names
         )

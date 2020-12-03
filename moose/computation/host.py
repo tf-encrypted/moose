@@ -9,6 +9,8 @@ from moose.computation.base import Placement
 
 @dataclass
 class HostPlacement(Placement):
+    ty: str = "host"
+
     def __hash__(self):
         return hash(self.name)
 

@@ -4,12 +4,12 @@ from typing import List
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
-from moose.computation.host import HostPlacement
 
 
 @dataclass
 class MpspdzPlacement(Placement):
-    players: List[HostPlacement]
+    player_names: List[str]
+    ty: str = "mpspdz"
 
     def __hash__(self):
         return hash(self.name)

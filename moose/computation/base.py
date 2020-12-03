@@ -44,6 +44,7 @@ class Computation:
         return self.placements.get(name)
 
     def add_placement(self, placement):
+        assert isinstance(placement, Placement)
         assert placement.name not in self.placements
         self.placements[placement.name] = placement
         return placement
@@ -61,6 +62,7 @@ class Computation:
         return self.operations.get(name)
 
     def add_operation(self, op):
+        assert isinstance(op, Operation)
         assert op.name not in self.operations, op.name
         assert op.placement_name in self.placements, op.placement_name
         self.operations[op.name] = op
