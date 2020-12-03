@@ -2,7 +2,6 @@ import dill
 from absl.testing import parameterized
 
 from moose.computation.host import CallPythonFunctionOperation
-from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
@@ -14,6 +13,7 @@ from moose.edsl.base import computation
 from moose.edsl.base import constant
 from moose.edsl.base import div
 from moose.edsl.base import function
+from moose.edsl.base import host_placement
 from moose.edsl.base import mul
 from moose.edsl.base import run_program
 from moose.edsl.base import sub
@@ -30,7 +30,7 @@ class EdslTest(parameterized.TestCase):
         )
     )
     def test_binary_op(self, op, OP, op_name):
-        player0 = HostPlacement(name="player0")
+        player0 = host_placement(name="player0")
 
         @computation
         def my_comp():
@@ -50,7 +50,7 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_call_python_fn(self):
-        player0 = HostPlacement(name="player0")
+        player0 = host_placement(name="player0")
 
         @function
         def add_one(x):
@@ -79,7 +79,7 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_constant(self):
-        player0 = HostPlacement(name="player0")
+        player0 = host_placement(name="player0")
 
         @computation
         def my_comp():
@@ -93,7 +93,7 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_run_program(self):
-        player0 = HostPlacement(name="player0")
+        player0 = host_placement(name="player0")
 
         @computation
         def my_comp():

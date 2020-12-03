@@ -2,7 +2,10 @@ from collections import defaultdict
 
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
+from moose.computation.mpspdz import MpspdzPlacement
+from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import ShareOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
@@ -16,7 +19,10 @@ from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import BinaryOpExpression
 from moose.edsl.base import ConstantExpression
 from moose.edsl.base import Expression
+from moose.edsl.base import HostPlacementExpression
 from moose.edsl.base import LoadExpression
+from moose.edsl.base import MpspdzPlacementExpression
+from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
 from moose.logger import get_logger
@@ -37,7 +43,8 @@ class AstTracer:
     def __init__(self):
         self.computation = Computation(operations={}, placements={})
         self.name_counters = defaultdict(int)
-        self.known_operations = defaultdict(dict)
+        self.known_operations = dict()
+        self.known_placements = dict()
 
     def trace(self, expression: Expression) -> Computation:
         _ = self.visit(expression)
@@ -55,38 +62,73 @@ class AstTracer:
             self.known_operations[expression] = operation
         return self.known_operations[expression]
 
+    def visit_placement_expression(self, placement_expression):
+        if placement_expression not in self.known_placements:
+            visit_fn = getattr(self, f"visit_{type(placement_expression).__name__}")
+            placement = visit_fn(placement_expression)
+            self.known_placements[placement_expression] = placement
+        return self.known_placements[placement_expression]
+
+    def visit_HostPlacementExpression(self, host_placement_expression):
+        assert isinstance(host_placement_expression, HostPlacementExpression)
+        placement = HostPlacement(name=host_placement_expression.name)
+        return self.computation.add_placement(placement)
+
+    def visit_MpspdzPlacementExpression(self, mpspdz_placement_expression):
+        assert isinstance(mpspdz_placement_expression, MpspdzPlacementExpression)
+        player_placements = [
+            self.visit_placement_expression(player_placement_expression).name
+            for player_placement_expression in mpspdz_placement_expression.players
+        ]
+        placement = MpspdzPlacement(
+            name=mpspdz_placement_expression.name, player_names=player_placements
+        )
+        return self.computation.add_placement(placement)
+
+    def visit_ReplicatedPlacementExpression(self, replicated_placement_expression):
+        assert isinstance(
+            replicated_placement_expression, ReplicatedPlacementExpression
+        )
+        player_placements = [
+            self.visit_placement_expression(player_placement_expression).name
+            for player_placement_expression in replicated_placement_expression.players
+        ]
+        placement = ReplicatedPlacement(
+            name=replicated_placement_expression.name, player_names=player_placements
+        )
+        return self.computation.add_placement(placement)
+
     def visit_ConstantExpression(self, constant_expression):
         assert isinstance(constant_expression, ConstantExpression)
-        placement = constant_expression.placement
-        self.computation.maybe_add_placement(placement)
-        op = ConstantOperation(
-            placement_name=placement.name,
-            name=self.get_fresh_name("constant"),
-            value=constant_expression.value,
-            inputs={},
+        placement = self.visit_placement_expression(constant_expression.placement)
+        return self.computation.add_operation(
+            ConstantOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("constant"),
+                value=constant_expression.value,
+                inputs={},
+            )
         )
-        self.computation.add_operation(op)
-        return op
 
     # TODO(Morten) should not be here
     def visit_ShareExpression(self, share_expression):
         (value_expression,) = share_expression.inputs
         value_operation = self.visit(value_expression)
-        placement = share_expression.placement
-        self.computation.maybe_add_placement(placement)
-        op = ShareOperation(
-            placement_name=placement.name,
-            name=self.get_fresh_name("share"),
-            inputs={"value": value_operation.name},
+        placement = self.visit_placement_expression(share_expression.placement)
+        return self.computation.add_operation(
+            ShareOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("share"),
+                inputs={"value": value_operation.name},
+            )
         )
-        self.computation.add_operation(op)
-        return op
 
     def visit_BinaryOpExpression(self, expression):
         assert isinstance(expression, BinaryOpExpression)
         lhs_expression, rhs_expression = expression.inputs
         lhs_operation = self.visit(lhs_expression)
         rhs_operation = self.visit(rhs_expression)
+        placement = self.visit_placement_expression(expression.placement)
         op_name = expression.op_name
         op_type = {
             "add": AddOperation,
@@ -94,75 +136,69 @@ class AstTracer:
             "mul": MulOperation,
             "div": DivOperation,
         }[op_name]
-        placement = expression.placement
-        self.computation.maybe_add_placement(placement)
-        op = op_type(
-            placement_name=placement.name,
-            name=self.get_fresh_name(f"{op_name}"),
-            inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
+        return self.computation.add_operation(
+            op_type(
+                placement_name=placement.name,
+                name=self.get_fresh_name(f"{op_name}"),
+                inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
+            )
         )
-        self.computation.add_operation(op)
-        return op
 
     def visit_LoadExpression(self, load_expression):
         assert isinstance(load_expression, LoadExpression)
-        placement = load_expression.placement
-        self.computation.maybe_add_placement(placement)
-        op = LoadOperation(
-            placement_name=placement.name,
-            name=self.get_fresh_name("load"),
-            key=load_expression.key,
-            inputs={},
+        placement = self.visit_placement_expression(load_expression.placement)
+        return self.computation.add_operation(
+            LoadOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("load"),
+                key=load_expression.key,
+                inputs={},
+            )
         )
-        self.computation.add_operation(op)
-        return op
 
     def visit_SaveExpression(self, save_expression):
         assert isinstance(save_expression, SaveExpression)
         (value_expression,) = save_expression.inputs
         value_operation = self.visit(value_expression)
-        placement = save_expression.placement
-        self.computation.maybe_add_placement(placement)
-        op = SaveOperation(
-            placement_name=placement.name,
-            name=self.get_fresh_name("save"),
-            key=save_expression.key,
-            inputs={"value": value_operation.name},
+        placement = self.visit_placement_expression(save_expression.placement)
+        return self.computation.add_operation(
+            SaveOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("save"),
+                key=save_expression.key,
+                inputs={"value": value_operation.name},
+            )
         )
-        self.computation.add_operation(op)
-        return op
 
     def visit_ApplyFunctionExpression(self, expression):
         assert isinstance(expression, ApplyFunctionExpression)
         inputs = {
             f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
         }
-        placement = expression.placement
-        self.computation.maybe_add_placement(placement)
-        op = ApplyFunctionOperation(
-            fn=expression.fn,
-            placement_name=placement.name,
-            name=self.get_fresh_name("apply_function"),
-            inputs=inputs,
-            output_placements=expression.output_placements,
-            output_type=expression.output_type,
+        placement = self.visit_placement_expression(expression.placement)
+        return self.computation.add_operation(
+            ApplyFunctionOperation(
+                fn=expression.fn,
+                placement_name=placement.name,
+                name=self.get_fresh_name("apply_function"),
+                inputs=inputs,
+                output_placements=expression.output_placements,
+                output_type=expression.output_type,
+            )
         )
-        self.computation.add_operation(op)
-        return op
 
     def visit_RunProgramExpression(self, expression):
         assert isinstance(expression, RunProgramExpression)
         inputs = {
             f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
         }
-        placement = expression.placement
-        self.computation.maybe_add_placement(placement)
-        op = RunProgramOperation(
-            placement_name=placement.name,
-            name=self.get_fresh_name("run_program"),
-            path=expression.path,
-            args=expression.args,
-            inputs=inputs,
+        placement = self.visit_placement_expression(expression.placement)
+        return self.computation.add_operation(
+            RunProgramOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("run_program"),
+                path=expression.path,
+                args=expression.args,
+                inputs=inputs,
+            )
         )
-        self.computation.add_operation(op)
-        return op
