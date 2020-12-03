@@ -184,8 +184,9 @@ impl AesRng {
     /// Method to fetch a PRNG where its seed is taken from /dev/random
     /// or /dev/urandom if /dev/random doesn't have enough entropy
     /// The entropy selection is done automatically by sodiumoxide
-    fn from_random_seed() -> Self {
+    pub fn from_random_seed() -> Self {
         let mut seed = [0u8; SEED_SIZE];
+        let _ = sodiumoxide::init();
         randombytes_into(&mut seed);
         let key: Block128 = GenericArray::clone_from_slice(&seed);
         let mut out = AesRng {
@@ -263,7 +264,19 @@ mod tests {
         let key: Block128 = GenericArray::clone_from_slice(&seed);
         let cipher = Aes128::new(&key);
 
-        let mut blocks = create_init_state();
+        let block0 = GenericArray::clone_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0]);
+        let block1 = GenericArray::clone_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0]);
+        let block2 = GenericArray::clone_from_slice(&[2, 0, 0, 0, 0, 0, 0, 0]);
+        let block3 = GenericArray::clone_from_slice(&[3, 0, 0, 0, 0, 0, 0, 0]);
+        let block4 = GenericArray::clone_from_slice(&[4, 0, 0, 0, 0, 0, 0, 0]);
+        let block5 = GenericArray::clone_from_slice(&[5, 0, 0, 0, 0, 0, 0, 0]);
+        let block6 = GenericArray::clone_from_slice(&[6, 0, 0, 0, 0, 0, 0, 0]);
+        let block7 = GenericArray::clone_from_slice(&[7, 0, 0, 0, 0, 0, 0, 0]);
+
+        let mut blocks = Block128x8::clone_from_slice(&[
+            block0, block1, block2, block3, block4, block5, block6, block7,
+        ]);
+
         // create encryptions Enc_{seed}(0)...Enc_{seed}(7)
         cipher.encrypt_blocks(&mut blocks);
 
@@ -285,7 +298,6 @@ mod tests {
 
     #[test]
     fn test_seeded_prng() {
-        let _ = sodiumoxide::init();
         let mut rng: AesRng = AesRng::from_random_seed();
         // test whether two consecutive calls can be done
         let _ = rng.next_u32();
