@@ -11,6 +11,23 @@ from moose.computation.base import Placement
 CURRENT_PLACEMENT: List = []
 
 
+class DefaultPlacementContextHandler:
+    def __init__(self, placement):
+        self.placement = placement
+
+    def __enter__(self):
+        global CURRENT_PLACEMENT
+        CURRENT_PLACEMENT.append(self.placement)
+
+    def __exit__(self, type, value, traceback):
+        global CURRENT_PLACEMENT
+        CURRENT_PLACEMENT.pop(-1)
+
+
+def default_placement(placement):
+    return DefaultPlacementContextHandler(placement)
+
+
 def get_current_placement():
     global CURRENT_PLACEMENT
     return CURRENT_PLACEMENT[-1]

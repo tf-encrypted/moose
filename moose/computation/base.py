@@ -6,19 +6,8 @@ from typing import Dict
 class Placement:
     name: str
 
-    def __enter__(self):
-        global CURRENT_PLACEMENT
-        CURRENT_PLACEMENT.append(self)
-
-    def __exit__(self, type, value, traceback):
-        global CURRENT_PLACEMENT
-        CURRENT_PLACEMENT.pop(-1)
-
     def __hash__(self):
         return hash(self.name)
-
-    def compile(self, context, fn, inputs, output_placements=None):
-        raise NotImplementedError()
 
 
 @dataclass
