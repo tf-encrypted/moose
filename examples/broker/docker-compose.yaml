@@ -1,0 +1,36 @@
+version: "3.7"
+
+services:
+
+  worker0:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      CAPE_BROKER: https://demo.capeprivacy.com/broker
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      CAPE_BROKER: https://demo.capeprivacy.com/broker
+
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      CAPE_BROKER: https://demo.capeprivacy.com/broker
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      CAPE_BROKER: https://demo.capeprivacy.com/broker
+
+  choreographer:
+    build:
+      context: .
+      dockerfile: Dockerfile.choreographer
