@@ -4,12 +4,12 @@ import unittest
 
 from absl.testing import parameterized
 
-from moose.computation.host import HostPlacement
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
 from moose.edsl.base import div
 from moose.edsl.base import function
+from moose.edsl.base import host_placement
 from moose.edsl.base import mul
 from moose.edsl.base import run_program
 from moose.edsl.base import save
@@ -22,7 +22,7 @@ get_logger().setLevel(level=logging.DEBUG)
 
 
 def _create_test_players(number_of_players=2):
-    return [HostPlacement(name=f"player_{i}") for i in range(number_of_players)]
+    return [host_placement(name=f"player_{i}") for i in range(number_of_players)]
 
 
 def _run_computation(comp, players):

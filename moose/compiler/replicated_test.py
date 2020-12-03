@@ -1,21 +1,21 @@
 from absl.testing import parameterized
 
-from moose.computation.host import HostPlacement
-from moose.computation.replicated import ReplicatedPlacement
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
+from moose.edsl.base import host_placement
+from moose.edsl.base import replicated_placement
 from moose.edsl.base import share
 from moose.edsl.tracer import trace
 
 
 class ReplicatedTest(parameterized.TestCase):
     def test_replicated(self):
-        alice = HostPlacement(name="alice")
-        bob = HostPlacement(name="bob")
-        carole = HostPlacement(name="carole")
-        replicated = ReplicatedPlacement("replicated", alice, bob, carole)
-        # dave = HostPlacement(name="dave")
+        alice = host_placement(name="alice")
+        bob = host_placement(name="bob")
+        carole = host_placement(name="carole")
+        replicated = replicated_placement("replicated", players=[alice, bob, carole])
+        # dave = host_placement(name="dave")
 
         @computation
         def my_comp():

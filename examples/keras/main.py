@@ -2,10 +2,9 @@ import argparse
 import logging
 
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.computation import HostPlacement
 from moose.edsl import computation
-from moose.edsl import default_placement
 from moose.edsl import function
+from moose.edsl import host_placement
 from moose.edsl import save
 from moose.edsl import trace
 from moose.logger import get_logger
@@ -20,10 +19,10 @@ if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 
-inputter0 = HostPlacement(name="inputter0")
-inputter1 = HostPlacement(name="inputter1")
-aggregator = HostPlacement(name="aggregator")
-outputter = HostPlacement(name="outputter")
+inputter0 = host_placement(name="inputter0")
+inputter1 = host_placement(name="inputter1")
+aggregator = host_placement(name="aggregator")
+outputter = host_placement(name="outputter")
 
 
 @function(output_type="numpy.ndarray")
@@ -55,17 +54,17 @@ def model_predict(model, input, weights):
 @computation
 def my_comp():
 
-    with default_placement(inputter0):
+    with inputter0:
         model = load_model()
         weights = get_weights(model)
 
-    with default_placement(inputter1):
+    with inputter1:
         x = load_data()
 
-    with default_placement(aggregator):
+    with aggregator:
         y = model_predict(model, x, weights)
 
-    with default_placement(outputter):
+    with outputter:
         res = save(y, "y")
 
     return res

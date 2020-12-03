@@ -2,13 +2,12 @@ import argparse
 import logging
 
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.computation import HostPlacement
-from moose.computation import MpspdzPlacement
 from moose.edsl import add
 from moose.edsl import computation
 from moose.edsl import constant
-from moose.edsl import default_placement
 from moose.edsl import function
+from moose.edsl import host_placement
+from moose.edsl import mpspdz_placement
 from moose.edsl import save
 from moose.edsl import trace
 from moose.logger import get_logger
@@ -22,9 +21,9 @@ args = parser.parse_args()
 if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
-inputter0 = HostPlacement(name="inputter0")
-inputter1 = HostPlacement(name="inputter1")
-outputter = HostPlacement(name="outputter")
+inputter0 = host_placement(name="inputter0")
+inputter1 = host_placement(name="inputter1")
+outputter = host_placement(name="outputter")
 
 # NOTE:
 # All players must be listed in the MP-SPDZ placement, even if they only send
@@ -32,7 +31,7 @@ outputter = HostPlacement(name="outputter")
 # setup for the placement needs to know ahead of time who to generate key pairs
 # for. In the near future this is ideally something that we can infer automati-
 # cally during compilation from logical to physical computation.
-mpspdz = MpspdzPlacement(name="mpspdz", players=[inputter0, inputter1, outputter])
+mpspdz = mpspdz_placement(name="mpspdz", players=[inputter0, inputter1, outputter])
 
 
 @function
@@ -43,14 +42,14 @@ def my_function(x, y, z):
 @computation
 def my_comp():
 
-    with default_placement(inputter0):
+    with inputter0:
         x = constant(1)
         z = constant(3)
 
-    with default_placement(inputter1):
+    with inputter1:
         y = constant(2)
 
-    with default_placement(mpspdz):
+    with mpspdz:
         # Note that this illustrates one issue with function calls:
         # what does the role assignment indicate? is it where the
         # function is evaluated (in which case, how to we specify
@@ -68,7 +67,7 @@ def my_comp():
         v = my_function(x, y, z, output_placements=[outputter])
         w = my_function(x, y, z, output_placements=[outputter])
 
-    with default_placement(outputter):
+    with outputter:
         res = save(add(v, w), "v")
 
     return res

@@ -1,23 +1,23 @@
 from absl.testing import parameterized
 
-from moose.computation.host import HostPlacement
 from moose.computation.mpspdz import MpspdzCallOperation
 from moose.computation.mpspdz import MpspdzLoadOutputOperation
-from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.mpspdz import MpspdzSaveInputOperation
 from moose.edsl.base import computation
 from moose.edsl.base import constant
 from moose.edsl.base import function
+from moose.edsl.base import host_placement
+from moose.edsl.base import mpspdz_placement
 from moose.edsl.base import mul
 from moose.edsl.tracer import trace
 
 
 class MpspdzTest(parameterized.TestCase):
     def test_mpspdz(self):
-        alice = HostPlacement(name="alice")
-        bob = HostPlacement(name="bob")
-        carole = HostPlacement(name="carole")
-        mpspdz = MpspdzPlacement("mpspdz", players=[alice, bob, carole])
+        alice = host_placement(name="alice")
+        bob = host_placement(name="bob")
+        carole = host_placement(name="carole")
+        mpspdz = mpspdz_placement("mpspdz", players=[alice, bob, carole])
 
         @function
         def my_function(x, y, z):
