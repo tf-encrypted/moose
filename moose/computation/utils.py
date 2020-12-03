@@ -4,6 +4,7 @@ from dataclasses import asdict
 
 import moose.computation.host
 import moose.computation.mpspdz
+import moose.computation.replicated
 import moose.computation.standard
 from moose.computation.base import Computation
 from moose.computation.base import Operation
