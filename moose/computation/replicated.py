@@ -8,7 +8,7 @@ from moose.computation.base import Placement
 @dataclass
 class ReplicatedPlacement(Placement):
     player_names: List[str]
-    ty: str = "replicated"
+    type_: str = "replicated"
 
     def __hash__(self):
         return hash(self.name)
@@ -16,4 +16,4 @@ class ReplicatedPlacement(Placement):
 
 @dataclass
 class ShareOperation(Operation):
-    ty: str = "replicated::share"
+    type_: str = "replicated::share"

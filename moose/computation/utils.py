@@ -42,35 +42,35 @@ def known_ops():
             moose.computation.host,
             moose.computation.mpspdz,
         ]:
-            for clazz_name, clazz in inspect.getmembers(module, inspect.isclass):
-                if clazz is Operation:
+            for class_name, class_ in inspect.getmembers(module, inspect.isclass):
+                if class_ is Operation:
                     continue
-                if not issubclass(clazz, Operation):
+                if not issubclass(class_, Operation):
                     continue
-                ty = getattr(clazz, "ty", None)
-                if not ty:
+                type_ = getattr(class_, "type_", None)
+                if not type_:
                     get_logger().warning(
-                        f"Ignoring operation without 'ty' field; op:{clazz_name}"
+                        f"Ignoring operation without 'type_' field; op:{class_name}"
                     )
                     continue
-                if ty in _known_ops_cache:
+                if type_ in _known_ops_cache:
                     get_logger().warning(
                         f"Ignoring duplicate operation;"
-                        f" op1:{clazz_name},"
-                        f" op2:{_known_ops_cache[ty]}"
+                        f" op1:{class_name},"
+                        f" op2:{_known_ops_cache[type_]}"
                     )
                     continue
-                _known_ops_cache[ty] = clazz
+                _known_ops_cache[type_] = class_
     return _known_ops_cache
 
 
 def select_op(args):
-    assert "ty" in args, args
+    assert "type_" in args, args
     ops = known_ops()
-    op_ty = ops.get(args["ty"], None)
-    if not op_ty:
-        raise ValueError(f"Failed to map operation; ty:'{args['ty']}'")
-    return op_ty(**args)
+    op_type = ops.get(args["type_"], None)
+    if not op_type:
+        raise ValueError(f"Failed to map operation; type:'{args['type_']}'")
+    return op_type(**args)
 
 
 _known_plcs_cache = None
@@ -85,32 +85,32 @@ def known_plcs():
             moose.computation.mpspdz,
             moose.computation.replicated,
         ]:
-            for clazz_name, clazz in inspect.getmembers(module, inspect.isclass):
-                if clazz is Placement:
+            for class_name, class_ in inspect.getmembers(module, inspect.isclass):
+                if class_ is Placement:
                     continue
-                if not issubclass(clazz, Placement):
+                if not issubclass(class_, Placement):
                     continue
-                ty = getattr(clazz, "ty", None)
-                if not ty:
+                type_ = getattr(class_, "type_", None)
+                if not type_:
                     get_logger().warning(
-                        f"Ignoring placement without 'ty' field; op:{clazz_name}"
+                        f"Ignoring placement without 'type_' field; op:{class_name}"
                     )
                     continue
-                if ty in _known_plcs_cache:
+                if type_ in _known_plcs_cache:
                     get_logger().warning(
                         f"Ignoring duplicate placement;"
-                        f" op1:{clazz_name},"
-                        f" op2:{_known_plcs_cache[ty]}"
+                        f" op1:{class_name},"
+                        f" op2:{_known_plcs_cache[type_]}"
                     )
                     continue
-                _known_plcs_cache[ty] = clazz
+                _known_plcs_cache[type_] = class_
     return _known_plcs_cache
 
 
 def select_plc(args):
-    assert "ty" in args, args
+    assert "type_" in args, args
     plcs = known_plcs()
-    plc_ty = plcs.get(args["ty"], None)
-    if not plc_ty:
-        raise ValueError(f"Failed to map placement; ty:'{args['ty']}'")
-    return plc_ty(**args)
+    plc_type = plcs.get(args["type_"], None)
+    if not plc_type:
+        raise ValueError(f"Failed to map placement; type:'{args['type_']}'")
+    return plc_type(**args)

@@ -9,7 +9,7 @@ from moose.computation.base import Placement
 @dataclass
 class MpspdzPlacement(Placement):
     player_names: List[str]
-    ty: str = "mpspdz"
+    type_: str = "mpspdz"
 
     def __hash__(self):
         return hash(self.name)
@@ -19,7 +19,7 @@ class MpspdzPlacement(Placement):
 class MpspdzSaveInputOperation(Operation):
     player_index: int
     invocation_key: str
-    ty: str = "mpspdz::save_input"
+    type_: str = "mpspdz::save_input"
 
 
 @dataclass
@@ -30,11 +30,11 @@ class MpspdzCallOperation(Operation):
     invocation_key: str
     coordinator: str
     protocol: str
-    ty: str = "mpspdz::call"
+    type_: str = "mpspdz::call"
 
 
 @dataclass
 class MpspdzLoadOutputOperation(Operation):
     player_index: int
     invocation_key: str
-    ty: str = "mpspdz::load_output"
+    type_: str = "mpspdz::load_output"

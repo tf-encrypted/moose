@@ -9,51 +9,51 @@ from moose.computation.base import Operation
 @dataclass
 class ConstantOperation(Operation):
     value: Any
-    ty: str = "standard::constant"
+    type_: str = "standard::constant"
 
 
 @dataclass
 class AddOperation(Operation):
-    ty: str = "standard::add"
+    type_: str = "standard::add"
 
 
 @dataclass
 class SubOperation(Operation):
-    ty: str = "standard::sub"
+    type_: str = "standard::sub"
 
 
 @dataclass
 class MulOperation(Operation):
-    ty: str = "standard::mul"
+    type_: str = "standard::mul"
 
 
 @dataclass
 class DivOperation(Operation):
-    ty: str = "standard::div"
+    type_: str = "standard::div"
 
 
 @dataclass
 class LoadOperation(Operation):
     key: str
-    ty: str = "standard::load"
+    type_: str = "standard::load"
 
 
 @dataclass
 class SaveOperation(Operation):
     key: str
-    ty: str = "standard::save"
+    type_: str = "standard::save"
 
 
 @dataclass
 class SerializeOperation(Operation):
     value_type: str
-    ty: str = "standard::serialize"
+    type_: str = "standard::serialize"
 
 
 @dataclass
 class DeserializeOperation(Operation):
     value_type: str
-    ty: str = "standard::deserialize"
+    type_: str = "standard::deserialize"
 
 
 @dataclass
@@ -61,7 +61,7 @@ class SendOperation(Operation):
     sender: str
     receiver: str
     rendezvous_key: str
-    ty: str = "standard::send"
+    type_: str = "standard::send"
 
 
 @dataclass
@@ -69,7 +69,7 @@ class ReceiveOperation(Operation):
     sender: str
     receiver: str
     rendezvous_key: str
-    ty: str = "standard::receive"
+    type_: str = "standard::receive"
 
 
 @dataclass
@@ -77,4 +77,4 @@ class ApplyFunctionOperation(Operation):
     fn: Callable = field(repr=False)
     output_placements: Any
     output_type: Any
-    ty: str = "standard::apply_function"
+    type_: str = "standard::apply_function"
