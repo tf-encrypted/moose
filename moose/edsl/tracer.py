@@ -22,11 +22,11 @@ from moose.edsl.base import SaveExpression
 from moose.logger import get_logger
 
 
-def trace(abstract_computation, *args, render=False, **kwargs):
+def trace(abstract_computation, *args, compiler_passes=None, render=False, **kwargs):
     expression = abstract_computation.func(*args, **kwargs)
     tracer = AstTracer()
     logical_comp = tracer.trace(expression)
-    compiler = Compiler()
+    compiler = Compiler(passes=compiler_passes)
     physical_comp = compiler.run_passes(logical_comp, render=render)
     for op in physical_comp.operations.values():
         get_logger().debug(f"Computation: {op}")
