@@ -7,21 +7,25 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
 
   inputter1:
     build:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
 
   outputter:
     build:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
+
+  choreographer:
+    build:
+      context: .
+      dockerfile: Dockerfile.choreographer
+    volumes:
+      - "../..:/worker/moose"

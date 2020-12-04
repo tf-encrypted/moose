@@ -18,8 +18,8 @@ RUN curl -s \
     && rm watchexec.deb
 
 # Install Moose
-COPY Makefile README.md requirements-dev.txt setup.py ./
-COPY moose /moose
-RUN pip3 install -r requirements-dev.txt && \
+COPY . /worker/moose
+RUN cd /worker/moose && \
+    pip3 install -r requirements-dev.txt && \
     make build && \
     pip install -e .

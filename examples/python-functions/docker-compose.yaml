@@ -7,8 +7,7 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
     environment:
       CA_CERT: ./certs/ca.crt
       IDENT_CERT: ./certs/worker0.crt
@@ -19,8 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
     environment:
       CA_CERT: ./certs/ca.crt
       IDENT_CERT: ./certs/worker1.crt
@@ -31,8 +29,7 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
     environment:
       CA_CERT: ./certs/ca.crt
       IDENT_CERT: ./certs/worker2.crt
@@ -43,8 +40,7 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
     environment:
       CA_CERT: ./certs/ca.crt
       IDENT_CERT: ./certs/worker3.crt
@@ -55,8 +51,7 @@ services:
       context: .
       dockerfile: Dockerfile.choreographer
     volumes:
-      - "../../moose:/moose"
-      - ".:/example"
+      - "../..:/worker/moose"
     environment:
       CA_CERT: ./certs/ca.crt
       IDENT_CERT: ./certs/choreographer.crt
