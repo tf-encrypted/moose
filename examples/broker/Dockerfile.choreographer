@@ -1,0 +1,7 @@
+FROM tfencrypted/runtime-base-worker:latest
+
+COPY * /example/
+WORKDIR /example
+
+# this is just a hack to keep the container running
+CMD echo "Ready"; tail -f /dev/null

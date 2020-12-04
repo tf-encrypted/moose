@@ -1,0 +1,54 @@
+version: "3.7"
+
+services:
+
+  worker0:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      CAPE_BROKER: http://broker:8080
+
+  worker1:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      CAPE_BROKER: http://broker:8080
+
+  worker2:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      CAPE_BROKER: http://broker:8080
+
+  worker3:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+    environment:
+      CAPE_BROKER: http://broker:8080
+
+  choreographer:
+    build:
+      context: .
+      dockerfile: Dockerfile.choreographer
+    volumes:
+      - "../../moose:/moose"
+      - ".:/example"
+
+  broker:
+    image: capeprivacy/broker

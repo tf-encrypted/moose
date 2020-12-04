@@ -1,6 +1,8 @@
 import asyncio
+import hashlib
 import socket
 
+import pysodium
 import requests
 from opentelemetry import trace
 from opentelemetry.launcher import configure_opentelemetry
@@ -9,11 +11,20 @@ from moose.logger import get_logger
 
 
 class Networking:
-    def __init__(self, broker_host, own_name=None, auth_token=None):
+    def __init__(
+        self,
+        broker_host,
+        own_name=None,
+        auth_token=None,
+        public_key=None,
+        secret_key=None,
+    ):
         self.broker_host = broker_host
         self.session = requests.Session()
         # TODO(Morten) how should we authenticate?
         self.session.auth = (own_name or socket.gethostname(), auth_token or "")
+        self.public_key = public_key
+        self.secret_key = secret_key
 
     def get_hostname(self, placement):
         endpoint = placement
@@ -76,10 +87,35 @@ class Networking:
         raise ex
 
     async def receive(self, sender, receiver, rendezvous_key, session_id):
-        return await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        value = await self._get(f"{self.broker_host}/{session_id}/{rendezvous_key}")
+        if sender.public_key and self.secret_key:
+            nonce = _generate_nonce(session_id, rendezvous_key)
+            value = pysodium.crypto_box_open(
+                value, nonce, sender.public_key, self.secret_key
+            )
+        else:
+            get_logger().warning(
+                f"Channel between {sender.endpoint} and {receiver.endpoint} "
+                f"is not secure. Validate both enpoints supplied a public and "
+                f"a secret libsodium key."
+            )
+        return value
 
     async def send(self, value, sender, receiver, rendezvous_key, session_id):
-        await self._post(f"{self.broker_host}/{session_id}/{rendezvous_key}", value)
+        if receiver.public_key and self.secret_key:
+            nonce = _generate_nonce(session_id, rendezvous_key)
+            value = pysodium.crypto_box(
+                value, nonce, receiver.public_key, self.secret_key
+            )
+        else:
+            get_logger().warning(
+                f"Channel between {sender.endpoint} and {receiver.endpoint} "
+                f"is not secure. Validate both enpoints supplied a public and "
+                f"a secret libsodium key."
+            )
+        return await self._post(
+            f"{self.broker_host}/{session_id}/{rendezvous_key}", value
+        )
 
 
 class TelemetryNetworking(Networking):
@@ -104,4 +140,9 @@ def get_networking(broker_host, own_name=None, auth_token=None, telemetry_enable
             broker_host, own_name=own_name, auth_token=auth_token
         )
 
-    return Networking(broker_host, own_name=own_name, auth_token=auth_token)
+
+def _generate_nonce(session_id, rendezvous_key):
+    session_key_hashed = hashlib.sha256()
+    session_key_hashed.update(f"{session_id}/{rendezvous_key}".encode())
+    nonce = session_key_hashed.digest()[: pysodium.crypto_box_NONCEBYTES]
+    return nonce
