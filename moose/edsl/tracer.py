@@ -6,7 +6,6 @@ from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.replicated import ShareOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import ConstantOperation
@@ -107,19 +106,6 @@ class AstTracer:
                 name=self.get_fresh_name("constant"),
                 value=constant_expression.value,
                 inputs={},
-            )
-        )
-
-    # TODO(Morten) should not be here
-    def visit_ShareExpression(self, share_expression):
-        (value_expression,) = share_expression.inputs
-        value_operation = self.visit(value_expression)
-        placement = self.visit_placement_expression(share_expression.placement)
-        return self.computation.add_operation(
-            ShareOperation(
-                placement_name=placement.name,
-                name=self.get_fresh_name("share"),
-                inputs={"value": value_operation.name},
             )
         )
 
