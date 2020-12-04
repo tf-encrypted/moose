@@ -25,11 +25,10 @@ jobs:
 
       coordinator:
         image: capeprivacy/coordinator:latest
-        options: --entrypoint cape coordinator start
         credentials:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
+        options: --entrypoint cape coordinator start
 
     name: End to End Tests
     runs-on: ubuntu-latest
