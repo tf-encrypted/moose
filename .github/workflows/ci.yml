@@ -26,6 +26,13 @@ jobs:
       coordinator:
         image: capeprivacy/coordinator:latest
 
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}.
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
   ubuntu-ci:
     runs-on: ubuntu-latest
     timeout-minutes: 2
