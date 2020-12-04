@@ -39,6 +39,7 @@ jobs:
         if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           . venv/bin/activate
+          cd /
           git clone https://${{ secrets.CAPE_PAT }}@github.com/capeprivacy/coordinator-client.git
           cd coordinator-client && pip install -r requirements.txt && pip install -e .
 
