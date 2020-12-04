@@ -23,12 +23,12 @@ class Choreographer:
     def evaluate_computation(
         self, computation: Computation, placement_instantiation: Dict
     ):
-        placement_endpoint_mapping = {
+        placement_instantiation = {
             placement.name if not isinstance(placement, str) else placement: endpoint
             for placement, endpoint in placement_instantiation.items()
         }
         placement_executors = dict()
-        for placement, endpoint in placement_endpoint_mapping.items():
+        for placement, endpoint in placement_instantiation.items():
             if endpoint not in self.existing_executors:
                 self.existing_executors[endpoint] = ExecutorProxy(
                     endpoint,
@@ -37,16 +37,6 @@ class Choreographer:
                     ident_key=self.ident_key,
                 )
             placement_executors[placement] = self.existing_executors[endpoint]
-
-        public_keys_tasks = _gather_public_keys(placement_executors)
-        public_keys = asyncio.get_event_loop().run_until_complete(public_keys_tasks)
-
-        placement_instantiation = {
-            placement: executor_pb2.HostInfo(
-                endpoint=endpoint, public_key=public_keys[placement].value
-            )
-            for placement, endpoint in placement_endpoint_mapping.items()
-        }
 
         sid = random.randrange(2 ** 32)
         tasks = [
@@ -95,21 +85,19 @@ class ExecutorProxy:
         )
         _ = await self._stub.RunComputation(compute_request)
 
-    async def get_public_key(self):
-        return await self._stub.GetPublicKey(executor_pb2.GetPublicKeyRequest())
-
 
 class Choreography:
-    def __init__(self, executor, grpc_server, public_key=None):
+    def __init__(
+        self, executor, grpc_server,
+    ):
         executor_pb2_grpc.add_ExecutorServicer_to_server(
-            Servicer(executor, public_key), grpc_server
+            Servicer(executor), grpc_server
         )
 
 
 class Servicer(executor_pb2_grpc.ExecutorServicer):
-    def __init__(self, executor, public_key=None):
+    def __init__(self, executor):
         self.executor = executor
-        self.public_key = public_key
 
     async def RunComputation(self, request, context):
         await self.executor.run_computation(
@@ -119,21 +107,3 @@ class Servicer(executor_pb2_grpc.ExecutorServicer):
             session_id=request.session_id,
         )
         return executor_pb2.RunComputationResponse()
-
-    def GetPublicKey(self, request, context):
-        return executor_pb2.GetPublicKeyResponse(value=self.public_key)
-
-
-async def _gather_public_keys(placement_executors: dict):
-    async def get_public_key(placement, executor):
-        return placement, await executor.get_public_key()
-
-    return {
-        placement: public_key
-        for placement, public_key in await asyncio.gather(
-            *(
-                get_public_key(placement, executor)
-                for placement, executor in placement_executors.items()
-            )
-        )
-    }

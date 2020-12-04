@@ -10,7 +10,6 @@ grpcio-tools==1.33.1
 isort==5.4.2
 opentelemetry-launcher==0.15b0
 pip==20.2.2
-pysodium==0.7.5
 pytest==6.0.1
 pyyaml==5.1.2
 requests==2.24.0
