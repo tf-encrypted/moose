@@ -29,8 +29,10 @@ if args.verbose:
 
 if __name__ == "__main__":
 
+    store = { 'input-data': 10 }
+
     networking = Networking(broker_host=args.broker, auth_token=args.token)
-    executor = AsyncExecutor(networking=networking)
+    executor = AsyncExecutor(networking=networking, store=store)
     cape_choreography = Choreography(executor=executor, auth_token=args.token,)
 
     asyncio.get_event_loop().run_until_complete(cape_choreography.run())

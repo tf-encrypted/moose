@@ -1,9 +1,11 @@
 import argparse
 import logging
+import marshal
 import os
 
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.edsl import add
+from moose.computation.utils import serialize_computation, deserialize_computation
+from moose.edsl import add, load
 from moose.edsl import computation
 from moose.edsl import constant
 from moose.edsl import function
@@ -41,29 +43,33 @@ def mul_fn(x, y):
 def my_comp():
 
     with inputter0:
-        c0_0 = constant(1)
-        c1_0 = constant(2)
-        x0 = mul_fn(c0_0, c1_0)
+        c0_0 = load('input-data')
+        c1_0 = constant(5)
+        x0 = add(c0_0, c1_0)
 
     with inputter1:
-        c0_1 = constant(2)
+        c0_1 = load('input-data')
         c1_1 = constant(3)
-        x1 = mul_fn(c0_1, c1_1)
+        x1 = add(c0_1, c1_1)
 
-    with aggregator:
-        y = add(x0, x1)
-
-    with outputter:
-        res = save(y, "y")
+    with inputter0:
+        y = mul_fn(x0, x1)
+        res = save(y, "output-data")
 
     return res
 
 
 concrete_comp = trace(my_comp)
+s = serialize_computation(concrete_comp)
+marshal.dump(s, open('input-computation', 'wb'))
+c = deserialize_computation(s)
+
+print('ok')
 
 if __name__ == "__main__":
+    store = {'input-data': 10}
     if args.runtime == "test":
-        runtime = TestRuntime()
+        runtime = TestRuntime(store=store)
     elif args.runtime == "remote":
         runtime = GrpcChoreographer(
             ca_cert=load_certificate(args.ca_cert),
@@ -78,9 +84,8 @@ if __name__ == "__main__":
         placement_instantiation={
             inputter0: "worker0:50000",
             inputter1: "worker1:50000",
-            aggregator: "worker2:50000",
-            outputter: "worker3:50000",
         },
     )
 
+    print('output', store)
     print("Done")

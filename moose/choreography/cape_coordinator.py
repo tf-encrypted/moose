@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import itertools
+import os
 import socket
 
 from cape.api.session import ComputationStatus
@@ -9,11 +10,12 @@ from cape.cape import Cape
 
 from moose.computation.utils import deserialize_computation
 from moose.logger import get_logger
+import aiofiles as aiof
 
 
 class Choreography:
     def __init__(
-        self, executor, own_name=None, auth_token=None, poll_delay=10.0,
+        self, executor, own_name=None, auth_token=None, poll_delay=2.0,
     ):
         self.cape = Cape(token=auth_token)
         self.executor = executor
@@ -24,6 +26,12 @@ class Choreography:
     async def _handle_session(
         self, session: Session, computation, placement_instantiation, placement,
     ):
+
+        async with aiof.open(f'input-data', 'r') as reader:
+            d = await reader.read()
+
+        self.executor.store['input-data'] = int(d)
+
         get_logger().debug(f"Handling new session; session_id:{session.id}")
         await self._report_session_status(session, ComputationStatus.Started)
         get_logger().debug(f"Starting execution; session_id:{session.id}")
@@ -42,6 +50,14 @@ class Choreography:
             return
 
         get_logger().debug(f"Finished execution; session_id:{session.id}")
+
+        dir = f'./runs/{session.id}'
+        os.mkdir(dir)
+        async with aiof.open(f'{dir}/output', 'w') as writer:
+            res = self.executor.store['output-data']
+            await writer.write(f'{res}')
+            await writer.flush()
+
         await self._report_session_status(session, ComputationStatus.Completed)
 
     async def _get_next_sessions(self):
@@ -83,8 +99,10 @@ class Choreography:
 
                 all_placements = session.placement_instantiation["All"]
                 placement = session.placement_instantiation["You"]
-                computation_bytes = base64.b64decode(session.task.computation)
-                computation = deserialize_computation(computation_bytes)
+                computation_bytes = base64.b64decode(session.task['computation'])
+                # TODO -- why?! The bytes coming back out of the coordinator have an extra 5 bytes at the start ...
+                #         \xf3t\x05\x00\x00
+                computation = deserialize_computation(computation_bytes[5:])
 
                 placement_instantiation = {}
                 for p in all_placements:

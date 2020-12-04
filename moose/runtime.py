@@ -9,8 +9,9 @@ from moose.networking.memory import Networking
 
 
 class TestRuntime:
-    def __init__(self) -> None:
+    def __init__(self, store = {}) -> None:
         self.networking = Networking()
+        self.store = store
         self.existing_executors = dict()
 
     def evaluate_computation(
@@ -24,7 +25,8 @@ class TestRuntime:
         for placement, name in placement_instantiation.items():
             if name not in self.existing_executors:
                 self.existing_executors[name] = AsyncExecutor(
-                    networking=self.networking
+                    networking=self.networking,
+                    store=self.store
                 )
             placement_executors[placement] = self.existing_executors[name]
 
