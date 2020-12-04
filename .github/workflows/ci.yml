@@ -25,6 +25,9 @@ jobs:
 
       coordinator:
         image: capeprivacy/coordinator:latest
+        credentials:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
     name: End to End Tests
     runs-on: ubuntu-latest
