@@ -26,6 +26,8 @@ jobs:
       coordinator:
         image: capeprivacy/coordinator:latest
 
+    name: End to End Tests
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}.
