@@ -17,3 +17,9 @@ class ReplicatedPlacement(Placement):
 @dataclass
 class ShareOperation(Operation):
     type_: str = "replicated::share"
+
+
+@dataclass
+class RevealOperation(Operation):
+    recipient_name: str
+    type_: str = "replicated::reveal"

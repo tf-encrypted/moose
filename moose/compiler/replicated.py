@@ -8,6 +8,7 @@ from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import ShareOperation
+from moose.computation.replicated import RevealOperation
 from moose.computation.standard import AddOperation
 
 
@@ -70,6 +71,14 @@ class ReplicatedLoweringPass:
             self.interpretations[op.name] = y
             return y
 
+        if isinstance(op, RevealOperation):
+            (x, ) = op_inputs_interpretations
+            assert isinstance(x, ReplicatedTensor), type(x)
+            y = replicated_reveal(x, recipient_name=op.recipient_name)
+            assert isinstance(y, RingTensor), type(y)
+            self.interpretations[op.name] = y
+            return y
+
         if isinstance(op, AddOperation):
             x, y = op_inputs_interpretations
             assert isinstance(x, ReplicatedTensor), type(x)
@@ -107,6 +116,7 @@ class ReplicatedTensor:
 
 
 def replicated_share(x: RingTensor, placement_name) -> ReplicatedTensor:
+    assert isinstance(x, RingTensor)
     if not x.shape:
         x.shape = ring_shape(x, placement_name=x.op.placement_name)
     x0 = ring_sample(x.shape, placement_name=x.op.placement_name)
@@ -125,7 +135,15 @@ def replicated_share(x: RingTensor, placement_name) -> ReplicatedTensor:
     )
 
 
-def replicated_add(x: ReplicatedTensor, y: ReplicatedTensor, placement_name):
+def replicated_reveal(x: ReplicatedTensor, recipient_name) -> RingTensor:
+    assert isinstance(x, ReplicatedTensor)
+    # TODO(Morten) optimize who sends what
+    (x0, x2) = x.shares0
+    (x1, _) = x.shares1
+    return ring_add(x0, ring_add(x1, x2, placement_name=recipient_name), placement_name=recipient_name)
+
+
+def replicated_add(x: ReplicatedTensor, y: ReplicatedTensor, placement_name) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
     assert isinstance(y, ReplicatedTensor)
     assert x.computation == y.computation

@@ -1,8 +1,10 @@
 from absl.testing import parameterized
 
+from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.replicated import RevealOperation
 from moose.computation.replicated import ShareOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
@@ -52,5 +54,19 @@ class ReplicatedTest(parameterized.TestCase):
                 placement_name="rep",
             )
         )
+        comp.add_operation(
+            RevealOperation(
+                name="reveal_output",
+                inputs={"value": "secure_add"},
+                recipient_name="dave",
+                placement_name="rep",
+            )
+        )
 
-        assert len(comp.operations) == 5
+        compiler = Compiler()
+        comp = compiler.run_passes(comp, render=True)
+
+        assert all(
+            isinstance(comp.placement(op.placement_name), HostPlacement)
+            for op in comp.operations.values()
+        )
