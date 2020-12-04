@@ -1,7 +1,7 @@
 [workspace]
 members = [
-  "cli",
-  "crypto",
-  "engine",
-  "python-bindings",
+  "rust/cli",
+  "rust/crypto",
+  "rust/engine",
+  "rust/python-bindings",
 ]
