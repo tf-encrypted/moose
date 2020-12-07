@@ -210,7 +210,11 @@ def replicated_share(x: RingTensor, placement_name) -> ReplicatedTensor:
 
 def replicated_reveal(x: ReplicatedTensor, recipient_name) -> RingTensor:
     assert isinstance(x, ReplicatedTensor)
-    # TODO(Morten) optimize who sends what
+    # TODO(Morten)
+    # optimize who sends what by eg taking the recipient into account and only sending
+    # two shares in the case where the recipient doesn't already hold a share. we can
+    # also apply either a global or randomized approach for picking who sends shares
+    # to more evenly distribute the task of sending
     (x0, x2) = x.shares0
     (x1, _) = x.shares1
     return ring_add(
