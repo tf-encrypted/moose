@@ -24,12 +24,13 @@ class HostApplyFunctionPass:
         for op in ops_to_replace:
             new_op = CallPythonFunctionOperation(
                 placement_name=op.placement_name,
-                name=op.name,
+                name=context.get_fresh_name("call_python_function"),
                 pickled_fn=dill.dumps(op.fn),
                 inputs=op.inputs,
                 output_type=op.output_type,
             )
-            computation.replace_operation(op, new_op)
+            computation.add_operation(new_op)
+            computation.rewire(op, new_op)
             performed_changes = True
 
         return computation, performed_changes
