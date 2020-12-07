@@ -13,6 +13,7 @@ from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import OutputOperation
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
@@ -29,6 +30,7 @@ from moose.executor.kernels.standard import DeserializeKernel
 from moose.executor.kernels.standard import DivKernel
 from moose.executor.kernels.standard import LoadKernel
 from moose.executor.kernels.standard import MulKernel
+from moose.executor.kernels.standard import OutputKernel
 from moose.executor.kernels.standard import ReceiveKernel
 from moose.executor.kernels.standard import SaveKernel
 from moose.executor.kernels.standard import SendKernel
@@ -49,6 +51,7 @@ class AsyncExecutor:
     def __init__(self, networking, store={}):
         self.store = store
         self.kernels = {
+            OutputOperation: OutputKernel(),
             ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),
             SubOperation: SubKernel(),

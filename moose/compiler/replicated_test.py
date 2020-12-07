@@ -1,37 +1,215 @@
 from absl.testing import parameterized
 
-from moose.edsl.base import add
-from moose.edsl.base import computation
-from moose.edsl.base import constant
-from moose.edsl.base import host_placement
-from moose.edsl.base import replicated_placement
-from moose.edsl.base import share
-from moose.edsl.tracer import trace
+from moose.compiler.compiler import Compiler
+from moose.compiler.replicated import ReplicatedShareRevealPass
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
+from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.replicated import RevealOperation
+from moose.computation.replicated import ShareOperation
+from moose.computation.standard import AddOperation
+from moose.computation.standard import ConstantOperation
+from moose.computation.standard import OutputOperation
 
 
 class ReplicatedTest(parameterized.TestCase):
     def test_replicated(self):
-        alice = host_placement(name="alice")
-        bob = host_placement(name="bob")
-        carole = host_placement(name="carole")
-        replicated = replicated_placement("replicated", players=[alice, bob, carole])
-        # dave = host_placement(name="dave")
 
-        @computation
-        def my_comp():
-            x = constant(1, placement=alice)
-            y = constant(2, placement=bob)
-            # TODO `share` and `reconstruct` added by pass
-            x_bar = share(x, placement=replicated)
-            y_bar = share(y, placement=replicated)
-            z_bar = add(x_bar, y_bar, placement=replicated)
-            # z = reconstruct(z_bar, placement=replicated)
-            # v = constant(3, placement=dave)
-            # w = add(z, v, placement=dave)
-            # return w
-            return z_bar
+        comp = Computation(placements={}, operations={})
 
-        concrete_comp = trace(my_comp)
-        del concrete_comp
+        comp.add_placement(HostPlacement(name="alice"))
+        comp.add_placement(HostPlacement(name="bob"))
+        comp.add_placement(HostPlacement(name="carole"))
+        comp.add_placement(
+            ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+        )
+        comp.add_placement(HostPlacement(name="dave"))
+        comp.add_placement(HostPlacement(name="eric"))
 
-        # assert False
+        comp.add_operation(
+            ConstantOperation(
+                name="alice_input", inputs={}, value=1, placement_name="alice"
+            )
+        )
+        comp.add_operation(
+            ConstantOperation(
+                name="bob_input", inputs={}, value=2, placement_name="bob"
+            )
+        )
+        comp.add_operation(
+            AddOperation(
+                name="secure_add",
+                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                placement_name="rep",
+            )
+        )
+        comp.add_operation(
+            AddOperation(
+                name="add_dave",
+                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                placement_name="dave",
+            )
+        )
+        comp.add_operation(
+            OutputOperation(
+                name="output_0", inputs={"value": "add_dave"}, placement_name="dave",
+            )
+        )
+        comp.add_operation(
+            AddOperation(
+                name="add_eric",
+                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                placement_name="eric",
+            )
+        )
+        comp.add_operation(
+            OutputOperation(
+                name="output_1", inputs={"value": "add_eric"}, placement_name="eric",
+            )
+        )
+
+        compiler = Compiler(passes=[ReplicatedShareRevealPass()])
+        comp = compiler.run_passes(comp)
+
+        expected_comp = Computation(placements={}, operations={})
+        expected_comp.add_placement(HostPlacement(name="alice"))
+        expected_comp.add_placement(HostPlacement(name="bob"))
+        expected_comp.add_placement(HostPlacement(name="carole"))
+        expected_comp.add_placement(
+            ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+        )
+        expected_comp.add_placement(HostPlacement(name="dave"))
+        expected_comp.add_placement(HostPlacement(name="eric"))
+        expected_comp.add_operation(
+            ConstantOperation(
+                name="alice_input", inputs={}, value=1, placement_name="alice"
+            )
+        )
+        expected_comp.add_operation(
+            ConstantOperation(
+                name="bob_input", inputs={}, value=2, placement_name="bob"
+            )
+        )
+        expected_comp.add_operation(
+            ShareOperation(
+                name="share_0", inputs={"value": "alice_input"}, placement_name="rep",
+            )
+        )
+        expected_comp.add_operation(
+            ShareOperation(
+                name="share_1", inputs={"value": "bob_input"}, placement_name="rep",
+            )
+        )
+        expected_comp.add_operation(
+            AddOperation(
+                name="secure_add",
+                inputs={"lhs": "share_0", "rhs": "share_1"},
+                placement_name="rep",
+            )
+        )
+        expected_comp.add_operation(
+            RevealOperation(
+                name="reveal_0",
+                inputs={"value": "secure_add"},
+                recipient_name="dave",
+                placement_name="rep",
+            )
+        )
+        expected_comp.add_operation(
+            AddOperation(
+                name="add_dave",
+                inputs={"lhs": "reveal_0", "rhs": "reveal_0"},
+                placement_name="dave",
+            )
+        )
+        expected_comp.add_operation(
+            OutputOperation(
+                name="output_0", inputs={"value": "add_dave"}, placement_name="dave",
+            )
+        )
+        expected_comp.add_operation(
+            RevealOperation(
+                name="reveal_1",
+                inputs={"value": "secure_add"},
+                recipient_name="eric",
+                placement_name="rep",
+            )
+        )
+        expected_comp.add_operation(
+            AddOperation(
+                name="add_eric",
+                inputs={"lhs": "reveal_1", "rhs": "reveal_1"},
+                placement_name="eric",
+            )
+        )
+        expected_comp.add_operation(
+            OutputOperation(
+                name="output_1", inputs={"value": "add_eric"}, placement_name="eric",
+            )
+        )
+
+        assert comp.placements == expected_comp.placements
+        assert comp == expected_comp
+
+    def test_replicated_lowering(self):
+
+        comp = Computation(placements={}, operations={})
+
+        comp.add_placement(HostPlacement(name="alice"))
+        comp.add_placement(HostPlacement(name="bob"))
+        comp.add_placement(HostPlacement(name="carole"))
+        comp.add_placement(
+            ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+        )
+        comp.add_placement(HostPlacement(name="dave"))
+        comp.add_placement(HostPlacement(name="eric"))
+
+        comp.add_operation(
+            ConstantOperation(
+                name="alice_input", inputs={}, value=1, placement_name="alice"
+            )
+        )
+        comp.add_operation(
+            ConstantOperation(
+                name="bob_input", inputs={}, value=2, placement_name="bob"
+            )
+        )
+        comp.add_operation(
+            AddOperation(
+                name="secure_add",
+                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                placement_name="rep",
+            )
+        )
+        comp.add_operation(
+            AddOperation(
+                name="add_dave",
+                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                placement_name="dave",
+            )
+        )
+        comp.add_operation(
+            OutputOperation(
+                name="output_0", inputs={"value": "add_dave"}, placement_name="dave",
+            )
+        )
+        comp.add_operation(
+            AddOperation(
+                name="add_eric",
+                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                placement_name="eric",
+            )
+        )
+        comp.add_operation(
+            OutputOperation(
+                name="output_1", inputs={"value": "add_eric"}, placement_name="eric",
+            )
+        )
+
+        compiler = Compiler()
+        comp = compiler.run_passes(comp)
+
+        assert all(
+            isinstance(comp.placement(op.placement_name), HostPlacement)
+            for op in comp.operations.values()
+        )

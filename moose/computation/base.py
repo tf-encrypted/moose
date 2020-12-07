@@ -41,7 +41,7 @@ class Computation:
         return source_ops
 
     def placement(self, name):
-        return self.placements.get(name)
+        return self.placements[name]
 
     def add_placement(self, placement):
         assert isinstance(placement, Placement)
@@ -59,11 +59,11 @@ class Computation:
         return [op for op in self.operations.values() if isinstance(op, op_type)]
 
     def operation(self, name):
-        return self.operations.get(name)
+        return self.operations[name]
 
     def add_operation(self, op):
         assert isinstance(op, Operation)
-        assert op.name not in self.operations, op.name
+        assert op.name not in self.operations, op
         assert op.placement_name in self.placements, op.placement_name
         self.operations[op.name] = op
         return op
@@ -72,10 +72,17 @@ class Computation:
         for op in ops:
             self.add_operation(op)
 
-    def remove_operation(self, op):
-        del self.operations[op.name]
+    def remove_operation(self, name):
+        del self.operations[name]
 
-    def replace_operation(self, old_op, new_op):
-        assert new_op.name == old_op.name
-        self.remove_operation(old_op)
-        self.add_operation(new_op)
+    def remove_operations(self, names):
+        for name in names:
+            self.remove_operation(name)
+
+    def rewire(self, old_op, new_op):
+        assert old_op.name in self.operations, old_op
+        assert new_op.name in self.operations, new_op
+        for op in self.operations.values():
+            for arg in op.inputs.keys():
+                if op.inputs[arg] == old_op.name:
+                    op.inputs[arg] = new_op.name

@@ -11,22 +11,36 @@ def render_computation(computation, filename_prefix="Physical", cleanup=True):
         "#ff6600",
         "#92cd00",
         "#ffcc00",
+        "#ffa4b6",
+        "#f765a3",
+        "#a155b9",
+        "#3caea3",
     ]
     placement_colors = dict()
 
     def pick_color(placement):
         if placement not in placement_colors:
-            color_index = len(placement_colors) % len(color_scheme)
-            placement_colors[placement] = color_scheme[color_index]
+            all_placements = sorted(computation.placements.keys())
+            for i, candidate in enumerate(all_placements):
+                if candidate == placement:
+                    color_index = i % len(color_scheme)
+                    placement_colors[placement] = color_scheme[color_index]
         return placement_colors[placement]
 
     dot = Digraph()
     # add nodes for ops
     for op in computation.operations.values():
+        placement = computation.placement(op.placement_name)
         op_type = type(op).__name__
         if op_type.endswith("Operation"):
             op_type = op_type[: -len("Operation")]
-        dot.node(op.name, f"{op.name}: {op_type}", color=pick_color(op.placement_name))
+        placement_type = type(placement).__name__
+        if placement_type.endswith("Placement"):
+            placement_type = placement_type[: -len("Placement")]
+        node_label = f"{op.name}: {op_type}\n" f"@{placement.name}: {placement_type}"
+        dot.node(
+            op.name, node_label, color=pick_color(op.placement_name), shape="rectangle",
+        )
     # add edges for explicit dependencies
     for op in computation.operations.values():
         for _, input_name in op.inputs.items():

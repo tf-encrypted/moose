@@ -7,6 +7,11 @@ from moose.computation.base import Operation
 
 
 @dataclass
+class OutputOperation(Operation):
+    type_: str = "standard::output"
+
+
+@dataclass
 class ConstantOperation(Operation):
     value: Any
     type_: str = "standard::constant"

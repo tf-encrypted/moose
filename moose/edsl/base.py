@@ -126,18 +126,6 @@ def constant(value, placement=None):
     return ConstantExpression(placement=placement, inputs=[], value=value)
 
 
-# TODO(Morten) this should not exist, take out before merging
-@dataclass
-class ShareExpression(Expression):
-    def __hash__(self):
-        return id(self)
-
-
-def share(value, placement=None):
-    placement = placement or get_current_placement()
-    return ShareExpression(placement=placement, inputs=[value])
-
-
 def add(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)

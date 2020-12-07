@@ -64,7 +64,7 @@ class EdslTest(parameterized.TestCase):
             return z
 
         concrete_comp = trace(my_comp)
-        call_py_op = concrete_comp.operation("apply_function_0")
+        call_py_op = concrete_comp.operation("call_python_function_0")
 
         # TODO(Morten) for some reason the pickled functions deviated;
         # figure out why and improve test
@@ -72,7 +72,7 @@ class EdslTest(parameterized.TestCase):
         call_py_op.pickled_fn = pickled_fn
         assert call_py_op == CallPythonFunctionOperation(
             placement_name="player0",
-            name="apply_function_0",
+            name="call_python_function_0",
             inputs={"arg0": "constant_0"},
             pickled_fn=pickled_fn,
             output_type=None,
