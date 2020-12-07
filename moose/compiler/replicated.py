@@ -7,8 +7,8 @@ from typing import Tuple
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.replicated import ShareOperation
 from moose.computation.replicated import RevealOperation
+from moose.computation.replicated import ShareOperation
 from moose.computation.standard import AddOperation
 
 
@@ -32,19 +32,20 @@ class ReplicatedLoweringPass:
             ops_to_lower += [op]
 
         for op in ops_to_lower:
-            self.process_operation(op)
+            self.process(op.name)
 
         for op in ops_to_lower:
-            computation.remove_operation(op)
+            computation.remove_operation(op.name)
 
         performed_changes = True
         return computation, performed_changes
 
-    def process_operation(self, op):
-        if op.name in self.interpretations:
+    def process(self, op_name):
+        if op_name in self.interpretations:
             # there is nothing to do
-            return self.interpretations[op.name]
+            return self.interpretations[op_name]
 
+        op = self.computation.operation(op_name)
         op_placement = self.computation.placement(op.placement_name)
         if not isinstance(op_placement, ReplicatedPlacement):
             # stop recursion since no longer on ReplicatedPlacement
@@ -54,41 +55,113 @@ class ReplicatedLoweringPass:
             self.interpretations[op.name] = op_interpretation
             return op_interpretation
 
-        # find interpretation of inputs recursively
-        op_inputs = [
-            self.computation.operation(input_op_name)
-            for input_op_name in op.inputs.values()
-        ]
-        op_inputs_interpretations = [
-            self.process_operation(op_input) for op_input in op_inputs
-        ]
+        # process based on op type
+        process_fn = getattr(self, f"process_{type(op).__name__}", None)
+        if process_fn is None:
+            raise NotImplementedError(f"{type(op)}")
+        return process_fn(op)
 
-        if isinstance(op, ShareOperation):
-            (x,) = op_inputs_interpretations
-            assert isinstance(x, RingTensor), type(x)
-            y = replicated_share(x, placement_name=op.placement_name)
-            assert isinstance(y, ReplicatedTensor), type(y)
-            self.interpretations[op.name] = y
-            return y
+    def process_ShareOperation(self, op):
+        assert isinstance(op, ShareOperation)
+        (x,) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        assert isinstance(x, RingTensor), type(x)
+        y = replicated_share(x, placement_name=op.placement_name)
+        assert isinstance(y, ReplicatedTensor), type(y)
+        self.interpretations[op.name] = y
+        return y
 
-        if isinstance(op, RevealOperation):
-            (x, ) = op_inputs_interpretations
-            assert isinstance(x, ReplicatedTensor), type(x)
-            y = replicated_reveal(x, recipient_name=op.recipient_name)
-            assert isinstance(y, RingTensor), type(y)
-            self.interpretations[op.name] = y
-            return y
+    def process_RevealOperation(self, op):
+        assert isinstance(op, RevealOperation)
+        (x,) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        assert isinstance(x, ReplicatedTensor), type(x)
+        y = replicated_reveal(x, recipient_name=op.recipient_name)
+        assert isinstance(y, RingTensor), type(y)
+        self.interpretations[op.name] = y
+        self.computation.rewire(op, y.op)
+        return y
 
-        if isinstance(op, AddOperation):
-            x, y = op_inputs_interpretations
-            assert isinstance(x, ReplicatedTensor), type(x)
-            assert isinstance(y, ReplicatedTensor), type(y)
-            z = replicated_add(x, y, placement_name=op.placement_name)
-            assert isinstance(z, ReplicatedTensor)
-            self.interpretations[op.name] = z
-            return z
+    def process_AddOperation(self, op):
+        assert isinstance(op, AddOperation)
+        (x, y) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(y, ReplicatedTensor), type(y)
+        z = replicated_add(x, y, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
 
-        raise NotImplementedError(f"{type(op)}")
+
+class ReplicatedShareRevealPass:
+    def run(self, computation, context):
+        # find edges to replicated placements from other placements
+        share_edges = []
+        for dst_op in computation.operations.values():
+            dst_placement = computation.placement(dst_op.placement_name)
+            if not isinstance(dst_placement, ReplicatedPlacement):
+                continue
+            for input_key, src_op_name in dst_op.inputs.items():
+                src_op = computation.operation(src_op_name)
+                src_placement = computation.placement(src_op.placement_name)
+                if isinstance(src_placement, ReplicatedPlacement):
+                    continue
+                share_edges += [(src_op.name, dst_op.name, input_key)]
+
+        # find edges from replicated placements to other placements
+        reveal_edges = []
+        for dst_op in computation.operations.values():
+            dst_placement = computation.placement(dst_op.placement_name)
+            if isinstance(dst_placement, ReplicatedPlacement):
+                continue
+            for input_key, src_op_name in dst_op.inputs.items():
+                src_op = computation.operation(src_op_name)
+                src_placement = computation.placement(src_op.placement_name)
+                if not isinstance(src_placement, ReplicatedPlacement):
+                    continue
+                reveal_edges += [(src_op.name, dst_op.name, input_key)]
+
+        # insert share operations where needed
+        share_cache = dict()
+        for (src_op_name, dst_op_name, input_key) in share_edges:
+            src_op = computation.operation(src_op_name)
+            dst_op = computation.operation(dst_op_name)
+
+            # NOTE(Morten) assume that name of replicated placements is their identity
+            # TODO(Morten) verify everywhere that diff placement name => diff setup
+            cache_key = (src_op.name, dst_op.placement_name)
+
+            if cache_key not in share_cache:
+                op = ShareOperation(
+                    name=context.get_fresh_name("share"),
+                    inputs={"value": src_op.name},
+                    placement_name=dst_op.placement_name,
+                )
+                computation.add_operation(op)
+                share_cache[cache_key] = op
+
+            share_op = share_cache[cache_key]
+            dst_op.inputs[input_key] = share_op.name
+
+        reveal_cache = dict()
+        for (src_op_name, dst_op_name, input_key) in reveal_edges:
+            src_op = computation.operation(src_op_name)
+            dst_op = computation.operation(dst_op_name)
+
+            cache_key = (src_op.name, dst_op.placement_name)
+
+            if cache_key not in reveal_cache:
+                op = RevealOperation(
+                    name=context.get_fresh_name("reveal"),
+                    inputs={"value": src_op.name},
+                    placement_name=src_op.placement_name,
+                    recipient_name=dst_op.placement_name,
+                )
+                computation.add_operation(op)
+                reveal_cache[cache_key] = op
+
+            reveal_op = reveal_cache[cache_key]
+            dst_op.inputs[input_key] = reveal_op.name
+
+        return computation, True
 
 
 @dataclass
@@ -140,10 +213,16 @@ def replicated_reveal(x: ReplicatedTensor, recipient_name) -> RingTensor:
     # TODO(Morten) optimize who sends what
     (x0, x2) = x.shares0
     (x1, _) = x.shares1
-    return ring_add(x0, ring_add(x1, x2, placement_name=recipient_name), placement_name=recipient_name)
+    return ring_add(
+        x0,
+        ring_add(x1, x2, placement_name=recipient_name),
+        placement_name=recipient_name,
+    )
 
 
-def replicated_add(x: ReplicatedTensor, y: ReplicatedTensor, placement_name) -> ReplicatedTensor:
+def replicated_add(
+    x: ReplicatedTensor, y: ReplicatedTensor, placement_name
+) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
     assert isinstance(y, ReplicatedTensor)
     assert x.computation == y.computation
@@ -186,6 +265,61 @@ def replicated_add(x: ReplicatedTensor, y: ReplicatedTensor, placement_name) -> 
         player2 = replicated_placement.player_names[2]
     z2_on_2 = ring_add(x2_on_2, y2_on_2, placement_name=player2)
     z1_on_2 = ring_add(x1_on_2, y1_on_2, placement_name=player2)
+
+    return ReplicatedTensor(
+        shares0=(z0_on_0, z2_on_0),
+        shares1=(z1_on_1, z0_on_1),
+        shares2=(z2_on_2, z1_on_2),
+        computation=x.computation,
+        context=x.context,
+    )
+
+
+def replicated_sub(
+    x: ReplicatedTensor, y: ReplicatedTensor, placement_name
+) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(y, ReplicatedTensor)
+    assert x.computation == y.computation
+    assert x.context == y.context
+
+    computation = x.computation
+
+    (x0_on_0, x2_on_0) = x.shares0
+    (y0_on_0, y2_on_0) = y.shares0
+
+    if x0_on_0.op.placement_name == y0_on_0.op.placement_name:
+        player0 = x0_on_0.op.placement_name
+    else:
+        replicated_placement = computation.placement(placement_name)
+        assert isinstance(replicated_placement, ReplicatedPlacement)
+        player0 = replicated_placement.player_names[0]
+    z0_on_0 = ring_sub(x0_on_0, y0_on_0, placement_name=player0)
+    z2_on_0 = ring_sub(x2_on_0, y2_on_0, placement_name=player0)
+
+    (x1_on_1, x0_on_1) = x.shares1
+    (y1_on_1, y0_on_1) = y.shares1
+
+    if x1_on_1.op.placement_name == y1_on_1.op.placement_name:
+        player1 = x1_on_1.op.placement_name
+    else:
+        replicated_placement = computation.placement(placement_name)
+        assert isinstance(replicated_placement, ReplicatedPlacement)
+        player1 = replicated_placement.player_names[1]
+    z1_on_1 = ring_sub(x1_on_1, y1_on_1, placement_name=player1)
+    z0_on_1 = ring_sub(x0_on_1, y0_on_1, placement_name=player1)
+
+    (x2_on_2, x1_on_2) = x.shares2
+    (y2_on_2, y1_on_2) = y.shares2
+
+    if x2_on_2.op.placement_name == y2_on_2.op.placement_name:
+        player2 = x2_on_2.op.placement_name
+    else:
+        replicated_placement = computation.placement(placement_name)
+        assert isinstance(replicated_placement, ReplicatedPlacement)
+        player2 = replicated_placement.player_names[2]
+    z2_on_2 = ring_sub(x2_on_2, y2_on_2, placement_name=player2)
+    z1_on_2 = ring_sub(x1_on_2, y1_on_2, placement_name=player2)
 
     return ReplicatedTensor(
         shares0=(z0_on_0, z2_on_0),
@@ -281,12 +415,4 @@ def ring_mul(x_op, y_op, placement_name, computation, context):
 
 @dataclass
 class ReplicatedSetupOperation(Operation):
-    pass
-
-
-def replicated_reconstruct(x_rep, computation, context):
-    pass
-
-
-def replicated_sub(x_rep, y_rep, computation):
     pass
