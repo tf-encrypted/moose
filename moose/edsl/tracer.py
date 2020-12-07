@@ -12,6 +12,7 @@ from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
 from moose.edsl.base import ApplyFunctionExpression
@@ -42,11 +43,18 @@ class AstTracer:
     def __init__(self):
         self.computation = Computation(operations={}, placements={})
         self.name_counters = defaultdict(int)
-        self.known_operations = dict()
-        self.known_placements = dict()
+        self.operation_cache = dict()
+        self.placement_cache = dict()
 
     def trace(self, expression: Expression) -> Computation:
-        _ = self.visit(expression)
+        op = self.visit(expression)
+        self.computation.add_operation(
+            OutputOperation(
+                name=self.get_fresh_name("output"),
+                inputs={"value": op.name},
+                placement_name=op.placement_name,
+            )
+        )
         return self.computation
 
     def get_fresh_name(self, prefix):
@@ -55,18 +63,18 @@ class AstTracer:
         return f"{prefix}_{count}"
 
     def visit(self, expression):
-        if expression not in self.known_operations:
+        if expression not in self.operation_cache:
             visit_fn = getattr(self, f"visit_{type(expression).__name__}")
             operation = visit_fn(expression)
-            self.known_operations[expression] = operation
-        return self.known_operations[expression]
+            self.operation_cache[expression] = operation
+        return self.operation_cache[expression]
 
     def visit_placement_expression(self, placement_expression):
-        if placement_expression not in self.known_placements:
+        if placement_expression not in self.placement_cache:
             visit_fn = getattr(self, f"visit_{type(placement_expression).__name__}")
             placement = visit_fn(placement_expression)
-            self.known_placements[placement_expression] = placement
-        return self.known_placements[placement_expression]
+            self.placement_cache[placement_expression] = placement
+        return self.placement_cache[placement_expression]
 
     def visit_HostPlacementExpression(self, host_placement_expression):
         assert isinstance(host_placement_expression, HostPlacementExpression)

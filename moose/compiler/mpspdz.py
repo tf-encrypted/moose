@@ -107,9 +107,7 @@ class MpspdzApplyFunctionPass:
             placement_name=output_placement_name,
             name=context.get_fresh_name("mpspdz_load_output"),
             inputs={
-                f"load_control{i}": call_op.name
-                for i, call_op in enumerate(call_ops)
-                if call_op.placement_name == output_placement_name
+                f"load_control{i}": call_op.name for i, call_op in enumerate(call_ops)
             },
             player_index=index_map[output_placement_name],
             invocation_key=invocation_key,
@@ -121,7 +119,7 @@ class MpspdzApplyFunctionPass:
             op_name = output_op.inputs[arg_name]
             if op_name == op.name:
                 output_op.inputs[arg_name] = load_output_op.name
-        computation.remove_operation(op)
+        computation.remove_operation(op.name)
 
 
 def compile_to_mlir(fn, input_indices, output_index):

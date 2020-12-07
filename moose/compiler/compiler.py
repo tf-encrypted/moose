@@ -3,6 +3,7 @@ from collections import defaultdict
 from moose.compiler.host import HostApplyFunctionPass
 from moose.compiler.host import NetworkingPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
+from moose.compiler.pruning import PruningPass
 from moose.compiler.render import render_computation
 from moose.compiler.replicated import ReplicatedLoweringPass
 from moose.computation.base import Computation
@@ -17,6 +18,7 @@ class Compiler:
                 MpspdzApplyFunctionPass(),
                 HostApplyFunctionPass(),
                 ReplicatedLoweringPass(),
+                PruningPass(),
                 NetworkingPass(),
             ]
         )
@@ -26,7 +28,7 @@ class Compiler:
         self, computation: Computation, render=False, render_prefix="pass"
     ) -> Computation:
         if render:
-            render_computation(computation, f"{render_prefix}-0-logical")
+            render_computation(computation, f"{render_prefix}-0-initial")
         for i, compiler_pass in enumerate(self.passes):
             computation, performed_changes = compiler_pass.run(
                 computation, context=self

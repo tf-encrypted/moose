@@ -6,6 +6,7 @@ from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import OutputOperation
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
@@ -13,6 +14,12 @@ from moose.computation.standard import SerializeOperation
 from moose.computation.standard import SubOperation
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
+
+
+class OutputKernel(Kernel):
+    def execute_synchronous_block(self, op, session, value):
+        assert isinstance(op, OutputOperation)
+        return None
 
 
 class ConstantKernel(Kernel):
