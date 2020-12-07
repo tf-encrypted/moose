@@ -1,5 +1,3 @@
-MAIN_IMAGE?=tfencrypted/runtime-mpspdz-worker:latest
-
 up:
 	docker-compose up --build --remove-orphans
 
@@ -7,20 +5,14 @@ down:
 	docker-compose down --remove-orphans
 
 run:
-	docker run \
-		--tty \
-		--network mp-spdz_default \
-		--volume $(realpath ../../moose):/moose \
-		--volume $(realpath .):/example \
-		${MAIN_IMAGE} \
-		sh -c "cd /example; python3 main.py --runtime remote --verbose"
+	docker-compose exec choreographer \
+		sh -c "python3 main.py --runtime remote --verbose"
 
 test-localhost:
 	docker run \
 		--tty \
-		--volume $(realpath ../../moose):/moose \
-		--volume $(realpath .):/example \
-		${MAIN_IMAGE} \
-		sh -c "cd /example; python3 main.py --runtime test --verbose"
+		--volume $(realpath ../..):/worker/moose \
+		tfencrypted/runtime-mpspdz-worker:latest \
+		sh -c "cd /worker/moose/examples/mp-spdz; python3 main.py --runtime test --verbose"
 
-.PHONY: run test-localhost
+.PHONY: up down run test-localhost

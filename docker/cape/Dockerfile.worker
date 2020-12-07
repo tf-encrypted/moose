@@ -1,0 +1,10 @@
+FROM tfencrypted/runtime-base-worker:latest
+
+ARG GITHUB_TOKEN
+
+# Install Cape
+RUN cd /worker && \
+    git clone https://${GITHUB_TOKEN}@github.com/capeprivacy/coordinator-client.git && \
+    cd coordinator-client && \
+    pip3 install -r requirements.txt && \
+    pip3 install -e .

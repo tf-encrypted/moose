@@ -1,16 +1,14 @@
 FROM ubuntu:20.04
 
-ARG GITHUB_TOKEN
-
-RUN apt update && apt upgrade -y
+RUN apt update
 
 # Basic tools
 RUN apt install -y \
     build-essential curl git gnupg \
     python3 python3-pip
 
-# install libsodium
-RUN apt-get install -y libsodium-dev
+# Install libsodium
+RUN apt install -y libsodium-dev
 
 # Install watchexec for development
 RUN curl -s \
@@ -19,15 +17,9 @@ RUN curl -s \
     && apt install -y ./watchexec.deb \
     && rm watchexec.deb
 
-# Install Cape
-RUN git clone https://${GITHUB_TOKEN}@github.com/capeprivacy/coordinator-client.git && \
-    cd coordinator-client && \
-    pip3 install -r requirements.txt && \
-    pip3 install -e .
-
 # Install Moose
-COPY Makefile README.md requirements-dev.txt setup.py ./
-COPY moose /moose
-RUN pip3 install -r requirements-dev.txt && \
+COPY . /worker/moose
+RUN cd /worker/moose && \
+    pip3 install -r requirements-dev.txt && \
     make build && \
     pip install -e .

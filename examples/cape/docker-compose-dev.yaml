@@ -11,4 +11,4 @@ services:
       CAPE_COORDINATOR: https://demo.capeprivacy.com
       CAPE_TOKEN: ${CAPE_TOKEN}
     volumes:
-      - "../../moose:/moose"
+      - "../..:/worker/moose"
