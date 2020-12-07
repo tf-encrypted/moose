@@ -1,7 +1,0 @@
-[workspace]
-members = [
-  "rust/cli",
-  "rust/crypto",
-  "rust/engine",
-  "rust/python-bindings",
-]
