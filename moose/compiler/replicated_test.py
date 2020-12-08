@@ -2,6 +2,8 @@ from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
 from moose.compiler.replicated import ReplicatedShareRevealPass
+from moose.compiler.replicated import ReplicatedFromStandardOpsPass
+from moose.compiler.replicated import ReplicatedLoweringPass
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
@@ -174,14 +176,6 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             ConstantOperation(
                 name="bob_input", inputs={}, value=2, placement_name="bob"
-            )
-        )
-
-        comp.add_operation(
-            SetupOperation(
-                name="setup_shared_keys",
-                inputs = {},
-                placement_name="rep",
             )
         )
         comp.add_operation(

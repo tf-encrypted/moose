@@ -6,6 +6,11 @@ from moose.computation.base import Placement
 
 
 @dataclass
+class ReplicatedOperation(Operation):
+    pass
+
+
+@dataclass
 class ReplicatedPlacement(Placement):
     player_names: List[str]
     type_: str = "replicated"
@@ -14,16 +19,21 @@ class ReplicatedPlacement(Placement):
         return hash(self.name)
 
 @dataclass
-class SetupOperation(Operation):
+class SetupOperation(ReplicatedOperation):
     type_: str = "replicated::setup"
 
 
 @dataclass
-class ShareOperation(Operation):
+class ShareOperation(ReplicatedOperation):
     type_: str = "replicated::share"
 
 
 @dataclass
-class RevealOperation(Operation):
+class RevealOperation(ReplicatedOperation):
     recipient_name: str
     type_: str = "replicated::reveal"
+
+
+@dataclass
+class AddOperation(ReplicatedOperation):
+    type_: str = "replicated::add"

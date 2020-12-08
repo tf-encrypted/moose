@@ -7,62 +7,67 @@ from moose.computation.base import Operation
 
 
 @dataclass
-class OutputOperation(Operation):
+class StandardOperation(Operation):
+    pass
+
+
+@dataclass
+class OutputOperation(StandardOperation):
     type_: str = "standard::output"
 
 
 @dataclass
-class ConstantOperation(Operation):
+class ConstantOperation(StandardOperation):
     value: Any
     type_: str = "standard::constant"
 
 
 @dataclass
-class AddOperation(Operation):
+class AddOperation(StandardOperation):
     type_: str = "standard::add"
 
 
 @dataclass
-class SubOperation(Operation):
+class SubOperation(StandardOperation):
     type_: str = "standard::sub"
 
 
 @dataclass
-class MulOperation(Operation):
+class MulOperation(StandardOperation):
     type_: str = "standard::mul"
 
 
 @dataclass
-class DivOperation(Operation):
+class DivOperation(StandardOperation):
     type_: str = "standard::div"
 
 
 @dataclass
-class LoadOperation(Operation):
+class LoadOperation(StandardOperation):
     key: str
     type_: str = "standard::load"
 
 
 @dataclass
-class SaveOperation(Operation):
+class SaveOperation(StandardOperation):
     key: str
     type_: str = "standard::save"
 
 
 @dataclass
-class SerializeOperation(Operation):
+class SerializeOperation(StandardOperation):
     value_type: str
     type_: str = "standard::serialize"
 
 
 @dataclass
-class DeserializeOperation(Operation):
+class DeserializeOperation(StandardOperation):
     value_type: str
     type_: str = "standard::deserialize"
 
 
 @dataclass
-class SendOperation(Operation):
+class SendOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
@@ -70,7 +75,7 @@ class SendOperation(Operation):
 
 
 @dataclass
-class ReceiveOperation(Operation):
+class ReceiveOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
@@ -78,7 +83,7 @@ class ReceiveOperation(Operation):
 
 
 @dataclass
-class ApplyFunctionOperation(Operation):
+class ApplyFunctionOperation(StandardOperation):
     fn: Callable = field(repr=False)
     output_placements: Any
     output_type: Any
