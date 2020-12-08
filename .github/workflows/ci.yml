@@ -77,7 +77,7 @@ jobs:
 
   macos-ci:
     runs-on: macos-latest
-    timeout-minutes: 6
+    timeout-minutes: 10
     strategy:
       matrix:
         python-version: [3.8.5]
