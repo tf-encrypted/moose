@@ -18,6 +18,7 @@ class ReplicatedPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
+
 @dataclass
 class SetupOperation(ReplicatedOperation):
     type_: str = "replicated::setup"

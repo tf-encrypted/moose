@@ -1,15 +1,16 @@
 from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
-from moose.compiler.replicated import ReplicatedShareRevealPass
 from moose.compiler.replicated import ReplicatedFromStandardOpsPass
 from moose.compiler.replicated import ReplicatedLoweringPass
+from moose.compiler.replicated import ReplicatedShareRevealPass
+from moose.computation import replicated as replicated_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import RevealOperation
-from moose.computation.replicated import ShareOperation
 from moose.computation.replicated import SetupOperation
+from moose.computation.replicated import ShareOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import OutputOperation
@@ -72,8 +73,10 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler(passes=[ReplicatedShareRevealPass()])
-        comp = compiler.run_passes(comp)
+        compiler = Compiler(
+            passes=[ReplicatedFromStandardOpsPass(), ReplicatedShareRevealPass()]
+        )
+        comp = compiler.run_passes(comp, render=True)
 
         expected_comp = Computation(placements={}, operations={})
         expected_comp.add_placement(HostPlacement(name="alice"))
@@ -95,26 +98,37 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
-            ShareOperation(
-                name="share_0", inputs={"value": "alice_input"}, placement_name="rep",
-            )
+            SetupOperation(name="replicated_setup_0", inputs={}, placement_name="rep",)
         )
         expected_comp.add_operation(
             ShareOperation(
-                name="share_1", inputs={"value": "bob_input"}, placement_name="rep",
-            )
-        )
-        expected_comp.add_operation(
-            AddOperation(
-                name="secure_add",
-                inputs={"lhs": "share_0", "rhs": "share_1"},
+                name="share_0",
+                inputs={"setup": "replicated_setup_0", "value": "alice_input"},
                 placement_name="rep",
             )
         )
         expected_comp.add_operation(
-            RevealOperation(
+            ShareOperation(
+                name="share_1",
+                inputs={"setup": "replicated_setup_0", "value": "bob_input"},
+                placement_name="rep",
+            )
+        )
+        expected_comp.add_operation(
+            replicated_ops.AddOperation(
+                name="replicated_add_0",
+                inputs={
+                    "setup": "replicated_setup_0",
+                    "lhs": "share_0",
+                    "rhs": "share_1",
+                },
+                placement_name="rep",
+            )
+        )
+        expected_comp.add_operation(
+            replicated_ops.RevealOperation(
                 name="reveal_0",
-                inputs={"value": "secure_add"},
+                inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="dave",
                 placement_name="rep",
             )
@@ -132,9 +146,9 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
-            RevealOperation(
+            replicated_ops.RevealOperation(
                 name="reveal_1",
-                inputs={"value": "secure_add"},
+                inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="eric",
                 placement_name="rep",
             )
