@@ -8,6 +8,7 @@ from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import RevealOperation
+from moose.computation.replicated import SetupOperation
 from moose.computation.replicated import ShareOperation
 from moose.computation.standard import AddOperation
 
@@ -61,6 +62,17 @@ class ReplicatedLoweringPass:
             raise NotImplementedError(f"{type(op)}")
         return process_fn(op)
 
+    def process_SetupOperation(self, op):
+        assert isinstance(op, SetupOperation)
+        context = SetupContext(
+            computation=self.computation,
+            naming_context=self.context,
+            placement_name=op.placement_name)
+        x = replicated_setup(context)
+        assert isinstance(x, ReplicatedSetup)
+        self.interpretations[op.name] = x
+        return x
+
     def process_ShareOperation(self, op):
         assert isinstance(op, ShareOperation)
         (x,) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
@@ -72,7 +84,11 @@ class ReplicatedLoweringPass:
 
     def process_RevealOperation(self, op):
         assert isinstance(op, RevealOperation)
-        (x,) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        x = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        x = x[0]
+        print(x)
+        # print(len(x))
+        # print(type(x[0]))
         assert isinstance(x, ReplicatedTensor), type(x)
         y = replicated_reveal(x, recipient_name=op.recipient_name)
         assert isinstance(y, RingTensor), type(y)
@@ -187,6 +203,59 @@ class ReplicatedTensor:
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
 
+
+
+@dataclass
+class PRFKey:
+    op: Operation
+    context: Any = field(repr=False)
+
+@dataclass
+class SetupContext:
+    computation: Computation = field(repr=False)
+    naming_context: Any = field(repr=False)
+    placement_name: str
+
+@dataclass
+class ReplicatedSetup:
+    keys0: Tuple[PRFKey, PRFKey]
+    keys1: Tuple[PRFKey, PRFKey]
+    keys2: Tuple[PRFKey, PRFKey]
+    context: SetupContext
+
+
+def seed_sample(ctx: SetupContext, placement_name):
+    k = ctx.computation.add_operation(
+        SampleSeedOperation(
+            name=ctx.naming_context.get_fresh_name("SampleSeed"),
+            placement_name=placement_name,
+            inputs={},
+        )
+    )
+    return PRFKey(k, ctx)
+ 
+
+def replicated_setup(ctx: SetupContext) -> ReplicatedSetup:
+    computation = ctx.computation
+    placement_name = ctx.placement_name
+
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    player0 = replicated_placement.player_names[0]
+    player1 = replicated_placement.player_names[1]
+    player2 = replicated_placement.player_names[2]
+
+    k0 = seed_sample(ctx, placement_name=player0)
+    k1 = seed_sample(ctx, placement_name=player1)
+    k2 = seed_sample(ctx, placement_name=player2)
+
+    return ReplicatedSetup(
+        keys0=(k0, k1),
+        keys1=(k1, k2),
+        keys2=(k2, k0),
+        context=ctx,
+    )
 
 def replicated_share(x: RingTensor, placement_name) -> ReplicatedTensor:
     assert isinstance(x, RingTensor)
@@ -359,6 +428,11 @@ class RingSampleOperation(Operation):
     pass
 
 
+@dataclass
+class SampleSeedOperation(Operation):
+    pass
+
+
 def ring_shape(tensor: RingTensor, placement_name):
     op = tensor.computation.add_operation(
         RingShapeOperation(
@@ -416,7 +490,3 @@ def ring_mul(x_op, y_op, placement_name, computation, context):
         )
     )
 
-
-@dataclass
-class ReplicatedSetupOperation(Operation):
-    pass

@@ -19,6 +19,7 @@ class Compiler:
                 MpspdzApplyFunctionPass(),
                 HostApplyFunctionPass(),
                 ReplicatedShareRevealPass(),
+                ReplicatedSetupInferencePass(),
                 ReplicatedLoweringPass(),
                 PruningPass(),
                 NetworkingPass(),

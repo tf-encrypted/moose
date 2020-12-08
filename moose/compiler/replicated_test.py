@@ -7,6 +7,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import RevealOperation
 from moose.computation.replicated import ShareOperation
+from moose.computation.replicated import SetupOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import OutputOperation
@@ -36,6 +37,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="bob_input", inputs={}, value=2, placement_name="bob"
             )
         )
+
         comp.add_operation(
             AddOperation(
                 name="secure_add",
@@ -174,6 +176,14 @@ class ReplicatedTest(parameterized.TestCase):
                 name="bob_input", inputs={}, value=2, placement_name="bob"
             )
         )
+
+        comp.add_operation(
+            SetupOperation(
+                name="setup_shared_keys",
+                inputs = {},
+                placement_name="rep",
+            )
+        )
         comp.add_operation(
             AddOperation(
                 name="secure_add",
@@ -207,7 +217,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
 
         compiler = Compiler()
-        comp = compiler.run_passes(comp)
+        comp = compiler.run_passes(comp, render=True)
 
         assert all(
             isinstance(comp.placement(op.placement_name), HostPlacement)

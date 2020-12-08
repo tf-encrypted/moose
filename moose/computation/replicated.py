@@ -13,6 +13,10 @@ class ReplicatedPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
+@dataclass
+class SetupOperation(Operation):
+    type_: str = "replicated::setup"
+
 
 @dataclass
 class ShareOperation(Operation):
