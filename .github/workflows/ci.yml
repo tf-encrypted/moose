@@ -2,9 +2,9 @@ name: Prototype Runtime CI
 
 on:
   push:
-    branches: [ prototype ]
+    branches: [ main ]
   pull_request:
-    branches: [ prototype ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
