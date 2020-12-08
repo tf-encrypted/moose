@@ -4,6 +4,8 @@
 
 ### Bootstrapping
 
+Install python development headers for your OS. (eg - `python3-dev` for Ubuntu, or `python38-devel` for OpenSUSE)
+
 To install the library and all of its dependencies, run:
 ```
 make install
