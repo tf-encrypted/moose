@@ -79,7 +79,9 @@ class ReplicatedLoweringPass:
 
     def process_ShareOperation(self, op):
         assert isinstance(op, ShareOperation)
-        (x,) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        inputs = { key: self.process(op.inputs[key]) for key in op.inputs.keys() }
+        setup, x = inputs['setup'], inputs['value']
+
         assert isinstance(x, RingTensor), type(x)
         y = replicated_share(x, placement_name=op.placement_name)
         assert isinstance(y, ReplicatedTensor), type(y)
@@ -88,11 +90,8 @@ class ReplicatedLoweringPass:
 
     def process_RevealOperation(self, op):
         assert isinstance(op, RevealOperation)
-        x = [self.process(input_op_name) for input_op_name in op.inputs.values()]
-        x = x[0]
-        print(x)
-        # print(len(x))
-        # print(type(x[0]))
+        inputs = { key: self.process(op.inputs[key]) for key in op.inputs.keys() }
+        setup, x = inputs['setup'], inputs['value']
         assert isinstance(x, ReplicatedTensor), type(x)
         y = replicated_reveal(x, recipient_name=op.recipient_name)
         assert isinstance(y, RingTensor), type(y)
@@ -102,7 +101,8 @@ class ReplicatedLoweringPass:
 
     def process_AddOperation(self, op):
         assert isinstance(op, replicated_ops.AddOperation)
-        (x, y) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        inputs = { key: self.process(op.inputs[key]) for key in op.inputs.keys() }
+        setup, x, y = inputs['setup'], inputs['lhs'], inputs['rhs']
         assert isinstance(x, ReplicatedTensor), type(x)
         assert isinstance(y, ReplicatedTensor), type(y)
         z = replicated_add(x, y, placement_name=op.placement_name)
@@ -136,7 +136,6 @@ class ReplicatedFromStandardOpsPass:
 
         for op_name in ops_to_lower:
             self.process(op_name)        
-
         return self.computation, len(ops_to_lower) > 0
 
     def process(self, op_name):
@@ -213,9 +212,13 @@ class ReplicatedShareRevealPass:
             cache_key = (src_op.name, dst_op.placement_name)
 
             if cache_key not in share_cache:
+                assert "setup" in dst_op.inputs
                 op = ShareOperation(
                     name=context.get_fresh_name("share"),
-                    inputs={"value": src_op.name},
+                    inputs={
+                        "value": src_op.name,
+                        "setup": dst_op.inputs["setup"], # propagate setup node
+                    },
                     placement_name=dst_op.placement_name,
                 )
                 computation.add_operation(op)
@@ -232,9 +235,13 @@ class ReplicatedShareRevealPass:
             cache_key = (src_op.name, dst_op.placement_name)
 
             if cache_key not in reveal_cache:
+                assert "setup" in src_op.inputs
                 op = RevealOperation(
                     name=context.get_fresh_name("reveal"),
-                    inputs={"value": src_op.name},
+                    inputs={
+                        "value": src_op.name,
+                        "setup": src_op.inputs["setup"], # propagate setup node
+                     },
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
                 )
