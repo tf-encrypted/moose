@@ -1,13 +1,11 @@
 import dill
 from absl.testing import parameterized
 
-from moose.computation.host import CallPythonFunctionOperation
-from moose.computation.host import RunProgramOperation
-from moose.computation.standard import AddOperation
-from moose.computation.standard import ConstantOperation
-from moose.computation.standard import DivOperation
-from moose.computation.standard import MulOperation
-from moose.computation.standard import SubOperation
+from moose.computation import host as host_ops
+from moose.computation import standard as standard_ops
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
+from moose.edsl.base import Argument
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
@@ -25,7 +23,12 @@ class EdslTest(parameterized.TestCase):
         {"op": op, "OP": OP, "op_name": op_name}
         for (op, OP, op_name) in zip(
             [add, div, mul, sub],
-            [AddOperation, DivOperation, MulOperation, SubOperation],
+            [
+                standard_ops.AddOperation,
+                standard_ops.DivOperation,
+                standard_ops.MulOperation,
+                standard_ops.SubOperation,
+            ],
             ["add", "div", "mul", "sub"],
         )
     )
@@ -70,7 +73,7 @@ class EdslTest(parameterized.TestCase):
         # figure out why and improve test
         pickled_fn = dill.dumps(add_one)
         call_py_op.pickled_fn = pickled_fn
-        assert call_py_op == CallPythonFunctionOperation(
+        assert call_py_op == host_ops.CallPythonFunctionOperation(
             placement_name="player0",
             name="call_python_function_0",
             inputs={"arg0": "constant_0"},
@@ -88,8 +91,39 @@ class EdslTest(parameterized.TestCase):
 
         concrete_comp = trace(my_comp)
         constant_op = concrete_comp.operation("constant_0")
-        assert constant_op == ConstantOperation(
+        assert constant_op == standard_ops.ConstantOperation(
             placement_name="player0", name="constant_0", inputs={}, value=1,
+        )
+
+    def test_arguments(self):
+        player0 = host_placement(name="player0")
+
+        @computation
+        def my_comp(x: Argument(placement=player0)):
+            y = constant(1, placement=player0)
+            z = add(x, y, placement=player0)
+            return z
+
+        concrete_comp = trace(my_comp)
+
+        assert concrete_comp == Computation(
+            operations={
+                "x": standard_ops.InputOperation(
+                    placement_name="player0", name="x", inputs={}
+                ),
+                "constant_0": standard_ops.ConstantOperation(
+                    placement_name="player0", name="constant_0", inputs={}, value=1
+                ),
+                "add_0": standard_ops.AddOperation(
+                    placement_name="player0",
+                    name="add_0",
+                    inputs={"lhs": "x", "rhs": "constant_0"},
+                ),
+                "output_0": standard_ops.OutputOperation(
+                    placement_name="player0", name="output_0", inputs={"value": "add_0"}
+                ),
+            },
+            placements={"player0": HostPlacement(name="player0")},
         )
 
     def test_run_program(self):
@@ -108,7 +142,7 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = trace(my_comp)
         script_py_op = concrete_comp.operation("run_program_0")
 
-        assert script_py_op == RunProgramOperation(
+        assert script_py_op == host_ops.RunProgramOperation(
             placement_name="player0",
             name="run_program_0",
             inputs={"arg0": "constant_0"},

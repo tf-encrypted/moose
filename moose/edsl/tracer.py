@@ -1,3 +1,4 @@
+import inspect
 from collections import defaultdict
 
 from moose.compiler.compiler import Compiler
@@ -10,12 +11,14 @@ from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
+from moose.computation.standard import InputOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
 from moose.edsl.base import ApplyFunctionExpression
+from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import BinaryOpExpression
 from moose.edsl.base import ConstantExpression
 from moose.edsl.base import Expression
@@ -28,8 +31,15 @@ from moose.edsl.base import SaveExpression
 from moose.logger import get_logger
 
 
-def trace(abstract_computation, *args, compiler_passes=None, render=False, **kwargs):
-    expression = abstract_computation.func(*args, **kwargs)
+def trace(abstract_computation, compiler_passes=None, render=False):
+    func_signature = inspect.signature(abstract_computation.func)
+    symbolic_args = [
+        ArgumentExpression(
+            arg_name=arg_name, placement=parameter.annotation.placement, inputs=[],
+        )
+        for arg_name, parameter in func_signature.parameters.items()
+    ]
+    expression = abstract_computation.func(*symbolic_args)
     tracer = AstTracer()
     logical_comp = tracer.trace(expression)
     compiler = Compiler(passes=compiler_passes)
@@ -104,6 +114,17 @@ class AstTracer:
             name=replicated_placement_expression.name, player_names=player_placements
         )
         return self.computation.add_placement(placement)
+
+    def visit_ArgumentExpression(self, argument_expression):
+        assert isinstance(argument_expression, ArgumentExpression)
+        placement = self.visit_placement_expression(argument_expression.placement)
+        return self.computation.add_operation(
+            InputOperation(
+                placement_name=placement.name,
+                name=argument_expression.arg_name,
+                inputs={},
+            )
+        )
 
     def visit_ConstantExpression(self, constant_expression):
         assert isinstance(constant_expression, ConstantExpression)
