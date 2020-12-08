@@ -4,12 +4,15 @@ build:
 			--python_out=. \
 			--grpc_python_out=. \
 			moose/protos/*.proto
+	cd rust && cargo build
 
 pydep:
 	pip install -r requirements-dev.txt
+	pip install -r rust/python-bindings/requirements-dev.txt
 
 pylib:
 	pip install -e .
+	pip install -e rust/python-bindings
 
 install: pydep pylib
 
