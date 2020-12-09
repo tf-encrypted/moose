@@ -11,15 +11,27 @@ from moose.computation.utils import deserialize_computation
 from moose.logger import get_logger
 
 
+class PlacementInfo:
+    def __init__(self, identity, public_key):
+        self.identity = identity
+        self.public_key = public_key
+
+
 class Choreography:
     def __init__(
-        self, executor, own_name=None, auth_token=None, poll_delay=10.0,
+        self,
+        executor,
+        own_name=None,
+        auth_token=None,
+        poll_delay=10.0,
+        public_key=None,
     ):
         self.cape = Cape(token=auth_token)
         self.executor = executor
         self.own_name = own_name or socket.gethostname()
         self.poll_delay = poll_delay
         self.session_tasks = dict()
+        self.public_key = public_key
 
     async def _handle_session(
         self, session: Session, computation, placement_instantiation, placement,
@@ -51,6 +63,15 @@ class Choreography:
         except Exception as ex:
             get_logger().error(f"Failed getting next sessions; ex:{ex}")
 
+    async def _register_worker(self, public_key):
+        loop = asyncio.get_event_loop()
+        try:
+            return await loop.run_in_executor(
+                None, self.cape.register_worker, public_key
+            )
+        except Exception as ex:
+            get_logger().error(f"Failed registering worker; ex:{ex}")
+
     async def _report_session_status(self, session, status):
         loop = asyncio.get_event_loop()
         try:
@@ -67,11 +88,14 @@ class Choreography:
             )
 
     async def run(self):
+        await self._register_worker(self.public_key)
         for i in itertools.count(start=0):
             if i > 0:
                 await asyncio.sleep(self.poll_delay)
 
             sessions = await self._get_next_sessions()
+            if sessions is None:
+                continue
             for session in sessions:
                 session_id = session.id
                 if session_id in self.session_tasks:
@@ -89,9 +113,11 @@ class Choreography:
                 placement_instantiation = {}
                 for p in all_placements:
                     label = p["label"]
-                    endpoint = p["endpoint"]
+                    public_key = base64.b64decode(p["public_key"])
 
-                    placement_instantiation[label] = endpoint
+                    placement_instantiation[label] = PlacementInfo(
+                        p["identity"], public_key
+                    )
 
                 task = asyncio.create_task(
                     self._handle_session(
