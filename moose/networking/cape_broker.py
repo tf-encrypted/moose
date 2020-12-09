@@ -1,11 +1,12 @@
 import asyncio
 import hashlib
-import socket
 
 import pysodium
 import requests
+from cape.network.client import get_client
 from opentelemetry import trace
 from opentelemetry.launcher import configure_opentelemetry
+from requests import cookies
 
 from moose.logger import get_logger
 
@@ -14,6 +15,7 @@ class Networking:
     def __init__(
         self,
         broker_host,
+        coordinator_host,
         own_name=None,
         auth_token=None,
         public_key=None,
@@ -21,8 +23,13 @@ class Networking:
     ):
         self.broker_host = broker_host
         self.session = requests.Session()
-        # TODO(Morten) how should we authenticate?
-        self.session.auth = (own_name or socket.gethostname(), auth_token or "")
+
+        client = get_client(endpoint=coordinator_host, token=auth_token)
+        client.login()
+
+        cookie = cookies.create_cookie("token", str(client.token))
+        self.session.cookies.set_cookie(cookie)
+
         self.public_key = public_key
         self.secret_key = secret_key
 
