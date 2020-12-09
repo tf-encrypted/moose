@@ -11,7 +11,7 @@ from moose.computation.utils import deserialize_computation
 from moose.logger import get_logger
 
 
-class Placement:
+class PlacementInfo:
     def __init__(self, identity, public_key):
         self.identity = identity
         self.public_key = public_key
@@ -19,7 +19,12 @@ class Placement:
 
 class Choreography:
     def __init__(
-        self, executor, own_name=None, auth_token=None, poll_delay=10.0, public_key=None,
+        self,
+        executor,
+        own_name=None,
+        auth_token=None,
+        poll_delay=10.0,
+        public_key=None,
     ):
         self.cape = Cape(token=auth_token)
         self.executor = executor
@@ -61,10 +66,11 @@ class Choreography:
     async def _register_worker(self, public_key):
         loop = asyncio.get_event_loop()
         try:
-            return await loop.run_in_executor(None, self.cape.register_worker, public_key)
+            return await loop.run_in_executor(
+                None, self.cape.register_worker, public_key
+            )
         except Exception as ex:
             get_logger().error(f"Failed registering worker; ex:{ex}")
-
 
     async def _report_session_status(self, session, status):
         loop = asyncio.get_event_loop()
@@ -102,14 +108,16 @@ class Choreography:
                 all_placements = session.placement_instantiation["All"]
                 placement = session.placement_instantiation["You"]
                 computation_bytes = base64.b64decode(session.task.computation)
-                computation = deserialize_computation(computation_bytes[5:])
+                computation = deserialize_computation(computation_bytes)
 
                 placement_instantiation = {}
                 for p in all_placements:
                     label = p["label"]
                     public_key = base64.b64decode(p["public_key"])
 
-                    placement_instantiation[label] = Placement(p["identity"], public_key)
+                    placement_instantiation[label] = PlacementInfo(
+                        p["identity"], public_key
+                    )
 
                 task = asyncio.create_task(
                     self._handle_session(

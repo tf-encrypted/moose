@@ -37,9 +37,11 @@ if __name__ == "__main__":
         coordinator_host=args.coordinator,
         auth_token=args.token,
         public_key=public_key,
-        secret_key=secret_key
+        secret_key=secret_key,
     )
     executor = AsyncExecutor(networking=networking)
-    cape_choreography = Choreography(executor=executor, auth_token=args.token, public_key=public_key)
+    cape_choreography = Choreography(
+        executor=executor, auth_token=args.token, public_key=public_key
+    )
 
     asyncio.get_event_loop().run_until_complete(cape_choreography.run())
