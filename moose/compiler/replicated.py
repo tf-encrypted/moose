@@ -155,7 +155,7 @@ class ReplicatedFromStandardOpsPass:
 
     def process_AddOperation(self, op):
         assert isinstance(op, standard_ops.AddOperation)
-        new_inputs = op.inputs.copy()
+        new_inputs = op.inputs
         assert new_inputs.get("setup") is None
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
         new_op = replicated_ops.AddOperation(

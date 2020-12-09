@@ -70,7 +70,7 @@ class ReplicatedTest(parameterized.TestCase):
         compiler = Compiler(
             passes=[ReplicatedFromStandardOpsPass(), ReplicatedShareRevealPass()]
         )
-        comp = compiler.run_passes(comp, render=True)
+        comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
         expected_comp.add_placement(HostPlacement(name="alice"))
