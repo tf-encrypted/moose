@@ -5,15 +5,13 @@ from moose.compiler.replicated import ReplicatedFromStandardOpsPass
 from moose.compiler.replicated import ReplicatedLoweringPass
 from moose.compiler.replicated import ReplicatedShareRevealPass
 from moose.computation import replicated as replicated_ops
+from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.replicated import RevealOperation
-from moose.computation.replicated import SetupOperation
-from moose.computation.replicated import ShareOperation
-from moose.computation.standard import AddOperation
-from moose.computation.standard import ConstantOperation
-from moose.computation.standard import OutputOperation
+# from moose.computation.standard import AddOperation
+# from moose.computation.standard import ConstantOperation
+# from moose.computation.standard import OutputOperation
 
 
 class ReplicatedTest(parameterized.TestCase):
@@ -31,44 +29,44 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_placement(HostPlacement(name="eric"))
 
         comp.add_operation(
-            ConstantOperation(
+            standard_ops.ConstantOperation(
                 name="alice_input", inputs={}, value=1, placement_name="alice"
             )
         )
         comp.add_operation(
-            ConstantOperation(
+            standard_ops.ConstantOperation(
                 name="bob_input", inputs={}, value=2, placement_name="bob"
             )
         )
 
         comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="secure_add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
             )
         )
         comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="add_dave",
                 inputs={"lhs": "secure_add", "rhs": "secure_add"},
                 placement_name="dave",
             )
         )
         comp.add_operation(
-            OutputOperation(
+            standard_ops.OutputOperation(
                 name="output_0", inputs={"value": "add_dave"}, placement_name="dave",
             )
         )
         comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="add_eric",
                 inputs={"lhs": "secure_add", "rhs": "secure_add"},
                 placement_name="eric",
             )
         )
         comp.add_operation(
-            OutputOperation(
+            standard_ops.OutputOperation(
                 name="output_1", inputs={"value": "add_eric"}, placement_name="eric",
             )
         )
@@ -88,27 +86,27 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_placement(HostPlacement(name="dave"))
         expected_comp.add_placement(HostPlacement(name="eric"))
         expected_comp.add_operation(
-            ConstantOperation(
+            standard_ops.ConstantOperation(
                 name="alice_input", inputs={}, value=1, placement_name="alice"
             )
         )
         expected_comp.add_operation(
-            ConstantOperation(
+            standard_ops.ConstantOperation(
                 name="bob_input", inputs={}, value=2, placement_name="bob"
             )
         )
         expected_comp.add_operation(
-            SetupOperation(name="replicated_setup_0", inputs={}, placement_name="rep",)
+            replicated_ops.SetupOperation(name="replicated_setup_0", inputs={}, placement_name="rep",)
         )
         expected_comp.add_operation(
-            ShareOperation(
+            replicated_ops.ShareOperation(
                 name="share_0",
                 inputs={"setup": "replicated_setup_0", "value": "alice_input"},
                 placement_name="rep",
             )
         )
         expected_comp.add_operation(
-            ShareOperation(
+            replicated_ops.ShareOperation(
                 name="share_1",
                 inputs={"setup": "replicated_setup_0", "value": "bob_input"},
                 placement_name="rep",
@@ -134,14 +132,14 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="add_dave",
                 inputs={"lhs": "reveal_0", "rhs": "reveal_0"},
                 placement_name="dave",
             )
         )
         expected_comp.add_operation(
-            OutputOperation(
+            standard_ops.OutputOperation(
                 name="output_0", inputs={"value": "add_dave"}, placement_name="dave",
             )
         )
@@ -154,14 +152,14 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="add_eric",
                 inputs={"lhs": "reveal_1", "rhs": "reveal_1"},
                 placement_name="eric",
             )
         )
         expected_comp.add_operation(
-            OutputOperation(
+            standard_ops.OutputOperation(
                 name="output_1", inputs={"value": "add_eric"}, placement_name="eric",
             )
         )
@@ -183,49 +181,49 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_placement(HostPlacement(name="eric"))
 
         comp.add_operation(
-            ConstantOperation(
+            standard_ops.ConstantOperation(
                 name="alice_input", inputs={}, value=1, placement_name="alice"
             )
         )
         comp.add_operation(
-            ConstantOperation(
+            standard_ops.ConstantOperation(
                 name="bob_input", inputs={}, value=2, placement_name="bob"
             )
         )
         comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="secure_add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
             )
         )
         comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="add_dave",
                 inputs={"lhs": "secure_add", "rhs": "secure_add"},
                 placement_name="dave",
             )
         )
         comp.add_operation(
-            OutputOperation(
+            standard_ops.OutputOperation(
                 name="output_0", inputs={"value": "add_dave"}, placement_name="dave",
             )
         )
         comp.add_operation(
-            AddOperation(
+            standard_ops.AddOperation(
                 name="add_eric",
                 inputs={"lhs": "secure_add", "rhs": "secure_add"},
                 placement_name="eric",
             )
         )
         comp.add_operation(
-            OutputOperation(
+            standard_ops.OutputOperation(
                 name="output_1", inputs={"value": "add_eric"}, placement_name="eric",
             )
         )
 
         compiler = Compiler()
-        comp = compiler.run_passes(comp, render=True)
+        comp = compiler.run_passes(comp)
 
         assert all(
             isinstance(comp.placement(op.placement_name), HostPlacement)
