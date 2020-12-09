@@ -9,7 +9,11 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.replicated import ReplicatedSetupType
+from moose.computation.replicated import ReplicatedTensorType
+from moose.computation.replicated import RingTensorType
 from moose.computation.standard import StandardOperation
+from moose.computation.standard import TensorType
 
 
 # TODO(Morten) refactoring to not have this pass here
@@ -17,32 +21,48 @@ class ReplicatedLoweringPass:
     # This pass lowers replicated operations to ring operations.
 
     def __init__(self):
-        self.interpretations = dict()
+        self.interpretations = None
         self.computation = None
         self.context = None
 
     def run(self, computation, context):
         # TODO(Morten) refactor to avoid this ugly state update
+        self.interpretations = dict()
         self.computation = computation
         self.context = context
 
-        ops_to_lower = []
+        # collect all ops to lower
+        op_names_to_lower = set()
         for op in computation.operations.values():
             op_placement = computation.placement(op.placement_name)
             if not isinstance(op_placement, ReplicatedPlacement):
                 continue
-            ops_to_lower += [op]
+            op_names_to_lower.add(op.name)
 
-        for op in ops_to_lower:
-            self.process(op.name)
+        # lower all relevant ops by adding new ops to the computation;
+        # at this step we keep the old ops around
+        for op_name in op_names_to_lower:
+            self.lower(op_name)
 
-        for op in ops_to_lower:
-            computation.remove_operation(op.name)
+        # rewire the ops we didn't lower, ie those that depend on the lowered ops
+        for op in computation.operations.values():
+            if op.name in op_names_to_lower:
+                continue
+            for input_name in op.inputs.keys():
+                old_op_name = op.inputs[input_name]
+                if old_op_name in op_names_to_lower:
+                    new_op_name = self.interpretations[old_op_name].op.name
+                    # TODO(Morten) we could do a type check here for good measures
+                    op.inputs[input_name] = new_op_name
 
-        performed_changes = True
+        # clean up computation by removing the old ops
+        for op_name in op_names_to_lower:
+            computation.remove_operation(op_name)
+
+        performed_changes = len(op_names_to_lower) > 0
         return computation, performed_changes
 
-    def process(self, op_name):
+    def lower(self, op_name):
         if op_name in self.interpretations:
             # there is nothing to do
             return self.interpretations[op_name]
@@ -50,20 +70,39 @@ class ReplicatedLoweringPass:
         op = self.computation.operation(op_name)
         op_placement = self.computation.placement(op.placement_name)
         if not isinstance(op_placement, ReplicatedPlacement):
-            # stop recursion since no longer on ReplicatedPlacement
-            op_interpretation = RingTensor(
-                op, computation=self.computation, context=self.context
-            )
+            # stop recursion since no longer on ReplicatedPlacement,
+            # but first we need to determine an interpretation
+            op_interpretation = self.interpret_input_op(op)
             self.interpretations[op.name] = op_interpretation
             return op_interpretation
 
-        # process based on op type
-        process_fn = getattr(self, f"process_{type(op).__name__}", None)
-        if process_fn is None:
+        # lower op based on type
+        lowering_fn = getattr(self, f"lower_{type(op).__name__}", None)
+        if lowering_fn is None:
             raise NotImplementedError(f"{type(op)}")
-        return process_fn(op)
+        return lowering_fn(op)
 
-    def process_SetupOperation(self, op):
+    def lower_EncodeOperation(self, op):
+        assert isinstance(op, replicated_ops.EncodeOperation)
+        x = self.lower(op.inputs["value"])
+        assert isinstance(x, PlaintextTensor)
+        assert x.datatype in ["unknown", "int", "float"], x.datatype
+        y = replicated_encode(x)
+        assert isinstance(y, RingTensor)
+        self.interpretations[op.name] = y
+        return y
+
+    def lower_DecodeOperation(self, op):
+        assert isinstance(op, replicated_ops.DecodeOperation)
+        x = self.lower(op.inputs["value"])
+        assert isinstance(x, RingTensor)
+        y = replicated_decode(x)
+        assert isinstance(y, PlaintextTensor), type(y)
+        assert y.datatype in ["unknown", "int", "float"], y.datatype
+        self.interpretations[op.name] = y
+        return y
+
+    def lower_SetupOperation(self, op):
         assert isinstance(op, replicated_ops.SetupOperation)
         context = SetupContext(
             computation=self.computation,
@@ -75,54 +114,74 @@ class ReplicatedLoweringPass:
         self.interpretations[op.name] = x
         return x
 
-    def process_ShareOperation(self, op):
+    def lower_ShareOperation(self, op):
         assert isinstance(op, replicated_ops.ShareOperation)
-        x = self.process(op.inputs["value"])
-        setup = self.process(op.inputs["setup"])
-
+        x = self.lower(op.inputs["value"])
+        setup = self.lower(op.inputs["setup"])
         assert isinstance(x, RingTensor), type(x)
-        assert isinstance(setup, ReplicatedSetup)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
 
         y = replicated_share(x, setup, placement_name=op.placement_name)
         assert isinstance(y, ReplicatedTensor), type(y)
         self.interpretations[op.name] = y
         return y
 
-    def process_RevealOperation(self, op):
+    def lower_RevealOperation(self, op):
         assert isinstance(op, replicated_ops.RevealOperation)
-        x = self.process(op.inputs["value"])
+        x = self.lower(op.inputs["value"])
         assert isinstance(x, ReplicatedTensor), type(x)
+
         y = replicated_reveal(x, recipient_name=op.recipient_name)
         assert isinstance(y, RingTensor), type(y)
         self.interpretations[op.name] = y
-        self.computation.rewire(op, y.op)
         return y
 
-    def process_AddOperation(self, op):
+    def lower_AddOperation(self, op):
         assert isinstance(op, replicated_ops.AddOperation)
-        x = self.process(op.inputs["lhs"])
-        y = self.process(op.inputs["rhs"])
+        x = self.lower(op.inputs["lhs"])
+        y = self.lower(op.inputs["rhs"])
         assert isinstance(x, ReplicatedTensor), type(x)
         assert isinstance(y, ReplicatedTensor), type(y)
+
         z = replicated_add(x, y, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
 
-    def process_MulOperation(self, op):
+    def lower_MulOperation(self, op):
         assert isinstance(op, replicated_ops.MulOperation)
-        x = self.process(op.inputs["lhs"])
-        y = self.process(op.inputs["rhs"])
+        x = self.lower(op.inputs["lhs"])
+        y = self.lower(op.inputs["rhs"])
+        setup = self.lower(op.inputs["setup"])
         assert isinstance(x, ReplicatedTensor), type(x)
         assert isinstance(y, ReplicatedTensor), type(y)
-
-        setup = self.process(op.inputs["setup"])
-        assert isinstance(setup, ReplicatedSetup)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
 
         z = replicated_mul(x, y, setup, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
+
+    def interpret_input_op(self, op):
+        assert hasattr(op, "output_type_name"), op
+        output_type_name = op.output_type_name
+        output_type = self.computation.type_(output_type_name)
+        if output_type.kind == "unknown":
+            return PlaintextTensor(
+                datatype="unknown",
+                op=op,
+                computation=self.computation,
+                context=self.context,
+            )
+        elif output_type.kind == "standard::tensor":
+            return PlaintextTensor(
+                datatype=output_type.datatype,
+                op=op,
+                computation=self.computation,
+                context=self.context,
+            )
+
+        raise NotImplementedError(f"Unknown kind '{output_type.kind}'")
 
 
 class ReplicatedFromStandardOpsPass:
@@ -163,10 +222,14 @@ class ReplicatedFromStandardOpsPass:
     def get_setup_op(self, placement_name):
         cache_key = placement_name
         if cache_key not in self.setup_cache:
+            setup_ty = self.computation.add(
+                ReplicatedSetupType(name="replicated_setup")
+            )
             setup_op = replicated_ops.SetupOperation(
                 name=self.context.get_fresh_name("replicated_setup"),
                 placement_name=placement_name,
                 inputs={},
+                output_type_name=setup_ty.name,
             )
             self.computation.add_operation(setup_op)
             self.setup_cache[cache_key] = setup_op
@@ -175,12 +238,16 @@ class ReplicatedFromStandardOpsPass:
     def process_AddOperation(self, op):
         assert isinstance(op, standard_ops.AddOperation)
         new_inputs = op.inputs.copy()
-        assert new_inputs.get("setup") is None
+        assert "setup" not in new_inputs
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_op_ty = self.computation.add(
+            ReplicatedTensorType(name="replicated_float_tensor", datatype="float")
+        )
         new_op = replicated_ops.AddOperation(
             name=self.context.get_fresh_name("replicated_add"),
             placement_name=op.placement_name,
             inputs=new_inputs,
+            output_type_name=new_op_ty.name,
         )
         self.computation.add_operation(new_op)
         self.computation.rewire(op, new_op)
@@ -189,7 +256,7 @@ class ReplicatedFromStandardOpsPass:
     def process_MulOperation(self, op):
         assert isinstance(op, standard_ops.MulOperation)
         new_inputs = op.inputs.copy()
-        assert new_inputs.get("setup") is None
+        assert "setup" not in new_inputs
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
         new_op = replicated_ops.MulOperation(
             name=self.context.get_fresh_name("replicated_mul"),
@@ -239,18 +306,27 @@ class ReplicatedShareRevealPass:
             # TODO(Morten) verify everywhere that diff placement name => diff setup
             cache_key = (src_op.name, dst_op.placement_name)
 
+            computation.maybe_add_type(RingTensorType(name="ring_tensor"))
+            computation.maybe_add_type(
+                ReplicatedTensorType(name="replicated_float_tensor", datatype="float")
+            )
+
             if cache_key not in share_cache:
-                assert dst_op.inputs.get("setup") is not None
-                op = replicated_ops.ShareOperation(
-                    name=context.get_fresh_name("share"),
-                    inputs={
-                        "value": src_op.name,
-                        "setup": dst_op.inputs["setup"],  # propagate setup node
-                    },
+                encode_op = replicated_ops.EncodeOperation(
+                    name=context.get_fresh_name("encode"),
+                    inputs={"value": src_op.name},
                     placement_name=dst_op.placement_name,
+                    output_type_name="ring_tensor",
                 )
-                computation.add_operation(op)
-                share_cache[cache_key] = op
+                share_op = replicated_ops.ShareOperation(
+                    name=context.get_fresh_name("share"),
+                    inputs={"value": encode_op.name, "setup": dst_op.inputs["setup"]},
+                    placement_name=dst_op.placement_name,
+                    output_type_name="replicated_float_tensor",
+                )
+                computation.add_operation(encode_op)
+                computation.add_operation(share_op)
+                share_cache[cache_key] = share_op
 
             share_op = share_cache[cache_key]
             dst_op.inputs[input_key] = share_op.name
@@ -262,9 +338,13 @@ class ReplicatedShareRevealPass:
 
             cache_key = (src_op.name, dst_op.placement_name)
 
+            computation.maybe_add_type(RingTensorType(name="ring_tensor"))
+            computation.maybe_add_type(
+                TensorType(name="float_tensor", datatype="float")
+            )
+
             if cache_key not in reveal_cache:
-                assert src_op.inputs.get("setup") is not None
-                op = replicated_ops.RevealOperation(
+                reveal_op = replicated_ops.RevealOperation(
                     name=context.get_fresh_name("reveal"),
                     inputs={
                         "value": src_op.name,
@@ -272,9 +352,17 @@ class ReplicatedShareRevealPass:
                     },
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
+                    output_type_name="ring_tensor",
                 )
-                computation.add_operation(op)
-                reveal_cache[cache_key] = op
+                decode_op = replicated_ops.DecodeOperation(
+                    name=context.get_fresh_name("decode"),
+                    inputs={"value": reveal_op.name},
+                    placement_name=src_op.placement_name,
+                    output_type_name="float_tensor",
+                )
+                computation.add_operation(reveal_op)
+                computation.add_operation(decode_op)
+                reveal_cache[cache_key] = decode_op
 
             reveal_op = reveal_cache[cache_key]
             dst_op.inputs[input_key] = reveal_op.name
@@ -287,6 +375,15 @@ class Shape:
     op: Operation
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
+
+
+@dataclass
+class PlaintextTensor:
+    datatype: str
+    op: Operation
+    computation: Computation = field(repr=False)
+    context: Any = field(repr=False)
+    shape: Optional[Shape] = None
 
 
 @dataclass
@@ -304,6 +401,28 @@ class ReplicatedTensor:
     shares2: Tuple[RingTensor, RingTensor]
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
+
+
+def replicated_encode(x: PlaintextTensor) -> RingTensor:
+    assert isinstance(x, PlaintextTensor)
+    x_as_ring = RingTensor(
+        op=x.op, computation=x.computation, context=x.context, shape=x.shape
+    )
+    return ring_add(x_as_ring, x_as_ring, placement_name=x.op.placement_name)
+
+
+def replicated_decode(x: RingTensor) -> RingTensor:
+    assert isinstance(x, RingTensor)
+    y = ring_add(x, x, placement_name=x.op.placement_name)
+    # TODO
+    y_as_plaintext = PlaintextTensor(
+        datatype="float",
+        op=y.op,
+        computation=y.computation,
+        context=y.context,
+        shape=y.shape,
+    )
+    return y_as_plaintext
 
 
 @dataclass
@@ -599,42 +718,51 @@ def replicated_sub(
 
 @dataclass
 class RingAddOperation(Operation):
-    pass
+    output_type_name: str = None  # TODO
 
 
 @dataclass
 class RingSubOperation(Operation):
-    pass
+    output_type_name: str = None  # TODO
 
 
 @dataclass
 class RingMulOperation(Operation):
-    pass
+    output_type_name: str = None  # TODO
 
 
 @dataclass
 class RingShapeOperation(Operation):
-    pass
+    output_type_name: str = None  # TODO
 
 
 @dataclass
 class RingSampleOperation(Operation):
     sample_key: str
+    output_type_name: str = None  # TODO
 
 
 @dataclass
 class FillTensorOperation(Operation):
     value: int
+    output_type_name: str = None  # TODO
 
 
 @dataclass
 class ExpandKeyOperation(Operation):
     seed_id: str
+    output_type_name: str = None  # TODO
 
 
 @dataclass
 class SampleKeyOperation(Operation):
     pass
+    output_type_name: str = None  # TODO
+
+
+@dataclass
+class SampleSeedOperation(Operation):
+    output_type_name: str = None  # TODO
 
 
 def ring_shape(tensor: RingTensor, placement_name):

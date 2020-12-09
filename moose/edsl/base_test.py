@@ -50,6 +50,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
+            output_type_name="float_tensor",
         )
 
     def test_call_python_fn(self):
@@ -79,6 +80,7 @@ class EdslTest(parameterized.TestCase):
             inputs={"arg0": "constant_0"},
             pickled_fn=pickled_fn,
             output_type=None,
+            output_type_name=None,  # TODO
         )
 
     def test_constant(self):
@@ -92,7 +94,11 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = trace(my_comp)
         constant_op = concrete_comp.operation("constant_0")
         assert constant_op == standard_ops.ConstantOperation(
-            placement_name="player0", name="constant_0", inputs={}, value=1,
+            placement_name="player0",
+            name="constant_0",
+            inputs={},
+            value=1,
+            output_type_name="float_tensor",
         )
 
     def test_arguments(self):
@@ -148,4 +154,5 @@ class EdslTest(parameterized.TestCase):
             inputs={"arg0": "constant_0"},
             path="python",
             args=["local_computation.py"],
+            output_type_name=None,  # TODO
         )

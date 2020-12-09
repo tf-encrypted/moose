@@ -19,6 +19,7 @@ class MpspdzPlacement(Placement):
 class MpspdzSaveInputOperation(Operation):
     player_index: int
     invocation_key: str
+    output_type_name: str = "unit"
     type_: str = "mpspdz::save_input"
 
 
@@ -30,6 +31,7 @@ class MpspdzCallOperation(Operation):
     invocation_key: str
     coordinator: str
     protocol: str
+    output_type_name: str = "unit"
     type_: str = "mpspdz::call"
 
 
@@ -37,4 +39,5 @@ class MpspdzCallOperation(Operation):
 class MpspdzLoadOutputOperation(Operation):
     player_index: int
     invocation_key: str
+    output_type_name: str
     type_: str = "mpspdz::load_output"

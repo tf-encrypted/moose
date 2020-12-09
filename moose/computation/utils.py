@@ -9,6 +9,7 @@ import moose.computation.standard
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.base import Placement
+from moose.computation.base import ValueType
 from moose.logger import get_logger
 
 
@@ -19,6 +20,10 @@ def serialize_computation(computation):
 def deserialize_computation(bytes_stream):
     computation_dict = marshal.loads(bytes_stream)
     get_logger().debug(computation_dict)
+    types = {
+        ty_name: select_type(args)
+        for ty_name, args in computation_dict["types"].items()
+    }
     operations = {
         op_name: select_op(args)
         for op_name, args in computation_dict["operations"].items()
@@ -27,7 +32,51 @@ def deserialize_computation(bytes_stream):
         plc_name: select_plc(args)
         for plc_name, args in computation_dict["placements"].items()
     }
-    return Computation(operations=operations, placements=placements)
+    return Computation(types=types, operations=operations, placements=placements)
+
+
+_known_types_cache = None
+
+
+def known_types():
+    global _known_types_cache
+    if _known_types_cache is None:
+        _known_types_cache = dict()
+        for module in [
+            moose.computation.base,
+            moose.computation.standard,
+            moose.computation.host,
+            moose.computation.mpspdz,
+        ]:
+            for class_name, class_ in inspect.getmembers(module, inspect.isclass):
+                if class_ is ValueType:
+                    continue
+                if not issubclass(class_, ValueType):
+                    continue
+                kind = getattr(class_, "kind", None)
+                if not kind:
+                    get_logger().warning(
+                        f"Ignoring type without 'kind' field; op:{class_name}"
+                    )
+                    continue
+                if kind in _known_types_cache:
+                    get_logger().warning(
+                        f"Ignoring duplicate type;"
+                        f" op1:{class_name},"
+                        f" op2:{_known_types_cache[kind]}"
+                    )
+                    continue
+                _known_types_cache[kind] = class_
+    return _known_types_cache
+
+
+def select_type(args):
+    assert "kind" in args, args
+    types = known_types()
+    ty_kind = types.get(args["kind"], None)
+    if not ty_kind:
+        raise ValueError(f"Failed to map type; kind:'{args['kind']}'")
+    return ty_kind(**args)
 
 
 _known_ops_cache = None

@@ -3,6 +3,7 @@ from collections import defaultdict
 
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
+from moose.computation.base import ValueType
 from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzPlacement
@@ -17,6 +18,7 @@ from moose.computation.standard import MulOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
+from moose.computation.standard import TensorType
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import BinaryOpExpression
@@ -63,6 +65,7 @@ class AstTracer:
                 name=self.get_fresh_name("output"),
                 inputs={"value": op.name},
                 placement_name=op.placement_name,
+                output_type_name="unit",
             )
         )
         return self.computation
@@ -129,10 +132,15 @@ class AstTracer:
     def visit_ConstantExpression(self, constant_expression):
         assert isinstance(constant_expression, ConstantExpression)
         placement = self.visit_placement_expression(constant_expression.placement)
+        # TODO(Morten) we should use type of `value` to derive below
+        output_type = self.computation.maybe_add_type(
+            TensorType(name="float_tensor", datatype="float")
+        )
         return self.computation.add_operation(
             ConstantOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("constant"),
+                output_type_name=output_type.name,
                 value=constant_expression.value,
                 inputs={},
             )
@@ -151,11 +159,17 @@ class AstTracer:
             "mul": MulOperation,
             "div": DivOperation,
         }[op_name]
+        # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
+        # assert lhs_operation.output_type_name == rhs_operation.output_type_name
+        output_type_name = self.computation.maybe_add_type(
+            TensorType(name="float_tensor", datatype="float")
+        ).name
         return self.computation.add_operation(
             op_type(
                 placement_name=placement.name,
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
+                output_type_name=output_type_name,
             )
         )
 
@@ -199,6 +213,7 @@ class AstTracer:
                 inputs=inputs,
                 output_placements=expression.output_placements,
                 output_type=expression.output_type,
+                output_type_name=None,  # TODO
             )
         )
 
@@ -215,5 +230,6 @@ class AstTracer:
                 path=expression.path,
                 args=expression.args,
                 inputs=inputs,
+                output_type_name=None,  # TODO
             )
         )

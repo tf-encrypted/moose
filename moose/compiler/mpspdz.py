@@ -111,6 +111,7 @@ class MpspdzApplyFunctionPass:
             },
             player_index=index_map[output_placement_name],
             invocation_key=invocation_key,
+            output_type_name=None,  # TODO
         )
         computation.add_operation(load_output_op)
 
