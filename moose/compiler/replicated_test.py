@@ -9,6 +9,7 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
+
 # from moose.computation.standard import AddOperation
 # from moose.computation.standard import ConstantOperation
 # from moose.computation.standard import OutputOperation
@@ -96,7 +97,9 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
-            replicated_ops.SetupOperation(name="replicated_setup_0", inputs={}, placement_name="rep",)
+            replicated_ops.SetupOperation(
+                name="replicated_setup_0", inputs={}, placement_name="rep",
+            )
         )
         expected_comp.add_operation(
             replicated_ops.ShareOperation(

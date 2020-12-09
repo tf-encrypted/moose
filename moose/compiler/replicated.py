@@ -9,9 +9,6 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.replicated import RevealOperation
-from moose.computation.replicated import SetupOperation
-from moose.computation.replicated import ShareOperation
 from moose.computation.standard import StandardOperation
 
 
@@ -67,7 +64,7 @@ class ReplicatedLoweringPass:
         return process_fn(op)
 
     def process_SetupOperation(self, op):
-        assert isinstance(op, SetupOperation)
+        assert isinstance(op, replicated_ops.SetupOperation)
         context = SetupContext(
             computation=self.computation,
             naming_context=self.context,
@@ -79,7 +76,7 @@ class ReplicatedLoweringPass:
         return x
 
     def process_ShareOperation(self, op):
-        assert isinstance(op, ShareOperation)
+        assert isinstance(op, replicated_ops.ShareOperation)
         inputs = {key: self.process(op.inputs[key]) for key in op.inputs.keys()}
         setup, x = inputs["setup"], inputs["value"]
 
@@ -90,7 +87,7 @@ class ReplicatedLoweringPass:
         return y
 
     def process_RevealOperation(self, op):
-        assert isinstance(op, RevealOperation)
+        assert isinstance(op, replicated_ops.RevealOperation)
         inputs = {key: self.process(op.inputs[key]) for key in op.inputs.keys()}
         setup, x = inputs["setup"], inputs["value"]
         assert isinstance(x, ReplicatedTensor), type(x)
@@ -214,7 +211,7 @@ class ReplicatedShareRevealPass:
 
             if cache_key not in share_cache:
                 assert "setup" in dst_op.inputs
-                op = ShareOperation(
+                op = replicated_ops.ShareOperation(
                     name=context.get_fresh_name("share"),
                     inputs={
                         "value": src_op.name,
@@ -237,7 +234,7 @@ class ReplicatedShareRevealPass:
 
             if cache_key not in reveal_cache:
                 assert "setup" in src_op.inputs
-                op = RevealOperation(
+                op = replicated_ops.RevealOperation(
                     name=context.get_fresh_name("reveal"),
                     inputs={
                         "value": src_op.name,
