@@ -2,7 +2,6 @@ from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
 from moose.compiler.replicated import ReplicatedFromStandardOpsPass
-from moose.compiler.replicated import ReplicatedLoweringPass
 from moose.compiler.replicated import ReplicatedShareRevealPass
 from moose.computation import replicated as replicated_ops
 from moose.computation import standard as standard_ops
