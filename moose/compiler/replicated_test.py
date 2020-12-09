@@ -9,10 +9,6 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 
-# from moose.computation.standard import AddOperation
-# from moose.computation.standard import ConstantOperation
-# from moose.computation.standard import OutputOperation
-
 
 class ReplicatedTest(parameterized.TestCase):
     def test_replicated(self):
