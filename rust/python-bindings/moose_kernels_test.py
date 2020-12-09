@@ -1,7 +1,9 @@
+import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
-import numpy as np
-from moose_kernels import ring_add, ring_mul, ring_sub
+from moose_kernels import ring_add
+from moose_kernels import ring_mul
+from moose_kernels import ring_sub
 
 
 class BinaryOp(parameterized.TestCase):
@@ -20,5 +22,5 @@ class BinaryOp(parameterized.TestCase):
         np.testing.assert_array_equal(c1, c2)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     absltest.main()

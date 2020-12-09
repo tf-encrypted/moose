@@ -1,4 +1,10 @@
 absl-py~=0.11.0
+black==19.10b0
+flake8-black==0.1.1
+flake8-isort==4.0.0
+flake8==3.8.3
+isort==5.4.2
 numpy~=1.19.0
-pytest>=3.5.0
+pip~=20.3.0
+pytest~=6.0.1
 setuptools-rust~=0.11.5
