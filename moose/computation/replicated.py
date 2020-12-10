@@ -38,3 +38,8 @@ class RevealOperation(ReplicatedOperation):
 @dataclass
 class AddOperation(ReplicatedOperation):
     type_: str = "replicated::add"
+
+
+@dataclass
+class MulOperation(ReplicatedOperation):
+    type_: str = "replicated::mul"
