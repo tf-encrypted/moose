@@ -1,9 +1,15 @@
+import asyncio
 import logging
 import pathlib
 import unittest
 
+import numpy as np
 from absl.testing import parameterized
 
+from moose.compiler import replicated
+from moose.computation import standard as standard_ops
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
@@ -15,6 +21,7 @@ from moose.edsl.base import run_program
 from moose.edsl.base import save
 from moose.edsl.base import sub
 from moose.edsl.tracer import trace
+from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.runtime import TestRuntime as Runtime
 
@@ -102,6 +109,72 @@ class ExecutorTest(parameterized.TestCase):
 
         comp_result = _run_computation(my_comp, [player0, player1, player2])
         self.assertEqual(comp_result["result"], 6)
+
+    @parameterized.parameters(
+        (
+            lambda plc: replicated.RingAddOperation(
+                name="ring_add",
+                placement_name=plc.name,
+                inputs={"lhs": "x", "rhs": "y"},
+            ),
+            "ring_add",
+            lambda x, y: x + y,
+        ),
+        (
+            lambda plc: replicated.RingMulOperation(
+                name="ring_mul",
+                placement_name=plc.name,
+                inputs={"lhs": "x", "rhs": "y"},
+            ),
+            "ring_mul",
+            lambda x, y: x * y,
+        ),
+        (
+            lambda plc: replicated.RingSubOperation(
+                name="ring_sub",
+                placement_name=plc.name,
+                inputs={"lhs": "x", "rhs": "y"},
+            ),
+            "ring_sub",
+            lambda x, y: x - y,
+        ),
+    )
+    def test_ring_binop_invocation(self, ring_op_lmbd, ring_op_name, numpy_lmbd):
+        a = np.array([3], dtype=np.uint64)
+        b = np.array([2], dtype=np.uint64)
+        c = numpy_lmbd(a, b)
+
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_ops.ConstantOperation(
+                name="x", placement_name=alice.name, inputs={}, value=a
+            )
+        )
+        comp.add_operation(
+            standard_ops.ConstantOperation(
+                name="y", placement_name=alice.name, inputs={}, value=b
+            )
+        )
+        comp.add_operation(ring_op_lmbd(alice))
+        comp.add_operation(
+            standard_ops.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": ring_op_name},
+                key="z",
+            )
+        )
+
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(c, executor.store["z"])
 
 
 if __name__ == "__main__":

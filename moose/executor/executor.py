@@ -2,6 +2,9 @@ import asyncio
 import dataclasses
 from typing import Any
 
+from moose.compiler.replicated import RingAddOperation
+from moose.compiler.replicated import RingMulOperation
+from moose.compiler.replicated import RingSubOperation
 from moose.computation.host import CallPythonFunctionOperation
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzCallOperation
@@ -24,6 +27,9 @@ from moose.executor.kernels.host import RunProgramKernel
 from moose.executor.kernels.mpspdz import MpspdzCallKernel
 from moose.executor.kernels.mpspdz import MpspdzLoadOutputKernel
 from moose.executor.kernels.mpspdz import MpspdzSaveInputKernel
+from moose.executor.kernels.replicated import RingAddKernel
+from moose.executor.kernels.replicated import RingMulKernel
+from moose.executor.kernels.replicated import RingSubKernel
 from moose.executor.kernels.standard import AddKernel
 from moose.executor.kernels.standard import ConstantKernel
 from moose.executor.kernels.standard import DeserializeKernel
@@ -57,6 +63,9 @@ class AsyncExecutor:
             SubOperation: SubKernel(),
             MulOperation: MulKernel(),
             DivOperation: DivKernel(),
+            RingAddOperation: RingAddKernel(),
+            RingMulOperation: RingMulKernel(),
+            RingSubOperation: RingSubKernel(),
             LoadOperation: LoadKernel(store),
             SaveOperation: SaveKernel(store),
             SendOperation: SendKernel(networking),
