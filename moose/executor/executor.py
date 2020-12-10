@@ -11,6 +11,7 @@ from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
+from moose.computation.standard import InputOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OutputOperation
@@ -28,6 +29,7 @@ from moose.executor.kernels.standard import AddKernel
 from moose.executor.kernels.standard import ConstantKernel
 from moose.executor.kernels.standard import DeserializeKernel
 from moose.executor.kernels.standard import DivKernel
+from moose.executor.kernels.standard import InputKernel
 from moose.executor.kernels.standard import LoadKernel
 from moose.executor.kernels.standard import MulKernel
 from moose.executor.kernels.standard import OutputKernel
@@ -45,12 +47,14 @@ class Session:
     session_id: int
     placement_instantiation: Any
     values: AsyncStore = dataclasses.field(repr=False)
+    arguments: AsyncStore = dataclasses.field(repr=False)
 
 
 class AsyncExecutor:
     def __init__(self, networking, store={}):
         self.store = store
         self.kernels = {
+            InputOperation: InputKernel(),
             OutputOperation: OutputKernel(),
             ConstantOperation: ConstantKernel(),
             AddOperation: AddKernel(),
@@ -75,7 +79,12 @@ class AsyncExecutor:
         return logical_computation
 
     async def run_computation(
-        self, logical_computation, placement_instantiation, placement, session_id
+        self,
+        logical_computation,
+        placement_instantiation,
+        placement,
+        session_id,
+        arguments={},
     ):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
@@ -83,6 +92,7 @@ class AsyncExecutor:
             session_id=session_id,
             placement_instantiation=placement_instantiation,
             values=AsyncStore(),
+            arguments=AsyncStore(initial_values=arguments),
         )
         get_logger().debug(
             f"Entering computation; placement:{placement}, session:{session}"

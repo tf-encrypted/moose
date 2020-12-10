@@ -12,6 +12,11 @@ class StandardOperation(Operation):
 
 
 @dataclass
+class InputOperation(StandardOperation):
+    type_: str = "standard::input"
+
+
+@dataclass
 class OutputOperation(StandardOperation):
     type_: str = "standard::output"
 

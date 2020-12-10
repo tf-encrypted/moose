@@ -62,9 +62,22 @@ def get_current_placement():
 
 
 @dataclass
+class Argument:
+    placement: PlacementExpression
+
+
+@dataclass
 class Expression:
     placement: PlacementExpression
     inputs: List
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class ArgumentExpression(Expression):
+    arg_name: str
 
     def __hash__(self):
         return id(self)
