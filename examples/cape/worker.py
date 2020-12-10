@@ -3,6 +3,8 @@ import asyncio
 import logging
 import os
 
+import pysodium
+
 from moose.choreography.cape_coordinator import Choreography
 from moose.executor import AsyncExecutor
 from moose.logger import get_logger
@@ -28,9 +30,18 @@ if args.verbose:
     logger.setLevel(level=logging.DEBUG)
 
 if __name__ == "__main__":
+    public_key, secret_key = pysodium.crypto_box_keypair()
 
-    networking = Networking(broker_host=args.broker, auth_token=args.token)
+    networking = Networking(
+        broker_host=args.broker,
+        coordinator_host=args.coordinator,
+        auth_token=args.token,
+        public_key=public_key,
+        secret_key=secret_key,
+    )
     executor = AsyncExecutor(networking=networking)
-    cape_choreography = Choreography(executor=executor, auth_token=args.token,)
+    cape_choreography = Choreography(
+        executor=executor, auth_token=args.token, public_key=public_key
+    )
 
     asyncio.get_event_loop().run_until_complete(cape_choreography.run())

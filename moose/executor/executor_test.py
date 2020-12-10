@@ -71,6 +71,39 @@ class ExecutorTest(parameterized.TestCase):
         comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], 5)
 
+    def test_input(self):
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_ops.InputOperation(name="x", placement_name=alice.name, inputs={})
+        )
+        comp.add_operation(
+            standard_ops.InputOperation(name="y", placement_name=alice.name, inputs={})
+        )
+        comp.add_operation(
+            standard_ops.AddOperation(
+                name="add", placement_name=alice.name, inputs={"lhs": "x", "rhs": "y"}
+            )
+        )
+        comp.add_operation(
+            standard_ops.SaveOperation(
+                name="save", placement_name=alice.name, inputs={"value": "add"}, key="z"
+            )
+        )
+
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+            arguments={"x": 5, "y": 10},
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        assert executor.store["z"] == 15
+
     @parameterized.parameters(
         {"op": op, "expected_result": expected_result}
         for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])

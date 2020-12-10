@@ -4,16 +4,18 @@ from typing import Any
 from typing import Optional
 from typing import Tuple
 
+from moose.computation import replicated as replicated_ops
+from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.replicated import RevealOperation
-from moose.computation.replicated import ShareOperation
-from moose.computation.standard import AddOperation
+from moose.computation.standard import StandardOperation
 
 
 # TODO(Morten) refactoring to not have this pass here
 class ReplicatedLoweringPass:
+    # This pass lowers replicated operations to ring operations.
+
     def __init__(self):
         self.interpretations = dict()
         self.computation = None
@@ -61,9 +63,21 @@ class ReplicatedLoweringPass:
             raise NotImplementedError(f"{type(op)}")
         return process_fn(op)
 
+    def process_SetupOperation(self, op):
+        assert isinstance(op, replicated_ops.SetupOperation)
+        context = SetupContext(
+            computation=self.computation,
+            naming_context=self.context,
+            placement_name=op.placement_name,
+        )
+        x = replicated_setup(context, placement_name=op.placement_name)
+        assert isinstance(x, ReplicatedSetup)
+        self.interpretations[op.name] = x
+        return x
+
     def process_ShareOperation(self, op):
-        assert isinstance(op, ShareOperation)
-        (x,) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        assert isinstance(op, replicated_ops.ShareOperation)
+        x = self.process(op.inputs["value"])
         assert isinstance(x, RingTensor), type(x)
         y = replicated_share(x, placement_name=op.placement_name)
         assert isinstance(y, ReplicatedTensor), type(y)
@@ -71,8 +85,8 @@ class ReplicatedLoweringPass:
         return y
 
     def process_RevealOperation(self, op):
-        assert isinstance(op, RevealOperation)
-        (x,) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        assert isinstance(op, replicated_ops.RevealOperation)
+        x = self.process(op.inputs["value"])
         assert isinstance(x, ReplicatedTensor), type(x)
         y = replicated_reveal(x, recipient_name=op.recipient_name)
         assert isinstance(y, RingTensor), type(y)
@@ -81,14 +95,77 @@ class ReplicatedLoweringPass:
         return y
 
     def process_AddOperation(self, op):
-        assert isinstance(op, AddOperation)
-        (x, y) = [self.process(input_op_name) for input_op_name in op.inputs.values()]
+        assert isinstance(op, replicated_ops.AddOperation)
+        x = self.process(op.inputs["lhs"])
+        y = self.process(op.inputs["rhs"])
         assert isinstance(x, ReplicatedTensor), type(x)
         assert isinstance(y, ReplicatedTensor), type(y)
         z = replicated_add(x, y, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
+
+
+class ReplicatedFromStandardOpsPass:
+    # This pass lowers all standard ops on replicated placements to their
+    # corresponding replicated ops, adding setup where needed.
+
+    def __init__(self):
+        self.computation = None
+        self.context = None
+        self.setup_cache = None
+
+    def run(self, computation, context):
+        self.computation = computation
+        self.context = context
+        self.setup_cache = dict()
+
+        ops_to_lower = []
+        for op in self.computation.operations.values():
+            if not isinstance(op, StandardOperation):
+                continue
+            op_placement = self.computation.placement(op.placement_name)
+            if not isinstance(op_placement, ReplicatedPlacement):
+                continue
+            ops_to_lower += [op.name]
+
+        for op_name in ops_to_lower:
+            self.process(op_name)
+        return self.computation, len(ops_to_lower) > 0
+
+    def process(self, op_name):
+        # process based on op type
+        op = self.computation.operation(op_name)
+        process_fn = getattr(self, f"process_{type(op).__name__}", None)
+        if process_fn is None:
+            raise NotImplementedError(f"{type(op)}")
+        process_fn(op)
+
+    def get_setup_op(self, placement_name):
+        cache_key = placement_name
+        if cache_key not in self.setup_cache:
+            setup_op = replicated_ops.SetupOperation(
+                name=self.context.get_fresh_name("replicated_setup"),
+                placement_name=placement_name,
+                inputs={},
+            )
+            self.computation.add_operation(setup_op)
+            self.setup_cache[cache_key] = setup_op
+        return self.setup_cache[cache_key]
+
+    def process_AddOperation(self, op):
+        assert isinstance(op, standard_ops.AddOperation)
+        new_inputs = op.inputs
+        assert new_inputs.get("setup") is None
+        new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_op = replicated_ops.AddOperation(
+            name=self.context.get_fresh_name("replicated_add"),
+            placement_name=op.placement_name,
+            inputs=new_inputs,
+        )
+        self.computation.add_operation(new_op)
+        self.computation.rewire(op, new_op)
+        self.computation.remove_operation(op.name)
 
 
 class ReplicatedShareRevealPass:
@@ -130,9 +207,13 @@ class ReplicatedShareRevealPass:
             cache_key = (src_op.name, dst_op.placement_name)
 
             if cache_key not in share_cache:
-                op = ShareOperation(
+                assert dst_op.inputs.get("setup") is not None
+                op = replicated_ops.ShareOperation(
                     name=context.get_fresh_name("share"),
-                    inputs={"value": src_op.name},
+                    inputs={
+                        "value": src_op.name,
+                        "setup": dst_op.inputs["setup"],  # propagate setup node
+                    },
                     placement_name=dst_op.placement_name,
                 )
                 computation.add_operation(op)
@@ -149,9 +230,13 @@ class ReplicatedShareRevealPass:
             cache_key = (src_op.name, dst_op.placement_name)
 
             if cache_key not in reveal_cache:
-                op = RevealOperation(
+                assert src_op.inputs.get("setup") is not None
+                op = replicated_ops.RevealOperation(
                     name=context.get_fresh_name("reveal"),
-                    inputs={"value": src_op.name},
+                    inputs={
+                        "value": src_op.name,
+                        "setup": src_op.inputs["setup"],  # propagate setup node
+                    },
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
                 )
@@ -186,6 +271,57 @@ class ReplicatedTensor:
     shares2: Tuple[RingTensor, RingTensor]
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
+
+
+@dataclass
+class PRFKey:
+    op: Operation
+    context: Any = field(repr=False)
+
+
+@dataclass
+class SetupContext:
+    computation: Computation = field(repr=False)
+    naming_context: Any = field(repr=False)
+    placement_name: str
+
+
+@dataclass
+class ReplicatedSetup:
+    keys0: Tuple[PRFKey, PRFKey]
+    keys1: Tuple[PRFKey, PRFKey]
+    keys2: Tuple[PRFKey, PRFKey]
+    context: SetupContext
+
+
+def seed_sample(ctx: SetupContext, placement_name):
+    k = ctx.computation.add_operation(
+        SampleSeedOperation(
+            name=ctx.naming_context.get_fresh_name("SampleSeed"),
+            placement_name=placement_name,
+            inputs={},
+        )
+    )
+    return PRFKey(k, ctx)
+
+
+def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
+    assert isinstance(ctx, SetupContext)
+
+    computation = ctx.computation
+
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    player0 = replicated_placement.player_names[0]
+    player1 = replicated_placement.player_names[1]
+    player2 = replicated_placement.player_names[2]
+
+    k0 = seed_sample(ctx, placement_name=player0)
+    k1 = seed_sample(ctx, placement_name=player1)
+    k2 = seed_sample(ctx, placement_name=player2)
+
+    return ReplicatedSetup(keys0=(k0, k1), keys1=(k1, k2), keys2=(k2, k0), context=ctx,)
 
 
 def replicated_share(x: RingTensor, placement_name) -> ReplicatedTensor:
@@ -359,6 +495,11 @@ class RingSampleOperation(Operation):
     pass
 
 
+@dataclass
+class SampleSeedOperation(Operation):
+    pass
+
+
 def ring_shape(tensor: RingTensor, placement_name):
     op = tensor.computation.add_operation(
         RingShapeOperation(
@@ -415,8 +556,3 @@ def ring_mul(x_op, y_op, placement_name, computation, context):
             inputs={"lhs": x_op.name, "rhs": y_op.name},
         )
     )
-
-
-@dataclass
-class ReplicatedSetupOperation(Operation):
-    pass

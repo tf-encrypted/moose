@@ -4,10 +4,12 @@ from moose.logger import get_logger
 
 
 class AsyncStore:
-    def __init__(self, loop=None):
+    def __init__(self, initial_values={}, loop=None):
         self.loop = loop or asyncio.get_event_loop()
         self.key_to_future = dict()
         self.future_to_key = dict()
+        for key, value in initial_values.items():
+            self.get_future(key).set_result(value)
 
     async def put(self, key, value):
         if key not in self.key_to_future:

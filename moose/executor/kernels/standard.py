@@ -4,6 +4,7 @@ from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
+from moose.computation.standard import InputOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OutputOperation
@@ -14,6 +15,12 @@ from moose.computation.standard import SerializeOperation
 from moose.computation.standard import SubOperation
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
+
+
+class InputKernel(Kernel):
+    async def execute(self, op, session, output):
+        assert isinstance(op, InputOperation)
+        output.set_result(await session.arguments.get(op.name))
 
 
 class OutputKernel(Kernel):
