@@ -284,7 +284,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
 
         compiler = Compiler()
-        comp = compiler.run_passes(comp, render=True)
+        comp = compiler.run_passes(comp)
 
         assert all(
             isinstance(comp.placement(op.placement_name), HostPlacement)
