@@ -455,8 +455,8 @@ def replicated_reveal(x: ReplicatedTensor, recipient_name) -> RingTensor:
     # two shares in the case where the recipient doesn't already hold a share. we can
     # also apply either a global or randomized approach for picking who sends shares
     # to more evenly distribute the task of sending
-    (x0, x2) = x.shares0
-    (x1, _) = x.shares1
+    (x0, x1) = x.shares0
+    (_, x2) = x.shares1
     return ring_add(
         x0,
         ring_add(x1, x2, placement_name=recipient_name),
