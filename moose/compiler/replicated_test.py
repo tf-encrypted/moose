@@ -190,7 +190,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.AddOperation(
-                name="secure_Add",
+                name="secure_add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
             )
@@ -221,9 +221,8 @@ class ReplicatedTest(parameterized.TestCase):
         )
 
         compiler = Compiler()
-        comp = compiler.run_passes(comp, render=True)
+        comp = compiler.run_passes(comp)
 
-        assert False
         assert all(
             isinstance(comp.placement(op.placement_name), HostPlacement)
             for op in comp.operations.values()
@@ -287,7 +286,6 @@ class ReplicatedTest(parameterized.TestCase):
         compiler = Compiler()
         comp = compiler.run_passes(comp, render=True)
 
-        assert False
         assert all(
             isinstance(comp.placement(op.placement_name), HostPlacement)
             for op in comp.operations.values()

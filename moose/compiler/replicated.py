@@ -321,9 +321,7 @@ class SetupContext:
 
 @dataclass
 class ReplicatedBaseSetup:
-    keys0: Tuple[PRFKey, PRFKey]
-    keys1: Tuple[PRFKey, PRFKey]
-    keys2: Tuple[PRFKey, PRFKey]
+    keys: [Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
     context: SetupContext
 
 
@@ -356,15 +354,14 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
 
-    player0 = replicated_placement.player_names[0]
-    player1 = replicated_placement.player_names[1]
-    player2 = replicated_placement.player_names[2]
-
-    k0 = key_sample(ctx, placement_name=player0)
-    k1 = key_sample(ctx, placement_name=player1)
-    k2 = key_sample(ctx, placement_name=player2)
-
-    return ReplicatedSetup(keys0=(k0, k1), keys1=(k1, k2), keys2=(k2, k0), context=ctx)
+    k = [
+        key_sample(ctx, placement_name=replicated_placement.player_names[i])
+        for i in range(3)
+    ]
+    return ReplicatedSetup(keys = [
+        (k[0], k[1]), (k[1], k[2]), (k[2], k[0])],
+        context=ctx,
+    )
 
 
 def synchronize_seeds(setup: ReplicatedSetup, placement_name):
@@ -372,35 +369,31 @@ def synchronize_seeds(setup: ReplicatedSetup, placement_name):
     naming_context = setup.context.naming_context
     seed_id = naming_context.get_fresh_name("seed_id")
 
-    def expand_key(keys: Tuple[PRFKey, PRFKey], seed_id, placement_name):
+    def expand_key(key0: PRFKey, key1: PRFKey, seed_id, placement_name):
         op_0 = context.computation.add_operation(
-            ReSeedOperation(
+            ExpandKeyOperation(
                 name=naming_context.get_fresh_name("expand_key"),
                 placement_name=placement_name,
-                inputs={"keys": keys[0].op.name},
+                inputs={"keys": key0.op.name},
                 seed_id=seed_id,
             )
         )
         op_1 = context.computation.add_operation(
-            ReSeedOperation(
+            ExpandKeyOperation(
                 name=naming_context.get_fresh_name("expand_key"),
                 placement_name=placement_name,
-                inputs={"keys": keys[1].op.name},
+                inputs={"keys": key1.op.name},
                 seed_id=seed_id,
             )
         )
         return (op_0, op_1)
-
-    expanded_keys = [None, None, None]
-    print("inside sync seeds", placement_name)
-    expanded_keys[0] = expand_key(setup.keys0, seed_id, placement_name.player_names[0])
-    expanded_keys[1] = expand_key(setup.keys1, seed_id, placement_name.player_names[1])
-    expanded_keys[2] = expand_key(setup.keys2, seed_id, placement_name.player_names[2])
+    expanded_keys = [
+        expand_key(*setup.keys[i], seed_id, placement_name.player_names[i])
+            for i in range(3)
+    ]
 
     return ReplicatedExpandedKeys(
-        keys0=expanded_keys[0],
-        keys1=expanded_keys[1],
-        keys2=expanded_keys[2],
+        keys=expanded_keys,
         context=context,
     )
 
@@ -419,16 +412,11 @@ def replicated_share(
 
     key_mine = None
     input_player_id = None
-    if x.op.placement_name == replicated_placement.player_names[0]:
-        key_mine = expanded_keys.keys0[0]
-        input_player_id = 0
-    elif x.op.placement_name == replicated_placement.player_names[1]:
-        key_mine = expanded_keys.keys1[0]
-        input_player_id = 1
-    elif x.op.placement_name == replicated_placement.player_names[2]:
-        key_mine = expanded_keys.keys2[0]
-        input_player_id = 1
-
+    for i in range(3):
+        if x.op.placement_name == replicated_placement.player_names[i]:
+            key_mine = expanded_keys.keys[i][0]
+            input_player_id = i
+        
     x_mine = ring_sample(x.shape, key_mine, placement_name=x.op.placement_name)
     x_other = ring_sub(x, x_mine, placement_name=x.op.placement_name)
 
@@ -437,7 +425,7 @@ def replicated_share(
         null_tensor_2 = ring_null_tensor(x.shape, replicated_placement.player_names[2])
 
         x21 = ring_sample(
-            x.shape, expanded_keys.keys2[1], replicated_placement.player_names[2]
+            x.shape, expanded_keys.keys[2][1], replicated_placement.player_names[2]
         )
         return ReplicatedTensor(
             shares0=(x_mine, x_other),
@@ -449,7 +437,7 @@ def replicated_share(
     elif input_player_id == 1:
         x00 = ring_null_tensor(x.shape, replicated_placement.player_names[0])
         x01 = ring_sample(
-            x.shape, expanded_keys.keys0[1], replicated_placement.player_names[0]
+            x.shape, expanded_keys.keys[0][1], replicated_placement.player_names[0]
         )
 
         x21 = ring_null_tensor(x.shape, replicated_placement.player_names[2])
@@ -464,7 +452,7 @@ def replicated_share(
         x01 = ring_null_tensor(x.shape, replicated_placement.player_names[0])
         x10 = ring_null_tensor(x.shape, replicated_placement.player_names[1])
         x11 = ring_sample(
-            x.shape, expanded_keys.keys1[1], replicated_placement.player_names[1]
+            x.shape, expanded_keys.keys[1][1], replicated_placement.player_names[1]
         )
         return ReplicatedTensor(
             shares0=(x_other, x01),
@@ -565,17 +553,19 @@ def replicated_mul(
     expanded_keys = synchronize_seeds(setup, replicated_placement)
 
     def generate_zero_share():
-        alpha = [None, None]
-        for i in range(2):
-            alpha[i] = ring_sample(share[0].shape, expanded_keys.keys0[i], player0)
+        alpha = [
+            ring_sample(share[0].shape, expanded_keys.keys[0][i], player0)
+            for i in range(2)
+        ]
+        beta = [
+            ring_sample(share[1].shape, expanded_keys.keys[1][i], player1)
+            for i in range(2)
+        ]
 
-        beta = [None, None]
-        for i in range(2):
-            beta[i] = ring_sample(share[1].shape, expanded_keys.keys1[i], player1)
-
-        gamma = [None, None]
-        for i in range(2):
-            gamma[i] = ring_sample(share[2].shape, expanded_keys.keys2[i], player2)
+        gamma = [
+            ring_sample(share[2].shape, expanded_keys.keys[2][i], player2)
+            for i in range(2)
+        ]
 
         return (
             ring_sub(alpha[0], alpha[1], player0),
@@ -738,7 +728,7 @@ class NullTensorOperation(Operation):
 
 
 @dataclass
-class ReSeedOperation(Operation):
+class ExpandKeyOperation(Operation):
     seed_id: str
 
 
@@ -775,9 +765,9 @@ def ring_null_tensor(shape: Shape, placement_name):
     )
 
 
-def ring_sample(shape: Shape, key: ReSeedOperation, placement_name):
+def ring_sample(shape: Shape, key: ExpandKeyOperation, placement_name):
     assert isinstance(shape, Shape)
-    assert isinstance(key, ReSeedOperation)
+    assert isinstance(key, ExpandKeyOperation)
     op = shape.computation.add_operation(
         RingSampleOperation(
             name=shape.context.get_fresh_name("ring_sample"),
