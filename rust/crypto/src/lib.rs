@@ -1,10 +1,24 @@
 use ndarray::prelude::*;
-
+use rand::prelude::*;
+use rand_chacha::ChaCha20Rng;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Sub};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
+
+pub trait Sample {
+  fn sample_uniform(shape: &[usize]) -> Self;
+}
+
+impl Sample for Ring64Tensor {
+    fn sample_uniform(shape: &[usize]) -> Self {
+        let mut rng = ChaCha20Rng::seed_from_u64(42);
+        let length = shape.iter().product();
+        let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
+        Ring64Tensor(ArrayD::from_shape_vec(IxDyn(shape), values).unwrap())
+    }
+}
 
 impl From<Vec<u64>> for Ring64Tensor {
     fn from(v: Vec<u64>) -> Ring64Tensor {
@@ -82,5 +96,11 @@ mod tests {
         let c_shared = a_shared * b_shared;
         let c: Ring64Tensor = reconstruct(c_shared);
         assert_eq!(c, a * b);
+    }
+
+    #[test]
+    fn ring_sample() {
+        let r = Ring64Tensor::sample_uniform(&[5]);
+        assert_eq!(r, Ring64Tensor::from(vec![9482535800248027256, 7566832397956113305, 1804347359131428821, 3088291667719571736, 3009633425676235349]));
     }
 }
