@@ -388,8 +388,7 @@ def synchronize_seeds(setup: ReplicatedSetup, placement_name):
         return (op_0, op_1)
 
     expanded_keys = [
-        expand_key(*setup.keys[i], placement_name.player_names[i])
-        for i in range(3)
+        expand_key(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
     ]
 
     return ReplicatedExpandedKeys(keys=expanded_keys, context=context,)
@@ -541,6 +540,8 @@ def replicated_add(
     assert x.context == y.context
 
     computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
 
     x_shares = [x.shares0, x.shares1, x.shares2]
     y_shares = [y.shares0, y.shares1, y.shares2]
@@ -549,10 +550,10 @@ def replicated_add(
 
     z_shares = [None, None, None]
     for i in range(3):
-        z_shares[i] = (
+        z_shares[i] = [
             ring_add(x_shares[i][j], y_shares[i][j], placement_name=players[i])
             for j in range(2)
-        )
+        ]
 
     return ReplicatedTensor(
         shares0=z_shares[0],
@@ -572,6 +573,8 @@ def replicated_sub(
     assert x.context == y.context
 
     computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
 
     x_shares = [x.shares0, x.shares1, x.shares2]
     y_shares = [y.shares0, y.shares1, y.shares2]
@@ -580,10 +583,10 @@ def replicated_sub(
 
     z_shares = [None, None, None]
     for i in range(3):
-        z_shares[i] = (
+        z_shares[i] = [
             ring_sub(x_shares[i][j], y_shares[i][j], placement_name=players[i])
             for j in range(2)
-        )
+        ]
 
     return ReplicatedTensor(
         shares0=z_shares[0],
