@@ -8,7 +8,7 @@ use std::ops::{Add, Mul, Sub};
 pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
 
 pub trait Sample {
-  fn sample_uniform(shape: &[usize]) -> Self;
+    fn sample_uniform(shape: &[usize]) -> Self;
 }
 
 impl Sample for Ring64Tensor {
@@ -101,6 +101,15 @@ mod tests {
     #[test]
     fn ring_sample() {
         let r = Ring64Tensor::sample_uniform(&[5]);
-        assert_eq!(r, Ring64Tensor::from(vec![9482535800248027256, 7566832397956113305, 1804347359131428821, 3088291667719571736, 3009633425676235349]));
+        assert_eq!(
+            r,
+            Ring64Tensor::from(vec![
+                9482535800248027256,
+                7566832397956113305,
+                1804347359131428821,
+                3088291667719571736,
+                3009633425676235349
+            ])
+        );
     }
 }
