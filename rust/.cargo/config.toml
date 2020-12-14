@@ -1,3 +1,6 @@
 [build]
 rustflags = ["-Ctarget-feature=+aes"]
 rustdocflags = ["-Ctarget-feature=+aes,+ssse3"]
+
+[target.x86_64-apple-darwin]
+rustflags = ["-Clink-args=-undefined", "-Clink-arg=dynamic_lookup"]
