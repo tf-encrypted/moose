@@ -11,7 +11,6 @@ from moose.computation.base import ValueType
 @dataclass
 class MpspdzPlacement(Placement):
     player_names: List[str]
-    type_: str = "mpspdz"
 
     def __hash__(self):
         return hash(self.name)
@@ -22,7 +21,6 @@ class MpspdzSaveInputOperation(Operation):
     player_index: int
     invocation_key: str
     output_type: ValueType = UnitType()
-    type_: str = "mpspdz::save_input"
 
 
 @dataclass
@@ -34,7 +32,6 @@ class MpspdzCallOperation(Operation):
     coordinator: str
     protocol: str
     output_type: ValueType = UnitType()
-    type_: str = "mpspdz::call"
 
 
 @dataclass
@@ -42,4 +39,3 @@ class MpspdzLoadOutputOperation(Operation):
     player_index: int
     invocation_key: str
     output_type: ValueType
-    type_: str = "mpspdz::load_output"

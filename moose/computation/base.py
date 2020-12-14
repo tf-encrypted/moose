@@ -18,12 +18,12 @@ class ValueType:
 
 @dataclass
 class UnitType(ValueType):
-    kind: str = "unit"
+    pass
 
 
 @dataclass
 class UnknownType(ValueType):
-    kind: str = "unknown"
+    pass
 
 
 @dataclass
