@@ -174,7 +174,7 @@ class ReplicatedFromStandardOpsPass:
 
     def process_AddOperation(self, op):
         assert isinstance(op, standard_ops.AddOperation)
-        new_inputs = op.inputs
+        new_inputs = op.inputs.copy()
         assert new_inputs.get("setup") is None
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
         new_op = replicated_ops.AddOperation(
@@ -188,7 +188,7 @@ class ReplicatedFromStandardOpsPass:
 
     def process_MulOperation(self, op):
         assert isinstance(op, standard_ops.MulOperation)
-        new_inputs = op.inputs
+        new_inputs = op.inputs.copy()
         assert new_inputs.get("setup") is None
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
         new_op = replicated_ops.MulOperation(
@@ -368,7 +368,7 @@ def synchronize_seeds(setup: ReplicatedSetup, placement_name):
     naming_context = setup.context.naming_context
     seed_id = naming_context.get_fresh_name("seed_id")
 
-    def expand_key(key0: PRFKey, key1: PRFKey, seed_id, placement_name):
+    def expand_key(key0: PRFKey, key1: PRFKey, placement_name):
         op_0 = context.computation.add_operation(
             ExpandKeyOperation(
                 name=naming_context.get_fresh_name("expand_key"),
@@ -388,8 +388,7 @@ def synchronize_seeds(setup: ReplicatedSetup, placement_name):
         return (op_0, op_1)
 
     expanded_keys = [
-        expand_key(*setup.keys[i], seed_id, placement_name.player_names[i])
-        for i in range(3)
+        expand_key(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
     ]
 
     return ReplicatedExpandedKeys(keys=expanded_keys, context=context,)
@@ -402,7 +401,7 @@ def replicated_share(
     assert isinstance(setup, ReplicatedSetup)
 
     replicated_placement = setup.context.computation.placement(placement_name)
-    players = [replicated_placement.player_names[i] for i in range(3)]
+    players = replicated_placement.player_names
 
     expanded_keys = synchronize_seeds(setup, replicated_placement)
     if not x.shape:
@@ -479,7 +478,7 @@ def replicated_mul(
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
 
-    players = [replicated_placement.player_names[i] for i in range(3)]
+    players = replicated_placement.player_names
 
     x_shares = [x.shares0, x.shares1, x.shares2]
     y_shares = [y.shares0, y.shares1, y.shares2]
