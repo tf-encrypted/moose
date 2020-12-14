@@ -8,10 +8,11 @@ from moose.computation import replicated as replicated_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.base import Operation
+from moose.computation.base import ValueType
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.replicated import ReplicatedSetupType
 from moose.computation.replicated import ReplicatedTensorType
 from moose.computation.replicated import RingTensorType
+from moose.computation.standard import ShapeType
 from moose.computation.standard import StandardOperation
 from moose.computation.standard import TensorType
 
@@ -85,9 +86,9 @@ class ReplicatedLoweringPass:
     def lower_EncodeOperation(self, op):
         assert isinstance(op, replicated_ops.EncodeOperation)
         x = self.lower(op.inputs["value"])
-        assert isinstance(x, PlaintextTensor)
+        assert isinstance(x, StandardTensor)
         assert x.datatype in ["unknown", "int", "float"], x.datatype
-        y = replicated_encode(x)
+        y = replicated_encode(x, scaling_factor=op.scaling_factor)
         assert isinstance(y, RingTensor)
         self.interpretations[op.name] = y
         return y
@@ -96,8 +97,8 @@ class ReplicatedLoweringPass:
         assert isinstance(op, replicated_ops.DecodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, RingTensor)
-        y = replicated_decode(x)
-        assert isinstance(y, PlaintextTensor), type(y)
+        y = replicated_decode(x, scaling_factor=op.scaling_factor, bound=op.bound)
+        assert isinstance(y, StandardTensor), type(y)
         assert y.datatype in ["unknown", "int", "float"], y.datatype
         self.interpretations[op.name] = y
         return y
@@ -163,25 +164,13 @@ class ReplicatedLoweringPass:
         return z
 
     def interpret_input_op(self, op):
-        assert hasattr(op, "output_type_name"), op
-        output_type_name = op.output_type_name
-        output_type = self.computation.type_(output_type_name)
-        if output_type.kind == "unknown":
-            return PlaintextTensor(
-                datatype="unknown",
-                op=op,
-                computation=self.computation,
-                context=self.context,
-            )
-        elif output_type.kind == "standard::tensor":
-            return PlaintextTensor(
-                datatype=output_type.datatype,
-                op=op,
-                computation=self.computation,
-                context=self.context,
-            )
-
-        raise NotImplementedError(f"Unknown kind '{output_type.kind}'")
+        assert isinstance(op.output_type, TensorType)
+        return StandardTensor(
+            datatype=op.output_type.datatype,
+            op=op,
+            computation=self.computation,
+            context=self.context,
+        )
 
 
 class ReplicatedFromStandardOpsPass:
@@ -222,14 +211,10 @@ class ReplicatedFromStandardOpsPass:
     def get_setup_op(self, placement_name):
         cache_key = placement_name
         if cache_key not in self.setup_cache:
-            setup_ty = self.computation.add(
-                ReplicatedSetupType(name="replicated_setup")
-            )
             setup_op = replicated_ops.SetupOperation(
                 name=self.context.get_fresh_name("replicated_setup"),
                 placement_name=placement_name,
                 inputs={},
-                output_type_name=setup_ty.name,
             )
             self.computation.add_operation(setup_op)
             self.setup_cache[cache_key] = setup_op
@@ -240,14 +225,11 @@ class ReplicatedFromStandardOpsPass:
         new_inputs = op.inputs.copy()
         assert "setup" not in new_inputs
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
-        new_op_ty = self.computation.add(
-            ReplicatedTensorType(name="replicated_float_tensor", datatype="float")
-        )
         new_op = replicated_ops.AddOperation(
             name=self.context.get_fresh_name("replicated_add"),
             placement_name=op.placement_name,
             inputs=new_inputs,
-            output_type_name=new_op_ty.name,
+            output_type=ReplicatedTensorType(datatype=op.output_type.datatype),
         )
         self.computation.add_operation(new_op)
         self.computation.rewire(op, new_op)
@@ -306,23 +288,20 @@ class ReplicatedShareRevealPass:
             # TODO(Morten) verify everywhere that diff placement name => diff setup
             cache_key = (src_op.name, dst_op.placement_name)
 
-            computation.maybe_add_type(RingTensorType(name="ring_tensor"))
-            computation.maybe_add_type(
-                ReplicatedTensorType(name="replicated_float_tensor", datatype="float")
-            )
-
             if cache_key not in share_cache:
                 encode_op = replicated_ops.EncodeOperation(
                     name=context.get_fresh_name("encode"),
                     inputs={"value": src_op.name},
                     placement_name=dst_op.placement_name,
-                    output_type_name="ring_tensor",
+                    scaling_factor=2 ** 10,
                 )
                 share_op = replicated_ops.ShareOperation(
                     name=context.get_fresh_name("share"),
                     inputs={"value": encode_op.name, "setup": dst_op.inputs["setup"]},
                     placement_name=dst_op.placement_name,
-                    output_type_name="replicated_float_tensor",
+                    output_type=ReplicatedTensorType(
+                        datatype=src_op.output_type.datatype
+                    ),
                 )
                 computation.add_operation(encode_op)
                 computation.add_operation(share_op)
@@ -337,28 +316,20 @@ class ReplicatedShareRevealPass:
             dst_op = computation.operation(dst_op_name)
 
             cache_key = (src_op.name, dst_op.placement_name)
-
-            computation.maybe_add_type(RingTensorType(name="ring_tensor"))
-            computation.maybe_add_type(
-                TensorType(name="float_tensor", datatype="float")
-            )
-
             if cache_key not in reveal_cache:
                 reveal_op = replicated_ops.RevealOperation(
                     name=context.get_fresh_name("reveal"),
-                    inputs={
-                        "value": src_op.name,
-                        "setup": src_op.inputs["setup"],  # propagate setup node
-                    },
+                    inputs={"value": src_op.name, "setup": src_op.inputs["setup"]},
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
-                    output_type_name="ring_tensor",
                 )
                 decode_op = replicated_ops.DecodeOperation(
                     name=context.get_fresh_name("decode"),
                     inputs={"value": reveal_op.name},
                     placement_name=src_op.placement_name,
-                    output_type_name="float_tensor",
+                    output_type=TensorType(datatype=src_op.output_type.datatype),
+                    scaling_factor=2 ** 10,
+                    bound=2 ** 30,
                 )
                 computation.add_operation(reveal_op)
                 computation.add_operation(decode_op)
@@ -378,7 +349,7 @@ class Shape:
 
 
 @dataclass
-class PlaintextTensor:
+class StandardTensor:
     datatype: str
     op: Operation
     computation: Computation = field(repr=False)
@@ -403,26 +374,135 @@ class ReplicatedTensor:
     context: Any = field(repr=False)
 
 
-def replicated_encode(x: PlaintextTensor) -> RingTensor:
-    assert isinstance(x, PlaintextTensor)
-    x_as_ring = RingTensor(
-        op=x.op, computation=x.computation, context=x.context, shape=x.shape
+def replicated_encode(x: StandardTensor, scaling_factor) -> RingTensor:
+    assert isinstance(x, StandardTensor)
+    scaling_factor_op = standard_ops.ConstantOperation(
+        name=x.context.get_fresh_name("scaling_factor"),
+        value=scaling_factor,
+        inputs={},
+        output_type=TensorType(datatype=x.datatype),
+        placement_name=x.op.placement_name,
     )
-    return ring_add(x_as_ring, x_as_ring, placement_name=x.op.placement_name)
+    x.computation.add(scaling_factor_op)
+    scaling_factor = StandardTensor(
+        datatype=x.datatype,
+        op=scaling_factor_op,
+        computation=x.computation,
+        context=x.context,
+    )
+    x = standard_mul(x, scaling_factor)
+    x = standard_cast(x, datatype="int64")
+    return ring_from(x)
 
 
-def replicated_decode(x: RingTensor) -> RingTensor:
+def standard_mul(x: StandardTensor, y: StandardTensor) -> StandardTensor:
+    assert isinstance(x, StandardTensor)
+    assert isinstance(y, StandardTensor)
+    assert x.datatype in ["int", "float"]
+    z_op = standard_ops.MulOperation(
+        name=x.context.get_fresh_name("mul"),
+        inputs={"lhs": x.op.name, "rhs": y.op.name},
+        placement_name=x.op.placement_name,
+        output_type=x.op.output_type,
+    )
+    x.computation.add(z_op)
+    return StandardTensor(
+        op=z_op, datatype=x.datatype, computation=x.computation, context=x.context,
+    )
+
+
+def standard_cast(x: StandardTensor, datatype) -> StandardTensor:
+    assert isinstance(x, StandardTensor)
+    y_op = standard_ops.CastOperation(
+        name=x.context.get_fresh_name("cast"),
+        inputs={"value": x.op.name},
+        placement_name=x.op.placement_name,
+        output_type=TensorType(datatype=datatype),
+    )
+    x.computation.add(y_op)
+    return StandardTensor(
+        op=y_op, datatype=datatype, computation=x.computation, context=x.context,
+    )
+
+
+def ring_from(x: StandardTensor) -> RingTensor:
+    assert isinstance(x, StandardTensor)
+    assert x.datatype == "int64"
+    y_op = RingFromOperation(
+        name=x.context.get_fresh_name("ring_from"),
+        inputs={"value": x.op.name},
+        placement_name=x.op.placement_name,
+    )
+    x.computation.add(y_op)
+    return RingTensor(op=y_op, computation=x.computation, context=x.context)
+
+
+def replicated_decode(x: RingTensor, scaling_factor, bound) -> StandardTensor:
     assert isinstance(x, RingTensor)
-    y = ring_add(x, x, placement_name=x.op.placement_name)
-    # TODO
-    y_as_plaintext = PlaintextTensor(
-        datatype="float",
-        op=y.op,
-        computation=y.computation,
-        context=y.context,
-        shape=y.shape,
+    computation = x.computation
+    context = x.context
+    placement_name = x.op.placement_name
+
+    scaling_factor_op = standard_ops.ConstantOperation(
+        name=context.get_fresh_name("scaling_factor"),
+        value=scaling_factor,
+        inputs={},
+        placement_name=placement_name,
+        output_type=TensorType(datatype="float"),  # TODO float64
     )
-    return y_as_plaintext
+    bound_op = standard_ops.ConstantOperation(
+        name=context.get_fresh_name("bound"),
+        value=bound,
+        inputs={},
+        placement_name=placement_name,
+        output_type=TensorType(datatype="int64"),
+    )
+
+    x_scaled_plus_bound = RingAddOperation(
+        name=context.get_fresh_name("ring_add"),
+        inputs={"lhs": x.op.name, "rhs": bound_op.name},
+        placement_name=placement_name,
+        output_type=RingTensorType(),
+    )
+    y_scaled_plus_bound = RingInfoOperation(
+        name=context.get_fresh_name("ring_into"),
+        inputs={"value": x_scaled_plus_bound.name},
+        placement_name=placement_name,
+        output_type=TensorType(datatype="int64"),
+    )
+    y_scaled = standard_ops.SubOperation(
+        name=context.get_fresh_name("sub"),
+        inputs={"lhs": y_scaled_plus_bound.name, "rhs": bound_op.name},
+        placement_name=placement_name,
+        output_type=TensorType(datatype="int64"),
+    )
+    z_scaled = standard_ops.CastOperation(
+        name=context.get_fresh_name("cast"),
+        inputs={"value": y_scaled.name},
+        placement_name=placement_name,
+        output_type=TensorType(datatype="float"),  # TODO "float64"
+    )
+    z_op = standard_ops.DivOperation(
+        name=context.get_fresh_name("div"),
+        inputs={"lhs": z_scaled.name, "rhs": scaling_factor_op.name},
+        placement_name=placement_name,
+        output_type=TensorType(datatype="float"),
+    )
+
+    computation.add_operations(
+        [
+            scaling_factor_op,
+            bound_op,
+            x_scaled_plus_bound,
+            y_scaled_plus_bound,
+            y_scaled,
+            z_scaled,
+            z_op,
+        ]
+    )
+    return StandardTensor(
+        op=z_op, datatype="float", computation=computation, context=context
+    )
 
 
 @dataclass
@@ -717,52 +797,61 @@ def replicated_sub(
 
 
 @dataclass
+class RingFromOperation(Operation):
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class RingInfoOperation(Operation):
+    output_type: ValueType = TensorType(datatype="int64")
+
+
+@dataclass
 class RingAddOperation(Operation):
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class RingSubOperation(Operation):
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class RingMulOperation(Operation):
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class RingShapeOperation(Operation):
-    output_type_name: str = None  # TODO
+    output_type: ValueType = ShapeType()
 
 
 @dataclass
 class RingSampleOperation(Operation):
     sample_key: str
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class FillTensorOperation(Operation):
     value: int
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class ExpandKeyOperation(Operation):
     seed_id: str
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class SampleKeyOperation(Operation):
-    pass
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class SampleSeedOperation(Operation):
-    output_type_name: str = None  # TODO
+    output_type: ValueType = RingTensorType()
 
 
 def ring_shape(tensor: RingTensor, placement_name):

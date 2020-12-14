@@ -29,10 +29,18 @@ class Compiler:
         self.name_counters = defaultdict(int)
 
     def run_passes(
-        self, computation: Computation, render=False, render_prefix="pass"
+        self,
+        computation: Computation,
+        render=False,
+        show_edge_types=False,
+        render_prefix="pass",
     ) -> Computation:
         if render:
-            render_computation(computation, f"{render_prefix}-0-initial")
+            render_computation(
+                computation,
+                filename_prefix=f"{render_prefix}-0-initial",
+                show_edge_types=show_edge_types,
+            )
         for i, compiler_pass in enumerate(self.passes):
             computation, performed_changes = compiler_pass.run(
                 computation, context=self
@@ -40,7 +48,11 @@ class Compiler:
             if render and performed_changes:
                 render_computation(
                     computation,
-                    f"{render_prefix}-{i+1}-{type(compiler_pass).__name__.lower()}",
+                    filename_prefix=(
+                        f"{render_prefix}-{i+1}"
+                        f"-{type(compiler_pass).__name__.lower()}"
+                    ),
+                    show_edge_types=show_edge_types,
                 )
         return computation
 

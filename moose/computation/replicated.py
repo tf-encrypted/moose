@@ -17,32 +17,48 @@ class ReplicatedPlacement(Placement):
 
 
 @dataclass
+class ReplicatedSetupType(ValueType):
+    kind: str = field(default="replicated::setup", repr=False)
+
+
+@dataclass
+class ReplicatedTensorType(ValueType):
+    datatype: str
+    kind: str = field(default="replicated::tensor", repr=False)
+
+
+@dataclass
+class RingTensorType(ValueType):
+    kind: str = field(default="ring::tensor", repr=False)
+
+
+@dataclass
 class ReplicatedOperation(Operation):
     pass
 
 
 @dataclass
 class SetupOperation(ReplicatedOperation):
-    output_type_name: str
+    output_type: ValueType = ReplicatedSetupType()
     type_: str = "replicated::setup"
 
 
 @dataclass
 class ShareOperation(ReplicatedOperation):
-    output_type_name: str
+    output_type: ValueType
     type_: str = "replicated::share"
 
 
 @dataclass
 class RevealOperation(ReplicatedOperation):
-    output_type_name: str
     recipient_name: str
+    output_type: ValueType = RingTensorType()
     type_: str = "replicated::reveal"
 
 
 @dataclass
 class AddOperation(ReplicatedOperation):
-    output_type_name: str
+    output_type: ValueType
     type_: str = "replicated::add"
 
 
@@ -53,27 +69,14 @@ class MulOperation(ReplicatedOperation):
 
 @dataclass
 class EncodeOperation(ReplicatedOperation):
-    output_type_name: str
+    scaling_factor: int
+    output_type: ValueType = RingTensorType()
     type_: str = "replicated::encode"
 
 
 @dataclass
 class DecodeOperation(ReplicatedOperation):
-    output_type_name: str
+    scaling_factor: int
+    bound: int
+    output_type: ValueType
     type_: str = "replicated::decode"
-
-
-@dataclass
-class ReplicatedSetupType(ValueType):
-    kind: str = "replicated::setup"
-
-
-@dataclass
-class ReplicatedTensorType(ValueType):
-    datatype: str
-    kind: str = "replicated::tensor"
-
-
-@dataclass
-class RingTensorType(ValueType):
-    kind: str = "ring::tensor"

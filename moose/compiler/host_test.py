@@ -42,7 +42,6 @@ class HostTest(parameterized.TestCase):
             sender="player0",
             receiver="player1",
             rendezvous_key="rendezvous_key_0",
-            output_type_name=None,  # TODO
         )
 
     def test_pass_networking(self):

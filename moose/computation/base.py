@@ -13,18 +13,16 @@ class Placement:
 
 @dataclass
 class ValueType:
-    name: str = field(repr=False)
+    pass
 
 
 @dataclass
 class UnitType(ValueType):
-    name: str = "unit"
     kind: str = "unit"
 
 
 @dataclass
 class UnknownType(ValueType):
-    name: str
     kind: str = "unknown"
 
 
@@ -41,7 +39,6 @@ class Operation:
 
 @dataclass
 class Computation:
-    types: Dict[str, ValueType] = field(default_factory=dict)
     operations: Dict[str, Operation] = field(default_factory=dict)
     placements: Dict[str, Placement] = field(default_factory=dict)
 
@@ -59,12 +56,7 @@ class Computation:
             source_ops += [op]
         return source_ops
 
-    def type_(self, name):
-        return self.types[name]
-
     def add(self, component):
-        if isinstance(component, ValueType):
-            return self.add_type(component)
         if isinstance(component, Operation):
             return self.add_operation(component)
         if isinstance(component, Placement):
@@ -72,26 +64,11 @@ class Computation:
         raise NotImplementedError(f"{component}")
 
     def maybe_add(self, component):
-        if isinstance(component, ValueType):
-            return self.maybe_add_type(component)
         if isinstance(component, Operation):
             return self.maybe_add_operation(component)
         if isinstance(component, Placement):
             return self.maybe_add_placement(component)
         raise NotImplementedError(f"{component}")
-
-    def add_type(self, type_):
-        assert isinstance(type_, ValueType)
-        assert type_.name not in self.types
-        self.types[type_.name] = type_
-        return type_
-
-    def maybe_add_type(self, type_):
-        assert isinstance(type_, ValueType)
-        if type_.name in self.types:
-            assert type_ == self.types[type_.name]
-            return type_
-        return self.add_type(type_)
 
     def placement(self, name):
         return self.placements[name]

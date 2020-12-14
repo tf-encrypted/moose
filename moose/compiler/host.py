@@ -28,7 +28,6 @@ class HostApplyFunctionPass:
                 pickled_fn=dill.dumps(op.fn),
                 inputs=op.inputs,
                 output_type=op.output_type,
-                output_type_name=None,  # TODO
             )
             computation.add_operation(new_op)
             computation.rewire(op, new_op)
@@ -89,8 +88,7 @@ class NetworkingPass:
                 placement_name=source_operation.placement_name,
                 name=context.get_fresh_name("serialize"),
                 inputs={"value": source_operation.name},
-                value_type=getattr(source_operation, "output_type", None),
-                output_type_name=None,  # TODO
+                value_type=source_operation.output_type,
             )
             self.serialize_cache[serialize_cache_key] = serialize_operation
             extra_ops += [serialize_operation]
@@ -111,14 +109,13 @@ class NetworkingPass:
             sender=source_operation.placement_name,
             receiver=destination_placement_name,
             rendezvous_key=rendezvous_key,
-            output_type_name=None,  # TODO
         )
         deserialize_operation = DeserializeOperation(
             placement_name=destination_placement_name,
             name=context.get_fresh_name("deserialize"),
             inputs={"value": receive_operation.name},
             value_type=serialize_operation.value_type,
-            output_type_name=None,  # TODO
+            output_type=source_operation.output_type,
         )
         self.deserialize_cache[derialize_cache_key] = deserialize_operation
         extra_ops += [send_operation, receive_operation, deserialize_operation]

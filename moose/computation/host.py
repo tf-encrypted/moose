@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import List
-from typing import Optional
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
+from moose.computation.base import ValueType
 
 
 @dataclass
@@ -18,8 +18,7 @@ class HostPlacement(Placement):
 @dataclass
 class CallPythonFunctionOperation(Operation):
     pickled_fn: bytes = field(repr=False)
-    output_type: Optional
-    output_type_name: str
+    output_type: ValueType
     type_: str = "host::call_python_function"
 
 
@@ -27,5 +26,5 @@ class CallPythonFunctionOperation(Operation):
 class RunProgramOperation(Operation):
     path: str
     args: List[str]
-    output_type_name: str
+    output_type: ValueType
     type_: str = "host::run_program"

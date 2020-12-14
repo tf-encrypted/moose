@@ -4,6 +4,8 @@ from typing import List
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
+from moose.computation.base import UnitType
+from moose.computation.base import ValueType
 
 
 @dataclass
@@ -19,7 +21,7 @@ class MpspdzPlacement(Placement):
 class MpspdzSaveInputOperation(Operation):
     player_index: int
     invocation_key: str
-    output_type_name: str = "unit"
+    output_type: ValueType = UnitType()
     type_: str = "mpspdz::save_input"
 
 
@@ -31,7 +33,7 @@ class MpspdzCallOperation(Operation):
     invocation_key: str
     coordinator: str
     protocol: str
-    output_type_name: str = "unit"
+    output_type: ValueType = UnitType()
     type_: str = "mpspdz::call"
 
 
@@ -39,5 +41,5 @@ class MpspdzCallOperation(Operation):
 class MpspdzLoadOutputOperation(Operation):
     player_index: int
     invocation_key: str
-    output_type_name: str
+    output_type: ValueType
     type_: str = "mpspdz::load_output"

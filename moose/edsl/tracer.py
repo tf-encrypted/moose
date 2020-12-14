@@ -3,7 +3,7 @@ from collections import defaultdict
 
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
-from moose.computation.base import ValueType
+from moose.computation.base import UnknownType
 from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzPlacement
@@ -37,7 +37,10 @@ def trace(abstract_computation, compiler_passes=None, render=False):
     func_signature = inspect.signature(abstract_computation.func)
     symbolic_args = [
         ArgumentExpression(
-            arg_name=arg_name, placement=parameter.annotation.placement, inputs=[],
+            arg_name=arg_name,
+            datatype=parameter.annotation.datatype,
+            placement=parameter.annotation.placement,
+            inputs=[],
         )
         for arg_name, parameter in func_signature.parameters.items()
     ]
@@ -65,7 +68,6 @@ class AstTracer:
                 name=self.get_fresh_name("output"),
                 inputs={"value": op.name},
                 placement_name=op.placement_name,
-                output_type_name="unit",
             )
         )
         return self.computation
@@ -121,26 +123,27 @@ class AstTracer:
     def visit_ArgumentExpression(self, argument_expression):
         assert isinstance(argument_expression, ArgumentExpression)
         placement = self.visit_placement_expression(argument_expression.placement)
+        output_type = {float: TensorType(datatype="float"), None: UnknownType()}[
+            argument_expression.datatype
+        ]
         return self.computation.add_operation(
             InputOperation(
                 placement_name=placement.name,
                 name=argument_expression.arg_name,
                 inputs={},
+                output_type=output_type,
             )
         )
 
     def visit_ConstantExpression(self, constant_expression):
         assert isinstance(constant_expression, ConstantExpression)
         placement = self.visit_placement_expression(constant_expression.placement)
-        # TODO(Morten) we should use type of `value` to derive below
-        output_type = self.computation.maybe_add_type(
-            TensorType(name="float_tensor", datatype="float")
-        )
+        output_type = TensorType(datatype="float")  # TODO use `value` to derive type
         return self.computation.add_operation(
             ConstantOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("constant"),
-                output_type_name=output_type.name,
+                output_type=output_type,
                 value=constant_expression.value,
                 inputs={},
             )
@@ -160,16 +163,14 @@ class AstTracer:
             "div": DivOperation,
         }[op_name]
         # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
-        # assert lhs_operation.output_type_name == rhs_operation.output_type_name
-        output_type_name = self.computation.maybe_add_type(
-            TensorType(name="float_tensor", datatype="float")
-        ).name
+        assert lhs_operation.output_type == rhs_operation.output_type
+        output_type = lhs_operation.output_type
         return self.computation.add_operation(
             op_type(
                 placement_name=placement.name,
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
-                output_type_name=output_type_name,
+                output_type=output_type,
             )
         )
 
@@ -205,6 +206,9 @@ class AstTracer:
             f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
         }
         placement = self.visit_placement_expression(expression.placement)
+        output_type = {float: TensorType(datatype="float"), None: UnknownType()}[
+            expression.output_type
+        ]
         return self.computation.add_operation(
             ApplyFunctionOperation(
                 fn=expression.fn,
@@ -212,8 +216,7 @@ class AstTracer:
                 name=self.get_fresh_name("apply_function"),
                 inputs=inputs,
                 output_placements=expression.output_placements,
-                output_type=expression.output_type,
-                output_type_name=None,  # TODO
+                output_type=output_type,
             )
         )
 
@@ -223,6 +226,9 @@ class AstTracer:
             f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
         }
         placement = self.visit_placement_expression(expression.placement)
+        output_type = {float: TensorType(datatype="float"), None: UnknownType()}[
+            expression.output_type
+        ]
         return self.computation.add_operation(
             RunProgramOperation(
                 placement_name=placement.name,
@@ -230,6 +236,6 @@ class AstTracer:
                 path=expression.path,
                 args=expression.args,
                 inputs=inputs,
-                output_type_name=None,  # TODO
+                output_type=output_type,
             )
         )

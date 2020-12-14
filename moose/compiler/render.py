@@ -51,16 +51,11 @@ def render_computation(
     for op in computation.operations.values():
         for _, input_op_name in op.inputs.items():
             input_op = computation.operation(input_op_name)
-            if show_edge_types and input_op.output_type_name is not None:
-                output_type = type(
-                    computation.type_(input_op.output_type_name)
-                ).__name__
-                if output_type.endswith("Type"):
-                    output_type = output_type[: -len("Type")]
-                edge_type = f"{output_type}"
+            if show_edge_types:
+                label = f"{input_op.output_type}"
             else:
-                edge_type = "FOO"
-            dot.edge(input_op_name, op.name, label=f"{edge_type}", fontsize="9")
+                label = None
+            dot.edge(input_op_name, op.name, label=label, fontsize="8")
     # add edges for implicit dependencies
     for recv_op in computation.operations.values():
         if not isinstance(recv_op, ReceiveOperation):
