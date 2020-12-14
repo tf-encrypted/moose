@@ -78,8 +78,12 @@ class ReplicatedLoweringPass:
     def process_ShareOperation(self, op):
         assert isinstance(op, replicated_ops.ShareOperation)
         x = self.process(op.inputs["value"])
+        setup = self.process(op.inputs["setup"])
+
         assert isinstance(x, RingTensor), type(x)
-        y = replicated_share(x, placement_name=op.placement_name)
+        assert isinstance(setup, ReplicatedSetup)
+
+        y = replicated_share(x, setup, placement_name=op.placement_name)
         assert isinstance(y, ReplicatedTensor), type(y)
         self.interpretations[op.name] = y
         return y
@@ -101,6 +105,21 @@ class ReplicatedLoweringPass:
         assert isinstance(x, ReplicatedTensor), type(x)
         assert isinstance(y, ReplicatedTensor), type(y)
         z = replicated_add(x, y, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
+    def process_MulOperation(self, op):
+        assert isinstance(op, replicated_ops.MulOperation)
+        x = self.process(op.inputs["lhs"])
+        y = self.process(op.inputs["rhs"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(y, ReplicatedTensor), type(y)
+
+        setup = self.process(op.inputs["setup"])
+        assert isinstance(setup, ReplicatedSetup)
+
+        z = replicated_mul(x, y, setup, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
@@ -155,11 +174,25 @@ class ReplicatedFromStandardOpsPass:
 
     def process_AddOperation(self, op):
         assert isinstance(op, standard_ops.AddOperation)
-        new_inputs = op.inputs
+        new_inputs = op.inputs.copy()
         assert new_inputs.get("setup") is None
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
         new_op = replicated_ops.AddOperation(
             name=self.context.get_fresh_name("replicated_add"),
+            placement_name=op.placement_name,
+            inputs=new_inputs,
+        )
+        self.computation.add_operation(new_op)
+        self.computation.rewire(op, new_op)
+        self.computation.remove_operation(op.name)
+
+    def process_MulOperation(self, op):
+        assert isinstance(op, standard_ops.MulOperation)
+        new_inputs = op.inputs.copy()
+        assert new_inputs.get("setup") is None
+        new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_op = replicated_ops.MulOperation(
+            name=self.context.get_fresh_name("replicated_mul"),
             placement_name=op.placement_name,
             inputs=new_inputs,
         )
@@ -287,17 +320,25 @@ class SetupContext:
 
 
 @dataclass
-class ReplicatedSetup:
-    keys0: Tuple[PRFKey, PRFKey]
-    keys1: Tuple[PRFKey, PRFKey]
-    keys2: Tuple[PRFKey, PRFKey]
+class ReplicatedBaseSetup:
+    keys: [Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
     context: SetupContext
 
 
-def seed_sample(ctx: SetupContext, placement_name):
+@dataclass
+class ReplicatedSetup(ReplicatedBaseSetup):
+    pass
+
+
+@dataclass
+class ReplicatedExpandedKeys(ReplicatedBaseSetup):
+    pass
+
+
+def key_sample(ctx: SetupContext, placement_name):
     k = ctx.computation.add_operation(
-        SampleSeedOperation(
-            name=ctx.naming_context.get_fresh_name("SampleSeed"),
+        SampleKeyOperation(
+            name=ctx.naming_context.get_fresh_name("SampleKey"),
             placement_name=placement_name,
             inputs={},
         )
@@ -313,32 +354,94 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
 
-    player0 = replicated_placement.player_names[0]
-    player1 = replicated_placement.player_names[1]
-    player2 = replicated_placement.player_names[2]
-
-    k0 = seed_sample(ctx, placement_name=player0)
-    k1 = seed_sample(ctx, placement_name=player1)
-    k2 = seed_sample(ctx, placement_name=player2)
-
-    return ReplicatedSetup(keys0=(k0, k1), keys1=(k1, k2), keys2=(k2, k0), context=ctx,)
+    k = [
+        key_sample(ctx, placement_name=replicated_placement.player_names[i])
+        for i in range(3)
+    ]
+    return ReplicatedSetup(
+        keys=[(k[0], k[1]), (k[1], k[2]), (k[2], k[0])], context=ctx,
+    )
 
 
-def replicated_share(x: RingTensor, placement_name) -> ReplicatedTensor:
+def synchronize_seeds(setup: ReplicatedSetup, placement_name):
+    context = setup.context
+    naming_context = setup.context.naming_context
+    seed_id = naming_context.get_fresh_name("seed_id")
+
+    def expand_key(key0: PRFKey, key1: PRFKey, placement_name):
+        op_0 = context.computation.add_operation(
+            ExpandKeyOperation(
+                name=naming_context.get_fresh_name("expand_key"),
+                placement_name=placement_name,
+                inputs={"keys": key0.op.name},
+                seed_id=seed_id,
+            )
+        )
+        op_1 = context.computation.add_operation(
+            ExpandKeyOperation(
+                name=naming_context.get_fresh_name("expand_key"),
+                placement_name=placement_name,
+                inputs={"keys": key1.op.name},
+                seed_id=seed_id,
+            )
+        )
+        return (op_0, op_1)
+
+    expanded_keys = [
+        expand_key(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
+    ]
+
+    return ReplicatedExpandedKeys(keys=expanded_keys, context=context,)
+
+
+def replicated_share(
+    x: RingTensor, setup: ReplicatedSetup, placement_name
+) -> ReplicatedTensor:
     assert isinstance(x, RingTensor)
+    assert isinstance(setup, ReplicatedSetup)
+
+    replicated_placement = setup.context.computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    expanded_keys = synchronize_seeds(setup, replicated_placement)
     if not x.shape:
         x.shape = ring_shape(x, placement_name=x.op.placement_name)
-    x0 = ring_sample(x.shape, placement_name=x.op.placement_name)
-    x1 = ring_sample(x.shape, placement_name=x.op.placement_name)
-    x2 = ring_sub(
-        x,
-        ring_sub(x0, x1, placement_name=x.op.placement_name),
-        placement_name=x.op.placement_name,
+
+    key_mine = None
+    input_player_id = None
+    for i in range(3):
+        if x.op.placement_name == players[i]:
+            key_mine = expanded_keys.keys[i][0]
+            input_player_id = i
+
+    x_mine = ring_sample(x.shape, key_mine, placement_name=x.op.placement_name)
+    x_other = ring_sub(x, x_mine, placement_name=x.op.placement_name)
+
+    zero_tensors = [None] * 3
+    for i in range(3):
+        if i != input_player_id:
+            zero_tensors[i] = fill_tensor(x.shape, 0, placement_name=players[i])
+
+    prev_player_id = (input_player_id - 1) % 3
+    x_previous = ring_sample(
+        x.shape,
+        expanded_keys.keys[prev_player_id][1],
+        placement_name=players[prev_player_id],
     )
+
+    input_shares = list()
+    for i in range(3):
+        if i == input_player_id:
+            input_shares.append((x_mine, x_other))
+        elif i == prev_player_id:
+            input_shares.append((zero_tensors[i], x_previous))
+        else:
+            input_shares.append((x_other, zero_tensors[i]))
+
     return ReplicatedTensor(
-        shares0=(x0, x2),
-        shares1=(x1, x0),
-        shares2=(x2, x1),
+        shares0=input_shares[0],
+        shares1=input_shares[1],
+        shares2=input_shares[2],
         computation=x.computation,
         context=x.context,
     )
@@ -351,12 +454,80 @@ def replicated_reveal(x: ReplicatedTensor, recipient_name) -> RingTensor:
     # two shares in the case where the recipient doesn't already hold a share. we can
     # also apply either a global or randomized approach for picking who sends shares
     # to more evenly distribute the task of sending
-    (x0, x2) = x.shares0
-    (x1, _) = x.shares1
+    (x0, x1) = x.shares0
+    (_, x2) = x.shares1
     return ring_add(
         x0,
         ring_add(x1, x2, placement_name=recipient_name),
         placement_name=recipient_name,
+    )
+
+
+def replicated_mul(
+    x: ReplicatedTensor, y: ReplicatedTensor, setup: ReplicatedSetup, placement_name
+) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(y, ReplicatedTensor)
+    assert isinstance(setup, ReplicatedSetup)
+
+    assert x.computation == y.computation
+    assert x.context == y.context
+
+    computation = x.computation
+    context = x.context
+
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    players = replicated_placement.player_names
+
+    x_shares = [x.shares0, x.shares1, x.shares2]
+    y_shares = [y.shares0, y.shares1, y.shares2]
+    z_shares = [None, None, None]
+
+    for i in range(3):
+        z_shares[i] = ring_mul(x_shares[i][0], y_shares[i][0], players[i])
+        z_shares[i] = ring_add(
+            z_shares[i],
+            ring_mul(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
+            placement_name=players[i],
+        )
+
+    expanded_keys = synchronize_seeds(setup, replicated_placement)
+
+    def generate_zero_share():
+        sampled_shares = list()
+        for i in range(3):
+            sampled_shares.append(
+                [
+                    ring_sample(
+                        z_shares[i].shape,
+                        expanded_keys.keys[i][j],
+                        placement_name=players[i],
+                    )
+                    for j in range(2)
+                ]
+            )
+
+        sub_shares = [None] * 3
+        for i in range(3):
+            sub_shares[i] = ring_sub(
+                sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
+            )
+
+        return sub_shares  # alpha, beta, gamma
+
+    zero_shares = generate_zero_share()
+    z_shares = [
+        ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
+        for i in range(3)
+    ]
+    return ReplicatedTensor(
+        shares0=(z_shares[2], z_shares[0]),
+        shares1=(z_shares[0], z_shares[1]),
+        shares2=(z_shares[1], z_shares[2]),
+        computation=computation,
+        context=context,
     )
 
 
@@ -369,47 +540,25 @@ def replicated_add(
     assert x.context == y.context
 
     computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
 
-    (x0_on_0, x2_on_0) = x.shares0
-    (y0_on_0, y2_on_0) = y.shares0
+    x_shares = [x.shares0, x.shares1, x.shares2]
+    y_shares = [y.shares0, y.shares1, y.shares2]
 
-    if x0_on_0.op.placement_name == y0_on_0.op.placement_name:
-        player0 = x0_on_0.op.placement_name
-    else:
-        replicated_placement = computation.placement(placement_name)
-        assert isinstance(replicated_placement, ReplicatedPlacement)
-        player0 = replicated_placement.player_names[0]
-    z0_on_0 = ring_add(x0_on_0, y0_on_0, placement_name=player0)
-    z2_on_0 = ring_add(x2_on_0, y2_on_0, placement_name=player0)
+    players = replicated_placement.player_names
 
-    (x1_on_1, x0_on_1) = x.shares1
-    (y1_on_1, y0_on_1) = y.shares1
-
-    if x1_on_1.op.placement_name == y1_on_1.op.placement_name:
-        player1 = x1_on_1.op.placement_name
-    else:
-        replicated_placement = computation.placement(placement_name)
-        assert isinstance(replicated_placement, ReplicatedPlacement)
-        player1 = replicated_placement.player_names[1]
-    z1_on_1 = ring_add(x1_on_1, y1_on_1, placement_name=player1)
-    z0_on_1 = ring_add(x0_on_1, y0_on_1, placement_name=player1)
-
-    (x2_on_2, x1_on_2) = x.shares2
-    (y2_on_2, y1_on_2) = y.shares2
-
-    if x2_on_2.op.placement_name == y2_on_2.op.placement_name:
-        player2 = x2_on_2.op.placement_name
-    else:
-        replicated_placement = computation.placement(placement_name)
-        assert isinstance(replicated_placement, ReplicatedPlacement)
-        player2 = replicated_placement.player_names[2]
-    z2_on_2 = ring_add(x2_on_2, y2_on_2, placement_name=player2)
-    z1_on_2 = ring_add(x1_on_2, y1_on_2, placement_name=player2)
+    z_shares = [None, None, None]
+    for i in range(3):
+        z_shares[i] = [
+            ring_add(x_shares[i][j], y_shares[i][j], placement_name=players[i])
+            for j in range(2)
+        ]
 
     return ReplicatedTensor(
-        shares0=(z0_on_0, z2_on_0),
-        shares1=(z1_on_1, z0_on_1),
-        shares2=(z2_on_2, z1_on_2),
+        shares0=z_shares[0],
+        shares1=z_shares[1],
+        shares2=z_shares[2],
         computation=x.computation,
         context=x.context,
     )
@@ -424,47 +573,25 @@ def replicated_sub(
     assert x.context == y.context
 
     computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
 
-    (x0_on_0, x2_on_0) = x.shares0
-    (y0_on_0, y2_on_0) = y.shares0
+    x_shares = [x.shares0, x.shares1, x.shares2]
+    y_shares = [y.shares0, y.shares1, y.shares2]
 
-    if x0_on_0.op.placement_name == y0_on_0.op.placement_name:
-        player0 = x0_on_0.op.placement_name
-    else:
-        replicated_placement = computation.placement(placement_name)
-        assert isinstance(replicated_placement, ReplicatedPlacement)
-        player0 = replicated_placement.player_names[0]
-    z0_on_0 = ring_sub(x0_on_0, y0_on_0, placement_name=player0)
-    z2_on_0 = ring_sub(x2_on_0, y2_on_0, placement_name=player0)
+    players = replicated_placement.player_names
 
-    (x1_on_1, x0_on_1) = x.shares1
-    (y1_on_1, y0_on_1) = y.shares1
-
-    if x1_on_1.op.placement_name == y1_on_1.op.placement_name:
-        player1 = x1_on_1.op.placement_name
-    else:
-        replicated_placement = computation.placement(placement_name)
-        assert isinstance(replicated_placement, ReplicatedPlacement)
-        player1 = replicated_placement.player_names[1]
-    z1_on_1 = ring_sub(x1_on_1, y1_on_1, placement_name=player1)
-    z0_on_1 = ring_sub(x0_on_1, y0_on_1, placement_name=player1)
-
-    (x2_on_2, x1_on_2) = x.shares2
-    (y2_on_2, y1_on_2) = y.shares2
-
-    if x2_on_2.op.placement_name == y2_on_2.op.placement_name:
-        player2 = x2_on_2.op.placement_name
-    else:
-        replicated_placement = computation.placement(placement_name)
-        assert isinstance(replicated_placement, ReplicatedPlacement)
-        player2 = replicated_placement.player_names[2]
-    z2_on_2 = ring_sub(x2_on_2, y2_on_2, placement_name=player2)
-    z1_on_2 = ring_sub(x1_on_2, y1_on_2, placement_name=player2)
+    z_shares = [None, None, None]
+    for i in range(3):
+        z_shares[i] = [
+            ring_sub(x_shares[i][j], y_shares[i][j], placement_name=players[i])
+            for j in range(2)
+        ]
 
     return ReplicatedTensor(
-        shares0=(z0_on_0, z2_on_0),
-        shares1=(z1_on_1, z0_on_1),
-        shares2=(z2_on_2, z1_on_2),
+        shares0=z_shares[0],
+        shares1=z_shares[1],
+        shares2=z_shares[2],
         computation=x.computation,
         context=x.context,
     )
@@ -492,11 +619,21 @@ class RingShapeOperation(Operation):
 
 @dataclass
 class RingSampleOperation(Operation):
-    pass
+    sample_key: str
 
 
 @dataclass
-class SampleSeedOperation(Operation):
+class FillTensorOperation(Operation):
+    value: int
+
+
+@dataclass
+class ExpandKeyOperation(Operation):
+    seed_id: str
+
+
+@dataclass
+class SampleKeyOperation(Operation):
     pass
 
 
@@ -511,12 +648,29 @@ def ring_shape(tensor: RingTensor, placement_name):
     return Shape(op, computation=tensor.computation, context=tensor.context)
 
 
-def ring_sample(shape: Shape, placement_name):
+def fill_tensor(shape: Shape, value: int, placement_name):
+    op = shape.computation.add_operation(
+        FillTensorOperation(
+            name=shape.context.get_fresh_name("fill_tensor"),
+            placement_name=placement_name,
+            value=value,
+            inputs={"shape": shape.op.name},
+        )
+    )
+    return RingTensor(
+        op, computation=shape.computation, context=shape.context, shape=shape
+    )
+
+
+def ring_sample(shape: Shape, key: ExpandKeyOperation, placement_name):
+    assert isinstance(shape, Shape)
+    assert isinstance(key, ExpandKeyOperation)
     op = shape.computation.add_operation(
         RingSampleOperation(
             name=shape.context.get_fresh_name("ring_sample"),
             placement_name=placement_name,
-            inputs={"shape": shape.op.name},
+            inputs={"shape": shape.op.name, "key": key.name},
+            sample_key=key.name,
         )
     )
     return RingTensor(
@@ -534,7 +688,9 @@ def ring_add(x: RingTensor, y: RingTensor, placement_name):
             inputs={"lhs": x.op.name, "rhs": y.op.name},
         )
     )
-    return RingTensor(op=z_op, computation=x.computation, context=x.context)
+    return RingTensor(
+        op=z_op, computation=x.computation, shape=x.shape, context=x.context
+    )
 
 
 def ring_sub(x: RingTensor, y: RingTensor, placement_name):
@@ -545,14 +701,21 @@ def ring_sub(x: RingTensor, y: RingTensor, placement_name):
             inputs={"lhs": x.op.name, "rhs": y.op.name},
         )
     )
-    return RingTensor(op=z_op, computation=x.computation, context=x.context)
+    return RingTensor(
+        op=z_op, computation=x.computation, shape=x.shape, context=x.context
+    )
 
 
-def ring_mul(x_op, y_op, placement_name, computation, context):
-    return computation.add_operation(
+def ring_mul(x: RingTensor, y: RingTensor, placement_name):
+    z_op = x.computation.add_operation(
         RingMulOperation(
-            name=context.get_fresh_name("ring_mul"),
+            name=x.context.get_fresh_name("ring_mul"),
             placement_name=placement_name,
-            inputs={"lhs": x_op.name, "rhs": y_op.name},
+            inputs={"lhs": x.op.name, "rhs": y.op.name},
         )
+    )
+    # TODO(Dragos): is it OK to pass the resulting shape as the shape of x?
+    # in the future we might want some sort of shape inference around this?
+    return RingTensor(
+        op=z_op, computation=x.computation, shape=x.shape, context=x.context
     )
