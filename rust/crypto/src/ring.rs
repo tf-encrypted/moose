@@ -1,22 +1,24 @@
 use ndarray::prelude::*;
+use ndarray::linalg::Dot;
 use rand::prelude::*;
 use rand_chacha::ChaCha20Rng;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Sub};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
+pub struct Ring64Tensor<D: Dimension>(pub Array<Wrapping<u64>, D>);
 
 pub trait Sample {
     fn sample_uniform(shape: &[usize]) -> Self;
 }
 
-impl Sample for Ring64Tensor {
+impl Sample for Ring64Tensor<IxDyn> {
     fn sample_uniform(shape: &[usize]) -> Self {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
-        Ring64Tensor(ArrayD::from_shape_vec(IxDyn(shape), values).unwrap())
+        let ix = IxDyn(shape);
+        Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
     }
 }
 
@@ -39,31 +41,40 @@ impl From<Vec<u64>> for Ring64Tensor {
     }
 }
 
-impl From<&[u64]> for Ring64Tensor {
-    fn from(v: &[u64]) -> Ring64Tensor {
+impl From<Vec<u64>> for Ring64Tensor<Ix1> {
+    fn from(v: Vec<u64>) -> Ring64Tensor<Ix1> {
+        let ix = Ix1(v.len());
+        use vec_utils::VecExt;
+        let v_wrapped: Vec<_> = v.map(Wrapping);
+        Ring64Tensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+    }
+}
+
+impl From<&[u64]> for Ring64Tensor<IxDyn> {
+    fn from(v: &[u64]) -> Ring64Tensor<IxDyn> {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
         Ring64Tensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
 
-impl Add<Ring64Tensor> for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn add(self, other: Ring64Tensor) -> Self::Output {
+impl<D: Dimension> Add for Ring64Tensor<D> {
+    type Output = Ring64Tensor<D>;
+    fn add(self, other: Self) -> Self::Output {
         Ring64Tensor(self.0.add(other.0))
     }
 }
 
-impl Mul<Ring64Tensor> for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn mul(self, other: Ring64Tensor) -> Self::Output {
+impl<D: Dimension> Mul for Ring64Tensor<D> {
+    type Output = Ring64Tensor<D>;
+    fn mul(self, other: Self) -> Self::Output {
         Ring64Tensor(self.0.mul(other.0))
     }
 }
 
-impl Sub<Ring64Tensor> for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn sub(self, other: Ring64Tensor) -> Self::Output {
+impl<D: Dimension> Sub for Ring64Tensor<D> {
+    type Output = Ring64Tensor<D>;
+    fn sub(self, other: Self) -> Self::Output {
         Ring64Tensor(self.0.sub(other.0))
     }
 }
