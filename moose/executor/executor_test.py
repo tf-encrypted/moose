@@ -10,6 +10,7 @@ from moose.compiler import replicated
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
+from moose.computation.standard import TensorType
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
@@ -77,14 +78,27 @@ class ExecutorTest(parameterized.TestCase):
         alice = comp.add_placement(HostPlacement(name="alice"))
 
         comp.add_operation(
-            standard_ops.InputOperation(name="x", placement_name=alice.name, inputs={})
+            standard_ops.InputOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
         )
         comp.add_operation(
-            standard_ops.InputOperation(name="y", placement_name=alice.name, inputs={})
+            standard_ops.InputOperation(
+                name="y",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
         )
         comp.add_operation(
             standard_ops.AddOperation(
-                name="add", placement_name=alice.name, inputs={"lhs": "x", "rhs": "y"}
+                name="add",
+                placement_name=alice.name,
+                inputs={"lhs": "x", "rhs": "y"},
+                output_type=TensorType(datatype="int64"),
             )
         )
         comp.add_operation(
@@ -181,12 +195,20 @@ class ExecutorTest(parameterized.TestCase):
         alice = comp.add_placement(HostPlacement(name="alice"))
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="x", placement_name=alice.name, inputs={}, value=a
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                value=a,
+                output_type=standard_ops.TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="y", placement_name=alice.name, inputs={}, value=b
+                name="y",
+                placement_name=alice.name,
+                inputs={},
+                value=b,
+                output_type=standard_ops.TensorType(datatype="float"),
             )
         )
         comp.add_operation(ring_op_lmbd(alice))

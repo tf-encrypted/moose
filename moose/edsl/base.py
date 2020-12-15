@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from functools import partial
 from functools import wraps
+from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
@@ -64,6 +65,7 @@ def get_current_placement():
 @dataclass
 class Argument:
     placement: PlacementExpression
+    datatype: Optional[Any] = None
 
 
 @dataclass
@@ -78,6 +80,7 @@ class Expression:
 @dataclass
 class ArgumentExpression(Expression):
     arg_name: str
+    datatype: str
 
     def __hash__(self):
         return id(self)
@@ -129,6 +132,7 @@ class ApplyFunctionExpression(Expression):
 class RunProgramExpression(Expression):
     path: str
     args: List[str]
+    output_type: Optional
 
     def __hash__(self):
         return id(self)
@@ -178,12 +182,16 @@ def save(value, key, placement=None):
     return SaveExpression(placement=placement, inputs=[value], key=key)
 
 
-def run_program(path, args, *inputs, placement=None):
+def run_program(path, args, *inputs, output_type=None, placement=None):
     assert isinstance(path, str)
     assert isinstance(args, (list, tuple))
     placement = placement or get_current_placement()
     return RunProgramExpression(
-        path=path, args=args, placement=placement, inputs=inputs
+        path=path,
+        args=args,
+        placement=placement,
+        inputs=inputs,
+        output_type=output_type,
     )
 
 

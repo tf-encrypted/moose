@@ -4,7 +4,9 @@ from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SendOperation
 
 
-def render_computation(computation, filename_prefix="Physical", cleanup=True):
+def render_computation(
+    computation, filename_prefix="Physical", render_edge_types=True, cleanup=True
+):
     color_scheme = [
         "#336699",
         "#ff0000",
@@ -39,12 +41,21 @@ def render_computation(computation, filename_prefix="Physical", cleanup=True):
             placement_type = placement_type[: -len("Placement")]
         node_label = f"{op.name}: {op_type}\n" f"@{placement.name}: {placement_type}"
         dot.node(
-            op.name, node_label, color=pick_color(op.placement_name), shape="rectangle",
+            op.name,
+            node_label,
+            color=pick_color(op.placement_name),
+            shape="rectangle",
+            fontsize="11",
         )
     # add edges for explicit dependencies
     for op in computation.operations.values():
-        for _, input_name in op.inputs.items():
-            dot.edge(input_name, op.name)
+        for _, input_op_name in op.inputs.items():
+            input_op = computation.operation(input_op_name)
+            if render_edge_types:
+                label = f"{input_op.output_type}"
+            else:
+                label = None
+            dot.edge(input_op_name, op.name, label=label, fontsize="8")
     # add edges for implicit dependencies
     for recv_op in computation.operations.values():
         if not isinstance(recv_op, ReceiveOperation):

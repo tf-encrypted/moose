@@ -3,6 +3,30 @@ from typing import List
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
+from moose.computation.base import ValueType
+
+
+@dataclass
+class ReplicatedPlacement(Placement):
+    player_names: List[str]
+
+    def __hash__(self):
+        return hash(self.name)
+
+
+@dataclass
+class ReplicatedSetupType(ValueType):
+    pass
+
+
+@dataclass
+class ReplicatedTensorType(ValueType):
+    datatype: str
+
+
+@dataclass
+class RingTensorType(ValueType):
+    pass
 
 
 @dataclass
@@ -11,35 +35,39 @@ class ReplicatedOperation(Operation):
 
 
 @dataclass
-class ReplicatedPlacement(Placement):
-    player_names: List[str]
-    type_: str = "replicated"
-
-    def __hash__(self):
-        return hash(self.name)
-
-
-@dataclass
 class SetupOperation(ReplicatedOperation):
-    type_: str = "replicated::setup"
+    output_type: ValueType = ReplicatedSetupType()
 
 
 @dataclass
 class ShareOperation(ReplicatedOperation):
-    type_: str = "replicated::share"
+    output_type: ValueType
 
 
 @dataclass
 class RevealOperation(ReplicatedOperation):
     recipient_name: str
-    type_: str = "replicated::reveal"
+    output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class AddOperation(ReplicatedOperation):
-    type_: str = "replicated::add"
+    output_type: ValueType
 
 
 @dataclass
 class MulOperation(ReplicatedOperation):
-    type_: str = "replicated::mul"
+    output_type: ValueType
+
+
+@dataclass
+class EncodeOperation(ReplicatedOperation):
+    scaling_factor: int
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class DecodeOperation(ReplicatedOperation):
+    scaling_factor: int
+    bound: int
+    output_type: ValueType

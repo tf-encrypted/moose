@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from dataclasses import field
 from typing import Dict
 
 
@@ -11,10 +12,25 @@ class Placement:
 
 
 @dataclass
+class ValueType:
+    pass
+
+
+@dataclass
+class UnitType(ValueType):
+    pass
+
+
+@dataclass
+class UnknownType(ValueType):
+    pass
+
+
+@dataclass
 class Operation:
-    placement_name: str
     name: str
     inputs: Dict[str, str]
+    placement_name: str
 
     @classmethod
     def identifier(cls):
@@ -23,8 +39,8 @@ class Operation:
 
 @dataclass
 class Computation:
-    operations: Dict[str, Operation]
-    placements: Dict[str, Placement]
+    operations: Dict[str, Operation] = field(default_factory=dict)
+    placements: Dict[str, Placement] = field(default_factory=dict)
 
     def find_destinations(self, op):
         destination_ops = []
@@ -39,6 +55,20 @@ class Computation:
             op = self.operation(input_op_name)
             source_ops += [op]
         return source_ops
+
+    def add(self, component):
+        if isinstance(component, Operation):
+            return self.add_operation(component)
+        if isinstance(component, Placement):
+            return self.add_placement(component)
+        raise NotImplementedError(f"{component}")
+
+    def maybe_add(self, component):
+        if isinstance(component, Operation):
+            return self.maybe_add_operation(component)
+        if isinstance(component, Placement):
+            return self.maybe_add_placement(component)
+        raise NotImplementedError(f"{component}")
 
     def placement(self, name):
         return self.placements[name]
@@ -67,6 +97,13 @@ class Computation:
         assert op.placement_name in self.placements, op.placement_name
         self.operations[op.name] = op
         return op
+
+    def maybe_add_operation(self, op):
+        assert isinstance(op, Operation)
+        if op.name in self.operations:
+            assert op == self.operations[op.name]
+            return op
+        return self.add_operation(op)
 
     def add_operations(self, ops):
         for op in ops:

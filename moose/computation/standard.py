@@ -4,6 +4,23 @@ from typing import Any
 from typing import Callable
 
 from moose.computation.base import Operation
+from moose.computation.base import UnitType
+from moose.computation.base import ValueType
+
+
+@dataclass
+class TensorType(ValueType):
+    datatype: str
+
+
+@dataclass
+class BytesType(ValueType):
+    pass
+
+
+@dataclass
+class ShapeType(ValueType):
+    pass
 
 
 @dataclass
@@ -12,63 +29,68 @@ class StandardOperation(Operation):
 
 
 @dataclass
+class CastOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class InputOperation(StandardOperation):
-    type_: str = "standard::input"
+    output_type: ValueType
 
 
 @dataclass
 class OutputOperation(StandardOperation):
-    type_: str = "standard::output"
+    output_type: ValueType = UnitType()
 
 
 @dataclass
 class ConstantOperation(StandardOperation):
     value: Any
-    type_: str = "standard::constant"
+    output_type: ValueType
 
 
 @dataclass
 class AddOperation(StandardOperation):
-    type_: str = "standard::add"
+    output_type: ValueType
 
 
 @dataclass
 class SubOperation(StandardOperation):
-    type_: str = "standard::sub"
+    output_type: ValueType
 
 
 @dataclass
 class MulOperation(StandardOperation):
-    type_: str = "standard::mul"
+    output_type: ValueType
 
 
 @dataclass
 class DivOperation(StandardOperation):
-    type_: str = "standard::div"
+    output_type: ValueType
 
 
 @dataclass
 class LoadOperation(StandardOperation):
     key: str
-    type_: str = "standard::load"
+    output_type: ValueType
 
 
 @dataclass
 class SaveOperation(StandardOperation):
     key: str
-    type_: str = "standard::save"
+    output_type: ValueType = UnitType()
 
 
 @dataclass
 class SerializeOperation(StandardOperation):
     value_type: str
-    type_: str = "standard::serialize"
+    output_type: ValueType = BytesType()
 
 
 @dataclass
 class DeserializeOperation(StandardOperation):
     value_type: str
-    type_: str = "standard::deserialize"
+    output_type: ValueType
 
 
 @dataclass
@@ -76,7 +98,7 @@ class SendOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
-    type_: str = "standard::send"
+    output_type: ValueType = UnitType()
 
 
 @dataclass
@@ -84,12 +106,11 @@ class ReceiveOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
-    type_: str = "standard::receive"
+    output_type: ValueType = BytesType()
 
 
 @dataclass
 class ApplyFunctionOperation(StandardOperation):
     fn: Callable = field(repr=False)
     output_placements: Any
-    output_type: Any
-    type_: str = "standard::apply_function"
+    output_type: ValueType

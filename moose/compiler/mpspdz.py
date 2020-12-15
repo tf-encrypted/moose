@@ -2,6 +2,7 @@ import ast
 import inspect
 import textwrap
 
+from moose.computation.base import UnknownType
 from moose.computation.mpspdz import MpspdzCallOperation
 from moose.computation.mpspdz import MpspdzLoadOutputOperation
 from moose.computation.mpspdz import MpspdzPlacement
@@ -111,6 +112,7 @@ class MpspdzApplyFunctionPass:
             },
             player_index=index_map[output_placement_name],
             invocation_key=invocation_key,
+            output_type=UnknownType(),  # TODO
         )
         computation.add_operation(load_output_op)
 

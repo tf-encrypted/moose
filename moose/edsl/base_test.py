@@ -4,7 +4,9 @@ from absl.testing import parameterized
 from moose.computation import host as host_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
+from moose.computation.base import UnknownType
 from moose.computation.host import HostPlacement
+from moose.computation.standard import TensorType
 from moose.edsl.base import Argument
 from moose.edsl.base import add
 from moose.edsl.base import computation
@@ -50,12 +52,13 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
+            output_type=TensorType(datatype="float"),
         )
 
     def test_call_python_fn(self):
         player0 = host_placement(name="player0")
 
-        @function
+        @function(output_type=float)
         def add_one(x):
             return x + 1
 
@@ -78,7 +81,7 @@ class EdslTest(parameterized.TestCase):
             name="call_python_function_0",
             inputs={"arg0": "constant_0"},
             pickled_fn=pickled_fn,
-            output_type=None,
+            output_type=TensorType(datatype="float"),
         )
 
     def test_constant(self):
@@ -92,14 +95,18 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = trace(my_comp)
         constant_op = concrete_comp.operation("constant_0")
         assert constant_op == standard_ops.ConstantOperation(
-            placement_name="player0", name="constant_0", inputs={}, value=1,
+            placement_name="player0",
+            name="constant_0",
+            inputs={},
+            value=1,
+            output_type=TensorType(datatype="float"),
         )
 
     def test_arguments(self):
         player0 = host_placement(name="player0")
 
         @computation
-        def my_comp(x: Argument(placement=player0)):
+        def my_comp(x: Argument(placement=player0, datatype=float)):
             y = constant(1, placement=player0)
             z = add(x, y, placement=player0)
             return z
@@ -109,18 +116,28 @@ class EdslTest(parameterized.TestCase):
         assert concrete_comp == Computation(
             operations={
                 "x": standard_ops.InputOperation(
-                    placement_name="player0", name="x", inputs={}
+                    placement_name="player0",
+                    name="x",
+                    inputs={},
+                    output_type=TensorType(datatype="float"),
                 ),
                 "constant_0": standard_ops.ConstantOperation(
-                    placement_name="player0", name="constant_0", inputs={}, value=1
+                    placement_name="player0",
+                    name="constant_0",
+                    inputs={},
+                    value=1,
+                    output_type=TensorType(datatype="float"),
                 ),
                 "add_0": standard_ops.AddOperation(
                     placement_name="player0",
                     name="add_0",
                     inputs={"lhs": "x", "rhs": "constant_0"},
+                    output_type=TensorType(datatype="float"),
                 ),
                 "output_0": standard_ops.OutputOperation(
-                    placement_name="player0", name="output_0", inputs={"value": "add_0"}
+                    placement_name="player0",
+                    name="output_0",
+                    inputs={"value": "add_0"},
                 ),
             },
             placements={"player0": HostPlacement(name="player0")},
@@ -148,4 +165,5 @@ class EdslTest(parameterized.TestCase):
             inputs={"arg0": "constant_0"},
             path="python",
             args=["local_computation.py"],
+            output_type=UnknownType(),
         )

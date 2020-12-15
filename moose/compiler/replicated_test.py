@@ -8,10 +8,14 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.replicated import ReplicatedSetupType
+from moose.computation.replicated import ReplicatedTensorType
+from moose.computation.replicated import RingTensorType
+from moose.computation.standard import TensorType
 
 
 class ReplicatedTest(parameterized.TestCase):
-    def test_replicated(self):
+    def test_share_reveal_pass(self):
 
         comp = Computation(placements={}, operations={})
 
@@ -26,27 +30,37 @@ class ReplicatedTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="alice_input", inputs={}, value=1, placement_name="alice"
+                name="alice_input",
+                inputs={},
+                value=1,
+                placement_name="alice",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="bob_input", inputs={}, value=2, placement_name="bob"
+                name="bob_input",
+                inputs={},
+                value=2,
+                placement_name="bob",
+                output_type=TensorType(datatype="float"),
             )
         )
 
         comp.add_operation(
             standard_ops.AddOperation(
-                name="secure_add",
+                name="add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.AddOperation(
                 name="add_dave",
-                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                inputs={"lhs": "add", "rhs": "add"},
                 placement_name="dave",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -57,8 +71,9 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.AddOperation(
                 name="add_eric",
-                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                inputs={"lhs": "add", "rhs": "add"},
                 placement_name="eric",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -81,33 +96,65 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_placement(HostPlacement(name="dave"))
         expected_comp.add_placement(HostPlacement(name="eric"))
+
         expected_comp.add_operation(
             standard_ops.ConstantOperation(
-                name="alice_input", inputs={}, value=1, placement_name="alice"
+                name="alice_input",
+                inputs={},
+                value=1,
+                placement_name="alice",
+                output_type=TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
             standard_ops.ConstantOperation(
-                name="bob_input", inputs={}, value=2, placement_name="bob"
+                name="bob_input",
+                inputs={},
+                value=2,
+                placement_name="bob",
+                output_type=TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
             replicated_ops.SetupOperation(
-                name="replicated_setup_0", inputs={}, placement_name="rep"
+                name="replicated_setup_0",
+                inputs={},
+                placement_name="rep",
+                output_type=ReplicatedSetupType(),
+            )
+        )
+        expected_comp.add_operation(
+            replicated_ops.EncodeOperation(
+                name="encode_0",
+                inputs={"value": "alice_input"},
+                placement_name="rep",
+                output_type=RingTensorType(),
+                scaling_factor=2 ** 16,
+            )
+        )
+        expected_comp.add_operation(
+            replicated_ops.EncodeOperation(
+                name="encode_1",
+                inputs={"value": "bob_input"},
+                placement_name="rep",
+                output_type=RingTensorType(),
+                scaling_factor=2 ** 16,
             )
         )
         expected_comp.add_operation(
             replicated_ops.ShareOperation(
                 name="share_0",
-                inputs={"setup": "replicated_setup_0", "value": "alice_input"},
+                inputs={"setup": "replicated_setup_0", "value": "encode_0"},
                 placement_name="rep",
+                output_type=ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
             replicated_ops.ShareOperation(
                 name="share_1",
-                inputs={"setup": "replicated_setup_0", "value": "bob_input"},
+                inputs={"setup": "replicated_setup_0", "value": "encode_1"},
                 placement_name="rep",
+                output_type=ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
@@ -119,6 +166,7 @@ class ReplicatedTest(parameterized.TestCase):
                     "rhs": "share_1",
                 },
                 placement_name="rep",
+                output_type=ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
@@ -127,13 +175,25 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="dave",
                 placement_name="rep",
+                output_type=RingTensorType(),
+            )
+        )
+        expected_comp.add_operation(
+            replicated_ops.DecodeOperation(
+                name="decode_0",
+                inputs={"value": "reveal_0"},
+                placement_name="rep",
+                output_type=TensorType(datatype="float"),
+                scaling_factor=2 ** 16,
+                bound=2 ** 30,
             )
         )
         expected_comp.add_operation(
             standard_ops.AddOperation(
                 name="add_dave",
-                inputs={"lhs": "reveal_0", "rhs": "reveal_0"},
+                inputs={"lhs": "decode_0", "rhs": "decode_0"},
                 placement_name="dave",
+                output_type=TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
@@ -147,13 +207,25 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="eric",
                 placement_name="rep",
+                output_type=RingTensorType(),
+            )
+        )
+        expected_comp.add_operation(
+            replicated_ops.DecodeOperation(
+                name="decode_1",
+                inputs={"value": "reveal_1"},
+                placement_name="rep",
+                output_type=TensorType(datatype="float"),
+                scaling_factor=2 ** 16,
+                bound=2 ** 30,
             )
         )
         expected_comp.add_operation(
             standard_ops.AddOperation(
                 name="add_eric",
-                inputs={"lhs": "reveal_1", "rhs": "reveal_1"},
+                inputs={"lhs": "decode_1", "rhs": "decode_1"},
                 placement_name="eric",
+                output_type=TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
@@ -163,6 +235,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
 
         assert comp.placements == expected_comp.placements
+        assert comp.operations == expected_comp.operations
         assert comp == expected_comp
 
     def test_replicated_lowering(self):
@@ -180,26 +253,36 @@ class ReplicatedTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="alice_input", inputs={}, value=1, placement_name="alice"
+                name="alice_input",
+                inputs={},
+                value=1,
+                placement_name="alice",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="bob_input", inputs={}, value=2, placement_name="bob"
+                name="bob_input",
+                inputs={},
+                value=2,
+                placement_name="bob",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.AddOperation(
-                name="secure_add",
+                name="add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.AddOperation(
                 name="add_dave",
-                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                inputs={"lhs": "add", "rhs": "add"},
                 placement_name="dave",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -210,8 +293,9 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.AddOperation(
                 name="add_eric",
-                inputs={"lhs": "secure_add", "rhs": "secure_add"},
+                inputs={"lhs": "add", "rhs": "add"},
                 placement_name="eric",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -243,12 +327,20 @@ class ReplicatedTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="alice_input", inputs={}, value=1, placement_name="alice"
+                name="alice_input",
+                inputs={},
+                value=1,
+                placement_name="alice",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="bob_input", inputs={}, value=2, placement_name="bob"
+                name="bob_input",
+                inputs={},
+                value=2,
+                placement_name="bob",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -256,6 +348,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="secure_mul",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -263,6 +356,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_dave",
                 inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
                 placement_name="dave",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -275,6 +369,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_eric",
                 inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
                 placement_name="eric",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
