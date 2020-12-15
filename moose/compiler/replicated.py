@@ -225,11 +225,12 @@ class ReplicatedFromStandardOpsPass:
         new_inputs = op.inputs.copy()
         assert "setup" not in new_inputs
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_datatype = {"float": "fixed64"}[op.output_type.datatype]
         new_op = replicated_ops.AddOperation(
             name=self.context.get_fresh_name("replicated_add"),
             placement_name=op.placement_name,
             inputs=new_inputs,
-            output_type=ReplicatedTensorType(datatype=op.output_type.datatype),
+            output_type=ReplicatedTensorType(datatype=new_datatype),
         )
         self.computation.add_operation(new_op)
         self.computation.rewire(op, new_op)
@@ -240,11 +241,12 @@ class ReplicatedFromStandardOpsPass:
         new_inputs = op.inputs.copy()
         assert "setup" not in new_inputs
         new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_datatype = {"float": "fixed64"}[op.output_type.datatype]
         new_op = replicated_ops.MulOperation(
             name=self.context.get_fresh_name("replicated_mul"),
             placement_name=op.placement_name,
             inputs=new_inputs,
-            output_type=ReplicatedTensorType(datatype=op.output_type.datatype),
+            output_type=ReplicatedTensorType(datatype=new_datatype),
         )
         self.computation.add_operation(new_op)
         self.computation.rewire(op, new_op)
@@ -294,15 +296,14 @@ class ReplicatedShareRevealPass:
                     name=context.get_fresh_name("encode"),
                     inputs={"value": src_op.name},
                     placement_name=dst_op.placement_name,
-                    scaling_factor=2 ** 10,
+                    scaling_factor=2 ** 16,
                 )
+                datatype = {"float": "fixed64"}[src_op.output_type.datatype]
                 share_op = replicated_ops.ShareOperation(
                     name=context.get_fresh_name("share"),
                     inputs={"value": encode_op.name, "setup": dst_op.inputs["setup"]},
                     placement_name=dst_op.placement_name,
-                    output_type=ReplicatedTensorType(
-                        datatype=src_op.output_type.datatype
-                    ),
+                    output_type=ReplicatedTensorType(datatype=datatype),
                 )
                 computation.add_operation(encode_op)
                 computation.add_operation(share_op)
@@ -324,12 +325,13 @@ class ReplicatedShareRevealPass:
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
                 )
+                datatype = {"fixed64": "float"}[src_op.output_type.datatype]
                 decode_op = replicated_ops.DecodeOperation(
                     name=context.get_fresh_name("decode"),
                     inputs={"value": reveal_op.name},
                     placement_name=src_op.placement_name,
-                    output_type=TensorType(datatype=src_op.output_type.datatype),
-                    scaling_factor=2 ** 10,
+                    output_type=TensorType(datatype=datatype),
+                    scaling_factor=2 ** 16,
                     bound=2 ** 30,
                 )
                 computation.add_operation(reveal_op)

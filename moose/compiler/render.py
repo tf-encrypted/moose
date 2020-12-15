@@ -5,7 +5,7 @@ from moose.computation.standard import SendOperation
 
 
 def render_computation(
-    computation, filename_prefix="Physical", show_edge_types=True, cleanup=True
+    computation, filename_prefix="Physical", render_edge_types=True, cleanup=True
 ):
     color_scheme = [
         "#336699",
@@ -51,7 +51,7 @@ def render_computation(
     for op in computation.operations.values():
         for _, input_op_name in op.inputs.items():
             input_op = computation.operation(input_op_name)
-            if show_edge_types:
+            if render_edge_types:
                 label = f"{input_op.output_type}"
             else:
                 label = None

@@ -129,7 +129,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "alice_input"},
                 placement_name="rep",
                 output_type=RingTensorType(),
-                scaling_factor=2 ** 10,
+                scaling_factor=2 ** 16,
             )
         )
         expected_comp.add_operation(
@@ -138,7 +138,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "bob_input"},
                 placement_name="rep",
                 output_type=RingTensorType(),
-                scaling_factor=2 ** 10,
+                scaling_factor=2 ** 16,
             )
         )
         expected_comp.add_operation(
@@ -146,7 +146,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="share_0",
                 inputs={"setup": "replicated_setup_0", "value": "encode_0"},
                 placement_name="rep",
-                output_type=ReplicatedTensorType(datatype="float"),
+                output_type=ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
@@ -154,7 +154,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="share_1",
                 inputs={"setup": "replicated_setup_0", "value": "encode_1"},
                 placement_name="rep",
-                output_type=ReplicatedTensorType(datatype="float"),
+                output_type=ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
@@ -166,7 +166,7 @@ class ReplicatedTest(parameterized.TestCase):
                     "rhs": "share_1",
                 },
                 placement_name="rep",
-                output_type=ReplicatedTensorType(datatype="float"),
+                output_type=ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
@@ -184,7 +184,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "reveal_0"},
                 placement_name="rep",
                 output_type=TensorType(datatype="float"),
-                scaling_factor=2 ** 10,
+                scaling_factor=2 ** 16,
                 bound=2 ** 30,
             )
         )
@@ -216,7 +216,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "reveal_1"},
                 placement_name="rep",
                 output_type=TensorType(datatype="float"),
-                scaling_factor=2 ** 10,
+                scaling_factor=2 ** 16,
                 bound=2 ** 30,
             )
         )

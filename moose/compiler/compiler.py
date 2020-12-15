@@ -32,14 +32,14 @@ class Compiler:
         self,
         computation: Computation,
         render=False,
-        show_edge_types=False,
+        render_edge_types=True,
         render_prefix="pass",
     ) -> Computation:
         if render:
             render_computation(
                 computation,
                 filename_prefix=f"{render_prefix}-0-initial",
-                show_edge_types=show_edge_types,
+                render_edge_types=render_edge_types,
             )
         for i, compiler_pass in enumerate(self.passes):
             computation, performed_changes = compiler_pass.run(
@@ -52,7 +52,7 @@ class Compiler:
                         f"{render_prefix}-{i+1}"
                         f"-{type(compiler_pass).__name__.lower()}"
                     ),
-                    show_edge_types=show_edge_types,
+                    render_edge_types=render_edge_types,
                 )
         return computation
 
