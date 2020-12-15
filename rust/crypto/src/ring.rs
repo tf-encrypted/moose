@@ -79,44 +79,73 @@ impl<D: Dimension> Sub for Ring64Tensor<D> {
     }
 }
 
-pub struct Replicated<T>(T, T, T);
-
-impl<T> Mul<Replicated<T>> for Replicated<T>
-where
-    T: Mul<T, Output = T>,
-{
-    type Output = Replicated<T>;
-    fn mul(self, other: Replicated<T>) -> Self::Output {
-        // TODO
-        Replicated(self.0 * other.0, self.1 * other.1, self.2 * other.2)
+impl Dot<Ring64Tensor<Ix1>> for Ring64Tensor<Ix2> {
+    type Output = Ring64Tensor<Ix1>;
+    fn dot(&self, rhs: &Ring64Tensor<Ix1>) -> Self::Output {
+        Ring64Tensor(self.0.dot(&rhs.0))
     }
 }
 
-pub fn share(x: &Ring64Tensor) -> Replicated<Ring64Tensor> {
-    // TODO
-    Replicated(x.clone(), x.clone(), x.clone())
-}
+// impl Dot<Ring64Tensor1> for Ring64Tensor1 {
+//     fn dot(self, other: Ring64Tensor1) -> Ring64Tensor1 {
+//         self.0.dot(other.0)
+//     }
+// }
 
-pub fn reconstruct<T>(x: Replicated<T>) -> T {
-    // TODO
-    x.0
-}
+// impl Dot<Ring64Tensor2> for Ring64Tensor2 {
+//     fn dot(self, other: Ring64Tensor2) -> Ring64Tensor2 {
+//         self.0.dot(other.0)
+//     }
+// }
+
+// pub struct Replicated<T>(T, T, T);
+
+// impl<T> Mul<Replicated<T>> for Replicated<T>
+// where
+//     T: Mul<T, Output = T>,
+// {
+//     type Output = Replicated<T>;
+//     fn mul(self, other: Replicated<T>) -> Self::Output {
+//         // TODO
+//         Replicated(self.0 * other.0, self.1 * other.1, self.2 * other.2)
+//     }
+// }
+
+// pub fn share(x: &Ring64Tensor) -> Replicated<Ring64Tensor> {
+//     // TODO
+//     Replicated(x.clone(), x.clone(), x.clone())
+// }
+
+// pub fn reconstruct<T>(x: Replicated<T>) -> T {
+//     // TODO
+//     x.0
+// }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    // #[test]
+    // fn it_works() {
+    //     let a = Ring64Tensor::from(vec![1, 2, 3]);
+    //     let b = Ring64Tensor::from(vec![4, 5, 6]);
+
+    //     let a_shared = share(&a);
+    //     let b_shared = share(&b);
+
+    //     let c_shared = a_shared * b_shared;
+    //     let c: Ring64Tensor<Ix1> = reconstruct(c_shared);
+    //     assert_eq!(c, a * b);
+    // }
+
     #[test]
-    fn it_works() {
-        let a = Ring64Tensor::from(vec![1, 2, 3]);
-        let b = Ring64Tensor::from(vec![4, 5, 6]);
+    fn ring_dot() {
+        let x = Ring64Tensor::<Ix2>::from(array![[1, 2], [3, 4]]);
+        let y = Ring64Tensor::<Ix1>::from(vec![1, 1]);
+        let z = x.dot(&y);
 
-        let a_shared = share(&a);
-        let b_shared = share(&b);
-
-        let c_shared = a_shared * b_shared;
-        let c: Ring64Tensor = reconstruct(c_shared);
-        assert_eq!(c, a * b);
+        let result = Ring64Tensor::<Ix1>::from(vec![3, 7]);
+        assert_eq!(result, z)
     }
 
     #[test]
