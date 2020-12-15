@@ -11,8 +11,15 @@ from moose.computation.base import Operation
 from moose.computation.base import ValueType
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import ReplicatedTensorType
-from moose.computation.replicated import RingTensorType
-from moose.computation.standard import ShapeType
+from moose.computation.ring import FillTensorOperation
+from moose.computation.ring import RingAddOperation
+from moose.computation.ring import RingFromOperation
+from moose.computation.ring import RingInfoOperation
+from moose.computation.ring import RingMulOperation
+from moose.computation.ring import RingSampleOperation
+from moose.computation.ring import RingShapeOperation
+from moose.computation.ring import RingSubOperation
+from moose.computation.ring import RingTensorType
 from moose.computation.standard import StandardOperation
 from moose.computation.standard import TensorType
 
@@ -797,48 +804,6 @@ def replicated_sub(
         computation=x.computation,
         context=x.context,
     )
-
-
-@dataclass
-class RingFromOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingInfoOperation(Operation):
-    output_type: ValueType = TensorType(datatype="int64")
-
-
-@dataclass
-class RingAddOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingSubOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingMulOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingShapeOperation(Operation):
-    output_type: ValueType = ShapeType()
-
-
-@dataclass
-class RingSampleOperation(Operation):
-    sample_key: str
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class FillTensorOperation(Operation):
-    value: int
-    output_type: ValueType = RingTensorType()
 
 
 @dataclass

@@ -4,6 +4,7 @@ from typing import List
 from moose.computation.base import Operation
 from moose.computation.base import Placement
 from moose.computation.base import ValueType
+from moose.computation.ring import RingTensorType
 
 
 @dataclass
@@ -22,11 +23,6 @@ class ReplicatedSetupType(ValueType):
 @dataclass
 class ReplicatedTensorType(ValueType):
     datatype: str
-
-
-@dataclass
-class RingTensorType(ValueType):
-    pass
 
 
 @dataclass
