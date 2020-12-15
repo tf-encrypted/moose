@@ -244,6 +244,7 @@ class ReplicatedFromStandardOpsPass:
             name=self.context.get_fresh_name("replicated_mul"),
             placement_name=op.placement_name,
             inputs=new_inputs,
+            output_type=ReplicatedTensorType(datatype=op.output_type.datatype),
         )
         self.computation.add_operation(new_op)
         self.computation.rewire(op, new_op)
@@ -841,17 +842,12 @@ class FillTensorOperation(Operation):
 @dataclass
 class ExpandKeyOperation(Operation):
     seed_id: str
-    output_type: ValueType = RingTensorType()
+    output_type: ValueType = None  # TODO
 
 
 @dataclass
 class SampleKeyOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class SampleSeedOperation(Operation):
-    output_type: ValueType = RingTensorType()
+    output_type: ValueType = None  # TODO
 
 
 def ring_shape(tensor: RingTensor, placement_name):

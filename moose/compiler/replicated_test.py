@@ -327,12 +327,20 @@ class ReplicatedTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="alice_input", inputs={}, value=1, placement_name="alice"
+                name="alice_input",
+                inputs={},
+                value=1,
+                placement_name="alice",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
             standard_ops.ConstantOperation(
-                name="bob_input", inputs={}, value=2, placement_name="bob"
+                name="bob_input",
+                inputs={},
+                value=2,
+                placement_name="bob",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -340,6 +348,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="secure_mul",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -347,6 +356,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_dave",
                 inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
                 placement_name="dave",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(
@@ -359,6 +369,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_eric",
                 inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
                 placement_name="eric",
+                output_type=TensorType(datatype="float"),
             )
         )
         comp.add_operation(

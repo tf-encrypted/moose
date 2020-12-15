@@ -57,7 +57,7 @@ class AddOperation(ReplicatedOperation):
 
 @dataclass
 class MulOperation(ReplicatedOperation):
-    type_: str = "replicated::mul"
+    output_type: ValueType
 
 
 @dataclass
