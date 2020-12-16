@@ -1,1 +1,0 @@
-cape @ git+ssh://git@github.com/capeprivacy/coordinator-client.git@95edc4966c5eddd243213db606d36960ecf3a8c7

@@ -1,5 +1,0 @@
-FROM tfencrypted/runtime-cape-worker:latest
-
-WORKDIR /worker/moose/examples/cape
-
-CMD watchexec -w /worker/moose -e py -r "python3 worker.py --verbose"
