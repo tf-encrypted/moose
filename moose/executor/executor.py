@@ -4,10 +4,12 @@ from typing import Any
 
 from moose.computation import host as host_ops
 from moose.computation import mpspdz as mpspdz_ops
+from moose.computation import primitives as primitives_ops
 from moose.computation import ring as ring_ops
 from moose.computation import standard as standard_ops
 from moose.executor.kernels import host as host_kernels
 from moose.executor.kernels import mpspdz as mpspdz_kernels
+from moose.executor.kernels import primitives as primitives_kernels
 from moose.executor.kernels import ring as ring_kernels
 from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
@@ -37,6 +39,7 @@ class AsyncExecutor:
             ring_ops.RingMulOperation: ring_kernels.RingMulKernel(),
             ring_ops.RingSubOperation: ring_kernels.RingSubKernel(),
             ring_ops.RingShapeOperation: ring_kernels.RingShapeKernel(),
+            primitives_ops.SampleKeyOperation: primitives_kernels.SampleKeyKernel(),
             standard_ops.LoadOperation: standard_kernels.LoadKernel(store),
             standard_ops.SaveOperation: standard_kernels.SaveKernel(store),
             standard_ops.SendOperation: standard_kernels.SendKernel(networking),
