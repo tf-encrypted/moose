@@ -29,7 +29,7 @@ impl Fill for Ring64Tensor {
     fn fill(shape: &[usize], el: u64) -> Self {
         Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
     }
-  }
+}
 
 impl From<ArrayD<u64>> for Ring64Tensor {
     fn from(a: ArrayD<u64>) -> Ring64Tensor {

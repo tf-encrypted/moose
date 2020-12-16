@@ -87,7 +87,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "ring_fill")]
     fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
         let res = Ring64Tensor::fill(&shape, el);
-        let res_array = ring64_to_array(res, &shape);
+        let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
 

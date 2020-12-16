@@ -13,7 +13,6 @@ from moose.executor.kernels.base import Kernel
 class RingAddKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, RingAddOperation)
-        # import pdb; pdb.set_trace()
         return ring_add(lhs, rhs)
 
 

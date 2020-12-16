@@ -30,16 +30,16 @@ class BinaryOp(parameterized.TestCase):
         assert ring_shape(a) == [3]
 
     @parameterized.parameters(
-        ([[1, 2], [3, 4]], [[1, 0], [0, 1]], [[1, 2], [3, 4]]),
-        ([[1, 2], [3, 4]], [1, 1], [3, 7]),
-        ([1, 1], [[1, 2], [3, 4]], [4, 6]),
+        ([[1, 2], [3, 4]], [[1, 0], [0, 1]]),
+        ([[1, 2], [3, 4]], [1, 1]),
+        ([1, 1], [[1, 2], [3, 4]]),
     )
-    def test_dot_prod(self, a, b, c):
+    def test_dot_prod(self, a, b):
         x = np.array(a, dtype=np.uint64)
         y = np.array(b, dtype=np.uint64)
-        z = np.array(c, dtype=np.uint64)
+        exp = np.dot(x, y)
         res = ring_dot(x, y)
-        np.testing.assert_array_equal(res, z)
+        np.testing.assert_array_equal(res, exp)
 
 
 class SamplingOperations(parameterized.TestCase):
