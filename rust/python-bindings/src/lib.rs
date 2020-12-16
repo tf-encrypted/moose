@@ -2,6 +2,7 @@ use crypto::Ring64Tensor;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::prelude::*;
+use pyo3::types::PyList;
 use std::num::Wrapping;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -56,6 +57,12 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         y: PyReadonlyArrayDyn<u64>,
     ) -> &'py PyArrayDyn<u64> {
         binary_pyfn(py, x, y, |a, b| a - b)
+    }
+
+    #[pyfn(m, "ring_shape")]
+    fn ring_shape<'py>(py: Python<'py>, x: PyReadonlyArrayDyn<u64>) -> &'py PyList {
+        let shape: &[usize] = x.shape();
+        PyList::new(py, shape.iter())
     }
 
     Ok(())

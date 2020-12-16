@@ -4,6 +4,7 @@ from typing import Any
 
 from moose.compiler.replicated import RingAddOperation
 from moose.compiler.replicated import RingMulOperation
+from moose.compiler.replicated import RingShapeOperation
 from moose.compiler.replicated import RingSubOperation
 from moose.computation.host import CallPythonFunctionOperation
 from moose.computation.host import RunProgramOperation
@@ -30,6 +31,7 @@ from moose.executor.kernels.mpspdz import MpspdzLoadOutputKernel
 from moose.executor.kernels.mpspdz import MpspdzSaveInputKernel
 from moose.executor.kernels.ring import RingAddKernel
 from moose.executor.kernels.ring import RingMulKernel
+from moose.executor.kernels.ring import RingShapeKernel
 from moose.executor.kernels.ring import RingSubKernel
 from moose.executor.kernels.standard import AddKernel
 from moose.executor.kernels.standard import ConstantKernel
@@ -70,6 +72,7 @@ class AsyncExecutor:
             RingAddOperation: RingAddKernel(),
             RingMulOperation: RingMulKernel(),
             RingSubOperation: RingSubKernel(),
+            RingShapeOperation: RingShapeKernel(),
             LoadOperation: LoadKernel(store),
             SaveOperation: SaveKernel(store),
             SendOperation: SendKernel(networking),
