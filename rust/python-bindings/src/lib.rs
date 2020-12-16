@@ -1,7 +1,8 @@
-use crypto::Ring64Tensor;
+use crypto::prng::AesRng;
+use crypto::ring::Ring64Tensor;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
-use pyo3::prelude::*;
+use pyo3::{prelude::*, types::PyBytes};
 use std::num::Wrapping;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -56,6 +57,12 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         y: PyReadonlyArrayDyn<u64>,
     ) -> &'py PyArrayDyn<u64> {
         binary_pyfn(py, x, y, |a, b| a - b)
+    }
+
+    #[pyfn(m, "sample_key")]
+    fn sample_key(py: Python) -> &PyBytes {
+        let key: [u8; 16] = AesRng::generate_random_key();
+        PyBytes::new(py, &key)
     }
 
     Ok(())
