@@ -3,10 +3,10 @@ from moose_kernels import ring_mul
 from moose_kernels import ring_shape
 from moose_kernels import ring_sub
 
-from moose.compiler.replicated import RingAddOperation
-from moose.compiler.replicated import RingMulOperation
-from moose.compiler.replicated import RingShapeOperation
-from moose.compiler.replicated import RingSubOperation
+from moose.computation.ring import RingAddOperation
+from moose.computation.ring import RingMulOperation
+from moose.computation.ring import RingShapeOperation
+from moose.computation.ring import RingSubOperation
 from moose.executor.kernels.base import Kernel
 
 

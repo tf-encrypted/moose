@@ -2,50 +2,14 @@ import asyncio
 import dataclasses
 from typing import Any
 
-from moose.compiler.replicated import RingAddOperation
-from moose.compiler.replicated import RingMulOperation
-from moose.compiler.replicated import RingShapeOperation
-from moose.compiler.replicated import RingSubOperation
-from moose.computation.host import CallPythonFunctionOperation
-from moose.computation.host import RunProgramOperation
-from moose.computation.mpspdz import MpspdzCallOperation
-from moose.computation.mpspdz import MpspdzLoadOutputOperation
-from moose.computation.mpspdz import MpspdzSaveInputOperation
-from moose.computation.standard import AddOperation
-from moose.computation.standard import ConstantOperation
-from moose.computation.standard import DeserializeOperation
-from moose.computation.standard import DivOperation
-from moose.computation.standard import InputOperation
-from moose.computation.standard import LoadOperation
-from moose.computation.standard import MulOperation
-from moose.computation.standard import OutputOperation
-from moose.computation.standard import ReceiveOperation
-from moose.computation.standard import SaveOperation
-from moose.computation.standard import SendOperation
-from moose.computation.standard import SerializeOperation
-from moose.computation.standard import SubOperation
-from moose.executor.kernels.host import CallPythonFunctionKernel
-from moose.executor.kernels.host import RunProgramKernel
-from moose.executor.kernels.mpspdz import MpspdzCallKernel
-from moose.executor.kernels.mpspdz import MpspdzLoadOutputKernel
-from moose.executor.kernels.mpspdz import MpspdzSaveInputKernel
-from moose.executor.kernels.ring import RingAddKernel
-from moose.executor.kernels.ring import RingMulKernel
-from moose.executor.kernels.ring import RingShapeKernel
-from moose.executor.kernels.ring import RingSubKernel
-from moose.executor.kernels.standard import AddKernel
-from moose.executor.kernels.standard import ConstantKernel
-from moose.executor.kernels.standard import DeserializeKernel
-from moose.executor.kernels.standard import DivKernel
-from moose.executor.kernels.standard import InputKernel
-from moose.executor.kernels.standard import LoadKernel
-from moose.executor.kernels.standard import MulKernel
-from moose.executor.kernels.standard import OutputKernel
-from moose.executor.kernels.standard import ReceiveKernel
-from moose.executor.kernels.standard import SaveKernel
-from moose.executor.kernels.standard import SendKernel
-from moose.executor.kernels.standard import SerializeKernel
-from moose.executor.kernels.standard import SubKernel
+from moose.computation import host as host_ops
+from moose.computation import mpspdz as mpspdz_ops
+from moose.computation import ring as ring_ops
+from moose.computation import standard as standard_ops
+from moose.executor.kernels import host as host_kernels
+from moose.executor.kernels import mpspdz as mpspdz_kernels
+from moose.executor.kernels import ring as ring_kernels
+from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
 from moose.storage import AsyncStore
 
@@ -62,28 +26,32 @@ class AsyncExecutor:
     def __init__(self, networking, store={}):
         self.store = store
         self.kernels = {
-            InputOperation: InputKernel(),
-            OutputOperation: OutputKernel(),
-            ConstantOperation: ConstantKernel(),
-            AddOperation: AddKernel(),
-            SubOperation: SubKernel(),
-            MulOperation: MulKernel(),
-            DivOperation: DivKernel(),
-            RingAddOperation: RingAddKernel(),
-            RingMulOperation: RingMulKernel(),
-            RingSubOperation: RingSubKernel(),
-            RingShapeOperation: RingShapeKernel(),
-            LoadOperation: LoadKernel(store),
-            SaveOperation: SaveKernel(store),
-            SendOperation: SendKernel(networking),
-            ReceiveOperation: ReceiveKernel(networking),
-            SerializeOperation: SerializeKernel(),
-            DeserializeOperation: DeserializeKernel(),
-            RunProgramOperation: RunProgramKernel(),
-            CallPythonFunctionOperation: CallPythonFunctionKernel(),
-            MpspdzSaveInputOperation: MpspdzSaveInputKernel(),
-            MpspdzCallOperation: MpspdzCallKernel(networking),
-            MpspdzLoadOutputOperation: MpspdzLoadOutputKernel(),
+            standard_ops.InputOperation: standard_kernels.InputKernel(),
+            standard_ops.OutputOperation: standard_kernels.OutputKernel(),
+            standard_ops.ConstantOperation: standard_kernels.ConstantKernel(),
+            standard_ops.AddOperation: standard_kernels.AddKernel(),
+            standard_ops.SubOperation: standard_kernels.SubKernel(),
+            standard_ops.MulOperation: standard_kernels.MulKernel(),
+            standard_ops.DivOperation: standard_kernels.DivKernel(),
+            ring_ops.RingAddOperation: ring_kernels.RingAddKernel(),
+            ring_ops.RingMulOperation: ring_kernels.RingMulKernel(),
+            ring_ops.RingSubOperation: ring_kernels.RingSubKernel(),
+            ring_ops.RingShapeOperation: ring_kernels.RingShapeKernel(),
+            standard_ops.LoadOperation: standard_kernels.LoadKernel(store),
+            standard_ops.SaveOperation: standard_kernels.SaveKernel(store),
+            standard_ops.SendOperation: standard_kernels.SendKernel(networking),
+            standard_ops.ReceiveOperation: standard_kernels.ReceiveKernel(networking),
+            standard_ops.SerializeOperation: standard_kernels.SerializeKernel(),
+            standard_ops.DeserializeOperation: standard_kernels.DeserializeKernel(),
+            host_ops.RunProgramOperation: host_kernels.RunProgramKernel(),
+            host_ops.CallPythonFunctionOperation: (
+                host_kernels.CallPythonFunctionKernel()
+            ),
+            mpspdz_ops.MpspdzSaveInputOperation: mpspdz_kernels.MpspdzSaveInputKernel(),
+            mpspdz_ops.MpspdzCallOperation: mpspdz_kernels.MpspdzCallKernel(networking),
+            mpspdz_ops.MpspdzLoadOutputOperation: (
+                mpspdz_kernels.MpspdzLoadOutputKernel()
+            ),
         }
 
     def compile_computation(self, logical_computation):

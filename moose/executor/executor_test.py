@@ -6,8 +6,8 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 
-from moose.compiler import replicated
-from moose.computation import standard as standard_ops
+from moose.computation import ring as ring_dialect
+from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
@@ -78,7 +78,7 @@ class ExecutorTest(parameterized.TestCase):
         alice = comp.add_placement(HostPlacement(name="alice"))
 
         comp.add_operation(
-            standard_ops.InputOperation(
+            standard_dialect.InputOperation(
                 name="x",
                 placement_name=alice.name,
                 inputs={},
@@ -86,7 +86,7 @@ class ExecutorTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            standard_ops.InputOperation(
+            standard_dialect.InputOperation(
                 name="y",
                 placement_name=alice.name,
                 inputs={},
@@ -94,7 +94,7 @@ class ExecutorTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            standard_ops.AddOperation(
+            standard_dialect.AddOperation(
                 name="add",
                 placement_name=alice.name,
                 inputs={"lhs": "x", "rhs": "y"},
@@ -102,7 +102,7 @@ class ExecutorTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            standard_ops.SaveOperation(
+            standard_dialect.SaveOperation(
                 name="save", placement_name=alice.name, inputs={"value": "add"}, key="z"
             )
         )
@@ -159,7 +159,7 @@ class ExecutorTest(parameterized.TestCase):
 
     @parameterized.parameters(
         (
-            lambda plc: replicated.RingAddOperation(
+            lambda plc: ring_dialect.RingAddOperation(
                 name="ring_add",
                 placement_name=plc.name,
                 inputs={"lhs": "x", "rhs": "y"},
@@ -168,7 +168,7 @@ class ExecutorTest(parameterized.TestCase):
             lambda x, y: x + y,
         ),
         (
-            lambda plc: replicated.RingMulOperation(
+            lambda plc: ring_dialect.RingMulOperation(
                 name="ring_mul",
                 placement_name=plc.name,
                 inputs={"lhs": "x", "rhs": "y"},
@@ -177,7 +177,7 @@ class ExecutorTest(parameterized.TestCase):
             lambda x, y: x * y,
         ),
         (
-            lambda plc: replicated.RingSubOperation(
+            lambda plc: ring_dialect.RingSubOperation(
                 name="ring_sub",
                 placement_name=plc.name,
                 inputs={"lhs": "x", "rhs": "y"},
@@ -194,26 +194,26 @@ class ExecutorTest(parameterized.TestCase):
         comp = Computation(operations={}, placements={})
         alice = comp.add_placement(HostPlacement(name="alice"))
         comp.add_operation(
-            standard_ops.ConstantOperation(
+            standard_dialect.ConstantOperation(
                 name="x",
                 placement_name=alice.name,
                 inputs={},
                 value=a,
-                output_type=standard_ops.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(datatype="float"),
             )
         )
         comp.add_operation(
-            standard_ops.ConstantOperation(
+            standard_dialect.ConstantOperation(
                 name="y",
                 placement_name=alice.name,
                 inputs={},
                 value=b,
-                output_type=standard_ops.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(datatype="float"),
             )
         )
         comp.add_operation(ring_op_lmbd(alice))
         comp.add_operation(
-            standard_ops.SaveOperation(
+            standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
                 inputs={"value": ring_op_name},

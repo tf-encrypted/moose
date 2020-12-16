@@ -1,18 +1,30 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
-from typing import Optional
 from typing import Tuple
 
+from moose.compiler.primitives import PRFKey
+from moose.compiler.primitives import key_sample
+from moose.compiler.ring import RingTensor
+from moose.compiler.ring import fill_tensor
+from moose.compiler.ring import ring_add
+from moose.compiler.ring import ring_from
+from moose.compiler.ring import ring_mul
+from moose.compiler.ring import ring_sample
+from moose.compiler.ring import ring_shape
+from moose.compiler.ring import ring_sub
+from moose.compiler.standard import StandardTensor
+from moose.compiler.standard import standard_cast
+from moose.compiler.standard import standard_mul
 from moose.computation import replicated as replicated_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
-from moose.computation.base import Operation
-from moose.computation.base import ValueType
+from moose.computation.primitives import ExpandKeyOperation
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import ReplicatedTensorType
-from moose.computation.replicated import RingTensorType
-from moose.computation.standard import ShapeType
+from moose.computation.ring import RingAddOperation
+from moose.computation.ring import RingIntoOperation
+from moose.computation.ring import RingTensorType
 from moose.computation.standard import StandardOperation
 from moose.computation.standard import TensorType
 
@@ -345,30 +357,6 @@ class ReplicatedShareRevealPass:
 
 
 @dataclass
-class Shape:
-    op: Operation
-    computation: Computation = field(repr=False)
-    context: Any = field(repr=False)
-
-
-@dataclass
-class StandardTensor:
-    datatype: str
-    op: Operation
-    computation: Computation = field(repr=False)
-    context: Any = field(repr=False)
-    shape: Optional[Shape] = None
-
-
-@dataclass
-class RingTensor:
-    op: Operation
-    computation: Computation = field(repr=False)
-    context: Any = field(repr=False)
-    shape: Optional[Shape] = None
-
-
-@dataclass
 class ReplicatedTensor:
     shares0: Tuple[RingTensor, RingTensor]
     shares1: Tuple[RingTensor, RingTensor]
@@ -398,48 +386,6 @@ def replicated_encode(x: StandardTensor, scaling_factor) -> RingTensor:
     return ring_from(x)
 
 
-def standard_mul(x: StandardTensor, y: StandardTensor) -> StandardTensor:
-    assert isinstance(x, StandardTensor)
-    assert isinstance(y, StandardTensor)
-    assert x.datatype in ["int", "float"]
-    z_op = standard_ops.MulOperation(
-        name=x.context.get_fresh_name("mul"),
-        inputs={"lhs": x.op.name, "rhs": y.op.name},
-        placement_name=x.op.placement_name,
-        output_type=x.op.output_type,
-    )
-    x.computation.add(z_op)
-    return StandardTensor(
-        op=z_op, datatype=x.datatype, computation=x.computation, context=x.context,
-    )
-
-
-def standard_cast(x: StandardTensor, datatype) -> StandardTensor:
-    assert isinstance(x, StandardTensor)
-    y_op = standard_ops.CastOperation(
-        name=x.context.get_fresh_name("cast"),
-        inputs={"value": x.op.name},
-        placement_name=x.op.placement_name,
-        output_type=TensorType(datatype=datatype),
-    )
-    x.computation.add(y_op)
-    return StandardTensor(
-        op=y_op, datatype=datatype, computation=x.computation, context=x.context,
-    )
-
-
-def ring_from(x: StandardTensor) -> RingTensor:
-    assert isinstance(x, StandardTensor)
-    assert x.datatype == "int64"
-    y_op = RingFromOperation(
-        name=x.context.get_fresh_name("ring_from"),
-        inputs={"value": x.op.name},
-        placement_name=x.op.placement_name,
-    )
-    x.computation.add(y_op)
-    return RingTensor(op=y_op, computation=x.computation, context=x.context)
-
-
 def replicated_decode(x: RingTensor, scaling_factor, bound) -> StandardTensor:
     assert isinstance(x, RingTensor)
     computation = x.computation
@@ -467,7 +413,7 @@ def replicated_decode(x: RingTensor, scaling_factor, bound) -> StandardTensor:
         placement_name=placement_name,
         output_type=RingTensorType(),
     )
-    y_scaled_plus_bound = RingInfoOperation(
+    y_scaled_plus_bound = RingIntoOperation(
         name=context.get_fresh_name("ring_into"),
         inputs={"value": x_scaled_plus_bound.name},
         placement_name=placement_name,
@@ -509,12 +455,6 @@ def replicated_decode(x: RingTensor, scaling_factor, bound) -> StandardTensor:
 
 
 @dataclass
-class PRFKey:
-    op: Operation
-    context: Any = field(repr=False)
-
-
-@dataclass
 class SetupContext:
     computation: Computation = field(repr=False)
     naming_context: Any = field(repr=False)
@@ -537,17 +477,6 @@ class ReplicatedExpandedKeys(ReplicatedBaseSetup):
     pass
 
 
-def key_sample(ctx: SetupContext, placement_name):
-    k = ctx.computation.add_operation(
-        SampleKeyOperation(
-            name=ctx.naming_context.get_fresh_name("SampleKey"),
-            placement_name=placement_name,
-            inputs={},
-        )
-    )
-    return PRFKey(k, ctx)
-
-
 def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     assert isinstance(ctx, SetupContext)
 
@@ -557,7 +486,11 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     assert isinstance(replicated_placement, ReplicatedPlacement)
 
     k = [
-        key_sample(ctx, placement_name=replicated_placement.player_names[i])
+        key_sample(
+            context=ctx.naming_context,
+            computation=ctx.computation,
+            placement_name=replicated_placement.player_names[i],
+        )
         for i in range(3)
     ]
     return ReplicatedSetup(
@@ -593,7 +526,7 @@ def synchronize_seeds(setup: ReplicatedSetup, placement_name):
         expand_key(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
     ]
 
-    return ReplicatedExpandedKeys(keys=expanded_keys, context=context,)
+    return ReplicatedExpandedKeys(keys=expanded_keys, context=context)
 
 
 def replicated_share(
@@ -796,141 +729,4 @@ def replicated_sub(
         shares2=z_shares[2],
         computation=x.computation,
         context=x.context,
-    )
-
-
-@dataclass
-class RingFromOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingInfoOperation(Operation):
-    output_type: ValueType = TensorType(datatype="int64")
-
-
-@dataclass
-class RingAddOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingSubOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingMulOperation(Operation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingShapeOperation(Operation):
-    output_type: ValueType = ShapeType()
-
-
-@dataclass
-class RingSampleOperation(Operation):
-    sample_key: str
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class FillTensorOperation(Operation):
-    value: int
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class ExpandKeyOperation(Operation):
-    seed_id: str
-    output_type: ValueType = None  # TODO
-
-
-@dataclass
-class SampleKeyOperation(Operation):
-    output_type: ValueType = None  # TODO
-
-
-def ring_shape(tensor: RingTensor, placement_name):
-    op = tensor.computation.add_operation(
-        RingShapeOperation(
-            name=tensor.context.get_fresh_name("ring_shape"),
-            placement_name=placement_name,
-            inputs={"tensor": tensor.op.name},
-        )
-    )
-    return Shape(op, computation=tensor.computation, context=tensor.context)
-
-
-def fill_tensor(shape: Shape, value: int, placement_name):
-    op = shape.computation.add_operation(
-        FillTensorOperation(
-            name=shape.context.get_fresh_name("fill_tensor"),
-            placement_name=placement_name,
-            value=value,
-            inputs={"shape": shape.op.name},
-        )
-    )
-    return RingTensor(
-        op, computation=shape.computation, context=shape.context, shape=shape
-    )
-
-
-def ring_sample(shape: Shape, key: ExpandKeyOperation, placement_name):
-    assert isinstance(shape, Shape)
-    assert isinstance(key, ExpandKeyOperation)
-    op = shape.computation.add_operation(
-        RingSampleOperation(
-            name=shape.context.get_fresh_name("ring_sample"),
-            placement_name=placement_name,
-            inputs={"shape": shape.op.name, "key": key.name},
-            sample_key=key.name,
-        )
-    )
-    return RingTensor(
-        op, computation=shape.computation, context=shape.context, shape=shape
-    )
-
-
-def ring_add(x: RingTensor, y: RingTensor, placement_name):
-    assert x.computation == y.computation
-    assert x.context == y.context
-    z_op = x.computation.add_operation(
-        RingAddOperation(
-            name=x.context.get_fresh_name("ring_add"),
-            placement_name=placement_name,
-            inputs={"lhs": x.op.name, "rhs": y.op.name},
-        )
-    )
-    return RingTensor(
-        op=z_op, computation=x.computation, shape=x.shape, context=x.context
-    )
-
-
-def ring_sub(x: RingTensor, y: RingTensor, placement_name):
-    z_op = x.computation.add_operation(
-        RingSubOperation(
-            name=x.context.get_fresh_name("ring_sub"),
-            placement_name=placement_name,
-            inputs={"lhs": x.op.name, "rhs": y.op.name},
-        )
-    )
-    return RingTensor(
-        op=z_op, computation=x.computation, shape=x.shape, context=x.context
-    )
-
-
-def ring_mul(x: RingTensor, y: RingTensor, placement_name):
-    z_op = x.computation.add_operation(
-        RingMulOperation(
-            name=x.context.get_fresh_name("ring_mul"),
-            placement_name=placement_name,
-            inputs={"lhs": x.op.name, "rhs": y.op.name},
-        )
-    )
-    # TODO(Dragos): is it OK to pass the resulting shape as the shape of x?
-    # in the future we might want some sort of shape inference around this?
-    return RingTensor(
-        op=z_op, computation=x.computation, shape=x.shape, context=x.context
     )
