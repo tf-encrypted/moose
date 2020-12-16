@@ -3,11 +3,11 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
+from moose.compiler.primitives import Seed
 from moose.compiler.standard import Shape
 from moose.compiler.standard import StandardTensor
 from moose.computation.base import Computation
 from moose.computation.base import Operation
-from moose.computation.primitives import ExpandKeyOperation
 from moose.computation.ring import FillTensorOperation
 from moose.computation.ring import RingAddOperation
 from moose.computation.ring import RingFromOperation
@@ -62,15 +62,14 @@ def fill_tensor(shape: Shape, value: int, placement_name):
     )
 
 
-def ring_sample(shape: Shape, key: ExpandKeyOperation, placement_name):
+def ring_sample(shape: Shape, seed: Seed, placement_name):
     assert isinstance(shape, Shape)
-    assert isinstance(key, ExpandKeyOperation)
+    assert isinstance(seed, Seed)
     op = shape.computation.add_operation(
         RingSampleOperation(
             name=shape.context.get_fresh_name("ring_sample"),
             placement_name=placement_name,
-            inputs={"shape": shape.op.name, "key": key.name},
-            sample_key=key.name,
+            inputs={"shape": shape.op.name, "key": seed.op.name},
         )
     )
     return RingTensor(

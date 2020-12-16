@@ -48,7 +48,6 @@ class RingShapeOperation(RingOperation):
 
 @dataclass
 class RingSampleOperation(RingOperation):
-    sample_key: str
     output_type: ValueType = RingTensorType()
 
 

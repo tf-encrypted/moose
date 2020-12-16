@@ -4,7 +4,8 @@ from typing import Any
 from typing import Tuple
 
 from moose.compiler.primitives import PRFKey
-from moose.compiler.primitives import key_sample
+from moose.compiler.primitives import derive_seed
+from moose.compiler.primitives import sample_key
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
@@ -19,7 +20,6 @@ from moose.compiler.standard import standard_mul
 from moose.computation import replicated as replicated_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
-from moose.computation.primitives import ExpandKeyOperation
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import ReplicatedTensorType
 from moose.computation.ring import RingAddOperation
@@ -486,7 +486,7 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     assert isinstance(replicated_placement, ReplicatedPlacement)
 
     k = [
-        key_sample(
+        sample_key(
             context=ctx.naming_context,
             computation=ctx.computation,
             placement_name=replicated_placement.player_names[i],
@@ -504,23 +504,21 @@ def synchronize_seeds(setup: ReplicatedSetup, placement_name):
     seed_id = naming_context.get_fresh_name("seed_id")
 
     def expand_key(key0: PRFKey, key1: PRFKey, placement_name):
-        op_0 = context.computation.add_operation(
-            ExpandKeyOperation(
-                name=naming_context.get_fresh_name("expand_key"),
-                placement_name=placement_name,
-                inputs={"keys": key0.op.name},
-                seed_id=seed_id,
-            )
+        seed_0 = derive_seed(
+            key=key0,
+            seed_id=seed_id,
+            placement_name=placement_name,
+            computation=context.computation,
+            context=naming_context,
         )
-        op_1 = context.computation.add_operation(
-            ExpandKeyOperation(
-                name=naming_context.get_fresh_name("expand_key"),
-                placement_name=placement_name,
-                inputs={"keys": key1.op.name},
-                seed_id=seed_id,
-            )
+        seed_1 = derive_seed(
+            key=key1,
+            seed_id=seed_id,
+            placement_name=placement_name,
+            computation=context.computation,
+            context=naming_context,
         )
-        return (op_0, op_1)
+        return (seed_0, seed_1)
 
     expanded_keys = [
         expand_key(*setup.keys[i], placement_name.player_names[i]) for i in range(3)

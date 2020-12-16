@@ -5,11 +5,21 @@ from moose.computation.base import ValueType
 
 
 @dataclass
-class ExpandKeyOperation(Operation):
+class SeedType(ValueType):
+    pass
+
+
+@dataclass
+class DeriveSeedOperation(Operation):
     seed_id: str
-    output_type: ValueType = None  # TODO
+    output_type: ValueType = SeedType()
+
+
+@dataclass
+class PRFKeyType(ValueType):
+    pass
 
 
 @dataclass
 class SampleKeyOperation(Operation):
-    output_type: ValueType = None  # TODO
+    output_type: ValueType = PRFKeyType()
