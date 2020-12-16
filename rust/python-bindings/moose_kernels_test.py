@@ -4,6 +4,7 @@ from absl.testing import parameterized
 from moose_kernels import ring_add
 from moose_kernels import ring_mul
 from moose_kernels import ring_sub
+from moose_kernels import sample_key
 
 
 class BinaryOp(parameterized.TestCase):
@@ -21,6 +22,15 @@ class BinaryOp(parameterized.TestCase):
 
         np.testing.assert_array_equal(c1, c2)
 
+class SamplingOperations(parameterized.TestCase):
+    def test_sample_key(self):
+        for num_iterations in range(10):
+            key = sample_key()
+            assert(len(key) == 16)
+
+            for i in range(len(key)):
+                assert(key[i] >= 0)
+                assert(key[i] < 256)
 
 if __name__ == "__main__":
     absltest.main()
