@@ -38,14 +38,16 @@ def ring_from(x: StandardTensor) -> RingTensor:
 
 
 def ring_shape(tensor: RingTensor, placement_name):
-    op = tensor.computation.add_operation(
-        RingShapeOperation(
-            name=tensor.context.get_fresh_name("ring_shape"),
-            placement_name=placement_name,
-            inputs={"tensor": tensor.op.name},
+    if not tensor.shape:
+        op = tensor.computation.add_operation(
+            RingShapeOperation(
+                name=tensor.context.get_fresh_name("ring_shape"),
+                placement_name=placement_name,
+                inputs={"tensor": tensor.op.name},
+            )
         )
-    )
-    return Shape(op, computation=tensor.computation, context=tensor.context)
+        tensor.shape = Shape(op, computation=tensor.computation, context=tensor.context)
+    return tensor.shape
 
 
 def fill_tensor(shape: Shape, value: int, placement_name):

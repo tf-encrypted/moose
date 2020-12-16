@@ -11,7 +11,7 @@ class SeedType(ValueType):
 
 @dataclass
 class DeriveSeedOperation(Operation):
-    seed_id: str
+    nonce: str
     output_type: ValueType = SeedType()
 
 

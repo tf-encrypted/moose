@@ -29,13 +29,13 @@ class Seed:
     op: Operation
 
 
-def derive_seed(key: PRFKey, seed_id: str, placement_name, computation, context):
+def derive_seed(key: PRFKey, nonce: str, placement_name, computation, context):
     seed_op = computation.add_operation(
         DeriveSeedOperation(
             name=context.get_fresh_name("derive_seed"),
             placement_name=placement_name,
             inputs={"key": key.op.name},
-            seed_id=seed_id,
+            nonce=nonce,
         )
     )
     return Seed(op=seed_op)

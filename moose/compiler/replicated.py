@@ -4,6 +4,7 @@ from typing import Any
 from typing import Tuple
 
 from moose.compiler.primitives import PRFKey
+from moose.compiler.primitives import Seed
 from moose.compiler.primitives import derive_seed
 from moose.compiler.primitives import sample_key
 from moose.compiler.ring import RingTensor
@@ -473,8 +474,8 @@ class ReplicatedSetup(ReplicatedBaseSetup):
 
 
 @dataclass
-class ReplicatedExpandedKeys(ReplicatedBaseSetup):
-    pass
+class ReplicatedSynchronizedSeeds:
+    seeds: [Tuple[Seed, Seed], Tuple[Seed, Seed], Tuple[Seed, Seed]]
 
 
 def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
@@ -498,33 +499,33 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     )
 
 
-def synchronize_seeds(setup: ReplicatedSetup, placement_name):
+def sample_synchronized_seeds(setup: ReplicatedSetup, placement_name):
     context = setup.context
     naming_context = setup.context.naming_context
-    seed_id = naming_context.get_fresh_name("seed_id")
+    nonce = naming_context.get_fresh_name("sync_nonce")
 
-    def expand_key(key0: PRFKey, key1: PRFKey, placement_name):
+    def derive_seeds(key0: PRFKey, key1: PRFKey, placement_name):
         seed_0 = derive_seed(
             key=key0,
-            seed_id=seed_id,
+            nonce=nonce,
             placement_name=placement_name,
             computation=context.computation,
             context=naming_context,
         )
         seed_1 = derive_seed(
             key=key1,
-            seed_id=seed_id,
+            nonce=nonce,
             placement_name=placement_name,
             computation=context.computation,
             context=naming_context,
         )
         return (seed_0, seed_1)
 
-    expanded_keys = [
-        expand_key(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
+    seeds = [
+        derive_seeds(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
     ]
 
-    return ReplicatedExpandedKeys(keys=expanded_keys, context=context)
+    return ReplicatedSynchronizedSeeds(seeds=seeds)
 
 
 def replicated_share(
@@ -536,18 +537,17 @@ def replicated_share(
     replicated_placement = setup.context.computation.placement(placement_name)
     players = replicated_placement.player_names
 
-    expanded_keys = synchronize_seeds(setup, replicated_placement)
-    if not x.shape:
-        x.shape = ring_shape(x, placement_name=x.op.placement_name)
+    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
+    shape = ring_shape(x, placement_name=x.op.placement_name)
 
-    key_mine = None
+    seed_mine = None
     input_player_id = None
     for i in range(3):
         if x.op.placement_name == players[i]:
-            key_mine = expanded_keys.keys[i][0]
+            seed_mine = synced_seeds.seeds[i][0]
             input_player_id = i
 
-    x_mine = ring_sample(x.shape, key_mine, placement_name=x.op.placement_name)
+    x_mine = ring_sample(shape, seed_mine, placement_name=x.op.placement_name)
     x_other = ring_sub(x, x_mine, placement_name=x.op.placement_name)
 
     zero_tensors = [None] * 3
@@ -557,8 +557,8 @@ def replicated_share(
 
     prev_player_id = (input_player_id - 1) % 3
     x_previous = ring_sample(
-        x.shape,
-        expanded_keys.keys[prev_player_id][1],
+        shape,
+        synced_seeds.seeds[prev_player_id][1],
         placement_name=players[prev_player_id],
     )
 
@@ -626,7 +626,7 @@ def replicated_mul(
             placement_name=players[i],
         )
 
-    expanded_keys = synchronize_seeds(setup, replicated_placement)
+    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
 
     def generate_zero_share():
         sampled_shares = list()
@@ -635,7 +635,7 @@ def replicated_mul(
                 [
                     ring_sample(
                         z_shares[i].shape,
-                        expanded_keys.keys[i][j],
+                        synced_seeds.seeds[i][j],
                         placement_name=players[i],
                     )
                     for j in range(2)
