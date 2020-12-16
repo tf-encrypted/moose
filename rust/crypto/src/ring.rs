@@ -20,6 +20,16 @@ impl Sample for Ring64Tensor {
     }
 }
 
+pub trait Fill {
+    fn fill(shape: &[usize], el: u64) -> Self;
+}
+
+impl Fill for Ring64Tensor {
+    fn fill(shape: &[usize], el: u64) -> Self {
+        Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
+    }
+}
+
 impl From<Vec<u64>> for Ring64Tensor {
     fn from(v: Vec<u64>) -> Ring64Tensor {
         let ix = IxDyn(&[v.len()]);
@@ -111,5 +121,14 @@ mod tests {
                 3009633425676235349
             ])
         );
+    }
+
+    #[test]
+    fn ring_fill() {
+        let r = Ring64Tensor::fill(&[2], 1);
+        assert_eq!(
+            r,
+            Ring64Tensor::from(vec![1, 1])
+        )
     }
 }
