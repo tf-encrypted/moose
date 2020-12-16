@@ -2,6 +2,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 from moose_kernels import ring_add
+from moose_kernels import ring_dot
 from moose_kernels import ring_fill
 from moose_kernels import ring_mul
 from moose_kernels import ring_shape
@@ -27,6 +28,18 @@ class BinaryOp(parameterized.TestCase):
     def test_shape(self):
         a = np.array([1, 2, 3], dtype=np.uint64)
         assert ring_shape(a) == [3]
+
+    @parameterized.parameters(
+        ([[1, 2], [3, 4]], [[1, 0], [0, 1]], [[1, 2], [3, 4]]),
+        ([[1, 2], [3, 4]], [1, 1], [3, 7]),
+        ([1, 1], [[1, 2], [3, 4]], [4, 6]),
+    )
+    def test_dot_prod(self, a, b, c):
+        x = np.array(a, dtype=np.uint64)
+        y = np.array(b, dtype=np.uint64)
+        z = np.array(c, dtype=np.uint64)
+        res = ring_dot(x, y)
+        np.testing.assert_array_equal(res, z)
 
 
 class SamplingOperations(parameterized.TestCase):
