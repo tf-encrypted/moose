@@ -25,10 +25,9 @@ class BinaryOp(parameterized.TestCase):
 
 class SamplingOperations(parameterized.TestCase):
     def test_sample_key(self):
-        for num_iterations in range(10):
-            key = sample_key()
-            assert len(key) == 16
-            assert isinstance(key, bytes)
+        key = sample_key()
+        assert len(key) == 16
+        assert isinstance(key, bytes)
 
 
 if __name__ == "__main__":
