@@ -178,13 +178,18 @@ impl AesRng {
         self.cipher.encrypt_blocks(&mut self.state.blocks);
     }
 
+    pub fn generate_random_key() -> [u8; SEED_SIZE] {
+        let mut seed = [0u8; SEED_SIZE];
+        let _ = sodiumoxide::init();
+        randombytes_into(&mut seed);
+        seed
+    }
+
     /// Method to fetch a PRNG where its seed is taken from /dev/random
     /// or /dev/urandom if /dev/random doesn't have enough entropy
     /// The entropy selection is done automatically by sodiumoxide
     pub fn from_random_seed() -> Self {
-        let mut seed = [0u8; SEED_SIZE];
-        let _ = sodiumoxide::init();
-        randombytes_into(&mut seed);
+        let seed = AesRng::generate_random_key();
         let key: Block128 = GenericArray::clone_from_slice(&seed);
         let mut out = AesRng {
             state: AesRngState::default(),
@@ -256,7 +261,6 @@ mod tests {
 
     #[test]
     fn test_prng() {
-        // test whether prng output matches AES calls
         let seed = [0u8; SEED_SIZE];
         let key: Block128 = GenericArray::clone_from_slice(&seed);
         let cipher = Aes128::new(&key);
@@ -300,4 +304,5 @@ mod tests {
         let _ = rng.next_u32();
         let _ = rng.next_u64();
     }
+
 }
