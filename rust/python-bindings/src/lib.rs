@@ -60,7 +60,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "sample_key")]
-    fn sample_key(py: Python) -> & PyBytes {
+    fn sample_key(py: Python) -> &PyBytes {
         let key: [u8; 16] = AesRng::generate_random_key();
         PyBytes::new(py, &key)
     }
