@@ -16,14 +16,15 @@
 //!
 //! # Usage example for already seeded PRNG
 //! ```
-//! use crypto::prng::{AesRng}
+//! use rand::{RngCore, SeedableRng};
+//! use crypto::prng::{AesRng};
 //!
 //! // initialize PRNG seed using sodiumoxide entropy pool
 //! let mut rng: AesRng = AesRng::from_random_seed();
 //! // gets 32 random bits
 //! let output32 = rng.next_u32();
 //! // gets 64 random bits
-//! let output64 = rng.next_u64()
+//! let output64 = rng.next_u64();
 //! // gets 2 output bytes
 //! let mut out = [0u8; 2];
 //! rng.try_fill_bytes(&mut out).expect("");
@@ -33,15 +34,15 @@
 //! # Usage example for setting manually the PRNG seed
 //! ```
 //! use crypto::prng::{AesRng, SEED_SIZE};
-//! use rand::{RngCore, SeedableRng}
+//! use rand::{RngCore, SeedableRng};
 //! // seed is full of zeroes here, note this would be insecure
 //! // in an actual implementation
-//! let mut rng = AesRng::from_seed([0u8; SEED_SIZE])
+//! let mut rng = AesRng::from_seed([0u8; SEED_SIZE]);
 //!
 //! // gets 32 random bits
 //! let output32 = rng.next_u32();
 //! // gets 64 random bits
-//! let output64 = rng.next_u64()
+//! let output64 = rng.next_u64();
 //! ```
 //!
 //! For implementations of block cipher modes of operation see
@@ -265,14 +266,22 @@ mod tests {
         let key: Block128 = GenericArray::clone_from_slice(&seed);
         let cipher = Aes128::new(&key);
 
-        let block0 = GenericArray::clone_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0]);
-        let block1 = GenericArray::clone_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0]);
-        let block2 = GenericArray::clone_from_slice(&[2, 0, 0, 0, 0, 0, 0, 0]);
-        let block3 = GenericArray::clone_from_slice(&[3, 0, 0, 0, 0, 0, 0, 0]);
-        let block4 = GenericArray::clone_from_slice(&[4, 0, 0, 0, 0, 0, 0, 0]);
-        let block5 = GenericArray::clone_from_slice(&[5, 0, 0, 0, 0, 0, 0, 0]);
-        let block6 = GenericArray::clone_from_slice(&[6, 0, 0, 0, 0, 0, 0, 0]);
-        let block7 = GenericArray::clone_from_slice(&[7, 0, 0, 0, 0, 0, 0, 0]);
+        let block0 =
+            GenericArray::clone_from_slice(&[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let block1 =
+            GenericArray::clone_from_slice(&[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let block2 =
+            GenericArray::clone_from_slice(&[2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let block3 =
+            GenericArray::clone_from_slice(&[3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let block4 =
+            GenericArray::clone_from_slice(&[4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let block5 =
+            GenericArray::clone_from_slice(&[5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let block6 =
+            GenericArray::clone_from_slice(&[6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+        let block7 =
+            GenericArray::clone_from_slice(&[7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 
         let mut blocks = Block128x8::clone_from_slice(&[
             block0, block1, block2, block3, block4, block5, block6, block7,
@@ -294,7 +303,7 @@ mod tests {
         let _ = rng.next_u32();
         // check used_bytes increments properly
         // after obtaining a fresh state
-        assert_eq!(rng.state.used_bytes, 3);
+        assert_eq!(rng.state.used_bytes, 4);
     }
 
     #[test]
@@ -304,5 +313,4 @@ mod tests {
         let _ = rng.next_u32();
         let _ = rng.next_u64();
     }
-
 }
