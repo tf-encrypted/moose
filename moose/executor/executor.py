@@ -36,6 +36,7 @@ class AsyncExecutor:
             standard_ops.MulOperation: standard_kernels.MulKernel(),
             standard_ops.DivOperation: standard_kernels.DivKernel(),
             ring_ops.RingAddOperation: ring_kernels.RingAddKernel(),
+            ring_ops.RingDotOperation: ring_kernels.RingDotKernel(),
             ring_ops.RingMulOperation: ring_kernels.RingMulKernel(),
             ring_ops.RingSubOperation: ring_kernels.RingSubKernel(),
             ring_ops.RingShapeOperation: ring_kernels.RingShapeKernel(),

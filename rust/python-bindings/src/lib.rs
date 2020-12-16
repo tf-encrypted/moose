@@ -1,5 +1,5 @@
 use crypto::prng::AesRng;
-use crypto::ring::{Fill, Ring64Tensor};
+use crypto::ring::{Dot, Fill, Ring64Tensor};
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};
@@ -10,8 +10,9 @@ fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     Ring64Tensor(arr_wrap)
 }
 
-fn ring64_to_array(r: Ring64Tensor, shape: &[usize]) -> ArrayD<u64> {
+fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
     let inner_arr = r.0;
+    let shape = inner_arr.shape();
     let unwrapped = inner_arr.mapv(|x| x.0);
     unwrapped.into_shape(shape).unwrap()
 }
@@ -22,11 +23,10 @@ fn binary_pyfn<'py>(
     y: PyReadonlyArrayDyn<u64>,
     binary_op: impl Fn(Ring64Tensor, Ring64Tensor) -> Ring64Tensor,
 ) -> &'py PyArrayDyn<u64> {
-    let x_shape = x.shape();
     let x_ring = dynarray_to_ring64(&x);
     let y_ring = dynarray_to_ring64(&y);
     let res = binary_op(x_ring, y_ring);
-    let res_array = ring64_to_array(res, x_shape);
+    let res_array = ring64_to_array(res);
     res_array.to_pyarray(py)
 }
 
@@ -48,6 +48,19 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         y: PyReadonlyArrayDyn<u64>,
     ) -> &'py PyArrayDyn<u64> {
         binary_pyfn(py, x, y, |a, b| a * b)
+    }
+
+    #[pyfn(m, "ring_dot")]
+    fn ring_dot<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        y: PyReadonlyArrayDyn<u64>,
+    ) -> &'py PyArrayDyn<u64> {
+        let x_ring = dynarray_to_ring64(&x);
+        let y_ring = dynarray_to_ring64(&y);
+        let res = x_ring.dot(y_ring);
+        let res_array = ring64_to_array(res);
+        res_array.to_pyarray(py)
     }
 
     #[pyfn(m, "ring_sub")]
@@ -74,7 +87,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "ring_fill")]
     fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
         let res = Ring64Tensor::fill(&shape, el);
-        let res_array = ring64_to_array(res, &shape);
+        let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
 

@@ -16,7 +16,8 @@ impl Sample for Ring64Tensor {
         let mut rng = ChaCha20Rng::seed_from_u64(42);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
-        Ring64Tensor(ArrayD::from_shape_vec(IxDyn(shape), values).unwrap())
+        let ix = IxDyn(shape);
+        Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
     }
 }
 
@@ -27,6 +28,13 @@ pub trait Fill {
 impl Fill for Ring64Tensor {
     fn fill(shape: &[usize], el: u64) -> Self {
         Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
+    }
+}
+
+impl From<ArrayD<u64>> for Ring64Tensor {
+    fn from(a: ArrayD<u64>) -> Ring64Tensor {
+        let wrapped = a.mapv(Wrapping);
+        Ring64Tensor(wrapped)
     }
 }
 
@@ -47,24 +55,79 @@ impl From<&[u64]> for Ring64Tensor {
     }
 }
 
-impl Add<Ring64Tensor> for Ring64Tensor {
+impl Add for Ring64Tensor {
     type Output = Ring64Tensor;
-    fn add(self, other: Ring64Tensor) -> Self::Output {
+    fn add(self, other: Self) -> Self::Output {
         Ring64Tensor(self.0.add(other.0))
     }
 }
 
-impl Mul<Ring64Tensor> for Ring64Tensor {
+impl Mul for Ring64Tensor {
     type Output = Ring64Tensor;
-    fn mul(self, other: Ring64Tensor) -> Self::Output {
+    fn mul(self, other: Self) -> Self::Output {
         Ring64Tensor(self.0.mul(other.0))
     }
 }
 
-impl Sub<Ring64Tensor> for Ring64Tensor {
+impl Sub for Ring64Tensor {
     type Output = Ring64Tensor;
-    fn sub(self, other: Ring64Tensor) -> Self::Output {
+    fn sub(self, other: Self) -> Self::Output {
         Ring64Tensor(self.0.sub(other.0))
+    }
+}
+
+pub trait Dot<Rhs> {
+    type Output;
+    fn dot(self, rhs: Rhs) -> Self::Output;
+}
+
+impl Dot<Ring64Tensor> for Ring64Tensor {
+    type Output = Ring64Tensor;
+    fn dot(self, rhs: Ring64Tensor) -> Self::Output {
+        match self.0.ndim() {
+            1 => match rhs.0.ndim() {
+                1 => {
+                    let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                    let r = rhs.0.into_dimensionality::<Ix1>().unwrap();
+                    let res = Array::from_elem([], l.dot(&r))
+                        .into_dimensionality::<IxDyn>()
+                        .unwrap();
+                    Ring64Tensor(res)
+                }
+                2 => {
+                    let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                    let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
+                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                    Ring64Tensor(res)
+                }
+                other => panic!(
+                    "Dot<Ring64Tensor> cannot handle argument of rank {:?} ",
+                    other
+                ),
+            },
+            2 => match rhs.0.ndim() {
+                1 => {
+                    let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                    let r = rhs.0.into_dimensionality::<Ix1>().unwrap();
+                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                    Ring64Tensor(res)
+                }
+                2 => {
+                    let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                    let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
+                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                    Ring64Tensor(res)
+                }
+                other => panic!(
+                    "Dot<Ring64Tensor> cannot handle argument of rank {:?} ",
+                    other
+                ),
+            },
+            other => panic!(
+                "Dot<Ring64Tensor> not implemented for tensors of rank {:?}",
+                other
+            ),
+        }
     }
 }
 
@@ -106,6 +169,53 @@ mod tests {
         let c_shared = a_shared * b_shared;
         let c: Ring64Tensor = reconstruct(c_shared);
         assert_eq!(c, a * b);
+    }
+
+    #[test]
+    fn ring_matrix_vector_prod() {
+        let array_backing = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = Ring64Tensor::from(array_backing);
+        let y = Ring64Tensor::from(vec![1, 1]);
+        let z = x.dot(y);
+
+        let result = Ring64Tensor::from(vec![3, 7]);
+        assert_eq!(result, z)
+    }
+
+    #[test]
+    fn ring_matrix_matrix_prod() {
+        let x_backing = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y_backing = array![[1, 0], [0, 1]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = Ring64Tensor::from(x_backing);
+        let y = Ring64Tensor::from(y_backing);
+        let z = x.dot(y);
+
+        let r_backing = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let result = Ring64Tensor::from(r_backing);
+        assert_eq!(result, z)
+    }
+
+    #[test]
+    fn ring_vector_prod() {
+        let x_backing = vec![1, 2];
+        let y_backing = vec![1, 1];
+        let x = Ring64Tensor::from(x_backing);
+        let y = Ring64Tensor::from(y_backing);
+        let z = x.dot(y);
+
+        let r_backing = Array::from_elem([], Wrapping(3))
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let result = Ring64Tensor(r_backing);
+        assert_eq!(result, z)
     }
 
     #[test]

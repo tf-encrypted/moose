@@ -231,6 +231,62 @@ class ExecutorTest(parameterized.TestCase):
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(c, executor.store["z"])
 
+    @parameterized.parameters(
+        ([[1, 2], [3, 4]], [[1, 0], [0, 1]]),
+        ([[1, 2], [3, 4]], [1, 1]),
+        ([1, 1], [[1, 2], [3, 4]]),
+    )
+    def test_ring_dot_invocation(self, a, b):
+        x = np.array(a, dtype=np.uint64)
+        y = np.array(b, dtype=np.uint64)
+        exp = np.dot(x, y)
+
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                value=x,
+                output_type=standard_dialect.TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="y",
+                placement_name=alice.name,
+                inputs={},
+                value=y,
+                output_type=standard_dialect.TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            ring_dialect.RingDotOperation(
+                name="ring_dot",
+                placement_name=alice.name,
+                inputs={"lhs": "x", "rhs": "y"},
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "ring_dot"},
+                key="z",
+            )
+        )
+
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(exp, executor.store["z"])
+
 
 if __name__ == "__main__":
     unittest.main()
