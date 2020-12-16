@@ -28,9 +28,9 @@ from moose.executor.kernels.host import RunProgramKernel
 from moose.executor.kernels.mpspdz import MpspdzCallKernel
 from moose.executor.kernels.mpspdz import MpspdzLoadOutputKernel
 from moose.executor.kernels.mpspdz import MpspdzSaveInputKernel
-from moose.executor.kernels.replicated import RingAddKernel
-from moose.executor.kernels.replicated import RingMulKernel
-from moose.executor.kernels.replicated import RingSubKernel
+from moose.executor.kernels.ring import RingAddKernel
+from moose.executor.kernels.ring import RingMulKernel
+from moose.executor.kernels.ring import RingSubKernel
 from moose.executor.kernels.standard import AddKernel
 from moose.executor.kernels.standard import ConstantKernel
 from moose.executor.kernels.standard import DeserializeKernel
