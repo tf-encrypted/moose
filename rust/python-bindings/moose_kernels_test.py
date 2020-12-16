@@ -28,10 +28,7 @@ class SamplingOperations(parameterized.TestCase):
         for num_iterations in range(10):
             key = sample_key()
             assert len(key) == 16
-
-            for i in range(len(key)):
-                assert key[i] >= 0
-                assert key[i] < 256
+            assert isinstance(key, bytes)
 
 
 if __name__ == "__main__":
