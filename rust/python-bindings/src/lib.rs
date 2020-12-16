@@ -1,5 +1,5 @@
 use crypto::prng::AesRng;
-use crypto::ring::Ring64Tensor;
+use crypto::ring::{Fill, Ring64Tensor};
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};
@@ -69,6 +69,13 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn sample_key(py: Python) -> &PyBytes {
         let key: [u8; 16] = AesRng::generate_random_key();
         PyBytes::new(py, &key)
+    }
+
+    #[pyfn(m, "ring_fill")]
+    fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
+        let res = Ring64Tensor::fill(&shape, el);
+        let res_array = ring64_to_array(res, &shape);
+        res_array.to_pyarray(py)
     }
 
     Ok(())
