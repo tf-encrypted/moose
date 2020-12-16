@@ -126,9 +126,6 @@ mod tests {
     #[test]
     fn ring_fill() {
         let r = Ring64Tensor::fill(&[2], 1);
-        assert_eq!(
-            r,
-            Ring64Tensor::from(vec![1, 1])
-        )
+        assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
     }
 }
