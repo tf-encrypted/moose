@@ -2,6 +2,7 @@ from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
 from moose_kernels import ring_mul
+from moose_kernels import ring_sample
 from moose_kernels import ring_shape
 from moose_kernels import ring_sub
 
@@ -48,3 +49,9 @@ class RingFillKernel(Kernel):
     def execute_synchronous_block(self, op, session, shape):
         assert isinstance(op, FillTensorOperation)
         return ring_fill(shape, op.value)
+
+
+class RingSampleKernel(Kernel):
+    def execute_synchronous_block(self, op, session, shape, key):
+        assert isinstance(op, RingSampleOperation)
+        return ring_sample(shape, key)
