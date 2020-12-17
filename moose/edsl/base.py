@@ -173,6 +173,13 @@ def mul(lhs, rhs, placement=None):
     return BinaryOpExpression(op_name="mul", placement=placement, inputs=[lhs, rhs])
 
 
+def dot(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(op_name="dot", placement=placement, inputs=[lhs, rhs])
+
+
 def div(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)

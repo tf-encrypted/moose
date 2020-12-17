@@ -8,10 +8,11 @@ from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import AddOperation
+from moose.computation.standard import AddOperation, DotOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
+from moose.computation.standard import DotOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
@@ -168,6 +169,7 @@ class AstTracer:
             "sub": SubOperation,
             "mul": MulOperation,
             "div": DivOperation,
+            "dot": DotOperation,
         }[op_name]
         # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
         assert lhs_operation.output_type == rhs_operation.output_type

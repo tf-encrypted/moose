@@ -11,6 +11,7 @@ from moose.compiler.pruning import PruningPass
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
+from moose.compiler.ring import ring_dot
 from moose.compiler.ring import ring_mul
 from moose.compiler.ring import ring_sample
 from moose.compiler.ring import ring_shape
@@ -183,6 +184,20 @@ class ReplicatedLoweringPass:
         self.interpretations[op.name] = z
         return z
 
+    def lower_DotOperation(self, op):
+        assert isinstance(op, replicated_ops.DotOperation)
+        x = self.lower(op.inputs["lhs"])
+        y = self.lower(op.inputs["rhs"])
+        setup = self.lower(op.inputs["setup"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(y, ReplicatedTensor), type(y)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
+
+        z = replicated_dot(x, y, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
     def interpret_input_op(self, op):
         assert isinstance(op.output_type, TensorType)
         return StandardTensor(
@@ -193,6 +208,197 @@ class ReplicatedLoweringPass:
         )
 
 
+<<<<<<< HEAD:moose/compiler/replicated/lowering_pass.py
+=======
+class ReplicatedFromStandardOpsPass:
+    # This pass lowers all standard ops on replicated placements to their
+    # corresponding replicated ops, adding setup where needed.
+
+    def __init__(self):
+        self.computation = None
+        self.context = None
+        self.setup_cache = None
+
+    def run(self, computation, context):
+        self.computation = computation
+        self.context = context
+        self.setup_cache = dict()
+
+        ops_to_lower = []
+        for op in self.computation.operations.values():
+            if not isinstance(op, StandardOperation):
+                continue
+            op_placement = self.computation.placement(op.placement_name)
+            if not isinstance(op_placement, ReplicatedPlacement):
+                continue
+            ops_to_lower += [op.name]
+
+        for op_name in ops_to_lower:
+            self.process(op_name)
+        return self.computation, len(ops_to_lower) > 0
+
+    def process(self, op_name):
+        # process based on op type
+        op = self.computation.operation(op_name)
+        process_fn = getattr(self, f"process_{type(op).__name__}", None)
+        if process_fn is None:
+            raise NotImplementedError(f"{type(op)}")
+        process_fn(op)
+
+    def get_setup_op(self, placement_name):
+        cache_key = placement_name
+        if cache_key not in self.setup_cache:
+            setup_op = replicated_ops.SetupOperation(
+                name=self.context.get_fresh_name("replicated_setup"),
+                placement_name=placement_name,
+                inputs={},
+            )
+            self.computation.add_operation(setup_op)
+            self.setup_cache[cache_key] = setup_op
+        return self.setup_cache[cache_key]
+
+    def process_AddOperation(self, op):
+        assert isinstance(op, standard_ops.AddOperation)
+        new_inputs = op.inputs.copy()
+        assert "setup" not in new_inputs
+        new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_datatype = {"float": "fixed64"}[op.output_type.datatype]
+        new_op = replicated_ops.AddOperation(
+            name=self.context.get_fresh_name("replicated_add"),
+            placement_name=op.placement_name,
+            inputs=new_inputs,
+            output_type=ReplicatedTensorType(datatype=new_datatype),
+        )
+        self.computation.add_operation(new_op)
+        self.computation.rewire(op, new_op)
+        self.computation.remove_operation(op.name)
+
+    def process_MulOperation(self, op):
+        assert isinstance(op, standard_ops.MulOperation)
+        new_inputs = op.inputs.copy()
+        assert "setup" not in new_inputs
+        new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_datatype = {"float": "fixed64"}[op.output_type.datatype]
+        new_op = replicated_ops.MulOperation(
+            name=self.context.get_fresh_name("replicated_mul"),
+            placement_name=op.placement_name,
+            inputs=new_inputs,
+            output_type=ReplicatedTensorType(datatype=new_datatype),
+        )
+        self.computation.add_operation(new_op)
+        self.computation.rewire(op, new_op)
+        self.computation.remove_operation(op.name)
+
+    def process_DotOperation(self, op):
+        assert isinstance(op, standard_ops.DotOperation)
+        new_inputs = op.inputs.copy()
+        assert "setup" not in new_inputs
+        new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_datatype = {"float": "fixed64"}[op.output_type.datatype]
+        new_op = replicated_ops.DotOperation(
+            name=self.context.get_fresh_name("replicated_dot"),
+            placement_name=op.placement_name,
+            inputs=new_inputs,
+            output_type=ReplicatedTensorType(datatype=new_datatype),
+        )
+        self.computation.add_operation(new_op)
+        self.computation.rewire(op, new_op)
+        self.computation.remove_operation(op.name)
+
+
+class ReplicatedShareRevealPass:
+    def run(self, computation, context):
+        # find edges to replicated placements from other placements
+        share_edges = []
+        for dst_op in computation.operations.values():
+            dst_placement = computation.placement(dst_op.placement_name)
+            if not isinstance(dst_placement, ReplicatedPlacement):
+                continue
+            for input_key, src_op_name in dst_op.inputs.items():
+                src_op = computation.operation(src_op_name)
+                src_placement = computation.placement(src_op.placement_name)
+                if isinstance(src_placement, ReplicatedPlacement):
+                    continue
+                share_edges += [(src_op.name, dst_op.name, input_key)]
+
+        # find edges from replicated placements to other placements
+        reveal_edges = []
+        for dst_op in computation.operations.values():
+            dst_placement = computation.placement(dst_op.placement_name)
+            if isinstance(dst_placement, ReplicatedPlacement):
+                continue
+            for input_key, src_op_name in dst_op.inputs.items():
+                src_op = computation.operation(src_op_name)
+                src_placement = computation.placement(src_op.placement_name)
+                if not isinstance(src_placement, ReplicatedPlacement):
+                    continue
+                reveal_edges += [(src_op.name, dst_op.name, input_key)]
+
+        # insert share operations where needed
+        share_cache = dict()
+        for (src_op_name, dst_op_name, input_key) in share_edges:
+            src_op = computation.operation(src_op_name)
+            dst_op = computation.operation(dst_op_name)
+
+            # NOTE(Morten) assume that name of replicated placements is their identity
+            # TODO(Morten) verify everywhere that diff placement name => diff setup
+            cache_key = (src_op.name, dst_op.placement_name)
+
+            if cache_key not in share_cache:
+                datatype = {"float": "fixed64"}[src_op.output_type.datatype]
+                encode_op = replicated_ops.EncodeOperation(
+                    name=context.get_fresh_name("encode"),
+                    inputs={"value": src_op.name},
+                    placement_name=dst_op.placement_name,
+                    scaling_factor=2 ** 16,
+                    output_type=EncodedTensorType(datatype=datatype),
+                )
+                share_op = replicated_ops.ShareOperation(
+                    name=context.get_fresh_name("share"),
+                    inputs={"value": encode_op.name, "setup": dst_op.inputs["setup"]},
+                    placement_name=dst_op.placement_name,
+                    output_type=ReplicatedTensorType(datatype=datatype),
+                )
+                computation.add_operation(encode_op)
+                computation.add_operation(share_op)
+                share_cache[cache_key] = share_op
+
+            share_op = share_cache[cache_key]
+            dst_op.inputs[input_key] = share_op.name
+
+        reveal_cache = dict()
+        for (src_op_name, dst_op_name, input_key) in reveal_edges:
+            src_op = computation.operation(src_op_name)
+            dst_op = computation.operation(dst_op_name)
+
+            cache_key = (src_op.name, dst_op.placement_name)
+            if cache_key not in reveal_cache:
+                reveal_op = replicated_ops.RevealOperation(
+                    name=context.get_fresh_name("reveal"),
+                    inputs={"value": src_op.name, "setup": src_op.inputs["setup"]},
+                    placement_name=src_op.placement_name,
+                    recipient_name=dst_op.placement_name,
+                    output_type=EncodedTensorType(datatype=src_op.output_type.datatype),
+                )
+                datatype = {"fixed64": "float"}[src_op.output_type.datatype]
+                decode_op = replicated_ops.DecodeOperation(
+                    name=context.get_fresh_name("decode"),
+                    inputs={"value": reveal_op.name},
+                    placement_name=src_op.placement_name,
+                    output_type=TensorType(datatype=datatype),
+                    scaling_factor=2 ** 16,
+                )
+                computation.add_operation(reveal_op)
+                computation.add_operation(decode_op)
+                reveal_cache[cache_key] = decode_op
+
+            reveal_op = reveal_cache[cache_key]
+            dst_op.inputs[input_key] = reveal_op.name
+
+        return computation, True
+
+
+>>>>>>> 17198de... first attempt at replicated dot prod driven by edsl:moose/compiler/replicated.py
 @dataclass
 class ReplicatedTensor:
     shares0: Tuple[RingTensor, RingTensor]
@@ -404,6 +610,74 @@ def replicated_mul(
         z_shares[i] = ring_add(
             z_shares[i],
             ring_mul(x_shares[i][1], y_shares[i][0], placement_name=players[i]),
+            placement_name=players[i],
+        )
+
+    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
+
+    def generate_zero_share():
+        sampled_shares = list()
+        for i in range(3):
+            sampled_shares.append(
+                [
+                    ring_sample(
+                        z_shares[i].shape,
+                        synced_seeds.seeds[i][j],
+                        placement_name=players[i],
+                    )
+                    for j in range(2)
+                ]
+            )
+
+        sub_shares = [None] * 3
+        for i in range(3):
+            sub_shares[i] = ring_sub(
+                sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
+            )
+
+        return sub_shares  # alpha, beta, gamma
+
+    zero_shares = generate_zero_share()
+    z_shares = [
+        ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
+        for i in range(3)
+    ]
+    return ReplicatedTensor(
+        shares0=(z_shares[2], z_shares[0]),
+        shares1=(z_shares[0], z_shares[1]),
+        shares2=(z_shares[1], z_shares[2]),
+        computation=computation,
+        context=context,
+    )
+
+
+def replicated_dot(
+    x: ReplicatedTensor, y: ReplicatedTensor, setup: ReplicatedSetup, placement_name
+) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(y, ReplicatedTensor)
+    assert isinstance(setup, ReplicatedSetup)
+
+    assert x.computation == y.computation
+    assert x.context == y.context
+
+    computation = x.computation
+    context = x.context
+
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    players = replicated_placement.player_names
+
+    x_shares = [x.shares0, x.shares1, x.shares2]
+    y_shares = [y.shares0, y.shares1, y.shares2]
+    z_shares = [None, None, None]
+
+    for i in range(3):
+        z_shares[i] = ring_dot(x_shares[i][0], y_shares[i][0], players[i])
+        z_shares[i] = ring_add(
+            z_shares[i],
+            ring_dot(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
             placement_name=players[i],
         )
 

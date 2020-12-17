@@ -2,6 +2,7 @@ from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import constant
 from moose.edsl.base import div
+from moose.edsl.base import dot
 from moose.edsl.base import function
 from moose.edsl.base import host_placement
 from moose.edsl.base import load
