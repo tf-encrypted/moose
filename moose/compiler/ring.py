@@ -57,7 +57,7 @@ def ring_sample(shape: Shape, seed: Seed, placement_name):
         RingSampleOperation(
             name=shape.context.get_fresh_name("ring_sample"),
             placement_name=placement_name,
-            inputs={"shape": shape.op.name, "key": seed.op.name},
+            inputs={"shape": shape.op.name, "seed": seed.op.name},
         )
     )
     return RingTensor(

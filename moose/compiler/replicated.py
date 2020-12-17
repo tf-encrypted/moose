@@ -402,7 +402,7 @@ class SetupContext:
 
 @dataclass
 class ReplicatedBaseSetup:
-    keys: [Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
+    keys: Tuple[Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
     context: SetupContext
 
 
@@ -413,7 +413,7 @@ class ReplicatedSetup(ReplicatedBaseSetup):
 
 @dataclass
 class ReplicatedSynchronizedSeeds:
-    seeds: [Tuple[Seed, Seed], Tuple[Seed, Seed], Tuple[Seed, Seed]]
+    seeds: Tuple[Tuple[Seed, Seed], Tuple[Seed, Seed], Tuple[Seed, Seed]]
 
 
 def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
