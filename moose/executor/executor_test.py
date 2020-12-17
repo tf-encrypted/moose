@@ -298,7 +298,7 @@ class ExecutorTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=(2, 2),
-                output_type=standard_dialect.ShapeType,
+                output_type=standard_dialect.ShapeType(),
             )
         )
         comp.add_operation(
