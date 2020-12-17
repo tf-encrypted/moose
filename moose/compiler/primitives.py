@@ -29,7 +29,7 @@ class Seed:
     op: Operation
 
 
-def derive_seed(key: PRFKey, nonce: str, placement_name, computation, context):
+def derive_seed(key: PRFKey, nonce: bytes, placement_name, computation, context):
     seed_op = computation.add_operation(
         DeriveSeedOperation(
             name=context.get_fresh_name("derive_seed"),
