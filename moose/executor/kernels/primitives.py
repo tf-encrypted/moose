@@ -11,6 +11,7 @@ class SampleKeyKernel(Kernel):
         assert isinstance(op, SampleKeyOperation)
         return sample_key()
 
+
 class DeriveSeedKernel(Kernel):
     def execute_synchronous_block(self, op, session, key):
         assert isinstance(op, DeriveSeedOperation)

@@ -328,7 +328,6 @@ class ExecutorTest(parameterized.TestCase):
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(expected, executor.store["x_filled"])
 
-
     def test_derive_seed(self):
         nonce = bytes("hello", "utf-8")
         key = bytes("abcdefghijklmnop", "utf-8")
@@ -345,10 +344,18 @@ class ExecutorTest(parameterized.TestCase):
         )
         comp.add_operation(
             primitives_dialect.DeriveSeedOperation(
-                name="derive_seed",
+                name="derived_seed",
                 placement_name=alice.name,
                 inputs={"key": "key"},
                 nonce=nonce,
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "derived_seed"},
+                key="seed",
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -359,6 +366,7 @@ class ExecutorTest(parameterized.TestCase):
             session_id="0123456789",
         )
         asyncio.get_event_loop().run_until_complete(task)
+        assert len(executor.store["seed"]) == 16
 
 
 if __name__ == "__main__":
