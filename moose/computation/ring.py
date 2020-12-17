@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from moose.computation.base import Operation
 from moose.computation.base import ValueType
 from moose.computation.standard import ShapeType
-from moose.computation.standard import TensorType
 
 
 @dataclass
@@ -14,16 +13,6 @@ class RingTensorType(ValueType):
 @dataclass
 class RingOperation(Operation):
     pass
-
-
-@dataclass
-class RingFromOperation(RingOperation):
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class RingIntoOperation(RingOperation):
-    output_type: ValueType = TensorType(datatype="int64")
 
 
 @dataclass
@@ -57,6 +46,6 @@ class RingSampleOperation(RingOperation):
 
 
 @dataclass
-class FillTensorOperation(Operation):
+class FillTensorOperation(RingOperation):
     value: int
     output_type: ValueType = RingTensorType()

@@ -29,11 +29,6 @@ class StandardOperation(Operation):
 
 
 @dataclass
-class CastOperation(StandardOperation):
-    output_type: ValueType
-
-
-@dataclass
 class InputOperation(StandardOperation):
     output_type: ValueType
 

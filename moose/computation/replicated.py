@@ -26,6 +26,11 @@ class ReplicatedTensorType(ValueType):
 
 
 @dataclass
+class EncodedTensorType(ValueType):
+    datatype: str
+
+
+@dataclass
 class ReplicatedOperation(Operation):
     pass
 
@@ -43,7 +48,7 @@ class ShareOperation(ReplicatedOperation):
 @dataclass
 class RevealOperation(ReplicatedOperation):
     recipient_name: str
-    output_type: ValueType = RingTensorType()
+    output_type: ValueType
 
 
 @dataclass
@@ -59,11 +64,22 @@ class MulOperation(ReplicatedOperation):
 @dataclass
 class EncodeOperation(ReplicatedOperation):
     scaling_factor: int
-    output_type: ValueType = RingTensorType()
+    output_type: ValueType
 
 
 @dataclass
 class DecodeOperation(ReplicatedOperation):
     scaling_factor: int
-    bound: int
+    output_type: ValueType
+
+
+@dataclass
+class FixedpointEncodeOperation(ReplicatedOperation):
+    scaling_factor: int
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class FixedpointDecodeOperation(ReplicatedOperation):
+    scaling_factor: int
     output_type: ValueType

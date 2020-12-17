@@ -1,6 +1,8 @@
 import argparse
 import logging
 
+import numpy as np
+
 from moose.edsl import add
 from moose.edsl import computation
 from moose.edsl import constant
@@ -30,10 +32,10 @@ rep = replicated_placement(name="rep", players=[alice, bob, carole])
 def my_comp():
 
     with alice:
-        x = constant(1)
+        x = constant(np.array([1], dtype=np.float64))
 
     with bob:
-        y = constant(2)
+        y = constant(np.array([2], dtype=np.float64))
 
     with rep:
         z = add(x, y)
@@ -45,6 +47,7 @@ def my_comp():
 
 
 concrete_comp = trace(my_comp)
+
 
 if __name__ == "__main__":
     runtime = TestRuntime()
