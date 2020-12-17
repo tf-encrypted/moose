@@ -73,6 +73,7 @@ const PIPELINES_U128: u128 = 8;
 const PIPELINES_USIZE: usize = 8;
 const STATE_SIZE: usize = PIPELINES_USIZE * AES_BLK_SIZE;
 pub const SEED_SIZE: usize = AES_BLK_SIZE;
+pub type PRNGSeed = [u8; SEED_SIZE];
 
 type Block128 = GenericArray<u8, U16>;
 type Block128x8 = GenericArray<Block128, U8>;
@@ -147,8 +148,7 @@ pub struct AesRng {
 }
 
 impl SeedableRng for AesRng {
-    type Seed = [u8; SEED_SIZE];
-
+    type Seed = PRNGSeed;
     /// Ideally this should be passed as a reference as we want
     /// to avoid copying the seed around. However this is probably going
     /// to be used few times, by default we should go with AesRng::from_random_seed

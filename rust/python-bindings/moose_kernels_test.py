@@ -1,6 +1,9 @@
+import random
+
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
+from moose_kernels import derive_seed
 from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
@@ -47,6 +50,31 @@ class SamplingOperations(parameterized.TestCase):
         key = sample_key()
         assert len(key) == 16
         assert isinstance(key, bytes)
+
+    @parameterized.parameters(
+        (b"0"), (b"1"), (b"123456"),
+    )
+    def test_expand_seed(self, nonce):
+        key = sample_key()
+        seed0 = derive_seed(key, nonce)
+        seed1 = derive_seed(key, nonce)
+
+        assert len(seed0) == 16
+        assert len(seed1) == 16
+
+        assert isinstance(seed0, bytes)
+        assert isinstance(seed1, bytes)
+
+        # check determinism
+        assert seed0 == seed1
+
+        # check non-determinism
+        assert derive_seed(sample_key(), nonce) != derive_seed(sample_key(), nonce)
+        assert derive_seed(
+            key, random.randint(0, 2 ** 128).to_bytes(16, byteorder="little")
+        ) != derive_seed(
+            key, random.randint(0, 2 ** 128).to_bytes(16, byteorder="little")
+        )
 
 
 class FillOp(parameterized.TestCase):
