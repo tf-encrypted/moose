@@ -86,7 +86,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "derive_seed")]
-    fn derive_seed<'a>(py: Python, seed: &'a PyBytes, nonce: u128) -> PyObject {
+    fn derive_seed(py: Python, seed: &PyBytes, nonce: u128) -> PyObject {
         // (Dragos) for some unknow reason pyo3 doesn't support returing a PyBytes type without a lifetime attached to it
         // https://users.rust-lang.org/t/pyo3-best-way-to-return-bytes-from-function-call/46577/3
         let new_seed = utils::derive_seed(seed.as_bytes(), nonce);

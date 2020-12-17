@@ -1,6 +1,7 @@
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
+from moose_kernels import derive_seed
 from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
@@ -8,7 +9,6 @@ from moose_kernels import ring_mul
 from moose_kernels import ring_shape
 from moose_kernels import ring_sub
 from moose_kernels import sample_key
-from moose_kernels import derive_seed
 
 
 class BinaryOp(parameterized.TestCase):
@@ -50,9 +50,7 @@ class SamplingOperations(parameterized.TestCase):
         assert isinstance(key, bytes)
 
     @parameterized.parameters(
-        (0),
-        (1),
-        (2**127),
+        (0), (1), (2 ** 127),
     )
     def test_expand_seed(self, nonce):
         key = sample_key()
@@ -66,7 +64,7 @@ class SamplingOperations(parameterized.TestCase):
         assert isinstance(seed1, bytes)
 
         # check determinism
-        assert(seed0 == seed1)
+        assert seed0 == seed1
 
         key2 = sample_key()
 
