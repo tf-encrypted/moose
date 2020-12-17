@@ -1,19 +1,22 @@
 use ndarray::prelude::*;
 use rand::prelude::*;
-use rand_chacha::ChaCha20Rng;
+use std::convert::TryInto;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Sub};
+
+use crate::prng::{AesRng, PRNGSeed};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
 
 pub trait Sample {
-    fn sample_uniform(shape: &[usize]) -> Self;
+    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
 }
 
 impl Sample for Ring64Tensor {
-    fn sample_uniform(shape: &[usize]) -> Self {
-        let mut rng = ChaCha20Rng::seed_from_u64(42);
+    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
+        let seed: PRNGSeed = key.try_into().unwrap();
+        let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape);
@@ -220,15 +223,16 @@ mod tests {
 
     #[test]
     fn ring_sample() {
-        let r = Ring64Tensor::sample_uniform(&[5]);
+        let key = [0u8; 16];
+        let r = Ring64Tensor::sample_uniform(&[5], &key);
         assert_eq!(
             r,
             Ring64Tensor::from(vec![
-                9482535800248027256,
-                7566832397956113305,
-                1804347359131428821,
-                3088291667719571736,
-                3009633425676235349
+                4263935709876578662,
+                3326810793440857224,
+                17325099178452873543,
+                15208531650305571673,
+                9619880027406922172
             ])
         );
     }

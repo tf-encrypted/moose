@@ -8,6 +8,7 @@ from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
 from moose_kernels import ring_mul
+from moose_kernels import ring_sample
 from moose_kernels import ring_shape
 from moose_kernels import ring_sub
 from moose_kernels import sample_key
@@ -75,6 +76,10 @@ class SamplingOperations(parameterized.TestCase):
         ) != derive_seed(
             key, random.randint(0, 2 ** 128).to_bytes(16, byteorder="little")
         )
+
+    def test_sample(self):
+        actual = ring_sample((2, 2), sample_key())
+        assert ring_shape(actual) == [2, 2]
 
 
 class FillOp(parameterized.TestCase):
