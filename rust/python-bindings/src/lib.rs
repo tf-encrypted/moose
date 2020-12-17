@@ -100,7 +100,11 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "ring_sample")]
-    fn ring_sample<'py>(py: Python<'py>, shape: Vec<usize>, seed: &'py PyBytes) -> &'py PyArrayDyn<u64> {
+    fn ring_sample<'py>(
+        py: Python<'py>,
+        shape: Vec<usize>,
+        seed: &'py PyBytes,
+    ) -> &'py PyArrayDyn<u64> {
         let res = Ring64Tensor::sample_uniform(&shape, &seed.as_bytes());
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)

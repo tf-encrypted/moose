@@ -1,7 +1,7 @@
 use ndarray::prelude::*;
 use rand::prelude::*;
-use std::num::Wrapping;
 use std::convert::TryInto;
+use std::num::Wrapping;
 use std::ops::{Add, Mul, Sub};
 
 use crate::prng::{AesRng, PRNGSeed};
@@ -228,8 +228,12 @@ mod tests {
         assert_eq!(
             r,
             Ring64Tensor::from(vec![
-                4263935709876578662, 3326810793440857224, 17325099178452873543, 15208531650305571673, 9619880027406922172]
-            )
+                4263935709876578662,
+                3326810793440857224,
+                17325099178452873543,
+                15208531650305571673,
+                9619880027406922172
+            ])
         );
     }
 
