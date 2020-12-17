@@ -563,6 +563,11 @@ def replicated_mul(
             ring_mul(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
             placement_name=players[i],
         )
+        z_shares[i] = ring_add(
+            z_shares[i],
+            ring_mul(x_shares[i][1], y_shares[i][0], placement_name=players[i]),
+            placement_name=players[i]
+        )
 
     synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
 
