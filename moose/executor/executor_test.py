@@ -287,6 +287,46 @@ class ExecutorTest(parameterized.TestCase):
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(exp, executor.store["z"])
 
+    def test_fill(self):
+        expected = np.full((2, 2), 1)
+
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="x_shape",
+                placement_name=alice.name,
+                inputs={},
+                value=(2, 2),
+                output_type=standard_dialect.ShapeType(),
+            )
+        )
+        comp.add_operation(
+            ring_dialect.FillTensorOperation(
+                name="x",
+                placement_name=alice.name,
+                value=1,
+                inputs={"shape": "x_shape"},
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "x"},
+                key="x_filled",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(expected, executor.store["x_filled"])
+
 
 if __name__ == "__main__":
     unittest.main()
