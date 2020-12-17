@@ -1,13 +1,14 @@
 use sha3::{Digest, Sha3_256};
 
 // TODO(Dragos) replace the constant 16 with a seed_size
-pub fn derive_seed(key: &[u8], counter: u128) -> [u8;16] {
+pub fn derive_seed(key: &[u8], nonce: u128) -> [u8;16] {
     // create a SHA3-256 object
     let mut hasher = Sha3_256::new();
 
     // write input message
     hasher.update(key);
-    hasher.update(counter.to_le_bytes());
+    hasher.update("|");
+    hasher.update(nonce.to_le_bytes());
 
     // read hash digest and truncate to the first 16 bytes
     let mut output = [0u8; 16];

@@ -54,10 +54,10 @@ class SamplingOperations(parameterized.TestCase):
         (1),
         (2**127),
     )
-    def test_expand_seed(self, counter):
+    def test_expand_seed(self, nonce):
         key = sample_key()
-        seed0 = derive_seed(key, counter)
-        seed1 = derive_seed(key, counter)
+        seed0 = derive_seed(key, nonce)
+        seed1 = derive_seed(key, nonce)
 
         assert len(seed0) == 16
         assert len(seed1) == 16
@@ -71,7 +71,7 @@ class SamplingOperations(parameterized.TestCase):
         key2 = sample_key()
 
         # check non-determinism
-        assert derive_seed(key2, counter) != seed0
+        assert derive_seed(key2, nonce) != seed0
 
 
 class FillOp(parameterized.TestCase):
