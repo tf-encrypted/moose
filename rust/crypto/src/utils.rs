@@ -1,13 +1,14 @@
 use sodiumoxide::crypto::generichash;
 
-// TODO(Dragos) replace the constant 16 with a seed_size
-pub fn derive_seed(key: &[u8], nonce: &[u8]) -> [u8; 16] {
+use crate::prng::{PRNGSeed, SEED_SIZE};
+
+pub fn derive_seed(key: &[u8], nonce: &[u8]) -> PRNGSeed {
     let _ = sodiumoxide::init();
-    let mut hasher = generichash::State::new(16, Some(&key)).unwrap();
-    hasher.update(&nonce).unwrap();
+    let mut hasher = generichash::State::new(SEED_SIZE, Some(key)).unwrap();
+    hasher.update(nonce).unwrap();
     let h = hasher.finalize().unwrap();
 
-    let mut output = [0u8; 16];
+    let mut output: PRNGSeed = [0u8; SEED_SIZE];
     output.copy_from_slice(h.as_ref());
     output
 }
@@ -21,6 +22,6 @@ mod tests {
         let key = [0u8; 16];
         let nonce = [0u8; 16];
         let seed = derive_seed(&key, &nonce);
-        assert_eq!(seed.len(), 16);
+        assert_eq!(seed.len(), SEED_SIZE);
     }
 }

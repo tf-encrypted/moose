@@ -1,3 +1,5 @@
+import random
+
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -50,7 +52,7 @@ class SamplingOperations(parameterized.TestCase):
         assert isinstance(key, bytes)
 
     @parameterized.parameters(
-        (0), (1), (2 ** 127),
+        (b"0"), (b"1"), (b"123456"),
     )
     def test_expand_seed(self, nonce):
         key = sample_key()
@@ -66,10 +68,13 @@ class SamplingOperations(parameterized.TestCase):
         # check determinism
         assert seed0 == seed1
 
-        key2 = sample_key()
-
         # check non-determinism
-        assert derive_seed(key2, nonce) != seed0
+        assert derive_seed(sample_key(), nonce) != derive_seed(sample_key(), nonce)
+        assert derive_seed(
+            key, random.randint(0, 2 ** 128).to_bytes(16, byteorder="little")
+        ) != derive_seed(
+            key, random.randint(0, 2 ** 128).to_bytes(16, byteorder="little")
+        )
 
 
 class FillOp(parameterized.TestCase):
