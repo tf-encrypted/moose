@@ -10,22 +10,17 @@ from moose.compiler.primitives import sample_key
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
-from moose.compiler.ring import ring_from
 from moose.compiler.ring import ring_mul
 from moose.compiler.ring import ring_sample
 from moose.compiler.ring import ring_shape
 from moose.compiler.ring import ring_sub
 from moose.compiler.standard import StandardTensor
-from moose.compiler.standard import standard_cast
-from moose.compiler.standard import standard_mul
 from moose.computation import replicated as replicated_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
+from moose.computation.replicated import EncodedTensorType
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import ReplicatedTensorType
-from moose.computation.ring import RingAddOperation
-from moose.computation.ring import RingIntoOperation
-from moose.computation.ring import RingTensorType
 from moose.computation.standard import StandardOperation
 from moose.computation.standard import TensorType
 
@@ -110,7 +105,9 @@ class ReplicatedLoweringPass:
         assert isinstance(op, replicated_ops.DecodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, RingTensor)
-        y = replicated_decode(x, scaling_factor=op.scaling_factor, bound=op.bound)
+        y = replicated_decode(
+            x, scaling_factor=op.scaling_factor, datatype=op.output_type.datatype
+        )
         assert isinstance(y, StandardTensor), type(y)
         assert y.datatype in ["unknown", "int", "float"], y.datatype
         self.interpretations[op.name] = y
@@ -305,13 +302,14 @@ class ReplicatedShareRevealPass:
             cache_key = (src_op.name, dst_op.placement_name)
 
             if cache_key not in share_cache:
+                datatype = {"float": "fixed64"}[src_op.output_type.datatype]
                 encode_op = replicated_ops.EncodeOperation(
                     name=context.get_fresh_name("encode"),
                     inputs={"value": src_op.name},
                     placement_name=dst_op.placement_name,
                     scaling_factor=2 ** 16,
+                    output_type=EncodedTensorType(datatype=datatype),
                 )
-                datatype = {"float": "fixed64"}[src_op.output_type.datatype]
                 share_op = replicated_ops.ShareOperation(
                     name=context.get_fresh_name("share"),
                     inputs={"value": encode_op.name, "setup": dst_op.inputs["setup"]},
@@ -337,6 +335,7 @@ class ReplicatedShareRevealPass:
                     inputs={"value": src_op.name, "setup": src_op.inputs["setup"]},
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
+                    output_type=EncodedTensorType(datatype=src_op.output_type.datatype),
                 )
                 datatype = {"fixed64": "float"}[src_op.output_type.datatype]
                 decode_op = replicated_ops.DecodeOperation(
@@ -345,7 +344,6 @@ class ReplicatedShareRevealPass:
                     placement_name=src_op.placement_name,
                     output_type=TensorType(datatype=datatype),
                     scaling_factor=2 ** 16,
-                    bound=2 ** 30,
                 )
                 computation.add_operation(reveal_op)
                 computation.add_operation(decode_op)
@@ -368,90 +366,30 @@ class ReplicatedTensor:
 
 def replicated_encode(x: StandardTensor, scaling_factor) -> RingTensor:
     assert isinstance(x, StandardTensor)
-    scaling_factor_op = standard_ops.ConstantOperation(
-        name=x.context.get_fresh_name("scaling_factor"),
-        value=scaling_factor,
-        inputs={},
-        output_type=TensorType(datatype=x.datatype),
-        placement_name=x.op.placement_name,
+    encode_op = x.computation.add(
+        replicated_ops.FixedpointEncodeOperation(
+            name=x.context.get_fresh_name("encode"),
+            inputs={"value": x.op.name},
+            placement_name=x.op.placement_name,
+            scaling_factor=scaling_factor,
+        )
     )
-    x.computation.add(scaling_factor_op)
-    scaling_factor = StandardTensor(
-        datatype=x.datatype,
-        op=scaling_factor_op,
-        computation=x.computation,
-        context=x.context,
-    )
-    x = standard_mul(x, scaling_factor)
-    x = standard_cast(x, datatype="int64")
-    return ring_from(x)
+    return RingTensor(op=encode_op, computation=x.computation, context=x.context)
 
 
-def replicated_decode(x: RingTensor, scaling_factor, bound) -> StandardTensor:
+def replicated_decode(x: RingTensor, scaling_factor, datatype) -> StandardTensor:
     assert isinstance(x, RingTensor)
-    computation = x.computation
-    context = x.context
-    placement_name = x.op.placement_name
-
-    scaling_factor_op = standard_ops.ConstantOperation(
-        name=context.get_fresh_name("scaling_factor"),
-        value=scaling_factor,
-        inputs={},
-        placement_name=placement_name,
-        output_type=TensorType(datatype="float"),  # TODO float64
-    )
-    bound_op = standard_ops.ConstantOperation(
-        name=context.get_fresh_name("bound"),
-        value=bound,
-        inputs={},
-        placement_name=placement_name,
-        output_type=TensorType(datatype="int64"),
-    )
-
-    x_scaled_plus_bound = RingAddOperation(
-        name=context.get_fresh_name("ring_add"),
-        inputs={"lhs": x.op.name, "rhs": bound_op.name},
-        placement_name=placement_name,
-        output_type=RingTensorType(),
-    )
-    y_scaled_plus_bound = RingIntoOperation(
-        name=context.get_fresh_name("ring_into"),
-        inputs={"value": x_scaled_plus_bound.name},
-        placement_name=placement_name,
-        output_type=TensorType(datatype="int64"),
-    )
-    y_scaled = standard_ops.SubOperation(
-        name=context.get_fresh_name("sub"),
-        inputs={"lhs": y_scaled_plus_bound.name, "rhs": bound_op.name},
-        placement_name=placement_name,
-        output_type=TensorType(datatype="int64"),
-    )
-    z_scaled = standard_ops.CastOperation(
-        name=context.get_fresh_name("cast"),
-        inputs={"value": y_scaled.name},
-        placement_name=placement_name,
-        output_type=TensorType(datatype="float"),  # TODO "float64"
-    )
-    z_op = standard_ops.DivOperation(
-        name=context.get_fresh_name("div"),
-        inputs={"lhs": z_scaled.name, "rhs": scaling_factor_op.name},
-        placement_name=placement_name,
-        output_type=TensorType(datatype="float"),
-    )
-
-    computation.add_operations(
-        [
-            scaling_factor_op,
-            bound_op,
-            x_scaled_plus_bound,
-            y_scaled_plus_bound,
-            y_scaled,
-            z_scaled,
-            z_op,
-        ]
+    decode_op = x.computation.add(
+        replicated_ops.FixedpointDecodeOperation(
+            name=x.context.get_fresh_name("decode"),
+            inputs={"value": x.op.name},
+            placement_name=x.op.placement_name,
+            scaling_factor=scaling_factor,
+            output_type=TensorType(datatype=datatype),
+        )
     )
     return StandardTensor(
-        op=z_op, datatype="float", computation=computation, context=context
+        op=decode_op, datatype=datatype, computation=x.computation, context=x.context
     )
 
 

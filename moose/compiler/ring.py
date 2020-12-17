@@ -5,12 +5,10 @@ from typing import Optional
 
 from moose.compiler.primitives import Seed
 from moose.compiler.standard import Shape
-from moose.compiler.standard import StandardTensor
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.ring import FillTensorOperation
 from moose.computation.ring import RingAddOperation
-from moose.computation.ring import RingFromOperation
 from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
@@ -23,18 +21,6 @@ class RingTensor:
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
     shape: Optional[Shape] = None
-
-
-def ring_from(x: StandardTensor) -> RingTensor:
-    assert isinstance(x, StandardTensor)
-    assert x.datatype == "int64"
-    y_op = RingFromOperation(
-        name=x.context.get_fresh_name("ring_from"),
-        inputs={"value": x.op.name},
-        placement_name=x.op.placement_name,
-    )
-    x.computation.add(y_op)
-    return RingTensor(op=y_op, computation=x.computation, context=x.context)
 
 
 def ring_shape(tensor: RingTensor, placement_name):

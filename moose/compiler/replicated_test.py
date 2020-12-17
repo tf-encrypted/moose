@@ -7,10 +7,10 @@ from moose.computation import replicated as replicated_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
+from moose.computation.replicated import EncodedTensorType
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.replicated import ReplicatedSetupType
 from moose.computation.replicated import ReplicatedTensorType
-from moose.computation.replicated import RingTensorType
 from moose.computation.standard import TensorType
 
 
@@ -128,7 +128,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="encode_0",
                 inputs={"value": "alice_input"},
                 placement_name="rep",
-                output_type=RingTensorType(),
+                output_type=EncodedTensorType(datatype="fixed64"),
                 scaling_factor=2 ** 16,
             )
         )
@@ -137,7 +137,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="encode_1",
                 inputs={"value": "bob_input"},
                 placement_name="rep",
-                output_type=RingTensorType(),
+                output_type=EncodedTensorType(datatype="fixed64"),
                 scaling_factor=2 ** 16,
             )
         )
@@ -175,7 +175,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="dave",
                 placement_name="rep",
-                output_type=RingTensorType(),
+                output_type=EncodedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
@@ -185,7 +185,6 @@ class ReplicatedTest(parameterized.TestCase):
                 placement_name="rep",
                 output_type=TensorType(datatype="float"),
                 scaling_factor=2 ** 16,
-                bound=2 ** 30,
             )
         )
         expected_comp.add_operation(
@@ -207,7 +206,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="eric",
                 placement_name="rep",
-                output_type=RingTensorType(),
+                output_type=EncodedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
@@ -217,7 +216,6 @@ class ReplicatedTest(parameterized.TestCase):
                 placement_name="rep",
                 output_type=TensorType(datatype="float"),
                 scaling_factor=2 ** 16,
-                bound=2 ** 30,
             )
         )
         expected_comp.add_operation(

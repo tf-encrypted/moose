@@ -5,11 +5,13 @@ from typing import Any
 from moose.computation import host as host_ops
 from moose.computation import mpspdz as mpspdz_ops
 from moose.computation import primitives as primitives_ops
+from moose.computation import replicated as replicated_ops
 from moose.computation import ring as ring_ops
 from moose.computation import standard as standard_ops
 from moose.executor.kernels import host as host_kernels
 from moose.executor.kernels import mpspdz as mpspdz_kernels
 from moose.executor.kernels import primitives as primitives_kernels
+from moose.executor.kernels import replicated as replicated_kernels
 from moose.executor.kernels import ring as ring_kernels
 from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
@@ -55,6 +57,12 @@ class AsyncExecutor:
             mpspdz_ops.MpspdzCallOperation: mpspdz_kernels.MpspdzCallKernel(networking),
             mpspdz_ops.MpspdzLoadOutputOperation: (
                 mpspdz_kernels.MpspdzLoadOutputKernel()
+            ),
+            replicated_ops.FixedpointEncodeOperation: (
+                replicated_kernels.FixedpointEncodeKernel()
+            ),
+            replicated_ops.FixedpointDecodeOperation: (
+                replicated_kernels.FixedpointDecodeKernel()
             ),
         }
 
