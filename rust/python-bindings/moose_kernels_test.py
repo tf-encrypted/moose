@@ -8,6 +8,7 @@ from moose_kernels import ring_mul
 from moose_kernels import ring_shape
 from moose_kernels import ring_sub
 from moose_kernels import sample_key
+from moose_kernels import derive_seed
 
 
 class BinaryOp(parameterized.TestCase):
@@ -47,6 +48,30 @@ class SamplingOperations(parameterized.TestCase):
         key = sample_key()
         assert len(key) == 16
         assert isinstance(key, bytes)
+
+    @parameterized.parameters(
+        (0),
+        (1),
+        (2**127),
+    )
+    def test_expand_seed(self, counter):
+        key = sample_key()
+        seed0 = derive_seed(key, counter)
+        seed1 = derive_seed(key, counter)
+
+        assert len(seed0) == 16
+        assert len(seed1) == 16
+
+        assert isinstance(seed0, bytes)
+        assert isinstance(seed1, bytes)
+
+        # check determinism
+        assert(seed0 == seed1)
+
+        key2 = sample_key()
+
+        # check non-determinism
+        assert derive_seed(key2, counter) != seed0
 
 
 class FillOp(parameterized.TestCase):
