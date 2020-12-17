@@ -1,6 +1,6 @@
 use crypto::prng::AesRng;
-use crypto::utils;
 use crypto::ring::{Dot, Fill, Ring64Tensor};
+use crypto::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};
@@ -89,7 +89,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn derive_seed(py: Python, seed: &PyBytes, nonce: u128) -> PyObject {
         // (Dragos) for some unknow reason pyo3 doesn't support returing a PyBytes type without a lifetime attached to it
         // https://users.rust-lang.org/t/pyo3-best-way-to-return-bytes-from-function-call/46577/3
-        let new_seed = utils::derive_seed(seed.as_bytes(), nonce);
+        let new_seed = utils::derive_seed(seed.as_bytes(), &nonce.to_le_bytes());
         PyBytes::new(py, &new_seed).into()
     }
 
