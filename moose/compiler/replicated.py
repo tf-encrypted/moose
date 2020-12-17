@@ -440,7 +440,7 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
 def sample_synchronized_seeds(setup: ReplicatedSetup, placement_name):
     context = setup.context
     naming_context = setup.context.naming_context
-    nonce = naming_context.get_fresh_name("sync_nonce")
+    nonce = bytes(naming_context.get_fresh_name("sync_nonce"), "utf-8")
 
     def derive_seeds(key0: PRFKey, key1: PRFKey, placement_name):
         seed_0 = derive_seed(

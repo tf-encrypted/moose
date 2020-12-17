@@ -6,6 +6,7 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 
+from moose.computation import primitives as primitives_dialect
 from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
@@ -326,6 +327,38 @@ class ExecutorTest(parameterized.TestCase):
         )
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(expected, executor.store["x_filled"])
+
+
+    def test_derive_seed(self):
+        nonce = bytes("hello", "utf-8")
+        key = bytes("abcdefghijklmnop", "utf-8")
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="key",
+                placement_name=alice.name,
+                inputs={},
+                value=key,
+                output_type=primitives_dialect.PRFKeyType(),
+            )
+        )
+        comp.add_operation(
+            primitives_dialect.DeriveSeedOperation(
+                name="derive_seed",
+                placement_name=alice.name,
+                inputs={"key": "key"},
+                nonce=nonce,
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
 
 
 if __name__ == "__main__":
