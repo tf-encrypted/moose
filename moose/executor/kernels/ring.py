@@ -10,6 +10,7 @@ from moose.computation.ring import FillTensorOperation
 from moose.computation.ring import RingAddOperation
 from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
+from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
 from moose.computation.ring import RingSubOperation
 from moose.executor.kernels.base import Kernel
@@ -52,6 +53,6 @@ class RingFillKernel(Kernel):
 
 
 class RingSampleKernel(Kernel):
-    def execute_synchronous_block(self, op, session, shape, key):
+    def execute_synchronous_block(self, op, session, shape, seed):
         assert isinstance(op, RingSampleOperation)
-        return ring_sample(shape, key)
+        return ring_sample(shape, seed)
