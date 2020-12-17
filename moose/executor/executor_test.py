@@ -368,27 +368,17 @@ class ExecutorTest(parameterized.TestCase):
         asyncio.get_event_loop().run_until_complete(task)
         assert len(executor.store["seed"]) == 16
 
-
     def test_sample_ring(self):
-        nonce = bytes("hello", "utf-8")
-        key = bytes("abcdefghijklmnop", "utf-8")
+        seed = bytes("abcdefghijklmnop", "utf-8")
         comp = Computation(operations={}, placements={})
         alice = comp.add_placement(HostPlacement(name="alice"))
         comp.add_operation(
             standard_dialect.ConstantOperation(
-                name="key",
+                name="seed",
                 placement_name=alice.name,
                 inputs={},
-                value=key,
+                value=seed,
                 output_type=primitives_dialect.PRFKeyType(),
-            )
-        )
-        comp.add_operation(
-            primitives_dialect.DeriveSeedOperation(
-                name="derive_seed",
-                placement_name=alice.name,
-                inputs={"key": "key"},
-                nonce=nonce,
             )
         )
         comp.add_operation(
@@ -402,9 +392,17 @@ class ExecutorTest(parameterized.TestCase):
         )
         comp.add_operation(
             ring_dialect.RingSampleOperation(
-                name="x",
+                name="sampled",
                 placement_name=alice.name,
-                inputs={"shape": "x_shape", "key": "key"},
+                inputs={"shape": "x_shape", "seed": "seed"},
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "sampled"},
+                key="x_sampled",
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -415,7 +413,9 @@ class ExecutorTest(parameterized.TestCase):
             session_id="0123456789",
         )
         asyncio.get_event_loop().run_until_complete(task)
-        assert len(executor.store["x"]) == [2,2]
+        x = executor.store["x_sampled"]
+        assert x.shape == (2, 2)
+
 
 if __name__ == "__main__":
     unittest.main()
