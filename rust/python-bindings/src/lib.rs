@@ -1,5 +1,5 @@
+use crypto::fixedpoint::{ring_decode, ring_encode};
 use crypto::prng::AesRng;
-use crypto::replicated;
 use crypto::ring::{Dot, Fill, Ring64Tensor, Sample};
 use crypto::utils;
 use ndarray::ArrayD;
@@ -110,25 +110,25 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         res_array.to_pyarray(py)
     }
 
-    #[pyfn(m, "replicated_encode")]
-    fn replicated_encode<'py>(
+    #[pyfn(m, "fixedpoint_encode")]
+    fn fixedpoint_encode<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<f64>,
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<u64> {
         let x = x.as_array();
-        let y = replicated::fixedpoint_encode(&x, scaling_factor);
+        let y = ring_encode(&x, scaling_factor);
         ring64_to_array(y).to_pyarray(py)
     }
 
-    #[pyfn(m, "replicated_decode")]
-    fn replicated_decode<'py>(
+    #[pyfn(m, "fixedpoint_decode")]
+    fn fixedpoint_decode<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<f64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = replicated::fixedpoint_decode(&x_ring, scaling_factor);
+        let y = ring_decode(&x_ring, scaling_factor);
         y.to_pyarray(py)
     }
 

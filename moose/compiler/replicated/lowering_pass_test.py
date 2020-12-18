@@ -1,6 +1,11 @@
+import unittest
+
 from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
+from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
+from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
@@ -75,7 +80,13 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler()
+        compiler = Compiler(
+            passes=[
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                ReplicatedLoweringPass(),
+            ]
+        )
         comp = compiler.run_passes(comp)
 
         assert all(
@@ -149,10 +160,20 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler()
+        compiler = Compiler(
+            passes=[
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                ReplicatedLoweringPass(),
+            ]
+        )
         comp = compiler.run_passes(comp)
 
         assert all(
             isinstance(comp.placement(op.placement_name), HostPlacement)
             for op in comp.operations.values()
         )
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -7,6 +7,7 @@ from moose.compiler.primitives import PRFKey
 from moose.compiler.primitives import Seed
 from moose.compiler.primitives import derive_seed
 from moose.compiler.primitives import sample_key
+from moose.compiler.pruning import PruningPass
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
@@ -15,15 +16,16 @@ from moose.compiler.ring import ring_sample
 from moose.compiler.ring import ring_shape
 from moose.compiler.ring import ring_sub
 from moose.compiler.standard import StandardTensor
+from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
 from moose.computation.base import Computation
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
 
 
-# TODO(Morten) refactoring to not have this pass here
 class ReplicatedLoweringPass:
-    # This pass lowers replicated operations to ring operations.
+    """Lower replicated ops to ring ops.
+    """
 
     def __init__(self):
         self.interpretations = None
@@ -60,11 +62,11 @@ class ReplicatedLoweringPass:
                     # TODO(Morten) we could do a type check here for good measures
                     op.inputs[input_name] = new_op_name
 
-        # clean up computation by removing the old ops
-        for op_name in op_names_to_lower:
-            computation.remove_operation(op_name)
+        # prune old ops
+        pruning_pass = PruningPass()
+        computation, pruning_performed_changes = pruning_pass.run(computation, context)
 
-        performed_changes = len(op_names_to_lower) > 0
+        performed_changes = len(op_names_to_lower) > 0 or pruning_performed_changes
         return computation, performed_changes
 
     def lower(self, op_name):
@@ -88,21 +90,21 @@ class ReplicatedLoweringPass:
         return lowering_fn(op)
 
     def lower_EncodeOperation(self, op):
-        assert isinstance(op, replicated_ops.EncodeOperation)
+        assert isinstance(op, fixed_dialect.EncodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, StandardTensor)
         assert x.datatype in ["unknown", "int", "float"], x.datatype
-        y = replicated_encode(x, scaling_factor=op.scaling_factor)
+        y = replicated_encode(x, precision=op.precision)
         assert isinstance(y, RingTensor)
         self.interpretations[op.name] = y
         return y
 
     def lower_DecodeOperation(self, op):
-        assert isinstance(op, replicated_ops.DecodeOperation)
+        assert isinstance(op, fixed_dialect.DecodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, RingTensor)
         y = replicated_decode(
-            x, scaling_factor=op.scaling_factor, datatype=op.output_type.datatype
+            x, precision=op.precision, datatype=op.output_type.datatype
         )
         assert isinstance(y, StandardTensor), type(y)
         assert y.datatype in ["unknown", "int", "float"], y.datatype
@@ -188,27 +190,27 @@ class ReplicatedTensor:
     context: Any = field(repr=False)
 
 
-def replicated_encode(x: StandardTensor, scaling_factor) -> RingTensor:
+def replicated_encode(x: StandardTensor, precision) -> RingTensor:
     assert isinstance(x, StandardTensor)
     encode_op = x.computation.add(
-        replicated_ops.FixedpointEncodeOperation(
-            name=x.context.get_fresh_name("encode"),
+        fixed_dialect.RingEncodeOperation(
+            name=x.context.get_fresh_name("ring_encode"),
             inputs={"value": x.op.name},
             placement_name=x.op.placement_name,
-            scaling_factor=scaling_factor,
+            scaling_factor=2 ** precision,
         )
     )
     return RingTensor(op=encode_op, computation=x.computation, context=x.context)
 
 
-def replicated_decode(x: RingTensor, scaling_factor, datatype) -> StandardTensor:
+def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
     assert isinstance(x, RingTensor)
     decode_op = x.computation.add(
-        replicated_ops.FixedpointDecodeOperation(
+        fixed_dialect.RingDecodeOperation(
             name=x.context.get_fresh_name("decode"),
             inputs={"value": x.op.name},
             placement_name=x.op.placement_name,
-            scaling_factor=scaling_factor,
+            scaling_factor=2 ** precision,
             output_type=TensorType(datatype=datatype),
         )
     )

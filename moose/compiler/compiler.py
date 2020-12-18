@@ -1,31 +1,12 @@
 from collections import defaultdict
 
-from moose.compiler.host import HostApplyFunctionPass
-from moose.compiler.host import NetworkingPass
-from moose.compiler.mpspdz import MpspdzApplyFunctionPass
-from moose.compiler.pruning import PruningPass
 from moose.compiler.render import render_computation
-from moose.compiler.replicated import ReplicatedFromStandardOpsPass
-from moose.compiler.replicated import ReplicatedLoweringPass
-from moose.compiler.replicated import ReplicatedShareRevealPass
 from moose.computation.base import Computation
 
 
 class Compiler:
-    def __init__(self, passes=None):
-        self.passes = (
-            passes
-            if passes is not None
-            else [
-                MpspdzApplyFunctionPass(),
-                HostApplyFunctionPass(),
-                ReplicatedFromStandardOpsPass(),
-                ReplicatedShareRevealPass(),
-                ReplicatedLoweringPass(),
-                PruningPass(),
-                NetworkingPass(),
-            ]
-        )
+    def __init__(self, passes):
+        self.passes = passes
         self.name_counters = defaultdict(int)
 
     def run_passes(

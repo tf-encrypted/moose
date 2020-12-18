@@ -1,17 +1,16 @@
+import unittest
+
 from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
-from moose.compiler.replicated import ReplicatedFromStandardOpsPass
-from moose.compiler.replicated import ReplicatedShareRevealPass
-from moose.computation import replicated as replicated_ops
-from moose.computation import standard as standard_ops
+from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
+from moose.computation import fixedpoint as fixed_dialect
+from moose.computation import replicated as rep_dialect
+from moose.computation import standard as std_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.computation.replicated import EncodedTensorType
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.replicated import ReplicatedSetupType
-from moose.computation.replicated import ReplicatedTensorType
-from moose.computation.standard import TensorType
 
 
 class ReplicatedTest(parameterized.TestCase):
@@ -29,62 +28,60 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_placement(HostPlacement(name="eric"))
 
         comp.add_operation(
-            standard_ops.ConstantOperation(
+            std_dialect.ConstantOperation(
                 name="alice_input",
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         comp.add_operation(
-            standard_ops.ConstantOperation(
+            std_dialect.ConstantOperation(
                 name="bob_input",
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
 
         comp.add_operation(
-            standard_ops.AddOperation(
+            std_dialect.AddOperation(
                 name="add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         comp.add_operation(
-            standard_ops.AddOperation(
+            std_dialect.AddOperation(
                 name="add_dave",
                 inputs={"lhs": "add", "rhs": "add"},
                 placement_name="dave",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         comp.add_operation(
-            standard_ops.OutputOperation(
+            std_dialect.OutputOperation(
                 name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
             )
         )
         comp.add_operation(
-            standard_ops.AddOperation(
+            std_dialect.AddOperation(
                 name="add_eric",
                 inputs={"lhs": "add", "rhs": "add"},
                 placement_name="eric",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         comp.add_operation(
-            standard_ops.OutputOperation(
+            std_dialect.OutputOperation(
                 name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
             )
         )
 
-        compiler = Compiler(
-            passes=[ReplicatedFromStandardOpsPass(), ReplicatedShareRevealPass()]
-        )
+        compiler = Compiler(passes=[ReplicatedEncodingPass(), ReplicatedOpsPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
@@ -98,67 +95,71 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_placement(HostPlacement(name="eric"))
 
         expected_comp.add_operation(
-            standard_ops.ConstantOperation(
+            std_dialect.ConstantOperation(
                 name="alice_input",
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
-            standard_ops.ConstantOperation(
+            std_dialect.ConstantOperation(
                 name="bob_input",
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
-            replicated_ops.SetupOperation(
+            rep_dialect.SetupOperation(
                 name="replicated_setup_0",
                 inputs={},
                 placement_name="rep",
-                output_type=ReplicatedSetupType(),
+                output_type=rep_dialect.ReplicatedSetupType(),
             )
         )
         expected_comp.add_operation(
-            replicated_ops.EncodeOperation(
-                name="encode_0",
+            fixed_dialect.EncodeOperation(
+                name="encode_2",
                 inputs={"value": "alice_input"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64"),
-                scaling_factor=2 ** 16,
+                output_type=fixed_dialect.EncodedTensorType(
+                    datatype="fixed64", precision=16
+                ),
+                precision=16,
             )
         )
         expected_comp.add_operation(
-            replicated_ops.EncodeOperation(
-                name="encode_1",
+            fixed_dialect.EncodeOperation(
+                name="encode_3",
                 inputs={"value": "bob_input"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64"),
-                scaling_factor=2 ** 16,
+                output_type=fixed_dialect.EncodedTensorType(
+                    datatype="fixed64", precision=16
+                ),
+                precision=16,
             )
         )
         expected_comp.add_operation(
-            replicated_ops.ShareOperation(
+            rep_dialect.ShareOperation(
                 name="share_0",
-                inputs={"setup": "replicated_setup_0", "value": "encode_0"},
+                inputs={"setup": "replicated_setup_0", "value": "encode_2"},
                 placement_name="rep",
-                output_type=ReplicatedTensorType(datatype="fixed64"),
+                output_type=rep_dialect.ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
-            replicated_ops.ShareOperation(
+            rep_dialect.ShareOperation(
                 name="share_1",
-                inputs={"setup": "replicated_setup_0", "value": "encode_1"},
+                inputs={"setup": "replicated_setup_0", "value": "encode_3"},
                 placement_name="rep",
-                output_type=ReplicatedTensorType(datatype="fixed64"),
+                output_type=rep_dialect.ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
-            replicated_ops.AddOperation(
+            rep_dialect.AddOperation(
                 name="replicated_add_0",
                 inputs={
                     "setup": "replicated_setup_0",
@@ -166,68 +167,72 @@ class ReplicatedTest(parameterized.TestCase):
                     "rhs": "share_1",
                 },
                 placement_name="rep",
-                output_type=ReplicatedTensorType(datatype="fixed64"),
+                output_type=rep_dialect.ReplicatedTensorType(datatype="fixed64"),
             )
         )
         expected_comp.add_operation(
-            replicated_ops.RevealOperation(
+            rep_dialect.RevealOperation(
                 name="reveal_0",
                 inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="dave",
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64"),
+                output_type=fixed_dialect.EncodedTensorType(
+                    datatype="fixed64", precision=16
+                ),
             )
         )
         expected_comp.add_operation(
-            replicated_ops.DecodeOperation(
-                name="decode_0",
+            fixed_dialect.DecodeOperation(
+                name="decode_2",
                 inputs={"value": "reveal_0"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
-                scaling_factor=2 ** 16,
+                output_type=std_dialect.TensorType(datatype="float"),
+                precision=16,
             )
         )
         expected_comp.add_operation(
-            standard_ops.AddOperation(
+            std_dialect.AddOperation(
                 name="add_dave",
-                inputs={"lhs": "decode_0", "rhs": "decode_0"},
+                inputs={"lhs": "decode_2", "rhs": "decode_2"},
                 placement_name="dave",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
-            standard_ops.OutputOperation(
+            std_dialect.OutputOperation(
                 name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
             )
         )
         expected_comp.add_operation(
-            replicated_ops.RevealOperation(
+            rep_dialect.RevealOperation(
                 name="reveal_1",
                 inputs={"setup": "replicated_setup_0", "value": "replicated_add_0"},
                 recipient_name="eric",
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64"),
+                output_type=fixed_dialect.EncodedTensorType(
+                    datatype="fixed64", precision=16
+                ),
             )
         )
         expected_comp.add_operation(
-            replicated_ops.DecodeOperation(
-                name="decode_1",
+            fixed_dialect.DecodeOperation(
+                name="decode_3",
                 inputs={"value": "reveal_1"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
-                scaling_factor=2 ** 16,
+                output_type=std_dialect.TensorType(datatype="float"),
+                precision=16,
             )
         )
         expected_comp.add_operation(
-            standard_ops.AddOperation(
+            std_dialect.AddOperation(
                 name="add_eric",
-                inputs={"lhs": "decode_1", "rhs": "decode_1"},
+                inputs={"lhs": "decode_3", "rhs": "decode_3"},
                 placement_name="eric",
-                output_type=TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(datatype="float"),
             )
         )
         expected_comp.add_operation(
-            standard_ops.OutputOperation(
+            std_dialect.OutputOperation(
                 name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
             )
         )
@@ -235,3 +240,7 @@ class ReplicatedTest(parameterized.TestCase):
         assert comp.placements == expected_comp.placements
         assert comp.operations == expected_comp.operations
         assert comp == expected_comp
+
+
+if __name__ == "__main__":
+    unittest.main()

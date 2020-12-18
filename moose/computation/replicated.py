@@ -4,7 +4,6 @@ from typing import List
 from moose.computation.base import Operation
 from moose.computation.base import Placement
 from moose.computation.base import ValueType
-from moose.computation.ring import RingTensorType
 
 
 @dataclass
@@ -22,11 +21,6 @@ class ReplicatedSetupType(ValueType):
 
 @dataclass
 class ReplicatedTensorType(ValueType):
-    datatype: str
-
-
-@dataclass
-class EncodedTensorType(ValueType):
     datatype: str
 
 
@@ -60,28 +54,4 @@ class AddOperation(ReplicatedOperation):
 
 @dataclass
 class MulOperation(ReplicatedOperation):
-    output_type: ValueType
-
-
-@dataclass
-class EncodeOperation(ReplicatedOperation):
-    scaling_factor: int
-    output_type: ValueType
-
-
-@dataclass
-class DecodeOperation(ReplicatedOperation):
-    scaling_factor: int
-    output_type: ValueType
-
-
-@dataclass
-class FixedpointEncodeOperation(ReplicatedOperation):
-    scaling_factor: int
-    output_type: ValueType = RingTensorType()
-
-
-@dataclass
-class FixedpointDecodeOperation(ReplicatedOperation):
-    scaling_factor: int
     output_type: ValueType

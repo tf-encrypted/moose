@@ -2,6 +2,13 @@ import inspect
 from collections import defaultdict
 
 from moose.compiler.compiler import Compiler
+from moose.compiler.host import HostApplyFunctionPass
+from moose.compiler.host import NetworkingPass
+from moose.compiler.mpspdz import MpspdzApplyFunctionPass
+from moose.compiler.pruning import PruningPass
+from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
+from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation.base import Computation
 from moose.computation.base import UnknownType
 from moose.computation.host import HostPlacement
@@ -47,8 +54,19 @@ def trace(abstract_computation, compiler_passes=None, render=False):
     expression = abstract_computation.func(*symbolic_args)
     tracer = AstTracer()
     logical_comp = tracer.trace(expression)
+
+    compiler_passes = compiler_passes or [
+        MpspdzApplyFunctionPass(),
+        HostApplyFunctionPass(),
+        ReplicatedEncodingPass(),
+        ReplicatedOpsPass(),
+        ReplicatedLoweringPass(),
+        PruningPass(),
+        NetworkingPass(),
+    ]
     compiler = Compiler(passes=compiler_passes)
     physical_comp = compiler.run_passes(logical_comp, render=render)
+
     for op in physical_comp.operations.values():
         get_logger().debug(f"Computation: {op}")
     return physical_comp
@@ -61,15 +79,18 @@ class AstTracer:
         self.operation_cache = dict()
         self.placement_cache = dict()
 
-    def trace(self, expression: Expression) -> Computation:
-        op = self.visit(expression)
-        self.computation.add_operation(
-            OutputOperation(
-                name=self.get_fresh_name("output"),
-                inputs={"value": op.name},
-                placement_name=op.placement_name,
+    def trace(self, expressions: Expression) -> Computation:
+        if not isinstance(expressions, (tuple, list)):
+            expressions = [expressions]
+        for expression in expressions:
+            op = self.visit(expression)
+            self.computation.add_operation(
+                OutputOperation(
+                    name=self.get_fresh_name("output"),
+                    inputs={"value": op.name},
+                    placement_name=op.placement_name,
+                )
             )
-        )
         return self.computation
 
     def get_fresh_name(self, prefix):
