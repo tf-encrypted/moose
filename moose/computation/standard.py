@@ -25,7 +25,9 @@ class ShapeType(ValueType):
 
 @dataclass
 class StandardOperation(Operation):
-    pass
+    @property
+    def dialect(self):
+        return "std"
 
 
 @dataclass

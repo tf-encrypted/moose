@@ -39,7 +39,10 @@ def render_computation(
         placement_type = type(placement).__name__
         if placement_type.endswith("Placement"):
             placement_type = placement_type[: -len("Placement")]
-        node_label = f"{op.name}: {op_type}\n" f"@{placement.name}: {placement_type}"
+        node_label = (
+            f"{op.name}: {op.dialect}::{op_type}\n"
+            f"@{placement.name}: {placement_type}"
+        )
         dot.node(
             op.name,
             node_label,

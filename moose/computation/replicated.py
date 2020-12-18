@@ -32,7 +32,9 @@ class EncodedTensorType(ValueType):
 
 @dataclass
 class ReplicatedOperation(Operation):
-    pass
+    @property
+    def dialect(self):
+        return "rep"
 
 
 @dataclass

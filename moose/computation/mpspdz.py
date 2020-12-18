@@ -17,14 +17,21 @@ class MpspdzPlacement(Placement):
 
 
 @dataclass
-class MpspdzSaveInputOperation(Operation):
+class MpspdzOperation(Operation):
+    @property
+    def dialect(self):
+        return "mpspdz"
+
+
+@dataclass
+class MpspdzSaveInputOperation(MpspdzOperation):
     player_index: int
     invocation_key: str
     output_type: ValueType = UnitType()
 
 
 @dataclass
-class MpspdzCallOperation(Operation):
+class MpspdzCallOperation(MpspdzOperation):
     num_players: int
     player_index: int
     mlir: str = field(repr=False)
@@ -35,7 +42,7 @@ class MpspdzCallOperation(Operation):
 
 
 @dataclass
-class MpspdzLoadOutputOperation(Operation):
+class MpspdzLoadOutputOperation(MpspdzOperation):
     player_index: int
     invocation_key: str
     output_type: ValueType
