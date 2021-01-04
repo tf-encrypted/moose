@@ -68,6 +68,22 @@ class ReplicatedFromStandardOpsPass:
         self.computation.rewire(op, new_op)
         self.computation.remove_operation(op.name)
 
+    def process_SubOperation(self, op):
+        assert isinstance(op, standard_ops.SubOperation)
+        new_inputs = op.inputs.copy()
+        assert "setup" not in new_inputs
+        new_inputs["setup"] = self.get_setup_op(op.placement_name).name
+        new_datatype = {"float": "fixed64"}[op.output_type.datatype]
+        new_op = replicated_ops.SubOperation(
+            name=self.context.get_fresh_name("replicated_sub"),
+            placement_name=op.placement_name,
+            inputs=new_inputs,
+            output_type=ReplicatedTensorType(datatype=new_datatype),
+        )
+        self.computation.add_operation(new_op)
+        self.computation.rewire(op, new_op)
+        self.computation.remove_operation(op.name)
+
     def process_MulOperation(self, op):
         assert isinstance(op, standard_ops.MulOperation)
         new_inputs = op.inputs.copy()

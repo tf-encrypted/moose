@@ -1,43 +1,32 @@
 import asyncio
 import logging
 import unittest
-import numpy as np
 
+import numpy as np
 from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
-from moose.compiler.replicated import ReplicatedFromStandardOpsPass
-from moose.compiler.replicated import ReplicatedShareRevealPass
-
-
 from moose.computation import standard as standard_dialect
-from moose.computation import replicated as replicated_ops
-from moose.computation.replicated import ReplicatedSetupType
-from moose.computation.replicated import ReplicatedTensorType
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
-from moose.edsl import replicated_placement
-from moose.edsl.base import add
-from moose.edsl.base import computation
-from moose.edsl.base import constant
-from moose.edsl.base import div
-from moose.edsl.base import host_placement
-from moose.edsl.base import mul
-from moose.edsl.base import save
-from moose.edsl.base import sub
-from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-
 from moose.networking.memory import Networking
 
 get_logger().setLevel(level=logging.DEBUG)
 
 
 class ReplicatedProtocolsTest(parameterized.TestCase):
-    def test_add(self):
+    @parameterized.parameters(
+        (lambda x, y: x + y, standard_dialect.AddOperation),
+        (lambda x, y: x - y, standard_dialect.SubOperation),
+        # the following will work only after we can do fix point multiplication
+        # without special encoding
+        # (lambda x, y: x * y, standard_dialect.MulOperation), 
+    )
+    def test_bin_op(self, numpy_lmbd, replicated_std_op):
         comp = Computation(operations={}, placements={})
 
         alice = HostPlacement(name="alice")
@@ -50,10 +39,15 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_placement(carole)
         comp.add_placement(rep)
 
+        x = np.array([10], dtype=np.float64)
+        y = np.array([20], dtype=np.float64)
+
+        z = numpy_lmbd(x, y)
+
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
-                value=np.array([10], dtype=np.float64),
+                value=x,
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(datatype="float"),
@@ -63,7 +57,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="bob_input",
-                value=np.array([20], dtype=np.float64),
+                value=y,
                 placement_name=bob.name,
                 inputs={},
                 output_type=TensorType(datatype="float"),
@@ -71,8 +65,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
-            standard_dialect.AddOperation(
-                name="add",
+            replicated_std_op(
+                name="rep_op",
                 placement_name=rep.name,
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 output_type=TensorType(datatype="float"),
@@ -80,28 +74,28 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
-            standard_dialect.OutputOperation(
-                name="output_add", inputs={"value": "add"}, placement_name=carole.name
+            standard_dialect.SaveOperation(
+                name="save",
+                inputs={"value": "rep_op"},
+                placement_name=carole.name,
+                key="result",
             )
         )
 
         comp.add_operation(
-            standard_dialect.SaveOperation(
-                name="save",
-                placement_name=carole.name,
-                inputs={"value": "output_add"},
-                key="final_output",
+            standard_dialect.OutputOperation(
+                name="output", placement_name=carole.name, inputs={"value": "save"},
             )
         )
 
         compiler = Compiler()
 
-        comp = compiler.run_passes(comp, render=True)
+        comp = compiler.run_passes(comp)
 
-        placement_instantiation= {
-            alice:alice.name,
-            bob:bob.name,
-            carole:carole.name
+        placement_instantiation = {
+            alice: alice.name,
+            bob: bob.name,
+            carole: carole.name,
         }
 
         networking = Networking()
@@ -129,10 +123,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             raise Exception(
                 "One or more errors evaluting the computation, see log for details"
             )
-        
-        print("carole ***", placement_executors[carole].store["final_output"])
 
-        assert 0 == 1
+        np.testing.assert_array_equal(z, placement_executors[carole].store["result"])
 
 
 if __name__ == "__main__":
