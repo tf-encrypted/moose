@@ -22,6 +22,7 @@ __all__ = [
     mpspdz_placement,
     replicated_placement,
     div,
+    dot,
     function,
     load,
     mul,

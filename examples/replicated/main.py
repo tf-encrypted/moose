@@ -3,7 +3,7 @@ import logging
 
 import numpy as np
 
-# from moose.edsl import add
+from moose.edsl import add
 from moose.edsl import computation
 from moose.edsl import constant
 from moose.edsl import host_placement

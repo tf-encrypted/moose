@@ -108,26 +108,10 @@ def ring_mul(x: RingTensor, y: RingTensor, placement_name):
         op=z_op, computation=x.computation, shape=x.shape, context=x.context
     )
 
+
 def ring_dot(x: RingTensor, y: RingTensor, placement_name):
     assert isinstance(x, RingTensor)
     assert isinstance(y, RingTensor)
-    has_scalar_input = x.shape is None or y.shape is None
-    if has_scalar_input or len(x.shape) not in [1, 2] or len(y.shape) not in [1, 2]:
-        raise ValueError(
-            "Inputs have invalid shapes: arguments to `dot` must be one- or two-dimensional."
-        )
-    if x.shape[-1] != y.shape[0]:
-        raise ValueError(
-            "Inputs have mismatched shapes: arguments to `dot` must allow valid dot product."
-        )
-    if len(x.shape) == 2  and len(y.shape) == 2:
-        result_shape = (x.shape[0], y.shape[1])
-    elif len(x.shape) == 2 and len(y.shape) == 1:
-        result_shape = (x.shape[0],)
-    elif len(x.shape) == 1 and len(y.shape) == 2:
-        result_shape = (y.shape[1],)
-    else:
-        result_shape = None
     z_op = x.computation.add_operation(
         RingDotOperation(
             name=x.context.get_fresh_name("ring_dot"),
@@ -135,6 +119,4 @@ def ring_dot(x: RingTensor, y: RingTensor, placement_name):
             inputs={"lhs": x.op.name, "rhs": y.op.name},
         )
     )
-    return RingTensor(
-        op=z_op, computation=x.computation, shape=result_shape, context=x.context
-    )
+    return RingTensor(op=z_op, computation=x.computation, context=x.context)

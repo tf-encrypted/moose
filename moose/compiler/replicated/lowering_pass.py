@@ -344,7 +344,7 @@ def replicated_share(
     zero_tensors = [None] * 3
     for i in range(3):
         if i != input_player_id:
-            zero_tensors[i] = fill_tensor(x.shape, 0, placement_name=players[i])
+            zero_tensors[i] = fill_tensor(shape, 0, placement_name=players[i])
 
     prev_player_id = (input_player_id - 1) % 3
     x_previous = ring_sample(
@@ -430,7 +430,7 @@ def replicated_mul(
             sampled_shares.append(
                 [
                     ring_sample(
-                        z_shares[i].shape,
+                        ring_shape(z_shares[i], z_shares[i].op.placement_name),
                         synced_seeds.seeds[i][j],
                         placement_name=players[i],
                     )
@@ -503,7 +503,7 @@ def replicated_dot(
             sampled_shares.append(
                 [
                     ring_sample(
-                        z_shares[i].shape,
+                        ring_shape(z_shares[i], z_shares[i].op.placement_name),
                         synced_seeds.seeds[i][j],
                         placement_name=players[i],
                     )

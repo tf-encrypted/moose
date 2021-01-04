@@ -8,7 +8,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import AddOperation, DotOperation
+from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
