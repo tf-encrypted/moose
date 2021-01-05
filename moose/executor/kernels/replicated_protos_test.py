@@ -13,7 +13,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
 from moose.logger import get_logger
-from moose.runtime import TestRuntime
+from moose.runtime import TestRuntime as LocalRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
@@ -111,7 +111,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             carole: carole.name,
         }
 
-        runtime = TestRuntime()
+        runtime = LocalRuntime()
         runtime.evaluate_computation(
             computation=comp, placement_instantiation=placement_instantiation
         )
