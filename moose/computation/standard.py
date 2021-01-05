@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 from typing import Callable
+from typing import Tuple
 
 from moose.computation.base import Operation
 from moose.computation.base import UnitType
@@ -61,6 +62,12 @@ class MulOperation(StandardOperation):
 
 @dataclass
 class DivOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
+class TransposeOperation(StandardOperation):
+    axes: Tuple[int]
     output_type: ValueType
 
 

@@ -5,6 +5,7 @@ from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 CURRENT_PLACEMENT: List = []
@@ -119,6 +120,14 @@ class SaveExpression(Expression):
 
 
 @dataclass
+class TransposeExpression(Expression):
+    axes: Optional[Tuple[int]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ApplyFunctionExpression(Expression):
     fn: Callable
     output_placements: Optional[List[PlacementExpression]]
@@ -169,6 +178,10 @@ def div(lhs, rhs, placement=None):
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
     return BinaryOpExpression(op_name="div", placement=placement, inputs=[lhs, rhs])
+
+
+def transpose(x, axes=None, placement=None):
+    return TransposeExpression(placement=placement, inputs=x, axes=axes)
 
 
 def load(key, placement=None):
