@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 from typing import Callable
+from typing import Optional
 from typing import Tuple
 
 from moose.computation.base import Operation
@@ -67,7 +68,7 @@ class DivOperation(StandardOperation):
 
 @dataclass
 class TransposeOperation(StandardOperation):
-    axes: Tuple[int]
+    axes: Optional[Tuple[int]]
     output_type: ValueType
 
 

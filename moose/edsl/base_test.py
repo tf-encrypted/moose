@@ -1,4 +1,5 @@
 import dill
+import numpy as np
 from absl.testing import parameterized
 
 from moose.computation import host as host_ops
@@ -17,6 +18,7 @@ from moose.edsl.base import host_placement
 from moose.edsl.base import mul
 from moose.edsl.base import run_program
 from moose.edsl.base import sub
+from moose.edsl.base import transpose
 from moose.edsl.tracer import trace
 
 
@@ -52,6 +54,26 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
+            output_type=TensorType(datatype="float"),
+        )
+
+    def test_transpose(self):
+        player0 = host_placement(name="player0")
+
+        @computation
+        def my_comp():
+            x0 = transpose(
+                constant(np.array([1]), placement=player0), placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("transpose_0")
+        assert op == standard_ops.TransposeOperation(
+            placement_name="player0",
+            name="transpose_0",
+            axes=None,
+            inputs={"x": "constant_0"},
             output_type=TensorType(datatype="float"),
         )
 

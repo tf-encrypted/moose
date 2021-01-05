@@ -178,10 +178,10 @@ class AstTracer:
 
     def visit_TransposeExpression(self, transpose_expression):
         assert isinstance(transpose_expression, TransposeExpression)
-        x_expression = transpose_expression.inputs
+        (x_expression,) = transpose_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(transpose_expression.placement)
-        output_type = TensorType(datatype="float")  # TODO use `value` to derive type
+        output_type = TensorType(datatype="float")
         return self.computation.add_operation(
             TransposeOperation(
                 placement_name=placement.name,

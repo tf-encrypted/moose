@@ -1,4 +1,5 @@
 import dill
+import numpy as np
 
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
@@ -63,6 +64,7 @@ class DivKernel(Kernel):
 class TransposeKernel(Kernel):
     def execute_synchronous_block(self, op, session, x):
         assert isinstance(op, TransposeOperation)
+        assert isinstance(x, np.ndarray)
         return x.transpose(op.axes)
 
 

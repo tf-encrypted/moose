@@ -181,7 +181,7 @@ def div(lhs, rhs, placement=None):
 
 
 def transpose(x, axes=None, placement=None):
-    return TransposeExpression(placement=placement, inputs=x, axes=axes)
+    return TransposeExpression(placement=placement, inputs=[x], axes=axes)
 
 
 def load(key, placement=None):
