@@ -2,8 +2,9 @@ import asyncio
 import logging
 import unittest
 
-import numpy as np
 from absl.testing import parameterized
+import numpy as np
+from hypothesis import given, strategies as st
 
 from moose.compiler.compiler import Compiler
 from moose.computation import standard as standard_dialect
@@ -18,6 +19,14 @@ from moose.networking.memory import Networking
 get_logger().setLevel(level=logging.DEBUG)
 
 
+# to get 2 random lists of equal size using hypothesis
+# https://stackoverflow.com/questions/51597021/python-hypothesis-ensure-that-input-lists-have-same-length
+
+pair_lists = st.lists(st.tuples(
+    st.integers(min_value=1, max_value=100),
+    st.integers(min_value=1, max_value=100)),
+    min_size=1)
+
 class ReplicatedProtocolsTest(parameterized.TestCase):
     @parameterized.parameters(
         (lambda x, y: x + y, standard_dialect.AddOperation),
@@ -26,7 +35,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         # without special encoding
         # (lambda x, y: x * y, standard_dialect.MulOperation), 
     )
-    def test_bin_op(self, numpy_lmbd, replicated_std_op):
+    @given(pair_lists)
+    def test_bin_op(self, numpy_lmbd, replicated_std_op, bin_args):
         comp = Computation(operations={}, placements={})
 
         alice = HostPlacement(name="alice")
@@ -39,8 +49,9 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_placement(carole)
         comp.add_placement(rep)
 
-        x = np.array([10], dtype=np.float64)
-        y = np.array([20], dtype=np.float64)
+        a, b = map(list, zip(*bin_args))
+        x = np.array(a, dtype=np.float64)
+        y = np.array(b, dtype=np.float64)
 
         z = numpy_lmbd(x, y)
 
