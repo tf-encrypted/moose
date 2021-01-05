@@ -1,10 +1,10 @@
-import asyncio
 import logging
 import unittest
 
-from absl.testing import parameterized
 import numpy as np
-from hypothesis import given, strategies as st
+from absl.testing import parameterized
+from hypothesis import given
+from hypothesis import strategies as st
 
 from moose.compiler.compiler import Compiler
 from moose.computation import standard as standard_dialect
@@ -12,9 +12,8 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
-from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-from moose.networking.memory import Networking
+from moose.runtime import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
@@ -22,10 +21,13 @@ get_logger().setLevel(level=logging.DEBUG)
 # to get 2 random lists of equal size using hypothesis
 # https://stackoverflow.com/questions/51597021/python-hypothesis-ensure-that-input-lists-have-same-length
 
-pair_lists = st.lists(st.tuples(
-    st.integers(min_value=1, max_value=100),
-    st.integers(min_value=1, max_value=100)),
-    min_size=1)
+pair_lists = st.lists(
+    st.tuples(
+        st.integers(min_value=1, max_value=100), st.integers(min_value=1, max_value=100)
+    ),
+    min_size=1,
+)
+
 
 class ReplicatedProtocolsTest(parameterized.TestCase):
     @parameterized.parameters(
@@ -33,7 +35,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         (lambda x, y: x - y, standard_dialect.SubOperation),
         # the following will work only after we can do fix point multiplication
         # without special encoding
-        # (lambda x, y: x * y, standard_dialect.MulOperation), 
+        # (lambda x, y: x * y, standard_dialect.MulOperation),
     )
     @given(pair_lists)
     def test_bin_op(self, numpy_lmbd, replicated_std_op, bin_args):
@@ -109,33 +111,14 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             carole: carole.name,
         }
 
-        networking = Networking()
-        placement_executors = {
-            alice: AsyncExecutor(networking=networking),
-            bob: AsyncExecutor(networking=networking),
-            carole: AsyncExecutor(networking=networking),
-        }
+        runtime = TestRuntime()
+        runtime.evaluate_computation(
+            computation=comp, placement_instantiation=placement_instantiation
+        )
 
-        tasks = [
-            executor.run_computation(
-                comp,
-                placement_instantiation=placement_instantiation,
-                placement=placement.name,
-                session_id="0123456789",
-            )
-            for placement, executor in placement_executors.items()
-        ]
-        joint_task = asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-        done, _ = asyncio.get_event_loop().run_until_complete(joint_task)
-        exceptions = [task.exception() for task in done if task.exception()]
-        for e in exceptions:
-            get_logger().exception(e)
-        if exceptions:
-            raise Exception(
-                "One or more errors evaluting the computation, see log for details"
-            )
-
-        np.testing.assert_array_equal(z, placement_executors[carole].store["result"])
+        np.testing.assert_array_equal(
+            z, runtime.get_executor(carole.name).store["result"]
+        )
 
 
 if __name__ == "__main__":
