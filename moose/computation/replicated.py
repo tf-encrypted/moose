@@ -57,6 +57,11 @@ class AddOperation(ReplicatedOperation):
 
 
 @dataclass
+class SubOperation(ReplicatedOperation):
+    output_type: ValueType
+
+
+@dataclass
 class MulOperation(ReplicatedOperation):
     output_type: ValueType
 

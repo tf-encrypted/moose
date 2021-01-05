@@ -155,6 +155,18 @@ class ReplicatedLoweringPass:
         self.interpretations[op.name] = z
         return z
 
+    def lower_SubOperation(self, op):
+        assert isinstance(op, replicated_ops.SubOperation)
+        x = self.lower(op.inputs["lhs"])
+        y = self.lower(op.inputs["rhs"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(y, ReplicatedTensor), type(y)
+
+        z = replicated_sub(x, y, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
     def lower_MulOperation(self, op):
         assert isinstance(op, replicated_ops.MulOperation)
         x = self.lower(op.inputs["lhs"])

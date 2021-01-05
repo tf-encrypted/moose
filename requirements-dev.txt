@@ -7,6 +7,7 @@ flake8==3.8.3
 graphviz==0.15
 grpcio==1.33.1
 grpcio-tools==1.33.1
+hypothesis==5.47.0
 isort==5.4.2
 opentelemetry-launcher==0.15b0
 pip~=20.3.0
