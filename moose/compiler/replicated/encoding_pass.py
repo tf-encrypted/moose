@@ -51,6 +51,28 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
             )
         )
 
+    def process_SubOperation(self, op, processed_inputs):
+        assert isinstance(op, std_dialect.SubOperation)
+        lowered_lhs_op = processed_inputs["lhs"]
+        lowered_rhs_op = processed_inputs["rhs"]
+        lhs_output_type = lowered_lhs_op.output_type
+        rhs_output_type = lowered_rhs_op.output_type
+        assert isinstance(lhs_output_type, fixedpoint_dialect.EncodedTensorType)
+        assert isinstance(rhs_output_type, fixedpoint_dialect.EncodedTensorType)
+        assert lhs_output_type.datatype == rhs_output_type.datatype
+        assert lhs_output_type.precision == rhs_output_type.precision
+        output_type = fixedpoint_dialect.EncodedTensorType(
+            datatype=lhs_output_type.datatype, precision=lhs_output_type.precision,
+        )
+        return self.computation.add(
+            fixedpoint_dialect.SubOperation(
+                name=self.context.get_fresh_name("fixed_add"),
+                placement_name=op.placement_name,
+                inputs={"lhs": lowered_lhs_op.name, "rhs": lowered_rhs_op.name},
+                output_type=output_type,
+            )
+        )
+
     def process_MulOperation(self, op, processed_inputs):
         assert isinstance(op, std_dialect.MulOperation)
         lowered_lhs_op = processed_inputs["lhs"]

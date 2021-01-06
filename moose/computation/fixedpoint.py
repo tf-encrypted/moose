@@ -24,6 +24,11 @@ class AddOperation(FixedpointOperation):
 
 
 @dataclass
+class SubOperation(FixedpointOperation):
+    output_type: ValueType
+
+
+@dataclass
 class MulOperation(FixedpointOperation):
     output_type: ValueType
 
