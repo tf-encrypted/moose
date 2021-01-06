@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 
+import numpy as np
 from absl.testing import parameterized
 
 from moose.computation import standard as standard_dialect
@@ -112,6 +113,58 @@ class StandardKernelTest(parameterized.TestCase):
 
         comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], expected_result)
+
+    @parameterized.parameters(
+        {"axes": axes, "expected_result": expected_result}
+        for (axes, expected_result) in zip(
+            [None, (1, 0), (0, 1)],
+            [
+                np.array([[1, 3], [2, 4]]),
+                np.array([[1, 3], [2, 4]]),
+                np.array([[1, 2], [3, 4]]),
+            ],
+        )
+    )
+    def test_transpose(self, axes, expected_result):
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.TransposeOperation(
+                name="transpose",
+                placement_name=alice.name,
+                axes=axes,
+                inputs={"x": "x"},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "transpose"},
+                key="z",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+            arguments={"x": np.array([[1, 2], [3, 4]])},
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(executor.store["z"], expected_result)
 
 
 if __name__ == "__main__":

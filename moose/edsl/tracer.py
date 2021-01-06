@@ -19,6 +19,7 @@ from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import TensorType
+from moose.computation.standard import TransposeOperation
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import BinaryOpExpression
@@ -30,6 +31,7 @@ from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
+from moose.edsl.base import TransposeExpression
 from moose.logger import get_logger
 
 
@@ -176,6 +178,22 @@ class AstTracer:
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
                 output_type=output_type,
+            )
+        )
+
+    def visit_TransposeExpression(self, transpose_expression):
+        assert isinstance(transpose_expression, TransposeExpression)
+        (x_expression,) = transpose_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(transpose_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            TransposeOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("transpose"),
+                output_type=output_type,
+                axes=transpose_expression.axes,
+                inputs={"x": x_operation.name},
             )
         )
 

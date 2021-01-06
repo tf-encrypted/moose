@@ -1,4 +1,5 @@
 import dill
+import numpy as np
 
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
@@ -13,6 +14,7 @@ from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
 from moose.computation.standard import SubOperation
+from moose.computation.standard import TransposeOperation
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
 
@@ -57,6 +59,13 @@ class DivKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, DivOperation)
         return lhs / rhs
+
+
+class TransposeKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, TransposeOperation)
+        assert isinstance(x, np.ndarray)
+        return x.transpose(op.axes)
 
 
 class LoadKernel(Kernel):
