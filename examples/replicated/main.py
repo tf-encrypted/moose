@@ -6,6 +6,7 @@ import numpy as np
 from moose.edsl import add
 from moose.edsl import computation
 from moose.edsl import constant
+from moose.edsl import dot
 from moose.edsl import host_placement
 from moose.edsl import mul
 from moose.edsl import replicated_placement
@@ -40,14 +41,14 @@ def my_comp():
         y = constant(np.array([1, 1], dtype=np.float64))
 
     with rep:
-        z = mul(x, y)
+        z = dot(x, y)
 
     with dave:
         v = add(z, z)
         res_dave = save(v, "res")
 
     with eric:
-        w = add(z, z)
+        w = mul(z, z)
         res_eric = save(w, "res")
 
     return (res_dave, res_eric)
