@@ -193,6 +193,8 @@ class AstTracer:
             datatype = "float"
         elif dtype in (int, np.int64):
             datatype = "int64"
+        else:
+            raise ValueError(f"{dtype} is not an expected dtype for Ones operation")
         output_type = TensorType(datatype=datatype)
         return self.computation.add_operation(
             OnesOperation(
