@@ -115,6 +115,14 @@ class OnesExpression(Expression):
 
 
 @dataclass
+class TransposeExpression(Expression):
+    axes: Optional[Tuple[int]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class LoadExpression(Expression):
     key: str
 
@@ -125,14 +133,6 @@ class LoadExpression(Expression):
 @dataclass
 class SaveExpression(Expression):
     key: str
-
-    def __hash__(self):
-        return id(self)
-
-
-@dataclass
-class TransposeExpression(Expression):
-    axes: Optional[Tuple[int]]
 
     def __hash__(self):
         return id(self)
