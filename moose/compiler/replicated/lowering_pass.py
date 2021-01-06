@@ -423,30 +423,8 @@ def replicated_mul(
         )
 
     synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
-
-    def generate_zero_share():
-        sampled_shares = list()
-        for i in range(3):
-            sampled_shares.append(
-                [
-                    ring_sample(
-                        ring_shape(z_shares[i], z_shares[i].op.placement_name),
-                        synced_seeds.seeds[i][j],
-                        placement_name=players[i],
-                    )
-                    for j in range(2)
-                ]
-            )
-
-        sub_shares = [None] * 3
-        for i in range(3):
-            sub_shares[i] = ring_sub(
-                sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
-            )
-
-        return sub_shares  # alpha, beta, gamma
-
-    zero_shares = generate_zero_share()
+    zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
+    zero_shares = _generate_zero_share(zero_shape, synced_seeds, players)
     z_shares = [
         ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
         for i in range(3)
@@ -496,30 +474,8 @@ def replicated_dot(
         )
 
     synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
-
-    def generate_zero_share():
-        sampled_shares = list()
-        for i in range(3):
-            sampled_shares.append(
-                [
-                    ring_sample(
-                        ring_shape(z_shares[i], z_shares[i].op.placement_name),
-                        synced_seeds.seeds[i][j],
-                        placement_name=players[i],
-                    )
-                    for j in range(2)
-                ]
-            )
-
-        sub_shares = [None] * 3
-        for i in range(3):
-            sub_shares[i] = ring_sub(
-                sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
-            )
-
-        return sub_shares  # alpha, beta, gamma
-
-    zero_shares = generate_zero_share()
+    zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
+    zero_shares = _generate_zero_share(zero_shape, synced_seeds, players)
     z_shares = [
         ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
         for i in range(3)
@@ -597,3 +553,22 @@ def replicated_sub(
         computation=x.computation,
         context=x.context,
     )
+
+
+def _generate_zero_share(shape, synced_seeds, players):
+    sampled_shares = list()
+    for i in range(3):
+        sampled_shares.append(
+            [
+                ring_sample(shape, synced_seeds.seeds[i][j], placement_name=players[i],)
+                for j in range(2)
+            ]
+        )
+
+    sub_shares = [None] * 3
+    for i in range(3):
+        sub_shares[i] = ring_sub(
+            sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
+        )
+
+    return sub_shares  # alpha, beta, gamma
