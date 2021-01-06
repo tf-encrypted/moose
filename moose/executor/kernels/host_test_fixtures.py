@@ -1,10 +1,7 @@
 import argparse
 import json
-import logging
 
 from moose.logger import get_logger
-
-get_logger().setLevel(level=logging.DEBUG)
 
 parser = argparse.ArgumentParser(description="Local computation")
 parser.add_argument("--input-file", type=str, default="None")

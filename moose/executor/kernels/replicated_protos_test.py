@@ -1,4 +1,3 @@
-import logging
 import unittest
 
 import numpy as np
@@ -12,11 +11,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
-from moose.logger import get_logger
 from moose.runtime import TestRuntime as LocalRuntime
-
-get_logger().setLevel(level=logging.DEBUG)
-
 
 # to get 2 random lists of equal size using hypothesis
 # https://stackoverflow.com/questions/51597021/python-hypothesis-ensure-that-input-lists-have-same-length
@@ -52,8 +47,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_placement(rep)
 
         a, b = map(list, zip(*bin_args))
-        x = np.array(a, dtype=np.float64)
-        y = np.array(b, dtype=np.float64)
+        x = np.array(a, dtype=np.float32)
+        y = np.array(b, dtype=np.float32)
 
         z = numpy_lmbd(x, y)
 
