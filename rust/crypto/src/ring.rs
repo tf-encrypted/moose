@@ -34,6 +34,19 @@ impl Fill for Ring64Tensor {
     }
 }
 
+impl From<ArrayD<i64>> for Ring64Tensor {
+    fn from(a: ArrayD<i64>) -> Ring64Tensor {
+        let wrapped = a.mapv(|ai| Wrapping(ai as u64));
+        Ring64Tensor(wrapped)
+    }
+}
+
+impl From<&Ring64Tensor> for ArrayD<i64> {
+    fn from(r: &Ring64Tensor) -> ArrayD<i64> {
+        r.0.mapv(|element| element.0 as i64)
+    }
+}
+
 impl From<ArrayD<u64>> for Ring64Tensor {
     fn from(a: ArrayD<u64>) -> Ring64Tensor {
         let wrapped = a.mapv(Wrapping);
@@ -147,36 +160,13 @@ where
     }
 }
 
-pub fn share(x: &Ring64Tensor) -> Replicated<Ring64Tensor> {
-    // TODO
-    Replicated(x.clone(), x.clone(), x.clone())
-}
-
-pub fn reconstruct<T>(x: Replicated<T>) -> T {
-    // TODO
-    x.0
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn it_works() {
-        let a = Ring64Tensor::from(vec![1, 2, 3]);
-        let b = Ring64Tensor::from(vec![4, 5, 6]);
-
-        let a_shared = share(&a);
-        let b_shared = share(&b);
-
-        let c_shared = a_shared * b_shared;
-        let c: Ring64Tensor = reconstruct(c_shared);
-        assert_eq!(c, a * b);
-    }
-
-    #[test]
     fn ring_matrix_vector_prod() {
-        let array_backing = array![[1, 2], [3, 4]]
+        let array_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let x = Ring64Tensor::from(array_backing);
@@ -189,17 +179,17 @@ mod tests {
 
     #[test]
     fn ring_matrix_matrix_prod() {
-        let x_backing = array![[1, 2], [3, 4]]
+        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let y_backing = array![[1, 0], [0, 1]]
+        let y_backing: ArrayD<i64> = array![[1, 0], [0, 1]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let x = Ring64Tensor::from(x_backing);
         let y = Ring64Tensor::from(y_backing);
         let z = x.dot(y);
 
-        let r_backing = array![[1, 2], [3, 4]]
+        let r_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let result = Ring64Tensor::from(r_backing);

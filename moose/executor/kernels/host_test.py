@@ -1,4 +1,3 @@
-import logging
 import pathlib
 import unittest
 
@@ -11,10 +10,7 @@ from moose.edsl.base import host_placement
 from moose.edsl.base import run_program
 from moose.edsl.base import save
 from moose.edsl.tracer import trace
-from moose.logger import get_logger
 from moose.runtime import TestRuntime as Runtime
-
-get_logger().setLevel(level=logging.DEBUG)
 
 
 def _create_test_players(number_of_players=2):

@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import unittest
 
 import numpy as np
@@ -12,10 +11,7 @@ from moose.computation.host import HostPlacement
 from moose.edsl.base import host_placement
 from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
-from moose.logger import get_logger
 from moose.runtime import TestRuntime as Runtime
-
-get_logger().setLevel(level=logging.DEBUG)
 
 
 def _create_test_players(number_of_players=2):

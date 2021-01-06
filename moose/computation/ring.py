@@ -12,7 +12,9 @@ class RingTensorType(ValueType):
 
 @dataclass
 class RingOperation(Operation):
-    pass
+    @property
+    def dialect(self):
+        return "ring"
 
 
 @dataclass

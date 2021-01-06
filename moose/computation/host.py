@@ -14,13 +14,20 @@ class HostPlacement(Placement):
 
 
 @dataclass
-class CallPythonFunctionOperation(Operation):
+class HostOperation(Operation):
+    @property
+    def dialect(self):
+        return "host"
+
+
+@dataclass
+class CallPythonFunctionOperation(HostOperation):
     pickled_fn: bytes = field(repr=False)
     output_type: ValueType
 
 
 @dataclass
-class RunProgramOperation(Operation):
+class RunProgramOperation(HostOperation):
     path: str
     args: List[str]
     output_type: ValueType

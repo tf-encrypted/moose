@@ -5,9 +5,9 @@ from moose.compiler.host import NetworkingPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.pruning import PruningPass
 from moose.compiler.render import render_computation
-from moose.compiler.replicated import ReplicatedFromStandardOpsPass
-from moose.compiler.replicated import ReplicatedLoweringPass
-from moose.compiler.replicated import ReplicatedShareRevealPass
+from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
+from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation.base import Computation
 
 
@@ -19,8 +19,8 @@ class Compiler:
             else [
                 MpspdzApplyFunctionPass(),
                 HostApplyFunctionPass(),
-                ReplicatedFromStandardOpsPass(),
-                ReplicatedShareRevealPass(),
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
                 ReplicatedLoweringPass(),
                 PruningPass(),
                 NetworkingPass(),
