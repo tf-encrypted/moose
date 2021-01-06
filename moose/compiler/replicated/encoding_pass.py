@@ -98,6 +98,31 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         # TODO(Morten) insert trunc op
         return mul_op
 
+    def process_DotOperation(self, op, processed_inputs):
+        assert isinstance(op, std_dialect.DotOperation)
+        lowered_lhs_op = processed_inputs["lhs"]
+        lowered_rhs_op = processed_inputs["rhs"]
+        lhs_output_type = lowered_lhs_op.output_type
+        rhs_output_type = lowered_rhs_op.output_type
+        assert isinstance(lhs_output_type, fixedpoint_dialect.EncodedTensorType)
+        assert isinstance(rhs_output_type, fixedpoint_dialect.EncodedTensorType)
+        assert lhs_output_type.datatype == rhs_output_type.datatype
+        assert lhs_output_type.precision == rhs_output_type.precision
+        output_type = fixedpoint_dialect.EncodedTensorType(
+            datatype=lhs_output_type.datatype,
+            precision=lhs_output_type.precision + rhs_output_type.precision,  # TODO
+        )
+        dot_op = self.computation.add(
+            fixedpoint_dialect.DotOperation(
+                name=self.context.get_fresh_name("fixed_dot"),
+                placement_name=op.placement_name,
+                inputs={"lhs": lowered_lhs_op.name, "rhs": lowered_rhs_op.name},
+                output_type=output_type,
+            )
+        )
+        # TODO(Morten) insert trunc op
+        return dot_op
+
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)
         dst_op = self.computation.operation(dst_op_name)
