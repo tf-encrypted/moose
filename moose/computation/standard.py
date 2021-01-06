@@ -69,6 +69,11 @@ class DivOperation(StandardOperation):
 
 
 @dataclass
+class InverseOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class TransposeOperation(StandardOperation):
     axes: Optional[Tuple[int]]
     output_type: ValueType

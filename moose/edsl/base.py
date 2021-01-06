@@ -120,6 +120,12 @@ class SaveExpression(Expression):
 
 
 @dataclass
+class InverseExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class TransposeExpression(Expression):
     axes: Optional[Tuple[int]]
 
@@ -178,6 +184,12 @@ def div(lhs, rhs, placement=None):
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
     return BinaryOpExpression(op_name="div", placement=placement, inputs=[lhs, rhs])
+
+
+def inverse(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return InverseExpression(placement=placement, inputs=[x])
 
 
 def transpose(x, axes=None, placement=None):
