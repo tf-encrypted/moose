@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 from moose.compiler.pruning import PruningPass
 
 
@@ -9,6 +11,18 @@ class SubgraphReplacementPass:
         self.context = None
         self.setup_cache = None
         self.op_names_to_lower = None
+
+    @abstractmethod
+    def collect_subgraph(self):
+        pass
+
+    @abstractmethod
+    def process_incoming_edge(src_op_name, input_key, dst_op_name):
+        pass
+
+    @abstractmethod
+    def process_output_edge(src_op, input_key, dst_op_name):
+        pass
 
     def run(self, computation, context):
         self.node_cache = dict()
