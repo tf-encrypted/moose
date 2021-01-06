@@ -1,6 +1,8 @@
 import inspect
 from collections import defaultdict
 
+import numpy as np
+
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
 from moose.computation.base import UnknownType
@@ -15,6 +17,7 @@ from moose.computation.standard import DivOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
@@ -28,6 +31,7 @@ from moose.edsl.base import Expression
 from moose.edsl.base import HostPlacementExpression
 from moose.edsl.base import LoadExpression
 from moose.edsl.base import MpspdzPlacementExpression
+from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
@@ -178,6 +182,26 @@ class AstTracer:
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
                 output_type=output_type,
+            )
+        )
+
+    def visit_OnesExpression(self, ones_expression):
+        assert isinstance(ones_expression, OnesExpression)
+        placement = self.visit_placement_expression(ones_expression.placement)
+        dtype = ones_expression.dtype
+        if dtype in (float, np.float64):
+            datatype = "float"
+        elif dtype in (int, np.int64):
+            datatype = "int64"
+        output_type = TensorType(datatype=datatype)
+        return self.computation.add_operation(
+            OnesOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("ones"),
+                output_type=output_type,
+                shape=ones_expression.shape,
+                dtype=dtype,
+                inputs={},
             )
         )
 

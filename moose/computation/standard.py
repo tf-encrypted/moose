@@ -4,6 +4,9 @@ from typing import Any
 from typing import Callable
 from typing import Optional
 from typing import Tuple
+from typing import Union
+
+import numpy as np
 
 from moose.computation.base import Operation
 from moose.computation.base import UnitType
@@ -65,6 +68,13 @@ class MulOperation(StandardOperation):
 
 @dataclass
 class DivOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
+class OnesOperation(StandardOperation):
+    shape: Tuple[int]
+    dtype: Optional[Union[float, np.float64, int, np.int64]]
     output_type: ValueType
 
 
