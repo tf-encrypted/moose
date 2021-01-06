@@ -60,6 +60,24 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
             )
         )
 
+    def process_SubOperation(self, op, processed_inputs):
+        assert isinstance(op, fixed_dialect.SubOperation)
+        inputs = {
+            input_key: input_op.name for input_key, input_op in processed_inputs.items()
+        }
+        assert "setup" not in inputs
+        inputs["setup"] = self.get_setup_op(op.placement_name).name
+        return self.computation.add_operation(
+            rep_dialect.SubOperation(
+                name=self.context.get_fresh_name("replicated_sub"),
+                placement_name=op.placement_name,
+                inputs=inputs,
+                output_type=rep_dialect.ReplicatedTensorType(
+                    datatype=op.output_type.datatype
+                ),
+            )
+        )
+
     def process_MulOperation(self, op, processed_inputs):
         assert isinstance(op, fixed_dialect.MulOperation)
         inputs = {
