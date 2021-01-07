@@ -99,11 +99,7 @@ class AsyncExecutor:
                 raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
             inputs = {
-                param_name: (
-                    [session.values.get_future(key=name) for name in value_name]
-                    if isinstance(value_name, list)
-                    else session.values.get_future(key=value_name)
-                )
+                param_name: session.values.get_future(key=value_name)
                 for (param_name, value_name) in op.inputs.items()
             }
             output = session.values.get_future(key=op.name)

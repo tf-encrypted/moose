@@ -1,3 +1,5 @@
+import asyncio
+
 import dill
 import numpy as np
 
@@ -34,9 +36,11 @@ class OutputKernel(Kernel):
 
 
 class ConcatenateKernel(Kernel):
-    def execute_synchronous_block(self, op, session, arrays):
+    async def execute(self, op, session, output, **arrays):
         assert isinstance(op, ConcatenateOperation)
-        return np.concatenate(arrays, axis=op.axis)
+        concrete_arrays = await asyncio.gather(*arrays.values())
+        concrete_output = np.concatenate(concrete_arrays, axis=op.axis)
+        output.set_result(concrete_output)
 
 
 class ConstantKernel(Kernel):

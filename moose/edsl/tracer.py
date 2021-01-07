@@ -150,7 +150,10 @@ class AstTracer:
 
     def visit_ConcatenateExpression(self, concatenate_expression):
         assert isinstance(concatenate_expression, ConcatenateExpression)
-        arrays_op = [self.visit(expr).name for expr in concatenate_expression.inputs]
+        arrays = {
+            f"array{i}": self.visit(expr).name
+            for i, expr in enumerate(concatenate_expression.inputs)
+        }
         placement = self.visit_placement_expression(concatenate_expression.placement)
         output_type = TensorType(datatype="float")
         return self.computation.add_operation(
@@ -159,7 +162,7 @@ class AstTracer:
                 name=self.get_fresh_name("concatenate"),
                 output_type=output_type,
                 axis=concatenate_expression.axis,
-                inputs={"arrays": arrays_op},
+                inputs=arrays,
             )
         )
 

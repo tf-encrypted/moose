@@ -111,7 +111,7 @@ class StandardKernelTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_dialect.InputOperation(
-                name="x_1",
+                name="x_0",
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(datatype="int64"),
@@ -119,7 +119,7 @@ class StandardKernelTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_dialect.InputOperation(
-                name="x_2",
+                name="x_1",
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(datatype="int64"),
@@ -130,7 +130,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="concatenate",
                 placement_name=alice.name,
                 axis=axis,
-                inputs={"arrays": ["x_1", "x_2"]},
+                inputs={"array0": "x_0", "array1": "x_1"},
                 output_type=TensorType(datatype="int64"),
             )
         )
@@ -149,8 +149,8 @@ class StandardKernelTest(parameterized.TestCase):
             placement=alice.name,
             session_id="0123456789",
             arguments={
-                "x_1": np.array([[1, 2], [3, 4]]),
-                "x_2": np.array([[5, 6], [7, 8]]),
+                "x_0": np.array([[1, 2], [3, 4]]),
+                "x_1": np.array([[5, 6], [7, 8]]),
             },
         )
         asyncio.get_event_loop().run_until_complete(task)
