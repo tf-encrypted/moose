@@ -2,14 +2,9 @@ import argparse
 import logging
 import unittest
 
-import numpy as np
-
-from moose.edsl import add
-from moose.edsl import computation
 from moose.edsl import concatenate
-from moose.edsl import constant
+from moose.edsl import computation
 from moose.edsl import dot
-from moose.edsl import function
 from moose.edsl import host_placement
 from moose.edsl import linalg_inv
 from moose.edsl import load
@@ -26,15 +21,15 @@ from moose.runtime import TestRuntime as Runtime
 
 # @computation
 def mse(y_pred, y_true):
-    # NOTE len(y_preds) will have to be computed in plaintext
-    return sum(pow(sub(y_pred, y_true), 2), axis=1) / len(y_preds)
+    # NOTE len(y_pred) will have to be computed in plaintext
+    return sum(pow(sub(y_pred, y_true), 2), axis=1) / len(y_pred)
 
 
 # @computation
 def r_squared(y_pred, y_true):
     y_mean = mean(y_true)
     ss_tot = sum(pow(sub(y_true, y_mean), 2), axis=1)
-    ss_res = sum(pow(sub(y, y_pred), 2), axis=1)
+    ss_res = sum(pow(sub(y_true, y_pred), 2), axis=1)
     # NOTE this division is going to be a problem
     # instead we could reveal ss_res and ss_tot to the
     # model owner then do the division
@@ -42,6 +37,7 @@ def r_squared(y_pred, y_true):
 
 
 class LinearRegressionExample(unittest.TestCase):
+    @unittest.skip
     def test_linear_regression_example(self):
 
         x_owner = host_placement(name="x-owner")
@@ -74,7 +70,7 @@ class LinearRegressionExample(unittest.TestCase):
 
             with model_owner:
                 res = (
-                    save(w, w_ui),
+                    save(w, w_uri),
                     save(mse_result, mse_uri),
                     save(rsquared_result, rsquared_uri),
                 )
