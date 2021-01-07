@@ -1,7 +1,10 @@
+import asyncio
+
 import dill
 import numpy as np
 
 from moose.computation.standard import AddOperation
+from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
@@ -32,6 +35,14 @@ class OutputKernel(Kernel):
     def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, OutputOperation)
         return None
+
+
+class ConcatenateKernel(Kernel):
+    async def execute(self, op, session, output, **arrays):
+        assert isinstance(op, ConcatenateOperation)
+        concrete_arrays = await asyncio.gather(*arrays.values())
+        concrete_output = np.concatenate(concrete_arrays, axis=op.axis)
+        output.set_result(concrete_output)
 
 
 class ConstantKernel(Kernel):

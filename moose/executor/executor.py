@@ -32,6 +32,7 @@ class AsyncExecutor:
         self.kernels = {
             standard_ops.InputOperation: standard_kernels.InputKernel(),
             standard_ops.OutputOperation: standard_kernels.OutputKernel(),
+            standard_ops.ConcatenateOperation: standard_kernels.ConcatenateKernel(),
             standard_ops.ConstantOperation: standard_kernels.ConstantKernel(),
             standard_ops.AddOperation: standard_kernels.AddKernel(),
             standard_ops.SubOperation: standard_kernels.SubKernel(),

@@ -90,6 +90,14 @@ class ArgumentExpression(Expression):
 
 
 @dataclass
+class ConcatenateExpression(Expression):
+    axis: Optional[int]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class ConstantExpression(Expression):
     value: Union[int, float]
 
@@ -162,6 +170,11 @@ class RunProgramExpression(Expression):
 
     def __hash__(self):
         return id(self)
+
+
+def concatenate(arrays, axis=0, placement=None):
+    placement = placement or get_current_placement()
+    return ConcatenateExpression(placement=placement, inputs=arrays, axis=axis)
 
 
 def constant(value, placement=None):

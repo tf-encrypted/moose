@@ -46,6 +46,12 @@ class OutputOperation(StandardOperation):
 
 
 @dataclass
+class ConcatenateOperation(StandardOperation):
+    axis: Optional[int]
+    output_type: ValueType
+
+
+@dataclass
 class ConstantOperation(StandardOperation):
     value: Any
     output_type: ValueType

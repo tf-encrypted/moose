@@ -11,6 +11,7 @@ from moose.computation.standard import TensorType
 from moose.edsl.base import Argument
 from moose.edsl.base import add
 from moose.edsl.base import computation
+from moose.edsl.base import concatenate
 from moose.edsl.base import constant
 from moose.edsl.base import div
 from moose.edsl.base import function
@@ -55,6 +56,31 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
+            output_type=TensorType(datatype="float"),
+        )
+
+    def test_concatenate(self):
+        player0 = host_placement(name="player0")
+
+        @computation
+        def my_comp():
+            x0 = concatenate(
+                [
+                    constant(np.array([1]), placement=player0),
+                    constant(np.array([1]), placement=player0),
+                ],
+                axis=1,
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("concatenate_0")
+        assert op == standard_ops.ConcatenateOperation(
+            placement_name="player0",
+            name="concatenate_0",
+            axis=1,
+            inputs={"array0": "constant_0", "array1": "constant_1"},
             output_type=TensorType(datatype="float"),
         )
 
