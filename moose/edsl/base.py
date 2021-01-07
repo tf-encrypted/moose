@@ -136,6 +136,7 @@ class InverseExpression(Expression):
         return id(self)
 
 
+@dataclass
 class SaveExpression(Expression):
     key: str
 

@@ -201,6 +201,8 @@ class AstTracer:
                 name=self.get_fresh_name("inverse"),
                 output_type=output_type,
                 inputs={"x": x_operation.name},
+            )
+        )
 
     def visit_OnesExpression(self, ones_expression):
         assert isinstance(ones_expression, OnesExpression)
