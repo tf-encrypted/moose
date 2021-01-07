@@ -254,14 +254,9 @@ class SetupContext:
 
 
 @dataclass
-class ReplicatedBaseSetup:
+class ReplicatedSetup:
     keys: Tuple[Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
     context: SetupContext
-
-
-@dataclass
-class ReplicatedSetup(ReplicatedBaseSetup):
-    pass
 
 
 @dataclass
@@ -290,7 +285,7 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     )
 
 
-def sample_synchronized_seeds(setup: ReplicatedSetup, placement_name):
+def sample_synchronized_seeds(setup: ReplicatedSetup, placement):
     context = setup.context
     naming_context = setup.context.naming_context
     nonce = bytes(naming_context.get_fresh_name("sync_nonce"), "utf-8")
@@ -312,9 +307,7 @@ def sample_synchronized_seeds(setup: ReplicatedSetup, placement_name):
         )
         return (seed_0, seed_1)
 
-    seeds = [
-        derive_seeds(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
-    ]
+    seeds = [derive_seeds(*setup.keys[i], placement.player_names[i]) for i in range(3)]
 
     return ReplicatedSynchronizedSeeds(seeds=seeds)
 
@@ -422,9 +415,8 @@ def replicated_mul(
             placement_name=players[i],
         )
 
-    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
     zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
-    zero_shares = _generate_zero_share(zero_shape, synced_seeds, players)
+    zero_shares = _generate_zero_share(zero_shape, setup, players)
     z_shares = [
         ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
         for i in range(3)
@@ -473,9 +465,8 @@ def replicated_dot(
             placement_name=players[i],
         )
 
-    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
     zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
-    zero_shares = _generate_zero_share(zero_shape, synced_seeds, players)
+    zero_shares = _generate_zero_share(zero_shape, setup, players)
     z_shares = [
         ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
         for i in range(3)
@@ -555,7 +546,11 @@ def replicated_sub(
     )
 
 
-def _generate_zero_share(shape, synced_seeds, players):
+def _generate_zero_share(shape, setup, players):
+    replicated_placement = setup.context.computation.placement(
+        setup.context.placement_name
+    )
+    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
     sampled_shares = list()
     for i in range(3):
         sampled_shares.append(
