@@ -95,6 +95,68 @@ class StandardKernelTest(parameterized.TestCase):
         assert executor.store["z"] == 15
 
     @parameterized.parameters(
+        {"axis": axis, "expected_result": expected_result}
+        for (axis, expected_result) in zip(
+            [0, 1],
+            [
+                np.array([1, 2, 3, 4, 5, 6, 7, 8]).reshape(4, 2),
+                np.array([1, 2, 5, 6, 3, 4, 7, 8]).reshape(2, 4),
+            ],
+        )
+    )
+    def test_concatenate(self, axis, expected_result):
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="x_1",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="x_2",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.ConcatenateOperation(
+                name="concatenate",
+                placement_name=alice.name,
+                axis=axis,
+                inputs={"arrays": ["x_1", "x_2"]},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "concatenate"},
+                key="z",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+            arguments={
+                "x_1": np.array([[1, 2], [3, 4]]),
+                "x_2": np.array([[5, 6], [7, 8]]),
+            },
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(executor.store["z"], expected_result)
+
+    @parameterized.parameters(
         {"op": op, "expected_result": expected_result}
         for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
     )
