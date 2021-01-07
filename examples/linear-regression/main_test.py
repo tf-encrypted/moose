@@ -2,8 +2,8 @@ import argparse
 import logging
 import unittest
 
-from moose.edsl import concatenate
 from moose.edsl import computation
+from moose.edsl import concatenate
 from moose.edsl import dot
 from moose.edsl import host_placement
 from moose.edsl import linalg_inv
@@ -19,13 +19,11 @@ from moose.logger import get_logger
 from moose.runtime import TestRuntime as Runtime
 
 
-# @computation
 def mse(y_pred, y_true):
     # NOTE len(y_pred) will have to be computed in plaintext
     return sum(pow(sub(y_pred, y_true), 2), axis=1) / len(y_pred)
 
 
-# @computation
 def r_squared(y_pred, y_true):
     y_mean = mean(y_true)
     ss_tot = sum(pow(sub(y_true, y_mean), 2), axis=1)
