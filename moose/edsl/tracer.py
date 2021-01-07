@@ -1,6 +1,8 @@
 import inspect
 from collections import defaultdict
 
+import numpy as np
+
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
 from moose.computation.base import UnknownType
@@ -12,10 +14,12 @@ from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
+from moose.computation.standard import DotOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
@@ -30,6 +34,7 @@ from moose.edsl.base import HostPlacementExpression
 from moose.edsl.base import InverseExpression
 from moose.edsl.base import LoadExpression
 from moose.edsl.base import MpspdzPlacementExpression
+from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
@@ -170,6 +175,7 @@ class AstTracer:
             "sub": SubOperation,
             "mul": MulOperation,
             "div": DivOperation,
+            "dot": DotOperation,
         }[op_name]
         # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
         assert lhs_operation.output_type == rhs_operation.output_type
@@ -195,6 +201,26 @@ class AstTracer:
                 name=self.get_fresh_name("inverse"),
                 output_type=output_type,
                 inputs={"x": x_operation.name},
+
+    def visit_OnesExpression(self, ones_expression):
+        assert isinstance(ones_expression, OnesExpression)
+        placement = self.visit_placement_expression(ones_expression.placement)
+        dtype = ones_expression.dtype
+        if dtype in (float, np.float64):
+            datatype = "float"
+        elif dtype in (int, np.int64):
+            datatype = "int64"
+        else:
+            raise ValueError(f"{dtype} is not an expected dtype for Ones operation")
+        output_type = TensorType(datatype=datatype)
+        return self.computation.add_operation(
+            OnesOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("ones"),
+                output_type=output_type,
+                shape=ones_expression.shape,
+                dtype=dtype,
+                inputs={},
             )
         )
 

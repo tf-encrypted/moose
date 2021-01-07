@@ -34,6 +34,11 @@ class MulOperation(FixedpointOperation):
 
 
 @dataclass
+class DotOperation(FixedpointOperation):
+    output_type: ValueType
+
+
+@dataclass
 class EncodeOperation(FixedpointOperation):
     precision: int
     output_type: ValueType

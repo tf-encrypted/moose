@@ -60,3 +60,8 @@ class SubOperation(ReplicatedOperation):
 @dataclass
 class MulOperation(ReplicatedOperation):
     output_type: ValueType
+
+
+@dataclass
+class DotOperation(ReplicatedOperation):
+    output_type: ValueType

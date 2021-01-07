@@ -159,6 +159,55 @@ class StandardKernelTest(parameterized.TestCase):
         np.testing.assert_array_equal(executor.store["z"], expectation)
 
     @parameterized.parameters(
+        {"dtype": dtype, "expected_result": expected_result}
+        for (dtype, expected_result) in zip(
+            [float, np.float64, int, np.int64],
+            [
+                np.ones((2, 2), float),
+                np.ones((2, 2), np.float64),
+                np.ones((2, 2), int),
+                np.ones((2, 2), np.int64),
+            ],
+        )
+    )
+    def test_ones(self, dtype, expected_result):
+
+        if isinstance(dtype, (int, np.int64)):
+            datatype = "int64"
+        else:
+            datatype = "float"
+
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_dialect.OnesOperation(
+                name="x",
+                placement_name=alice.name,
+                shape=(2, 2),
+                dtype=dtype,
+                inputs={},
+                output_type=TensorType(datatype=datatype),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save", placement_name=alice.name, inputs={"value": "x"}, key="y",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        assert executor.store["y"].dtype == expected_result.dtype
+        np.testing.assert_array_equal(executor.store["y"], expected_result)
+
+    @parameterized.parameters(
         {"axes": axes, "expected_result": expected_result}
         for (axes, expected_result) in zip(
             [None, (1, 0), (0, 1)],

@@ -9,6 +9,7 @@ from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.ring import FillTensorOperation
 from moose.computation.ring import RingAddOperation
+from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
@@ -106,3 +107,16 @@ def ring_mul(x: RingTensor, y: RingTensor, placement_name):
     return RingTensor(
         op=z_op, computation=x.computation, shape=x.shape, context=x.context
     )
+
+
+def ring_dot(x: RingTensor, y: RingTensor, placement_name):
+    assert isinstance(x, RingTensor)
+    assert isinstance(y, RingTensor)
+    z_op = x.computation.add_operation(
+        RingDotOperation(
+            name=x.context.get_fresh_name("ring_dot"),
+            placement_name=placement_name,
+            inputs={"lhs": x.op.name, "rhs": y.op.name},
+        )
+    )
+    return RingTensor(op=z_op, computation=x.computation, context=x.context)

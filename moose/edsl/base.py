@@ -8,6 +8,8 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import numpy as np
+
 CURRENT_PLACEMENT: List = []
 
 
@@ -104,15 +106,24 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
-class LoadExpression(Expression):
-    key: str
+class OnesExpression(Expression):
+    shape: Tuple[int]
+    dtype: Optional[Union[float, np.float64, int, np.int64]]
 
     def __hash__(self):
         return id(self)
 
 
 @dataclass
-class SaveExpression(Expression):
+class TransposeExpression(Expression):
+    axes: Optional[Tuple[int]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class LoadExpression(Expression):
     key: str
 
     def __hash__(self):
@@ -125,9 +136,8 @@ class InverseExpression(Expression):
         return id(self)
 
 
-@dataclass
-class TransposeExpression(Expression):
-    axes: Optional[Tuple[int]]
+class SaveExpression(Expression):
+    key: str
 
     def __hash__(self):
         return id(self)
@@ -179,6 +189,13 @@ def mul(lhs, rhs, placement=None):
     return BinaryOpExpression(op_name="mul", placement=placement, inputs=[lhs, rhs])
 
 
+def dot(lhs, rhs, placement=None):
+    assert isinstance(lhs, Expression)
+    assert isinstance(rhs, Expression)
+    placement = placement or get_current_placement()
+    return BinaryOpExpression(op_name="dot", placement=placement, inputs=[lhs, rhs])
+
+
 def div(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
@@ -190,6 +207,11 @@ def inverse(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return InverseExpression(placement=placement, inputs=[x])
+
+
+def ones(shape, dtype=None, placement=None):
+    placement = placement or get_current_placement()
+    return OnesExpression(placement=placement, inputs=[], shape=shape, dtype=dtype)
 
 
 def transpose(x, axes=None, placement=None):

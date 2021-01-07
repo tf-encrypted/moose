@@ -5,10 +5,12 @@ from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
+from moose.computation.standard import DotOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
@@ -56,6 +58,12 @@ class MulKernel(Kernel):
         return lhs * rhs
 
 
+class DotKernel(Kernel):
+    def execute_synchronous_block(self, op, session, lhs, rhs):
+        assert isinstance(op, DotOperation)
+        return lhs @ rhs
+
+
 class DivKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, DivOperation)
@@ -67,6 +75,13 @@ class InverseKernel(Kernel):
         assert isinstance(op, InverseOperation)
         assert isinstance(x, np.ndarray)
         return np.linalg.inv(x)
+
+
+class OnesKernel(Kernel):
+    def execute_synchronous_block(self, op, session):
+        assert isinstance(op, OnesOperation)
+        assert op.dtype in (float, np.float64, int, np.int64)
+        return np.ones(shape=op.shape, dtype=op.dtype)
 
 
 class TransposeKernel(Kernel):
