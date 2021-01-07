@@ -7,6 +7,7 @@ from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
 from moose.computation.standard import InputOperation
+from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
@@ -67,6 +68,13 @@ class DivKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, DivOperation)
         return lhs / rhs
+
+
+class InverseKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, InverseOperation)
+        assert isinstance(x, np.ndarray)
+        return np.linalg.inv(x)
 
 
 class OnesKernel(Kernel):

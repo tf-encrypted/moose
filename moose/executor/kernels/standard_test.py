@@ -114,6 +114,50 @@ class StandardKernelTest(parameterized.TestCase):
         comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], expected_result)
 
+    def test_inverse(self):
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        x = np.array([[3, 2], [2, 3]], dtype=np.float32)
+        expectation = np.linalg.inv(x)
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                value=x,
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.InverseOperation(
+                name="inverse",
+                placement_name=alice.name,
+                inputs={"x": "x"},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "inverse"},
+                key="z",
+            )
+        )
+
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(executor.store["z"], expectation)
+
     @parameterized.parameters(
         {"dtype": dtype, "expected_result": expected_result}
         for (dtype, expected_result) in zip(

@@ -77,6 +77,11 @@ class DivOperation(StandardOperation):
 
 
 @dataclass
+class InverseOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class OnesOperation(StandardOperation):
     shape: Tuple[int]
     dtype: Optional[Union[float, np.float64, int, np.int64]]

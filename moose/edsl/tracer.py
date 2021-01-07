@@ -16,6 +16,7 @@ from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
 from moose.computation.standard import InputOperation
+from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
@@ -30,6 +31,7 @@ from moose.edsl.base import BinaryOpExpression
 from moose.edsl.base import ConstantExpression
 from moose.edsl.base import Expression
 from moose.edsl.base import HostPlacementExpression
+from moose.edsl.base import InverseExpression
 from moose.edsl.base import LoadExpression
 from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import OnesExpression
@@ -184,6 +186,21 @@ class AstTracer:
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
                 output_type=output_type,
+            )
+        )
+
+    def visit_InverseExpression(self, inverse_expression):
+        assert isinstance(inverse_expression, InverseExpression)
+        (x_expression,) = inverse_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(inverse_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            InverseOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("inverse"),
+                output_type=output_type,
+                inputs={"x": x_operation.name},
             )
         )
 
