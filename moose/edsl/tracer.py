@@ -12,6 +12,7 @@ from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
+from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import InputOperation
@@ -26,6 +27,7 @@ from moose.computation.standard import TransposeOperation
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import BinaryOpExpression
+from moose.edsl.base import ConcatenateExpression
 from moose.edsl.base import ConstantExpression
 from moose.edsl.base import Expression
 from moose.edsl.base import HostPlacementExpression
@@ -143,6 +145,21 @@ class AstTracer:
                 name=argument_expression.arg_name,
                 inputs={},
                 output_type=output_type,
+            )
+        )
+
+    def visit_ConcatenateExpression(self, concatenate_expression):
+        assert isinstance(concatenate_expression, ConcatenateExpression)
+        arrays_op = [self.visit(expr).name for expr in concatenate_expression.inputs]
+        placement = self.visit_placement_expression(concatenate_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            ConcatenateOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("concatenate"),
+                output_type=output_type,
+                axis=concatenate_expression.axis,
+                inputs={"arrays": arrays_op},
             )
         )
 

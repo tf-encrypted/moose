@@ -5,7 +5,10 @@ from moose.logger import get_logger
 
 class Kernel:
     async def execute(self, op, session, output, **kwargs):
-        concrete_kwargs = {key: await value for key, value in kwargs.items()}
+        concrete_kwargs = {
+            key: ([await v for v in value] if isinstance(value, list) else await value)
+            for key, value in kwargs.items()
+        }
         get_logger().debug(
             f"Executing:"
             f" kernel:{self.__class__.__name__},"

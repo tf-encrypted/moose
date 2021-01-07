@@ -32,6 +32,7 @@ class AsyncExecutor:
         self.kernels = {
             standard_ops.InputOperation: standard_kernels.InputKernel(),
             standard_ops.OutputOperation: standard_kernels.OutputKernel(),
+            standard_ops.ConcatenateOperation: standard_kernels.ConcatenateKernel(),
             standard_ops.ConstantOperation: standard_kernels.ConstantKernel(),
             standard_ops.AddOperation: standard_kernels.AddKernel(),
             standard_ops.SubOperation: standard_kernels.SubKernel(),
@@ -98,7 +99,11 @@ class AsyncExecutor:
                 raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
             inputs = {
-                param_name: session.values.get_future(key=value_name)
+                param_name: (
+                    [session.values.get_future(key=name) for name in value_name]
+                    if isinstance(value_name, list)
+                    else session.values.get_future(key=value_name)
+                )
                 for (param_name, value_name) in op.inputs.items()
             }
             output = session.values.get_future(key=op.name)

@@ -2,6 +2,7 @@ import dill
 import numpy as np
 
 from moose.computation.standard import AddOperation
+from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
@@ -30,6 +31,12 @@ class OutputKernel(Kernel):
     def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, OutputOperation)
         return None
+
+
+class ConcatenateKernel(Kernel):
+    def execute_synchronous_block(self, op, session, arrays):
+        assert isinstance(op, ConcatenateOperation)
+        return np.concatenate(arrays, axis=op.axis)
 
 
 class ConstantKernel(Kernel):
