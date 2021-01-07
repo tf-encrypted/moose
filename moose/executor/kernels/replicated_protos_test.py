@@ -47,8 +47,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_placement(rep)
 
         a, b = map(list, zip(*bin_args))
-        x = np.array(a, dtype=np.float32)
-        y = np.array(b, dtype=np.float32)
+        x = np.array(a, dtype=np.float64)
+        y = np.array(b, dtype=np.float64)
 
         z = numpy_lmbd(x, y)
 

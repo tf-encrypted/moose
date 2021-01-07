@@ -113,8 +113,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "fixedpoint_encode")]
     fn fixedpoint_encode<'py>(
         py: Python<'py>,
-        x: PyReadonlyArrayDyn<f32>,
-        scaling_factor: u32,
+        x: PyReadonlyArrayDyn<f64>,
+        scaling_factor: u64,
     ) -> &'py PyArrayDyn<u64> {
         let x = x.as_array();
         let y = ring_encode(&x, scaling_factor);
@@ -125,8 +125,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn fixedpoint_decode<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
-        scaling_factor: u32,
-    ) -> &'py PyArrayDyn<f32> {
+        scaling_factor: u64,
+    ) -> &'py PyArrayDyn<f64> {
         let x_ring = dynarray_to_ring64(&x);
         let y = ring_decode(&x_ring, scaling_factor);
         y.to_pyarray(py)

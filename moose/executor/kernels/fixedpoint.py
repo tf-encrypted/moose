@@ -11,7 +11,7 @@ class RingEncodeKernel(Kernel):
     def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, RingEncodeOperation)
         assert isinstance(value, np.ndarray)
-        assert value.dtype == np.float32
+        assert value.dtype == np.float64
         return fixedpoint_encode(value, op.scaling_factor)
 
 
