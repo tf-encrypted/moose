@@ -6,7 +6,7 @@ from moose.edsl import computation
 from moose.edsl import concatenate
 from moose.edsl import dot
 from moose.edsl import host_placement
-from moose.edsl import linalg_inv
+from moose.edsl import inverse
 from moose.edsl import load
 from moose.edsl import mean
 from moose.edsl import ones
@@ -49,7 +49,7 @@ class LinearRegressionExample(unittest.TestCase):
             with x_owner:
                 X = load(x_uri)  # , x_source.selected_columns)
                 X_b = concatenate([ones(X.shape[0], 1), X])
-                A = linalg_inv(dot(transpose(X_b), X_b))
+                A = inverse(dot(transpose(X_b), X_b))
                 B = dot(A, transpose(X_b))
 
             with y_owner:
