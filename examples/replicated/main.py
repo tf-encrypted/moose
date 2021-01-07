@@ -41,15 +41,15 @@ def my_comp():
         y = constant(np.array([1, 1], dtype=np.float64))
 
     with rep:
-        x2 = mul(x, y)
-        z = dot(x2, y)
+        z1 = mul(x, y)
+        z2 = dot(x, y)
 
     with dave:
-        v = add(z, z)
+        v = add(z1, z1)
         res_dave = save(v, "res")
 
     with eric:
-        w = add(z, z)
+        w = add(z2, z2)
         res_eric = save(w, "res")
 
     return (res_dave, res_eric)
