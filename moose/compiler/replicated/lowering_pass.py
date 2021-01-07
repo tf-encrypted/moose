@@ -11,6 +11,7 @@ from moose.compiler.pruning import PruningPass
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
+from moose.compiler.ring import ring_dot
 from moose.compiler.ring import ring_mul
 from moose.compiler.ring import ring_sample
 from moose.compiler.ring import ring_shape
@@ -183,6 +184,20 @@ class ReplicatedLoweringPass:
         self.interpretations[op.name] = z
         return z
 
+    def lower_DotOperation(self, op):
+        assert isinstance(op, replicated_ops.DotOperation)
+        x = self.lower(op.inputs["lhs"])
+        y = self.lower(op.inputs["rhs"])
+        setup = self.lower(op.inputs["setup"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(y, ReplicatedTensor), type(y)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
+
+        z = replicated_dot(x, y, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
     def interpret_input_op(self, op):
         assert isinstance(op.output_type, TensorType)
         return StandardTensor(
@@ -239,14 +254,9 @@ class SetupContext:
 
 
 @dataclass
-class ReplicatedBaseSetup:
+class ReplicatedSetup:
     keys: Tuple[Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
     context: SetupContext
-
-
-@dataclass
-class ReplicatedSetup(ReplicatedBaseSetup):
-    pass
 
 
 @dataclass
@@ -275,7 +285,7 @@ def replicated_setup(ctx: SetupContext, placement_name) -> ReplicatedSetup:
     )
 
 
-def sample_synchronized_seeds(setup: ReplicatedSetup, placement_name):
+def sample_synchronized_seeds(setup: ReplicatedSetup, placement):
     context = setup.context
     naming_context = setup.context.naming_context
     nonce = bytes(naming_context.get_fresh_name("sync_nonce"), "utf-8")
@@ -297,9 +307,7 @@ def sample_synchronized_seeds(setup: ReplicatedSetup, placement_name):
         )
         return (seed_0, seed_1)
 
-    seeds = [
-        derive_seeds(*setup.keys[i], placement_name.player_names[i]) for i in range(3)
-    ]
+    seeds = [derive_seeds(*setup.keys[i], placement.player_names[i]) for i in range(3)]
 
     return ReplicatedSynchronizedSeeds(seeds=seeds)
 
@@ -329,7 +337,7 @@ def replicated_share(
     zero_tensors = [None] * 3
     for i in range(3):
         if i != input_player_id:
-            zero_tensors[i] = fill_tensor(x.shape, 0, placement_name=players[i])
+            zero_tensors[i] = fill_tensor(shape, 0, placement_name=players[i])
 
     prev_player_id = (input_player_id - 1) % 3
     x_previous = ring_sample(
@@ -407,31 +415,58 @@ def replicated_mul(
             placement_name=players[i],
         )
 
-    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
+    zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
+    zero_shares = _generate_zero_share(zero_shape, setup, players)
+    z_shares = [
+        ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
+        for i in range(3)
+    ]
+    return ReplicatedTensor(
+        shares0=(z_shares[2], z_shares[0]),
+        shares1=(z_shares[0], z_shares[1]),
+        shares2=(z_shares[1], z_shares[2]),
+        computation=computation,
+        context=context,
+    )
 
-    def generate_zero_share():
-        sampled_shares = list()
-        for i in range(3):
-            sampled_shares.append(
-                [
-                    ring_sample(
-                        z_shares[i].shape,
-                        synced_seeds.seeds[i][j],
-                        placement_name=players[i],
-                    )
-                    for j in range(2)
-                ]
-            )
 
-        sub_shares = [None] * 3
-        for i in range(3):
-            sub_shares[i] = ring_sub(
-                sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
-            )
+def replicated_dot(
+    x: ReplicatedTensor, y: ReplicatedTensor, setup: ReplicatedSetup, placement_name
+) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(y, ReplicatedTensor)
+    assert isinstance(setup, ReplicatedSetup)
 
-        return sub_shares  # alpha, beta, gamma
+    assert x.computation == y.computation
+    assert x.context == y.context
 
-    zero_shares = generate_zero_share()
+    computation = x.computation
+    context = x.context
+
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    players = replicated_placement.player_names
+
+    x_shares = [x.shares0, x.shares1, x.shares2]
+    y_shares = [y.shares0, y.shares1, y.shares2]
+    z_shares = [None, None, None]
+
+    for i in range(3):
+        z_shares[i] = ring_dot(x_shares[i][0], y_shares[i][0], players[i])
+        z_shares[i] = ring_add(
+            z_shares[i],
+            ring_dot(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
+            placement_name=players[i],
+        )
+        z_shares[i] = ring_add(
+            z_shares[i],
+            ring_dot(x_shares[i][1], y_shares[i][0], placement_name=players[i]),
+            placement_name=players[i],
+        )
+
+    zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
+    zero_shares = _generate_zero_share(zero_shape, setup, players)
     z_shares = [
         ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
         for i in range(3)
@@ -509,3 +544,26 @@ def replicated_sub(
         computation=x.computation,
         context=x.context,
     )
+
+
+def _generate_zero_share(shape, setup, players):
+    replicated_placement = setup.context.computation.placement(
+        setup.context.placement_name
+    )
+    synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
+    sampled_shares = list()
+    for i in range(3):
+        sampled_shares.append(
+            [
+                ring_sample(shape, synced_seeds.seeds[i][j], placement_name=players[i],)
+                for j in range(2)
+            ]
+        )
+
+    sub_shares = [None] * 3
+    for i in range(3):
+        sub_shares[i] = ring_sub(
+            sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
+        )
+
+    return sub_shares  # alpha, beta, gamma

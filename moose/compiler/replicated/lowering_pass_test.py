@@ -174,6 +174,85 @@ class ReplicatedTest(parameterized.TestCase):
             for op in comp.operations.values()
         )
 
+    def test_replicated_dot_lowering(self):
+        comp = Computation(placements={}, operations={})
+
+        comp.add_placement(HostPlacement(name="alice"))
+        comp.add_placement(HostPlacement(name="bob"))
+        comp.add_placement(HostPlacement(name="carole"))
+        comp.add_placement(
+            ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+        )
+        comp.add_placement(HostPlacement(name="dave"))
+        comp.add_placement(HostPlacement(name="eric"))
+
+        comp.add_operation(
+            standard_ops.ConstantOperation(
+                name="alice_input",
+                inputs={},
+                value=1,
+                placement_name="alice",
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_ops.ConstantOperation(
+                name="bob_input",
+                inputs={},
+                value=2,
+                placement_name="bob",
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_ops.DotOperation(
+                name="secure_dot",
+                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                placement_name="rep",
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_ops.AddOperation(
+                name="add_dave",
+                inputs={"lhs": "secure_dot", "rhs": "secure_dot"},
+                placement_name="dave",
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_ops.OutputOperation(
+                name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
+            )
+        )
+        comp.add_operation(
+            standard_ops.AddOperation(
+                name="add_eric",
+                inputs={"lhs": "secure_dot", "rhs": "secure_dot"},
+                placement_name="eric",
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_ops.OutputOperation(
+                name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
+            )
+        )
+
+        compiler = Compiler(
+            passes=[
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                ReplicatedLoweringPass(),
+            ]
+        )
+        comp = compiler.run_passes(comp)
+
+        assert all(
+            isinstance(comp.placement(op.placement_name), HostPlacement)
+            for op in comp.operations.values()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

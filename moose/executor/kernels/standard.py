@@ -5,6 +5,7 @@ from moose.computation.standard import AddOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
+from moose.computation.standard import DotOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
@@ -54,6 +55,12 @@ class MulKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, MulOperation)
         return lhs * rhs
+
+
+class DotKernel(Kernel):
+    def execute_synchronous_block(self, op, session, lhs, rhs):
+        assert isinstance(op, DotOperation)
+        return lhs @ rhs
 
 
 class DivKernel(Kernel):

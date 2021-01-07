@@ -6,6 +6,7 @@ import numpy as np
 from moose.edsl import add
 from moose.edsl import computation
 from moose.edsl import constant
+from moose.edsl import dot
 from moose.edsl import host_placement
 from moose.edsl import mul
 from moose.edsl import replicated_placement
@@ -34,20 +35,21 @@ rep = replicated_placement(name="rep", players=[alice, bob, carole])
 def my_comp():
 
     with alice:
-        x = constant(np.array([1], dtype=np.float64))
+        x = constant(np.array([1, 2], dtype=np.float64))
 
     with bob:
-        y = constant(np.array([2], dtype=np.float64))
+        y = constant(np.array([1, 1], dtype=np.float64))
 
     with rep:
-        z = mul(x, y)
+        z1 = mul(x, y)
+        z2 = dot(x, y)
 
     with dave:
-        v = add(z, z)
+        v = add(z1, z1)
         res_dave = save(v, "res")
 
     with eric:
-        w = add(z, z)
+        w = add(z2, z2)
         res_eric = save(w, "res")
 
     return (res_dave, res_eric)
