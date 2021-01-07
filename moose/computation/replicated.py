@@ -65,15 +65,3 @@ class MulOperation(ReplicatedOperation):
 @dataclass
 class DotOperation(ReplicatedOperation):
     output_type: ValueType
-
-
-@dataclass
-class EncodeOperation(ReplicatedOperation):
-    scaling_factor: int
-    output_type: ValueType
-
-
-@dataclass
-class DecodeOperation(ReplicatedOperation):
-    scaling_factor: int
-    output_type: ValueType

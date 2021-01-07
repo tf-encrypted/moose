@@ -110,7 +110,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         assert lhs_output_type.precision == rhs_output_type.precision
         output_type = fixedpoint_dialect.EncodedTensorType(
             datatype=lhs_output_type.datatype,
-            precision=lhs_output_type.precision + rhs_output_type.precision,  # TODO
+            precision=lhs_output_type.precision + rhs_output_type.precision,
         )
         dot_op = self.computation.add(
             fixedpoint_dialect.DotOperation(
