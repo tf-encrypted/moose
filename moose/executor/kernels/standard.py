@@ -8,6 +8,7 @@ from moose.computation.standard import DivOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
@@ -59,6 +60,13 @@ class DivKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, DivOperation)
         return lhs / rhs
+
+
+class OnesKernel(Kernel):
+    def execute_synchronous_block(self, op, session):
+        assert isinstance(op, OnesOperation)
+        assert op.dtype in (float, np.float64, int, np.int64)
+        return np.ones(shape=op.shape, dtype=op.dtype)
 
 
 class TransposeKernel(Kernel):

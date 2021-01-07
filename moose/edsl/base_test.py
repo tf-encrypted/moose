@@ -16,6 +16,7 @@ from moose.edsl.base import div
 from moose.edsl.base import function
 from moose.edsl.base import host_placement
 from moose.edsl.base import mul
+from moose.edsl.base import ones
 from moose.edsl.base import run_program
 from moose.edsl.base import sub
 from moose.edsl.base import transpose
@@ -54,6 +55,25 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
+            output_type=TensorType(datatype="float"),
+        )
+
+    def test_ones(self):
+        player0 = host_placement(name="player0")
+
+        @computation
+        def my_comp():
+            x0 = ones((2, 2), dtype=np.float64, placement=player0)
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("ones_0")
+        assert op == standard_ops.OnesOperation(
+            placement_name="player0",
+            name="ones_0",
+            shape=(2, 2),
+            dtype=np.float64,
+            inputs={},
             output_type=TensorType(datatype="float"),
         )
 

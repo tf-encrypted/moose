@@ -8,6 +8,8 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import numpy as np
+
 CURRENT_PLACEMENT: List = []
 
 
@@ -104,6 +106,23 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
+class OnesExpression(Expression):
+    shape: Tuple[int]
+    dtype: Optional[Union[float, np.float64, int, np.int64]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class TransposeExpression(Expression):
+    axes: Optional[Tuple[int]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class LoadExpression(Expression):
     key: str
 
@@ -114,14 +133,6 @@ class LoadExpression(Expression):
 @dataclass
 class SaveExpression(Expression):
     key: str
-
-    def __hash__(self):
-        return id(self)
-
-
-@dataclass
-class TransposeExpression(Expression):
-    axes: Optional[Tuple[int]]
 
     def __hash__(self):
         return id(self)
@@ -178,6 +189,11 @@ def div(lhs, rhs, placement=None):
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
     return BinaryOpExpression(op_name="div", placement=placement, inputs=[lhs, rhs])
+
+
+def ones(shape, dtype=None, placement=None):
+    placement = placement or get_current_placement()
+    return OnesExpression(placement=placement, inputs=[], shape=shape, dtype=dtype)
 
 
 def transpose(x, axes=None, placement=None):
