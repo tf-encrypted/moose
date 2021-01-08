@@ -123,7 +123,7 @@ class OnesExpression(Expression):
 
 
 @dataclass
-class PowExpression(Expression):
+class SquareExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -242,8 +242,8 @@ def ones(shape, dtype=None, placement=None):
     return OnesExpression(placement=placement, inputs=[], shape=shape, dtype=dtype)
 
 
-def pow(x, y, placement=None):
-    return PowExpression(placement=placement, inputs=[x, y])
+def square(x, placement=None):
+    return SquareExpression(placement=placement, inputs=[x])
 
 
 def sum(x, axis=None, placement=None):

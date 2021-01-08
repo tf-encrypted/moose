@@ -15,11 +15,11 @@ from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
-from moose.computation.standard import PowOperation
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
+from moose.computation.standard import SquareOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
@@ -97,12 +97,11 @@ class OnesKernel(Kernel):
         return np.ones(shape=op.shape, dtype=op.dtype)
 
 
-class PowKernel(Kernel):
-    def execute_synchronous_block(self, op, session, x, y):
-        assert isinstance(op, PowOperation)
+class SquareKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, SquareOperation)
         assert isinstance(x, (np.ndarray, float, int))
-        assert isinstance(y, (np.ndarray, float, int))
-        return np.power(x, y)
+        return np.square(x)
 
 
 class SumKernel(Kernel):

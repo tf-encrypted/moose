@@ -269,7 +269,7 @@ class StandardKernelTest(parameterized.TestCase):
         assert executor.store["y"].dtype == expected_result.dtype
         np.testing.assert_array_equal(executor.store["y"], expected_result)
 
-    def test_pow(self):
+    def test_square(self):
         expected_result = np.array([1, 4, 9, 16])
 
         comp = Computation(operations={}, placements={})
@@ -285,18 +285,10 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            standard_dialect.InputOperation(
-                name="y",
+            standard_dialect.SquareOperation(
+                name="square",
                 placement_name=alice.name,
-                inputs={},
-                output_type=TensorType(datatype="int64"),
-            )
-        )
-        comp.add_operation(
-            standard_dialect.PowOperation(
-                name="pow",
-                placement_name=alice.name,
-                inputs={"x": "x", "y": "y"},
+                inputs={"x": "x"},
                 output_type=TensorType(datatype="int64"),
             )
         )
@@ -304,7 +296,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "pow"},
+                inputs={"value": "square"},
                 key="z",
             )
         )
@@ -314,7 +306,7 @@ class StandardKernelTest(parameterized.TestCase):
             placement_instantiation={alice.name: alice.name},
             placement=alice.name,
             session_id="0123456789",
-            arguments={"x": np.array([1, 2, 3, 4]), "y": 2},
+            arguments={"x": np.array([1, 2, 3, 4])},
         )
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(executor.store["z"], expected_result)

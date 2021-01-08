@@ -18,8 +18,8 @@ from moose.edsl.base import function
 from moose.edsl.base import host_placement
 from moose.edsl.base import mul
 from moose.edsl.base import ones
-from moose.edsl.base import pow
 from moose.edsl.base import run_program
+from moose.edsl.base import square
 from moose.edsl.base import sub
 from moose.edsl.base import sum
 from moose.edsl.base import transpose
@@ -105,24 +105,20 @@ class EdslTest(parameterized.TestCase):
             output_type=TensorType(datatype="float"),
         )
 
-    def test_pow(self):
+    def test_square(self):
         player0 = host_placement(name="player0")
 
         @computation
         def my_comp():
-            x0 = pow(
-                constant(np.array([1]), placement=player0),
-                constant(2, placement=player0),
-                placement=player0,
-            )
+            x0 = square(constant(np.array([1]), placement=player0), placement=player0,)
             return x0
 
         concrete_comp = trace(my_comp)
-        op = concrete_comp.operation("pow_0")
-        assert op == standard_ops.PowOperation(
+        op = concrete_comp.operation("square_0")
+        assert op == standard_ops.SquareOperation(
             placement_name="player0",
-            name="pow_0",
-            inputs={"x": "constant_0", "y": "constant_1"},
+            name="square_0",
+            inputs={"x": "constant_0"},
             output_type=TensorType(datatype="float"),
         )
 

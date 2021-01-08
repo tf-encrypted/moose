@@ -95,7 +95,7 @@ class OnesOperation(StandardOperation):
 
 
 @dataclass
-class PowOperation(StandardOperation):
+class SquareOperation(StandardOperation):
     output_type: ValueType
 
 
