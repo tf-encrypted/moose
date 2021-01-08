@@ -270,6 +270,53 @@ class StandardKernelTest(parameterized.TestCase):
         np.testing.assert_array_equal(executor.store["y"], expected_result)
 
     @parameterized.parameters(
+        {"axis": axis, "expected_result": expected_result}
+        for (axis, expected_result) in zip(
+            [None, 0, (0, 1)], [10, np.array([4, 6]), 10],
+        )
+    )
+    def test_sum(self, axis, expected_result):
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SumOperation(
+                name="sum",
+                placement_name=alice.name,
+                axis=axis,
+                inputs={"x": "x"},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "sum"},
+                key="z",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+            arguments={"x": np.array([[1, 2], [3, 4]])},
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(executor.store["z"], expected_result)
+
+    @parameterized.parameters(
         {"axes": axes, "expected_result": expected_result}
         for (axes, expected_result) in zip(
             [None, (1, 0), (0, 1)],
