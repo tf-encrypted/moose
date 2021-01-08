@@ -269,6 +269,56 @@ class StandardKernelTest(parameterized.TestCase):
         assert executor.store["y"].dtype == expected_result.dtype
         np.testing.assert_array_equal(executor.store["y"], expected_result)
 
+    def test_pow(self):
+        expected_result = np.array([1, 4, 9, 16])
+
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="y",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.PowOperation(
+                name="pow",
+                placement_name=alice.name,
+                inputs={"x": "x", "y": "y"},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "pow"},
+                key="z",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+            arguments={"x": np.array([1, 2, 3, 4]), "y": 2},
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(executor.store["z"], expected_result)
+
     @parameterized.parameters(
         {"axis": axis, "expected_result": expected_result}
         for (axis, expected_result) in zip(
