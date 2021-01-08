@@ -22,6 +22,7 @@ from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
+from moose.computation.standard import PowOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
@@ -38,6 +39,7 @@ from moose.edsl.base import InverseExpression
 from moose.edsl.base import LoadExpression
 from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import OnesExpression
+from moose.edsl.base import PowExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
@@ -245,6 +247,22 @@ class AstTracer:
                 shape=ones_expression.shape,
                 dtype=dtype,
                 inputs={},
+            )
+        )
+
+    def visit_PowExpression(self, pow_expression):
+        assert isinstance(pow_expression, PowExpression)
+        x_expression, y_expression = pow_expression.inputs
+        x_operation = self.visit(x_expression)
+        y_operation = self.visit(y_expression)
+        placement = self.visit_placement_expression(pow_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            PowOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("pow"),
+                output_type=output_type,
+                inputs={"x": x_operation.name, "y": y_operation.name},
             )
         )
 

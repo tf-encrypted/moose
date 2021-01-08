@@ -15,6 +15,7 @@ from moose.computation.standard import LoadOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
+from moose.computation.standard import PowOperation
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
@@ -94,6 +95,14 @@ class OnesKernel(Kernel):
         assert isinstance(op, OnesOperation)
         assert op.dtype in (float, np.float64, int, np.int64)
         return np.ones(shape=op.shape, dtype=op.dtype)
+
+
+class PowKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x, y):
+        assert isinstance(op, PowOperation)
+        assert isinstance(x, (np.ndarray, float, int))
+        assert isinstance(y, (np.ndarray, float, int))
+        return np.power(x, y)
 
 
 class SumKernel(Kernel):

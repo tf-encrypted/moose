@@ -123,6 +123,12 @@ class OnesExpression(Expression):
 
 
 @dataclass
+class PowExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SumExpression(Expression):
     axis: Optional[Union[int, Tuple[int]]]
 
@@ -234,6 +240,10 @@ def inverse(x, placement=None):
 def ones(shape, dtype=None, placement=None):
     placement = placement or get_current_placement()
     return OnesExpression(placement=placement, inputs=[], shape=shape, dtype=dtype)
+
+
+def pow(x, y, placement=None):
+    return PowExpression(placement=placement, inputs=[x, y])
 
 
 def sum(x, axis=None, placement=None):

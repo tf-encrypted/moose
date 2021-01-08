@@ -95,6 +95,11 @@ class OnesOperation(StandardOperation):
 
 
 @dataclass
+class PowOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class SumOperation(StandardOperation):
     axis: Optional[Union[int, Tuple[int]]]
     output_type: ValueType

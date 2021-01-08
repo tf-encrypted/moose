@@ -11,6 +11,7 @@ from moose.edsl.base import load
 from moose.edsl.base import mpspdz_placement
 from moose.edsl.base import mul
 from moose.edsl.base import ones
+from moose.edsl.base import pow
 from moose.edsl.base import replicated_placement
 from moose.edsl.base import run_program
 from moose.edsl.base import save
@@ -33,6 +34,7 @@ __all__ = [
     load,
     mul,
     ones,
+    pow,
     run_program,
     save,
     sub,
