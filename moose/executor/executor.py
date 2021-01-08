@@ -40,6 +40,7 @@ class AsyncExecutor:
             standard_ops.DivOperation: standard_kernels.DivKernel(),
             standard_ops.InverseOperation: standard_kernels.InverseKernel(),
             standard_ops.OnesOperation: standard_kernels.OnesKernel(),
+            standard_ops.SumOperation: standard_kernels.SumKernel(),
             standard_ops.TransposeOperation: standard_kernels.TransposeKernel(),
             ring_ops.FillTensorOperation: ring_kernels.RingFillKernel(),
             ring_ops.RingAddOperation: ring_kernels.RingAddKernel(),

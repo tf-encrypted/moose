@@ -20,6 +20,7 @@ from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
 from moose.computation.standard import SubOperation
+from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
@@ -93,6 +94,13 @@ class OnesKernel(Kernel):
         assert isinstance(op, OnesOperation)
         assert op.dtype in (float, np.float64, int, np.int64)
         return np.ones(shape=op.shape, dtype=op.dtype)
+
+
+class SumKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, SumOperation)
+        assert isinstance(x, np.ndarray)
+        return np.sum(x, op.axis)
 
 
 class TransposeKernel(Kernel):
