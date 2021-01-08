@@ -640,7 +640,66 @@ def replicated_trunc_pr(x: ReplicatedTensor, m: int, setup: ReplicatedSetup, pla
         ring_sample(x.shape, new_seed, placement_name=players[2])
     ]
 
+    trunc_pr_out = _two_party_trunc_pr(x,
+        m, 
+        r = shares[0],
+        r_top = shares[1],
+        r_msb = shares[2],
+        players=players)
+    
 
+# assume x, r, r_top, r_msb is a two entry array where each entry corresponds
+# to a share
+def _two_party_trunc_pr(x, m, r, r_top, r_msb, players):
+    # TODO(Dragos): insert asserts
+
+    masked = [None] * 2
+    for i in range(len(players)):
+        masked[i] = ring_add(x[i], r[i], placement_name=players[i])
+
+    # open the mask
+    opened_mask = [
+        ring_add(masked[b], masked[1-b], placement_name=players[b])
+        for b in range(2)]
+
+    masked_tr = [None] * 2
+    for i in range(2):
+        no_msb_mask = ring_left_shift(opened_mask[i], 1, placement_name=players[i])
+        masked_tr[i] = ring_right_shift(no_msb_mask, m+1, placement_name=players[i])
+
+    ring_size = 64
+
+    msb_mask = [
+        right_right_shift(opened_mask, ring_size-1, placement_name=players[i])
+        for i in range(2)
+    ]
+    
+    msb_to_correct = [
+        arithmetic_xor(r_msb[i], msb_mask[i], placement_name=players[i])
+        for i in range(2)
+    ]
+
+    output = [None] * 2
+    for i in range(2):
+        shifted_msb = ring_shift_left(msb_to_correct[i], ring_size-m-1,
+            placement_name=players[i])
+        tmp = ring_sub(masked_tr[i], r_top[i], placement_name=players[i])
+        output[i] = ring_add(tmp, shifted_msb, placement_name=players[i])
+
+    return output
+
+# compute a + b - 2ab
+def arithmetic_xor(a: RingTensor, b: RingTensor, placement_name):
+    # a * b
+    prod = ring_mul(a, b, placement_name=placement_name)
+    # 2 * a * b
+    twice_prod = ring_left_shift(prod, 1, placement_name=placement_name)
+
+    return ring_sub(
+        ring_add(a, b, placement_name=placement_name),
+        twice_prod,
+        placement_name=placement_name)
+    
 def _bit_compose(bits, placement_name):
     n = len(bits)
     return tree_reduce(
