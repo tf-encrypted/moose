@@ -24,6 +24,7 @@ from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SubOperation
+from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
 from moose.edsl.base import ApplyFunctionExpression
@@ -40,6 +41,7 @@ from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
+from moose.edsl.base import SumExpression
 from moose.edsl.base import TransposeExpression
 from moose.logger import get_logger
 
@@ -243,6 +245,22 @@ class AstTracer:
                 shape=ones_expression.shape,
                 dtype=dtype,
                 inputs={},
+            )
+        )
+
+    def visit_SumExpression(self, sum_expression):
+        assert isinstance(sum_expression, SumExpression)
+        (x_expression,) = sum_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(sum_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            SumOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("sum"),
+                output_type=output_type,
+                axis=sum_expression.axis,
+                inputs={"x": x_operation.name},
             )
         )
 

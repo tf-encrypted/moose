@@ -15,6 +15,7 @@ from moose.edsl.base import replicated_placement
 from moose.edsl.base import run_program
 from moose.edsl.base import save
 from moose.edsl.base import sub
+from moose.edsl.base import sum
 from moose.edsl.tracer import trace
 
 __all__ = [
@@ -35,5 +36,6 @@ __all__ = [
     run_program,
     save,
     sub,
+    sum,
     trace,
 ]

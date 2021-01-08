@@ -123,6 +123,14 @@ class OnesExpression(Expression):
 
 
 @dataclass
+class SumExpression(Expression):
+    axis: Optional[Union[int, Tuple[int]]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class TransposeExpression(Expression):
     axes: Optional[Tuple[int]]
 
@@ -226,6 +234,12 @@ def inverse(x, placement=None):
 def ones(shape, dtype=None, placement=None):
     placement = placement or get_current_placement()
     return OnesExpression(placement=placement, inputs=[], shape=shape, dtype=dtype)
+
+
+def sum(x, axis=None, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return SumExpression(placement=placement, inputs=[x], axis=axis)
 
 
 def transpose(x, axes=None, placement=None):
