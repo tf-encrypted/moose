@@ -584,6 +584,110 @@ def replicated_sum(
         context=x.context,
     )
 
+def replicated_trunc_pr(x: ReplicatedTensor, m: int, setup: ReplicatedSetup, placement_name) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(m, int)
+
+    assert isinstance(setup, ReplicatedSetup)
+
+    assert isinstance(placement_name, ReplicatedPlacement)
+
+    players = replicated_placement.player_names
+    shape = ring_shape(x, placement_name=x.op.placement_name)
+
+    ctx = setup.context
+    k2 = sample_key(
+            context=ctx.naming_context,
+            computation=ctx.computation,
+            placement_name=players[2]
+    )
+
+    ring_size = 64
+    r_bits = [None] * ring_size
+    for i in range(ring_size):
+        seed_r = derive_seed(
+            key=k2,
+            nonce=i,
+            placement_name=players[2],
+            computation=context.computation,
+            context=naming_context,
+        )
+        # alternatively ring_sample can return the state of the seed in order to reuse it in subsequent calls
+        r_bits[i] = ring_sample(shape, seed_r, placement_name=players[2], max_value=1)
+
+    r = tree_reduce(ring_add, r_bits, players[2])
+    r_top = _bit_compose(r_bits[m:ring_size-1], players[2])
+    r_msb = r[ring_size-1]
+
+    to_share = [r, r_top, r_msb]
+    shares = [
+        _generate_additive_share(
+            item, setup, len(players)-1,
+            placement_name=players[2])
+        for item in to_share
+    ]
+
+    y_shares = [None, None, None]
+    new_seed = derive_seed(
+        key=k2,
+        nonce=ring_size,
+        placement_name=players[2],
+        computation=ctx.computation,
+        context=ctx.naming_context
+    )
+
+    y_shares[2] = [
+        ring_sample(x.shape, new_seed, placement_name=players[2])
+    ]
+
+
+def _bit_compose(bits, placement_name):
+    n = len(bits)
+    return tree_reduce(
+        ring_add,
+        [ring_left_shift(r_bits[i], i, placement_name=placement_name)
+        for i in range(n)],
+        placement_name=placement_name
+    )
+
+def _generate_additive_share(x: RingTensor, setup: ReplicatedSetup, num_players, placement_name):
+    assert isinstance(x, RingTensor)
+    ctx = setup.context
+    k = sample_key(
+        context=ctx.naming_context,
+        computation=ctx.computation,
+        placement_name=placement_name
+    )
+
+    shares = list()
+    for i in range(num_players-1):
+        seed = derive_seed(
+            key=k,
+            nonce=i,
+            placement_name=placement,
+            computation=ctx.computation,
+            context=ctx.naming_context,
+        )
+        shares.append(
+            ring_sample(x.shape, seed, placement_name)
+        )
+    
+    shares_sum = tree_reduce(ring_add, shares, placement_name)
+    # add remaining share
+    shares.append(ring_sub(x, shares_sum, placement_name=placement_name))
+
+    return shares
+
+
+def tree_reduce(function, sequence, placement_name):
+    assert len(sequence) > 0
+
+    n = len(x)
+    if n == 1:
+        return x[0]
+    else:
+        reduced = [function(sequence[2*i], sequence[2*i+1], placement_name=placement_name) for i in range(n//2)]
+        return tree_reduce(function, reduced + sequence[n//2*2:])
 
 def _generate_zero_share(shape, setup, players):
     replicated_placement = setup.context.computation.placement(

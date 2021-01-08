@@ -52,7 +52,7 @@ def fill_tensor(shape: Shape, value: int, placement_name):
     )
 
 
-def ring_sample(shape: Shape, seed: Seed, placement_name):
+def ring_sample(shape: Shape, seed: Seed, placement_name, max_value: Optional[int] = None):
     assert isinstance(shape, Shape)
     assert isinstance(seed, Seed)
     op = shape.computation.add_operation(
@@ -105,6 +105,20 @@ def ring_mul(x: RingTensor, y: RingTensor, placement_name):
     )
     # TODO(Dragos): is it OK to pass the resulting shape as the shape of x?
     # in the future we might want some sort of shape inference around this?
+    return RingTensor(
+        op=z_op, computation=x.computation, shape=x.shape, context=x.context
+    )
+
+
+def ring_left_shift(x: RingTensor, amount: int, placement_name):
+    assert(amount <= 64)
+    z_op = x.computation.add_operation(
+        RingLeftShiftOperation(
+            name=x.context.get_fresh_name("ring_left_shift"),
+            placement_name=placement_name,
+            inputs={"lhs": x.op.name, "amount": amount},
+        )
+    )
     return RingTensor(
         op=z_op, computation=x.computation, shape=x.shape, context=x.context
     )

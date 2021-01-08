@@ -48,7 +48,6 @@ class RingSumOperation(RingOperation):
 class RingShapeOperation(RingOperation):
     output_type: ValueType = ShapeType()
 
-
 @dataclass
 class RingSampleOperation(RingOperation):
     output_type: ValueType = RingTensorType()
