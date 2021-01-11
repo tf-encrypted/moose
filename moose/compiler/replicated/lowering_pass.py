@@ -114,6 +114,20 @@ class ReplicatedLoweringPass:
         self.interpretations[op.name] = y
         return y
 
+    def lower_TruncPrOperation(self, op):
+        assert isinstance(op, replicated_ops.TruncPrOperation)
+        x = self.lower(op.inputs["value"])
+        scaling_factor = op.scaling_factor
+        setup = self.lower(op.inputs["setup"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(scaling_factor, int), type(scaling_factor)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
+        print("placement_name: ", op.placement_name)
+        z = replicated_trunc_pr(x, scaling_factor, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
     def lower_SetupOperation(self, op):
         assert isinstance(op, replicated_ops.SetupOperation)
         context = SetupContext(
@@ -590,10 +604,11 @@ def replicated_trunc_pr(x: ReplicatedTensor, m: int, setup: ReplicatedSetup, pla
 
     assert isinstance(setup, ReplicatedSetup)
 
-    assert isinstance(placement_name, ReplicatedPlacement)
+    computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
 
     players = replicated_placement.player_names
-    shape = ring_shape(x, placement_name=x.op.placement_name)
 
     ctx = setup.context
     k2 = sample_key(
@@ -602,6 +617,8 @@ def replicated_trunc_pr(x: ReplicatedTensor, m: int, setup: ReplicatedSetup, pla
             placement_name=players[2]
     )
 
+    x_shape = ring_shape(x.shares2[0], placement_name=players[2])
+
     ring_size = 64
     r_bits = [None] * ring_size
     for i in range(ring_size):
@@ -609,11 +626,11 @@ def replicated_trunc_pr(x: ReplicatedTensor, m: int, setup: ReplicatedSetup, pla
             key=k2,
             nonce=i,
             placement_name=players[2],
-            computation=context.computation,
-            context=naming_context,
+            computation=ctx.computation,
+            context=ctx.naming_context,
         )
         # alternatively ring_sample can return the state of the seed in order to reuse it in subsequent calls
-        r_bits[i] = ring_sample(shape, seed_r, placement_name=players[2], max_value=1)
+        r_bits[i] = ring_sample(x_shape, seed_r, placement_name=players[2], max_value=1)
 
     r = tree_reduce(ring_add, r_bits, players[2])
     r_top = _bit_compose(r_bits[m:ring_size-1], players[2])
@@ -627,26 +644,56 @@ def replicated_trunc_pr(x: ReplicatedTensor, m: int, setup: ReplicatedSetup, pla
         for item in to_share
     ]
 
-    y_shares = [None, None, None]
-    new_seed = derive_seed(
-        key=k2,
-        nonce=ring_size,
-        placement_name=players[2],
-        computation=ctx.computation,
-        context=ctx.naming_context
-    )
 
-    y_shares[2] = [
-        ring_sample(x.shape, new_seed, placement_name=players[2])
+    shared_seeds = [
+        derive_seed(
+            key=k2,
+            nonce=ring_size+i,
+            placement_name=players[2],
+            computation=ctx.computation,
+            context=ctx.naming_context
+        )
+        for i in range(2)
     ]
 
-    trunc_pr_out = _two_party_trunc_pr(x,
+    y_shares = [None, None, None]
+    # samples shares of P2
+    y_shares[2] = [
+            ring_sample(x.shape, shared_seeds[i], placement_name=players[2])
+            for i in range(2)
+    ]
+    # send seeds to the other parties and use them to get the randomness generated on P2
+    y_recv = [
+        ring_sample(x.shape, share_seed[i], placement=players[i])
+        for i in range(2)]
+    
+    # compute the 2PC truncation protocol
+    y_prime = _two_party_trunc_pr(x,
         m, 
         r = shares[0],
         r_top = shares[1],
         r_msb = shares[2],
         players=players)
     
+    # apply share correction
+    # compute y'[i] - y_recv[i]
+    y_hat = [ ring_sub(y_prime[i], y_recv[i], placement=players[i])
+        for i in range(2)]
+    y_hat[0], y_hat[1] = y_hat[1], y_hat[0]
+
+    # computing y'[i] - y_recv[i] - y_hat[i]
+    y_shares[i] = [
+        ring_add(ring_sub(y_prime[i], y_recv[i], placement=players[i]), y_hat[i], placement=players[i])
+        for i in range(2)]
+
+    
+    return ReplicatedTensor(
+        shares0=y_shares[0],
+        shares1=y_shares[1],
+        shares2=y_shares[2],
+        computation=x.computation,
+        context=x.context,
+    )
 
 # assume x, r, r_top, r_msb is a two entry array where each entry corresponds
 # to a share
@@ -741,12 +788,12 @@ def _generate_additive_share(x: RingTensor, setup: ReplicatedSetup, num_players,
 def tree_reduce(function, sequence, placement_name):
     assert len(sequence) > 0
 
-    n = len(x)
+    n = len(sequence)
     if n == 1:
-        return x[0]
+        return sequence[0]
     else:
         reduced = [function(sequence[2*i], sequence[2*i+1], placement_name=placement_name) for i in range(n//2)]
-        return tree_reduce(function, reduced + sequence[n//2*2:])
+        return tree_reduce(function, reduced + sequence[n//2*2:], placement_name=placement_name)
 
 def _generate_zero_share(shape, setup, players):
     replicated_placement = setup.context.computation.placement(

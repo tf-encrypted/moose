@@ -35,6 +35,12 @@ class MulOperation(FixedpointOperation):
 
 
 @dataclass
+class TruncPrOperation(FixedpointOperation):
+    scaling_factor: int
+    output_type: ValueType
+
+
+@dataclass
 class DotOperation(FixedpointOperation):
     output_type: ValueType
 
