@@ -39,6 +39,8 @@ class AsyncExecutor:
             standard_ops.MulOperation: standard_kernels.MulKernel(),
             standard_ops.DivOperation: standard_kernels.DivKernel(),
             standard_ops.DotOperation: standard_kernels.DotKernel(),
+            standard_ops.ExpandDimsOperation: standard_kernels.ExpandDimsKernel(),
+            standard_ops.SqueezeOperation: standard_kernels.SqueezeKernel(),
             standard_ops.InverseOperation: standard_kernels.InverseKernel(),
             standard_ops.OnesOperation: standard_kernels.OnesKernel(),
             standard_ops.SquareOperation: standard_kernels.SquareKernel(),

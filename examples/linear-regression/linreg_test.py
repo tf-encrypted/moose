@@ -2,12 +2,15 @@ import argparse
 import logging
 import unittest
 
+import numpy as np
+
 from moose.edsl import Argument
 from moose.edsl import computation
 from moose.edsl import concatenate
 from moose.edsl import constant
 from moose.edsl import div
 from moose.edsl import dot
+from moose.edsl import expand_dims
 from moose.edsl import host_placement
 from moose.edsl import inverse
 from moose.edsl import load
@@ -21,8 +24,17 @@ from moose.edsl import sub
 from moose.edsl import sum
 from moose.edsl import trace
 from moose.edsl import transpose
+from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
+from moose.networking.memory import Networking
 from moose.runtime import TestRuntime as Runtime
+
+
+def generate_data(seed, n_instances, n_features, n_targets, coeff=3, shift=10):
+    rng = np.random.default_rng()
+    x_data = rng.normal(size=(n_instances, n_features))
+    y_data = x_data * coeff + shift
+    return x_data, y_data
 
 
 def mse(y_pred, y_true):
@@ -31,8 +43,8 @@ def mse(y_pred, y_true):
 
 def r_squared(y_pred, y_true):
     y_mean = mean(y_true)
-    ss_tot = sum(square(sub(y_true, y_mean)), axis=1)
-    ss_res = sum(square(sub(y_true, y_pred)), axis=1)
+    ss_tot = sum(square(sub(y_true, y_mean)), axis=0)
+    ss_res = sum(square(sub(y_true, y_pred)), axis=0)
     # NOTE this division is going to be a problem
     # instead we could reveal ss_res and ss_tot to the
     # model owner then do the division
@@ -42,7 +54,6 @@ def r_squared(y_pred, y_true):
 class LinearRegressionExample(unittest.TestCase):
     # @unittest.skip
     def test_linear_regression_example(self):
-
         x_owner = host_placement(name="x-owner")
         y_owner = host_placement(name="y-owner")
         model_owner = host_placement(name="model-owner")
@@ -59,8 +70,16 @@ class LinearRegressionExample(unittest.TestCase):
 
             with x_owner:
                 X = load(x_uri, dtype=float)  # , x_source.selected_columns)
+                # NOTE: what would be most natural to do is this:
+                #     bias_shape = (slice(shape(X), begin=0, end=1), 1)
+                #     bias = ones(bias_shape, dtype=float)
+                # but this raises an issue about accomodating python native values in the
+                # ASTTracer, something we've discussed and temporarily tabled in the past.
+                # For now, we've decided to implement squeeze and unsqueeze ops instead.
+                # But we have a feeling this issue will continue to come up!
                 bias = ones(slice(shape(X), begin=0, end=1), dtype=float)
-                X_b = concatenate([bias, X])
+                reshaped_bias = expand_dims(bias, 1)
+                X_b = concatenate([reshaped_bias, X], axis=1)
                 A = inverse(dot(transpose(X_b), X_b))
                 B = dot(A, transpose(X_b))
 
@@ -88,7 +107,20 @@ class LinearRegressionExample(unittest.TestCase):
             return res
 
         concrete_comp = trace(my_comp)
-        runtime = Runtime()
+
+        x_data, y_data = generate_data(
+            seed=42, n_instances=10, n_features=1, n_targets=1
+        )
+        networking = Networking()
+        x_owner_executor = AsyncExecutor(networking, store={"x_uri": x_data})
+        y_owner_executor = AsyncExecutor(networking, store={"y_uri": y_data})
+        runtime = Runtime(
+            networking=networking,
+            backing_executors={
+                x_owner.name: x_owner_executor,
+                y_owner.name: y_owner_executor,
+            },
+        )
         runtime.evaluate_computation(
             concrete_comp,
             placement_instantiation={
@@ -96,11 +128,11 @@ class LinearRegressionExample(unittest.TestCase):
                 for plc in [x_owner, y_owner, model_owner, trusted_computer]
             },
             arguments={
-                "x_uri": "",
-                "y_uri": "",
-                "w_uri": "",
-                "mse_uri": "",
-                "r_squared": "",
+                "x_uri": "x_data",
+                "y_uri": "y_data",
+                "w_uri": "regression_weights",
+                "mse_uri": "mse_result",
+                "r_squared": "r_squared_result",
             },
         )
 

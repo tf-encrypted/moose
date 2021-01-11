@@ -9,6 +9,7 @@ from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
+from moose.computation.standard import ExpandDimsOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
@@ -24,6 +25,7 @@ from moose.computation.standard import SerializeOperation
 from moose.computation.standard import ShapeOperation
 from moose.computation.standard import SliceOperation
 from moose.computation.standard import SquareOperation
+from moose.computation.standard import SqueezeOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
@@ -92,6 +94,20 @@ class InverseKernel(Kernel):
         assert isinstance(op, InverseOperation)
         assert isinstance(x, np.ndarray)
         return np.linalg.inv(x)
+
+
+class ExpandDimsKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, ExpandDimsOperation)
+        assert isinstance(x, np.ndarray)
+        return np.expand_dims(x, axis=op.axis)
+
+
+class SqueezeKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, SqueezeOperation)
+        assert isinstance(x, np.ndarray)
+        return np.squeeze(x, axis=op.axis)
 
 
 class OnesKernel(Kernel):

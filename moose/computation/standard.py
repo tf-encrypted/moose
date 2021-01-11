@@ -88,6 +88,18 @@ class InverseOperation(StandardOperation):
 
 
 @dataclass
+class ExpandDimsOperation(StandardOperation):
+    axis: Optional[Union[int, Tuple[int]]]
+    output_type: ValueType
+
+
+@dataclass
+class SqueezeOperation(StandardOperation):
+    axis: Optional[Union[int, Tuple[int]]]
+    output_type: ValueType
+
+
+@dataclass
 class OnesOperation(StandardOperation):
     dtype: Optional[Union[float, np.float64, int, np.int64]]
     output_type: ValueType

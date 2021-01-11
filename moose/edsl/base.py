@@ -114,6 +114,22 @@ class BinaryOpExpression(Expression):
 
 
 @dataclass
+class ExpandDimsExpression(Expression):
+    axis: Optional[Union[int, Tuple[int]]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class SqueezeExpression(Expression):
+    axis: Optional[Union[int, Tuple[int]]]
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class OnesExpression(Expression):
     dtype: Optional[Union[float, np.float64, int, np.int64]]
 
@@ -266,6 +282,18 @@ def inverse(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return InverseExpression(placement=placement, inputs=[x])
+
+
+def expand_dims(x, axis, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return ExpandDimsExpression(placement=placement, inputs=[x], axis=axis)
+
+
+def squeeze(x, axis=None, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return SqueezeExpression(placement=placement, inputs=[x], axis=axis)
 
 
 def ones(shape, dtype, placement=None):

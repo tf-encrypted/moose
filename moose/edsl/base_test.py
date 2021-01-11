@@ -159,6 +159,51 @@ class EdslTest(parameterized.TestCase):
             output_type=TensorType(datatype="float"),
         )
 
+    @parameterized.parameters(None, 1)
+    def test_squeeze(self, axis):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.squeeze(
+                edsl.constant(np.array([[1]]), placement=player0),
+                axis=axis,
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("squeeze_0")
+        assert op == standard_ops.SqueezeOperation(
+            placement_name="player0",
+            name="squeeze_0",
+            inputs={"x": "constant_0"},
+            axis=axis,
+            output_type=TensorType(datatype="float"),
+        )
+
+    def test_unsqueeze(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.expand_dims(
+                edsl.constant(np.array([1]), placement=player0),
+                axis=1,
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("expand_dims_0")
+        assert op == standard_ops.ExpandDimsOperation(
+            placement_name="player0",
+            name="expand_dims_0",
+            inputs={"x": "constant_0"},
+            axis=1,
+            output_type=TensorType(datatype="float"),
+        )
+
     def test_call_python_fn(self):
         player0 = edsl.host_placement(name="player0")
 

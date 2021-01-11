@@ -16,6 +16,7 @@ from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
+from moose.computation.standard import ExpandDimsOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
@@ -29,6 +30,7 @@ from moose.computation.standard import ShapeOperation
 from moose.computation.standard import ShapeType
 from moose.computation.standard import SliceOperation
 from moose.computation.standard import SquareOperation
+from moose.computation.standard import SqueezeOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
@@ -38,6 +40,7 @@ from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import BinaryOpExpression
 from moose.edsl.base import ConcatenateExpression
 from moose.edsl.base import ConstantExpression
+from moose.edsl.base import ExpandDimsExpression
 from moose.edsl.base import Expression
 from moose.edsl.base import HostPlacementExpression
 from moose.edsl.base import InverseExpression
@@ -52,6 +55,7 @@ from moose.edsl.base import SaveExpression
 from moose.edsl.base import ShapeExpression
 from moose.edsl.base import SliceExpression
 from moose.edsl.base import SquareExpression
+from moose.edsl.base import SqueezeExpression
 from moose.edsl.base import SumExpression
 from moose.edsl.base import TransposeExpression
 from moose.logger import get_logger
@@ -246,6 +250,38 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("inverse"),
                 output_type=output_type,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_ExpandDimsExpression(self, expand_dims_expression):
+        assert isinstance(expand_dims_expression, ExpandDimsExpression)
+        (x_expression,) = expand_dims_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(expand_dims_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            ExpandDimsOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("expand_dims"),
+                output_type=output_type,
+                axis=expand_dims_expression.axis,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_SqueezeExpression(self, squeeze_expression):
+        assert isinstance(squeeze_expression, SqueezeExpression)
+        (x_expression,) = squeeze_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(squeeze_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            SqueezeOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("squeeze"),
+                output_type=output_type,
+                axis=squeeze_expression.axis,
                 inputs={"x": x_operation.name},
             )
         )
