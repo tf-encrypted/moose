@@ -27,7 +27,7 @@ from moose.runtime import TestRuntime as Runtime
 
 
 def mse(y_pred, y_true):
-    return div(sum(square(sub(y_pred, y_true)), axis=1), nth(shape(y_pred), index=0))
+    return mean(square(sub(y_pred, y_true)), axis=1)  # TODO add support for `axis` argument
 
 
 def r_squared(y_pred, y_true):

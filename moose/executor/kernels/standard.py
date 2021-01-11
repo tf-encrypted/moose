@@ -14,6 +14,7 @@ from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MeanOperation
 from moose.computation.standard import MulOperation
+from moose.computation.standard import NthOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import ReceiveOperation
@@ -138,6 +139,12 @@ class SliceKernel(Kernel):
         assert isinstance(op, SliceOperation)
         assert isinstance(x, list)
         return x[op.begin : op.end]
+
+
+class NthKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, NthOperation)
+        return x[op.index]
 
 
 class LoadKernel(Kernel):

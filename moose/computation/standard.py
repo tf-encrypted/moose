@@ -128,6 +128,12 @@ class SliceOperation(StandardOperation):
 
 
 @dataclass
+class NthOperation(StandardOperation):
+    index: int
+    output_type: ValueType
+
+
+@dataclass
 class LoadOperation(StandardOperation):
     key: str
     output_type: ValueType
