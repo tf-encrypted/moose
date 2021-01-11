@@ -108,7 +108,8 @@ class AsyncExecutor:
             output = session.values.get_future(key=op.name)
             tasks += [
                 asyncio.create_task(
-                    kernel.execute(op, session=session, output=output, **inputs)
+                    kernel.execute(op, session=session, output=output, **inputs),
+                    name=op.name,
                 )
             ]
         get_logger().debug(f"Exiting computation; session_id:{session.session_id}")
@@ -121,10 +122,13 @@ class AsyncExecutor:
         # execute kernels
         done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
         # address any errors that may have occurred
-        exceptions = [task.exception() for task in done if task.exception()]
-        for e in exceptions:
-            get_logger().exception(e)
-        if exceptions:
+        except_tasks = [task for task in done if task.exception()]
+        exceptions = []
+        for t in except_tasks:
+            exceptions.append(t.exception())
+            get_logger().error(f"Task {t.get_name()} caused an exception")
+            t.print_stack()
+        if len(exceptions) > 0:
             raise Exception(
                 f"One or more errors occurred in '{placement}: {exceptions}'"
             )

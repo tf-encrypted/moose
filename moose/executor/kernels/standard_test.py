@@ -410,6 +410,44 @@ class StandardKernelTest(parameterized.TestCase):
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(executor.store["z"], expected_result)
 
+    def test_exception(self):
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+
+        # there is no networking so run_computation below will raise
+        # exception
+        comp.add_operation(
+            standard_dialect.SendOperation(
+                name="send_x",
+                placement_name=alice.name,
+                inputs={"value": "x"},
+                sender=alice.name,
+                receiver=alice.name,
+                rendezvous_key="0123456789",
+            )
+        )
+
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+            arguments={"x": 5},
+        )
+        with self.assertRaises(Exception):
+            asyncio.get_event_loop().run_until_complete(task)
+
 
 if __name__ == "__main__":
     unittest.main()
