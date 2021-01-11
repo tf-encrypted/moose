@@ -37,7 +37,7 @@ def r_squared(y_pred, y_true):
     # NOTE this division is going to be a problem
     # instead we could reveal ss_res and ss_tot to the
     # model owner then do the division
-    return sub(constant(1), div(ss_res, ss_tot))
+    return sub(constant(1, dtype=float), div(ss_res, ss_tot))
 
 
 class LinearRegressionExample(unittest.TestCase):
