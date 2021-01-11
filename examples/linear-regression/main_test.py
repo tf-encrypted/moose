@@ -2,6 +2,7 @@ import argparse
 import logging
 import unittest
 
+from moose.edsl import Argument
 from moose.edsl import computation
 from moose.edsl import concatenate
 from moose.edsl import div

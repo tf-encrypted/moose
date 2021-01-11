@@ -1,3 +1,4 @@
+from moose.edsl.base import Argument
 from moose.edsl.base import add
 from moose.edsl.base import computation
 from moose.edsl.base import concatenate
@@ -21,6 +22,7 @@ from moose.edsl.tracer import trace
 
 __all__ = [
     add,
+    Argument,
     computation,
     concatenate,
     constant,
