@@ -62,6 +62,7 @@ class SubOperation(ReplicatedOperation):
 class MulOperation(ReplicatedOperation):
     output_type: ValueType
 
+
 @dataclass
 class TruncPrOperation(ReplicatedOperation):
     scaling_factor: int

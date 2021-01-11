@@ -95,7 +95,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 ),
             )
         )
-    
+
     def process_TruncPrOperation(self, op, processed_inputs):
         assert isinstance(op, fixed_dialect.TruncPrOperation)
         inputs = {

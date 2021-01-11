@@ -34,6 +34,18 @@ class RingMulOperation(RingOperation):
 
 
 @dataclass
+class RingSHLOperation(RingOperation):
+    amount: int
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class RingSHROperation(RingOperation):
+    amount: int
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
 class RingDotOperation(RingOperation):
     output_type: ValueType = RingTensorType()
 
@@ -47,6 +59,7 @@ class RingSumOperation(RingOperation):
 @dataclass
 class RingShapeOperation(RingOperation):
     output_type: ValueType = ShapeType()
+
 
 @dataclass
 class RingSampleOperation(RingOperation):
