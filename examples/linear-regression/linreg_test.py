@@ -73,9 +73,10 @@ class LinearRegressionExample(unittest.TestCase):
                 # NOTE: what would be most natural to do is this:
                 #     bias_shape = (slice(shape(X), begin=0, end=1), 1)
                 #     bias = ones(bias_shape, dtype=float)
-                # but this raises an issue about accomodating python native values in the
-                # ASTTracer, something we've discussed and temporarily tabled in the past.
-                # For now, we've decided to implement squeeze and unsqueeze ops instead.
+                # but this raises an issue about accomodating python native values in
+                # the ASTTracer, something we've discussed and temporarily tabled in
+                # the past. For now, we've decided to implement squeeze and unsqueeze
+                # ops instead.
                 # But we have a feeling this issue will continue to come up!
                 bias = ones(slice(shape(X), begin=0, end=1), dtype=float)
                 reshaped_bias = expand_dims(bias, 1)
@@ -128,6 +129,9 @@ class LinearRegressionExample(unittest.TestCase):
                 for plc in [x_owner, y_owner, model_owner, trusted_computer]
             },
             arguments={
+                # FIXME: the keys here are being used in the computation instead of the
+                # values, so e.g. above we had to store data with key "x_uri" instead of
+                # the key "x_data"
                 "x_uri": "x_data",
                 "y_uri": "y_data",
                 "w_uri": "regression_weights",

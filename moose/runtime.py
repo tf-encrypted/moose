@@ -9,9 +9,9 @@ from moose.networking.memory import Networking
 
 
 class TestRuntime:
-    def __init__(self) -> None:
-        self.networking = Networking()
-        self.existing_executors = dict()
+    def __init__(self, networking=None, backing_executors=None) -> None:
+        self.networking = networking or Networking()
+        self.existing_executors = backing_executors or dict()
 
     def evaluate_computation(
         self,
