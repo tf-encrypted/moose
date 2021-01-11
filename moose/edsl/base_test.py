@@ -46,8 +46,8 @@ class EdslTest(parameterized.TestCase):
         @computation
         def my_comp():
             x0 = op(
-                constant(1, placement=player0),
-                constant(1, placement=player0),
+                constant(1.0, placement=player0),
+                constant(1.0, placement=player0),
                 placement=player0,
             )
             return x0
@@ -169,7 +169,7 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            x = constant(1, placement=player0)
+            x = constant(1.0, placement=player0)
             y = add_one(x, placement=player0)
             z = add(x, y, placement=player0)
             return z
@@ -194,7 +194,7 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            x0 = constant(1, placement=player0)
+            x0 = constant(1.0, placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
@@ -212,7 +212,7 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp(x: Argument(placement=player0, datatype=float)):
-            y = constant(1, placement=player0)
+            y = constant(1.0, placement=player0)
             z = add(x, y, placement=player0)
             return z
 

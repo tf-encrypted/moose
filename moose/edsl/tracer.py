@@ -185,15 +185,15 @@ class AstTracer:
         placement = self.visit_placement_expression(constant_expression.placement)
         value = constant_expression.value
         if isinstance(value, float):
-            output_datatype = TensorType(datatype="float")
+            output_type = TensorType(datatype="float")
         elif isinstance(value, int):
-            output_datatype = TensorType(datatype="int64")
+            output_type = TensorType(datatype="int64")
         elif isinstance(value, np.ndarray) and value.dtype == np.float64:
-            output_datatype = TensorType(datatype="float")
+            output_type = TensorType(datatype="float")
         elif isinstance(value, np.ndarray) and value.dtype == np.int64:
-            output_datatype = TensorType(datatype="int64")
+            output_type = TensorType(datatype="int64")
         else:
-            output_datatype = UnknownType()
+            output_type = UnknownType()
         return self.computation.add_operation(
             ConstantOperation(
                 placement_name=placement.name,
