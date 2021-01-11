@@ -19,6 +19,7 @@ from moose.computation.standard import DotOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
+from moose.computation.standard import MeanOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
@@ -37,6 +38,7 @@ from moose.edsl.base import Expression
 from moose.edsl.base import HostPlacementExpression
 from moose.edsl.base import InverseExpression
 from moose.edsl.base import LoadExpression
+from moose.edsl.base import MeanExpression
 from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
@@ -277,6 +279,21 @@ class AstTracer:
                 name=self.get_fresh_name("sum"),
                 output_type=output_type,
                 axis=sum_expression.axis,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_MeanExpression(self, mean_expression):
+        assert isinstance(mean_expression, MeanExpression)
+        (x_expression,) = mean_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(mean_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            MeanOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("mean"),
+                output_type=output_type,
                 inputs={"x": x_operation.name},
             )
         )

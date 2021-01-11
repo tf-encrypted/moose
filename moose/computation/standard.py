@@ -106,6 +106,11 @@ class SumOperation(StandardOperation):
 
 
 @dataclass
+class MeanOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class TransposeOperation(StandardOperation):
     axes: Optional[Tuple[int]]
     output_type: ValueType

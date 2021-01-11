@@ -9,6 +9,7 @@ from moose.edsl.base import function
 from moose.edsl.base import host_placement
 from moose.edsl.base import inverse
 from moose.edsl.base import load
+from moose.edsl.base import mean
 from moose.edsl.base import mpspdz_placement
 from moose.edsl.base import mul
 from moose.edsl.base import ones
@@ -18,6 +19,7 @@ from moose.edsl.base import save
 from moose.edsl.base import square
 from moose.edsl.base import sub
 from moose.edsl.base import sum
+from moose.edsl.base import transpose
 from moose.edsl.tracer import trace
 
 __all__ = [
@@ -35,11 +37,13 @@ __all__ = [
     inverse,
     load,
     mul,
+    mean,
     ones,
     run_program,
     save,
     square,
     sub,
     sum,
+    transpose,
     trace,
 ]

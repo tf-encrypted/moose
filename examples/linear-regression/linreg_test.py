@@ -12,8 +12,8 @@ from moose.edsl import inverse
 from moose.edsl import load
 from moose.edsl import mean
 from moose.edsl import ones
-from moose.edsl import pow
 from moose.edsl import save
+from moose.edsl import square
 from moose.edsl import sub
 from moose.edsl import trace
 from moose.edsl import transpose
@@ -23,13 +23,13 @@ from moose.runtime import TestRuntime as Runtime
 
 def mse(y_pred, y_true):
     # NOTE len(y_pred) will have to be computed in plaintext
-    return div(sum(pow(sub(y_pred, y_true), 2), axis=1), len(y_pred))
+    return div(sum(square(sub(y_pred, y_true), axis=1)), len(y_pred))
 
 
 def r_squared(y_pred, y_true):
     y_mean = mean(y_true)
-    ss_tot = sum(pow(sub(y_true, y_mean), 2), axis=1)
-    ss_res = sum(pow(sub(y_true, y_pred), 2), axis=1)
+    ss_tot = sum(square(sub(y_true, y_mean)), axis=1)
+    ss_res = sum(square(sub(y_true, y_pred)), axis=1)
     # NOTE this division is going to be a problem
     # instead we could reveal ss_res and ss_tot to the
     # model owner then do the division
