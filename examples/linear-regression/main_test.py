@@ -4,6 +4,7 @@ import unittest
 
 from moose.edsl import computation
 from moose.edsl import concatenate
+from moose.edsl import div
 from moose.edsl import dot
 from moose.edsl import host_placement
 from moose.edsl import inverse
@@ -21,7 +22,7 @@ from moose.runtime import TestRuntime as Runtime
 
 def mse(y_pred, y_true):
     # NOTE len(y_pred) will have to be computed in plaintext
-    return sum(pow(sub(y_pred, y_true), 2), axis=1) / len(y_pred)
+    return div(sum(pow(sub(y_pred, y_true), 2), axis=1), len(y_pred))
 
 
 def r_squared(y_pred, y_true):
@@ -31,7 +32,7 @@ def r_squared(y_pred, y_true):
     # NOTE this division is going to be a problem
     # instead we could reveal ss_res and ss_tot to the
     # model owner then do the division
-    return 1 - ss_res / ss_tot
+    return sub(1, div(ss_res, ss_tot))
 
 
 class LinearRegressionExample(unittest.TestCase):
@@ -44,7 +45,13 @@ class LinearRegressionExample(unittest.TestCase):
         trusted_computer = host_placement(name="trusted-computer")
 
         @computation
-        def my_comp(x_uri, y_uri, w_uri, mse_uri, rsquared_uri):
+        def my_comp(
+            x_uri: Argument(placement=x_owner, datatype=str),
+            y_uri: Argument(placement=y_owner, datatype=str),
+            w_uri: Argument(placement=model_owner, datatype=str),
+            mse_uri: Argument(placement=model_owner, datatype=str),
+            rsquared_uri: Argument(placement=model_owner, datatype=str),
+        ):
 
             with x_owner:
                 X = load(x_uri)  # , x_source.selected_columns)
@@ -82,6 +89,13 @@ class LinearRegressionExample(unittest.TestCase):
             placement_instantiation={
                 plc: plc.name
                 for plc in [x_owner, y_owner, model_owner, trusted_computer]
+            },
+            arguments={
+                "x_uri": "",
+                "y_uri": "",
+                "w_uri": "",
+                "mse_uri": "",
+                "r_squared": "",
             },
         )
 

@@ -14,7 +14,10 @@ class TestRuntime:
         self.existing_executors = dict()
 
     def evaluate_computation(
-        self, computation: Computation, placement_instantiation: Dict
+        self,
+        computation: Computation,
+        placement_instantiation: Dict,
+        arguments: Dict = {},
     ):
         placement_instantiation = {
             placement.name if not isinstance(placement, str) else placement: endpoint
@@ -35,6 +38,7 @@ class TestRuntime:
                 placement_instantiation=placement_instantiation,
                 placement=placement,
                 session_id=sid,
+                arguments=arguments,
             )
             for placement, executor in placement_executors.items()
         ]
