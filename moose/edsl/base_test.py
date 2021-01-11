@@ -110,7 +110,7 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            x0 = square(constant(np.array([1]), placement=player0), placement=player0,)
+            x0 = square(constant(np.array([1]), placement=player0), placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
@@ -127,7 +127,7 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            x0 = sum(constant(np.array([1]), placement=player0), placement=player0,)
+            x0 = sum(constant(np.array([1]), placement=player0), placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
