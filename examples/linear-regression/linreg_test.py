@@ -5,16 +5,21 @@ import unittest
 from moose.edsl import Argument
 from moose.edsl import computation
 from moose.edsl import concatenate
+from moose.edsl import constant
 from moose.edsl import div
 from moose.edsl import dot
 from moose.edsl import host_placement
 from moose.edsl import inverse
 from moose.edsl import load
 from moose.edsl import mean
+from moose.edsl import nth
 from moose.edsl import ones
 from moose.edsl import save
+from moose.edsl import shape
+from moose.edsl import slice
 from moose.edsl import square
 from moose.edsl import sub
+from moose.edsl import sum
 from moose.edsl import trace
 from moose.edsl import transpose
 from moose.logger import get_logger
@@ -22,8 +27,7 @@ from moose.runtime import TestRuntime as Runtime
 
 
 def mse(y_pred, y_true):
-    # NOTE len(y_pred) will have to be computed in plaintext
-    return div(sum(square(sub(y_pred, y_true), axis=1)), len(y_pred))
+    return div(sum(square(sub(y_pred, y_true)), axis=1), nth(shape(y_pred), index=0))
 
 
 def r_squared(y_pred, y_true):
@@ -33,11 +37,11 @@ def r_squared(y_pred, y_true):
     # NOTE this division is going to be a problem
     # instead we could reveal ss_res and ss_tot to the
     # model owner then do the division
-    return sub(1, div(ss_res, ss_tot))
+    return sub(constant(1), div(ss_res, ss_tot))
 
 
 class LinearRegressionExample(unittest.TestCase):
-    @unittest.skip
+    # @unittest.skip
     def test_linear_regression_example(self):
 
         x_owner = host_placement(name="x-owner")
@@ -55,13 +59,14 @@ class LinearRegressionExample(unittest.TestCase):
         ):
 
             with x_owner:
-                X = load(x_uri)  # , x_source.selected_columns)
-                X_b = concatenate([ones(X.shape[0], 1), X])
+                X = load(x_uri, dtype=float)  # , x_source.selected_columns)
+                bias = ones(slice(shape(X), begin=0, end=1), dtype=float)
+                X_b = concatenate([bias, X])
                 A = inverse(dot(transpose(X_b), X_b))
                 B = dot(A, transpose(X_b))
 
             with y_owner:
-                y_true = load(y_uri)  # , y_source.selected_columns)
+                y_true = load(y_uri, dtype=float)  # , y_source.selected_columns)
 
             with model_owner:
                 w = dot(B, y_true)

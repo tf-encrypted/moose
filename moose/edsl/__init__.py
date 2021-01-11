@@ -12,10 +12,13 @@ from moose.edsl.base import load
 from moose.edsl.base import mean
 from moose.edsl.base import mpspdz_placement
 from moose.edsl.base import mul
+from moose.edsl.base import nth
 from moose.edsl.base import ones
 from moose.edsl.base import replicated_placement
 from moose.edsl.base import run_program
 from moose.edsl.base import save
+from moose.edsl.base import shape
+from moose.edsl.base import slice
 from moose.edsl.base import square
 from moose.edsl.base import sub
 from moose.edsl.base import sum
@@ -38,9 +41,12 @@ __all__ = [
     load,
     mul,
     mean,
+    nth,
     ones,
     run_program,
     save,
+    slice,
+    shape,
     square,
     sub,
     sum,

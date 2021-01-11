@@ -24,6 +24,9 @@ from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
+from moose.computation.standard import ShapeOperation
+from moose.computation.standard import ShapeType
+from moose.computation.standard import SliceOperation
 from moose.computation.standard import SquareOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
@@ -44,6 +47,8 @@ from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
+from moose.edsl.base import ShapeExpression
+from moose.edsl.base import SliceExpression
 from moose.edsl.base import SquareExpression
 from moose.edsl.base import SumExpression
 from moose.edsl.base import TransposeExpression
@@ -178,13 +183,23 @@ class AstTracer:
     def visit_ConstantExpression(self, constant_expression):
         assert isinstance(constant_expression, ConstantExpression)
         placement = self.visit_placement_expression(constant_expression.placement)
-        output_type = TensorType(datatype="float")  # TODO use `value` to derive type
+        value = constant_expression.value
+        if isinstance(value, float):
+            output_datatype = TensorType(datatype="float")
+        elif isinstance(value, int):
+            output_datatype = TensorType(datatype="int64")
+        elif isinstance(value, np.ndarray) and value.dtype == np.float64:
+            output_datatype = TensorType(datatype="float")
+        elif isinstance(value, np.ndarray) and value.dtype == np.int64:
+            output_datatype = TensorType(datatype="int64")
+        else:
+            output_datatype = UnknownType()
         return self.computation.add_operation(
             ConstantOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("constant"),
                 output_type=output_type,
-                value=constant_expression.value,
+                value=value,
                 inputs={},
             )
         )
@@ -232,6 +247,8 @@ class AstTracer:
 
     def visit_OnesExpression(self, ones_expression):
         assert isinstance(ones_expression, OnesExpression)
+        (shape_expression,) = ones_expression.inputs
+        shape_operation = self.visit(shape_expression)
         placement = self.visit_placement_expression(ones_expression.placement)
         dtype = ones_expression.dtype
         if dtype in (float, np.float64):
@@ -246,9 +263,8 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("ones"),
                 output_type=output_type,
-                shape=ones_expression.shape,
                 dtype=dtype,
-                inputs={},
+                inputs={"shape": shape_operation.name},
             )
         )
 
@@ -314,15 +330,52 @@ class AstTracer:
             )
         )
 
+    def visit_SliceExpression(self, slice_expression):
+        assert isinstance(slice_expression, SliceExpression)
+        (x_expression,) = slice_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(slice_expression.placement)
+        return self.computation.add_operation(
+            SliceOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("slice"),
+                output_type=UnknownType(),
+                begin=slice_expression.begin,
+                end=slice_expression.end,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_ShapeExpression(self, shape_expression):
+        assert isinstance(shape_expression, ShapeExpression)
+        (x_expression,) = shape_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(shape_expression.placement)
+        return self.computation.add_operation(
+            ShapeOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("shape"),
+                output_type=ShapeType(),
+                inputs={"x": x_operation.name},
+            )
+        )
+
     def visit_LoadExpression(self, load_expression):
         assert isinstance(load_expression, LoadExpression)
         placement = self.visit_placement_expression(load_expression.placement)
+        if load_expression.dtype in (float, np.float64):
+            output_type = TensorType(datatype="float")
+        elif load_expression.dtype in (int, np.int64):
+            output_type = TensorType(datatype="int64")
+        else:
+            output_type = UnknownType()
         return self.computation.add_operation(
             LoadOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("load"),
                 key=load_expression.key,
                 inputs={},
+                output_type=output_type,
             )
         )
 

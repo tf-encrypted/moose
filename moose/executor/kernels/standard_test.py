@@ -7,6 +7,7 @@ from absl.testing import parameterized
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
+from moose.computation.standard import ShapeType
 from moose.computation.standard import TensorType
 from moose.edsl.base import add
 from moose.edsl.base import computation
@@ -244,12 +245,20 @@ class StandardKernelTest(parameterized.TestCase):
         alice = comp.add_placement(HostPlacement(name="alice"))
 
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="shape_op",
+                placement_name=alice.name,
+                inputs={},
+                value=[2, 2],
+                output_type=ShapeType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.OnesOperation(
                 name="x",
                 placement_name=alice.name,
-                shape=(2, 2),
                 dtype=dtype,
-                inputs={},
+                inputs={"shape": "shape_op"},
                 output_type=TensorType(datatype=datatype),
             )
         )

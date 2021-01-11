@@ -115,7 +115,6 @@ class BinaryOpExpression(Expression):
 
 @dataclass
 class OnesExpression(Expression):
-    shape: Tuple[int]
     dtype: Optional[Union[float, np.float64, int, np.int64]]
 
     def __hash__(self):
@@ -153,6 +152,7 @@ class TransposeExpression(Expression):
 @dataclass
 class LoadExpression(Expression):
     key: str
+    dtype: Optional
 
     def __hash__(self):
         return id(self)
@@ -187,6 +187,29 @@ class RunProgramExpression(Expression):
     path: str
     args: List[str]
     output_type: Optional
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class ShapeExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class SliceExpression(Expression):
+    begin: int
+    end: int
+
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class NthExpression(Expression):
+    index: int
 
     def __hash__(self):
         return id(self)
@@ -243,9 +266,10 @@ def inverse(x, placement=None):
     return InverseExpression(placement=placement, inputs=[x])
 
 
-def ones(shape, dtype=None, placement=None):
+def ones(shape, dtype, placement=None):
+    assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
-    return OnesExpression(placement=placement, inputs=[], shape=shape, dtype=dtype)
+    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype)
 
 
 def square(x, placement=None):
@@ -266,13 +290,35 @@ def mean(x, placement=None):
     return MeanExpression(placement=placement, inputs=[x])
 
 
+def shape(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return ShapeExpression(placement=placement, inputs=[x])
+
+
+def slice(x, begin, end, placement=None):
+    assert isinstance(x, Expression)
+    assert isinstance(begin, int)
+    assert isinstance(end, int)
+    placement = placement or get_current_placement()
+    return SliceExpression(placement=placement, inputs=[x], begin=begin, end=end)
+
+
+def nth(x, index, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return NthExpression(placement=placement, inputs=[x], index=index)
+
+
 def transpose(x, axes=None, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
     return TransposeExpression(placement=placement, inputs=[x], axes=axes)
 
 
-def load(key, placement=None):
+def load(key, dtype=None, placement=None):
     placement = placement or get_current_placement()
-    return LoadExpression(placement=placement, inputs=[], key=key)
+    return LoadExpression(placement=placement, inputs=[], key=key, dtype=dtype)
 
 
 def save(value, key, placement=None):

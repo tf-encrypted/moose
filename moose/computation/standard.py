@@ -89,7 +89,6 @@ class InverseOperation(StandardOperation):
 
 @dataclass
 class OnesOperation(StandardOperation):
-    shape: Tuple[int]
     dtype: Optional[Union[float, np.float64, int, np.int64]]
     output_type: ValueType
 
@@ -113,6 +112,18 @@ class MeanOperation(StandardOperation):
 @dataclass
 class TransposeOperation(StandardOperation):
     axes: Optional[Tuple[int]]
+    output_type: ValueType
+
+
+@dataclass
+class ShapeOperation(StandardOperation):
+    output_type: ValueType = ShapeType()
+
+
+@dataclass
+class SliceOperation(StandardOperation):
+    begin: int
+    end: int
     output_type: ValueType
 
 

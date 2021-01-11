@@ -91,7 +91,8 @@ class EdslTest(parameterized.TestCase):
 
         @computation
         def my_comp():
-            x0 = ones((2, 2), dtype=np.float64, placement=player0)
+            shape = constant([2, 2], placement=player0)
+            x0 = ones(shape, dtype=np.float64, placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
@@ -99,9 +100,8 @@ class EdslTest(parameterized.TestCase):
         assert op == standard_ops.OnesOperation(
             placement_name="player0",
             name="ones_0",
-            shape=(2, 2),
             dtype=np.float64,
-            inputs={},
+            inputs={"shape": "constant_0"},
             output_type=TensorType(datatype="float"),
         )
 

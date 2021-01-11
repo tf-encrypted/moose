@@ -92,10 +92,10 @@ class InverseKernel(Kernel):
 
 
 class OnesKernel(Kernel):
-    def execute_synchronous_block(self, op, session):
+    def execute_synchronous_block(self, op, session, shape):
         assert isinstance(op, OnesOperation)
         assert op.dtype in (float, np.float64, int, np.int64)
-        return np.ones(shape=op.shape, dtype=op.dtype)
+        return np.ones(shape=shape, dtype=op.dtype)
 
 
 class SquareKernel(Kernel):
@@ -124,6 +124,20 @@ class TransposeKernel(Kernel):
         assert isinstance(op, TransposeOperation)
         assert isinstance(x, np.ndarray)
         return x.transpose(op.axes)
+
+
+class ShapeKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, ShapeOperation)
+        assert isinstance(x, np.ndarray)
+        return list(np.shape(x))
+
+
+class SliceKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, SliceOperation)
+        assert isinstance(x, list)
+        return x[op.begin : op.end]
 
 
 class LoadKernel(Kernel):
