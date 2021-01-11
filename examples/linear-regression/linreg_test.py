@@ -12,7 +12,6 @@ from moose.edsl import host_placement
 from moose.edsl import inverse
 from moose.edsl import load
 from moose.edsl import mean
-from moose.edsl import nth
 from moose.edsl import ones
 from moose.edsl import save
 from moose.edsl import shape
@@ -27,7 +26,7 @@ from moose.runtime import TestRuntime as Runtime
 
 
 def mse(y_pred, y_true):
-    return mean(square(sub(y_pred, y_true)), axis=1)  # TODO add support for `axis` argument
+    return mean(square(sub(y_pred, y_true)), axis=0)
 
 
 def r_squared(y_pred, y_true):

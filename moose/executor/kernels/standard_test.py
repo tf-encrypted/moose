@@ -321,12 +321,14 @@ class StandardKernelTest(parameterized.TestCase):
         np.testing.assert_array_equal(executor.store["z"], expected_result)
 
     @parameterized.parameters(
-        {"axis": axis, "expected_result": expected_result}
-        for (axis, expected_result) in zip(
-            [None, 0, (0, 1)], [10, np.array([4, 6]), 10],
-        )
+        (standard_dialect.SumOperation, "sum", None, 10),
+        (standard_dialect.SumOperation, "sum", 0, np.array([4, 6])),
+        (standard_dialect.SumOperation, "sum", (0, 1), 10),
+        (standard_dialect.MeanOperation, "mean", None, 2.5),
+        (standard_dialect.MeanOperation, "mean", 0, np.array([2, 3])),
+        (standard_dialect.MeanOperation, "mean", (0, 1), 2.5),
     )
-    def test_sum(self, axis, expected_result):
+    def test_reduce_op(self, reduce_op_cls, reduce_op_name, axis, expected_result):
         comp = Computation(operations={}, placements={})
 
         alice = comp.add_placement(HostPlacement(name="alice"))
@@ -340,8 +342,8 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            standard_dialect.SumOperation(
-                name="sum",
+            reduce_op_cls(
+                name=reduce_op_name,
                 placement_name=alice.name,
                 axis=axis,
                 inputs={"x": "x"},
@@ -352,7 +354,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "sum"},
+                inputs={"value": reduce_op_name},
                 key="z",
             )
         )

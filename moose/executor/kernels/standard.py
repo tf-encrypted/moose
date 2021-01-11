@@ -21,6 +21,8 @@ from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
+from moose.computation.standard import ShapeOperation
+from moose.computation.standard import SliceOperation
 from moose.computation.standard import SquareOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
@@ -110,14 +112,14 @@ class SumKernel(Kernel):
     def execute_synchronous_block(self, op, session, x):
         assert isinstance(op, SumOperation)
         assert isinstance(x, np.ndarray)
-        return np.sum(x, op.axis)
+        return np.sum(x, axis=op.axis)
 
 
 class MeanKernel(Kernel):
     def execute_synchronous_block(self, op, session, x):
         assert isinstance(op, MeanOperation)
         assert isinstance(x, np.ndarray)
-        return np.mean(x)
+        return np.mean(x, axis=op.axis)
 
 
 class TransposeKernel(Kernel):

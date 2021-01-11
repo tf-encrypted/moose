@@ -106,6 +106,7 @@ class SumOperation(StandardOperation):
 
 @dataclass
 class MeanOperation(StandardOperation):
+    axis: Optional[Union[int, Tuple[int]]]
     output_type: ValueType
 
 

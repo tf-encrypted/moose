@@ -315,6 +315,7 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("mean"),
                 output_type=output_type,
+                axis=mean_expression.axis,
                 inputs={"x": x_operation.name},
             )
         )

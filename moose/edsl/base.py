@@ -137,6 +137,8 @@ class SumExpression(Expression):
 
 @dataclass
 class MeanExpression(Expression):
+    axis: Optional[Union[int, Tuple[int]]]
+
     def __hash__(self):
         return id(self)
 
@@ -284,10 +286,10 @@ def sum(x, axis=None, placement=None):
     return SumExpression(placement=placement, inputs=[x], axis=axis)
 
 
-def mean(x, placement=None):
+def mean(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return MeanExpression(placement=placement, inputs=[x])
+    return MeanExpression(placement=placement, inputs=[x], axis=axis)
 
 
 def shape(x, placement=None):
