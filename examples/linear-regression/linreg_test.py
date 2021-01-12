@@ -87,10 +87,8 @@ class LinearRegressionExample(unittest.TestCase):
             with y_owner:
                 y_true = load(y_uri, dtype=float)  # , y_source.selected_columns)
 
-            with model_owner:
-                w = dot(B, y_true)
-
             with trusted_computer:
+                w = dot(B, y_true)
                 y_pred = dot(X_b, w)
                 mse_result = mse(y_pred, y_true)
                 # rsquared_result = r_squared(y_pred, y_true)
