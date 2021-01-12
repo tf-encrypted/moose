@@ -79,4 +79,4 @@ class RingFillKernel(Kernel):
 class RingSampleKernel(Kernel):
     def execute_synchronous_block(self, op, session, shape, seed):
         assert isinstance(op, RingSampleOperation)
-        return ring_sample(shape, seed)
+        return ring_sample(shape, seed, op.max_value)

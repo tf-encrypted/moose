@@ -11,6 +11,7 @@ pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
 
 pub trait Sample {
     fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
+    fn sample_bits(shape: &[usize], key: &[u8]) -> Self;
 }
 
 impl Sample for Ring64Tensor {
@@ -19,6 +20,16 @@ impl Sample for Ring64Tensor {
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
+        let ix = IxDyn(shape);
+        Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
+    }
+    fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
+        let seed: PRNGSeed = key.try_into().unwrap();
+        let mut rng = AesRng::from_seed(seed);
+        let length = shape.iter().product();
+        let values: Vec<_> = (0..length)
+            .map(|_| Wrapping(rng.get_bit() as u64))
+            .collect();
         let ix = IxDyn(shape);
         Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
     }
@@ -234,6 +245,9 @@ mod tests {
                 9619880027406922172
             ])
         );
+
+        let r_bits = Ring64Tensor::sample_bits(&[5], &key);
+        assert_eq!(r_bits, Ring64Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 
     #[test]

@@ -64,6 +64,7 @@ def ring_sample(
             name=shape.context.get_fresh_name("ring_sample"),
             placement_name=placement_name,
             inputs={"shape": shape.op.name, "seed": seed.op.name},
+            max_value=max_value,
         )
     )
     return RingTensor(

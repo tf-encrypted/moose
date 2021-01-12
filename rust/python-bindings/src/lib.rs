@@ -116,16 +116,23 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         py: Python<'py>,
         shape: Vec<usize>,
         seed: &'py PyBytes,
+        max_value: Option<u64>,
     ) -> &'py PyArrayDyn<u64> {
-        let res = Ring64Tensor::sample_uniform(&shape, &seed.as_bytes());
+        let res = if max_value.is_none() {
+            Ring64Tensor::sample_uniform(&shape, &seed.as_bytes())
+        } else {
+            Ring64Tensor::sample_bits(&shape, &seed.as_bytes())
+        };
+
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
 
     #[pyfn(m, "ring_shl")]
-    fn ring_shl<'py>(py: Python<'py>,
-                x: PyReadonlyArrayDyn<u64>, 
-                amount: u64
+    fn ring_shl<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        amount: u64,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
         let res_array = x_ring.0.mapv(|x| x.0 << amount);
@@ -133,16 +140,15 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "ring_shr")]
-    fn ring_shr<'py>(py: Python<'py>,
-                x: PyReadonlyArrayDyn<u64>, 
-                amount: u64
+    fn ring_shr<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        amount: u64,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
         let res_array = x_ring.0.mapv(|x| x.0 >> amount);
         res_array.to_pyarray(py)
     }
-
-
 
     #[pyfn(m, "fixedpoint_encode")]
     fn fixedpoint_encode<'py>(

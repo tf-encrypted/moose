@@ -92,6 +92,10 @@ class SamplingOperations(parameterized.TestCase):
     def test_sample(self):
         actual = ring_sample((2, 2), sample_key())
         assert ring_shape(actual) == [2, 2]
+        random_bits = ring_sample((2, 2), sample_key(), max_value=1)
+        print(random_bits)
+        assert 0 <= random_bits.any()
+        assert 1 <= random_bits.any()
 
 
 class FillOp(parameterized.TestCase):
@@ -102,7 +106,7 @@ class FillOp(parameterized.TestCase):
 
 
 class BitOps(parameterized.TestCase):
-    def test_bit_ops(self):
+    def test_bitwise_ops(self):
         a = np.array([2 ** i for i in range(64)], dtype=np.uint64)
         for i in range(10):
             np.testing.assert_array_equal(a << i, ring_shl(a, i))

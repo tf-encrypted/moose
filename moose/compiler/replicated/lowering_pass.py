@@ -634,7 +634,8 @@ def replicated_trunc_pr(
             computation=ctx.computation,
             context=ctx.naming_context,
         )
-        # alternatively ring_sample can return the state of the seed in order to reuse it in subsequent calls
+        # alternatively ring_sample can return the state of the seed
+        # in order to reuse it in subsequent calls
         r_bits[i] = ring_sample(x_shape, seed_r, placement_name=players[2], max_value=1)
 
     r = tree_reduce(ring_add, r_bits, players[2])

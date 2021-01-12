@@ -63,6 +63,7 @@ class RingShapeOperation(RingOperation):
 
 @dataclass
 class RingSampleOperation(RingOperation):
+    max_value: Optional[int] = None
     output_type: ValueType = RingTensorType()
 
 
