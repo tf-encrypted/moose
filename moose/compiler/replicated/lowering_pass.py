@@ -629,7 +629,7 @@ def replicated_trunc_pr(
     for i in range(ring_size):
         seed_r = derive_seed(
             key=k2,
-            nonce=i,
+            nonce=bytes(i),
             placement_name=players[2],
             computation=ctx.computation,
             context=ctx.naming_context,
@@ -652,7 +652,7 @@ def replicated_trunc_pr(
     shared_seeds = [
         derive_seed(
             key=k2,
-            nonce=ring_size + i,
+            nonce=bytes(ring_size + i),
             placement_name=players[2],
             computation=ctx.computation,
             context=ctx.naming_context,
@@ -796,7 +796,7 @@ def _generate_additive_share(
     for i in range(num_players - 1):
         seed = derive_seed(
             key=k,
-            nonce=i,
+            nonce=bytes(i),
             placement_name=placement_name,
             computation=ctx.computation,
             context=ctx.naming_context,
