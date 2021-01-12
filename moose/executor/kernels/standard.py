@@ -23,7 +23,6 @@ from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
 from moose.computation.standard import ShapeOperation
 from moose.computation.standard import SliceOperation
-from moose.computation.standard import SquareOperation
 from moose.computation.standard import SqueezeOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
@@ -114,13 +113,6 @@ class OnesKernel(Kernel):
         assert isinstance(op, OnesOperation)
         assert op.dtype in (float, np.float64, int, np.int64)
         return np.ones(shape=shape, dtype=op.dtype)
-
-
-class SquareKernel(Kernel):
-    def execute_synchronous_block(self, op, session, x):
-        assert isinstance(op, SquareOperation)
-        assert isinstance(x, (np.ndarray, float, int))
-        return np.square(x)
 
 
 class SumKernel(Kernel):

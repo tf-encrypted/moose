@@ -28,7 +28,6 @@ from moose.computation.standard import SaveOperation
 from moose.computation.standard import ShapeOperation
 from moose.computation.standard import ShapeType
 from moose.computation.standard import SliceOperation
-from moose.computation.standard import SquareOperation
 from moose.computation.standard import SqueezeOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
@@ -52,7 +51,6 @@ from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
 from moose.edsl.base import ShapeExpression
 from moose.edsl.base import SliceExpression
-from moose.edsl.base import SquareExpression
 from moose.edsl.base import SqueezeExpression
 from moose.edsl.base import SumExpression
 from moose.edsl.base import TransposeExpression
@@ -304,21 +302,6 @@ class AstTracer:
                 output_type=output_type,
                 dtype=dtype,
                 inputs={"shape": shape_operation.name},
-            )
-        )
-
-    def visit_SquareExpression(self, square_expression):
-        assert isinstance(square_expression, SquareExpression)
-        (x_expression,) = square_expression.inputs
-        x_operation = self.visit(x_expression)
-        placement = self.visit_placement_expression(square_expression.placement)
-        output_type = TensorType(datatype="float")
-        return self.computation.add_operation(
-            SquareOperation(
-                placement_name=placement.name,
-                name=self.get_fresh_name("square"),
-                output_type=output_type,
-                inputs={"x": x_operation.name},
             )
         )
 
