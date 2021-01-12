@@ -34,13 +34,13 @@ class RingMulOperation(RingOperation):
 
 
 @dataclass
-class RingSHLOperation(RingOperation):
+class RingShlOperation(RingOperation):
     amount: int
     output_type: ValueType = RingTensorType()
 
 
 @dataclass
-class RingSHROperation(RingOperation):
+class RingShrOperation(RingOperation):
     amount: int
     output_type: ValueType = RingTensorType()
 

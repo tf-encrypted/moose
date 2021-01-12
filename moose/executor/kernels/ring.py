@@ -4,6 +4,8 @@ from moose_kernels import ring_fill
 from moose_kernels import ring_mul
 from moose_kernels import ring_sample
 from moose_kernels import ring_shape
+from moose_kernels import ring_shl
+from moose_kernels import ring_shr
 from moose_kernels import ring_sub
 from moose_kernels import ring_sum
 
@@ -13,6 +15,8 @@ from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
+from moose.computation.ring import RingShlOperation
+from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
 from moose.executor.kernels.base import Kernel
@@ -28,6 +32,18 @@ class RingMulKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, RingMulOperation)
         return ring_mul(lhs, rhs)
+
+
+class RingShlKernel(Kernel):
+    def execute_synchronous_block(self, op, session, tensor):
+        assert isinstance(op, RingShlOperation)
+        return ring_shl(tensor, op.amount)
+
+
+class RingShrKernel(Kernel):
+    def execute_synchronous_block(self, op, session, tensor):
+        assert isinstance(op, RingShrOperation)
+        return ring_shr(tensor, op.amount)
 
 
 class RingDotKernel(Kernel):

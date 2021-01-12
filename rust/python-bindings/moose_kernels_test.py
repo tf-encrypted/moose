@@ -10,6 +10,8 @@ from moose_kernels import ring_fill
 from moose_kernels import ring_mul
 from moose_kernels import ring_sample
 from moose_kernels import ring_shape
+from moose_kernels import ring_shl
+from moose_kernels import ring_shr
 from moose_kernels import ring_sub
 from moose_kernels import ring_sum
 from moose_kernels import sample_key
@@ -97,6 +99,14 @@ class FillOp(parameterized.TestCase):
         actual = ring_fill((2, 2), 1)
         expected = np.full((2, 2), 1, dtype=np.uint64)
         np.testing.assert_array_equal(actual, expected)
+
+
+class BitOps(parameterized.TestCase):
+    def test_bit_ops(self):
+        a = np.array([2 ** i for i in range(64)], dtype=np.uint64)
+        for i in range(10):
+            np.testing.assert_array_equal(a << i, ring_shl(a, i))
+            np.testing.assert_array_equal(a >> i, ring_shr(a, i))
 
 
 if __name__ == "__main__":

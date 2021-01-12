@@ -13,8 +13,8 @@ from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
-from moose.computation.ring import RingSHLOperation
-from moose.computation.ring import RingSHROperation
+from moose.computation.ring import RingShlOperation
+from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
 
@@ -114,13 +114,13 @@ def ring_mul(x: RingTensor, y: RingTensor, placement_name):
     )
 
 
-def ring_left_shift(x: RingTensor, amount: int, placement_name):
+def ring_shl(x: RingTensor, amount: int, placement_name):
     assert amount <= 64
     z_op = x.computation.add_operation(
-        RingSHLOperation(
-            name=x.context.get_fresh_name("ring_left_shift"),
+        RingShlOperation(
+            name=x.context.get_fresh_name("ring_shl"),
             placement_name=placement_name,
-            inputs={"lhs": x.op.name},
+            inputs={"value": x.op.name},
             amount=amount,
         )
     )
@@ -129,13 +129,13 @@ def ring_left_shift(x: RingTensor, amount: int, placement_name):
     )
 
 
-def ring_right_shift(x: RingTensor, amount: int, placement_name):
+def ring_shr(x: RingTensor, amount: int, placement_name):
     assert amount <= 64
     z_op = x.computation.add_operation(
-        RingSHROperation(
-            name=x.context.get_fresh_name("ring_right_shift"),
+        RingShrOperation(
+            name=x.context.get_fresh_name("ring_shr"),
             placement_name=placement_name,
-            inputs={"lhs": x.op.name},
+            inputs={"value": x.op.name},
             amount=amount,
         )
     )

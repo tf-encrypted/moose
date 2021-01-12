@@ -13,11 +13,11 @@ from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
 from moose.compiler.ring import ring_dot
-from moose.compiler.ring import ring_left_shift
 from moose.compiler.ring import ring_mul
-from moose.compiler.ring import ring_right_shift
 from moose.compiler.ring import ring_sample
 from moose.compiler.ring import ring_shape
+from moose.compiler.ring import ring_shl
+from moose.compiler.ring import ring_shr
 from moose.compiler.ring import ring_sub
 from moose.compiler.ring import ring_sum
 from moose.compiler.standard import StandardTensor
@@ -732,13 +732,13 @@ def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players):
 
     masked_tr = [None] * 2
     for i in range(2):
-        no_msb_mask = ring_left_shift(opened_mask[i], 1, placement_name=players[i])
-        masked_tr[i] = ring_right_shift(no_msb_mask, m + 1, placement_name=players[i])
+        no_msb_mask = ring_shl(opened_mask[i], 1, placement_name=players[i])
+        masked_tr[i] = ring_shr(no_msb_mask, m + 1, placement_name=players[i])
 
     ring_size = 64
 
     msb_mask = [
-        ring_right_shift(opened_mask[i], ring_size - 1, placement_name=players[i])
+        ring_shr(opened_mask[i], ring_size - 1, placement_name=players[i])
         for i in range(2)
     ]
 
@@ -749,7 +749,7 @@ def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players):
 
     output = [None] * 2
     for i in range(2):
-        shifted_msb = ring_left_shift(
+        shifted_msb = ring_shl(
             msb_to_correct[i], ring_size - m - 1, placement_name=players[i]
         )
         tmp = ring_sub(masked_tr[i], r_top[i], placement_name=players[i])
@@ -763,7 +763,7 @@ def arithmetic_xor(a: RingTensor, b: RingTensor, placement_name):
     # a * b
     prod = ring_mul(a, b, placement_name=placement_name)
     # 2 * a * b
-    twice_prod = ring_left_shift(prod, 1, placement_name=placement_name)
+    twice_prod = ring_shl(prod, 1, placement_name=placement_name)
 
     return ring_sub(
         ring_add(a, b, placement_name=placement_name),
@@ -776,7 +776,7 @@ def _bit_compose(bits, placement_name):
     n = len(bits)
     return tree_reduce(
         ring_add,
-        [ring_left_shift(bits[i], i, placement_name=placement_name) for i in range(n)],
+        [ring_shl(bits[i], i, placement_name=placement_name) for i in range(n)],
         placement_name=placement_name,
     )
 
