@@ -97,16 +97,16 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.square(
-                edsl.constant(np.array([1]), placement=player0), placement=player0
+                edsl.constant(np.array([1.0]), placement=player0), placement=player0
             )
             return x0
 
         concrete_comp = trace(my_comp)
-        op = concrete_comp.operation("square_0")
-        assert op == standard_ops.SquareOperation(
+        op = concrete_comp.operation("mul_0")
+        assert op == standard_ops.MulOperation(
             placement_name="player0",
-            name="square_0",
-            inputs={"x": "constant_0"},
+            name="mul_0",
+            inputs={"lhs": "constant_0", "rhs": "constant_0"},
             output_type=TensorType(datatype="float"),
         )
 

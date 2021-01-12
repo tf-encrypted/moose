@@ -297,7 +297,7 @@ def ones(shape, dtype, placement=None):
 def square(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return SquareExpression(placement=placement, inputs=[x])
+    return BinaryOpExpression(op_name="mul", placement=placement, inputs=[x, x])
 
 
 def sum(x, axis=None, placement=None):
