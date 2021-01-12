@@ -17,6 +17,7 @@ from moose.computation.ring import RingShlOperation
 from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
+from moose.computation.ring import PrintRingTensorOperation
 
 
 @dataclass
@@ -26,6 +27,21 @@ class RingTensor:
     context: Any = field(repr=False)
     shape: Optional[Shape] = None
 
+
+def print_ring_tensor(tensor: RingTensor, op_name, placement_name):
+    assert isinstance(tensor, RingTensor)
+    new_op = PrintRingTensorOperation(
+            name=tensor.context.get_fresh_name("print!"),
+            placement_name=placement_name,
+            inputs={"value": tensor.op.name},
+        )
+
+    z_op = tensor.computation.add_operation(new_op)
+
+    print("name: ", new_op.name)
+    return RingTensor(
+        op=z_op, computation=tensor.computation, shape=tensor.shape, context=tensor.context
+    )
 
 def ring_shape(tensor: RingTensor, placement_name):
     if not tensor.shape:

@@ -20,6 +20,7 @@ from moose.compiler.ring import ring_shl
 from moose.compiler.ring import ring_shr
 from moose.compiler.ring import ring_sub
 from moose.compiler.ring import ring_sum
+from moose.compiler.ring import print_ring_tensor
 from moose.compiler.standard import StandardTensor
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
@@ -629,7 +630,7 @@ def replicated_trunc_pr(
     for i in range(ring_size):
         seed_r = derive_seed(
             key=k2,
-            nonce=bytes(i),
+            nonce=bytes(0), # (TODO) bytes(i)
             placement_name=players[2],
             computation=ctx.computation,
             context=ctx.naming_context,
@@ -638,6 +639,7 @@ def replicated_trunc_pr(
         # in order to reuse it in subsequent calls
         r_bits[i] = ring_sample(x_shape, seed_r, placement_name=players[2], max_value=1)
 
+    r_bits[0] = print_ring_tensor(r_bits[0], "r_bits", placement_name=players[2])
     r = tree_reduce(ring_add, r_bits, players[2])
     r_top = _bit_compose(r_bits[m : ring_size - 1], players[2])
     r_msb = r_bits[ring_size - 1]

@@ -71,3 +71,9 @@ class RingSampleOperation(RingOperation):
 class FillTensorOperation(RingOperation):
     value: int
     output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class PrintRingTensorOperation(RingOperation):
+    output_type: ValueType = RingTensorType()
+

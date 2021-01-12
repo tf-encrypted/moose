@@ -58,6 +58,7 @@ class AsyncExecutor:
             ring_ops.RingShapeOperation: ring_kernels.RingShapeKernel(),
             ring_ops.RingShlOperation: ring_kernels.RingShlKernel(),
             ring_ops.RingShrOperation: ring_kernels.RingShrKernel(),
+            ring_ops.PrintRingTensorOperation: ring_kernels.PrintRingTensorKernel(),
             primitives_ops.DeriveSeedOperation: primitives_kernels.DeriveSeedKernel(),
             primitives_ops.SampleKeyOperation: primitives_kernels.SampleKeyKernel(),
             standard_ops.LoadOperation: standard_kernels.LoadKernel(store),
@@ -106,6 +107,7 @@ class AsyncExecutor:
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
+            print("NAME: ", op.name)
             if not kernel:
                 raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
