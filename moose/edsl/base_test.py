@@ -8,21 +8,7 @@ from moose.computation.base import Computation
 from moose.computation.base import UnknownType
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
-from moose.edsl.base import Argument
-from moose.edsl.base import add
-from moose.edsl.base import computation
-from moose.edsl.base import concatenate
-from moose.edsl.base import constant
-from moose.edsl.base import div
-from moose.edsl.base import function
-from moose.edsl.base import host_placement
-from moose.edsl.base import mul
-from moose.edsl.base import ones
-from moose.edsl.base import run_program
-from moose.edsl.base import square
-from moose.edsl.base import sub
-from moose.edsl.base import sum
-from moose.edsl.base import transpose
+from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 
 
@@ -30,7 +16,7 @@ class EdslTest(parameterized.TestCase):
     @parameterized.parameters(
         {"op": op, "OP": OP, "op_name": op_name}
         for (op, OP, op_name) in zip(
-            [add, div, mul, sub],
+            [edsl.add, edsl.div, edsl.mul, edsl.sub],
             [
                 standard_ops.AddOperation,
                 standard_ops.DivOperation,
@@ -41,13 +27,13 @@ class EdslTest(parameterized.TestCase):
         )
     )
     def test_binary_op(self, op, OP, op_name):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
             x0 = op(
-                constant(1, placement=player0),
-                constant(1, placement=player0),
+                edsl.constant(1.0, placement=player0),
+                edsl.constant(1.0, placement=player0),
                 placement=player0,
             )
             return x0
@@ -62,14 +48,14 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_concatenate(self):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = concatenate(
+            x0 = edsl.concatenate(
                 [
-                    constant(np.array([1]), placement=player0),
-                    constant(np.array([1]), placement=player0),
+                    edsl.constant(np.array([1]), placement=player0),
+                    edsl.constant(np.array([1]), placement=player0),
                 ],
                 axis=1,
                 placement=player0,
@@ -87,11 +73,12 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_ones(self):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = ones((2, 2), dtype=np.float64, placement=player0)
+            shape = edsl.constant([2, 2], placement=player0)
+            x0 = edsl.ones(shape, dtype=np.float64, placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
@@ -99,18 +86,19 @@ class EdslTest(parameterized.TestCase):
         assert op == standard_ops.OnesOperation(
             placement_name="player0",
             name="ones_0",
-            shape=(2, 2),
             dtype=np.float64,
-            inputs={},
+            inputs={"shape": "constant_0"},
             output_type=TensorType(datatype="float"),
         )
 
     def test_square(self):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = square(constant(np.array([1]), placement=player0), placement=player0)
+            x0 = edsl.square(
+                edsl.constant(np.array([1]), placement=player0), placement=player0
+            )
             return x0
 
         concrete_comp = trace(my_comp)
@@ -122,31 +110,42 @@ class EdslTest(parameterized.TestCase):
             output_type=TensorType(datatype="float"),
         )
 
-    def test_sum(self):
-        player0 = host_placement(name="player0")
+    @parameterized.parameters(
+        (edsl.sum, standard_ops.SumOperation, "sum", None),
+        (edsl.sum, standard_ops.SumOperation, "sum", 0),
+        (edsl.mean, standard_ops.MeanOperation, "mean", None),
+        (edsl.mean, standard_ops.MeanOperation, "mean", 0),
+    )
+    def test_reduce_op(self, reduce_op_fn, reduce_op_cls, reduce_op_name, axis):
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = sum(constant(np.array([1]), placement=player0), placement=player0)
+            x0 = reduce_op_fn(
+                edsl.constant(np.array([1, 1]), placement=player0),
+                axis=axis,
+                placement=player0,
+            )
             return x0
 
         concrete_comp = trace(my_comp)
-        op = concrete_comp.operation("sum_0")
-        assert op == standard_ops.SumOperation(
+        concrete_op_name = "{}_0".format(reduce_op_name)
+        op = concrete_comp.operation(concrete_op_name)
+        assert op == reduce_op_cls(
             placement_name="player0",
-            name="sum_0",
-            axis=None,
+            name=concrete_op_name,
+            axis=axis,
             inputs={"x": "constant_0"},
             output_type=TensorType(datatype="float"),
         )
 
     def test_transpose(self):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = transpose(
-                constant(np.array([1]), placement=player0), placement=player0,
+            x0 = edsl.transpose(
+                edsl.constant(np.array([1]), placement=player0), placement=player0,
             )
             return x0
 
@@ -160,18 +159,63 @@ class EdslTest(parameterized.TestCase):
             output_type=TensorType(datatype="float"),
         )
 
-    def test_call_python_fn(self):
-        player0 = host_placement(name="player0")
+    @parameterized.parameters(None, 1)
+    def test_squeeze(self, axis):
+        player0 = edsl.host_placement(name="player0")
 
-        @function(output_type=float)
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.squeeze(
+                edsl.constant(np.array([[1]]), placement=player0),
+                axis=axis,
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("squeeze_0")
+        assert op == standard_ops.SqueezeOperation(
+            placement_name="player0",
+            name="squeeze_0",
+            inputs={"x": "constant_0"},
+            axis=axis,
+            output_type=TensorType(datatype="float"),
+        )
+
+    def test_unsqueeze(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.expand_dims(
+                edsl.constant(np.array([1]), placement=player0),
+                axis=1,
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        op = concrete_comp.operation("expand_dims_0")
+        assert op == standard_ops.ExpandDimsOperation(
+            placement_name="player0",
+            name="expand_dims_0",
+            inputs={"x": "constant_0"},
+            axis=1,
+            output_type=TensorType(datatype="float"),
+        )
+
+    def test_call_python_fn(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.function(output_type=float)
         def add_one(x):
             return x + 1
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x = constant(1, placement=player0)
+            x = edsl.constant(1.0, placement=player0)
             y = add_one(x, placement=player0)
-            z = add(x, y, placement=player0)
+            z = edsl.add(x, y, placement=player0)
             return z
 
         concrete_comp = trace(my_comp)
@@ -190,11 +234,11 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_constant(self):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = constant(1, placement=player0)
+            x0 = edsl.constant(1.0, placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
@@ -208,12 +252,12 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_arguments(self):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
-        def my_comp(x: Argument(placement=player0, datatype=float)):
-            y = constant(1, placement=player0)
-            z = add(x, y, placement=player0)
+        @edsl.computation
+        def my_comp(x: edsl.Argument(placement=player0, datatype=float)):
+            y = edsl.constant(1.0, placement=player0)
+            z = edsl.add(x, y, placement=player0)
             return z
 
         concrete_comp = trace(my_comp)
@@ -249,14 +293,14 @@ class EdslTest(parameterized.TestCase):
         )
 
     def test_run_program(self):
-        player0 = host_placement(name="player0")
+        player0 = edsl.host_placement(name="player0")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = run_program(
+            x0 = edsl.run_program(
                 "python",
                 ["local_computation.py"],
-                constant(1, placement=player0),
+                edsl.constant(1, placement=player0),
                 placement=player0,
             )
             return x0

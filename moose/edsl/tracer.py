@@ -16,14 +16,20 @@ from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
+from moose.computation.standard import ExpandDimsOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
+from moose.computation.standard import MeanOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
+from moose.computation.standard import ShapeOperation
+from moose.computation.standard import ShapeType
+from moose.computation.standard import SliceOperation
 from moose.computation.standard import SquareOperation
+from moose.computation.standard import SqueezeOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
@@ -33,16 +39,21 @@ from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import BinaryOpExpression
 from moose.edsl.base import ConcatenateExpression
 from moose.edsl.base import ConstantExpression
+from moose.edsl.base import ExpandDimsExpression
 from moose.edsl.base import Expression
 from moose.edsl.base import HostPlacementExpression
 from moose.edsl.base import InverseExpression
 from moose.edsl.base import LoadExpression
+from moose.edsl.base import MeanExpression
 from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
+from moose.edsl.base import ShapeExpression
+from moose.edsl.base import SliceExpression
 from moose.edsl.base import SquareExpression
+from moose.edsl.base import SqueezeExpression
 from moose.edsl.base import SumExpression
 from moose.edsl.base import TransposeExpression
 from moose.logger import get_logger
@@ -176,13 +187,23 @@ class AstTracer:
     def visit_ConstantExpression(self, constant_expression):
         assert isinstance(constant_expression, ConstantExpression)
         placement = self.visit_placement_expression(constant_expression.placement)
-        output_type = TensorType(datatype="float")  # TODO use `value` to derive type
+        value = constant_expression.value
+        if isinstance(value, float):
+            output_type = TensorType(datatype="float")
+        elif isinstance(value, int):
+            output_type = TensorType(datatype="int64")
+        elif isinstance(value, np.ndarray) and value.dtype == np.float64:
+            output_type = TensorType(datatype="float")
+        elif isinstance(value, np.ndarray) and value.dtype == np.int64:
+            output_type = TensorType(datatype="int64")
+        else:
+            output_type = UnknownType()
         return self.computation.add_operation(
             ConstantOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("constant"),
                 output_type=output_type,
-                value=constant_expression.value,
+                value=value,
                 inputs={},
             )
         )
@@ -202,7 +223,10 @@ class AstTracer:
             "dot": DotOperation,
         }[op_name]
         # TODO(Morten) we should derive a type from lhs_operation and rhs_operation
-        assert lhs_operation.output_type == rhs_operation.output_type
+        assert lhs_operation.output_type == rhs_operation.output_type, (
+            lhs_operation,
+            rhs_operation,
+        )
         output_type = lhs_operation.output_type
         return self.computation.add_operation(
             op_type(
@@ -228,8 +252,42 @@ class AstTracer:
             )
         )
 
+    def visit_ExpandDimsExpression(self, expand_dims_expression):
+        assert isinstance(expand_dims_expression, ExpandDimsExpression)
+        (x_expression,) = expand_dims_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(expand_dims_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            ExpandDimsOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("expand_dims"),
+                output_type=output_type,
+                axis=expand_dims_expression.axis,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_SqueezeExpression(self, squeeze_expression):
+        assert isinstance(squeeze_expression, SqueezeExpression)
+        (x_expression,) = squeeze_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(squeeze_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            SqueezeOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("squeeze"),
+                output_type=output_type,
+                axis=squeeze_expression.axis,
+                inputs={"x": x_operation.name},
+            )
+        )
+
     def visit_OnesExpression(self, ones_expression):
         assert isinstance(ones_expression, OnesExpression)
+        (shape_expression,) = ones_expression.inputs
+        shape_operation = self.visit(shape_expression)
         placement = self.visit_placement_expression(ones_expression.placement)
         dtype = ones_expression.dtype
         if dtype in (float, np.float64):
@@ -244,9 +302,8 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("ones"),
                 output_type=output_type,
-                shape=ones_expression.shape,
                 dtype=dtype,
-                inputs={},
+                inputs={"shape": shape_operation.name},
             )
         )
 
@@ -281,6 +338,22 @@ class AstTracer:
             )
         )
 
+    def visit_MeanExpression(self, mean_expression):
+        assert isinstance(mean_expression, MeanExpression)
+        (x_expression,) = mean_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(mean_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            MeanOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("mean"),
+                output_type=output_type,
+                axis=mean_expression.axis,
+                inputs={"x": x_operation.name},
+            )
+        )
+
     def visit_TransposeExpression(self, transpose_expression):
         assert isinstance(transpose_expression, TransposeExpression)
         (x_expression,) = transpose_expression.inputs
@@ -297,15 +370,52 @@ class AstTracer:
             )
         )
 
+    def visit_SliceExpression(self, slice_expression):
+        assert isinstance(slice_expression, SliceExpression)
+        (x_expression,) = slice_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(slice_expression.placement)
+        return self.computation.add_operation(
+            SliceOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("slice"),
+                output_type=UnknownType(),
+                begin=slice_expression.begin,
+                end=slice_expression.end,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_ShapeExpression(self, shape_expression):
+        assert isinstance(shape_expression, ShapeExpression)
+        (x_expression,) = shape_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(shape_expression.placement)
+        return self.computation.add_operation(
+            ShapeOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("shape"),
+                output_type=ShapeType(),
+                inputs={"x": x_operation.name},
+            )
+        )
+
     def visit_LoadExpression(self, load_expression):
         assert isinstance(load_expression, LoadExpression)
         placement = self.visit_placement_expression(load_expression.placement)
+        if load_expression.dtype in (float, np.float64):
+            output_type = TensorType(datatype="float")
+        elif load_expression.dtype in (int, np.int64):
+            output_type = TensorType(datatype="int64")
+        else:
+            output_type = UnknownType()
         return self.computation.add_operation(
             LoadOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("load"),
-                key=load_expression.key,
+                key=load_expression.key.arg_name,
                 inputs={},
+                output_type=output_type,
             )
         )
 

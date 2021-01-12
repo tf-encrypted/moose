@@ -9,9 +9,11 @@ from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
+from moose.computation.standard import ExpandDimsOperation
 from moose.computation.standard import InputOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
+from moose.computation.standard import MeanOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
@@ -19,7 +21,10 @@ from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
+from moose.computation.standard import ShapeOperation
+from moose.computation.standard import SliceOperation
 from moose.computation.standard import SquareOperation
+from moose.computation.standard import SqueezeOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
@@ -90,11 +95,25 @@ class InverseKernel(Kernel):
         return np.linalg.inv(x)
 
 
+class ExpandDimsKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, ExpandDimsOperation)
+        assert isinstance(x, np.ndarray)
+        return np.expand_dims(x, axis=op.axis)
+
+
+class SqueezeKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, SqueezeOperation)
+        assert isinstance(x, np.ndarray)
+        return np.squeeze(x, axis=op.axis)
+
+
 class OnesKernel(Kernel):
-    def execute_synchronous_block(self, op, session):
+    def execute_synchronous_block(self, op, session, shape):
         assert isinstance(op, OnesOperation)
         assert op.dtype in (float, np.float64, int, np.int64)
-        return np.ones(shape=op.shape, dtype=op.dtype)
+        return np.ones(shape=shape, dtype=op.dtype)
 
 
 class SquareKernel(Kernel):
@@ -108,7 +127,14 @@ class SumKernel(Kernel):
     def execute_synchronous_block(self, op, session, x):
         assert isinstance(op, SumOperation)
         assert isinstance(x, np.ndarray)
-        return np.sum(x, op.axis)
+        return np.sum(x, axis=op.axis)
+
+
+class MeanKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, MeanOperation)
+        assert isinstance(x, np.ndarray)
+        return np.mean(x, axis=op.axis)
 
 
 class TransposeKernel(Kernel):
@@ -116,6 +142,20 @@ class TransposeKernel(Kernel):
         assert isinstance(op, TransposeOperation)
         assert isinstance(x, np.ndarray)
         return x.transpose(op.axes)
+
+
+class ShapeKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, ShapeOperation)
+        assert isinstance(x, np.ndarray)
+        return list(np.shape(x))
+
+
+class SliceKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, SliceOperation)
+        assert isinstance(x, list)
+        return x[op.begin : op.end]
 
 
 class LoadKernel(Kernel):

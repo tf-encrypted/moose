@@ -7,6 +7,7 @@ from absl.testing import parameterized
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
+from moose.computation.standard import ShapeType
 from moose.computation.standard import TensorType
 from moose.edsl.base import add
 from moose.edsl.base import computation
@@ -176,6 +177,94 @@ class StandardKernelTest(parameterized.TestCase):
         comp_result = _run_computation(my_comp, [player0, player1])
         self.assertEqual(comp_result["result"], expected_result)
 
+    @parameterized.parameters(
+        (np.array([[[[1], [2]]], [[[3], [4]]]]), None, (2, 2)),
+        (np.array([[[[1], [2]]], [[[3], [4]]]]), 1, (2, 2, 1)),
+        (np.array([[[[1], [2]]], [[[3], [4]]]]), (1, 3), (2, 2)),
+    )
+    def test_squeeze(self, input_array, axis, expected_shape):
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                value=input_array,
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SqueezeOperation(
+                name="squeeze",
+                placement_name=alice.name,
+                inputs={"x": "x"},
+                axis=axis,
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "squeeze"},
+                key="z",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(executor.store["z"].shape, expected_shape)
+
+    @parameterized.parameters(
+        {"axis": ax, "expected_shape": exp}
+        for ax, exp in [(1, (2, 1, 2)), (-1, (2, 2, 1)), ((1, 3), (2, 1, 2, 1))]
+    )
+    def test_unsqueeze(self, axis, expected_shape):
+        x = np.array([[1, 2], [3, 4]])
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                value=x,
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.ExpandDimsOperation(
+                name="expand_dims",
+                placement_name=alice.name,
+                inputs={"x": "x"},
+                axis=axis,
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "expand_dims"},
+                key="z",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice.name: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(executor.store["z"].shape, expected_shape)
+
     def test_inverse(self):
         comp = Computation(operations={}, placements={})
 
@@ -244,12 +333,20 @@ class StandardKernelTest(parameterized.TestCase):
         alice = comp.add_placement(HostPlacement(name="alice"))
 
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="shape_op",
+                placement_name=alice.name,
+                inputs={},
+                value=[2, 2],
+                output_type=ShapeType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.OnesOperation(
                 name="x",
                 placement_name=alice.name,
-                shape=(2, 2),
                 dtype=dtype,
-                inputs={},
+                inputs={"shape": "shape_op"},
                 output_type=TensorType(datatype=datatype),
             )
         )
@@ -312,12 +409,14 @@ class StandardKernelTest(parameterized.TestCase):
         np.testing.assert_array_equal(executor.store["z"], expected_result)
 
     @parameterized.parameters(
-        {"axis": axis, "expected_result": expected_result}
-        for (axis, expected_result) in zip(
-            [None, 0, (0, 1)], [10, np.array([4, 6]), 10],
-        )
+        (standard_dialect.SumOperation, "sum", None, 10),
+        (standard_dialect.SumOperation, "sum", 0, np.array([4, 6])),
+        (standard_dialect.SumOperation, "sum", (0, 1), 10),
+        (standard_dialect.MeanOperation, "mean", None, 2.5),
+        (standard_dialect.MeanOperation, "mean", 0, np.array([2, 3])),
+        (standard_dialect.MeanOperation, "mean", (0, 1), 2.5),
     )
-    def test_sum(self, axis, expected_result):
+    def test_reduce_op(self, reduce_op_cls, reduce_op_name, axis, expected_result):
         comp = Computation(operations={}, placements={})
 
         alice = comp.add_placement(HostPlacement(name="alice"))
@@ -331,8 +430,8 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            standard_dialect.SumOperation(
-                name="sum",
+            reduce_op_cls(
+                name=reduce_op_name,
                 placement_name=alice.name,
                 axis=axis,
                 inputs={"x": "x"},
@@ -343,7 +442,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "sum"},
+                inputs={"value": reduce_op_name},
                 key="z",
             )
         )

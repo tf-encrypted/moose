@@ -26,6 +26,10 @@ lint:
 test:
 	pytest .
 
+clean:
+	find ./moose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
+	rm -rf .pytest_cache
+
 ci: fmt lint test
 
 .PHONY: build pydep pylib install fmt lint test ci
