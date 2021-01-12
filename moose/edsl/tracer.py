@@ -22,7 +22,6 @@ from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MeanOperation
 from moose.computation.standard import MulOperation
-from moose.computation.standard import NthOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import SaveOperation
@@ -47,7 +46,6 @@ from moose.edsl.base import InverseExpression
 from moose.edsl.base import LoadExpression
 from moose.edsl.base import MeanExpression
 from moose.edsl.base import MpspdzPlacementExpression
-from moose.edsl.base import NthExpression
 from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
@@ -399,21 +397,6 @@ class AstTracer:
                 name=self.get_fresh_name("shape"),
                 output_type=ShapeType(),
                 inputs={"x": x_operation.name},
-            )
-        )
-
-    def visit_NthExpression(self, expression):
-        assert isinstance(expression, NthExpression)
-        (x_expression,) = expression.inputs
-        x_operation = self.visit(x_expression)
-        placement = self.visit_placement_expression(expression.placement)
-        return self.computation.add_operation(
-            NthOperation(
-                placement_name=placement.name,
-                name=self.get_fresh_name("nth"),
-                output_type=UnknownType(),  # TODO not sure what to put here
-                inputs={"x": x_operation.name},
-                index=expression.index,
             )
         )
 

@@ -225,14 +225,6 @@ class SliceExpression(Expression):
         return id(self)
 
 
-@dataclass
-class NthExpression(Expression):
-    index: int
-
-    def __hash__(self):
-        return id(self)
-
-
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
     return ConcatenateExpression(placement=placement, inputs=arrays, axis=axis)
@@ -332,12 +324,6 @@ def slice(x, begin, end, placement=None):
     assert isinstance(end, int)
     placement = placement or get_current_placement()
     return SliceExpression(placement=placement, inputs=[x], begin=begin, end=end)
-
-
-def nth(x, index, placement=None):
-    assert isinstance(x, Expression)
-    placement = placement or get_current_placement()
-    return NthExpression(placement=placement, inputs=[x], index=index)
 
 
 def transpose(x, axes=None, placement=None):
