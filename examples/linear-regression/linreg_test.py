@@ -45,14 +45,12 @@ def r_squared(y_pred, y_true):
     y_mean = mean(y_true)
     ss_tot = sum(square(sub(y_true, y_mean)), axis=0)
     ss_res = sum(square(sub(y_true, y_pred)), axis=0)
-    # NOTE this division is going to be a problem
-    # instead we could reveal ss_res and ss_tot to the
-    # model owner then do the division
+    # NOTE this division is going to be a problem in replicated dialect, instead
+    # we could reveal ss_res and ss_tot to the model owner then do the division
     return sub(constant(1.0), div(ss_res, ss_tot))
 
 
 class LinearRegressionExample(unittest.TestCase):
-    # @unittest.skip
     def test_linear_regression_example(self):
         x_owner = host_placement(name="x-owner")
         y_owner = host_placement(name="y-owner")
@@ -69,7 +67,7 @@ class LinearRegressionExample(unittest.TestCase):
         ):
 
             with x_owner:
-                X = load(x_uri, dtype=float)  # , x_source.selected_columns)
+                X = load(x_uri, dtype=float)
                 # NOTE: what would be most natural to do is this:
                 #     bias_shape = (slice(shape(X), begin=0, end=1), 1)
                 #     bias = ones(bias_shape, dtype=float)
@@ -85,15 +83,16 @@ class LinearRegressionExample(unittest.TestCase):
                 B = dot(A, transpose(X_b))
 
             with y_owner:
-                y_true = load(y_uri, dtype=float)  # , y_source.selected_columns)
+                y_true = load(y_uri, dtype=float)
 
             with trusted_computer:
                 w = dot(B, y_true)
                 y_pred = dot(X_b, w)
                 mse_result = mse(y_pred, y_true)
-                # rsquared_result = r_squared(y_pred, y_true)
 
             with model_owner:
+                # NOTE: we can alternatively compute the SS terms on trusted_computer,
+                # and only do the division & subtraction here
                 rsquared_result = r_squared(y_pred, y_true)
 
             with model_owner:
