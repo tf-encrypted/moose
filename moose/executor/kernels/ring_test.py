@@ -257,7 +257,7 @@ class RingKernelTest(parameterized.TestCase):
             ring_dialect.RingShrOperation(
                 name="ring_shr",
                 placement_name=alice.name,
-                inputs={"tensor": "x"},
+                inputs={"value": "x"},
                 amount=1,
             )
         )

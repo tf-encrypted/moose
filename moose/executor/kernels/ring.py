@@ -35,15 +35,15 @@ class RingMulKernel(Kernel):
 
 
 class RingShlKernel(Kernel):
-    def execute_synchronous_block(self, op, session, tensor):
+    def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, RingShlOperation)
-        return ring_shl(tensor, op.amount)
+        return ring_shl(value, op.amount)
 
 
 class RingShrKernel(Kernel):
-    def execute_synchronous_block(self, op, session, tensor):
+    def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, RingShrOperation)
-        return ring_shr(tensor, op.amount)
+        return ring_shr(value, op.amount)
 
 
 class RingDotKernel(Kernel):

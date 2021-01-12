@@ -95,14 +95,12 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "sample_key")]
     fn sample_key(py: Python) -> &PyBytes {
         let key: [u8; 16] = AesRng::generate_random_key();
-        println!("error in sample key");
         PyBytes::new(py, &key)
     }
 
     #[pyfn(m, "derive_seed")]
     fn derive_seed<'py>(py: Python<'py>, seed: &'py PyBytes, nonce: &'py PyBytes) -> &'py PyBytes {
         let new_seed = utils::derive_seed(seed.as_bytes(), &nonce.as_bytes());
-        println!("error in derive seed");
         PyBytes::new(py, &new_seed)
     }
 
@@ -121,7 +119,6 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u64> {
         let res = Ring64Tensor::sample_uniform(&shape, &seed.as_bytes());
         let res_array = ring64_to_array(res);
-        println!("error in ring sample");
         res_array.to_pyarray(py)
     }
 
