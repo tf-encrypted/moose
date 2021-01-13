@@ -147,6 +147,18 @@ impl Dot<Ring64Tensor> for Ring64Tensor {
     }
 }
 
+pub trait Sum {
+    type Output;
+    fn sum(self, axis: usize) -> Self::Output;
+}
+
+impl Sum for Ring64Tensor {
+    type Output = Ring64Tensor;
+    fn sum(self, axis: usize) -> Self::Output {
+        Ring64Tensor(self.0.sum_axis(Axis(axis)))
+    }
+}
+
 pub struct Replicated<T>(T, T, T);
 
 impl<T> Mul<Replicated<T>> for Replicated<T>
@@ -231,5 +243,15 @@ mod tests {
     fn ring_fill() {
         let r = Ring64Tensor::fill(&[2], 1);
         assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
+    }
+
+    #[test]
+    fn ring_sum() {
+        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = Ring64Tensor::from(x_backing);
+        let out = x.sum(0);
+        assert_eq!(out, Ring64Tensor::from(vec![4, 6]))
     }
 }

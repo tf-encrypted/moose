@@ -11,6 +11,7 @@ from moose_kernels import ring_mul
 from moose_kernels import ring_sample
 from moose_kernels import ring_shape
 from moose_kernels import ring_sub
+from moose_kernels import ring_sum
 from moose_kernels import sample_key
 
 
@@ -44,6 +45,15 @@ class BinaryOp(parameterized.TestCase):
         exp = np.dot(x, y)
         res = ring_dot(x, y)
         np.testing.assert_array_equal(res, exp)
+
+
+class SumOp(parameterized.TestCase):
+    @parameterized.parameters([0, 1])
+    def test_fill_op(self, axis):
+        x = np.array([[1, 2], [3, 4]], dtype=np.uint64)
+        actual = ring_sum(x, axis=axis)
+        expected = np.sum(x, axis=axis)
+        np.testing.assert_array_equal(actual, expected)
 
 
 class SamplingOperations(parameterized.TestCase):
