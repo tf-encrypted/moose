@@ -24,6 +24,11 @@ class BytesType(ValueType):
 
 
 @dataclass
+class StringType(ValueType):
+    pass
+
+
+@dataclass
 class ShapeType(ValueType):
     pass
 
@@ -137,7 +142,6 @@ class SliceOperation(StandardOperation):
 
 @dataclass
 class LoadOperation(StandardOperation):
-    key: str
     output_type: ValueType
 
 

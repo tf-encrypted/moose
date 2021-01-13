@@ -154,9 +154,9 @@ class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session):
+    def execute_synchronous_block(self, op, session, key):
         assert isinstance(op, LoadOperation)
-        return self.store[op.key]
+        return self.store[key]
 
 
 class SaveKernel(Kernel):

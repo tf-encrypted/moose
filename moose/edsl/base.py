@@ -169,7 +169,6 @@ class TransposeExpression(Expression):
 
 @dataclass
 class LoadExpression(Expression):
-    key: str
     dtype: Optional
 
     def __hash__(self):
@@ -334,7 +333,7 @@ def transpose(x, axes=None, placement=None):
 
 def load(key, dtype=None, placement=None):
     placement = placement or get_current_placement()
-    return LoadExpression(placement=placement, inputs=[], key=key, dtype=dtype)
+    return LoadExpression(placement=placement, inputs=[key], dtype=dtype)
 
 
 def save(value, key, placement=None):

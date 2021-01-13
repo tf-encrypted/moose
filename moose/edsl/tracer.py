@@ -29,6 +29,7 @@ from moose.computation.standard import ShapeOperation
 from moose.computation.standard import ShapeType
 from moose.computation.standard import SliceOperation
 from moose.computation.standard import SqueezeOperation
+from moose.computation.standard import StringType
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
@@ -152,9 +153,11 @@ class AstTracer:
     def visit_ArgumentExpression(self, argument_expression):
         assert isinstance(argument_expression, ArgumentExpression)
         placement = self.visit_placement_expression(argument_expression.placement)
-        output_type = {float: TensorType(datatype="float"), None: UnknownType()}[
-            argument_expression.datatype
-        ]
+        output_type = {
+            float: TensorType(datatype="float"),
+            str: StringType(),
+            None: UnknownType(),
+        }[argument_expression.datatype]
         return self.computation.add_operation(
             InputOperation(
                 placement_name=placement.name,
@@ -385,6 +388,8 @@ class AstTracer:
 
     def visit_LoadExpression(self, load_expression):
         assert isinstance(load_expression, LoadExpression)
+        (key_expression,) = load_expression.inputs
+        key_operation = self.visit(key_expression)
         placement = self.visit_placement_expression(load_expression.placement)
         if load_expression.dtype in (float, np.float64):
             output_type = TensorType(datatype="float")
@@ -396,8 +401,7 @@ class AstTracer:
             LoadOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("load"),
-                key=load_expression.key.arg_name,
-                inputs={},
+                inputs={"key": key_operation.name},
                 output_type=output_type,
             )
         )
