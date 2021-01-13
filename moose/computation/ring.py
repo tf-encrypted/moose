@@ -39,7 +39,7 @@ class RingDotOperation(RingOperation):
 
 @dataclass
 class RingSumOperation(RingOperation):
-    axis: int
+    axis: Optional[int]
     output_type: ValueType = RingTensorType()
 
 

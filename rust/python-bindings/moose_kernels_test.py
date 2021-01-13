@@ -48,8 +48,8 @@ class BinaryOp(parameterized.TestCase):
 
 
 class SumOp(parameterized.TestCase):
-    @parameterized.parameters([0, 1])
-    def test_fill_op(self, axis):
+    @parameterized.parameters([0, 1, None])
+    def test_sum_op(self, axis):
         x = np.array([[1, 2], [3, 4]], dtype=np.uint64)
         actual = ring_sum(x, axis=axis)
         expected = np.sum(x, axis=axis)

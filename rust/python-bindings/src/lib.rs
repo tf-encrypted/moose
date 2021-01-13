@@ -78,7 +78,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     fn ring_sum<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
-        axis: usize,
+        axis: Option<usize>,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
         let res = x_ring.sum(axis);
