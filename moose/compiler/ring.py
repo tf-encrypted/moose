@@ -3,11 +3,13 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
+import moose.computation.standard as standard_ops
 from moose.compiler.primitives import Seed
 from moose.compiler.standard import Shape
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.ring import FillTensorOperation
+from moose.computation.ring import PrintRingTensorOperation
 from moose.computation.ring import RingAddOperation
 from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
@@ -28,20 +30,30 @@ class RingTensor:
     shape: Optional[Shape] = None
 
 
-def print_ring_tensor(tensor: RingTensor, op_name, placement_name):
+def print_ring_tensor(tensor: RingTensor, start, end, placement_name, chain=None):
     assert isinstance(tensor, RingTensor)
+
+    inputs = {"value": tensor.op.name}
+    if chain != None:
+        inputs["chain"] = chain.name
+
     new_op = PrintRingTensorOperation(
-            name=tensor.context.get_fresh_name("print!"),
-            placement_name=placement_name,
-            inputs={"value": tensor.op.name},
-        )
-
-    z_op = tensor.computation.add_operation(new_op)
-
-    print("name: ", new_op.name)
-    return RingTensor(
-        op=z_op, computation=tensor.computation, shape=tensor.shape, context=tensor.context
+        name=tensor.context.get_fresh_name("print_ring_tensor"),
+        placement_name=placement_name,
+        inputs=inputs,
+        start=start,
+        end=end,
     )
+    output_op = standard_ops.OutputOperation(
+        name=tensor.context.get_fresh_name("chain_print"),
+        inputs={"value": new_op.name},
+        placement_name=placement_name,
+    )
+
+    tensor.computation.add_operation(new_op)
+    new_chain = tensor.computation.add_operation(output_op)
+    return new_chain
+
 
 def ring_shape(tensor: RingTensor, placement_name):
     if not tensor.shape:

@@ -11,6 +11,7 @@ from moose.compiler.primitives import sample_key
 from moose.compiler.pruning import PruningPass
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
+from moose.compiler.ring import print_ring_tensor
 from moose.compiler.ring import ring_add
 from moose.compiler.ring import ring_dot
 from moose.compiler.ring import ring_mul
@@ -630,7 +631,7 @@ def replicated_trunc_pr(
     for i in range(ring_size):
         seed_r = derive_seed(
             key=k2,
-            nonce=bytes(0), # (TODO) bytes(i)
+            nonce=bytes(i),
             placement_name=players[2],
             computation=ctx.computation,
             context=ctx.naming_context,
@@ -639,19 +640,18 @@ def replicated_trunc_pr(
         # in order to reuse it in subsequent calls
         r_bits[i] = ring_sample(x_shape, seed_r, placement_name=players[2], max_value=1)
 
-    r_bits[0] = print_ring_tensor(r_bits[0], "r_bits", placement_name=players[2])
-    r = tree_reduce(ring_add, r_bits, players[2])
+    r = _bit_compose(r_bits, players[2])
+
     r_top = _bit_compose(r_bits[m : ring_size - 1], players[2])
     r_msb = r_bits[ring_size - 1]
 
     to_share = [r, r_top, r_msb]
-    shares = [
+    prep_shares = [
         _generate_additive_share(
             item, setup, len(players) - 1, placement_name=players[2]
         )
         for item in to_share
     ]
-
     shared_seeds = [
         derive_seed(
             key=k2,
@@ -684,39 +684,56 @@ def replicated_trunc_pr(
 
     # compute the 2PC truncation protocol
     y_prime = _two_party_trunc_pr(
-        x, m, r=shares[0], r_top=shares[1], r_msb=shares[2], players=players[:2]
+        x,
+        m,
+        r=prep_shares[0],
+        r_top=prep_shares[1],
+        r_msb=prep_shares[2],
+        players=players[:2],
     )  # take the first two players
 
     # apply share correction
     # compute y'[i] - y_recv[i]
-    y_hat = [
+    y_tilde = [
         ring_sub(y_prime[i], y_recv[i], placement_name=players[i]) for i in range(2)
     ]
-    y_hat[0], y_hat[1] = y_hat[1], y_hat[0]
 
-    # computing y'[i] - y_recv[i] - y_hat[i]
-    new_shares = [
-        ring_add(
-            ring_sub(y_prime[i], y_recv[i], placement_name=players[i]),
-            y_hat[i],
-            placement_name=players[i],
-        )
-        for i in range(2)
-    ]
+    # computing y'[i] - y_recv[i] - y_tilde[i]
+    new_shares = [None] * 2
+    new_shares[0] = ring_add(
+        ring_sub(y_prime[0], y_recv[0], placement_name=players[0]),
+        y_tilde[1],
+        placement_name=players[0],
+    )
+    new_shares[1] = ring_add(
+        ring_sub(y_prime[1], y_recv[1], placement_name=players[1]),
+        y_tilde[0],
+        placement_name=players[1],
+    )
 
-    return ReplicatedTensor(
+    output = ReplicatedTensor(
         shares0=(y_recv[0], new_shares[0]),
-        shares1=(y_recv[1], new_shares[1]),
+        shares1=(new_shares[1], y_recv[1]),
         shares2=y_shares[2],
         computation=x.computation,
         context=x.context,
     )
 
+    reconstructed = replicated_reveal(output, players[0])
+    # print_ring_tensor(reconstructed, start="rec = ", end="\n", placement_name=players[0], chain=print_chain)
+    return output
+
 
 # assume x, r, r_top, r_msb is a two entry array where each entry corresponds
 # to a share
 def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players):
-    # TODO(Dragos): insert asserts
+    assert isinstance(x_rep, ReplicatedTensor)
+
+    def reconstruct(x0: RingTensor, x1: RingTensor):
+        assert isinstance(x0, RingTensor)
+        assert isinstance(x1, RingTensor)
+
+        return [ring_add(x0, x1, placement_name=players[i]) for i in range(2)]
 
     # convert (2,3) sharing to (2,2) sharing
     x = [
@@ -729,50 +746,48 @@ def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players):
         masked[i] = ring_add(x[i], r[i], placement_name=players[i])
 
     # open the mask
-    opened_mask = [
-        ring_add(masked[b], masked[1 - b], placement_name=players[b]) for b in range(2)
-    ]
+    opened_mask = reconstruct(masked[0], masked[1])
 
-    masked_tr = [None] * 2
+    opened_masked_tr = [None] * 2
+    ring_size = 64
     for i in range(2):
         no_msb_mask = ring_shl(opened_mask[i], 1, placement_name=players[i])
-        masked_tr[i] = ring_shr(no_msb_mask, m + 1, placement_name=players[i])
-
-    ring_size = 64
+        opened_masked_tr[i] = ring_shr(no_msb_mask, m + 1, placement_name=players[i])
 
     msb_mask = [
         ring_shr(opened_mask[i], ring_size - 1, placement_name=players[i])
         for i in range(2)
     ]
 
-    msb_to_correct = [
-        arithmetic_xor(r_msb[i], msb_mask[i], placement_name=players[i])
-        for i in range(2)
-    ]
+    msb_to_correct = arithmetic_xor(r_msb, msb_mask, players)
 
     output = [None] * 2
+    shift_msb = [
+        ring_shl(msb_to_correct[i], ring_size - m - 1, placement_name=players[i])
+        for i in range(2)
+    ]
     for i in range(2):
-        shifted_msb = ring_shl(
-            msb_to_correct[i], ring_size - m - 1, placement_name=players[i]
-        )
-        tmp = ring_sub(masked_tr[i], r_top[i], placement_name=players[i])
-        output[i] = ring_add(tmp, shifted_msb, placement_name=players[i])
+        output[i] = ring_sub(shift_msb[i], r_top[i], placement_name=players[i])
+    output[0] = ring_add(output[0], opened_masked_tr[0], placement_name=players[0])
 
     return output
 
 
-# compute a + b - 2ab
-def arithmetic_xor(a: RingTensor, b: RingTensor, placement_name):
-    # a * b
-    prod = ring_mul(a, b, placement_name=placement_name)
-    # 2 * a * b
-    twice_prod = ring_shl(prod, 1, placement_name=placement_name)
+# compute [a] + b - 2[a]*b
+def arithmetic_xor(a, b, players):
+    # [a] * b
+    assert len(players) == 2
 
-    return ring_sub(
-        ring_add(a, b, placement_name=placement_name),
-        twice_prod,
-        placement_name=placement_name,
-    )
+    prod = [ring_mul(a[i], b[i], placement_name=players[i]) for i in range(2)]
+    twice_prod = [ring_shl(prod[i], 1, placement_name=players[i]) for i in range(2)]
+    result = [None] * 2
+
+    # local addition
+    result[0] = ring_add(a[0], b[0], placement_name=players[0])
+    result[1] = a[1]
+    return [
+        ring_sub(result[i], twice_prod[i], placement_name=players[i]) for i in range(2)
+    ]
 
 
 def _bit_compose(bits, placement_name):

@@ -1,3 +1,4 @@
+from moose_kernels import print_ring_tensor
 from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
@@ -11,6 +12,7 @@ from moose_kernels import ring_sum
 from moose_kernels import print_ring_tensor
 
 from moose.computation.ring import FillTensorOperation
+from moose.computation.ring import PrintRingTensorOperation
 from moose.computation.ring import RingAddOperation
 from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
@@ -83,10 +85,10 @@ class RingSampleKernel(Kernel):
         assert isinstance(op, RingSampleOperation)
         return ring_sample(shape, seed, op.max_value)
 
-class PrintRingTensorKernel(Kernel):
-    def execute_synchronous_block(self, op, session, value):
-        assert isinstance(op, PrintRingTensorOperation)
-        x = print_ring_tensor(value)
-        print("inside print ring", x)
-        return print_ring_tensor(value)
 
+class PrintRingTensorKernel(Kernel):
+    def execute_synchronous_block(self, op, session, value, chain=None):
+        assert isinstance(op, PrintRingTensorOperation)
+        print(op.start, end="")
+        print("".join(str(item) for item in value), end=op.end)
+        return value

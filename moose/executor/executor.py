@@ -107,7 +107,6 @@ class AsyncExecutor:
         tasks = []
         for op in execution_plan:
             kernel = self.kernels.get(type(op))
-            print("NAME: ", op.name)
             if not kernel:
                 raise NotImplementedError(f"No kernel found for operation {type(op)}")
 
