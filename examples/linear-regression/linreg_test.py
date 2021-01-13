@@ -126,9 +126,6 @@ class LinearRegressionExample(unittest.TestCase):
                 for plc in [x_owner, y_owner, model_owner, trusted_computer]
             },
             arguments={
-                # FIXME: the keys here are being used in the computation instead of the
-                # values, so e.g. above we had to store data with key "x_uri" instead of
-                # the key "x_data"
                 "x_uri": "x_data",
                 "y_uri": "y_data",
                 "w_uri": "regression_weights",
