@@ -2,6 +2,7 @@
 **/__pycache__
 **/venv
 **/*.egg-info/
+**/.hypothesis
 
 **/*_pb2.py
 **/*_pb2_grpc.py
