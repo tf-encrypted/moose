@@ -24,12 +24,8 @@ impl Sample for Ring64Tensor {
     }
 }
 
-pub trait Fill {
-    fn fill(shape: &[usize], el: u64) -> Self;
-}
-
-impl Fill for Ring64Tensor {
-    fn fill(shape: &[usize], el: u64) -> Self {
+impl Ring64Tensor {
+    pub fn fill(shape: &[usize], el: u64) -> Ring64Tensor {
         Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
     }
 }
@@ -147,14 +143,8 @@ impl Dot<Ring64Tensor> for Ring64Tensor {
     }
 }
 
-pub trait Sum {
-    type Output;
-    fn sum(self, axis: Option<usize>) -> Self::Output;
-}
-
-impl Sum for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn sum(self, axis: Option<usize>) -> Self::Output {
+impl Ring64Tensor {
+    pub fn sum(self, axis: Option<usize>) -> Ring64Tensor {
         if let Some(i) = axis {
             Ring64Tensor(self.0.sum_axis(Axis(i)))
         } else {

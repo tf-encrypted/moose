@@ -1,6 +1,6 @@
 use crypto::fixedpoint::{ring_decode, ring_encode};
 use crypto::prng::AesRng;
-use crypto::ring::{Dot, Fill, Ring64Tensor, Sample, Sum};
+use crypto::ring::{Dot, Ring64Tensor, Sample};
 use crypto::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
