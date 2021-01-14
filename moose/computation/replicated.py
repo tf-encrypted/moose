@@ -65,7 +65,7 @@ class MulOperation(ReplicatedOperation):
 
 @dataclass
 class TruncPrOperation(ReplicatedOperation):
-    scaling_factor: int
+    precision: int
     output_type: ValueType
 
 

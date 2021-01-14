@@ -120,13 +120,13 @@ class ReplicatedLoweringPass:
     def lower_TruncPrOperation(self, op):
         assert isinstance(op, replicated_ops.TruncPrOperation)
         x = self.lower(op.inputs["value"])
-        scaling_factor = op.scaling_factor
+        precision = op.precision
         setup = self.lower(op.inputs["setup"])
         assert isinstance(x, ReplicatedTensor), type(x)
-        assert isinstance(scaling_factor, int), type(scaling_factor)
+        assert isinstance(precision, int), type(precision)
         assert isinstance(setup, ReplicatedSetup), type(setup)
         z = replicated_trunc_pr(
-            x, scaling_factor, setup, placement_name=op.placement_name
+            x, precision, setup, placement_name=op.placement_name
         )
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
@@ -262,6 +262,8 @@ def replicated_encode(x: StandardTensor, precision) -> RingTensor:
 
 def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
     assert isinstance(x, RingTensor)
+    print("decode precision: ", precision)
+    assert isinstance(precision, int)
     decode_op = x.computation.add(
         fixed_dialect.RingDecodeOperation(
             name=x.context.get_fresh_name("decode"),

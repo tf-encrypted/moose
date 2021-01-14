@@ -108,7 +108,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("replicated_trunc_pr"),
                 placement_name=op.placement_name,
                 inputs=inputs,
-                scaling_factor=op.scaling_factor,
+                precision=op.precision,
                 output_type=rep_dialect.ReplicatedTensorType(
                     datatype=op.output_type.datatype
                 ),

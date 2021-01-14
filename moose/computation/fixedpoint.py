@@ -36,7 +36,7 @@ class MulOperation(FixedpointOperation):
 
 @dataclass
 class TruncPrOperation(FixedpointOperation):
-    scaling_factor: int
+    precision: int
     output_type: ValueType
 
 
