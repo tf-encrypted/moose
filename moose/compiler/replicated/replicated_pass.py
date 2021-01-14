@@ -119,8 +119,6 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
         inputs = {
             input_key: input_op.name for input_key, input_op in processed_inputs.items()
         }
-        assert "setup" not in inputs
-        inputs["setup"] = self.get_setup_op(op.placement_name).name
         return self.computation.add_operation(
             rep_dialect.SumOperation(
                 name=self.context.get_fresh_name("replicated_sum"),

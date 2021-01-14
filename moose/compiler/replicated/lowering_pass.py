@@ -203,9 +203,7 @@ class ReplicatedLoweringPass:
     def lower_SumOperation(self, op):
         assert isinstance(op, replicated_ops.SumOperation)
         x = self.lower(op.inputs["x"])
-        setup = self.lower(op.inputs["setup"])
         assert isinstance(x, ReplicatedTensor), type(x)
-        assert isinstance(setup, ReplicatedSetup), type(setup)
 
         z = replicated_sum(x, op.axis, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
@@ -573,11 +571,10 @@ def replicated_sum(
 
     players = replicated_placement.player_names
 
-    z_shares = [None, None, None]
-    for i in range(3):
-        z_shares[i] = [
-            ring_sum(x_shares[i][j], axis, placement_name=players[i]) for j in range(2)
-        ]
+    z_shares = [
+        [ring_sum(x_shares[i][j], axis, placement_name=players[i]) for j in range(2)]
+        for i in range(3)
+    ]
 
     return ReplicatedTensor(
         shares0=z_shares[0],
