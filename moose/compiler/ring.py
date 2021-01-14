@@ -34,7 +34,7 @@ def print_ring_tensor(tensor: RingTensor, start, end, placement_name, chain=None
     assert isinstance(tensor, RingTensor)
 
     inputs = {"value": tensor.op.name}
-    if chain != None:
+    if chain is not None:
         inputs["chain"] = chain.name
 
     new_op = PrintRingTensorOperation(

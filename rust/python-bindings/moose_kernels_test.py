@@ -95,7 +95,7 @@ class SamplingOperations(parameterized.TestCase):
         random_bits = ring_sample((2, 2), sample_key(), max_value=1)
         print(random_bits)
         assert 0 <= random_bits.any()
-        assert 1 <= random_bits.any()
+        assert 1 >= random_bits.any()
 
 
 class FillOp(parameterized.TestCase):

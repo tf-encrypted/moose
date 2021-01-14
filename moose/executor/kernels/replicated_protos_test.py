@@ -47,10 +47,8 @@ dotprod_inputs = st.tuples(
 
 class ReplicatedProtocolsTest(parameterized.TestCase):
     @parameterized.parameters(
-        # (lambda x, y: x + y, standard_dialect.AddOperation),
-        # (lambda x, y: x - y, standard_dialect.SubOperation),
-        # the following will work only after we can do fix point multiplication
-        # without special encoding
+        (lambda x, y: x + y, standard_dialect.AddOperation),
+        (lambda x, y: x - y, standard_dialect.SubOperation),
         (lambda x, y: x * y, standard_dialect.MulOperation),
     )
     @given(pair_lists)

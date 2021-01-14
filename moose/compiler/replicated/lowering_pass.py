@@ -11,7 +11,6 @@ from moose.compiler.primitives import sample_key
 from moose.compiler.pruning import PruningPass
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
-from moose.compiler.ring import print_ring_tensor
 from moose.compiler.ring import ring_add
 from moose.compiler.ring import ring_dot
 from moose.compiler.ring import ring_mul
@@ -719,8 +718,6 @@ def replicated_trunc_pr(
         context=x.context,
     )
 
-    reconstructed = replicated_reveal(output, players[0])
-    # print_ring_tensor(reconstructed, start="rec = ", end="\n", placement_name=players[0], chain=print_chain)
     return output
 
 

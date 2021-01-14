@@ -1,4 +1,3 @@
-from moose_kernels import print_ring_tensor
 from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
