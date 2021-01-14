@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import Optional
 from typing import Tuple
 
 from moose.compiler.primitives import PRFKey
@@ -16,6 +17,7 @@ from moose.compiler.ring import ring_mul
 from moose.compiler.ring import ring_sample
 from moose.compiler.ring import ring_shape
 from moose.compiler.ring import ring_sub
+from moose.compiler.ring import ring_sum
 from moose.compiler.standard import StandardTensor
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
@@ -194,6 +196,18 @@ class ReplicatedLoweringPass:
         assert isinstance(setup, ReplicatedSetup), type(setup)
 
         z = replicated_dot(x, y, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
+    def lower_SumOperation(self, op):
+        assert isinstance(op, replicated_ops.SumOperation)
+        x = self.lower(op.inputs["x"])
+        setup = self.lower(op.inputs["setup"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
+
+        z = replicated_sum(x, op.axis, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
@@ -535,6 +549,34 @@ def replicated_sub(
         z_shares[i] = [
             ring_sub(x_shares[i][j], y_shares[i][j], placement_name=players[i])
             for j in range(2)
+        ]
+
+    return ReplicatedTensor(
+        shares0=z_shares[0],
+        shares1=z_shares[1],
+        shares2=z_shares[2],
+        computation=x.computation,
+        context=x.context,
+    )
+
+
+def replicated_sum(
+    x: ReplicatedTensor, axis: Optional[int], placement_name
+) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+
+    computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    x_shares = [x.shares0, x.shares1, x.shares2]
+
+    players = replicated_placement.player_names
+
+    z_shares = [None, None, None]
+    for i in range(3):
+        z_shares[i] = [
+            ring_sum(x_shares[i][j], axis, placement_name=players[i]) for j in range(2)
         ]
 
     return ReplicatedTensor(

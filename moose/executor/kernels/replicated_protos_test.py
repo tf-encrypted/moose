@@ -136,6 +136,77 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             z, runtime.get_executor(carole.name).store["result"]
         )
 
+    @parameterized.parameters([0, 1, None])
+    def test_sum_op(self, axis):
+        comp = Computation(operations={}, placements={})
+
+        alice = HostPlacement(name="alice")
+        bob = HostPlacement(name="bob")
+        carole = HostPlacement(name="carole")
+        rep = ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+
+        comp.add_placement(alice)
+        comp.add_placement(bob)
+        comp.add_placement(carole)
+        comp.add_placement(rep)
+
+        x = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        z = np.sum(x, axis=axis)
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="alice_input",
+                value=x,
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.SumOperation(
+                name="rep_op",
+                placement_name=rep.name,
+                axis=axis,
+                inputs={"x": "alice_input"},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                inputs={"value": "rep_op"},
+                placement_name=carole.name,
+                key="result",
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.OutputOperation(
+                name="output", placement_name=carole.name, inputs={"value": "save"},
+            )
+        )
+
+        compiler = Compiler()
+
+        comp = compiler.run_passes(comp)
+
+        placement_instantiation = {
+            alice: alice.name,
+            bob: bob.name,
+            carole: carole.name,
+        }
+
+        runtime = LocalRuntime()
+        runtime.evaluate_computation(
+            computation=comp, placement_instantiation=placement_instantiation
+        )
+
+        np.testing.assert_array_equal(
+            z, runtime.get_executor(carole.name).store["result"]
+        )
+
     @given(dotprod_inputs)
     def test_dot_prod(self, dotprod_args):
         comp = Computation(operations={}, placements={})
