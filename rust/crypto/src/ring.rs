@@ -158,9 +158,9 @@ impl Sum for Ring64Tensor {
         if let Some(i) = axis {
             Ring64Tensor(self.0.sum_axis(Axis(i)))
         } else {
-            let out = Array::from_elem([],self.0.sum())
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap();
+            let out = Array::from_elem([], self.0.sum())
+                .into_dimensionality::<IxDyn>()
+                .unwrap();
             Ring64Tensor(out)
         }
     }
@@ -270,8 +270,8 @@ mod tests {
         let x = Ring64Tensor::from(x_backing);
         let exp_v: u64 = 10;
         let exp_backing = Array::from_elem([], exp_v)
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap();
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
         let exp = Ring64Tensor::from(exp_backing);
         let out = x.sum(None);
         assert_eq!(out, exp)
