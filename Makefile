@@ -29,7 +29,7 @@ test:
 clean:
 	find ./moose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf .pytest_cache
-	rm -Rf .hypothesis/examples/*
+	rm -Rf .hypothesis
 
 ci: fmt lint test
 
