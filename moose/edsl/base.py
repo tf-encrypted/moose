@@ -333,6 +333,18 @@ def transpose(x, axes=None, placement=None):
 
 def load(key, dtype=None, placement=None):
     placement = placement or get_current_placement()
+    if isinstance(key, str):
+        key = constant(key, placement=placement)
+    elif isinstance(key, Argument) and key.datatype not in [str, None]:
+        raise ValueError(
+            f"Function 'edsl.load' encountered argument of datatype {key.datatype}; "
+            "expected datatype 'str'."
+        )
+    elif not isinstance(key, Expression):
+        raise ValueError(
+            f"Function 'edsl.load' encountered argument of type {type(key)}; "
+            "expected one of str, ConstantExpression, or ArgumentExpression."
+        )
     return LoadExpression(placement=placement, inputs=[key], dtype=dtype)
 
 
