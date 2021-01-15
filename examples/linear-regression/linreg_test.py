@@ -110,8 +110,8 @@ class LinearRegressionExample(unittest.TestCase):
             seed=42, n_instances=10, n_features=1, n_targets=1
         )
         networking = Networking()
-        x_owner_executor = AsyncExecutor(networking, store={"x_uri": x_data})
-        y_owner_executor = AsyncExecutor(networking, store={"y_uri": y_data})
+        x_owner_executor = AsyncExecutor(networking, store={"x_data": x_data})
+        y_owner_executor = AsyncExecutor(networking, store={"y_data": y_data})
         runtime = Runtime(
             networking=networking,
             backing_executors={
@@ -126,9 +126,6 @@ class LinearRegressionExample(unittest.TestCase):
                 for plc in [x_owner, y_owner, model_owner, trusted_computer]
             },
             arguments={
-                # FIXME: the keys here are being used in the computation instead of the
-                # values, so e.g. above we had to store data with key "x_uri" instead of
-                # the key "x_data"
                 "x_uri": "x_data",
                 "y_uri": "y_data",
                 "w_uri": "regression_weights",
