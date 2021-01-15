@@ -13,6 +13,10 @@ pub fn ring_decode(x: &Ring64Tensor, scaling_factor: u64) -> ArrayD<f64> {
     x_converted / scaling_factor as f64
 }
 
+pub fn ring_mean(x: &Ring64Tensor, axis: Option<u64>) -> Ring64Tensor {
+    
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
