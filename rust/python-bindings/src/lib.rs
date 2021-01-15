@@ -118,12 +118,10 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         seed: &'py PyBytes,
         max_value: Option<u64>,
     ) -> &'py PyArrayDyn<u64> {
-        let res = if max_value.is_none() {
-            Ring64Tensor::sample_uniform(&shape, &seed.as_bytes())
-        } else {
-            Ring64Tensor::sample_bits(&shape, &seed.as_bytes())
+        let res = match max_value {
+            None => Ring64Tensor::sample_uniform(&shape, &seed.as_bytes()),
+            Some(_) => Ring64Tensor::sample_bits(&shape, &seed.as_bytes())
         };
-
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
@@ -135,7 +133,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         amount: u64,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let res_array = x_ring.0.mapv(|x| x.0 << amount);
+        let res = x_ring << (amount as usize);
+        let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
 
@@ -146,7 +145,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         amount: u64,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let res_array = x_ring.0.mapv(|x| x.0 >> amount);
+        let res = x_ring >> (amount as usize);
+        let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
 

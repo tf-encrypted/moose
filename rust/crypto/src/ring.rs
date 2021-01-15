@@ -2,7 +2,7 @@ use ndarray::prelude::*;
 use rand::prelude::*;
 use std::convert::TryInto;
 use std::num::Wrapping;
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Mul, Sub, Shl, Shr};
 
 use crate::prng::{AesRng, PRNGSeed};
 
@@ -96,6 +96,20 @@ impl Sub for Ring64Tensor {
     type Output = Ring64Tensor;
     fn sub(self, other: Self) -> Self::Output {
         Ring64Tensor(self.0.sub(other.0))
+    }
+}
+
+impl Shl<usize> for Ring64Tensor {
+    type Output = Ring64Tensor;
+    fn shl(self, other: usize) -> Self::Output {
+        Ring64Tensor(self.0 << other)
+    }
+}
+
+impl Shr<usize> for Ring64Tensor {
+    type Output = Ring64Tensor;
+    fn shr(self, other: usize) -> Self::Output {
+        Ring64Tensor(self.0 >> other)
     }
 }
 

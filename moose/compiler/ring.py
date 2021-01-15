@@ -33,25 +33,26 @@ class RingTensor:
 def print_ring_tensor(tensor: RingTensor, start, end, placement_name, chain=None):
     assert isinstance(tensor, RingTensor)
 
-    inputs = {"value": tensor.op.name}
-    if chain is not None:
-        inputs["chain"] = chain.name
-
-    new_op = PrintRingTensorOperation(
-        name=tensor.context.get_fresh_name("print_ring_tensor"),
-        placement_name=placement_name,
-        inputs=inputs,
-        start=start,
-        end=end,
-    )
-    output_op = standard_ops.OutputOperation(
-        name=tensor.context.get_fresh_name("chain_print"),
-        inputs={"value": new_op.name},
-        placement_name=placement_name,
+    new_op = tensor.computation.add_operation(
+        PrintRingTensorOperation(
+            name=tensor.context.get_fresh_name("print_ring_tensor"),
+            placement_name=placement_name,
+            inputs={
+                "value": tensor.op.name,
+                "chain": None if chain is None else chain.name,
+            },
+            start=start,
+            end=end,
+        )
     )
 
-    tensor.computation.add_operation(new_op)
-    new_chain = tensor.computation.add_operation(output_op)
+    new_chain = tensor.computation.add_operation(
+        standard_ops.OutputOperation(
+            name=tensor.context.get_fresh_name("chain_print"),
+            inputs={"value": new_op.name},
+            placement_name=placement_name,
+        )
+    )
     return new_chain
 
 

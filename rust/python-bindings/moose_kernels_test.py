@@ -93,9 +93,8 @@ class SamplingOperations(parameterized.TestCase):
         actual = ring_sample((2, 2), sample_key())
         assert ring_shape(actual) == [2, 2]
         random_bits = ring_sample((2, 2), sample_key(), max_value=1)
-        print(random_bits)
-        assert 0 <= random_bits.any()
-        assert 1 >= random_bits.any()
+        assert np.all(random_bits <= 1)
+        assert np.all(0 <= random_bits)
 
 
 class FillOp(parameterized.TestCase):

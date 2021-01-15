@@ -195,15 +195,7 @@ impl AesRng {
     /// The entropy selection is done automatically by sodiumoxide
     pub fn from_random_seed() -> Self {
         let seed = AesRng::generate_random_key();
-        let key: Block128 = GenericArray::clone_from_slice(&seed);
-        let mut out = AesRng {
-            state: AesRngState::default(),
-            cipher: Aes128::new(&key),
-            n_cached_bits: 0,
-            cached_bits: 0,
-        };
-        out.init();
-        out
+        Self::from_seed(seed)
     }
 
     // Fetch a random bit from the cache
