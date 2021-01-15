@@ -199,6 +199,44 @@ class RingKernelTest(parameterized.TestCase):
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(expected, executor.store["x_filled"])
 
+    def test_sum(self):
+        x = np.array([[1, 2], [3, 4]], dtype=np.uint64)
+        expected = np.sum(x, axis=0)
+
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                value=x,
+                output_type=standard_dialect.TensorType("int64"),
+            )
+        )
+        comp.add_operation(
+            ring_dialect.RingSumOperation(
+                name="sum", placement_name=alice.name, axis=0, inputs={"x": "x"},
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "sum"},
+                key="z",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(expected, executor.store["z"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -123,6 +123,22 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         # TODO(Morten) insert trunc op
         return dot_op
 
+    def process_SumOperation(self, op, processed_inputs):
+        assert isinstance(op, std_dialect.SumOperation)
+        lowered_x_op = processed_inputs["x"]
+        x_output_type = lowered_x_op.output_type
+        assert isinstance(x_output_type, fixedpoint_dialect.EncodedTensorType)
+        sum_op = self.computation.add(
+            fixedpoint_dialect.SumOperation(
+                name=self.context.get_fresh_name("fixed_sum"),
+                placement_name=op.placement_name,
+                axis=op.axis,
+                inputs={"x": lowered_x_op.name},
+                output_type=x_output_type,
+            )
+        )
+        return sum_op
+
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)
         dst_op = self.computation.operation(dst_op_name)

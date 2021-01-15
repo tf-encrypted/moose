@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from moose.computation.base import Operation
 from moose.computation.base import ValueType
@@ -35,6 +36,12 @@ class MulOperation(FixedpointOperation):
 
 @dataclass
 class DotOperation(FixedpointOperation):
+    output_type: ValueType
+
+
+@dataclass
+class SumOperation(FixedpointOperation):
+    axis: Optional[int]
     output_type: ValueType
 
 

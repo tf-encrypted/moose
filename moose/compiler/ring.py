@@ -14,6 +14,7 @@ from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
 from moose.computation.ring import RingSubOperation
+from moose.computation.ring import RingSumOperation
 
 
 @dataclass
@@ -117,6 +118,19 @@ def ring_dot(x: RingTensor, y: RingTensor, placement_name):
             name=x.context.get_fresh_name("ring_dot"),
             placement_name=placement_name,
             inputs={"lhs": x.op.name, "rhs": y.op.name},
+        )
+    )
+    return RingTensor(op=z_op, computation=x.computation, context=x.context)
+
+
+def ring_sum(x: RingTensor, axis: int, placement_name):
+    assert isinstance(x, RingTensor)
+    z_op = x.computation.add_operation(
+        RingSumOperation(
+            name=x.context.get_fresh_name("ring_sum"),
+            placement_name=placement_name,
+            axis=axis,
+            inputs={"x": x.op.name},
         )
     )
     return RingTensor(op=z_op, computation=x.computation, context=x.context)

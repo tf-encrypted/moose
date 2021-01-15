@@ -24,12 +24,8 @@ impl Sample for Ring64Tensor {
     }
 }
 
-pub trait Fill {
-    fn fill(shape: &[usize], el: u64) -> Self;
-}
-
-impl Fill for Ring64Tensor {
-    fn fill(shape: &[usize], el: u64) -> Self {
+impl Ring64Tensor {
+    pub fn fill(shape: &[usize], el: u64) -> Ring64Tensor {
         Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
     }
 }
@@ -147,6 +143,19 @@ impl Dot<Ring64Tensor> for Ring64Tensor {
     }
 }
 
+impl Ring64Tensor {
+    pub fn sum(self, axis: Option<usize>) -> Ring64Tensor {
+        if let Some(i) = axis {
+            Ring64Tensor(self.0.sum_axis(Axis(i)))
+        } else {
+            let out = Array::from_elem([], self.0.sum())
+                .into_dimensionality::<IxDyn>()
+                .unwrap();
+            Ring64Tensor(out)
+        }
+    }
+}
+
 pub struct Replicated<T>(T, T, T);
 
 impl<T> Mul<Replicated<T>> for Replicated<T>
@@ -231,5 +240,30 @@ mod tests {
     fn ring_fill() {
         let r = Ring64Tensor::fill(&[2], 1);
         assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
+    }
+
+    #[test]
+    fn ring_sum_with_axis() {
+        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = Ring64Tensor::from(x_backing);
+        let out = x.sum(Some(0));
+        assert_eq!(out, Ring64Tensor::from(vec![4, 6]))
+    }
+
+    #[test]
+    fn ring_sum_without_axis() {
+        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = Ring64Tensor::from(x_backing);
+        let exp_v: u64 = 10;
+        let exp_backing = Array::from_elem([], exp_v)
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let exp = Ring64Tensor::from(exp_backing);
+        let out = x.sum(None);
+        assert_eq!(out, exp)
     }
 }

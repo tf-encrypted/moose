@@ -5,6 +5,7 @@ from moose_kernels import ring_mul
 from moose_kernels import ring_sample
 from moose_kernels import ring_shape
 from moose_kernels import ring_sub
+from moose_kernels import ring_sum
 
 from moose.computation.ring import FillTensorOperation
 from moose.computation.ring import RingAddOperation
@@ -13,6 +14,7 @@ from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
 from moose.computation.ring import RingSubOperation
+from moose.computation.ring import RingSumOperation
 from moose.executor.kernels.base import Kernel
 
 
@@ -38,6 +40,12 @@ class RingSubKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, RingSubOperation)
         return ring_sub(lhs, rhs)
+
+
+class RingSumKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, RingSumOperation)
+        return ring_sum(x, axis=op.axis)
 
 
 class RingShapeKernel(Kernel):

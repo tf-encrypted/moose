@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import List
+from typing import Optional
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
@@ -64,4 +65,10 @@ class MulOperation(ReplicatedOperation):
 
 @dataclass
 class DotOperation(ReplicatedOperation):
+    output_type: ValueType
+
+
+@dataclass
+class SumOperation(ReplicatedOperation):
+    axis: Optional[int]
     output_type: ValueType

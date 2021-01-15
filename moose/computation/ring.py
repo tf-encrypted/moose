@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Optional
 
 from moose.computation.base import Operation
 from moose.computation.base import ValueType
@@ -34,6 +35,12 @@ class RingMulOperation(RingOperation):
 
 @dataclass
 class RingDotOperation(RingOperation):
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class RingSumOperation(RingOperation):
+    axis: Optional[int]
     output_type: ValueType = RingTensorType()
 
 

@@ -1,6 +1,6 @@
 use crypto::fixedpoint::{ring_decode, ring_encode};
 use crypto::prng::AesRng;
-use crypto::ring::{Dot, Fill, Ring64Tensor, Sample};
+use crypto::ring::{Dot, Ring64Tensor, Sample};
 use crypto::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
@@ -72,6 +72,18 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         y: PyReadonlyArrayDyn<u64>,
     ) -> &'py PyArrayDyn<u64> {
         binary_pyfn(py, x, y, |a, b| a - b)
+    }
+
+    #[pyfn(m, "ring_sum")]
+    fn ring_sum<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        axis: Option<usize>,
+    ) -> &'py PyArrayDyn<u64> {
+        let x_ring = dynarray_to_ring64(&x);
+        let res = x_ring.sum(axis);
+        let res_array = ring64_to_array(res);
+        res_array.to_pyarray(py)
     }
 
     #[pyfn(m, "ring_shape")]
