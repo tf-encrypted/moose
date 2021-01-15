@@ -2,7 +2,7 @@ use ndarray::prelude::*;
 use rand::prelude::*;
 use std::convert::TryInto;
 use std::num::Wrapping;
-use std::ops::{Add, Mul, Sub, Shl, Shr};
+use std::ops::{Add, Mul, Shl, Shr, Sub};
 
 use crate::prng::{AesRng, PRNGSeed};
 

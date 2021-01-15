@@ -120,7 +120,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u64> {
         let res = match max_value {
             None => Ring64Tensor::sample_uniform(&shape, &seed.as_bytes()),
-            Some(_) => Ring64Tensor::sample_bits(&shape, &seed.as_bytes())
+            Some(_) => Ring64Tensor::sample_bits(&shape, &seed.as_bytes()),
         };
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
