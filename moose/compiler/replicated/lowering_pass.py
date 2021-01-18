@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import Tuple
 from typing import Optional
+from typing import Tuple
 
 from moose.compiler.primitives import PRFKey
 from moose.compiler.primitives import Seed
@@ -20,7 +20,6 @@ from moose.compiler.ring import ring_sample
 from moose.compiler.ring import ring_shape
 from moose.compiler.ring import ring_sub
 from moose.compiler.ring import ring_sum
-from moose.compiler.ring import print_ring_tensor
 from moose.compiler.standard import StandardTensor
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
@@ -577,6 +576,7 @@ def replicated_sum(
         computation=x.computation,
         context=x.context,
     )
+
 
 def replicated_trunc_pr(
     x: ReplicatedTensor, m: int, setup: ReplicatedSetup, placement_name

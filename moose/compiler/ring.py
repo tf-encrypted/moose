@@ -19,7 +19,6 @@ from moose.computation.ring import RingShlOperation
 from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
-from moose.computation.ring import PrintRingTensorOperation
 
 
 @dataclass

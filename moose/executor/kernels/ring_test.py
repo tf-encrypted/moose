@@ -198,7 +198,7 @@ class RingKernelTest(parameterized.TestCase):
         )
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(expected, executor.store["x_filled"])
-    
+
     def test_sum(self):
         x = np.array([[1, 2], [3, 4]], dtype=np.uint64)
         expected = np.sum(x, axis=0)
