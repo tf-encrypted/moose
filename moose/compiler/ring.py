@@ -32,13 +32,13 @@ class RingTensor:
 def print_ring_tensor(tensor: RingTensor, prefix, suffix, placement_name, chain=None):
     assert isinstance(tensor, RingTensor)
 
-    new_op = tensor.computation.add_operation(
+    print_op = tensor.computation.add_operation(
         PrintRingTensorOperation(
             name=tensor.context.get_fresh_name("print_ring_tensor"),
             placement_name=placement_name,
             inputs={
                 "value": tensor.op.name,
-                "chain": None if chain is None else chain.name,
+                "chain": chain.name if chain else None,
             },
             prefix=prefix,
             suffix=suffix,
@@ -48,11 +48,11 @@ def print_ring_tensor(tensor: RingTensor, prefix, suffix, placement_name, chain=
     new_chain = tensor.computation.add_operation(
         standard_ops.OutputOperation(
             name=tensor.context.get_fresh_name("chain_print"),
-            inputs={"value": new_op.name},
+            inputs={"value": print_op.name},
             placement_name=placement_name,
         )
     )
-    return new_chain
+    return print_op
 
 
 def ring_shape(tensor: RingTensor, placement_name):
