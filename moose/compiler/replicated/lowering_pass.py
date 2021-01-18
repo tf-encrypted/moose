@@ -637,9 +637,8 @@ def replicated_trunc_pr(
         for i in range(2)
     ]
 
-    y_shares = [None, None, None]
     # samples shares of P2
-    y_shares[2] = [
+    y_shares_provider = [
         ring_sample(x_shape, shared_seeds[i], placement_name=players[2])
         for i in range(2)
     ]
@@ -688,7 +687,7 @@ def replicated_trunc_pr(
     output = ReplicatedTensor(
         shares0=(y_recv[0], new_shares[0]),
         shares1=(new_shares[1], y_recv[1]),
-        shares2=y_shares[2],
+        shares2=y_shares_provider,
         computation=x.computation,
         context=x.context,
     )
