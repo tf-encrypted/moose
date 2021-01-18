@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Tuple
+from typing import Optional
 
 from moose.compiler.primitives import PRFKey
 from moose.compiler.primitives import Seed

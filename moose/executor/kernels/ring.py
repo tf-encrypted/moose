@@ -8,7 +8,6 @@ from moose_kernels import ring_shl
 from moose_kernels import ring_shr
 from moose_kernels import ring_sub
 from moose_kernels import ring_sum
-from moose_kernels import print_ring_tensor
 
 from moose.computation.ring import FillTensorOperation
 from moose.computation.ring import PrintRingTensorOperation
