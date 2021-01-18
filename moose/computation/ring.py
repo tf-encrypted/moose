@@ -75,6 +75,6 @@ class FillTensorOperation(RingOperation):
 
 @dataclass
 class PrintRingTensorOperation(RingOperation):
-    start: str
-    end: str
+    prefix: str
+    suffix: str
     output_type: ValueType = RingTensorType()

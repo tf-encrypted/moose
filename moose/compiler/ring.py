@@ -29,7 +29,7 @@ class RingTensor:
     shape: Optional[Shape] = None
 
 
-def print_ring_tensor(tensor: RingTensor, start, end, placement_name, chain=None):
+def print_ring_tensor(tensor: RingTensor, prefix, suffix, placement_name, chain=None):
     assert isinstance(tensor, RingTensor)
 
     new_op = tensor.computation.add_operation(
@@ -40,8 +40,8 @@ def print_ring_tensor(tensor: RingTensor, start, end, placement_name, chain=None
                 "value": tensor.op.name,
                 "chain": None if chain is None else chain.name,
             },
-            start=start,
-            end=end,
+            prefix=prefix,
+            suffix=suffix,
         )
     )
 
