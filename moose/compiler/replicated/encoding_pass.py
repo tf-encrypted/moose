@@ -83,7 +83,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         assert isinstance(rhs_output_type, fixedpoint_dialect.EncodedTensorType)
         assert lhs_output_type.datatype == rhs_output_type.datatype
         assert lhs_output_type.precision == rhs_output_type.precision
-        output_type = fixedpoint_dialect.EncodedTensorType(
+        mul_output_type = fixedpoint_dialect.EncodedTensorType(
             datatype=lhs_output_type.datatype,
             precision=lhs_output_type.precision + rhs_output_type.precision,
         )
@@ -92,11 +92,24 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("fixed_mul"),
                 placement_name=op.placement_name,
                 inputs={"lhs": lowered_lhs_op.name, "rhs": lowered_rhs_op.name},
-                output_type=output_type,
+                output_type=mul_output_type,
             )
         )
-        # TODO(Morten) insert trunc op
-        return mul_op
+
+        trunc_output_type = fixedpoint_dialect.EncodedTensorType(
+            datatype=mul_output_type.datatype, precision=mul_output_type.precision // 2,
+        )
+        precision_to_truncate = mul_output_type.precision - trunc_output_type.precision
+        trunc_op = self.computation.add(
+            fixedpoint_dialect.TruncPrOperation(
+                name=self.context.get_fresh_name("trunc_pr"),
+                placement_name=op.placement_name,
+                inputs={"value": mul_op.name},
+                precision=precision_to_truncate,
+                output_type=trunc_output_type,
+            )
+        )
+        return trunc_op
 
     def process_DotOperation(self, op, processed_inputs):
         assert isinstance(op, std_dialect.DotOperation)

@@ -147,6 +147,15 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
+            fixedpoint_ops.TruncPrOperation(
+                name="trunc_pr_0",
+                inputs={"value": "fixed_mul_0"},
+                precision=16,
+                placement_name="rep",
+                output_type=EncodedTensorType(datatype="fixed64", precision=16),
+            )
+        )
+        expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
                 name="decode_0",
                 inputs={"value": "fixed_add_0"},
@@ -168,10 +177,10 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
                 name="decode_1",
-                inputs={"value": "fixed_mul_0"},
+                inputs={"value": "trunc_pr_0"},
                 placement_name="rep",
                 output_type=TensorType(datatype="float"),
-                precision=32,
+                precision=16,
             )
         )
         expected_comp.add_operation(
@@ -322,6 +331,15 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
+            fixedpoint_ops.TruncPrOperation(
+                name="trunc_pr_0",
+                inputs={"value": "fixed_mul_0"},
+                precision=0,
+                placement_name="rep",
+                output_type=EncodedTensorType(datatype="fixed64", precision=0),
+            )
+        )
+        expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
                 name="decode_0",
                 inputs={"value": "fixed_add_0"},
@@ -343,7 +361,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
                 name="decode_1",
-                inputs={"value": "fixed_mul_0"},
+                inputs={"value": "trunc_pr_0"},
                 placement_name="rep",
                 output_type=TensorType(datatype="int64"),
                 precision=0,

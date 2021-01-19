@@ -30,6 +30,9 @@ class Seed:
 
 
 def derive_seed(key: PRFKey, nonce: bytes, placement_name, computation, context):
+    assert isinstance(key, PRFKey)
+    assert isinstance(nonce, bytes)
+
     seed_op = computation.add_operation(
         DeriveSeedOperation(
             name=context.get_fresh_name("derive_seed"),

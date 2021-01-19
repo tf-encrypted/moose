@@ -145,6 +145,8 @@ impl AesRngState {
 pub struct AesRng {
     state: AesRngState,
     cipher: Aes128,
+    n_cached_bits: usize,
+    cached_bits: u64,
 }
 
 impl SeedableRng for AesRng {
@@ -158,6 +160,8 @@ impl SeedableRng for AesRng {
         let mut out = AesRng {
             state: AesRngState::default(),
             cipher: Aes128::new(&key),
+            n_cached_bits: 0,
+            cached_bits: 0,
         };
         out.init();
         out
@@ -191,13 +195,19 @@ impl AesRng {
     /// The entropy selection is done automatically by sodiumoxide
     pub fn from_random_seed() -> Self {
         let seed = AesRng::generate_random_key();
-        let key: Block128 = GenericArray::clone_from_slice(&seed);
-        let mut out = AesRng {
-            state: AesRngState::default(),
-            cipher: Aes128::new(&key),
-        };
-        out.init();
-        out
+        Self::from_seed(seed)
+    }
+
+    // Fetch a random bit from the cache
+    pub fn get_bit(&mut self) -> u8 {
+        if self.n_cached_bits == 0 {
+            self.cached_bits = self.next_u64();
+            self.n_cached_bits = 64;
+        }
+        self.n_cached_bits -= 1;
+        let result: u8 = (self.cached_bits & 1) as u8;
+        self.cached_bits >>= 1;
+        result
     }
 }
 

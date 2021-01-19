@@ -64,6 +64,12 @@ class MulOperation(ReplicatedOperation):
 
 
 @dataclass
+class TruncPrOperation(ReplicatedOperation):
+    precision: int
+    output_type: ValueType
+
+
+@dataclass
 class DotOperation(ReplicatedOperation):
     output_type: ValueType
 

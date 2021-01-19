@@ -4,15 +4,20 @@ from moose_kernels import ring_fill
 from moose_kernels import ring_mul
 from moose_kernels import ring_sample
 from moose_kernels import ring_shape
+from moose_kernels import ring_shl
+from moose_kernels import ring_shr
 from moose_kernels import ring_sub
 from moose_kernels import ring_sum
 
 from moose.computation.ring import FillTensorOperation
+from moose.computation.ring import PrintRingTensorOperation
 from moose.computation.ring import RingAddOperation
 from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
+from moose.computation.ring import RingShlOperation
+from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
 from moose.executor.kernels.base import Kernel
@@ -28,6 +33,18 @@ class RingMulKernel(Kernel):
     def execute_synchronous_block(self, op, session, lhs, rhs):
         assert isinstance(op, RingMulOperation)
         return ring_mul(lhs, rhs)
+
+
+class RingShlKernel(Kernel):
+    def execute_synchronous_block(self, op, session, value):
+        assert isinstance(op, RingShlOperation)
+        return ring_shl(value, op.amount)
+
+
+class RingShrKernel(Kernel):
+    def execute_synchronous_block(self, op, session, value):
+        assert isinstance(op, RingShrOperation)
+        return ring_shr(value, op.amount)
 
 
 class RingDotKernel(Kernel):
@@ -63,4 +80,12 @@ class RingFillKernel(Kernel):
 class RingSampleKernel(Kernel):
     def execute_synchronous_block(self, op, session, shape, seed):
         assert isinstance(op, RingSampleOperation)
-        return ring_sample(shape, seed)
+        return ring_sample(shape, seed, op.max_value)
+
+
+class PrintRingTensorKernel(Kernel):
+    def execute_synchronous_block(self, op, session, value, chain):
+        assert isinstance(op, PrintRingTensorOperation)
+        print(op.prefix, end="")
+        print("".join(str(item) for item in value), end=op.suffix)
+        return value

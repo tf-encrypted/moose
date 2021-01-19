@@ -96,6 +96,25 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
             )
         )
 
+    def process_TruncPrOperation(self, op, processed_inputs):
+        assert isinstance(op, fixed_dialect.TruncPrOperation)
+        inputs = {
+            input_key: input_op.name for input_key, input_op in processed_inputs.items()
+        }
+        assert "setup" not in inputs
+        inputs["setup"] = self.get_setup_op(op.placement_name).name
+        return self.computation.add_operation(
+            rep_dialect.TruncPrOperation(
+                name=self.context.get_fresh_name("replicated_trunc_pr"),
+                placement_name=op.placement_name,
+                inputs=inputs,
+                precision=op.precision,
+                output_type=rep_dialect.ReplicatedTensorType(
+                    datatype=op.output_type.datatype
+                ),
+            )
+        )
+
     def process_DotOperation(self, op, processed_inputs):
         assert isinstance(op, fixed_dialect.DotOperation)
         inputs = {

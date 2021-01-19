@@ -3,16 +3,20 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
+import moose.computation.standard as standard_ops
 from moose.compiler.primitives import Seed
 from moose.compiler.standard import Shape
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.ring import FillTensorOperation
+from moose.computation.ring import PrintRingTensorOperation
 from moose.computation.ring import RingAddOperation
 from moose.computation.ring import RingDotOperation
 from moose.computation.ring import RingMulOperation
 from moose.computation.ring import RingSampleOperation
 from moose.computation.ring import RingShapeOperation
+from moose.computation.ring import RingShlOperation
+from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
 
@@ -23,6 +27,29 @@ class RingTensor:
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
     shape: Optional[Shape] = None
+
+
+def print_ring_tensor(tensor: RingTensor, prefix, suffix, placement_name, chain=None):
+    assert isinstance(tensor, RingTensor)
+
+    print_op = tensor.computation.add_operation(
+        PrintRingTensorOperation(
+            name=tensor.context.get_fresh_name("print_ring_tensor"),
+            placement_name=placement_name,
+            inputs={"value": tensor.op.name, "chain": chain.name if chain else None},
+            prefix=prefix,
+            suffix=suffix,
+        )
+    )
+
+    tensor.computation.add_operation(
+        standard_ops.OutputOperation(
+            name=tensor.context.get_fresh_name("chain_print"),
+            inputs={"value": print_op.name},
+            placement_name=placement_name,
+        )
+    )
+    return print_op
 
 
 def ring_shape(tensor: RingTensor, placement_name):
@@ -52,7 +79,9 @@ def fill_tensor(shape: Shape, value: int, placement_name):
     )
 
 
-def ring_sample(shape: Shape, seed: Seed, placement_name):
+def ring_sample(
+    shape: Shape, seed: Seed, placement_name, max_value: Optional[int] = None
+):
     assert isinstance(shape, Shape)
     assert isinstance(seed, Seed)
     op = shape.computation.add_operation(
@@ -60,6 +89,7 @@ def ring_sample(shape: Shape, seed: Seed, placement_name):
             name=shape.context.get_fresh_name("ring_sample"),
             placement_name=placement_name,
             inputs={"shape": shape.op.name, "seed": seed.op.name},
+            max_value=max_value,
         )
     )
     return RingTensor(
@@ -105,6 +135,36 @@ def ring_mul(x: RingTensor, y: RingTensor, placement_name):
     )
     # TODO(Dragos): is it OK to pass the resulting shape as the shape of x?
     # in the future we might want some sort of shape inference around this?
+    return RingTensor(
+        op=z_op, computation=x.computation, shape=x.shape, context=x.context
+    )
+
+
+def ring_shl(x: RingTensor, amount: int, placement_name):
+    assert amount <= 64
+    z_op = x.computation.add_operation(
+        RingShlOperation(
+            name=x.context.get_fresh_name("ring_shl"),
+            placement_name=placement_name,
+            inputs={"value": x.op.name},
+            amount=amount,
+        )
+    )
+    return RingTensor(
+        op=z_op, computation=x.computation, shape=x.shape, context=x.context
+    )
+
+
+def ring_shr(x: RingTensor, amount: int, placement_name):
+    assert amount <= 64
+    z_op = x.computation.add_operation(
+        RingShrOperation(
+            name=x.context.get_fresh_name("ring_shr"),
+            placement_name=placement_name,
+            inputs={"value": x.op.name},
+            amount=amount,
+        )
+    )
     return RingTensor(
         op=z_op, computation=x.computation, shape=x.shape, context=x.context
     )

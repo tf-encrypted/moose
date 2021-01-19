@@ -34,6 +34,18 @@ class RingMulOperation(RingOperation):
 
 
 @dataclass
+class RingShlOperation(RingOperation):
+    amount: int
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class RingShrOperation(RingOperation):
+    amount: int
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
 class RingDotOperation(RingOperation):
     output_type: ValueType = RingTensorType()
 
@@ -51,10 +63,18 @@ class RingShapeOperation(RingOperation):
 
 @dataclass
 class RingSampleOperation(RingOperation):
+    max_value: Optional[int] = None
     output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class FillTensorOperation(RingOperation):
     value: int
+    output_type: ValueType = RingTensorType()
+
+
+@dataclass
+class PrintRingTensorOperation(RingOperation):
+    prefix: str
+    suffix: str
     output_type: ValueType = RingTensorType()

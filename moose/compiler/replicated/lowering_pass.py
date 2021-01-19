@@ -1,6 +1,4 @@
 from dataclasses import dataclass
-from dataclasses import field
-from typing import Any
 from typing import Optional
 from typing import Tuple
 
@@ -9,6 +7,10 @@ from moose.compiler.primitives import Seed
 from moose.compiler.primitives import derive_seed
 from moose.compiler.primitives import sample_key
 from moose.compiler.pruning import PruningPass
+from moose.compiler.replicated import trunc_utils
+from moose.compiler.replicated.types import ReplicatedSetup
+from moose.compiler.replicated.types import ReplicatedTensor
+from moose.compiler.replicated.types import SetupContext
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
@@ -21,7 +23,6 @@ from moose.compiler.ring import ring_sum
 from moose.compiler.standard import StandardTensor
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
-from moose.computation.base import Computation
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
 
@@ -113,6 +114,19 @@ class ReplicatedLoweringPass:
         assert y.datatype in ["unknown", "int", "float"], y.datatype
         self.interpretations[op.name] = y
         return y
+
+    def lower_TruncPrOperation(self, op):
+        assert isinstance(op, replicated_ops.TruncPrOperation)
+        x = self.lower(op.inputs["value"])
+        precision = op.precision
+        setup = self.lower(op.inputs["setup"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(precision, int), type(precision)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
+        z = replicated_trunc_pr(x, precision, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
 
     def lower_SetupOperation(self, op):
         assert isinstance(op, replicated_ops.SetupOperation)
@@ -220,15 +234,6 @@ class ReplicatedLoweringPass:
         )
 
 
-@dataclass
-class ReplicatedTensor:
-    shares0: Tuple[RingTensor, RingTensor]
-    shares1: Tuple[RingTensor, RingTensor]
-    shares2: Tuple[RingTensor, RingTensor]
-    computation: Computation = field(repr=False)
-    context: Any = field(repr=False)
-
-
 def replicated_encode(x: StandardTensor, precision) -> RingTensor:
     assert isinstance(x, StandardTensor)
     encode_op = x.computation.add(
@@ -244,6 +249,7 @@ def replicated_encode(x: StandardTensor, precision) -> RingTensor:
 
 def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
     assert isinstance(x, RingTensor)
+    assert isinstance(precision, int)
     decode_op = x.computation.add(
         fixed_dialect.RingDecodeOperation(
             name=x.context.get_fresh_name("decode"),
@@ -256,19 +262,6 @@ def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
     return StandardTensor(
         op=decode_op, datatype=datatype, computation=x.computation, context=x.context
     )
-
-
-@dataclass
-class SetupContext:
-    computation: Computation = field(repr=False)
-    naming_context: Any = field(repr=False)
-    placement_name: str
-
-
-@dataclass
-class ReplicatedSetup:
-    keys: Tuple[Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
-    context: SetupContext
 
 
 @dataclass
@@ -583,6 +576,124 @@ def replicated_sum(
         computation=x.computation,
         context=x.context,
     )
+
+
+def replicated_trunc_pr(
+    x: ReplicatedTensor, m: int, setup: ReplicatedSetup, placement_name
+) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(m, int)
+
+    assert isinstance(setup, ReplicatedSetup)
+
+    computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    players = replicated_placement.player_names
+
+    # TODO(Dragos): Here we could try to load balance and move the weight of generating
+    # this preprocessing to other parties every time this function is called
+    ctx = setup.context
+    k2 = sample_key(
+        context=ctx.naming_context,
+        computation=ctx.computation,
+        placement_name=players[2],
+    )
+
+    x_shape = ring_shape(x.shares2[0], placement_name=players[2])
+
+    ring_size = 64
+    r_bits = [None] * ring_size
+    for i in range(ring_size):
+        seed_r = derive_seed(
+            key=k2,
+            nonce=bytes(i),
+            placement_name=players[2],
+            computation=ctx.computation,
+            context=ctx.naming_context,
+        )
+        r_bits[i] = ring_sample(x_shape, seed_r, placement_name=players[2], max_value=1)
+
+    r = trunc_utils.bit_compose(r_bits, players[2])
+
+    r_top = trunc_utils.bit_compose(r_bits[m : ring_size - 1], players[2])
+    r_msb = r_bits[ring_size - 1]
+
+    to_share = [r, r_top, r_msb]
+    prep_shares = [
+        trunc_utils.generate_additive_share(
+            item, setup, len(players) - 1, placement_name=players[2]
+        )
+        for item in to_share
+    ]
+    shared_seeds = [
+        derive_seed(
+            key=k2,
+            nonce=bytes(ring_size + i),
+            placement_name=players[2],
+            computation=ctx.computation,
+            context=ctx.naming_context,
+        )
+        for i in range(2)
+    ]
+
+    # samples shares of P2
+    y_shares_provider = [
+        ring_sample(x_shape, shared_seeds[i], placement_name=players[2])
+        for i in range(2)
+    ]
+    # send seeds to the other parties and use them to get the randomness generated on P2
+
+    # TODO(Dragos) a replicated tensor should also have a shape
+    own_shape = [
+        ring_shape(x.shares0[0], placement_name=players[0]),
+        ring_shape(x.shares1[0], placement_name=players[1]),
+    ]
+
+    y_recv = [
+        ring_sample(own_shape[i], shared_seeds[i], placement_name=players[i])
+        for i in range(2)
+    ]
+
+    # compute the 2PC truncation protocol
+    y_prime = trunc_utils._two_party_trunc_pr(
+        x,
+        m,
+        r=prep_shares[0],
+        r_top=prep_shares[1],
+        r_msb=prep_shares[2],
+        players=players[:2],
+    )  # take the first two players
+
+    # apply share correction
+    # compute y'[i] - y_recv[i]
+    y_tilde = [
+        ring_sub(y_prime[i], y_recv[i], placement_name=players[i]) for i in range(2)
+    ]
+
+    # computing y'[i] - y_recv[i] - y_tilde[i]
+    new_shares = [None] * 2
+    new_shares[0] = ring_add(
+        ring_sub(y_prime[0], y_recv[0], placement_name=players[0]),
+        y_tilde[1],
+        placement_name=players[0],
+    )
+    new_shares[1] = ring_add(
+        ring_sub(y_prime[1], y_recv[1], placement_name=players[1]),
+        y_tilde[0],
+        placement_name=players[1],
+    )
+
+    output = ReplicatedTensor(
+        shares0=(y_recv[0], new_shares[0]),
+        shares1=(new_shares[1], y_recv[1]),
+        shares2=y_shares_provider,
+        computation=x.computation,
+        context=x.context,
+    )
+
+    return output
 
 
 def _generate_zero_share(shape, setup, players):

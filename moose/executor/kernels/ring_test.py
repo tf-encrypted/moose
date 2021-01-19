@@ -237,6 +237,48 @@ class RingKernelTest(parameterized.TestCase):
         asyncio.get_event_loop().run_until_complete(task)
         np.testing.assert_array_equal(expected, executor.store["z"])
 
+    def test_bitwise_ops(self):
+        expected = np.array([2, 2], dtype=np.uint64)
+
+        x = np.array([4, 4], dtype=np.uint64)
+
+        comp = Computation(operations={}, placements={})
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                value=x,
+                output_type=standard_dialect.TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            ring_dialect.RingShrOperation(
+                name="ring_shr",
+                placement_name=alice.name,
+                inputs={"value": "x"},
+                amount=1,
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "ring_shr"},
+                key="x_shifted",
+            )
+        )
+        executor = AsyncExecutor(networking=None)
+        task = executor.run_computation(
+            comp,
+            placement_instantiation={alice: alice.name},
+            placement=alice.name,
+            session_id="0123456789",
+        )
+        asyncio.get_event_loop().run_until_complete(task)
+        np.testing.assert_array_equal(expected, executor.store["x_shifted"])
+
 
 if __name__ == "__main__":
     unittest.main()
