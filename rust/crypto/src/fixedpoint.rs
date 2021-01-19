@@ -67,10 +67,11 @@ mod tests {
         let x_backing: ArrayD<f64> = array![[1., 2.], [3., 4.]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let scaling_factor = 2u64.pow(16);
-        let x = ring_encode(&x_backing.view(), scaling_factor);
-        let out = ring_mean(x, Some(0), scaling_factor);
-        let dec = ring_decode(&out, scaling_factor);
+        let encoding_factor = 2u64.pow(16);
+        let decoding_factor = 2u64.pow(32);
+        let x = ring_encode(&x_backing.view(), encoding_factor);
+        let out = ring_mean(x, Some(0), encoding_factor);
+        let dec = ring_decode(&out, decoding_factor);
         assert_eq!(dec, array![2., 3.].into_dimensionality::<IxDyn>().unwrap());
     }
 }
