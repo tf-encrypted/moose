@@ -592,6 +592,8 @@ def replicated_trunc_pr(
 
     players = replicated_placement.player_names
 
+    # TODO(Dragos): Here we could try to load balance and move the weight of generating
+    # this preprocessing to other parties every time this function is called
     ctx = setup.context
     k2 = sample_key(
         context=ctx.naming_context,

@@ -36,16 +36,13 @@ def print_ring_tensor(tensor: RingTensor, prefix, suffix, placement_name, chain=
         PrintRingTensorOperation(
             name=tensor.context.get_fresh_name("print_ring_tensor"),
             placement_name=placement_name,
-            inputs={
-                "value": tensor.op.name,
-                "chain": chain.name if chain else None,
-            },
+            inputs={"value": tensor.op.name, "chain": chain.name if chain else None},
             prefix=prefix,
             suffix=suffix,
         )
     )
 
-    new_chain = tensor.computation.add_operation(
+    tensor.computation.add_operation(
         standard_ops.OutputOperation(
             name=tensor.context.get_fresh_name("chain_print"),
             inputs={"value": print_op.name},
