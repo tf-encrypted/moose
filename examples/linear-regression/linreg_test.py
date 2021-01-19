@@ -3,10 +3,6 @@ import logging
 import unittest
 
 import numpy as np
-from opentelemetry.exporter.jaeger import JaegerSpanExporter
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchExportSpanProcessor
-from opentelemetry.trace import set_tracer_provider
 
 from moose.edsl import Argument
 from moose.edsl import computation
@@ -148,6 +144,11 @@ if __name__ == "__main__":
 
     if args.verbose:
         get_logger().setLevel(level=logging.DEBUG)
+
+        from opentelemetry.exporter.jaeger import JaegerSpanExporter
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import BatchExportSpanProcessor
+        from opentelemetry.trace import set_tracer_provider
 
         trace_provider = TracerProvider()
         trace_provider.add_span_processor(
