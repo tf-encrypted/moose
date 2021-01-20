@@ -253,6 +253,57 @@ class ReplicatedTest(parameterized.TestCase):
             for op in comp.operations.values()
         )
 
+    def test_replicated_mean_lowering(self):
+
+        comp = Computation(placements={}, operations={})
+
+        comp.add_placement(HostPlacement(name="alice"))
+        comp.add_placement(HostPlacement(name="bob"))
+        comp.add_placement(HostPlacement(name="carole"))
+        comp.add_placement(
+            ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+        )
+        comp.add_placement(HostPlacement(name="dave"))
+        comp.add_placement(HostPlacement(name="eric"))
+
+        comp.add_operation(
+            standard_ops.ConstantOperation(
+                name="alice_input",
+                inputs={},
+                value=1,
+                placement_name="alice",
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_ops.MeanOperation(
+                name="secure_mean",
+                inputs={"x": "alice_input"},
+                axis=None,
+                placement_name="rep",
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_ops.OutputOperation(
+                name="output_0", inputs={"value": "secure_mean"}, placement_name="dave"
+            )
+        )
+
+        compiler = Compiler(
+            passes=[
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                ReplicatedLoweringPass(),
+            ]
+        )
+        comp = compiler.run_passes(comp)
+
+        assert all(
+            isinstance(comp.placement(op.placement_name), HostPlacement)
+            for op in comp.operations.values()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

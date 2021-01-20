@@ -26,8 +26,8 @@ pub fn ring_mean(x: Ring64Tensor, axis: Option<usize>, scaling_factor: u64) -> R
         operand_sum.mul(encoded_weight)
     } else {
         let dim_prod: usize = std::iter::Product::product(shape.iter());
-        let dim_prod = dim_prod as f64;
-        let mean_weight = Array::from_elem([], dim_prod)
+        let prod_inv = 1.0 / dim_prod as f64;
+        let mean_weight = Array::from_elem([], prod_inv)
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let encoded_weight = ring_encode(&mean_weight.view(), scaling_factor);
@@ -73,5 +73,18 @@ mod tests {
         let out = ring_mean(x, Some(0), encoding_factor);
         let dec = ring_decode(&out, decoding_factor);
         assert_eq!(dec, array![2., 3.].into_dimensionality::<IxDyn>().unwrap());
+    }
+
+    #[test]
+    fn ring_mean_no_axis() {
+        let x_backing: ArrayD<f64> = array![[1., 2.], [3., 4.]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let encoding_factor = 2u64.pow(16);
+        let decoding_factor = 2u64.pow(32);
+        let x = ring_encode(&x_backing.view(), encoding_factor);
+        let out = ring_mean(x, None, encoding_factor);
+        let dec = ring_decode(&out, decoding_factor);
+        assert_eq!(dec.into_shape((1,)).unwrap(), array![2.5].into_shape((1,)).unwrap());
     }
 }
