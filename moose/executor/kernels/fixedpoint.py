@@ -29,5 +29,5 @@ class RingMeanKernel(Kernel):
     def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, RingMeanOperation)
         assert isinstance(value, np.ndarray)
-        assert value.dtype == np.float64
-        return fixedpoint_ring_mean(value, axis=op.axis, scaling_factor=op.scaling_factor)
+        assert value.dtype == np.uint64, value.dtype
+        return fixedpoint_ring_mean(value, axis=op.axis, precision=op.precision)

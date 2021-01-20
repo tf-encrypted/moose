@@ -183,10 +183,10 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
         axis: Option<usize>,
-        scaling_factor: u64,
+        precision: u32,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = ring_mean(x_ring, axis, scaling_factor);
+        let y = ring_mean(x_ring, axis, 2u64.pow(precision));
         ring64_to_array(y).to_pyarray(py)
     }
 

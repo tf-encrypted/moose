@@ -230,7 +230,7 @@ class ReplicatedLoweringPass:
         x = self.lower(op.inputs["x"])
         assert isinstance(x, ReplicatedTensor), type(x)
 
-        z = replicated_mean(x, op.axis, placement_name=op.placement_name)
+        z = replicated_mean(x, op.axis, op.precision, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
@@ -705,7 +705,7 @@ def replicated_trunc_pr(
     return output
 
 
-def replicated_mean(x: ReplicatedTensor, axis, placement_name):
+def replicated_mean(x: ReplicatedTensor, axis, precision, placement_name):
     assert isinstance(x, ReplicatedTensor)
     computation = x.computation
     replicated_placement = computation.placement(placement_name)
@@ -715,7 +715,10 @@ def replicated_mean(x: ReplicatedTensor, axis, placement_name):
 
     players = replicated_placement.player_names
     z_shares = [
-        [ring_mean(x_shares[i][j], axis, placement_name=players[i]) for j in range(2)]
+        [
+            ring_mean(x_shares[i][j], axis, precision, placement_name=players[i])
+            for j in range(2)
+        ]
         for i in range(3)
     ]
 
@@ -728,7 +731,7 @@ def replicated_mean(x: ReplicatedTensor, axis, placement_name):
     )
 
 
-def ring_mean(ring_tensor_input, axis, placement_name):
+def ring_mean(ring_tensor_input, axis, precision, placement_name):
     # TODO(jason): where to put this helper?
     mean_op = ring_tensor_input.computation.add(
         fixed_dialect.RingMeanOperation(
@@ -736,7 +739,7 @@ def ring_mean(ring_tensor_input, axis, placement_name):
             placement_name=placement_name,
             inputs={"value": ring_tensor_input.op.name},
             axis=axis,
-            # TODO(jason): doublecheck if this would be fixedpoint type or ring type
+            precision=precision,
             output_type=RingTensorType(),
         )
     )

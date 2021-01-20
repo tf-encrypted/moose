@@ -157,6 +157,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("mean"),
                 placement_name=op.placement_name,
                 axis=op.axis,
+                precision=op.precision,
                 inputs={
                     input_key: input_op.name
                     for input_key, input_op in processed_inputs.items()

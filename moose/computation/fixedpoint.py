@@ -56,13 +56,14 @@ class SumOperation(FixedpointOperation):
 @dataclass
 class MeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
+    precision: int
     output_type: ValueType
 
 
 @dataclass
 class RingMeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
-    scaling_factor: int
+    precision: int
     output_type: ValueType
 
 

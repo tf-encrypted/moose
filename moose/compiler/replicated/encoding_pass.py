@@ -165,6 +165,8 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("fixed_mean"),
                 placement_name=op.placement_name,
                 inputs={"x": lowered_arg_op.name},
+                axis=op.axis,
+                precision=arg_output_type.precision,
                 output_type=mean_output_type,
             )
         )
