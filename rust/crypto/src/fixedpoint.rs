@@ -15,24 +15,25 @@ pub fn ring_decode(x: &Ring64Tensor, scaling_factor: u64) -> ArrayD<f64> {
 }
 
 pub fn ring_mean(x: Ring64Tensor, axis: Option<usize>, scaling_factor: u64) -> Ring64Tensor {
+    let mean_weight = compute_mean_weight(&x, &axis);
+    let encoded_weight = ring_encode(&mean_weight.view(), scaling_factor);
+    let operand_sum = x.sum(axis);
+    operand_sum.mul(encoded_weight)
+}
+
+fn compute_mean_weight(x: &Ring64Tensor, &axis: &Option<usize>) -> ArrayD<f64> {
     let shape: &[usize] = x.0.shape();
     if let Some(ax) = axis {
         let dim_len = shape[ax] as f64;
-        let mean_weight = Array::from_elem([], 1.0 / dim_len)
+        Array::from_elem([], 1.0 / dim_len)
             .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let encoded_weight = ring_encode(&mean_weight.view(), scaling_factor);
-        let operand_sum = x.sum(axis);
-        operand_sum.mul(encoded_weight)
+            .unwrap()
     } else {
         let dim_prod: usize = std::iter::Product::product(shape.iter());
         let prod_inv = 1.0 / dim_prod as f64;
-        let mean_weight = Array::from_elem([], prod_inv)
+        Array::from_elem([], prod_inv)
             .into_dimensionality::<IxDyn>()
-            .unwrap();
-        let encoded_weight = ring_encode(&mean_weight.view(), scaling_factor);
-        let operand_sum = x.sum(None);
-        operand_sum.mul(encoded_weight)
+            .unwrap()
     }
 }
 
@@ -85,6 +86,9 @@ mod tests {
         let x = ring_encode(&x_backing.view(), encoding_factor);
         let out = ring_mean(x, None, encoding_factor);
         let dec = ring_decode(&out, decoding_factor);
-        assert_eq!(dec.into_shape((1,)).unwrap(), array![2.5].into_shape((1,)).unwrap());
+        assert_eq!(
+            dec.into_shape((1,)).unwrap(),
+            array![2.5].into_shape((1,)).unwrap()
+        );
     }
 }
