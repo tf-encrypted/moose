@@ -12,7 +12,6 @@ from moose.compiler.replicated.types import ReplicatedSetup
 from moose.compiler.replicated.types import ReplicatedTensor
 from moose.compiler.replicated.types import SetupContext
 from moose.compiler.ring import RingTensor
-from moose.compiler.ring import RingTensorType
 from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
 from moose.compiler.ring import ring_dot
@@ -25,6 +24,7 @@ from moose.compiler.standard import StandardTensor
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.ring import RingTensorType
 from moose.computation.standard import TensorType
 
 

@@ -157,20 +157,32 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         lowered_arg_op = processed_inputs["x"]
         arg_output_type = lowered_arg_op.output_type
         assert isinstance(arg_output_type, fixedpoint_dialect.EncodedTensorType)
-        output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=arg_output_type.datatype,
-            precision=2 * arg_output_type.precision,  # TODO(jason) double-check this
+        mean_output_type = fixedpoint_dialect.EncodedTensorType(
+            datatype=arg_output_type.datatype, precision=2 * arg_output_type.precision,
         )
         mean_op = self.computation.add(
             fixedpoint_dialect.MeanOperation(
                 name=self.context.get_fresh_name("fixed_mean"),
                 placement_name=op.placement_name,
                 inputs={"x": lowered_arg_op.name},
-                output_type=output_type,
+                output_type=mean_output_type,
             )
         )
-        # TODO(Morten) insert trunc op
-        return mean_op
+        trunc_output_type = fixedpoint_dialect.EncodedTensorType(
+            datatype=mean_output_type.datatype,
+            precision=mean_output_type.precision // 2,
+        )
+        precision_to_truncate = mean_output_type.precision - trunc_output_type.precision
+        trunc_op = self.computation.add(
+            fixedpoint_dialect.TruncPrOperation(
+                name=self.context.get_fresh_name("trunc_pr"),
+                placement_name=op.placement_name,
+                inputs={"value": mean_op.name},
+                precision=precision_to_truncate,
+                output_type=trunc_output_type,
+            )
+        )
+        return trunc_op
 
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)

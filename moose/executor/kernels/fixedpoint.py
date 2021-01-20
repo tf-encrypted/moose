@@ -30,4 +30,4 @@ class RingMeanKernel(Kernel):
         assert isinstance(op, RingMeanOperation)
         assert isinstance(value, np.ndarray)
         assert value.dtype == np.float64
-        return fixedpoint_ring_mean(value, axis=op.axis)
+        return fixedpoint_ring_mean(value, axis=op.axis, scaling_factor=op.scaling_factor)

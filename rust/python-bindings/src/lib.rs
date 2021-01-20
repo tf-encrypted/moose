@@ -1,4 +1,4 @@
-use crypto::fixedpoint::{ring_decode, ring_encode};
+use crypto::fixedpoint::{ring_decode, ring_encode, ring_mean};
 use crypto::prng::AesRng;
 use crypto::ring::{Dot, Ring64Tensor, Sample};
 use crypto::utils;
@@ -176,6 +176,18 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let x_ring = dynarray_to_ring64(&x);
         let y = ring_decode(&x_ring, scaling_factor);
         y.to_pyarray(py)
+    }
+
+    #[pyfn(m, "fixedpoint_ring_mean")]
+    fn fixedpoint_ring_mean<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        axis: Option<usize>,
+        scaling_factor: u64,
+    ) -> &'py PyArrayDyn<u64> {
+        let x_ring = dynarray_to_ring64(&x);
+        let y = ring_mean(x_ring, axis, scaling_factor);
+        ring64_to_array(y).to_pyarray(py)
     }
 
     Ok(())

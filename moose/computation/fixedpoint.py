@@ -62,6 +62,7 @@ class MeanOperation(FixedpointOperation):
 @dataclass
 class RingMeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
+    scaling_factor: int
     output_type: ValueType
 
 
