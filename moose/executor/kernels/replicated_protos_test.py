@@ -45,6 +45,39 @@ dotprod_inputs = st.tuples(
 )
 
 
+def setup_replicated_computation(comp):
+    alice = HostPlacement(name="alice")
+    bob = HostPlacement(name="bob")
+    carole = HostPlacement(name="carole")
+    rep = ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+
+    comp.add_placement(alice)
+    comp.add_placement(bob)
+    comp.add_placement(carole)
+    comp.add_placement(rep)
+
+    return alice, bob, carole, rep
+
+
+def compile_and_run(comp, alice, bob, carole):
+    compiler = Compiler()
+
+    comp = compiler.run_passes(comp)
+
+    placement_instantiation = {
+        alice: alice.name,
+        bob: bob.name,
+        carole: carole.name,
+    }
+
+    runtime = LocalRuntime()
+    runtime.evaluate_computation(
+        computation=comp, placement_instantiation=placement_instantiation
+    )
+
+    return runtime
+
+
 class ReplicatedProtocolsTest(parameterized.TestCase):
     @parameterized.parameters(
         (lambda x, y: x + y, standard_dialect.AddOperation),
@@ -54,16 +87,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
     @given(pair_lists)
     def test_bin_op(self, numpy_lmbd, replicated_std_op, bin_args):
         comp = Computation(operations={}, placements={})
-
-        alice = HostPlacement(name="alice")
-        bob = HostPlacement(name="bob")
-        carole = HostPlacement(name="carole")
-        rep = ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
-
-        comp.add_placement(alice)
-        comp.add_placement(bob)
-        comp.add_placement(carole)
-        comp.add_placement(rep)
+        alice, bob, carole, rep = setup_replicated_computation(comp)
 
         a, b = map(list, zip(*bin_args))
         x = np.array(a, dtype=np.float64)
@@ -115,20 +139,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler()
-
-        comp = compiler.run_passes(comp)
-
-        placement_instantiation = {
-            alice: alice.name,
-            bob: bob.name,
-            carole: carole.name,
-        }
-
-        runtime = LocalRuntime()
-        runtime.evaluate_computation(
-            computation=comp, placement_instantiation=placement_instantiation
-        )
+        runtime = compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_array_equal(
             z, runtime.get_executor(carole.name).store["result"]
@@ -138,15 +149,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
     def test_sum_op(self, axis):
         comp = Computation(operations={}, placements={})
 
-        alice = HostPlacement(name="alice")
-        bob = HostPlacement(name="bob")
-        carole = HostPlacement(name="carole")
-        rep = ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
-
-        comp.add_placement(alice)
-        comp.add_placement(bob)
-        comp.add_placement(carole)
-        comp.add_placement(rep)
+        alice, bob, carole, rep = setup_replicated_computation(comp)
 
         x = np.array([[1, 2], [3, 4]], dtype=np.float64)
         z = np.sum(x, axis=axis)
@@ -186,20 +189,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler()
-
-        comp = compiler.run_passes(comp)
-
-        placement_instantiation = {
-            alice: alice.name,
-            bob: bob.name,
-            carole: carole.name,
-        }
-
-        runtime = LocalRuntime()
-        runtime.evaluate_computation(
-            computation=comp, placement_instantiation=placement_instantiation
-        )
+        runtime = compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_array_equal(
             z, runtime.get_executor(carole.name).store["result"]
@@ -209,15 +199,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
     def test_dot_prod(self, dotprod_args):
         comp = Computation(operations={}, placements={})
 
-        alice = HostPlacement(name="alice")
-        bob = HostPlacement(name="bob")
-        carole = HostPlacement(name="carole")
-        rep = ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
-
-        comp.add_placement(alice)
-        comp.add_placement(bob)
-        comp.add_placement(carole)
-        comp.add_placement(rep)
+        alice, bob, carole, rep = setup_replicated_computation(comp)
 
         a, b = dotprod_args
         x = a.astype(np.float64)
@@ -269,20 +251,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler()
+        runtime = compile_and_run(comp, alice, bob, carole)
 
-        comp = compiler.run_passes(comp)
-
-        placement_instantiation = {
-            alice: alice.name,
-            bob: bob.name,
-            carole: carole.name,
-        }
-
-        runtime = LocalRuntime()
-        runtime.evaluate_computation(
-            computation=comp, placement_instantiation=placement_instantiation
-        )
         np.testing.assert_allclose(
             z, runtime.get_executor(carole.name).store["result"],
         )
