@@ -44,6 +44,15 @@ class PrimitivesKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                placement_name=alice.name,
+                inputs={},
+                value="seed",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             primitives_dialect.DeriveSeedOperation(
                 name="derived_seed",
                 placement_name=alice.name,
@@ -55,8 +64,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "derived_seed"},
-                key="seed",
+                inputs={"value": "derived_seed", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -99,11 +107,19 @@ class PrimitivesKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                placement_name=alice.name,
+                inputs={},
+                value="x_sampled",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "sampled"},
-                key="x_sampled",
+                inputs={"value": "sampled", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)

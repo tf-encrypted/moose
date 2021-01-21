@@ -408,15 +408,15 @@ class AstTracer:
 
     def visit_SaveExpression(self, save_expression):
         assert isinstance(save_expression, SaveExpression)
-        (value_expression,) = save_expression.inputs
+        (value_expression, key_expression) = save_expression.inputs
         value_operation = self.visit(value_expression)
+        key_operation = self.visit(key_expression)
         placement = self.visit_placement_expression(save_expression.placement)
         return self.computation.add_operation(
             SaveOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("save"),
-                key=save_expression.key,
-                inputs={"value": value_operation.name},
+                inputs={"value": value_operation.name, "key": key_operation.name},
             )
         )
 

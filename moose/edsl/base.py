@@ -183,8 +183,6 @@ class InverseExpression(Expression):
 
 @dataclass
 class SaveExpression(Expression):
-    key: str
-
     def __hash__(self):
         return id(self)
 
@@ -351,7 +349,19 @@ def load(key, dtype=None, placement=None):
 def save(value, key, placement=None):
     assert isinstance(value, Expression)
     placement = placement or get_current_placement()
-    return SaveExpression(placement=placement, inputs=[value], key=key)
+    if isinstance(key, str):
+        key = constant(key, placement=placement)
+    elif isinstance(key, Argument) and key.datatype not in [str, None]:
+        raise ValueError(
+            f"Function 'edsl.save' encountered argument of datatype {key.datatype}; "
+            "expected datatype 'str'."
+        )
+    elif not isinstance(key, Expression):
+        raise ValueError(
+            f"Function 'edsl.save' encountered argument of type {type(key)}; "
+            "expected one of str, ConstantExpression, or ArgumentExpression."
+        )
+    return SaveExpression(placement=placement, inputs=[value, key])
 
 
 def run_program(path, args, *inputs, output_type=None, placement=None):

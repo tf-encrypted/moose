@@ -79,8 +79,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
-                name="save", placement_name=alice.name, inputs={"value": "add"}, key="z"
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "add", "key": "save_key"},
             )
         )
 
@@ -136,11 +147,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "concatenate"},
-                key="z",
+                inputs={"value": "concatenate", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -204,11 +223,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "squeeze"},
-                key="z",
+                inputs={"value": "squeeze", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -248,11 +275,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "expand_dims"},
-                key="z",
+                inputs={"value": "expand_dims", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -291,11 +326,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "inverse"},
-                key="z",
+                inputs={"value": "inverse", "key": "save_key"},
             )
         )
 
@@ -351,8 +394,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="y",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
-                name="save", placement_name=alice.name, inputs={"value": "x"}, key="y",
+                name="save",
+                placement_name=alice.name,
+                inputs={"value": "x", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -397,11 +451,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": reduce_op_name},
-                key="z",
+                inputs={"value": reduce_op_name, "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -449,11 +511,19 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "transpose"},
-                key="z",
+                inputs={"value": "transpose", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)

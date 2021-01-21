@@ -125,13 +125,21 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 output_type=TensorType(datatype="float"),
             )
         )
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value="result",
+                output_type=standard_dialect.StringType(),
+            )
+        )
 
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": "rep_op"},
+                inputs={"value": "rep_op", "key": "save_key"},
                 placement_name=carole.name,
-                key="result",
             )
         )
 
@@ -177,11 +185,20 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value="result",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": "rep_op"},
+                inputs={"value": "rep_op", "key": "save_key"},
                 placement_name=carole.name,
-                key="result",
             )
         )
 
@@ -233,11 +250,19 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value="result",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": op_name},
+                inputs={"value": op_name, "key": "save_key"},
                 placement_name=carole.name,
-                key="result",
             )
         )
         comp.add_operation(
@@ -294,11 +319,20 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value="result",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": "dot_op"},
+                inputs={"value": "dot_op", "key": "save_key"},
                 placement_name=carole.name,
-                key="result",
             )
         )
 
