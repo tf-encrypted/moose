@@ -7,6 +7,7 @@ from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.logger import get_tracer
 from moose.networking.memory import Networking
+from moose.storage.memory import MemoryDataStore
 
 
 class TestRuntime:
@@ -28,7 +29,7 @@ class TestRuntime:
         for placement, name in placement_instantiation.items():
             if name not in self.existing_executors:
                 self.existing_executors[name] = AsyncExecutor(
-                    networking=self.networking
+                    networking=self.networking, storage=MemoryDataStore()
                 )
             placement_executors[placement] = self.existing_executors[name]
 

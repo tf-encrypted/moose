@@ -1,9 +1,9 @@
 import grpc
 from grpc.experimental import aio as grpc_aio
 
+from moose.asyncstore import AsyncStore
 from moose.protos import networking_pb2
 from moose.protos import networking_pb2_grpc
-from moose.storage import AsyncStore
 
 
 class Channel:
