@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 from hypothesis import given
+from hypothesis import settings
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
@@ -25,7 +26,7 @@ pair_lists = st.lists(
     min_size=1,
 )
 
-dim = st.integers(min_value=2, max_value=20)
+dim = st.integers(min_value=2, max_value=12)
 a_dims = st.tuples(st.shared(dim), st.shared(dim, key="inner_dim"))
 b_dims = st.tuples(st.shared(dim, key="inner_dim"), st.shared(dim))
 dotprod_inputs = st.tuples(
@@ -250,6 +251,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             z, runtime.get_executor(carole.name).store["result"]
         )
 
+    @settings(deadline=None)
     @given(dotprod_inputs)
     def test_dot_prod(self, dotprod_args):
         comp = Computation(operations={}, placements={})
@@ -309,7 +311,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_allclose(
-            z, runtime.get_executor(carole.name).store["result"],
+            z, runtime.get_executor(carole.name).store["result"], rtol=1e-6, atol=1e-5,
         )
 
 
