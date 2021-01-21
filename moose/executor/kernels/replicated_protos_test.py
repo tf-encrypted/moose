@@ -347,7 +347,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         alice, bob, carole, rep = _setup_replicated_computation(comp)
 
-        x = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        x = np.array([[-1, 2], [3, 4]], dtype=np.float64)
 
         comp.add_operation(
             standard_dialect.ConstantOperation(
@@ -386,7 +386,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_allclose(
-            z, runtime.get_executor(carole.name).store["result"],
+            np.abs(x), runtime.get_executor(carole.name).store["result"],
         )
 
 
