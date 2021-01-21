@@ -7,7 +7,7 @@ use std::ops::{BitAnd, BitXor};
 use crate::prng::{AesRng, PRNGSeed};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct BitTensor(pub ArrayD<Wrapping<u8>>);
+pub struct BitTensor(pub ArrayD<u8>);
 
 pub trait Sample {
     fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
@@ -18,7 +18,7 @@ impl Sample for BitTensor {
         let seed: PRNGSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
-        let values: Vec<_> = (0..length).map(|_| Wrapping(rng.get_bit())).collect();
+        let values: Vec<_> = (0..length).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape);
         BitTensor(Array::from_shape_vec(ix, values).unwrap())
     }
@@ -26,36 +26,34 @@ impl Sample for BitTensor {
 
 impl BitTensor {
     pub fn fill(shape: &[usize], el: u8) -> BitTensor {
-        BitTensor(ArrayD::from_elem(shape, Wrapping(el & 1)))
+        BitTensor(ArrayD::from_elem(shape, el & 1))
     }
 }
 
 impl From<ArrayD<u8>> for BitTensor {
     fn from(a: ArrayD<u8>) -> BitTensor {
-        let wrapped = a.mapv(|ai| Wrapping((ai & 1) as u8));
+        let wrapped = a.mapv(|ai| (ai & 1) as u8);
         BitTensor(wrapped)
     }
 }
 
 impl From<&BitTensor> for ArrayD<u8> {
     fn from(r: &BitTensor) -> ArrayD<u8> {
-        r.0.mapv(|element| element.0 as u8)
+        r.0.mapv(|element| element as u8)
     }
 }
 
 impl From<Vec<u8>> for BitTensor {
     fn from(v: Vec<u8>) -> BitTensor {
         let ix = IxDyn(&[v.len()]);
-        use vec_utils::VecExt;
-        let v_wrapped: Vec<_> = v.map(Wrapping);
-        BitTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        BitTensor(Array::from_shape_vec(ix, v).unwrap())
     }
 }
 
 impl From<&[u8]> for BitTensor {
     fn from(v: &[u8]) -> BitTensor {
         let ix = IxDyn(&[v.len()]);
-        let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi & 1)).collect();
+        let v_wrapped: Vec<_> = v.iter().map(|vi| *vi & 1).collect();
         BitTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
