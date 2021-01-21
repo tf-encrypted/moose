@@ -130,7 +130,7 @@ class LinearRegressionExample(unittest.TestCase):
                 "y_uri": "y_data",
                 "w_uri": "regression_weights",
                 "mse_uri": "mse_result",
-                "r_squared": "r_squared_result",
+                "rsquared_uri": "rsquared_result",
             },
         )
 
