@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import List
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
@@ -77,4 +79,11 @@ class DotOperation(ReplicatedOperation):
 @dataclass
 class SumOperation(ReplicatedOperation):
     axis: Optional[int]
+    output_type: ValueType
+
+
+@dataclass
+class MeanOperation(ReplicatedOperation):
+    axis: Optional[Union[int, Tuple[int]]]
+    precision: int
     output_type: ValueType

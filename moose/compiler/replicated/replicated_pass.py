@@ -150,6 +150,24 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
             )
         )
 
+    def process_MeanOperation(self, op, processed_inputs):
+        assert isinstance(op, fixed_dialect.MeanOperation)
+        return self.computation.add_operation(
+            rep_dialect.MeanOperation(
+                name=self.context.get_fresh_name("mean"),
+                placement_name=op.placement_name,
+                axis=op.axis,
+                precision=op.precision,
+                inputs={
+                    input_key: input_op.name
+                    for input_key, input_op in processed_inputs.items()
+                },
+                output_type=rep_dialect.ReplicatedTensorType(
+                    datatype=op.output_type.datatype
+                ),
+            )
+        )
+
     def process_EncodeOperation(self, op, processed_inputs):
         assert isinstance(op, fixed_dialect.EncodeOperation)
         encode_op = self.computation.add_operation(

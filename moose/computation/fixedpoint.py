@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
+from typing import Tuple
+from typing import Union
 
 from moose.computation.base import Operation
 from moose.computation.base import ValueType
@@ -48,6 +50,20 @@ class DotOperation(FixedpointOperation):
 @dataclass
 class SumOperation(FixedpointOperation):
     axis: Optional[int]
+    output_type: ValueType
+
+
+@dataclass
+class MeanOperation(FixedpointOperation):
+    axis: Optional[Union[int, Tuple[int]]]
+    precision: int
+    output_type: ValueType
+
+
+@dataclass
+class RingMeanOperation(FixedpointOperation):
+    axis: Optional[Union[int, Tuple[int]]]
+    precision: int
     output_type: ValueType
 
 

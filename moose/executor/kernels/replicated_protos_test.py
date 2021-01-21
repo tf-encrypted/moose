@@ -1,3 +1,4 @@
+import itertools
 import unittest
 
 import numpy as np
@@ -189,6 +190,60 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
+        runtime = _compile_and_run(comp, alice, bob, carole)
+
+        np.testing.assert_array_equal(
+            z, runtime.get_executor(carole.name).store["result"]
+        )
+
+    @parameterized.parameters(
+        itertools.product(
+            [0, 1, None],
+            [
+                (np.mean, standard_dialect.MeanOperation, "mean"),
+                (np.sum, standard_dialect.SumOperation, "sum"),
+            ],
+        )
+    )
+    def test_reduce_op(self, axis, reduce_op_bundle):
+        np_op, std_op, op_name = reduce_op_bundle
+        comp = Computation(operations={}, placements={})
+        alice, bob, carole, rep = _setup_replicated_computation(comp)
+
+        x = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        z = np_op(x, axis=axis)
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="alice_input",
+                value=x,
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            std_op(
+                name=op_name,
+                placement_name=rep.name,
+                axis=axis,
+                inputs={"x": "alice_input"},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                inputs={"value": op_name},
+                placement_name=carole.name,
+                key="result",
+            )
+        )
+        comp.add_operation(
+            standard_dialect.OutputOperation(
+                name="output", placement_name=carole.name, inputs={"value": "save"},
+            )
+        )
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_array_equal(

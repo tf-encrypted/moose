@@ -76,8 +76,9 @@ class AsyncExecutor:
             mpspdz_ops.MpspdzLoadOutputOperation: (
                 mpspdz_kernels.MpspdzLoadOutputKernel()
             ),
-            fixed_ops.RingEncodeOperation: (fixed_kernels.RingEncodeKernel()),
-            fixed_ops.RingDecodeOperation: (fixed_kernels.RingDecodeKernel()),
+            fixed_ops.RingMeanOperation: fixed_kernels.RingMeanKernel(),
+            fixed_ops.RingEncodeOperation: fixed_kernels.RingEncodeKernel(),
+            fixed_ops.RingDecodeOperation: fixed_kernels.RingDecodeKernel(),
         }
 
     def compile_computation(self, logical_computation):

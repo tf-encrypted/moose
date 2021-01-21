@@ -24,6 +24,7 @@ from moose.compiler.standard import StandardTensor
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.ring import RingTensorType
 from moose.computation.standard import TensorType
 
 
@@ -220,6 +221,16 @@ class ReplicatedLoweringPass:
         assert isinstance(x, ReplicatedTensor), type(x)
 
         z = replicated_sum(x, op.axis, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
+    def lower_MeanOperation(self, op):
+        assert isinstance(op, replicated_ops.MeanOperation)
+        x = self.lower(op.inputs["x"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+
+        z = replicated_mean(x, op.axis, op.precision, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
@@ -555,7 +566,6 @@ def replicated_sum(
     x: ReplicatedTensor, axis: Optional[int], placement_name
 ) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
-
     computation = x.computation
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
@@ -563,7 +573,6 @@ def replicated_sum(
     x_shares = [x.shares0, x.shares1, x.shares2]
 
     players = replicated_placement.player_names
-
     z_shares = [
         [ring_sum(x_shares[i][j], axis, placement_name=players[i]) for j in range(2)]
         for i in range(3)
@@ -694,6 +703,51 @@ def replicated_trunc_pr(
     )
 
     return output
+
+
+def replicated_mean(x: ReplicatedTensor, axis, precision, placement_name):
+    assert isinstance(x, ReplicatedTensor)
+    computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    x_shares = [x.shares0, x.shares1, x.shares2]
+
+    players = replicated_placement.player_names
+    z_shares = [
+        [
+            ring_mean(x_shares[i][j], axis, precision, placement_name=players[i])
+            for j in range(2)
+        ]
+        for i in range(3)
+    ]
+
+    return ReplicatedTensor(
+        shares0=z_shares[0],
+        shares1=z_shares[1],
+        shares2=z_shares[2],
+        computation=x.computation,
+        context=x.context,
+    )
+
+
+def ring_mean(ring_tensor_input, axis, precision, placement_name):
+    # TODO(jason): where to put this helper?
+    mean_op = ring_tensor_input.computation.add(
+        fixed_dialect.RingMeanOperation(
+            name=ring_tensor_input.context.get_fresh_name("ring_mean"),
+            placement_name=placement_name,
+            inputs={"value": ring_tensor_input.op.name},
+            axis=axis,
+            precision=precision,
+            output_type=RingTensorType(),
+        )
+    )
+    return RingTensor(
+        op=mean_op,
+        computation=ring_tensor_input.computation,
+        context=ring_tensor_input.context,
+    )
 
 
 def _generate_zero_share(shape, setup, players):
