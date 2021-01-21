@@ -181,19 +181,6 @@ impl Ring64Tensor {
     }
 }
 
-pub struct Replicated<T>(T, T, T);
-
-impl<T> Mul<Replicated<T>> for Replicated<T>
-where
-    T: Mul<T, Output = T>,
-{
-    type Output = Replicated<T>;
-    fn mul(self, other: Replicated<T>) -> Self::Output {
-        // TODO
-        Replicated(self.0 * other.0, self.1 * other.1, self.2 * other.2)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
