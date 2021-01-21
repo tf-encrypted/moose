@@ -197,6 +197,21 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
             )
         )
         return trunc_op
+    
+    def process_AbsOperation(self, op, processed_inputs):
+        assert isinstance(op, std_dialect.AbsOperation)
+        lowered_x_op = processed_inputs["x"]
+        x_output_type = lowered_x_op.output_type
+        assert isinstance(x_output_type, fixedpoint_dialect.EncodedTensorType)
+        abs_op = self.computation.add(
+            fixedpoint_dialect.AbsOperation(
+                name=self.context.get_fresh_name("abs"),
+                placement_name=op.placement_name,
+                inputs={"x": lowered_x_op.name},
+                output_type=x_output_type,
+            )
+        )
+        return abs_op
 
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)

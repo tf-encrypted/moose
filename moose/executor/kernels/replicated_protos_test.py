@@ -341,6 +341,54 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             z, results[carole]["result"], rtol=1e-5, atol=1e-4,
         )
 
+    # TODO(Dragos) insert hypothesis
+    def test_abs(self):
+        comp = Computation(operations={}, placements={})
+
+        alice, bob, carole, rep = _setup_replicated_computation(comp)
+
+        x = np.array([[1, 2], [3, 4]], dtype=np.float64)
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="alice_input",
+                value=x,
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.AbsOperation(
+                name="abs_op",
+                placement_name=rep.name,
+                inputs={"x": "alice_input"},
+                output_type=TensorType(datatype="int"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                inputs={"value": "abs_op"},
+                placement_name=carole.name,
+                key="result",
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.OutputOperation(
+                name="output", placement_name=carole.name, inputs={"value": "save"},
+            )
+        )
+
+        runtime = _compile_and_run(comp, alice, bob, carole)
+
+        np.testing.assert_allclose(
+            z, runtime.get_executor(carole.name).store["result"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

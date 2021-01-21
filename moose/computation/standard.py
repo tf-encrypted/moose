@@ -78,6 +78,11 @@ class MulOperation(StandardOperation):
 
 
 @dataclass
+class AbsOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class DotOperation(StandardOperation):
     output_type: ValueType
 

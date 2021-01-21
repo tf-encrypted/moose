@@ -64,6 +64,9 @@ class MeanOperation(FixedpointOperation):
 class RingMeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
+
+@dataclass
+class AbsOperation(FixedpointOperation):
     output_type: ValueType
 
 

@@ -235,6 +235,19 @@ class ReplicatedLoweringPass:
         self.interpretations[op.name] = z
         return z
 
+
+    def lower_AbsOperation(self, op):
+        assert isinstance(op, replicated_ops.AbsOperation)
+        x = self.lower(op.inputs["x"])
+        setup = self.lower(op.inputs["setup"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
+
+        z = replicated_abs(x, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedTensor)
+        self.interpretations[op.name] = z
+        return z
+
     def interpret_input_op(self, op):
         assert isinstance(op.output_type, TensorType)
         return StandardTensor(
@@ -748,6 +761,14 @@ def ring_mean(ring_tensor_input, axis, precision, placement_name):
         computation=ring_tensor_input.computation,
         context=ring_tensor_input.context,
     )
+
+
+def replicated_abs(x: ReplicatedTensor, setup: ReplicatedSetup, placement_name):
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(setup, ReplicatedSetup)
+    # TODO(Dragos) Here add abs protocol
+
+    return x
 
 
 def _generate_zero_share(shape, setup, players):

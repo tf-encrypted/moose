@@ -1,4 +1,5 @@
 from moose.edsl.base import Argument
+from moose.edsl.base import abs
 from moose.edsl.base import add
 from moose.edsl.base import atleast_2d
 from moose.edsl.base import computation
@@ -29,6 +30,7 @@ from moose.edsl.base import transpose
 from moose.edsl.tracer import trace
 
 __all__ = [
+    abs,
     add,
     Argument,
     atleast_2d,
