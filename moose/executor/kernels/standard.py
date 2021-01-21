@@ -153,19 +153,22 @@ class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session, key):
+    async def execute(self, op, session, output, key):
         assert isinstance(op, LoadOperation)
-        return self.store[key]
+        value = await self.store.load(session_id=session.session_id, key=await key)
+        output.set_result(value)
 
 
 class SaveKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session, value, key):
+    async def execute(self, op, session, output, value, key):
         assert isinstance(op, SaveOperation)
-        self.store[key] = value
-        get_logger().debug(f"Saved {value}")
+        await self.store.save(
+            session_id=session.session_id, key=await key, value=await value,
+        )
+        output.set_result(None)
 
 
 class SerializeKernel(Kernel):
