@@ -140,7 +140,7 @@ class LinearRegressionExample(unittest.TestCase):
             },
         )
 
-        print("Done")
+        print("Done: \n", model_owner_storage.store["regression_weights"])
 
 
 if __name__ == "__main__":
