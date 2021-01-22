@@ -24,7 +24,7 @@ def _run_computation(comp, players):
     runtime.evaluate_computation(
         concrete_comp, placement_instantiation=placement_instantiation
     )
-    return runtime.get_executor(players[-1].name).store
+    return runtime.get_executor(players[-1].name).storage.store
 
 
 class HostKernelTest(parameterized.TestCase):

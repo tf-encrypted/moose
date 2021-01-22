@@ -12,6 +12,7 @@ from moose.edsl.base import host_placement
 from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
 from moose.runtime import TestRuntime as Runtime
+from moose.storage.memory import MemoryDataStore
 
 
 def _create_test_players(number_of_players=2):
@@ -101,7 +102,8 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
 
-        executor = AsyncExecutor(networking=None)
+        storage = MemoryDataStore()
+        executor = AsyncExecutor(networking=None, storage=storage)
         task = executor.run_computation(
             comp,
             placement_instantiation={alice: alice.name},
@@ -109,7 +111,7 @@ class RingKernelTest(parameterized.TestCase):
             session_id="0123456789",
         )
         asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(c, executor.store["z"])
+        np.testing.assert_array_equal(c, storage.store["z"])
 
     @parameterized.parameters(
         ([[1, 2], [3, 4]], [[1, 0], [0, 1]]),
@@ -165,7 +167,8 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
 
-        executor = AsyncExecutor(networking=None)
+        storage = MemoryDataStore()
+        executor = AsyncExecutor(networking=None, storage=storage)
         task = executor.run_computation(
             comp,
             placement_instantiation={alice: alice.name},
@@ -173,7 +176,7 @@ class RingKernelTest(parameterized.TestCase):
             session_id="0123456789",
         )
         asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(exp, executor.store["z"])
+        np.testing.assert_array_equal(exp, storage.store["z"])
 
     def test_fill(self):
         expected = np.full((2, 2), 1)
@@ -213,7 +216,9 @@ class RingKernelTest(parameterized.TestCase):
                 inputs={"value": "x", "key": "save_key"},
             )
         )
-        executor = AsyncExecutor(networking=None)
+
+        storage = MemoryDataStore()
+        executor = AsyncExecutor(networking=None, storage=storage)
         task = executor.run_computation(
             comp,
             placement_instantiation={alice: alice.name},
@@ -221,7 +226,7 @@ class RingKernelTest(parameterized.TestCase):
             session_id="0123456789",
         )
         asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(expected, executor.store["x_filled"])
+        np.testing.assert_array_equal(expected, storage.store["x_filled"])
 
     def test_sum(self):
         x = np.array([[1, 2], [3, 4]], dtype=np.uint64)
@@ -259,7 +264,8 @@ class RingKernelTest(parameterized.TestCase):
                 inputs={"value": "sum", "key": "save_key"},
             )
         )
-        executor = AsyncExecutor(networking=None)
+        storage = MemoryDataStore()
+        executor = AsyncExecutor(networking=None, storage=storage)
         task = executor.run_computation(
             comp,
             placement_instantiation={alice: alice.name},
@@ -267,7 +273,7 @@ class RingKernelTest(parameterized.TestCase):
             session_id="0123456789",
         )
         asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(expected, executor.store["z"])
+        np.testing.assert_array_equal(expected, storage.store["z"])
 
     def test_bitwise_ops(self):
         expected = np.array([2, 2], dtype=np.uint64)
@@ -309,7 +315,8 @@ class RingKernelTest(parameterized.TestCase):
                 inputs={"value": "ring_shr", "key": "save_key"},
             )
         )
-        executor = AsyncExecutor(networking=None)
+        storage = MemoryDataStore()
+        executor = AsyncExecutor(networking=None, storage=storage)
         task = executor.run_computation(
             comp,
             placement_instantiation={alice: alice.name},
@@ -317,7 +324,7 @@ class RingKernelTest(parameterized.TestCase):
             session_id="0123456789",
         )
         asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(expected, executor.store["x_shifted"])
+        np.testing.assert_array_equal(expected, storage.store["x_shifted"])
 
 
 if __name__ == "__main__":

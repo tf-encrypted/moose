@@ -111,17 +111,18 @@ class LinearRegressionExample(unittest.TestCase):
             seed=42, n_instances=10, n_features=1, n_targets=1
         )
         networking = Networking()
-        x_owner_executor = AsyncExecutor(
-            networking, storage=MemoryDataStore({"x_data": x_data})
-        )
-        y_owner_executor = AsyncExecutor(
-            networking, storage=MemoryDataStore({"y_data": y_data})
-        )
+        x_owner_storage = MemoryDataStore({"x_data": x_data})
+        x_owner_executor = AsyncExecutor(networking, storage=x_owner_storage)
+        y_owner_storage = MemoryDataStore({"y_data": y_data})
+        y_owner_executor = AsyncExecutor(networking, storage=y_owner_storage)
+        model_owner_storage = MemoryDataStore()
+        model_owner_executor = AsyncExecutor(networking, storage=model_owner_storage)
         runtime = Runtime(
             networking=networking,
             backing_executors={
                 x_owner.name: x_owner_executor,
                 y_owner.name: y_owner_executor,
+                model_owner.name: model_owner_executor,
             },
         )
         runtime.evaluate_computation(

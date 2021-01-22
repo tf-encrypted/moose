@@ -29,7 +29,7 @@ class Session:
 
 class AsyncExecutor:
     def __init__(self, networking, storage):
-        self.storage = storage  # NOTE: this is used in unit tests
+        self.storage = storage  # NOTE: this is used by the test runtime in unit tests
         self.kernels = {
             standard_ops.InputOperation: standard_kernels.InputKernel(),
             standard_ops.OutputOperation: standard_kernels.OutputKernel(),
