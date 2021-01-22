@@ -97,9 +97,9 @@ class LinearRegressionExample(unittest.TestCase):
 
             with model_owner:
                 res = (
-                    save(w, w_uri),
-                    save(mse_result, mse_uri),
-                    save(rsquared_result, rsquared_uri),
+                    save(w_uri, w),
+                    save(mse_uri, mse_result),
+                    save(rsquared_uri, rsquared_result),
                 )
 
             return res

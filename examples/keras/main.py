@@ -65,7 +65,7 @@ def my_comp():
         y = model_predict(model, x, weights)
 
     with outputter:
-        res = save(y, "y")
+        res = save("y", y)
 
     return res
 

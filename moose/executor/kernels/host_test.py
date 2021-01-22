@@ -38,7 +38,7 @@ class HostKernelTest(parameterized.TestCase):
         @computation
         def my_comp():
             out = add_one(constant(3, placement=player0), placement=player0)
-            res = save(out, "result", placement=player1)
+            res = save("result", out, placement=player1)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1])
@@ -55,7 +55,7 @@ class HostKernelTest(parameterized.TestCase):
             c0 = constant(3, placement=player0)
             c1 = constant(2, placement=player0)
             out = run_program("python", [test_fixtures_file], c0, c1, placement=player1)
-            res = save(out, "result", placement=player2)
+            res = save("result", out, placement=player2)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1, player2])

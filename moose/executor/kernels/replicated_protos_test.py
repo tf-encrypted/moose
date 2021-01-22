@@ -138,7 +138,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": "rep_op", "key": "save_key"},
+                inputs={"key": "save_key", "value": "rep_op"},
                 placement_name=carole.name,
             )
         )
@@ -197,7 +197,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": "rep_op", "key": "save_key"},
+                inputs={"key": "save_key", "value": "rep_op"},
                 placement_name=carole.name,
             )
         )
@@ -261,7 +261,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": op_name, "key": "save_key"},
+                inputs={"key": "save_key", "value": op_name},
                 placement_name=carole.name,
             )
         )
@@ -331,7 +331,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": "dot_op", "key": "save_key"},
+                inputs={"key": "save_key", "value": "dot_op"},
                 placement_name=carole.name,
             )
         )
@@ -345,7 +345,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_allclose(
-            z, runtime.get_executor(carole.name).store["result"], rtol=1e-6, atol=1e-5,
+            z, runtime.get_executor(carole.name).store["result"], rtol=1e-5, atol=1e-4,
         )
 
 

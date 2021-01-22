@@ -97,7 +97,7 @@ class RingKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": ring_op_name, "key": "save_key"},
+                inputs={"key": "save_key", "value": ring_op_name},
             )
         )
 
@@ -161,7 +161,7 @@ class RingKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "ring_dot", "key": "save_key"},
+                inputs={"key": "save_key", "value": "ring_dot"},
             )
         )
 
@@ -210,7 +210,7 @@ class RingKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "x", "key": "save_key"},
+                inputs={"key": "save_key", "value": "x"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -256,7 +256,7 @@ class RingKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "sum", "key": "save_key"},
+                inputs={"key": "save_key", "value": "sum"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -306,7 +306,7 @@ class RingKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "ring_shr", "key": "save_key"},
+                inputs={"key": "save_key", "value": "ring_shr"},
             )
         )
         executor = AsyncExecutor(networking=None)

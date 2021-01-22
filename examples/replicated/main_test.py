@@ -42,11 +42,11 @@ class ReplicatedExample(unittest.TestCase):
 
             with dave:
                 v = add(z1, z1)
-                res_dave = save(v, "res")
+                res_dave = save("res", v)
 
             with eric:
                 w = add(z2, z2)
-                res_eric = save(w, "res")
+                res_eric = save("res", w)
 
             return (res_dave, res_eric)
 
