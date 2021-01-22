@@ -162,9 +162,9 @@ class SaveKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session, value):
+    def execute_synchronous_block(self, op, session, value, key):
         assert isinstance(op, SaveOperation)
-        self.store[op.key] = value  # TODO key should be passed in as value instead!
+        self.store[key] = value
         get_logger().debug(f"Saved {value}")
 
 

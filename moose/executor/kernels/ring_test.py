@@ -85,11 +85,19 @@ class RingKernelTest(parameterized.TestCase):
         )
         comp.add_operation(ring_op_lmbd(alice))
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": ring_op_name},
-                key="z",
+                inputs={"value": ring_op_name, "key": "save_key"},
             )
         )
 
@@ -141,11 +149,19 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "ring_dot"},
-                key="z",
+                inputs={"value": "ring_dot", "key": "save_key"},
             )
         )
 
@@ -182,11 +198,19 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="x_filled",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "x"},
-                key="x_filled",
+                inputs={"value": "x", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -220,11 +244,19 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "sum"},
-                key="z",
+                inputs={"value": "sum", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -262,11 +294,19 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="x_shifted",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "ring_shr"},
-                key="x_shifted",
+                inputs={"value": "ring_shr", "key": "save_key"},
             )
         )
         executor = AsyncExecutor(networking=None)

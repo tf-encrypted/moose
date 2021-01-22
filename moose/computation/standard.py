@@ -147,7 +147,6 @@ class LoadOperation(StandardOperation):
 
 @dataclass
 class SaveOperation(StandardOperation):
-    key: str
     output_type: ValueType = UnitType()
 
 
