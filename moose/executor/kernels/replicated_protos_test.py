@@ -14,7 +14,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
-from moose.runtime import TestRuntime as LocalRuntime
+from moose.runtime import run_test_computation
 
 # to get 2 random lists of equal size using hypothesis
 # https://stackoverflow.com/questions/51597021/python-hypothesis-ensure-that-input-lists-have-same-length
@@ -63,24 +63,8 @@ def _setup_replicated_computation(comp):
 
 def _compile_and_run(comp, alice, bob, carole):
     compiler = Compiler()
-
     comp = compiler.run_passes(comp)
-
-    placement_instantiation = {
-        alice: alice.name,
-        bob: bob.name,
-        carole: carole.name,
-    }
-
-    runtime = LocalRuntime()
-    runtime.evaluate_computation(
-        computation=comp, placement_instantiation=placement_instantiation
-    )
-
-    return {
-        placement_name: runtime.get_executor(placement_name).storage.store
-        for placement_name in placement_instantiation.values()
-    }
+    return run_test_computation(comp, [alice, bob, carole])
 
 
 class ReplicatedProtocolsTest(parameterized.TestCase):
@@ -152,11 +136,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-        runtime = _compile_and_run(comp, alice, bob, carole)
-
-        np.testing.assert_array_equal(
-            z, runtime.get_executor(carole.name).storage.store["result"]
-        )
+        results = _compile_and_run(comp, alice, bob, carole)
+        np.testing.assert_array_equal(z, results[carole]["result"])
 
     @parameterized.parameters([0, 1, None])
     def test_sum_op(self, axis):
@@ -211,11 +192,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-        runtime = _compile_and_run(comp, alice, bob, carole)
-
-        np.testing.assert_array_equal(
-            z, runtime.get_executor(carole.name).storage.store["result"]
-        )
+        results = _compile_and_run(comp, alice, bob, carole)
+        np.testing.assert_array_equal(z, results[carole]["result"])
 
     @parameterized.parameters(
         itertools.product(
@@ -273,11 +251,9 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="output", placement_name=carole.name, inputs={"value": "save"},
             )
         )
-        runtime = _compile_and_run(comp, alice, bob, carole)
 
-        np.testing.assert_array_equal(
-            z, runtime.get_executor(carole.name).store["result"]
-        )
+        results = _compile_and_run(comp, alice, bob, carole)
+        np.testing.assert_array_equal(z, results[carole]["result"])
 
     @settings(deadline=None)
     @given(dotprod_inputs)
@@ -345,10 +321,9 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-        runtime = _compile_and_run(comp, alice, bob, carole)
-
+        results = _compile_and_run(comp, alice, bob, carole)
         np.testing.assert_allclose(
-            z, runtime.get_executor(carole.name).storage.store["result"], rtol=1e-5, atol=1e-4,
+            z, results[carole]["result"], rtol=1e-5, atol=1e-4,
         )
 
 
