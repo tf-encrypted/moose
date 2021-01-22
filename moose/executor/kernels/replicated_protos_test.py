@@ -348,7 +348,10 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_allclose(
-            z, runtime.get_executor(carole.name).storage.store["result"], rtol=1e-6, atol=1e-5,
+            z,
+            runtime.get_executor(carole.name).storage.store["result"],
+            rtol=1e-6,
+            atol=1e-5,
         )
 
 

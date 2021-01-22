@@ -26,7 +26,6 @@ from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
 from moose.executor.kernels.base import Kernel
-from moose.logger import get_logger
 from moose.logger import get_tracer
 
 
