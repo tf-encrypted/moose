@@ -64,7 +64,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "derived_seed", "key": "save_key"},
+                inputs={"key": "save_key", "value": "derived_seed"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -119,7 +119,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "sampled", "key": "save_key"},
+                inputs={"key": "save_key", "value": "sampled"},
             )
         )
         executor = AsyncExecutor(networking=None)

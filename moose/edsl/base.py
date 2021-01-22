@@ -346,7 +346,7 @@ def load(key, dtype=None, placement=None):
     return LoadExpression(placement=placement, inputs=[key], dtype=dtype)
 
 
-def save(value, key, placement=None):
+def save(key, value, placement=None):
     assert isinstance(value, Expression)
     placement = placement or get_current_placement()
     if isinstance(key, str):
@@ -361,7 +361,7 @@ def save(value, key, placement=None):
             f"Function 'edsl.save' encountered argument of type {type(key)}; "
             "expected one of str, ConstantExpression, or ArgumentExpression."
         )
-    return SaveExpression(placement=placement, inputs=[value, key])
+    return SaveExpression(placement=placement, inputs=[key, value])
 
 
 def run_program(path, args, *inputs, output_type=None, placement=None):

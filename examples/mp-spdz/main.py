@@ -68,7 +68,7 @@ def my_comp():
         w = my_function(x, y, z, output_placements=[outputter])
 
     with outputter:
-        res = save(add(v, w), "v")
+        res = save("v", add(v, w))
 
     return res
 

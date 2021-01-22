@@ -43,7 +43,7 @@ class StandardKernelTest(parameterized.TestCase):
         @computation
         def my_comp():
             out = constant(5, placement=player0)
-            res = save(out, "result", placement=player1)
+            res = save("result", out, placement=player1)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1])
@@ -91,7 +91,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "add", "key": "save_key"},
+                inputs={"key": "save_key", "value": "add"},
             )
         )
 
@@ -159,7 +159,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "concatenate", "key": "save_key"},
+                inputs={"key": "save_key", "value": "concatenate"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -190,7 +190,7 @@ class StandardKernelTest(parameterized.TestCase):
                 constant(2, placement=player0),
                 placement=player0,
             )
-            res = save(out, "result", placement=player1)
+            res = save("result", out, placement=player1)
             return res
 
         comp_result = _run_computation(my_comp, [player0, player1])
@@ -235,7 +235,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "squeeze", "key": "save_key"},
+                inputs={"key": "save_key", "value": "squeeze"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -287,7 +287,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "expand_dims", "key": "save_key"},
+                inputs={"key": "save_key", "value": "expand_dims"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -338,7 +338,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "inverse", "key": "save_key"},
+                inputs={"key": "save_key", "value": "inverse"},
             )
         )
 
@@ -406,7 +406,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "x", "key": "save_key"},
+                inputs={"key": "save_key", "value": "x"},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -463,7 +463,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": reduce_op_name, "key": "save_key"},
+                inputs={"key": "save_key", "value": reduce_op_name},
             )
         )
         executor = AsyncExecutor(networking=None)
@@ -523,7 +523,7 @@ class StandardKernelTest(parameterized.TestCase):
             standard_dialect.SaveOperation(
                 name="save",
                 placement_name=alice.name,
-                inputs={"value": "transpose", "key": "save_key"},
+                inputs={"key": "save_key", "value": "transpose"},
             )
         )
         executor = AsyncExecutor(networking=None)

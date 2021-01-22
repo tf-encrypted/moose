@@ -54,7 +54,7 @@ def my_comp():
         y = add(x0, x1)
 
     with outputter:
-        res = save(y, "y")
+        res = save("y", y)
 
     return res
 
