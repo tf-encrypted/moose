@@ -143,10 +143,14 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
 
-        results = run_test_computation(comp, [alice], arguments={
-            "x_0": np.array([[1, 2], [3, 4]]),
-            "x_1": np.array([[5, 6], [7, 8]]),
-        })
+        results = run_test_computation(
+            comp,
+            [alice],
+            arguments={
+                "x_0": np.array([[1, 2], [3, 4]]),
+                "x_1": np.array([[5, 6], [7, 8]]),
+            },
+        )
         np.testing.assert_array_equal(results[alice]["z"], expected_result)
 
     @parameterized.parameters(
@@ -260,7 +264,9 @@ class StandardKernelTest(parameterized.TestCase):
         )
 
         comp_result = run_test_computation(my_comp, [alice])
-        np.testing.assert_array_equal(comp_result[alice.name]["z"].shape, expected_shape)
+        np.testing.assert_array_equal(
+            comp_result[alice.name]["z"].shape, expected_shape
+        )
 
     def test_inverse(self):
         comp = Computation(operations={}, placements={})
