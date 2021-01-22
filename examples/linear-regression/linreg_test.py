@@ -55,8 +55,8 @@ class LinearRegressionExample(unittest.TestCase):
     def test_linear_regression_example(self):
         x_owner = host_placement(name="x-owner")
         y_owner = host_placement(name="y-owner")
-        model_owner = host_placement(name="model-owner")
-        trusted_computer = host_placement(name="trusted-computer")
+        # model_owner = host_placement(name="model-owner")
+        # trusted_computer = host_placement(name="trusted-computer")
 
         @computation
         def my_comp(
@@ -85,18 +85,21 @@ class LinearRegressionExample(unittest.TestCase):
 
             with y_owner:
                 y_true = load(y_uri, dtype=float)
-
-            with trusted_computer:
                 w = dot(B, y_true)
                 y_pred = dot(X_b, w)
                 mse_result = mse(y_pred, y_true)
 
-            with model_owner:
+            # with trusted_computer:
+
+
+            # with model_owner:
                 # NOTE: we can alternatively compute the SS terms on trusted_computer,
                 # and only do the division & subtraction here
                 rsquared_result = r_squared(y_pred, y_true)
 
-            with model_owner:
+            with x_owner:
+                rsquared_result = r_squared(y_pred, y_true)
+
                 res = (
                     save(w, w_uri),
                     save(mse_result, mse_uri),
