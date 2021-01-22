@@ -20,7 +20,6 @@ from moose.edsl.base import sub
 from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
 from moose.runtime import run_test_computation
-from moose.storage.memory import MemoryDataStore
 
 
 class StandardKernelTest(parameterized.TestCase):
@@ -34,7 +33,7 @@ class StandardKernelTest(parameterized.TestCase):
             res = save("result", out, placement=player1)
             return res
 
-        comp_result = run_test_computation(my_comp, [player0, player1])
+        comp_result = run_test_computation(trace(my_comp), [player0, player1])
         self.assertEqual(comp_result[player1]["result"], 5)
 
     def test_input(self):
@@ -171,7 +170,7 @@ class StandardKernelTest(parameterized.TestCase):
             res = save("result", out, placement=player1)
             return res
 
-        comp_result = run_test_computation(my_comp, [player0, player1])
+        comp_result = run_test_computation(trace(my_comp), [player0, player1])
         self.assertEqual(comp_result[player1]["result"], expected_result)
 
     @parameterized.parameters(
@@ -217,7 +216,7 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
 
-        comp_result = run_test_computation(my_comp, [alice])
+        comp_result = run_test_computation(comp, [alice])
         np.testing.assert_array_equal(comp_result[alice]["z"].shape, expected_shape)
 
     @parameterized.parameters(
@@ -263,10 +262,8 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
 
-        comp_result = run_test_computation(my_comp, [alice])
-        np.testing.assert_array_equal(
-            comp_result[alice.name]["z"].shape, expected_shape
-        )
+        comp_result = run_test_computation(comp, [alice])
+        np.testing.assert_array_equal(comp_result[alice]["z"].shape, expected_shape)
 
     def test_inverse(self):
         comp = Computation(operations={}, placements={})
@@ -310,16 +307,8 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
 
-        storage = MemoryDataStore()
-        executor = AsyncExecutor(networking=None, storage=storage)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice.name: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(storage.store["z"], expectation)
+        results = run_test_computation(comp, [alice])
+        np.testing.assert_array_equal(results[alice]["z"], expectation)
 
     @parameterized.parameters(
         {"dtype": dtype, "expected_result": expected_result}
@@ -379,17 +368,9 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
 
-        storage = MemoryDataStore()
-        executor = AsyncExecutor(networking=None, storage=storage)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice.name: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        assert storage.store["y"].dtype == expected_result.dtype
-        np.testing.assert_array_equal(storage.store["y"], expected_result)
+        results = run_test_computation(comp, [alice])
+        assert results[alice]["y"].dtype == expected_result.dtype
+        np.testing.assert_array_equal(results[alice]["y"], expected_result)
 
     @parameterized.parameters(
         (standard_dialect.SumOperation, "sum", None, 10),
@@ -437,17 +418,11 @@ class StandardKernelTest(parameterized.TestCase):
                 inputs={"key": "save_key", "value": reduce_op_name},
             )
         )
-        storage = MemoryDataStore()
-        executor = AsyncExecutor(networking=None, storage=storage)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice.name: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-            arguments={"x": np.array([[1, 2], [3, 4]])},
+
+        results = run_test_computation(
+            comp, [alice], arguments={"x": np.array([[1, 2], [3, 4]])}
         )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(storage.store["z"], expected_result)
+        np.testing.assert_array_equal(results[alice]["z"], expected_result)
 
     @parameterized.parameters(
         {"axes": axes, "expected_result": expected_result}
@@ -499,17 +474,10 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
 
-        storage = MemoryDataStore()
-        executor = AsyncExecutor(networking=None, storage=storage)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice.name: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-            arguments={"x": np.array([[1, 2], [3, 4]])},
+        results = run_test_computation(
+            comp, [alice], arguments={"x": np.array([[1, 2], [3, 4]])}
         )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(storage.store["z"], expected_result)
+        np.testing.assert_array_equal(results[alice]["z"], expected_result)
 
     def test_exception(self):
         comp = Computation(operations={}, placements={})
