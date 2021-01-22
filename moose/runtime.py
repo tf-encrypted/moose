@@ -5,6 +5,7 @@ from typing import Dict
 from moose.computation.base import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
+from moose.logger import get_tracer
 from moose.networking.memory import Networking
 
 
@@ -32,25 +33,28 @@ class TestRuntime:
             placement_executors[placement] = self.existing_executors[name]
 
         sid = random.randrange(2 ** 32)
-        tasks = [
-            executor.run_computation(
-                computation,
-                placement_instantiation=placement_instantiation,
-                placement=placement,
-                session_id=sid,
-                arguments=arguments,
-            )
-            for placement, executor in placement_executors.items()
-        ]
-        joint_task = asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-        done, _ = asyncio.get_event_loop().run_until_complete(joint_task)
-        exceptions = [task.exception() for task in done if task.exception()]
-        for e in exceptions:
-            get_logger().exception(e)
-        if exceptions:
-            raise Exception(
-                "One or more errors evaluting the computation, see log for details"
-            )
+
+        with get_tracer().start_as_current_span("eval") as span:
+            span.set_attribute("moose.session_id", sid)
+            tasks = [
+                executor.run_computation(
+                    computation,
+                    placement_instantiation=placement_instantiation,
+                    placement=placement,
+                    session_id=sid,
+                    arguments=arguments,
+                )
+                for placement, executor in placement_executors.items()
+            ]
+            joint_task = asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            done, _ = asyncio.get_event_loop().run_until_complete(joint_task)
+            exceptions = [task.exception() for task in done if task.exception()]
+            for e in exceptions:
+                get_logger().exception(e)
+            if exceptions:
+                raise Exception(
+                    "One or more errors evaluting the computation, see log for details"
+                )
 
     def get_executor(self, executor_name):
         return self.existing_executors[executor_name]

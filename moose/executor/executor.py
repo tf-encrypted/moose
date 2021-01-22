@@ -15,6 +15,7 @@ from moose.executor.kernels import primitives as primitives_kernels
 from moose.executor.kernels import ring as ring_kernels
 from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
+from moose.logger import get_tracer
 from moose.storage import AsyncStore
 
 
@@ -101,47 +102,53 @@ class AsyncExecutor:
             values=AsyncStore(),
             arguments=AsyncStore(initial_values=arguments),
         )
-        get_logger().debug(
-            f"Entering computation; placement:{placement}, session:{session}"
-        )
-        # link futures together using kernels
-        tasks = []
-        for op in execution_plan:
-            kernel = self.kernels.get(type(op))
-            if not kernel:
-                raise NotImplementedError(f"No kernel found for operation {type(op)}")
+        with get_tracer().start_as_current_span("run") as span:
+            span.set_attribute("moose.session_id", session_id)
+            span.set_attribute("moose.placement", placement)
+            get_logger().debug(
+                f"Entering computation; placement:{placement}, session:{session}"
+            )
+            # link futures together using kernels
+            tasks = []
+            for op in execution_plan:
+                kernel = self.kernels.get(type(op))
+                if not kernel:
+                    raise NotImplementedError(
+                        f"No kernel found for operation {type(op)}"
+                    )
 
-            inputs = {
-                param_name: session.values.get_future(key=value_name)
-                for (param_name, value_name) in op.inputs.items()
-            }
-            output = session.values.get_future(key=op.name)
-            tasks += [
-                asyncio.create_task(
-                    kernel.execute(op, session=session, output=output, **inputs),
-                    name=op.name,
+                inputs = {
+                    param_name: session.values.get_future(key=value_name)
+                    for (param_name, value_name) in op.inputs.items()
+                }
+                output = session.values.get_future(key=op.name)
+                tasks += [
+                    asyncio.create_task(
+                        kernel.execute(op, session=session, output=output, **inputs),
+                        name=op.name,
+                    )
+                ]
+            get_logger().debug(f"Exiting computation; session_id:{session.session_id}")
+            # check that there's something to do since
+            # `asyncio.wait` will block otherwise
+            if not tasks:
+                get_logger().warn(
+                    f"Computation had no tasks; session_id:{session.session_id}"
                 )
-            ]
-        get_logger().debug(f"Exiting computation; session_id:{session.session_id}")
-        # check that there's something to do since `asyncio.wait` will block otherwise
-        if not tasks:
-            get_logger().warn(
-                f"Computation had no tasks; session_id:{session.session_id}"
-            )
-            return
-        # execute kernels
-        done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-        # address any errors that may have occurred
-        except_tasks = [task for task in done if task.exception()]
-        exceptions = []
-        for t in except_tasks:
-            exceptions.append(t.exception())
-            get_logger().error(f"Task {t.get_name()} caused an exception")
-            t.print_stack()
-        if len(exceptions) > 0:
-            raise Exception(
-                f"One or more errors occurred in '{placement}: {exceptions}'"
-            )
+                return
+            # execute kernels
+            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            # address any errors that may have occurred
+            except_tasks = [task for task in done if task.exception()]
+            exceptions = []
+            for t in except_tasks:
+                exceptions.append(t.exception())
+                get_logger().error(f"Task {t.get_name()} caused an exception")
+                t.print_stack()
+            if len(exceptions) > 0:
+                raise Exception(
+                    f"One or more errors occurred in '{placement}: {exceptions}'"
+                )
 
     def schedule_execution(self, comp, placement):
         # TODO(Morten) this is as simple and naive as it gets; we should at least

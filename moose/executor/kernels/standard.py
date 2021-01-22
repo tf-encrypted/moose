@@ -1,5 +1,3 @@
-import asyncio
-
 import dill
 import numpy as np
 
@@ -29,12 +27,15 @@ from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
+from moose.logger import get_tracer
 
 
 class InputKernel(Kernel):
     async def execute(self, op, session, output):
         assert isinstance(op, InputOperation)
-        output.set_result(await session.arguments.get(op.name))
+        value = await session.arguments.get(op.name)
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            output.set_result(value)
 
 
 class OutputKernel(Kernel):
@@ -44,11 +45,9 @@ class OutputKernel(Kernel):
 
 
 class ConcatenateKernel(Kernel):
-    async def execute(self, op, session, output, **arrays):
+    def execute_synchronous_block(self, op, session, **arrays):
         assert isinstance(op, ConcatenateOperation)
-        concrete_arrays = await asyncio.gather(*arrays.values())
-        concrete_output = np.concatenate(concrete_arrays, axis=op.axis)
-        output.set_result(concrete_output)
+        return np.concatenate(list(arrays.values()), axis=op.axis)
 
 
 class ConstantKernel(Kernel):
@@ -165,7 +164,7 @@ class SaveKernel(Kernel):
 
     def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, SaveOperation)
-        self.store[op.key] = value
+        self.store[op.key] = value  # TODO key should be passed in as value instead!
         get_logger().debug(f"Saved {value}")
 
 
@@ -173,45 +172,47 @@ class SerializeKernel(Kernel):
     async def execute(self, op, session, value, output):
         assert isinstance(op, SerializeOperation)
         value = await value
-        value_type = op.value_type
-        if value_type == "numpy.ndarray":
-            value_ser = dill.dumps(value)
-            return output.set_result(value_ser)
-        elif value_type == "tf.tensor":
-            value_ser = dill.dumps(value)
-            return output.set_result(value_ser)
-        elif value_type == "tf.keras.model":
-            # Model with TF 2.3.0 can't be dilled
-            model_json = value.to_json()
-            weights = value.get_weights()
-            value_ser = dill.dumps((model_json, weights))
-            return output.set_result(value_ser)
-        else:
-            value_ser = dill.dumps(value)
-            return output.set_result(value_ser)
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            value_type = op.value_type
+            if value_type == "numpy.ndarray":
+                value_ser = dill.dumps(value)
+                return output.set_result(value_ser)
+            elif value_type == "tf.tensor":
+                value_ser = dill.dumps(value)
+                return output.set_result(value_ser)
+            elif value_type == "tf.keras.model":
+                # Model with TF 2.3.0 can't be dilled
+                model_json = value.to_json()
+                weights = value.get_weights()
+                value_ser = dill.dumps((model_json, weights))
+                return output.set_result(value_ser)
+            else:
+                value_ser = dill.dumps(value)
+                return output.set_result(value_ser)
 
 
 class DeserializeKernel(Kernel):
     async def execute(self, op, session, value, output):
         assert isinstance(op, DeserializeOperation)
         value = await value
-        value_type = op.value_type
-        if value_type == "numpy.array":
-            value = dill.loads(value)
-            return output.set_result(value)
-        elif value_type == "tf.tensor":
-            value = dill.loads(value)
-            return output.set_result(value)
-        elif value_type == "tf.keras.model":
-            import tensorflow as tf
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            value_type = op.value_type
+            if value_type == "numpy.array":
+                value = dill.loads(value)
+                return output.set_result(value)
+            elif value_type == "tf.tensor":
+                value = dill.loads(value)
+                return output.set_result(value)
+            elif value_type == "tf.keras.model":
+                import tensorflow as tf
 
-            model_json, weights = dill.loads(value)
-            model = tf.keras.models.model_from_json(model_json)
-            model.set_weights(weights)
-            output.set_result(model)
-        else:
-            value = dill.loads(value)
-            output.set_result(value)
+                model_json, weights = dill.loads(value)
+                model = tf.keras.models.model_from_json(model_json)
+                model.set_weights(weights)
+                output.set_result(model)
+            else:
+                value = dill.loads(value)
+                output.set_result(value)
 
 
 class SendKernel(Kernel):
@@ -220,14 +221,16 @@ class SendKernel(Kernel):
 
     async def execute(self, op, session, value, output):
         assert isinstance(op, SendOperation)
-        await self.networking.send(
-            await value,
-            sender=session.placement_instantiation.get(op.sender),
-            receiver=session.placement_instantiation.get(op.receiver),
-            rendezvous_key=op.rendezvous_key,
-            session_id=session.session_id,
-        )
-        output.set_result(None)
+        value = await value
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            await self.networking.send(
+                value,
+                sender=session.placement_instantiation.get(op.sender),
+                receiver=session.placement_instantiation.get(op.receiver),
+                rendezvous_key=op.rendezvous_key,
+                session_id=session.session_id,
+            )
+            output.set_result(None)
 
 
 class ReceiveKernel(Kernel):
@@ -242,4 +245,5 @@ class ReceiveKernel(Kernel):
             rendezvous_key=op.rendezvous_key,
             session_id=session.session_id,
         )
-        output.set_result(value)
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            output.set_result(value)
