@@ -154,8 +154,10 @@ class LoadKernel(Kernel):
 
     async def execute(self, op, session, output, key):
         assert isinstance(op, LoadOperation)
-        value = await self.store.load(session_id=session.session_id, key=await key)
-        output.set_result(value)
+        key = await key
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            value = await self.store.load(session_id=session.session_id, key=key)
+            output.set_result(value)
 
 
 class SaveKernel(Kernel):
@@ -164,10 +166,13 @@ class SaveKernel(Kernel):
 
     async def execute(self, op, session, output, key, value):
         assert isinstance(op, SaveOperation)
-        await self.store.save(
-            session_id=session.session_id, key=await key, value=await value,
-        )
-        output.set_result(None)
+        key = await key
+        value = await value
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            await self.store.save(
+                session_id=session.session_id, key=key, value=value,
+            )
+            output.set_result(None)
 
 
 class SerializeKernel(Kernel):
