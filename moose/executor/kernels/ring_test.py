@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 
 import numpy as np
@@ -8,25 +7,7 @@ from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.edsl.base import host_placement
-from moose.edsl.tracer import trace
-from moose.executor.executor import AsyncExecutor
 from moose.runtime import run_test_computation
-from moose.storage.memory import MemoryDataStore
-
-
-def _create_test_players(number_of_players=2):
-    return [host_placement(name=f"player_{i}") for i in range(number_of_players)]
-
-
-def _run_computation(comp, players):
-    runtime = Runtime()
-    placement_instantiation = {player: player.name for player in players}
-    concrete_comp = trace(comp)
-    runtime.evaluate_computation(
-        concrete_comp, placement_instantiation=placement_instantiation
-    )
-    return runtime.get_executor(players[-1].name).store
 
 
 class RingKernelTest(parameterized.TestCase):
@@ -158,7 +139,7 @@ class RingKernelTest(parameterized.TestCase):
                 inputs={"key": "save_key", "value": "ring_dot"},
             )
         )
-        
+
         results = run_test_computation(comp, [alice])
         np.testing.assert_array_equal(exp, results[alice]["z"])
 
