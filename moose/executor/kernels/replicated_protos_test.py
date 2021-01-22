@@ -77,7 +77,10 @@ def _compile_and_run(comp, alice, bob, carole):
         computation=comp, placement_instantiation=placement_instantiation
     )
 
-    return runtime
+    return {
+        placement_name: runtime.get_executor(placement_name).storage.store
+        for placement_name in placement_instantiation.values()
+    }
 
 
 class ReplicatedProtocolsTest(parameterized.TestCase):
@@ -152,7 +155,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_array_equal(
-            z, runtime.get_executor(carole.name).store["result"]
+            z, runtime.get_executor(carole.name).storage.store["result"]
         )
 
     @parameterized.parameters([0, 1, None])
@@ -211,7 +214,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_array_equal(
-            z, runtime.get_executor(carole.name).store["result"]
+            z, runtime.get_executor(carole.name).storage.store["result"]
         )
 
     @parameterized.parameters(
@@ -345,7 +348,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         runtime = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_allclose(
-            z, runtime.get_executor(carole.name).store["result"], rtol=1e-5, atol=1e-4,
+            z, runtime.get_executor(carole.name).storage.store["result"], rtol=1e-5, atol=1e-4,
         )
 
 
