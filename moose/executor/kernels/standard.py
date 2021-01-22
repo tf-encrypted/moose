@@ -26,6 +26,7 @@ from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
 from moose.executor.kernels.base import Kernel
+from moose.logger import get_logger
 from moose.logger import get_tracer
 
 
@@ -156,7 +157,21 @@ class LoadKernel(Kernel):
         assert isinstance(op, LoadOperation)
         key = await key
         with get_tracer().start_as_current_span(f"{op.name}"):
+            get_logger().debug(
+                f"Executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id},"
+                f" key:{key}"
+            )
             value = await self.store.load(session_id=session.session_id, key=key)
+            get_logger().debug(
+                f"Done executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id},"
+                f" output:{value}"
+            )
             output.set_result(value)
 
 
@@ -169,8 +184,22 @@ class SaveKernel(Kernel):
         key = await key
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
+            get_logger().debug(
+                f"Executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id},"
+                f" key:{key},"
+                f" value:{value}"
+            )
             await self.store.save(
                 session_id=session.session_id, key=key, value=value,
+            )
+            get_logger().debug(
+                f"Done executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id}"
             )
             output.set_result(None)
 
