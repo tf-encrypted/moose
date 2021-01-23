@@ -1,6 +1,10 @@
-import dill
+import pickle
+
 import numpy as np
 
+from moose.computation.primitives import PRFKeyType
+from moose.computation.primitives import SeedType
+from moose.computation.ring import RingTensorType
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
@@ -20,10 +24,12 @@ from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
 from moose.computation.standard import ShapeOperation
+from moose.computation.standard import ShapeType
 from moose.computation.standard import SliceOperation
 from moose.computation.standard import SqueezeOperation
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
+from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
@@ -210,21 +216,13 @@ class SerializeKernel(Kernel):
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
             value_type = op.value_type
-            if value_type == "numpy.ndarray":
-                value_ser = dill.dumps(value)
+            if isinstance(value_type, (TensorType, RingTensorType, ShapeType),):
+                value_ser = pickle.dumps(value)
                 return output.set_result(value_ser)
-            elif value_type == "tf.tensor":
-                value_ser = dill.dumps(value)
-                return output.set_result(value_ser)
-            elif value_type == "tf.keras.model":
-                # Model with TF 2.3.0 can't be dilled
-                model_json = value.to_json()
-                weights = value.get_weights()
-                value_ser = dill.dumps((model_json, weights))
-                return output.set_result(value_ser)
+            elif isinstance(value_type, (PRFKeyType, SeedType)):
+                return output.set_result(value)
             else:
-                value_ser = dill.dumps(value)
-                return output.set_result(value_ser)
+                raise ValueError(f"Can't serialize value of type: {value_type}")
 
 
 class DeserializeKernel(Kernel):
@@ -233,22 +231,13 @@ class DeserializeKernel(Kernel):
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
             value_type = op.value_type
-            if value_type == "numpy.array":
-                value = dill.loads(value)
+            if isinstance(value_type, (TensorType, RingTensorType, ShapeType),):
+                value = pickle.loads(value)
                 return output.set_result(value)
-            elif value_type == "tf.tensor":
-                value = dill.loads(value)
+            elif isinstance(value_type, (PRFKeyType, SeedType)):
                 return output.set_result(value)
-            elif value_type == "tf.keras.model":
-                import tensorflow as tf
-
-                model_json, weights = dill.loads(value)
-                model = tf.keras.models.model_from_json(model_json)
-                model.set_weights(weights)
-                output.set_result(model)
             else:
-                value = dill.loads(value)
-                output.set_result(value)
+                raise ValueError(f"Can't deserialize value of type: {value_type}")
 
 
 class SendKernel(Kernel):

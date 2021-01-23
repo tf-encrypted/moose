@@ -26,7 +26,14 @@ class HostKernelTest(parameterized.TestCase):
         def my_comp():
             c0 = constant(3, placement=player0)
             c1 = constant(2, placement=player0)
-            out = run_program("python", [test_fixtures_file], c0, c1, placement=player1)
+            out = run_program(
+                "python",
+                [test_fixtures_file],
+                c0,
+                c1,
+                placement=player1,
+                output_type=float,
+            )
             res = save("result", out, placement=player2)
             return res
 
