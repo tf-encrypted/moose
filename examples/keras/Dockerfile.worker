@@ -1,7 +1,0 @@
-FROM tfencrypted/runtime-base-worker:latest
-
-# Copy over example files
-COPY cluster-spec-worker.yaml requirements-extra.txt worker.py ./
-RUN pip3 install -r requirements-extra.txt
-
-CMD python3 worker.py --verbose --port $PORT
