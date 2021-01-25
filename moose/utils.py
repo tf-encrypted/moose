@@ -5,7 +5,6 @@ import grpc
 from grpc.experimental import aio as grpc_aio
 
 from moose.logger import get_logger
-from moose.runtime import TestRuntime
 
 
 class AsyncStore:
@@ -82,15 +81,3 @@ class DebugInterceptor(grpc_aio.ServerInterceptor):
             handler.request_deserializer,
             handler.response_serializer,
         )
-
-
-def run_test_computation(computation, players, arguments={}):
-    runtime = TestRuntime()
-    runtime.evaluate_computation(
-        computation,
-        placement_instantiation={player: player.name for player in players},
-        arguments=arguments,
-    )
-    return {
-        player: runtime.get_executor(player.name).storage.store for player in players
-    }

@@ -2,7 +2,6 @@ import asyncio
 import dataclasses
 from typing import Any
 
-from moose.asyncstore import AsyncStore
 from moose.computation import fixedpoint as fixed_ops
 from moose.computation import host as host_ops
 from moose.computation import mpspdz as mpspdz_ops
@@ -17,6 +16,7 @@ from moose.executor.kernels import ring as ring_kernels
 from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
 from moose.logger import get_tracer
+from moose.utils import AsyncStore
 
 
 @dataclasses.dataclass
