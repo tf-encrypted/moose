@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 
 import numpy as np
@@ -8,24 +7,7 @@ from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.edsl.base import host_placement
-from moose.edsl.tracer import trace
-from moose.executor.executor import AsyncExecutor
-from moose.runtime import TestRuntime as Runtime
-
-
-def _create_test_players(number_of_players=2):
-    return [host_placement(name=f"player_{i}") for i in range(number_of_players)]
-
-
-def _run_computation(comp, players):
-    runtime = Runtime()
-    placement_instantiation = {player: player.name for player in players}
-    concrete_comp = trace(comp)
-    runtime.evaluate_computation(
-        concrete_comp, placement_instantiation=placement_instantiation
-    )
-    return runtime.get_executor(players[-1].name).store
+from moose.testing import run_test_computation
 
 
 class RingKernelTest(parameterized.TestCase):
@@ -101,15 +83,8 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
 
-        executor = AsyncExecutor(networking=None)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(c, executor.store["z"])
+        results = run_test_computation(comp, [alice])
+        np.testing.assert_array_equal(c, results[alice]["z"])
 
     @parameterized.parameters(
         ([[1, 2], [3, 4]], [[1, 0], [0, 1]]),
@@ -165,15 +140,8 @@ class RingKernelTest(parameterized.TestCase):
             )
         )
 
-        executor = AsyncExecutor(networking=None)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(exp, executor.store["z"])
+        results = run_test_computation(comp, [alice])
+        np.testing.assert_array_equal(exp, results[alice]["z"])
 
     def test_fill(self):
         expected = np.full((2, 2), 1)
@@ -213,15 +181,9 @@ class RingKernelTest(parameterized.TestCase):
                 inputs={"key": "save_key", "value": "x"},
             )
         )
-        executor = AsyncExecutor(networking=None)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(expected, executor.store["x_filled"])
+
+        results = run_test_computation(comp, [alice])
+        np.testing.assert_array_equal(expected, results[alice]["x_filled"])
 
     def test_sum(self):
         x = np.array([[1, 2], [3, 4]], dtype=np.uint64)
@@ -259,15 +221,9 @@ class RingKernelTest(parameterized.TestCase):
                 inputs={"key": "save_key", "value": "sum"},
             )
         )
-        executor = AsyncExecutor(networking=None)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(expected, executor.store["z"])
+
+        results = run_test_computation(comp, [alice])
+        np.testing.assert_array_equal(expected, results[alice]["z"])
 
     def test_bitwise_ops(self):
         expected = np.array([2, 2], dtype=np.uint64)
@@ -309,15 +265,9 @@ class RingKernelTest(parameterized.TestCase):
                 inputs={"key": "save_key", "value": "ring_shr"},
             )
         )
-        executor = AsyncExecutor(networking=None)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        np.testing.assert_array_equal(expected, executor.store["x_shifted"])
+
+        results = run_test_computation(comp, [alice])
+        np.testing.assert_array_equal(expected, results[alice]["x_shifted"])
 
 
 if __name__ == "__main__":

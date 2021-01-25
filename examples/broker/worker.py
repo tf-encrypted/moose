@@ -10,6 +10,7 @@ from moose.choreography.grpc import Choreography
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.cape_broker import Networking
+from moose.storage.memory import MemoryDataStore
 
 parser = argparse.ArgumentParser(description="Launch worker")
 parser.add_argument("--port", type=int, default=50000)
@@ -35,7 +36,8 @@ if __name__ == "__main__":
         public_key=public_key,
         secret_key=secret_key,
     )
-    executor = AsyncExecutor(networking=networking)
+    storage = MemoryDataStore()
+    executor = AsyncExecutor(networking=networking, storage=storage)
 
     grpc_aio.init_grpc_aio()
     grpc_server = grpc_aio.server()

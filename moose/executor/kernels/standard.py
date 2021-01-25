@@ -153,19 +153,55 @@ class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session, key):
+    async def execute(self, op, session, output, key):
         assert isinstance(op, LoadOperation)
-        return self.store[key]
+        key = await key
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            get_logger().debug(
+                f"Executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id},"
+                f" key:{key}"
+            )
+            value = await self.store.load(session_id=session.session_id, key=key)
+            get_logger().debug(
+                f"Done executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id},"
+                f" output:{value}"
+            )
+            output.set_result(value)
 
 
 class SaveKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    def execute_synchronous_block(self, op, session, key, value):
+    async def execute(self, op, session, output, key, value):
         assert isinstance(op, SaveOperation)
-        self.store[key] = value
-        get_logger().debug(f"Saved {value}")
+        key = await key
+        value = await value
+        with get_tracer().start_as_current_span(f"{op.name}"):
+            get_logger().debug(
+                f"Executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id},"
+                f" key:{key},"
+                f" value:{value}"
+            )
+            await self.store.save(
+                session_id=session.session_id, key=key, value=value,
+            )
+            get_logger().debug(
+                f"Done executing:"
+                f" kernel:{self.__class__.__name__},"
+                f" op:{op},"
+                f" session_id:{session.session_id}"
+            )
+            output.set_result(None)
 
 
 class SerializeKernel(Kernel):

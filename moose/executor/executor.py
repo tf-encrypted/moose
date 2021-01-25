@@ -16,7 +16,7 @@ from moose.executor.kernels import ring as ring_kernels
 from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
 from moose.logger import get_tracer
-from moose.storage import AsyncStore
+from moose.utils import AsyncStore
 
 
 @dataclasses.dataclass
@@ -28,8 +28,8 @@ class Session:
 
 
 class AsyncExecutor:
-    def __init__(self, networking, store={}):
-        self.store = store
+    def __init__(self, networking, storage):
+        self.storage = storage  # NOTE: this is used by the test runtime in unit tests
         self.kernels = {
             standard_ops.InputOperation: standard_kernels.InputKernel(),
             standard_ops.OutputOperation: standard_kernels.OutputKernel(),
@@ -62,8 +62,8 @@ class AsyncExecutor:
             ring_ops.PrintRingTensorOperation: ring_kernels.PrintRingTensorKernel(),
             primitives_ops.DeriveSeedOperation: primitives_kernels.DeriveSeedKernel(),
             primitives_ops.SampleKeyOperation: primitives_kernels.SampleKeyKernel(),
-            standard_ops.LoadOperation: standard_kernels.LoadKernel(store),
-            standard_ops.SaveOperation: standard_kernels.SaveKernel(store),
+            standard_ops.LoadOperation: standard_kernels.LoadKernel(storage),
+            standard_ops.SaveOperation: standard_kernels.SaveKernel(storage),
             standard_ops.SendOperation: standard_kernels.SendKernel(networking),
             standard_ops.ReceiveOperation: standard_kernels.ReceiveKernel(networking),
             standard_ops.SerializeOperation: standard_kernels.SerializeKernel(),

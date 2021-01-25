@@ -5,6 +5,7 @@ from moose.choreography.grpc import Choreography
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.grpc import Networking
+from moose.storage.memory import MemoryDataStore
 from moose.utils import DebugInterceptor
 from moose.utils import load_certificate
 
@@ -31,15 +32,16 @@ class Worker:
             ident_key=ident_key,
             allow_insecure_networking=allow_insecure_networking,
         )
-        self.networking = Networking(
+        networking = Networking(
             grpc_server=self.grpc_server,
             ca_cert=ca_cert,
             ident_cert=ident_cert,
             ident_key=ident_key,
         )
-        self.executor = AsyncExecutor(networking=self.networking)
+        storage = MemoryDataStore()
+        executor = AsyncExecutor(networking=networking, storage=storage)
         self.choreography = Choreography(
-            executor=self.executor, grpc_server=self.grpc_server,
+            executor=executor, grpc_server=self.grpc_server,
         )
 
     def setup_server(

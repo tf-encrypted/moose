@@ -11,7 +11,7 @@ from moose.edsl import host_placement
 from moose.edsl import save
 from moose.edsl import trace
 from moose.logger import get_logger
-from moose.runtime import TestRuntime
+from moose.testing import TestRuntime
 from moose.utils import load_certificate
 
 parser = argparse.ArgumentParser(description="Run example")

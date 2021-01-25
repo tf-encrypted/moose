@@ -1,4 +1,3 @@
-import asyncio
 import unittest
 
 from absl.testing import parameterized
@@ -8,24 +7,7 @@ from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.edsl.base import host_placement
-from moose.edsl.tracer import trace
-from moose.executor.executor import AsyncExecutor
-from moose.runtime import TestRuntime as Runtime
-
-
-def _create_test_players(number_of_players=2):
-    return [host_placement(name=f"player_{i}") for i in range(number_of_players)]
-
-
-def _run_computation(comp, players):
-    runtime = Runtime()
-    placement_instantiation = {player: player.name for player in players}
-    concrete_comp = trace(comp)
-    runtime.evaluate_computation(
-        concrete_comp, placement_instantiation=placement_instantiation
-    )
-    return runtime.get_executor(players[-1].name).store
+from moose.testing import run_test_computation
 
 
 class PrimitivesKernelTest(parameterized.TestCase):
@@ -67,15 +49,9 @@ class PrimitivesKernelTest(parameterized.TestCase):
                 inputs={"key": "save_key", "value": "derived_seed"},
             )
         )
-        executor = AsyncExecutor(networking=None)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        assert len(executor.store["seed"]) == 16
+
+        results = run_test_computation(comp, [alice])
+        assert len(results[alice]["seed"]) == 16
 
     def test_sample_ring(self):
         seed = bytes("abcdefghijklmnop", "utf-8")
@@ -122,16 +98,9 @@ class PrimitivesKernelTest(parameterized.TestCase):
                 inputs={"key": "save_key", "value": "sampled"},
             )
         )
-        executor = AsyncExecutor(networking=None)
-        task = executor.run_computation(
-            comp,
-            placement_instantiation={alice: alice.name},
-            placement=alice.name,
-            session_id="0123456789",
-        )
-        asyncio.get_event_loop().run_until_complete(task)
-        x = executor.store["x_sampled"]
-        assert x.shape == (2, 2)
+
+        results = run_test_computation(comp, [alice])
+        assert results[alice]["x_sampled"].shape == (2, 2)
 
 
 if __name__ == "__main__":
