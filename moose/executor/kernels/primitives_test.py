@@ -7,7 +7,7 @@ from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.runtime import run_test_computation
+from moose.testing import run_test_computation
 
 
 class PrimitivesKernelTest(parameterized.TestCase):

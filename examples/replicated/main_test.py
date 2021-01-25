@@ -14,7 +14,7 @@ from moose.edsl import replicated_placement
 from moose.edsl import save
 from moose.edsl import trace
 from moose.logger import get_logger
-from moose.runtime import TestRuntime as Runtime
+from moose.testing import TestRuntime as Runtime
 
 
 class ReplicatedExample(unittest.TestCase):

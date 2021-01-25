@@ -19,7 +19,7 @@ from moose.edsl.base import save
 from moose.edsl.base import sub
 from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
-from moose.runtime import run_test_computation
+from moose.testing import run_test_computation
 
 
 class StandardKernelTest(parameterized.TestCase):

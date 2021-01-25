@@ -8,7 +8,7 @@ from moose.edsl import run_program
 from moose.edsl import save
 from moose.edsl import trace
 from moose.logger import get_logger
-from moose.runtime import TestRuntime
+from moose.testing import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 

@@ -27,8 +27,8 @@ from moose.edsl import transpose
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.memory import Networking
-from moose.runtime import TestRuntime as Runtime
 from moose.storage.memory import MemoryDataStore
+from moose.testing import TestRuntime as Runtime
 
 
 def generate_data(seed, n_instances, n_features, n_targets, coeff=3, shift=10):

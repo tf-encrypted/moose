@@ -14,7 +14,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
-from moose.runtime import run_test_computation
+from moose.testing import run_test_computation
 
 # to get 2 random lists of equal size using hypothesis
 # https://stackoverflow.com/questions/51597021/python-hypothesis-ensure-that-input-lists-have-same-length
