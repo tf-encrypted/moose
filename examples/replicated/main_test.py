@@ -4,6 +4,7 @@ import unittest
 
 import numpy as np
 
+from moose.edsl import abs
 from moose.edsl import add
 from moose.edsl import computation
 from moose.edsl import constant
@@ -39,6 +40,7 @@ class ReplicatedExample(unittest.TestCase):
             with rep:
                 z1 = mul(x, y)
                 z2 = dot(x, y)
+                c = abs(z2)
 
             with dave:
                 v = add(z1, z1)
