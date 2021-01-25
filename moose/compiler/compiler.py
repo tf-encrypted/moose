@@ -1,6 +1,5 @@
 from collections import defaultdict
 
-from moose.compiler.host import HostApplyFunctionPass
 from moose.compiler.host import NetworkingPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.pruning import PruningPass
@@ -18,7 +17,6 @@ class Compiler:
             if passes is not None
             else [
                 MpspdzApplyFunctionPass(),
-                HostApplyFunctionPass(),
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
                 ReplicatedLoweringPass(),

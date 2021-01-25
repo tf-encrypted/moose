@@ -5,7 +5,6 @@ from absl.testing import parameterized
 
 from moose.edsl.base import computation
 from moose.edsl.base import constant
-from moose.edsl.base import function
 from moose.edsl.base import host_placement
 from moose.edsl.base import run_program
 from moose.edsl.base import save
@@ -14,23 +13,6 @@ from moose.testing import run_test_computation
 
 
 class HostKernelTest(parameterized.TestCase):
-    def test_call_python_function(self):
-        player0 = host_placement("player0")
-        player1 = host_placement("player1")
-
-        @function
-        def add_one(x):
-            return x + 1
-
-        @computation
-        def my_comp():
-            out = add_one(constant(3, placement=player0), placement=player0)
-            res = save("result", out, placement=player1)
-            return res
-
-        comp_result = run_test_computation(trace(my_comp), [player0, player1])
-        self.assertEqual(comp_result[player1]["result"], 4)
-
     def test_run_program(self):
         player0 = host_placement("player0")
         player1 = host_placement("player1")

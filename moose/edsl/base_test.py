@@ -1,4 +1,3 @@
-import dill
 import numpy as np
 from absl.testing import parameterized
 
@@ -201,35 +200,6 @@ class EdslTest(parameterized.TestCase):
             name="expand_dims_0",
             inputs={"x": "constant_0"},
             axis=1,
-            output_type=TensorType(datatype="float"),
-        )
-
-    def test_call_python_fn(self):
-        player0 = edsl.host_placement(name="player0")
-
-        @edsl.function(output_type=float)
-        def add_one(x):
-            return x + 1
-
-        @edsl.computation
-        def my_comp():
-            x = edsl.constant(1.0, placement=player0)
-            y = add_one(x, placement=player0)
-            z = edsl.add(x, y, placement=player0)
-            return z
-
-        concrete_comp = trace(my_comp)
-        call_py_op = concrete_comp.operation("call_python_function_0")
-
-        # TODO(Morten) for some reason the pickled functions deviated;
-        # figure out why and improve test
-        pickled_fn = dill.dumps(add_one)
-        call_py_op.pickled_fn = pickled_fn
-        assert call_py_op == host_ops.CallPythonFunctionOperation(
-            placement_name="player0",
-            name="call_python_function_0",
-            inputs={"arg0": "constant_0"},
-            pickled_fn=pickled_fn,
             output_type=TensorType(datatype="float"),
         )
 
