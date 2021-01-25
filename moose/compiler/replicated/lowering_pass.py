@@ -697,7 +697,7 @@ def replicated_trunc_pr(
     output = ReplicatedTensor(
         shares0=(y_recv[0], new_shares[0]),
         shares1=(new_shares[1], y_recv[1]),
-        shares2=y_shares_provider,
+        shares2=y_shares_provider[::-1],
         computation=x.computation,
         context=x.context,
     )
