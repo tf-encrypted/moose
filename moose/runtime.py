@@ -59,15 +59,3 @@ class TestRuntime:
 
     def get_executor(self, executor_name):
         return self.existing_executors[executor_name]
-
-
-def run_test_computation(computation, players, arguments={}):
-    runtime = TestRuntime()
-    runtime.evaluate_computation(
-        computation,
-        placement_instantiation={player: player.name for player in players},
-        arguments=arguments,
-    )
-    return {
-        player: runtime.get_executor(player.name).storage.store for player in players
-    }
