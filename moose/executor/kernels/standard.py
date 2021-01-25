@@ -1,3 +1,4 @@
+import json
 import pickle
 
 import numpy as np
@@ -216,8 +217,11 @@ class SerializeKernel(Kernel):
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
             value_type = op.value_type
-            if isinstance(value_type, (TensorType, RingTensorType, ShapeType),):
+            if isinstance(value_type, (TensorType, RingTensorType)):
                 value_ser = pickle.dumps(value)
+                return output.set_result(value_ser)
+            elif isinstance(value_type, ShapeType):
+                value_ser = json.dumps(value)
                 return output.set_result(value_ser)
             elif isinstance(value_type, (PRFKeyType, SeedType)):
                 return output.set_result(value)
@@ -231,10 +235,13 @@ class DeserializeKernel(Kernel):
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
             value_type = op.value_type
-            if isinstance(value_type, (TensorType, RingTensorType, ShapeType),):
+            if isinstance(value_type, (TensorType, RingTensorType)):
                 value = pickle.loads(value)
                 return output.set_result(value)
-            elif isinstance(value_type, (PRFKeyType, SeedType)):
+            elif isinstance(value_type, ShapeType):
+                value = json.loads(value)
+                return output.set_result(value)
+            elif isinstance(value_type, (PRFKeyType, SeedType, ShapeType)):
                 return output.set_result(value)
             else:
                 raise ValueError(f"Can't deserialize value of type: {value_type}")
