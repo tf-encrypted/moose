@@ -326,6 +326,82 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             z, results[carole]["result"], rtol=1e-5, atol=1e-4,
         )
 
+    def test_consecutive_mul(self):
+        comp = Computation(operations={}, placements={})
+
+        alice, bob, carole, rep = _setup_replicated_computation(comp)
+
+        x = np.array([2.0], dtype=np.float64)
+        y = np.array([3.0], dtype=np.float64)
+
+        w = x * y
+        z = w * y
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="alice_input",
+                value=x,
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="bob_input",
+                value=y,
+                placement_name=bob.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.MulOperation(
+                name="mul_op_1",
+                placement_name=rep.name,
+                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.MulOperation(
+                name="mul_op_2",
+                placement_name=rep.name,
+                inputs={"lhs": "mul_op_1", "rhs": "bob_input"},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value="result",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                inputs={"key": "save_key", "value": "mul_op_2"},
+                placement_name=carole.name,
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.OutputOperation(
+                name="output", placement_name=carole.name, inputs={"value": "save"},
+            )
+        )
+
+        results = _compile_and_run(comp, alice, bob, carole)
+        np.testing.assert_array_equal(z, results[carole]["result"])
+
 
 if __name__ == "__main__":
     unittest.main()
