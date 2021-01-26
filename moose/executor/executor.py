@@ -69,9 +69,6 @@ class AsyncExecutor:
             standard_ops.SerializeOperation: standard_kernels.SerializeKernel(),
             standard_ops.DeserializeOperation: standard_kernels.DeserializeKernel(),
             host_ops.RunProgramOperation: host_kernels.RunProgramKernel(),
-            host_ops.CallPythonFunctionOperation: (
-                host_kernels.CallPythonFunctionKernel()
-            ),
             mpspdz_ops.MpspdzSaveInputOperation: mpspdz_kernels.MpspdzSaveInputKernel(),
             mpspdz_ops.MpspdzCallOperation: mpspdz_kernels.MpspdzCallKernel(networking),
             mpspdz_ops.MpspdzLoadOutputOperation: (

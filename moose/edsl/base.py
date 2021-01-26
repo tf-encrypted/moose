@@ -383,9 +383,13 @@ def function(fn=None, output_type=None):
 
     @wraps(fn)
     def wrapper(*inputs, placement=None, output_placements=None, **kwargs):
+        placement = placement or get_current_placement()
+        if not isinstance(placement, MpspdzPlacementExpression):
+            # TODO(jason) what to do about `placement` or `output_placements` kwargs?
+            return fn(*inputs, **kwargs)
         return ApplyFunctionExpression(
             fn=fn,
-            placement=placement or get_current_placement(),
+            placement=placement,
             inputs=inputs,
             output_placements=output_placements,
             output_type=output_type,

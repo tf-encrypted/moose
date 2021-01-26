@@ -1,39 +1,8 @@
-import dill
-
-from moose.computation.host import CallPythonFunctionOperation
 from moose.computation.host import HostPlacement
-from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
-
-
-class HostApplyFunctionPass:
-    def run(self, computation, context):
-        ops_to_replace = []
-        for op in computation.operations.values():
-            if not isinstance(op, ApplyFunctionOperation):
-                continue
-            placement = computation.placement(op.placement_name)
-            if not isinstance(placement, HostPlacement):
-                continue
-            ops_to_replace += [op]
-
-        performed_changes = False
-        for op in ops_to_replace:
-            new_op = CallPythonFunctionOperation(
-                placement_name=op.placement_name,
-                name=context.get_fresh_name("call_python_function"),
-                pickled_fn=dill.dumps(op.fn),
-                inputs=op.inputs,
-                output_type=op.output_type,
-            )
-            computation.add_operation(new_op)
-            computation.rewire(op, new_op)
-            performed_changes = True
-
-        return computation, performed_changes
 
 
 class NetworkingPass:

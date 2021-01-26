@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from dataclasses import field
 from typing import List
 
 from moose.computation.base import Operation
@@ -18,12 +17,6 @@ class HostOperation(Operation):
     @property
     def dialect(self):
         return "host"
-
-
-@dataclass
-class CallPythonFunctionOperation(HostOperation):
-    pickled_fn: bytes = field(repr=False)
-    output_type: ValueType
 
 
 @dataclass
