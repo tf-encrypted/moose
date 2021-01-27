@@ -1,5 +1,6 @@
 import itertools
 import unittest
+from datetime import timedelta
 
 import numpy as np
 from absl.testing import parameterized
@@ -69,12 +70,14 @@ def _compile_and_run(comp, alice, bob, carole):
 
 class ReplicatedProtocolsTest(parameterized.TestCase):
     @parameterized.parameters(
-        (lambda x, y: x + y, standard_dialect.AddOperation),
-        (lambda x, y: x - y, standard_dialect.SubOperation),
-        (lambda x, y: x * y, standard_dialect.MulOperation),
+        (lambda x, y: x + y, False, standard_dialect.AddOperation),
+        (lambda x, y: x - y, False, standard_dialect.SubOperation),
+        (lambda x, y: x * y, False, standard_dialect.MulOperation),
+        (lambda x, y: x * (x * y), True, standard_dialect.MulOperation),
     )
+    @settings(max_examples=50, deadline=timedelta(milliseconds=400))
     @given(pair_lists)
-    def test_bin_op(self, numpy_lmbd, replicated_std_op, bin_args):
+    def test_bin_op(self, numpy_lmbd, consecutive_flag, replicated_std_op, bin_args):
         comp = Computation(operations={}, placements={})
         alice, bob, carole, rep = _setup_replicated_computation(comp)
 
@@ -103,6 +106,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 output_type=TensorType(datatype="float"),
             )
         )
+        op_name = "rep_op"
 
         comp.add_operation(
             replicated_std_op(
@@ -112,6 +116,17 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 output_type=TensorType(datatype="float"),
             )
         )
+        if consecutive_flag:
+            comp.add_operation(
+                replicated_std_op(
+                    name="rep_op_2",
+                    placement_name=rep.name,
+                    inputs={"lhs": "alice_input", "rhs": "rep_op"},
+                    output_type=TensorType(datatype="float"),
+                )
+            )
+            op_name = "rep_op_2"
+
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="save_key",
@@ -125,7 +140,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"key": "save_key", "value": "rep_op"},
+                inputs={"key": "save_key", "value": op_name},
                 placement_name=carole.name,
             )
         )
