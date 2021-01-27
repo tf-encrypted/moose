@@ -9,6 +9,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
+from moose.testing import run_test_computation
 
 
 class EdslTest(parameterized.TestCase):
@@ -157,6 +158,26 @@ class EdslTest(parameterized.TestCase):
             inputs={"x": "constant_0"},
             output_type=TensorType(datatype="float"),
         )
+
+    @parameterized.parameters(
+        (np.array([1.0, 2.0, 3.0]), (-1,), np.array([1.0, 2.0, 3.0])),
+        (np.array([1.0, 2.0, 3.0]), (-1, 1), np.array([[1.0], [2.0], [3.0]])),
+        (np.array([1.0, 2.0, 3.0, 4.0]), (1, 4), np.array([[1.0, 2.0, 3.0, 4.0]])),
+        (np.array([1.0, 2.0, 3.0, 4.0]), (2, 2), np.array([[1.0, 2.0], [3.0, 4.0]])),
+    )
+    def test_reshape(self, x, shape, expected):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            original = edsl.constant(x, placement=player0)
+            actual = edsl.reshape(original, shape, placement=player0)
+            return edsl.save("actual", actual, placement=player0)
+
+        concrete_comp = trace(my_comp)
+
+        results = run_test_computation(concrete_comp, [player0])
+        np.testing.assert_equal(results[player0]["actual"], expected)
 
     @parameterized.parameters(None, 1)
     def test_squeeze(self, axis):

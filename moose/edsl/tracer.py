@@ -24,6 +24,7 @@ from moose.computation.standard import MeanOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
+from moose.computation.standard import ReshapeOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import ShapeOperation
 from moose.computation.standard import ShapeType
@@ -48,6 +49,7 @@ from moose.edsl.base import MeanExpression
 from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
+from moose.edsl.base import ReshapeExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
 from moose.edsl.base import ShapeExpression
@@ -353,6 +355,21 @@ class AstTracer:
                 output_type=output_type,
                 axes=transpose_expression.axes,
                 inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_ReshapeExpression(self, reshape_expression):
+        assert isinstance(reshape_expression, ReshapeExpression)
+        (x_expression, shape_expression) = reshape_expression.inputs
+        x_operation = self.visit(x_expression)
+        shape_operation = self.visit(shape_expression)
+        placement = self.visit_placement_expression(reshape_expression.placement)
+        return self.computation.add_operation(
+            ReshapeOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("reshape"),
+                output_type=x_operation.output_type,
+                inputs={"x": x_operation.name, "shape": shape_operation.name},
             )
         )
 
