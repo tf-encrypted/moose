@@ -174,6 +174,12 @@ class ReshapeExpression(Expression):
 
 
 @dataclass
+class Atleast2DExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class LoadExpression(Expression):
     dtype: Optional
 
@@ -333,6 +339,12 @@ def transpose(x, axes=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return TransposeExpression(placement=placement, inputs=[x], axes=axes)
+
+
+def atleast_2d(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return Atleast2DExpression(placement=placement, inputs=[x])
 
 
 def reshape(x, shape, placement=None):

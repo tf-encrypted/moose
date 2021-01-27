@@ -479,6 +479,49 @@ class StandardKernelTest(parameterized.TestCase):
         )
         np.testing.assert_array_equal(results[alice]["z"], expected_result)
 
+    @parameterized.parameters({"input": input} for input in [np.array(1)])
+    def test_atleast_2d(self, input):
+        expected_result = np.atleast_2d(input)
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+
+        comp.add_operation(
+            standard_dialect.InputOperation(
+                name="x",
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.Atleast2DOperation(
+                name="atleast2d",
+                placement_name=alice.name,
+                inputs={"x": "x"},
+                output_type=TensorType(datatype="int64"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"key": "save_key", "value": "atleast2d"},
+            )
+        )
+
+        results = run_test_computation(comp, [alice], arguments={"x": input})
+        np.testing.assert_array_equal(results[alice]["z"], expected_result)
+
     def test_exception(self):
         comp = Computation(operations={}, placements={})
 

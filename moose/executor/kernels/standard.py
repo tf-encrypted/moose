@@ -7,6 +7,7 @@ from moose.computation.primitives import PRFKeyType
 from moose.computation.primitives import SeedType
 from moose.computation.ring import RingTensorType
 from moose.computation.standard import AddOperation
+from moose.computation.standard import Atleast2DOperation
 from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
@@ -148,6 +149,13 @@ class ReshapeKernel(Kernel):
         assert isinstance(op, ReshapeOperation)
         assert isinstance(x, np.ndarray)
         return x.reshape(shape)
+
+
+class Atleast2DKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, Atleast2DOperation)
+        assert isinstance(x, np.ndarray)
+        return np.atleast_2d(x)
 
 
 class ShapeKernel(Kernel):

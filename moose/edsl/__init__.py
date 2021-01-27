@@ -1,5 +1,6 @@
 from moose.edsl.base import Argument
 from moose.edsl.base import add
+from moose.edsl.base import atleast_2d
 from moose.edsl.base import computation
 from moose.edsl.base import concatenate
 from moose.edsl.base import constant
@@ -30,6 +31,7 @@ from moose.edsl.tracer import trace
 __all__ = [
     add,
     Argument,
+    atleast_2d,
     computation,
     concatenate,
     constant,

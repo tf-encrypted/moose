@@ -134,6 +134,11 @@ class ReshapeOperation(StandardOperation):
 
 
 @dataclass
+class Atleast2DOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class ShapeOperation(StandardOperation):
     output_type: ValueType = ShapeType()
 
