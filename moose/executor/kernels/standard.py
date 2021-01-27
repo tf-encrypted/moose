@@ -16,6 +16,7 @@ from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
 from moose.computation.standard import ReceiveOperation
+from moose.computation.standard import ReshapeOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import SendOperation
 from moose.computation.standard import SerializeOperation
@@ -133,6 +134,13 @@ class TransposeKernel(Kernel):
         assert isinstance(op, TransposeOperation)
         assert isinstance(x, np.ndarray)
         return x.transpose(op.axes)
+
+
+class ReshapeKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x, shape):
+        assert isinstance(op, ReshapeOperation)
+        assert isinstance(x, np.ndarray)
+        return x.reshape(shape)
 
 
 class ShapeKernel(Kernel):

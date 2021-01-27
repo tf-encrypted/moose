@@ -129,6 +129,11 @@ class TransposeOperation(StandardOperation):
 
 
 @dataclass
+class ReshapeOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class ShapeOperation(StandardOperation):
     output_type: ValueType = ShapeType()
 

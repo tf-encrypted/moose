@@ -15,6 +15,7 @@ from moose.edsl.base import mpspdz_placement
 from moose.edsl.base import mul
 from moose.edsl.base import ones
 from moose.edsl.base import replicated_placement
+from moose.edsl.base import reshape
 from moose.edsl.base import run_program
 from moose.edsl.base import save
 from moose.edsl.base import shape
@@ -44,6 +45,7 @@ __all__ = [
     mul,
     mean,
     ones,
+    reshape,
     run_program,
     save,
     slice,

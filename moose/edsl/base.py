@@ -168,6 +168,12 @@ class TransposeExpression(Expression):
 
 
 @dataclass
+class ReshapeExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class LoadExpression(Expression):
     dtype: Optional
 
@@ -327,6 +333,15 @@ def transpose(x, axes=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return TransposeExpression(placement=placement, inputs=[x], axes=axes)
+
+
+def reshape(x, shape, placement=None):
+    assert isinstance(x, Expression)
+    if isinstance(shape, (list, tuple)):
+        shape = constant(shape, placement=placement)
+    assert isinstance(shape, Expression)
+    placement = placement or get_current_placement()
+    return ReshapeExpression(placement=placement, inputs=[x, shape])
 
 
 def load(key, dtype=None, placement=None):
