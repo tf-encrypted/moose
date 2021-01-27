@@ -234,17 +234,17 @@ class DeserializeKernel(Kernel):
         assert isinstance(op, DeserializeOperation)
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
-            value_type = op.value_type
-            if isinstance(value_type, (TensorType, RingTensorType)):
+            output_type = op.output_type
+            if isinstance(output_type, (TensorType, RingTensorType)):
                 value = pickle.loads(value)
                 return output.set_result(value)
-            elif isinstance(value_type, ShapeType):
+            elif isinstance(output_type, ShapeType):
                 value = json.loads(value)
                 return output.set_result(value)
-            elif isinstance(value_type, (PRFKeyType, SeedType, ShapeType)):
+            elif isinstance(output_type, (PRFKeyType, SeedType)):
                 return output.set_result(value)
             else:
-                raise ValueError(f"Can't deserialize value of type: {value_type}")
+                raise ValueError(f"Can't deserialize value of type: {output_type}")
 
 
 class SendKernel(Kernel):
