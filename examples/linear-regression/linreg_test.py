@@ -34,7 +34,7 @@ from moose.testing import TestRuntime as Runtime
 def generate_data(seed, n_instances, n_features, n_targets, coeff=3, shift=10):
     rng = np.random.default_rng()
     x_data = rng.normal(size=(n_instances, n_features))
-    y_data = x_data * coeff + shift
+    y_data = np.dot(x_data, np.ones(n_features) * coeff) + shift
     return x_data, y_data
 
 
