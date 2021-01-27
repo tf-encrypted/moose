@@ -1,5 +1,6 @@
 import itertools
 import unittest
+from datetime import timedelta
 
 import numpy as np
 from absl.testing import parameterized
@@ -74,7 +75,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         (lambda x, y: x * y, False, standard_dialect.MulOperation),
         (lambda x, y: x * (x * y), True, standard_dialect.MulOperation),
     )
-    @settings(max_examples=10)
+    @settings(max_examples=50, deadline=timedelta(milliseconds=400))
     @given(pair_lists)
     def test_bin_op(self, numpy_lmbd, consecutive_flag, replicated_std_op, bin_args):
         comp = Computation(operations={}, placements={})
