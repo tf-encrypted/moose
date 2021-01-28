@@ -17,6 +17,7 @@ from moose.edsl import inverse
 from moose.edsl import load
 from moose.edsl import mean
 from moose.edsl import ones
+from moose.edsl import replicated_placement
 from moose.edsl import save
 from moose.edsl import shape
 from moose.edsl import slice
@@ -57,7 +58,9 @@ class LinearRegressionExample(unittest.TestCase):
         x_owner = host_placement(name="x-owner")
         y_owner = host_placement(name="y-owner")
         model_owner = host_placement(name="model-owner")
-        trusted_computer = host_placement(name="trusted-computer")
+        replicated_plc = replicated_placement(
+            players=[x_owner, y_owner, model_owner], name="replicated-plc"
+        )
 
         @computation
         def my_comp(
@@ -87,13 +90,13 @@ class LinearRegressionExample(unittest.TestCase):
             with y_owner:
                 y_true = atleast_2d(load(y_uri, dtype=float), to_column_vector=True)
 
-            with trusted_computer:
+            with replicated_plc:
                 w = dot(B, y_true)
                 y_pred = dot(X_b, w)
                 mse_result = mse(y_pred, y_true)
 
             with model_owner:
-                # NOTE: we can alternatively compute the SS terms on trusted_computer,
+                # NOTE: we can alternatively compute the SS terms on replicated_plc,
                 # and only do the division & subtraction here
                 rsquared_result = r_squared(y_pred, y_true)
 
@@ -127,8 +130,7 @@ class LinearRegressionExample(unittest.TestCase):
         runtime.evaluate_computation(
             concrete_comp,
             placement_instantiation={
-                plc: plc.name
-                for plc in [x_owner, y_owner, model_owner, trusted_computer]
+                plc: plc.name for plc in [x_owner, y_owner, model_owner, replicated_plc]
             },
             arguments={
                 "x_uri": "x_data",
