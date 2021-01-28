@@ -155,7 +155,20 @@ class Atleast2DKernel(Kernel):
     def execute_synchronous_block(self, op, session, x):
         assert isinstance(op, Atleast2DOperation)
         assert isinstance(x, np.ndarray)
-        return np.atleast_2d(x)
+        rank = len(x.shape)
+        if rank == 0:
+            return np.expand_dims(x, axis=(0, 1))
+        elif rank == 1:
+            if op.to_column_vector:
+                return np.expand_dims(x, axis=1)
+            else:
+                return np.expand_dims(x, axis=0)
+        elif rank == 2:
+            return x
+        else:
+            raise ValueError(
+                "at_least_2d op accepts only tensor of rank less or equal to 2"
+            )
 
 
 class ShapeKernel(Kernel):

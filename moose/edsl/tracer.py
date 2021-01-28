@@ -385,6 +385,7 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("atleast_2d"),
                 output_type=x_operation.output_type,
+                to_column_vector=atleast_2d_expression.to_column_vector,
                 inputs={"x": x_operation.name},
             )
         )

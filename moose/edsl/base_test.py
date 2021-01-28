@@ -186,7 +186,7 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             input = edsl.constant(np.array([1.0]), placement=player0)
-            out = edsl.atleast_2d(input, placement=player0)
+            out = edsl.atleast_2d(input, to_column_vector=True, placement=player0)
             return out
 
         concrete_comp = trace(my_comp)
@@ -196,6 +196,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name="atleast_2d_0",
             inputs={"x": "constant_0"},
+            to_column_vector=True,
             output_type=TensorType(datatype="float"),
         )
 

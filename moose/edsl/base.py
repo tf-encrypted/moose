@@ -175,6 +175,8 @@ class ReshapeExpression(Expression):
 
 @dataclass
 class Atleast2DExpression(Expression):
+    to_column_vector: bool
+
     def __hash__(self):
         return id(self)
 
@@ -341,10 +343,12 @@ def transpose(x, axes=None, placement=None):
     return TransposeExpression(placement=placement, inputs=[x], axes=axes)
 
 
-def atleast_2d(x, placement=None):
+def atleast_2d(x, to_column_vector=False, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return Atleast2DExpression(placement=placement, inputs=[x])
+    return Atleast2DExpression(
+        placement=placement, inputs=[x], to_column_vector=to_column_vector
+    )
 
 
 def reshape(x, shape, placement=None):

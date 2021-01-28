@@ -479,9 +479,13 @@ class StandardKernelTest(parameterized.TestCase):
         )
         np.testing.assert_array_equal(results[alice]["z"], expected_result)
 
-    @parameterized.parameters({"input": input} for input in [np.array(1)])
-    def test_atleast_2d(self, input):
-        expected_result = np.atleast_2d(input)
+    @parameterized.parameters(
+        (np.array(1), False, np.array([[1]])),
+        (np.ones(shape=(3,)), False, np.ones(shape=(1, 3))),
+        (np.ones(shape=(3,)), True, np.ones(shape=(3, 1))),
+        (np.ones(shape=(1, 1)), False, np.ones(shape=(1, 1))),
+    )
+    def test_atleast_2d(self, input, to_column_vector, expected_result):
         comp = Computation(operations={}, placements={})
 
         alice = comp.add_placement(HostPlacement(name="alice"))
@@ -499,6 +503,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="atleast2d",
                 placement_name=alice.name,
                 inputs={"x": "x"},
+                to_column_vector=to_column_vector,
                 output_type=TensorType(datatype="int64"),
             )
         )
