@@ -7,6 +7,7 @@ from moose.computation.primitives import PRFKeyType
 from moose.computation.primitives import SeedType
 from moose.computation.ring import RingTensorType
 from moose.computation.standard import AddOperation
+from moose.computation.standard import Atleast2DOperation
 from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
@@ -148,6 +149,26 @@ class ReshapeKernel(Kernel):
         assert isinstance(op, ReshapeOperation)
         assert isinstance(x, np.ndarray)
         return x.reshape(shape)
+
+
+class Atleast2DKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, Atleast2DOperation)
+        assert isinstance(x, np.ndarray)
+        rank = len(x.shape)
+        if rank == 0:
+            return np.expand_dims(x, axis=(0, 1))
+        elif rank == 1:
+            if op.to_column_vector:
+                return np.expand_dims(x, axis=1)
+            else:
+                return np.expand_dims(x, axis=0)
+        elif rank == 2:
+            return x
+        else:
+            raise ValueError(
+                "at_least_2d op accepts only tensor of rank less or equal to 2"
+            )
 
 
 class ShapeKernel(Kernel):

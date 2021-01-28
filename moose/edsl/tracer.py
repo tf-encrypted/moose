@@ -12,6 +12,7 @@ from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
+from moose.computation.standard import Atleast2DOperation
 from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
@@ -37,6 +38,7 @@ from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
+from moose.edsl.base import Atleast2DExpression
 from moose.edsl.base import BinaryOpExpression
 from moose.edsl.base import ConcatenateExpression
 from moose.edsl.base import ConstantExpression
@@ -370,6 +372,21 @@ class AstTracer:
                 name=self.get_fresh_name("reshape"),
                 output_type=x_operation.output_type,
                 inputs={"x": x_operation.name, "shape": shape_operation.name},
+            )
+        )
+
+    def visit_Atleast2DExpression(self, atleast_2d_expression):
+        assert isinstance(atleast_2d_expression, Atleast2DExpression)
+        (x_expression,) = atleast_2d_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(atleast_2d_expression.placement)
+        return self.computation.add_operation(
+            Atleast2DOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("atleast_2d"),
+                output_type=x_operation.output_type,
+                to_column_vector=atleast_2d_expression.to_column_vector,
+                inputs={"x": x_operation.name},
             )
         )
 

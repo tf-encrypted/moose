@@ -179,6 +179,27 @@ class EdslTest(parameterized.TestCase):
         results = run_test_computation(concrete_comp, [player0])
         np.testing.assert_equal(results[player0]["actual"], expected)
 
+    @parameterized.parameters((np.array(1), np.array([[1]])),)
+    def test_atleast_2d(self, x, expected):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            input = edsl.constant(np.array([1.0]), placement=player0)
+            out = edsl.atleast_2d(input, to_column_vector=True, placement=player0)
+            return out
+
+        concrete_comp = trace(my_comp)
+
+        op = concrete_comp.operation("atleast_2d_0")
+        assert op == standard_ops.Atleast2DOperation(
+            placement_name="player0",
+            name="atleast_2d_0",
+            inputs={"x": "constant_0"},
+            to_column_vector=True,
+            output_type=TensorType(datatype="float"),
+        )
+
     @parameterized.parameters(None, 1)
     def test_squeeze(self, axis):
         player0 = edsl.host_placement(name="player0")
