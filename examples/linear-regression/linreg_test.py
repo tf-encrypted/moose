@@ -31,10 +31,10 @@ from moose.storage.memory import MemoryDataStore
 from moose.testing import TestRuntime as Runtime
 
 
-def generate_data(seed, n_instances, n_features, n_targets, coeff=3, shift=10):
+def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
     rng = np.random.default_rng()
     x_data = rng.normal(size=(n_instances, n_features))
-    y_data = x_data * coeff + shift
+    y_data = np.dot(x_data, np.ones(n_features) * coeff) + shift
     return x_data, y_data
 
 
@@ -107,9 +107,7 @@ class LinearRegressionExample(unittest.TestCase):
 
         concrete_comp = trace(my_comp)
 
-        x_data, y_data = generate_data(
-            seed=42, n_instances=10, n_features=1, n_targets=1
-        )
+        x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         networking = Networking()
         x_owner_storage = MemoryDataStore({"x_data": x_data})
         x_owner_executor = AsyncExecutor(networking, storage=x_owner_storage)
