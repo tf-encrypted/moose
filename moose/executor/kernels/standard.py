@@ -1,6 +1,6 @@
 import json
-import pickle
 
+import msgpack
 import numpy as np
 
 from moose.computation.primitives import PRFKeyType
@@ -247,7 +247,7 @@ class SerializeKernel(Kernel):
         with get_tracer().start_as_current_span(f"{op.name}"):
             value_type = op.value_type
             if isinstance(value_type, (TensorType, RingTensorType)):
-                value_ser = pickle.dumps(value)
+                value_ser = msgpack.packb(value, default=_encode_tensor_info)
                 return output.set_result(value_ser)
             elif isinstance(value_type, ShapeType):
                 value_ser = json.dumps(value)
@@ -265,7 +265,7 @@ class DeserializeKernel(Kernel):
         with get_tracer().start_as_current_span(f"{op.name}"):
             output_type = op.output_type
             if isinstance(output_type, (TensorType, RingTensorType)):
-                value = pickle.loads(value)
+                value = msgpack.unpackb(value, object_hook=_decode_tensor_info)
                 return output.set_result(value)
             elif isinstance(output_type, ShapeType):
                 value = json.loads(value)
@@ -308,3 +308,32 @@ class ReceiveKernel(Kernel):
         )
         with get_tracer().start_as_current_span(f"{op.name}"):
             output.set_result(value)
+
+
+def _encode_tensor_info(tensor):
+    if isinstance(tensor, np.ndarray):
+        tensor_info = {
+            "tensor": tensor.tobytes(),
+            "shape": tensor.shape,
+            "dtype": tensor.dtype.str,
+            "tensor_type": "numpy",
+        }
+        return tensor_info
+    elif isinstance(tensor, (int, float)):
+        tensor_info = {"tensor": json.dumps(tensor), "tensor_type": "python_numeric"}
+        return tensor_info
+    else:
+        raise ValueError(f"Can't serialize tensor of type: {type(tensor)}")
+
+
+def _decode_tensor_info(tensor_info):
+    if tensor_info["tensor_type"] == "numpy":
+        dtype = np.dtype(tensor_info["dtype"])
+        shape = tensor_info["shape"]
+        tensor = np.frombuffer(tensor_info["tensor"], dtype=dtype).reshape(shape)
+        return tensor
+    elif tensor_info["tensor_type"] == "python_numeric":
+        tensor = json.loads(tensor_info["tensor"])
+        return tensor
+    else:
+        raise ValueError(f"Can deserialize tensor of type: {type(tensor)}")
