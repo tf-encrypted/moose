@@ -23,7 +23,6 @@ from moose.utils import AsyncStore
 class Session:
     session_id: int
     placement_instantiation: Any
-    values: AsyncStore = dataclasses.field(repr=False)
     arguments: AsyncStore = dataclasses.field(repr=False)
 
 
@@ -98,7 +97,6 @@ class AsyncExecutor:
         session = Session(
             session_id=session_id,
             placement_instantiation=placement_instantiation,
-            values=AsyncStore(),
             arguments=AsyncStore(initial_values=arguments),
         )
         with get_tracer().start_as_current_span("run") as span:
@@ -108,6 +106,7 @@ class AsyncExecutor:
                 f"Entering computation; placement:{placement}, session:{session}"
             )
             # link futures together using kernels
+            values = AsyncStore()
             tasks = []
             for op in execution_plan:
                 kernel = self.kernels.get(type(op))
@@ -117,16 +116,18 @@ class AsyncExecutor:
                     )
 
                 inputs = {
-                    param_name: session.values.get_future(key=value_name)
+                    param_name: values.get_future(key=value_name)
                     for (param_name, value_name) in op.inputs.items()
                 }
-                output = session.values.get_future(key=op.name)
+                output = values.get_future(key=op.name)
                 tasks += [
                     asyncio.create_task(
                         kernel.execute(op, session=session, output=output, **inputs),
                         name=op.name,
                     )
                 ]
+            # drop references to futures (and their values) to allow GC to do its job
+            del values
             get_logger().debug(f"Exiting computation; session_id:{session.session_id}")
             # check that there's something to do since
             # `asyncio.wait` will block otherwise
