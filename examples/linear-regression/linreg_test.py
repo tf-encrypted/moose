@@ -23,13 +23,20 @@ def mse(y_pred, y_true):
     return edsl.mean(edsl.square(edsl.sub(y_pred, y_true)), axis=0)
 
 
-def r_squared(y_pred, y_true):
+def ss_res(y_pred, y_true):
+    squared_residuals = edsl.square(edsl.sub(y_true, y_pred))
+    return edsl.sum(squared_residuals, axis=0)
+
+
+def ss_tot(y_true):
     y_mean = edsl.mean(y_true)
-    ss_tot = edsl.sum(edsl.square(edsl.sub(y_true, y_mean)), axis=0)
-    ss_res = edsl.sum(edsl.square(edsl.sub(y_true, y_pred)), axis=0)
-    # NOTE this division is going to be a problem in replicated dialect, instead
-    # we could reveal ss_res and ss_tot to the model owner then do the division
-    return edsl.sub(edsl.constant(1.0), edsl.div(ss_res, ss_tot))
+    squared_deviations = edsl.square(edsl.sub(y_true, y_mean))
+    return edsl.sum(squared_deviations, axis=0)
+
+
+def r_squared(ss_res, ss_tot):
+    residuals_ratio = edsl.div(ss_res, ss_tot)
+    return edsl.sub(edsl.constant(1.0), residuals_ratio)
 
 
 class LinearRegressionExample(unittest.TestCase):
@@ -72,16 +79,16 @@ class LinearRegressionExample(unittest.TestCase):
                 y_true = edsl.atleast_2d(
                     edsl.load(y_uri, dtype=float), to_column_vector=True
                 )
+                totals_ss = ss_tot(y_true)
 
             with replicated_plc:
                 w = edsl.dot(B, y_true)
                 y_pred = edsl.dot(X_b, w)
                 mse_result = mse(y_pred, y_true)
+                residuals_ss = ss_res(y_pred, y_true)
 
             with model_owner:
-                # NOTE: we can alternatively compute the SS terms on replicated_plc,
-                # and only do the division & subtraction here
-                rsquared_result = r_squared(y_pred, y_true)
+                rsquared_result = r_squared(residuals_ss, totals_ss)
 
             with model_owner:
                 res = (
