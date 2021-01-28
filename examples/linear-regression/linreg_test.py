@@ -5,6 +5,7 @@ import unittest
 import numpy as np
 
 from moose.edsl import Argument
+from moose.edsl import atleast_2d
 from moose.edsl import computation
 from moose.edsl import concatenate
 from moose.edsl import constant
@@ -68,7 +69,7 @@ class LinearRegressionExample(unittest.TestCase):
         ):
 
             with x_owner:
-                X = load(x_uri, dtype=float)
+                X = atleast_2d(load(x_uri, dtype=float), to_column_vector=True)
                 # NOTE: what would be most natural to do is this:
                 #     bias_shape = (slice(shape(X), begin=0, end=1), 1)
                 #     bias = ones(bias_shape, dtype=float)
@@ -84,7 +85,7 @@ class LinearRegressionExample(unittest.TestCase):
                 B = dot(A, transpose(X_b))
 
             with y_owner:
-                y_true = load(y_uri, dtype=float)
+                y_true = atleast_2d(load(y_uri, dtype=float), to_column_vector=True)
 
             with trusted_computer:
                 w = dot(B, y_true)
