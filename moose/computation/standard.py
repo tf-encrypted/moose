@@ -51,6 +51,11 @@ class OutputOperation(StandardOperation):
 
 
 @dataclass
+class PrintOperation(OutputOperation):
+    output_type: ValueType = UnitType()
+
+
+@dataclass
 class ConcatenateOperation(StandardOperation):
     axis: Optional[int]
     output_type: ValueType

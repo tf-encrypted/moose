@@ -4,6 +4,7 @@ from typing import Tuple
 from typing import Union
 
 from moose.computation.base import Operation
+from moose.computation.base import UnitType
 from moose.computation.base import ValueType
 from moose.computation.ring import RingTensorType
 
@@ -45,6 +46,16 @@ class TruncPrOperation(FixedpointOperation):
 @dataclass
 class DotOperation(FixedpointOperation):
     output_type: ValueType
+
+
+@dataclass
+class OutputOperation(FixedpointOperation):
+    output_type: ValueType = UnitType()
+
+
+@dataclass
+class PrintOperation(OutputOperation):
+    output_type: ValueType = UnitType()
 
 
 @dataclass

@@ -23,6 +23,7 @@ from moose.compiler.ring import ring_sum
 from moose.compiler.standard import StandardTensor
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
+from moose.computation.replicated import OutputOperation
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.ring import RingTensorType
 from moose.computation.standard import TensorType
@@ -58,6 +59,7 @@ class ReplicatedLoweringPass:
 
         # rewire the ops we didn't lower, ie those that depend on the lowered ops
         for op in computation.operations.values():
+            print("ops in lowering: ", op.name)
             if op.name in op_names_to_lower:
                 continue
             for input_name in op.inputs.keys():
@@ -234,6 +236,20 @@ class ReplicatedLoweringPass:
         assert isinstance(z, ReplicatedTensor)
         self.interpretations[op.name] = z
         return z
+
+    def lower_PrintOperation(self, op):
+        assert isinstance(op, replicated_ops.PrintOperation), type(op)
+        x = self.lower(op.inputs["x"])
+        assert isinstance(x, ReplicatedTensor), type(x)
+
+        z = replicated_print(x, placement_name=op.placement_name)
+        assert isinstance(z, UnitType)
+        self.interpretations[op.name] = z
+        return chain
+
+    def lower_OutputOperation(self, op):
+        assert isinstance(op, replicated_ops.OutputOperation), type(op)
+        return 0
 
     def interpret_input_op(self, op):
         assert isinstance(op.output_type, TensorType)

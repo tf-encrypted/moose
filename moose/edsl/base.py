@@ -10,6 +10,8 @@ from typing import Union
 
 import numpy as np
 
+from moose.logger import get_logger
+
 CURRENT_PLACEMENT: List = []
 
 
@@ -163,6 +165,12 @@ class MeanExpression(Expression):
 class TransposeExpression(Expression):
     axes: Optional[Tuple[int]]
 
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class PrintExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -327,6 +335,16 @@ def transpose(x, axes=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return TransposeExpression(placement=placement, inputs=[x], axes=axes)
+
+
+def print(x, placement=None):
+    get_logger().info(f"Placement = {placement}")
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    get_logger().info(f"Placement = {placement}")
+    res = PrintExpression(placement=placement, inputs=[x])
+    get_logger().info(f"print expression = {PrintExpression}")
+    return res
 
 
 def load(key, dtype=None, placement=None):

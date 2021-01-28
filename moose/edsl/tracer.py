@@ -5,6 +5,7 @@ import numpy as np
 
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
+from moose.computation.base import UnitType
 from moose.computation.base import UnknownType
 from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
@@ -24,6 +25,7 @@ from moose.computation.standard import MeanOperation
 from moose.computation.standard import MulOperation
 from moose.computation.standard import OnesOperation
 from moose.computation.standard import OutputOperation
+from moose.computation.standard import PrintOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import ShapeOperation
 from moose.computation.standard import ShapeType
@@ -47,6 +49,7 @@ from moose.edsl.base import LoadExpression
 from moose.edsl.base import MeanExpression
 from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import OnesExpression
+from moose.edsl.base import PrintExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
@@ -72,6 +75,8 @@ def trace(abstract_computation, compiler_passes=None, render=False):
     expression = abstract_computation.func(*symbolic_args)
     tracer = AstTracer()
     logical_comp = tracer.trace(expression)
+    print("Logical comp")
+    print(logical_comp)
 
     compiler = Compiler(passes=compiler_passes)
     physical_comp = compiler.run_passes(logical_comp, render=render)
@@ -93,13 +98,14 @@ class AstTracer:
             expressions = [expressions]
         for expression in expressions:
             op = self.visit(expression)
-            self.computation.add_operation(
-                OutputOperation(
-                    name=self.get_fresh_name("output"),
-                    inputs={"value": op.name},
-                    placement_name=op.placement_name,
+            if not isinstance(op, OutputOperation):
+                self.computation.add_operation(
+                    OutputOperation(
+                        name=self.get_fresh_name("output"),
+                        inputs={"value": op.name},
+                        placement_name=op.placement_name,
+                    )
                 )
-            )
         return self.computation
 
     def get_fresh_name(self, prefix):
@@ -382,6 +388,20 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("shape"),
                 output_type=ShapeType(),
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_PrintExpression(self, print_expression):
+        assert isinstance(print_expression, PrintExpression)
+        (x_expression,) = print_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(print_expression.placement)
+        return self.computation.add_operation(
+            PrintOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("print VISIT"),
+                output_type=UnitType(),
                 inputs={"x": x_operation.name},
             )
         )

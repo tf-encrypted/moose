@@ -46,10 +46,13 @@ class SubgraphReplacementPass:
         for op_name in sorted(self.op_names_to_lower):
             processed_cache[op_name] = self.process_node(op_name)
 
+        print("Outgoing edges: ", outgoing_edges)
         # rewire ops for outgoing edges
         for src_op_name, input_key, dst_op_name in sorted(outgoing_edges):
+            print("prcessing ", src_op_name, input_key, dst_op_name)
             dst_op = self.computation.operation(dst_op_name)
             processed_src_op = processed_cache[src_op_name]
+            print("more processing: ", processed_src_op, dst_op)
             dst_op.inputs[input_key] = self.process_outgoing_edge(
                 src_op=processed_src_op, input_key=input_key, dst_op_name=dst_op.name,
             )
@@ -65,6 +68,7 @@ class SubgraphReplacementPass:
         cache_key = op_name
         if cache_key not in self.node_cache:
             op = self.computation.operation(op_name)
+            print("op: ", op, " OP TYPE: ", type(op))
             processed_inputs = {
                 input_key: self.process_edge(
                     src_op_name=input_op_name, input_key=input_key, dst_op_name=op.name,

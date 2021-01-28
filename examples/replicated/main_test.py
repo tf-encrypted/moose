@@ -4,6 +4,7 @@ import unittest
 
 import numpy as np
 
+from moose import edsl
 from moose.edsl import add
 from moose.edsl import computation
 from moose.edsl import constant
@@ -37,20 +38,23 @@ class ReplicatedExample(unittest.TestCase):
                 y = constant(np.array([1, 1], dtype=np.float64))
 
             with rep:
-                z1 = mul(x, y)
-                z2 = dot(x, y)
+                # z1 = mul(x, y)
+                # z2 = dot(x, y)
+                c = edsl.print(y)
 
-            with dave:
-                v = add(z1, z1)
-                res_dave = save("res", v)
+            # with dave:
+            #     v = add(z1, z1)
+            #     res_dave = save("res", v)
 
-            with eric:
-                w = add(z2, z2)
-                res_eric = save("res", w)
+            # with eric:
+            #     w = add(z1, z1)
+            #     res_eric = save("res", w)
 
-            return (res_dave, res_eric)
+            # return (res_dave, res_eric)
+            return c
 
-        concrete_comp = trace(my_comp)
+        print("my comp: ", my_comp)
+        concrete_comp = trace(my_comp, render=True)
 
         runtime = Runtime()
         runtime.evaluate_computation(

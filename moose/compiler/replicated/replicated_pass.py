@@ -1,6 +1,7 @@
 from moose.compiler.replicated.subgraph_replace_pass import SubgraphReplacementPass
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as rep_dialect
+from moose.computation import standard as std_dialect
 
 
 class ReplicatedOpsPass(SubgraphReplacementPass):
@@ -20,8 +21,10 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
         return super().run(computation, context)
 
     def collect_subgraph(self):
+        print("COLLECTING IN REPLICATED OPS PASS")
         op_names_to_process = set()
         for op in self.computation.operations.values():
+            print("op name: ", op.name)
             op_placement = self.computation.placement(op.placement_name)
             if not isinstance(op_placement, rep_dialect.ReplicatedPlacement):
                 continue
@@ -168,6 +171,35 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
             )
         )
 
+    def process_PrintOperation(self, op, processed_inputs):
+        print("Processed print in Replicated Pass")
+        assert isinstance(op, std_ops.PrintOperation)
+        return self.computation.add_operation(
+            rep_dialect.PrintOperation(
+                name=self.context.get_fresh_name("print REP"),
+                placement_name=op.placement_name,
+                inputs={
+                    input_key: input_op.name
+                    for input_key, input_op in processed_inputs.items()
+                },
+                output_type=op.output_type,
+            )
+        )
+
+    def process_OutputOperation(self, op, processed_inputs):
+        assert isinstance(op, fixed_dialect.OutputOperation)
+        return self.computation.add_operation(
+            rep_dialect.OutputOperation(
+                name=self.context.get_fresh_name("output"),
+                placement_name=op.placement_name,
+                inputs={
+                    input_key: input_op.name
+                    for input_key, input_op in processed_inputs.items()
+                },
+                output_type=op.output_type,
+            )
+        )
+
     def process_EncodeOperation(self, op, processed_inputs):
         assert isinstance(op, fixed_dialect.EncodeOperation)
         encode_op = self.computation.add_operation(
@@ -217,7 +249,8 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
         return self.computation.operation(src_op_name)
 
     def process_outgoing_edge(self, src_op, input_key, dst_op_name):
-        assert isinstance(src_op, fixed_dialect.DecodeOperation)
+        print("args: ", src_op, input_key, dst_op_name)
+        assert isinstance(src_op, fixed_dialect.DecodeOperation), type(src_op)
         dst_op = self.computation.operation(dst_op_name)
         src_input_op = self.computation.operation(src_op.inputs["value"])
 

@@ -12,6 +12,7 @@ class PruningPass:
             for op_name, op in computation.operations.items()
             if isinstance(op, OutputOperation)
         )
+        print("Frontier: ", frontier)
         while True:
             ops_to_keep.update(frontier)
             new_frontier = set()
@@ -24,7 +25,9 @@ class PruningPass:
                 # nothing was added so done expanding
                 break
             frontier = new_frontier
+            print("new frontier:", frontier)
 
+        print("ops to keep", ops_to_keep)
         # remove all operations we didn't visit
         ops_to_remove = set(computation.operations.keys()) - ops_to_keep
         if ops_to_remove:

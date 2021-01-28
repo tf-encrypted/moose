@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 from moose.computation.base import Operation
+from moose.computation.base import UnitType
 from moose.computation.base import ValueType
 from moose.computation.standard import ShapeType
 
@@ -77,4 +78,4 @@ class FillTensorOperation(RingOperation):
 class PrintRingTensorOperation(RingOperation):
     prefix: str
     suffix: str
-    output_type: ValueType = RingTensorType()
+    output_type: ValueType = UnitType()

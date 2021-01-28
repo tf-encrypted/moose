@@ -21,6 +21,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
     def collect_subgraph(self):
         op_names_to_process = set()
         for op in self.computation.operations.values():
+            print("collecting ops in rep encoding pass: ", op.name)
             if not isinstance(op, std_dialect.StandardOperation):
                 continue
             op_placement = self.computation.placement(op.placement_name)
@@ -197,6 +198,35 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
             )
         )
         return trunc_op
+
+    def process_PrintOperation(self, op, processed_inputs):
+        assert isinstance(op, std_dialect.PrintOperation)
+        lowered_x_op = processed_inputs["x"]
+        x_output_type = lowered_x_op.output_type
+        assert isinstance(x_output_type, fixedpoint_dialect.EncodedTensorType)
+        self.computation.remove_operation(op.name)
+        print_op = self.computation.add(
+            std_dialect.PrintOperation(
+                name=self.context.get_fresh_name("std_print OMG"),
+                placement_name=op.placement_name,
+                inputs={"x": lowered_x_op.name},
+                output_type=std_dialect.UnitType,
+            )
+        )
+        return print_op
+
+    def process_OutputOperation(self, op, processed_inputs):
+        assert isinstance(op, std_dialect.OutputOperation)
+        lowered_value_op = processed_inputs["value"]
+        output = self.computation.add_operation(
+            std_dialect.OutputOperation(
+                name=self.context.get_fresh_name("std_output"),
+                inputs={"value": lowered_value_op.name},
+                placement_name=op.placement_name,
+                output_type=std_dialect.UnitType,
+            )
+        )
+        return output
 
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)

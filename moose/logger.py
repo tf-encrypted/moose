@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from opentelemetry import trace
 
@@ -15,7 +16,7 @@ def set_logger(logger):
 
 
 set_logger(logging.getLogger("moose"))
-logging.basicConfig()
+logging.basicConfig(stream=sys.stdout)
 
 
 def get_tracer():

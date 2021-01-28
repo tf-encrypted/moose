@@ -6,6 +6,7 @@ from typing import Union
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
+from moose.computation.base import UnitType
 from moose.computation.base import ValueType
 
 
@@ -87,3 +88,13 @@ class MeanOperation(ReplicatedOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
     output_type: ValueType
+
+
+@dataclass
+class OutputOperation(ReplicatedOperation):
+    output_type: UnitType
+
+
+@dataclass
+class PrintOperation(OutputOperation):
+    output_type: UnitType
