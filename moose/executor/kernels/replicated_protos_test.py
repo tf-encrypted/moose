@@ -367,13 +367,22 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 output_type=TensorType(datatype="int"),
             )
         )
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value="result",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+
 
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"value": "abs_op"},
+                inputs={"key": "save_key", "value": "abs_op"},
                 placement_name=carole.name,
-                key="result",
             )
         )
 
@@ -383,10 +392,10 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-        runtime = _compile_and_run(comp, alice, bob, carole)
+        results = _compile_and_run(comp, alice, bob, carole)
 
         np.testing.assert_allclose(
-            np.abs(x), runtime.get_executor(carole.name).store["result"],
+            np.abs(x), results[carole]["result"],
         )
 
 

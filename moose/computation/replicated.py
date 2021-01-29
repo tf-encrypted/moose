@@ -86,6 +86,7 @@ class SumOperation(ReplicatedOperation):
 class MeanOperation(ReplicatedOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
+    output_type: ValueType
 
 @dataclass
 class AbsOperation(ReplicatedOperation):
