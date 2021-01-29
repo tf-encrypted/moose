@@ -84,8 +84,8 @@ class RingSampleKernel(Kernel):
 
 
 class PrintRingTensorKernel(Kernel):
-    def execute_synchronous_block(self, op, session, value, chain):
+    def execute_synchronous_block(self, op, session, value, chain=None):
         assert isinstance(op, PrintRingTensorOperation)
         print(op.prefix, end="")
-        print("".join(str(item) for item in value), end=op.suffix)
-        return value
+        print(value, end=op.suffix)
+        return None
