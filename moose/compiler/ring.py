@@ -39,7 +39,7 @@ def print_ring_tensor(tensor: RingTensor, prefix, suffix, placement_name, chain=
         PrintRingTensorOperation(
             name=tensor.context.get_fresh_name("print_ring_tensor"),
             placement_name=placement_name,
-            inputs={"value": tensor.op.name},
+            inputs=inputs,
             prefix=prefix,
             suffix=suffix,
         )

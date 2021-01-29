@@ -88,4 +88,4 @@ class PrintRingTensorKernel(Kernel):
         assert isinstance(op, PrintRingTensorOperation)
         print(op.prefix, end="")
         print(value, end=op.suffix)
-        return 0
+        return None
