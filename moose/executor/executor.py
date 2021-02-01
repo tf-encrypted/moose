@@ -133,7 +133,9 @@ class AsyncExecutor:
             # `asyncio.wait` will block otherwise
             if not tasks:
                 get_logger().warn(
-                    f"Computation had no tasks; session_id:{session.session_id}"
+                    f"Computation had no tasks;"
+                    f" placement:{placement},"
+                    f" session_id:{session.session_id}"
                 )
                 return
             # execute kernels

@@ -120,7 +120,7 @@ class LinearRegressionExample(unittest.TestCase):
         runtime.evaluate_computation(
             concrete_comp,
             placement_instantiation={
-                plc: plc.name for plc in [x_owner, y_owner, model_owner, replicated_plc]
+                plc: plc.name for plc in [x_owner, y_owner, model_owner]
             },
             arguments={
                 "x_uri": "x_data",
