@@ -235,7 +235,6 @@ class ReplicatedLoweringPass:
         self.interpretations[op.name] = z
         return z
 
-
     def lower_AbsOperation(self, op):
         assert isinstance(op, replicated_ops.AbsOperation)
         x = self.lower(op.inputs["x"])

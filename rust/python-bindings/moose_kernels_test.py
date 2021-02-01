@@ -3,6 +3,8 @@ import random
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
+from moose_kernels import bit_and
+from moose_kernels import bit_xor
 from moose_kernels import derive_seed
 from moose_kernels import ring_add
 from moose_kernels import ring_dot
@@ -104,12 +106,28 @@ class FillOp(parameterized.TestCase):
         np.testing.assert_array_equal(actual, expected)
 
 
-class BitOps(parameterized.TestCase):
+class RingBitOps(parameterized.TestCase):
     def test_bitwise_ops(self):
         a = np.array([2 ** i for i in range(64)], dtype=np.uint64)
         for i in range(10):
             np.testing.assert_array_equal(a << i, ring_shl(a, i))
             np.testing.assert_array_equal(a >> i, ring_shr(a, i))
+
+
+class BitTensorOps(parameterized.TestCase):
+    @parameterized.parameters(
+        ([[0, 1], [0, 1]], [[1, 0], [1, 0]]),
+        ([0], [0]),
+        ([0], [1]),
+        ([1], [0]),
+        ([1], [1]),
+    )
+    def test_bitwise_ops(self, a, b):
+        x = np.array(a, dtype=np.uint8)
+        y = np.array(b, dtype=np.uint8)
+
+        np.testing.assert_array_equal(x & y, bit_and(x, y))
+        np.testing.assert_array_equal(x ^ y, bit_xor(x, y))
 
 
 if __name__ == "__main__":

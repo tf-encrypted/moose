@@ -197,7 +197,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
             )
         )
         return trunc_op
-    
+
     def process_AbsOperation(self, op, processed_inputs):
         assert isinstance(op, std_dialect.AbsOperation)
         lowered_x_op = processed_inputs["x"]

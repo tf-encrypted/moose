@@ -377,7 +377,6 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
 
-
         comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",

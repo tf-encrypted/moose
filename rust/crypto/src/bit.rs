@@ -1,7 +1,6 @@
 use ndarray::prelude::*;
 use rand::prelude::*;
 use std::convert::TryInto;
-use std::num::Wrapping;
 use std::ops::{BitAnd, BitXor};
 
 use crate::prng::{AesRng, PRNGSeed};

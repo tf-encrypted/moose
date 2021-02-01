@@ -66,6 +66,7 @@ class RingMeanOperation(FixedpointOperation):
     precision: int
     output_type: ValueType
 
+
 @dataclass
 class AbsOperation(FixedpointOperation):
     output_type: ValueType

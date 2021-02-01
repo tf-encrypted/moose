@@ -88,6 +88,7 @@ class MeanOperation(ReplicatedOperation):
     precision: int
     output_type: ValueType
 
+
 @dataclass
 class AbsOperation(ReplicatedOperation):
     output_type: ValueType

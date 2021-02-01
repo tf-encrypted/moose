@@ -20,6 +20,10 @@ fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
     unwrapped.into_shape(shape).unwrap()
 }
 
+fn bit_to_array(b: BitTensor) -> ArrayD<u8> {
+    b.0
+}
+
 fn binary_pyfn<'py>(
     py: Python<'py>,
     x: PyReadonlyArrayDyn<u64>,
@@ -162,11 +166,23 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u8>,
         y: PyReadonlyArrayDyn<u8>,
-    ) -> &'py PyArrayDyn<u64> {
-        let b1 = BitTensor::from(x.as_array());
-        let b2 = BitTensor(y.as_array());
+    ) -> &'py PyArrayDyn<u8> {
+        let b1 = BitTensor::from(x.to_owned_array());
+        let b2 = BitTensor::from(y.to_owned_array());
         let res = b1 ^ b2;
-        res.to_pyarray(py)
+        bit_to_array(res).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_and")]
+    fn bit_and<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u8>,
+        y: PyReadonlyArrayDyn<u8>,
+    ) -> &'py PyArrayDyn<u8> {
+        let b1 = BitTensor::from(x.to_owned_array());
+        let b2 = BitTensor::from(y.to_owned_array());
+        let res = b1 & b2;
+        bit_to_array(res).to_pyarray(py)
     }
 
     #[pyfn(m, "fixedpoint_encode")]
