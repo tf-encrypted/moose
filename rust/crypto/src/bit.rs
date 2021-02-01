@@ -37,11 +37,11 @@ impl From<ArrayD<u8>> for BitTensor {
     }
 }
 
-impl From<&BitTensor> for ArrayD<u8> {
-    fn from(r: &BitTensor) -> ArrayD<u8> {
-        r.0.mapv(|element| element as u8)
-    }
-}
+// impl From<&BitTensor> for ArrayD<u8> {
+//     fn from(r: &BitTensor) -> ArrayD<u8> {
+//         r.0.mapv(|element| element as u8)
+//     }
+// }
 
 impl From<Vec<u8>> for BitTensor {
     fn from(v: Vec<u8>) -> BitTensor {
@@ -80,16 +80,7 @@ mod tests {
     fn bit_sample() {
         let key = [0u8; 16];
         let r = BitTensor::sample_uniform(&[5], &key);
-        assert_eq!(
-            r,
-            BitTensor::from(vec![
-                0,
-                1,
-                1,
-                0,
-                0,
-            ])
-        );
+        assert_eq!(r, BitTensor::from(vec![0, 1, 1, 0, 0,]));
     }
 
     #[test]
@@ -103,17 +94,39 @@ mod tests {
         let shape = 5;
 
         // test xor
-        assert_eq!(BitTensor::fill(&[shape], 0) ^ BitTensor::fill(&[shape], 1), BitTensor::fill(&[shape], 1));
-        assert_eq!(BitTensor::fill(&[shape], 1) ^ BitTensor::fill(&[shape], 0), BitTensor::fill(&[shape], 1));
-        assert_eq!(BitTensor::fill(&[shape], 1) ^ BitTensor::fill(&[shape], 1), BitTensor::fill(&[shape], 0));
-        assert_eq!(BitTensor::fill(&[shape], 0) ^ BitTensor::fill(&[shape], 0), BitTensor::fill(&[shape], 0));
+        assert_eq!(
+            BitTensor::fill(&[shape], 0) ^ BitTensor::fill(&[shape], 1),
+            BitTensor::fill(&[shape], 1)
+        );
+        assert_eq!(
+            BitTensor::fill(&[shape], 1) ^ BitTensor::fill(&[shape], 0),
+            BitTensor::fill(&[shape], 1)
+        );
+        assert_eq!(
+            BitTensor::fill(&[shape], 1) ^ BitTensor::fill(&[shape], 1),
+            BitTensor::fill(&[shape], 0)
+        );
+        assert_eq!(
+            BitTensor::fill(&[shape], 0) ^ BitTensor::fill(&[shape], 0),
+            BitTensor::fill(&[shape], 0)
+        );
 
         // test and
-        assert_eq!(BitTensor::fill(&[shape], 0) & BitTensor::fill(&[shape], 1), BitTensor::fill(&[shape], 0));
-        assert_eq!(BitTensor::fill(&[shape], 1) & BitTensor::fill(&[shape], 0), BitTensor::fill(&[shape], 0));
-        assert_eq!(BitTensor::fill(&[shape], 1) & BitTensor::fill(&[shape], 1), BitTensor::fill(&[shape], 1));
-        assert_eq!(BitTensor::fill(&[shape], 0) & BitTensor::fill(&[shape], 0), BitTensor::fill(&[shape], 0));
-
+        assert_eq!(
+            BitTensor::fill(&[shape], 0) & BitTensor::fill(&[shape], 1),
+            BitTensor::fill(&[shape], 0)
+        );
+        assert_eq!(
+            BitTensor::fill(&[shape], 1) & BitTensor::fill(&[shape], 0),
+            BitTensor::fill(&[shape], 0)
+        );
+        assert_eq!(
+            BitTensor::fill(&[shape], 1) & BitTensor::fill(&[shape], 1),
+            BitTensor::fill(&[shape], 1)
+        );
+        assert_eq!(
+            BitTensor::fill(&[shape], 0) & BitTensor::fill(&[shape], 0),
+            BitTensor::fill(&[shape], 0)
+        );
     }
-
 }

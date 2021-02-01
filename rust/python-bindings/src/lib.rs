@@ -1,3 +1,4 @@
+use crypto::bit::BitTensor;
 use crypto::fixedpoint::{ring_decode, ring_encode, ring_mean};
 use crypto::prng::AesRng;
 use crypto::ring::{Dot, Ring64Tensor, Sample};
@@ -154,6 +155,18 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let res = x_ring >> (amount as usize);
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_xor")]
+    fn bit_xor<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u8>,
+        y: PyReadonlyArrayDyn<u8>,
+    ) -> &'py PyArrayDyn<u64> {
+        let b1 = BitTensor::from(x.as_array());
+        let b2 = BitTensor(y.as_array());
+        let res = b1 ^ b2;
+        res.to_pyarray(py)
     }
 
     #[pyfn(m, "fixedpoint_encode")]
