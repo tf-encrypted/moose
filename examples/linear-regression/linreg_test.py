@@ -102,7 +102,7 @@ class LinearRegressionExample(unittest.TestCase):
 
         concrete_comp = edsl.trace(my_comp)
 
-        x_data, y_data = generate_data(seed=42, n_instances=200, n_features=1)
+        x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         networking = Networking()
         x_owner_storage = MemoryDataStore({"x_data": x_data})
         x_owner_executor = AsyncExecutor(networking, storage=x_owner_storage)
