@@ -47,7 +47,6 @@ class LinearRegressionExample(unittest.TestCase):
         replicated_plc = edsl.replicated_placement(
             players=[x_owner, y_owner, model_owner], name="replicated-plc"
         )
-        # replicated_plc = edsl.host_placement(name="trusted")
 
         @edsl.computation
         def my_comp(
