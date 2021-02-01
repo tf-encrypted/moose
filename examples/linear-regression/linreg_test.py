@@ -7,7 +7,6 @@ import numpy as np
 from moose import edsl
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-from moose.logger import set_meter
 from moose.networking.memory import Networking
 from moose.storage.memory import MemoryDataStore
 from moose.testing import TestRuntime as Runtime
@@ -144,38 +143,4 @@ if __name__ == "__main__":
     if args.verbose:
         get_logger().setLevel(level=logging.DEBUG)
 
-        from opentelemetry.exporter.otlp.metrics_exporter import OTLPMetricsExporter
-        from opentelemetry.exporter.otlp.trace_exporter import OTLPSpanExporter
-        from opentelemetry.metrics import get_meter
-        from opentelemetry.metrics import set_meter_provider
-        from opentelemetry.sdk.metrics import MeterProvider
-        from opentelemetry.sdk.metrics.export.controller import PushController
-        from opentelemetry.sdk.resources import Resource
-        from opentelemetry.sdk.trace import TracerProvider
-        from opentelemetry.sdk.trace.export import BatchExportSpanProcessor
-        from opentelemetry.trace import set_tracer_provider
-
-        span_exporter = OTLPSpanExporter(endpoint="localhost:4317", insecure=True)
-        tracer_provider = TracerProvider(
-            resource=Resource(attributes={"service.name": "moose"})
-        )
-        tracer_provider.add_span_processor(BatchExportSpanProcessor(span_exporter))
-        set_tracer_provider(tracer_provider)
-
-        metric_exporter = OTLPMetricsExporter(endpoint="localhost:4317", insecure=True)
-        meter_provider = MeterProvider(
-            resource=Resource(attributes={"service.name": "moose"})
-        )
-        set_meter_provider(meter_provider)
-        meter = get_meter("moose")
-        controller = PushController(meter, metric_exporter, 1)
-        set_meter(meter)
-
-        foo = LinearRegressionExample()
-        foo.test_linear_regression_example()
-
-    # unittest.main()
-
-    import time
-
-    time.sleep(10.0)
+    unittest.main()
