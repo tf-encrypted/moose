@@ -23,7 +23,6 @@ class Kernel:
                 f" kernel:{self.__class__.__name__},"
                 f" op:{op},"
                 f" session_id:{session.session_id},"
-                # f" output:{concrete_output}"
             )
             output.set_result(concrete_output)
 
