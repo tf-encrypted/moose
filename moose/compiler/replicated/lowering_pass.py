@@ -437,7 +437,7 @@ def replicated_bit_mul(
     assert isinstance(x, ReplicatedBitTensor)
     assert isinstance(y, ReplicatedBitTensor)
 
-    return abstract_replicated_mul(x, y, setup, placement_name, bit_xor_, bit_and)
+    return abstract_replicated_mul(x, y, setup, placement_name, bit_xor, bit_and)
 
 
 def abstract_replicated_mul(
