@@ -23,7 +23,7 @@ class ReplicatedSetupType(ValueType):
 
 
 @dataclass
-class ReplicatedTensorType(ValueType):
+class ReplicatedRingTensorType(ValueType):
     datatype: str
 
 
