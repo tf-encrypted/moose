@@ -425,7 +425,9 @@ def replicated_ring_mul(
     assert isinstance(x, ReplicatedRingTensor)
     assert isinstance(y, ReplicatedRingTensor)
 
-    return abstract_replicated_mul(x, y, setup, placement_name, ring_add, ring_mul)
+    return abstract_replicated_mul(
+        x, y, setup, placement_name, ring_add, ring_mul, ReplicatedRingTensor
+    )
 
 
 def replicated_bit_mul(
@@ -437,7 +439,9 @@ def replicated_bit_mul(
     assert isinstance(x, ReplicatedBitTensor)
     assert isinstance(y, ReplicatedBitTensor)
 
-    return abstract_replicated_mul(x, y, setup, placement_name, bit_xor, bit_and)
+    return abstract_replicated_mul(
+        x, y, setup, placement_name, bit_xor, bit_and, ReplicatedBitTensor
+    )
 
 
 def abstract_replicated_mul(
@@ -447,6 +451,7 @@ def abstract_replicated_mul(
     placement_name,
     Add,
     Mul,
+    out_type,
 ) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
     assert isinstance(y, ReplicatedTensor)
@@ -485,7 +490,7 @@ def abstract_replicated_mul(
     z_shares = [
         Add(z_shares[i], zero_shares[i], placement_name=players[i]) for i in range(3)
     ]
-    return ReplicatedRingTensor(
+    return out_type(
         shares0=(z_shares[2], z_shares[0]),
         shares1=(z_shares[0], z_shares[1]),
         shares2=(z_shares[1], z_shares[2]),
