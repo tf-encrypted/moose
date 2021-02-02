@@ -3,7 +3,6 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
-import moose.computation.standard as standard_ops
 from moose.compiler.primitives import Seed
 from moose.compiler.standard import Shape
 from moose.computation.base import Computation

@@ -45,12 +45,13 @@ class ReplicatedExample(unittest.TestCase):
             with dave:
                 v = add(z1, z1)
                 res_dave = save("res", v)
+                abs_dave = save("abs", c)
 
             with eric:
                 w = add(z2, z2)
                 res_eric = save("res", w)
 
-            return (res_dave, res_eric)
+            return (res_dave, abs_dave, res_eric)
 
         concrete_comp = trace(my_comp)
 

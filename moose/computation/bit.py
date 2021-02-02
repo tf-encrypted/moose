@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Optional
 
 from moose.computation.base import Operation
 from moose.computation.base import ValueType

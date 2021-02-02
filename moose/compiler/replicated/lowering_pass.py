@@ -28,7 +28,6 @@ from moose.compiler.ring import ring_shape
 from moose.compiler.ring import ring_sub
 from moose.compiler.ring import ring_sum
 from moose.compiler.standard import StandardTensor
-from moose.computation import bit as bit_dialect
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as replicated_ops
 from moose.computation.replicated import ReplicatedPlacement
