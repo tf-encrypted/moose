@@ -4,13 +4,17 @@ from typing import Any
 from typing import Optional
 
 from moose.compiler.primitives import Seed
+from moose.compiler.ring import RingTensor
 from moose.compiler.standard import Shape
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.bit import BitAndOperation
+from moose.computation.bit import BitExtractOperation
 from moose.computation.bit import BitSampleOperation
 from moose.computation.bit import BitShapeOperation
 from moose.computation.bit import BitXorOperation
+from moose.computation.bit import FillBitTensorOperation
+from moose.computation.bit import PrintBitTensorOperation
 
 
 @dataclass
@@ -19,6 +23,32 @@ class BitTensor:
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
     shape: Optional[Shape] = None
+
+
+def print_bit_tensor(tensor: BitTensor, prefix, suffix, placement_name, chain=None):
+    assert isinstance(tensor, BitTensor)
+    inputs = {"value": tensor.op.name}
+    if chain is not None:
+        inputs["chain"] = chain.name
+
+    print_op = tensor.computation.add_operation(
+        PrintBitTensorOperation(
+            name=tensor.context.get_fresh_name("print_bit_tensor"),
+            placement_name=placement_name,
+            inputs=inputs,
+            prefix=prefix,
+            suffix=suffix,
+        )
+    )
+
+    tensor.computation.add_operation(
+        standard_ops.OutputOperation(
+            name=tensor.context.get_fresh_name("chain_print"),
+            inputs={"value": print_op.name},
+            placement_name=placement_name,
+        )
+    )
+    return print_op
 
 
 def bit_shape(tensor: BitTensor, placement_name):
@@ -79,4 +109,36 @@ def bit_and(x: BitTensor, y: BitTensor, placement_name):
     # in the future we might want some sort of shape inference around this?
     return BitTensor(
         op=z_op, computation=x.computation, shape=x.shape, context=x.context
+    )
+
+
+def bit_extract(tensor: RingTensor, bit_idx, placement_name):
+    assert isinstance(tensor, RingTensor)
+    op = tensor.computation.add_operation(
+        BitExtractOperation(
+            name=tensor.context.get_fresh_name("bit_extract"),
+            placement_name=placement_name,
+            inputs={"tensor": tensor.op.name},
+            bit_idx=bit_idx,
+        )
+    )
+    return BitTensor(
+        op=op,
+        computation=tensor.computation,
+        shape=tensor.shape,
+        context=tensor.context,
+    )
+
+
+def fill_bit_tensor(shape: Shape, value: int, placement_name):
+    op = shape.computation.add_operation(
+        FillBitTensorOperation(
+            name=shape.context.get_fresh_name("fill_bit_tensor"),
+            placement_name=placement_name,
+            value=value,
+            inputs={"shape": shape.op.name},
+        )
+    )
+    return BitTensor(
+        op, computation=shape.computation, context=shape.context, shape=shape
     )

@@ -7,11 +7,13 @@ from moose.compiler.bit import bit_and
 from moose.compiler.bit import bit_sample
 from moose.compiler.bit import bit_shape
 from moose.compiler.bit import bit_xor
+from moose.compiler.bit import fill_bit_tensor
 from moose.compiler.primitives import PRFKey
 from moose.compiler.primitives import Seed
 from moose.compiler.primitives import derive_seed
 from moose.compiler.primitives import sample_key
 from moose.compiler.pruning import PruningPass
+from moose.compiler.replicated import bit_utils
 from moose.compiler.replicated import trunc_utils
 from moose.compiler.replicated.types import ReplicatedBitTensor
 from moose.compiler.replicated.types import ReplicatedRingTensor
@@ -805,12 +807,99 @@ def ring_mean(ring_tensor_input, axis, precision, placement_name):
     )
 
 
+# Kogge-Stone binary adder topology
+def replicated_binary_adder(
+    x: list(ReplicatedBitTensor),
+    y: list(ReplicatedBitTensor),
+    setup: ReplicatedSetup,
+    placement_name,
+):
+    def xor64(a, b):
+        assert len(a) == 64
+        assert len(b) == 64
+
+        return [replicated_bit_add(a[i], b[i]) for i in range(64)]
+
+    def and64(a, b):
+        assert len(a) == 64
+        assert len(b) == 64
+        return [
+            replicated_bit_mul(a[i], b[i], setup, placement_name) for i in range(64)
+        ]
+
+    R = 64
+    N = int(log(R, 2))
+    G = and64(x, y)
+    P_store = xor64(x, y)
+    P = P_store
+
+    for i in range(N):
+        G1 = bit_utils.rotate_left(G, 2 ** i)
+        P1 = bit_utils.rotate_left(P, 2 ** i)
+        P1 = xor64(P1, keep_masks)
+
+        G = xor64(G, and64(P, G1))
+        P = and64(P, P1)
+
+    C = bit_utils.rotate_left(G, 1)
+    z = xor64(C, P_store)
+
+    return z
+
+
+def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name):
+    computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    x_shares = [x.shares0, x.shares1, x.shares2]
+    # shares are assembled in the following way:
+    # (x1, x2), (x2, x3), (x3, x1)
+
+    players = replicated_placement.player_names
+
+    # L = (x1 + x2). R = x3
+    # After party P1 inputs L, the parties compute [L]^B + [x3]^B using a binary adder
+    # to get MSB(x)
+
+    left = ring_add(x_shares[0][0], x_shares[0][1], placement_name=players[0])
+    rep_ring_left = replicated_share(left, setup, placement_name=placement_name)
+
+    rep_bit_left = bit_utils.replicated_ring_to_bits(rep_ring_left, players)
+
+    # transform x3 into boolean sharing
+    rep_bit_right = ReplicatedBitTensor(
+        shares0=tuple(
+            [
+                fill_bit_tensor(x.shares0[i].shape, 0, placement_name=players[0])
+                for i in range(2)
+            ]
+        ),
+        shares1=[
+            fill_bit_tensor(x.shares1[0].shape, 0, placement_name=players[1]),
+            bit_utils.ring_bit_decompose(x.shares1[1], placement_name=players[1]),
+        ],
+        shares2=[
+            bit_utils.ring_bit_decompose(x.shares2[0], placement_name=players[2]),
+            fill_bit_tensor(x.shares2[1].shape, 0, placement_name=players[2]),
+        ],
+        computation=x.computation,
+        context=x.context,
+    )
+
+    msb = replicated_binary_adder(rep_bit_left, rep_bit_right, setup, placement_name)[
+        -1
+    ]
+    return msb
+
+
 def replicated_abs(x: ReplicatedRingTensor, setup: ReplicatedSetup, placement_name):
     assert isinstance(x, ReplicatedRingTensor)
     assert isinstance(setup, ReplicatedSetup)
     # TODO(Dragos) Here add abs protocol
 
-    return x
+    msb = replicated_ring_msb(x, setup, placement_name)
+    # here need to insert share conversion
 
 
 # TODO(Dragos) these functions should be methods on the RingTensor/BitTensor type

@@ -35,3 +35,22 @@ class BitShapeOperation(BitOperation):
 @dataclass
 class BitSampleOperation(BitOperation):
     output_type: ValueType = BitTensorType()
+
+
+@dataclass
+class BitExtractOperation(BitOperation):
+    bit_idx: int
+    output_type: ValueType = BitTensorType()
+
+
+@dataclass
+class FillBitTensorOperation(BitOperation):
+    value: int
+    output_type: ValueType = BitTensorType()
+
+
+@dataclass
+class PrintBitTensorOperation(BitOperation):
+    prefix: str
+    suffix: str
+    output_type: ValueType = BitTensorType()
