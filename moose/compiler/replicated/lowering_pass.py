@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from math import log
 from typing import Optional
 from typing import Tuple
 
@@ -553,11 +554,29 @@ def replicated_dot(
     )
 
 
-def replicated_add(
+def replicated_ring_add(
     x: ReplicatedRingTensor, y: ReplicatedRingTensor, placement_name
 ) -> ReplicatedRingTensor:
     assert isinstance(x, ReplicatedRingTensor)
     assert isinstance(y, ReplicatedRingTensor)
+
+    return abstract_replicated_add(x, y, placement_name, ring_add, ReplicatedRingTensor)
+
+
+def replicated_bit_add(
+    x: ReplicatedBitTensor, y: ReplicatedBitTensor, placement_name
+) -> ReplicatedBitTensor:
+    assert isinstance(x, ReplicatedBitTensor)
+    assert isinstance(y, ReplicatedBitTensor)
+
+    return abstract_replicated_add(x, y, bit_xor, placement_name, ReplicatedBitTensor)
+
+
+def abstract_replicated_add(
+    x: ReplicatedTensor, y: ReplicatedTensor, Add, placement_name, out_type
+) -> ReplicatedTensor:
+    assert isinstance(x, ReplicatedTensor)
+    assert isinstance(y, ReplicatedTensor)
     assert x.computation == y.computation
     assert x.context == y.context
 
@@ -573,11 +592,11 @@ def replicated_add(
     z_shares = [None, None, None]
     for i in range(3):
         z_shares[i] = [
-            ring_add(x_shares[i][j], y_shares[i][j], placement_name=players[i])
+            Add(x_shares[i][j], y_shares[i][j], placement_name=players[i])
             for j in range(2)
         ]
 
-    return ReplicatedRingTensor(
+    return out_type(
         shares0=z_shares[0],
         shares1=z_shares[1],
         shares2=z_shares[2],
@@ -809,42 +828,82 @@ def ring_mean(ring_tensor_input, axis, precision, placement_name):
 
 # Kogge-Stone binary adder topology
 def replicated_binary_adder(
-    x: list(ReplicatedBitTensor),
-    y: list(ReplicatedBitTensor),
-    setup: ReplicatedSetup,
-    placement_name,
+    x, y, setup: ReplicatedSetup, placement_name,
 ):
-    def xor64(a, b):
-        assert len(a) == 64
-        assert len(b) == 64
 
-        return [replicated_bit_add(a[i], b[i]) for i in range(64)]
+    R = 64
+
+    assert len(x) == R
+    assert len(y) == R
+
+    def xor64(a, b):
+        assert len(a) == R
+        assert len(b) == R
+        return [replicated_bit_add(a[i], b[i], placement_name) for i in range(64)]
 
     def and64(a, b):
-        assert len(a) == 64
-        assert len(b) == 64
+        assert len(a) == R
+        assert len(b) == R
         return [
             replicated_bit_mul(a[i], b[i], setup, placement_name) for i in range(64)
         ]
 
-    R = 64
     N = int(log(R, 2))
     G = and64(x, y)
     P_store = xor64(x, y)
     P = P_store
 
+    shape = _get_shape(
+        x[0].shares0[0], placement_name
+    )  # extract the shape of the bit tensor
+    # this could probably be optimized to avoid sending shapes everytime we declare a tensor
+    zero_tensor = _create_constant_replicated_bit_tensor(shape, 0, placement_name)
+    one_tensor = _create_constant_replicated_bit_tensor(shape, 1, placement_name)
+
+    keep_masks = list()
     for i in range(N):
-        G1 = bit_utils.rotate_left(G, 2 ** i)
-        P1 = bit_utils.rotate_left(P, 2 ** i)
-        P1 = xor64(P1, keep_masks)
+        mask_int = (1 << (2 ** i)) - 1
+        mask_bits = list()
+        for j in range(64):
+            if (mask_int >> j) & 1:
+                mask_bits.append(one_tensor)
+            else:
+                mask_bits.append(zero_tensor)
+        keep_masks.append(mask_bits)
+
+    for i in range(N):
+        G1 = bit_utils.rotate_left(G, 2 ** i, zero_tensor)
+        P1 = bit_utils.rotate_left(P, 2 ** i, zero_tensor)
+        P1 = xor64(P1, keep_masks[i])
 
         G = xor64(G, and64(P, G1))
         P = and64(P, P1)
 
-    C = bit_utils.rotate_left(G, 1)
+    C = bit_utils.rotate_left(G, 1, zero_tensor)
     z = xor64(C, P_store)
 
     return z
+
+
+def _create_constant_replicated_bit_tensor(shape, bit_value, placement_name):
+    computation = shape.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+    assert 0 <= bit_value and bit_value <= 1
+
+    players = replicated_placement.player_names
+
+    x = [
+        fill_bit_tensor(shape, bit_value, placement_name=players[i])
+        for i in range(len(players))
+    ]
+    return ReplicatedBitTensor(
+        shares0=(x[0], x[0]),
+        shares1=(x[1], x[1]),
+        shares2=(x[2], x[2]),
+        computation=shape.computation,
+        context=shape.context,
+    )
 
 
 def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name):
@@ -868,24 +927,30 @@ def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placemen
     rep_bit_left = bit_utils.replicated_ring_to_bits(rep_ring_left, players)
 
     # transform x3 into boolean sharing
-    rep_bit_right = ReplicatedBitTensor(
-        shares0=tuple(
-            [
-                fill_bit_tensor(x.shares0[i].shape, 0, placement_name=players[0])
-                for i in range(2)
-            ]
-        ),
-        shares1=[
-            fill_bit_tensor(x.shares1[0].shape, 0, placement_name=players[1]),
-            bit_utils.ring_bit_decompose(x.shares1[1], placement_name=players[1]),
-        ],
-        shares2=[
-            bit_utils.ring_bit_decompose(x.shares2[0], placement_name=players[2]),
-            fill_bit_tensor(x.shares2[1].shape, 0, placement_name=players[2]),
-        ],
-        computation=x.computation,
-        context=x.context,
-    )
+    x3_on_1 = bit_utils.ring_bit_decompose(x.shares1[1], placement_name=players[1])
+    x3_on_2 = bit_utils.ring_bit_decompose(x.shares2[0], placement_name=players[2])
+    R = 64
+    rep_bit_right = [
+        ReplicatedBitTensor(
+            shares0=tuple(
+                [
+                    fill_bit_tensor(x.shares0[i].shape, 0, placement_name=players[0])
+                    for i in range(2)
+                ]
+            ),
+            shares1=[
+                fill_bit_tensor(x.shares1[0].shape, 0, placement_name=players[1]),
+                x3_on_1[k],
+            ],
+            shares2=[
+                x3_on_2[k],
+                fill_bit_tensor(x.shares2[1].shape, 0, placement_name=players[2]),
+            ],
+            computation=x.computation,
+            context=x.context,
+        )
+        for k in range(R)
+    ]
 
     msb = replicated_binary_adder(rep_bit_left, rep_bit_right, setup, placement_name)[
         -1

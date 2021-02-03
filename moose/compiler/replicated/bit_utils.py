@@ -17,9 +17,9 @@ def replicated_ring_to_bits(x: ReplicatedRingTensor, players):
     assert isinstance(x, ReplicatedRingTensor)
     ring_size = 64
 
-    b0 = [ring_bit_decompose(entry) for item in x.shares0]
-    b1 = [ring_bit_decompose(entry) for item in x.shares1]
-    b2 = [ring_bit_decompose(entry) for item in x.shares2]
+    b0 = [ring_bit_decompose(entry, players[0]) for entry in x.shares0]
+    b1 = [ring_bit_decompose(entry, players[1]) for entry in x.shares1]
+    b2 = [ring_bit_decompose(entry, players[2]) for entry in x.shares2]
     return [
         ReplicatedBitTensor(
             shares0=(b0[0][i], b0[1][i]),
@@ -30,3 +30,10 @@ def replicated_ring_to_bits(x: ReplicatedRingTensor, players):
         )
         for i in range(ring_size)
     ]
+
+
+def rotate_left(tensor_list, amount: int, null_tensor):
+    assert amount <= 64
+    bot = [null_tensor for i in range(amount)]  # zero the first half
+    top = [tensor_list[i] for i in range(64 - amount)]
+    return bot + top

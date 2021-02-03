@@ -98,6 +98,9 @@ def bit_xor(x: BitTensor, y: BitTensor, placement_name):
 
 
 def bit_and(x: BitTensor, y: BitTensor, placement_name):
+    assert x.computation == y.computation
+    assert x.context == y.context
+
     z_op = x.computation.add_operation(
         BitAndOperation(
             name=x.context.get_fresh_name("bit_and"),
