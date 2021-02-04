@@ -1,4 +1,5 @@
 use crypto::bit::BitTensor;
+use crypto::bit::{BitExtractor, SampleBit};
 use crypto::fixedpoint::{ring_decode, ring_encode, ring_mean};
 use crypto::prng::AesRng;
 use crypto::ring::{Dot, Ring64Tensor, Sample};
@@ -182,6 +183,33 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let b1 = BitTensor::from(x.to_owned_array());
         let b2 = BitTensor::from(y.to_owned_array());
         let res = b1 & b2;
+        bit_to_array(res).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_sample")]
+    fn bit_sample<'py>(
+        py: Python<'py>,
+        shape: Vec<usize>,
+        seed: &'py PyBytes,
+    ) -> &'py PyArrayDyn<u8> {
+        let b = BitTensor::sample_uniform(&shape, &seed.as_bytes());
+        bit_to_array(b).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_fill")]
+    fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
+        let res = BitTensor::fill(&shape, el);
+        bit_to_array(res).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_extract")]
+    fn bit_extract<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        bit_idx: usize,
+    ) -> &'py PyArrayDyn<u8> {
+        let x_ring = dynarray_to_ring64(&x);
+        let res = BitTensor::bit_extract(x_ring, bit_idx);
         bit_to_array(res).to_pyarray(py)
     }
 

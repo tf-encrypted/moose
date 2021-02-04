@@ -958,13 +958,26 @@ def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placemen
     return msb
 
 
+def b2a_conversion(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name):
+    def naive_conversion():
+        return ReplicatedRingTensor(
+            shares0=x.shares0,
+            shares1=x.shares1,
+            shares2=x.shares2,
+            computation=x.computation,
+            context=x.context,
+        )
+
+    return naive_conversion()
+
+
 def replicated_abs(x: ReplicatedRingTensor, setup: ReplicatedSetup, placement_name):
     assert isinstance(x, ReplicatedRingTensor)
     assert isinstance(setup, ReplicatedSetup)
-    # TODO(Dragos) Here add abs protocol
 
     msb = replicated_ring_msb(x, setup, placement_name)
     # here need to insert share conversion
+    return b2a_conversion(msb, setup, placement_name)
 
 
 # TODO(Dragos) these functions should be methods on the RingTensor/BitTensor type

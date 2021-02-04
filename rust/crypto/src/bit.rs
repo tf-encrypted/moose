@@ -4,15 +4,16 @@ use std::convert::TryInto;
 use std::ops::{BitAnd, BitXor};
 
 use crate::prng::{AesRng, PRNGSeed};
+use crate::ring::Ring64Tensor;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>);
 
-pub trait Sample {
+pub trait SampleBit {
     fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
 }
 
-impl Sample for BitTensor {
+impl SampleBit for BitTensor {
     fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
         let seed: PRNGSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
@@ -20,6 +21,18 @@ impl Sample for BitTensor {
         let values: Vec<_> = (0..length).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape);
         BitTensor(Array::from_shape_vec(ix, values).unwrap())
+    }
+}
+
+pub trait BitExtractor {
+    fn bit_extract(x: Ring64Tensor, bit_idx: usize) -> Self;
+}
+
+impl BitExtractor for BitTensor {
+    fn bit_extract(x: Ring64Tensor, bit_idx: usize) -> Self {
+        let temp = x >> bit_idx;
+        let lsb = temp.0.mapv(|ai| (ai.0 & 1) as u8);
+        BitTensor::from(lsb)
     }
 }
 
@@ -35,12 +48,6 @@ impl From<ArrayD<u8>> for BitTensor {
         BitTensor(wrapped)
     }
 }
-
-// impl From<&BitTensor> for ArrayD<u8> {
-//     fn from(r: &BitTensor) -> ArrayD<u8> {
-//         r.0.mapv(|element| element as u8)
-//     }
-// }
 
 impl From<Vec<u8>> for BitTensor {
     fn from(v: Vec<u8>) -> BitTensor {
