@@ -96,6 +96,22 @@ mod tests {
     }
 
     #[test]
+    fn bit_extract() {
+        let shape = 5;
+        let value = 7;
+
+        let r0 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 0);
+        assert_eq!(BitTensor::fill(&[shape], 1), r0,);
+
+        let r1 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 1);
+        assert_eq!(BitTensor::fill(&[shape], 1), r1,);
+        let r2 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 2);
+        assert_eq!(BitTensor::fill(&[shape], 1), r2,);
+        let r3 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 3);
+        assert_eq!(BitTensor::fill(&[shape], 0), r3,)
+    }
+
+    #[test]
     fn bit_ops() {
         let shape = 5;
 

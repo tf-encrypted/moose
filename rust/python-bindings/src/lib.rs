@@ -213,6 +213,12 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         bit_to_array(res).to_pyarray(py)
     }
 
+    #[pyfn(m, "bit_shape")]
+    fn bit_shape<'py>(py: Python<'py>, x: PyReadonlyArrayDyn<u8>) -> &'py PyList {
+        let shape: &[usize] = x.shape();
+        PyList::new(py, shape.iter())
+    }
+
     #[pyfn(m, "fixedpoint_encode")]
     fn fixedpoint_encode<'py>(
         py: Python<'py>,
