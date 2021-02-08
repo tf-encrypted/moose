@@ -3,6 +3,7 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
+import moose.computation.standard as standard_ops
 from moose.compiler.primitives import Seed
 from moose.compiler.ring import RingTensor
 from moose.compiler.standard import Shape
@@ -15,6 +16,7 @@ from moose.computation.bit import BitShapeOperation
 from moose.computation.bit import BitXorOperation
 from moose.computation.bit import FillBitTensorOperation
 from moose.computation.bit import PrintBitTensorOperation
+from moose.computation.bit import RingInjectOperation
 
 
 @dataclass
@@ -74,7 +76,6 @@ def bit_sample(
             name=shape.context.get_fresh_name("bit_sample"),
             placement_name=placement_name,
             inputs={"shape": shape.op.name, "seed": seed.op.name},
-            max_value=max_value,
         )
     )
     return BitTensor(
@@ -126,6 +127,24 @@ def bit_extract(tensor: RingTensor, bit_idx, placement_name):
         )
     )
     return BitTensor(
+        op=op,
+        computation=tensor.computation,
+        shape=tensor.shape,
+        context=tensor.context,
+    )
+
+
+def ring_inject(tensor: BitTensor, bit_idx, placement_name):
+    assert isinstance(tensor, BitTensor)
+    op = tensor.computation.add_operation(
+        RingInjectOperation(
+            name=tensor.context.get_fresh_name("bit_extract"),
+            placement_name=placement_name,
+            inputs={"tensor": tensor.op.name},
+            bit_idx=bit_idx,
+        )
+    )
+    return RingTensor(
         op=op,
         computation=tensor.computation,
         shape=tensor.shape,

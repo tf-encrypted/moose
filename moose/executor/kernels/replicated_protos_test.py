@@ -347,7 +347,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         alice, bob, carole, rep = _setup_replicated_computation(comp)
 
-        x = np.array([[1, 2], [3, 4]], dtype=np.float64)
+        x = np.array([10], dtype=np.float64)
 
         comp.add_operation(
             standard_dialect.ConstantOperation(

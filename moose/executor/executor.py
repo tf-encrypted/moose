@@ -66,9 +66,11 @@ class AsyncExecutor:
             bit_ops.BitXorOperation: bit_kernels.BitXorKernel(),
             bit_ops.BitAndOperation: bit_kernels.BitAndKernel(),
             bit_ops.BitExtractOperation: bit_kernels.BitExtractKernel(),
+            bit_ops.RingInjectOperation: bit_kernels.RingInjectKernel(),
             bit_ops.BitSampleOperation: bit_kernels.BitSampleKernel(),
             bit_ops.FillBitTensorOperation: bit_kernels.FillBitTensorKernel(),
-            bit_ops.PrintBitTensorOperation: ring_kernels.PrintRingTensorKernel(),  # this shouldn't be a bug, maybe rename the printRingTensorKernel to something else?
+            bit_ops.BitShapeOperation: bit_kernels.BitShapeKernel(),
+            bit_ops.PrintBitTensorOperation: bit_kernels.PrintBitTensorKernel(),
             primitives_ops.DeriveSeedOperation: primitives_kernels.DeriveSeedKernel(),
             primitives_ops.SampleKeyOperation: primitives_kernels.SampleKeyKernel(),
             standard_ops.LoadOperation: standard_kernels.LoadKernel(storage),
