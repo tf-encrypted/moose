@@ -8,7 +8,7 @@ test_requires = install_requires + ["pytest", "absl-py"]
 
 setup(
     name="pymoose",
-    version="0.1.1",  # NOTE: auto-updated during release
+    version="0.1.2-alpha.0",  # NOTE: auto-updated during release
     description="Python-bindings for Moose",
     rust_extensions=[RustExtension("pymoose.moose_kernels", "./Cargo.toml",)],
     install_requires=install_requires,
