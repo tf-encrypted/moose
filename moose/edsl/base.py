@@ -75,6 +75,7 @@ class Argument:
 class Expression:
     placement: PlacementExpression
     inputs: List
+    datatype: Optional[Any] = None
 
     def __hash__(self):
         return id(self)
