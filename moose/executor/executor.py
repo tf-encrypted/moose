@@ -139,7 +139,9 @@ class AsyncExecutor:
                 )
                 return
             # execute kernels
-            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            done, pending = await asyncio.wait(
+                tasks, return_when=asyncio.FIRST_EXCEPTION
+            )
             # address any errors that may have occurred
             except_tasks = [task for task in done if task.exception()]
             exceptions = []
@@ -147,6 +149,14 @@ class AsyncExecutor:
                 exceptions.append(t.exception())
                 get_logger().error(f"Task {t.get_name()} caused an exception")
                 t.print_stack()
+
+            if len(pending) > 0:
+                get_logger().warn(
+                    "There was probably an error; cancelling all pending tasks"
+                )
+                for t in pending:
+                    t.cancel()
+
             if len(exceptions) > 0:
                 raise Exception(
                     f"One or more errors occurred in '{placement}: {exceptions}'"
