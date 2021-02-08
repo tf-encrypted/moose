@@ -13,7 +13,7 @@ class Kernel:
                 f" kernel:{self.__class__.__name__},"
                 f" op:{op},"
                 f" session_id:{session.session_id},"
-                f" inputs:{concrete_kwargs}"
+                f" inputs:{concrete_kwargs.keys()}"
             )
             concrete_output = self.execute_synchronous_block(
                 op=op, session=session, **concrete_kwargs
@@ -23,7 +23,6 @@ class Kernel:
                 f" kernel:{self.__class__.__name__},"
                 f" op:{op},"
                 f" session_id:{session.session_id},"
-                f" output:{concrete_output}"
             )
             output.set_result(concrete_output)
 

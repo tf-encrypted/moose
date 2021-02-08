@@ -206,7 +206,6 @@ class LoadKernel(Kernel):
                 f" kernel:{self.__class__.__name__},"
                 f" op:{op},"
                 f" session_id:{session.session_id},"
-                f" output:{value}"
             )
             output.set_result(value)
 
@@ -226,7 +225,6 @@ class SaveKernel(Kernel):
                 f" op:{op},"
                 f" session_id:{session.session_id},"
                 f" key:{key},"
-                f" value:{value}"
             )
             await self.store.save(
                 session_id=session.session_id, key=key, value=value,
