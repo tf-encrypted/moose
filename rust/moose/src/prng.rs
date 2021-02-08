@@ -17,7 +17,7 @@
 //! # Usage example for already seeded PRNG
 //! ```
 //! use rand::{RngCore, SeedableRng};
-//! use crypto::prng::{AesRng};
+//! use moose::prng::{AesRng};
 //!
 //! // initialize PRNG seed using sodiumoxide entropy pool
 //! let mut rng: AesRng = AesRng::from_random_seed();
@@ -33,7 +33,7 @@
 //!
 //! # Usage example for setting manually the PRNG seed
 //! ```
-//! use crypto::prng::{AesRng, SEED_SIZE};
+//! use moose::prng::{AesRng, SEED_SIZE};
 //! use rand::{RngCore, SeedableRng};
 //! // seed is full of zeroes here, note this would be insecure
 //! // in an actual implementation

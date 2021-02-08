@@ -1,7 +1,5 @@
 [workspace]
 members = [
-  "cli",
-  "crypto",
-  "engine",
-  "python-bindings",
+  "moose",
+  "pymoose",
 ]
