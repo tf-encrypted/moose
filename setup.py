@@ -6,7 +6,7 @@ with open("README.md", "r", encoding="utf8") as fh:
 
 setuptools.setup(
     name="moose",
-    version="0.0.0",
+    version="0.1.1-alpha.0",  # NOTE: auto-updated during release
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
     install_requires=[],

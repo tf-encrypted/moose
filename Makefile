@@ -33,4 +33,7 @@ clean:
 
 ci: fmt lint test
 
-.PHONY: build pydep pylib install fmt lint test ci
+release: ci
+	cd rust && cargo release --workspace --skip-publish
+
+.PHONY: build pydep pylib install fmt lint test ci release
