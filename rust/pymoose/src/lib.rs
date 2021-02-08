@@ -1,7 +1,7 @@
-use crypto::fixedpoint::{ring_decode, ring_encode, ring_mean};
-use crypto::prng::AesRng;
-use crypto::ring::{Dot, Ring64Tensor, Sample};
-use crypto::utils;
+use moose::fixedpoint::{ring_decode, ring_encode, ring_mean};
+use moose::prng::AesRng;
+use moose::ring::{Dot, Ring64Tensor, Sample};
+use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};

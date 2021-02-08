@@ -8,11 +8,11 @@ build:
 
 pydep:
 	pip install -r requirements-dev.txt
-	pip install -r rust/python-bindings/requirements-dev.txt
+	pip install -r rust/pymoose/requirements-dev.txt
 
 pylib:
 	pip install -e .
-	pip install -e rust/python-bindings
+	pip install -e rust/pymoose
 
 install: pydep pylib
 

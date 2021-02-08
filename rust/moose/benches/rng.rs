@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use crypto::prng::{AesRng, SEED_SIZE};
+use moose::prng::{AesRng, SEED_SIZE};
 use rand::{RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
