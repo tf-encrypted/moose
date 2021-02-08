@@ -9,6 +9,7 @@ from moose_kernels import derive_seed
 from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
+from moose_kernels import ring_inject
 from moose_kernels import ring_mul
 from moose_kernels import ring_sample
 from moose_kernels import ring_shape
@@ -128,6 +129,17 @@ class BitTensorOps(parameterized.TestCase):
 
         np.testing.assert_array_equal(x & y, bit_and(x, y))
         np.testing.assert_array_equal(x ^ y, bit_xor(x, y))
+
+    @parameterized.parameters(
+        ([0]), ([1]), [[0, 1, 1]],
+    )
+    def test_ring_inject(self, a):
+        x = np.array(a, dtype=np.uint8)
+        x_ring = ring_inject(x, 0)
+
+        np.testing.assert_array_equal(x, ring_inject(x, 0))
+        np.testing.assert_array_equal(x << 1, ring_inject(x, 1))
+        np.testing.assert_array_equal(x << 2, ring_inject(x, 2))
 
 
 if __name__ == "__main__":

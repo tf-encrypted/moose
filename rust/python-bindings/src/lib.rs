@@ -2,7 +2,7 @@ use crypto::bit::BitTensor;
 use crypto::bit::{BitExtractor, SampleBit};
 use crypto::fixedpoint::{ring_decode, ring_encode, ring_mean};
 use crypto::prng::AesRng;
-use crypto::ring::{Dot, Ring64Tensor, Sample};
+use crypto::ring::{BitInjector, Dot, Ring64Tensor, Sample};
 use crypto::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
@@ -211,6 +211,17 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let x_ring = dynarray_to_ring64(&x);
         let res = BitTensor::bit_extract(x_ring, bit_idx);
         bit_to_array(res).to_pyarray(py)
+    }
+
+    #[pyfn(m, "ring_inject")]
+    fn ring_inject<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u8>,
+        bit_idx: usize,
+    ) -> &'py PyArrayDyn<u64> {
+        let b = BitTensor::from(x.to_owned_array());
+        let res = Ring64Tensor::bit_inject(b, bit_idx);
+        ring64_to_array(res).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_shape")]

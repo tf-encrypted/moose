@@ -6,6 +6,8 @@ use std::ops::{Add, Mul, Shl, Shr, Sub};
 
 use crate::prng::{AesRng, PRNGSeed};
 
+use crate::bit::BitTensor;
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
 
@@ -38,6 +40,17 @@ impl Sample for Ring64Tensor {
 impl Ring64Tensor {
     pub fn fill(shape: &[usize], el: u64) -> Ring64Tensor {
         Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
+    }
+}
+
+pub trait BitInjector {
+    fn bit_inject(x: BitTensor, bit_idx: usize) -> Self;
+}
+
+impl BitInjector for Ring64Tensor {
+    fn bit_inject(x: BitTensor, bit_idx: usize) -> Self {
+        let ring_rep = x.0.mapv(|ai| ((ai as u64) << bit_idx));
+        Ring64Tensor::from(ring_rep)
     }
 }
 
