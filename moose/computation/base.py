@@ -30,6 +30,7 @@ class UnknownType(ValueType):
 class Operation:
     name: str
     inputs: Dict[str, str]
+    attributes: Dict[str, Any]
     placement_name: str
 
     @classmethod
