@@ -1,1 +1,1 @@
-from .moose_kernels import *  # noqa
+from pymoose.moose_kernels import *  # noqa
