@@ -1,45 +1,39 @@
 import logging
 
-from moose.edsl import add
-from moose.edsl import computation
-from moose.edsl import constant
-from moose.edsl import host_placement
-from moose.edsl import run_program
-from moose.edsl import save
-from moose.edsl import trace
+import moose as moo
 from moose.logger import get_logger
 from moose.testing import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 
-inputter0 = host_placement(name="inputter0")
-inputter1 = host_placement(name="inputter1")
-aggregator = host_placement(name="aggregator")
-outputter = host_placement(name="outputter")
+inputter0 = moo.host_placement(name="inputter0")
+inputter1 = moo.host_placement(name="inputter1")
+aggregator = moo.host_placement(name="aggregator")
+outputter = moo.host_placement(name="outputter")
 
 
-@computation
+@moo.computation
 def my_comp():
 
     with inputter0:
-        c0_0 = constant(2)
-        c1_0 = constant(3)
-        x0 = run_program("python", ["local_computation.py"], c0_0, c1_0)
+        c0_0 = moo.constant(2)
+        c1_0 = moo.constant(3)
+        x0 = moo.run_program("python", ["local_computation.py"], c0_0, c1_0)
 
     with inputter1:
-        c0_1 = constant(3)
-        x1 = run_program("python", ["local_computation.py"], c0_1)
+        c0_1 = moo.constant(3)
+        x1 = moo.run_program("python", ["local_computation.py"], c0_1)
 
     with aggregator:
-        y = add(x0, x1)
+        y = moo.add(x0, x1)
 
     with outputter:
-        res = save("y", y)
+        res = moo.save("y", y)
 
     return res
 
 
-concrete_comp = trace(my_comp)
+concrete_comp = moo.trace(my_comp)
 
 if __name__ == "__main__":
 

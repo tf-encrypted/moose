@@ -1,15 +1,8 @@
 import argparse
 import logging
 
+import moose as moo
 from moose.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.edsl import add
-from moose.edsl import computation
-from moose.edsl import constant
-from moose.edsl import function
-from moose.edsl import host_placement
-from moose.edsl import mpspdz_placement
-from moose.edsl import save
-from moose.edsl import trace
 from moose.logger import get_logger
 from moose.testing import TestRuntime
 
@@ -21,9 +14,9 @@ args = parser.parse_args()
 if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
-inputter0 = host_placement(name="inputter0")
-inputter1 = host_placement(name="inputter1")
-outputter = host_placement(name="outputter")
+inputter0 = moo.host_placement(name="inputter0")
+inputter1 = moo.host_placement(name="inputter1")
+outputter = moo.host_placement(name="outputter")
 
 # NOTE:
 # All players must be listed in the MP-SPDZ placement, even if they only send
@@ -31,23 +24,23 @@ outputter = host_placement(name="outputter")
 # setup for the placement needs to know ahead of time who to generate key pairs
 # for. In the near future this is ideally something that we can infer automati-
 # cally during compilation from logical to physical computation.
-mpspdz = mpspdz_placement(name="mpspdz", players=[inputter0, inputter1, outputter])
+mpspdz = moo.mpspdz_placement(name="mpspdz", players=[inputter0, inputter1, outputter])
 
 
-@function
+@moo.function
 def my_function(x, y, z):
     return x * y + z
 
 
-@computation
+@moo.computation
 def my_comp():
 
     with inputter0:
-        x = constant(1)
-        z = constant(3)
+        x = moo.constant(1)
+        z = moo.constant(3)
 
     with inputter1:
-        y = constant(2)
+        y = moo.constant(2)
 
     with mpspdz:
         # Note that this illustrates one issue with function calls:
@@ -68,12 +61,12 @@ def my_comp():
         w = my_function(x, y, z, output_placements=[outputter])
 
     with outputter:
-        res = save("v", add(v, w))
+        res = moo.save("v", moo.add(v, w))
 
     return res
 
 
-concrete_comp = trace(my_comp)
+concrete_comp = moo.trace(my_comp)
 
 if __name__ == "__main__":
     if args.runtime == "test":

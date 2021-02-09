@@ -9,14 +9,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.standard import ShapeType
 from moose.computation.standard import TensorType
-from moose.edsl.base import add
-from moose.edsl.base import computation
-from moose.edsl.base import constant
-from moose.edsl.base import div
-from moose.edsl.base import host_placement
-from moose.edsl.base import mul
-from moose.edsl.base import save
-from moose.edsl.base import sub
+from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
 from moose.testing import run_test_computation
@@ -24,13 +17,13 @@ from moose.testing import run_test_computation
 
 class StandardKernelTest(parameterized.TestCase):
     def test_constant(self):
-        player0 = host_placement("player0")
-        player1 = host_placement("player1")
+        player0 = edsl.host_placement("player0")
+        player1 = edsl.host_placement("player1")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            out = constant(5, placement=player0)
-            res = save("result", out, placement=player1)
+            out = edsl.constant(5, placement=player0)
+            res = edsl.save("result", out, placement=player1)
             return res
 
         comp_result = run_test_computation(trace(my_comp), [player0, player1])
@@ -154,20 +147,22 @@ class StandardKernelTest(parameterized.TestCase):
 
     @parameterized.parameters(
         {"op": op, "expected_result": expected_result}
-        for (op, expected_result) in zip([add, sub, mul, div], [7, 3, 10, 2.5])
+        for (op, expected_result) in zip(
+            [edsl.add, edsl.sub, edsl.mul, edsl.div], [7, 3, 10, 2.5]
+        )
     )
     def test_op(self, op, expected_result):
-        player0 = host_placement("player0")
-        player1 = host_placement("player1")
+        player0 = edsl.host_placement("player0")
+        player1 = edsl.host_placement("player1")
 
-        @computation
+        @edsl.computation
         def my_comp():
             out = op(
-                constant(5, placement=player0),
-                constant(2, placement=player0),
+                edsl.constant(5, placement=player0),
+                edsl.constant(2, placement=player0),
                 placement=player0,
             )
-            res = save("result", out, placement=player1)
+            res = edsl.save("result", out, placement=player1)
             return res
 
         comp_result = run_test_computation(trace(my_comp), [player0, player1])
