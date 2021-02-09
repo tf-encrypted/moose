@@ -132,8 +132,6 @@ class SqueezeExpression(Expression):
 
 @dataclass
 class OnesExpression(Expression):
-    dtype: Optional[Union[float, np.float64, int, np.int64]]
-
     def __hash__(self):
         return id(self)
 
@@ -184,8 +182,6 @@ class Atleast2DExpression(Expression):
 
 @dataclass
 class LoadExpression(Expression):
-    dtype: Optional
-
     def __hash__(self):
         return id(self)
 
@@ -243,49 +239,74 @@ class SliceExpression(Expression):
         return id(self)
 
 
-def concatenate(arrays, axis=0, placement=None):
+def concatenate(arrays, axis=0, dtype=None, placement=None):
     placement = placement or get_current_placement()
-    return ConcatenateExpression(placement=placement, inputs=arrays, axis=axis)
+    return ConcatenateExpression(placement=placement, inputs=arrays, axis=axis, datatype=dtype)
 
 
-def constant(value, placement=None):
+def constant(value, dtype=None, placement=None):
     placement = placement or get_current_placement()
-    return ConstantExpression(placement=placement, inputs=[], value=value)
+    return ConstantExpression(placement=placement, inputs=[], value=value, datatype=dtype)
 
 
-def add(lhs, rhs, placement=None):
+def add(lhs, rhs, dtype=None, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(op_name="add", placement=placement, inputs=[lhs, rhs])
+
+    if dtype is None:
+        assert lhs.datatype == rhs.datatype
+        dtype = lhs.datatype
+
+    return BinaryOpExpression(op_name="add", placement=placement, inputs=[lhs, rhs], datatype=dtype)
 
 
-def sub(lhs, rhs, placement=None):
+def sub(lhs, rhs, dtype=None, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(op_name="sub", placement=placement, inputs=[lhs, rhs])
+
+    if dtype is None:
+        assert lhs.datatype == rhs.datatype
+        dtype = lhs.datatype
+
+    return BinaryOpExpression(op_name="sub", placement=placement, inputs=[lhs, rhs], datatype=dtype)
 
 
 def mul(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(op_name="mul", placement=placement, inputs=[lhs, rhs])
+
+    if dtype is None:
+        assert lhs.datatype == rhs.datatype
+        dtype = lhs.datatype
+
+    return BinaryOpExpression(op_name="mul", placement=placement, inputs=[lhs, rhs], datatype=dtype)
 
 
-def dot(lhs, rhs, placement=None):
+def dot(lhs, rhs, dtype=None, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(op_name="dot", placement=placement, inputs=[lhs, rhs])
+
+    if dtype is None:
+        assert lhs.datatype == rhs.datatype
+        dtype = lhs.datatype
+
+    return BinaryOpExpression(op_name="dot", placement=placement, inputs=[lhs, rhs], datatype=dtype)
 
 
-def div(lhs, rhs, placement=None):
+def div(lhs, rhs, dtype=None, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(op_name="div", placement=placement, inputs=[lhs, rhs])
+
+    if dtype is None:
+        assert lhs.datatype == rhs.datatype
+        dtype = lhs.datatype
+
+    return BinaryOpExpression(op_name="div", placement=placement, inputs=[lhs, rhs], datatype=dtype)
 
 
 def inverse(x, placement=None):
@@ -309,25 +330,38 @@ def squeeze(x, axis=None, placement=None):
 def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
-    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype)
+    # NOTE Do we use dtype attribute or existing datatype on Expression
+    return OnesExpression(placement=placement, inputs=[shape], datatype=dtype)
 
 
-def square(x, placement=None):
+def square(x, dtype=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(op_name="mul", placement=placement, inputs=[x, x])
+
+    if dtype is None:
+        dtype = x.datatype
+
+    return BinaryOpExpression(op_name="mul", placement=placement, inputs=[x, x], datatype=dtype)
 
 
-def sum(x, axis=None, placement=None):
+def sum(x, axis=None, dtype=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return SumExpression(placement=placement, inputs=[x], axis=axis)
+
+    if dtype is None:
+        dtype = x.datatype
+
+    return SumExpression(placement=placement, inputs=[x], axis=axis, datatype=dtype)
 
 
-def mean(x, axis=None, placement=None):
+def mean(x, axis=None, dtype=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return MeanExpression(placement=placement, inputs=[x], axis=axis)
+
+    if dtype is None:
+        dtype = x.datatype
+
+    return MeanExpression(placement=placement, inputs=[x], axis=axis, datatype=dtype)
 
 
 def shape(x, placement=None):
@@ -387,7 +421,8 @@ def load(key, dtype=None, placement=None):
             f"Function 'edsl.load' encountered argument of type {type(key)}; "
             "expected one of str, ConstantExpression, or ArgumentExpression."
         )
-    return LoadExpression(placement=placement, inputs=[key], dtype=dtype)
+    # NOTE Do we use dtype attribute or existing datatype on Expression
+    return LoadExpression(placement=placement, inputs=[key], datatype=dtype)
 
 
 def save(key, value, placement=None):
