@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from functools import partial
 from functools import wraps
-from typing import Any
 from typing import Callable
 from typing import List
 from typing import Optional
@@ -10,7 +9,16 @@ from typing import Union
 
 import numpy as np
 
+from moose import dtypes
+
 CURRENT_PLACEMENT: List = []
+_NUMPY_DTYPES_MAP = {
+    np.int32: dtypes.int32,
+    np.int64: dtypes.int64,
+    np.float32: dtypes.float32,
+    np.float64: dtypes.float64,
+    np.str: dtypes.string,
+}
 
 
 @dataclass
@@ -68,14 +76,14 @@ def get_current_placement():
 @dataclass
 class Argument:
     placement: PlacementExpression
-    datatype: Optional[Any] = None
+    dtype: Optional[dtypes.DType] = None
 
 
 @dataclass
 class Expression:
     placement: PlacementExpression
     inputs: List
-    datatype: Optional[Any] = None
+    dtype: Optional[dtypes.DType] = None
 
     def __hash__(self):
         return id(self)
@@ -84,7 +92,7 @@ class Expression:
 @dataclass
 class ArgumentExpression(Expression):
     arg_name: str
-    datatype: str
+    dtype: Optional[dtypes.DType] = None
 
     def __hash__(self):
         return id(self)
@@ -241,12 +249,28 @@ class SliceExpression(Expression):
 
 def concatenate(arrays, axis=0, dtype=None, placement=None):
     placement = placement or get_current_placement()
-    return ConcatenateExpression(placement=placement, inputs=arrays, axis=axis, datatype=dtype)
+    return ConcatenateExpression(
+        placement=placement, inputs=arrays, axis=axis, dtype=dtype
+    )
 
 
 def constant(value, dtype=None, placement=None):
     placement = placement or get_current_placement()
-    return ConstantExpression(placement=placement, inputs=[], value=value, datatype=dtype)
+    if isinstance(value, np.ndarray):
+        moose_dtype = _NUMPY_DTYPES_MAP.get(value.dtype, None)
+        if moose_dtype is None:
+            raise NotImplementedError(
+                f"Arrays of dtype {value.dtype} not supported as graph constants."
+            )
+        if dtype is not None and moose_dtype != dtype:
+            raise ValueError(
+                f"Constant value of dtype f{value.dtype} does not match "
+                "supplied dtype argument: {dtype}."
+            )
+        elif dtype is None:
+            dtype = moose_dtype
+
+    return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
 
 
 def add(lhs, rhs, dtype=None, placement=None):
@@ -255,10 +279,12 @@ def add(lhs, rhs, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
-        assert lhs.datatype == rhs.datatype
-        dtype = lhs.datatype
+        assert lhs.dtype == rhs.dtype
+        dtype = lhs.dtype
 
-    return BinaryOpExpression(op_name="add", placement=placement, inputs=[lhs, rhs], datatype=dtype)
+    return BinaryOpExpression(
+        op_name="add", placement=placement, inputs=[lhs, rhs], dtype=dtype
+    )
 
 
 def sub(lhs, rhs, dtype=None, placement=None):
@@ -267,22 +293,26 @@ def sub(lhs, rhs, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
-        assert lhs.datatype == rhs.datatype
-        dtype = lhs.datatype
+        assert lhs.dtype == rhs.dtype
+        dtype = lhs.dtype
 
-    return BinaryOpExpression(op_name="sub", placement=placement, inputs=[lhs, rhs], datatype=dtype)
+    return BinaryOpExpression(
+        op_name="sub", placement=placement, inputs=[lhs, rhs], dtype=dtype
+    )
 
 
-def mul(lhs, rhs, placement=None):
+def mul(lhs, rhs, dtype=None, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
 
     if dtype is None:
-        assert lhs.datatype == rhs.datatype
-        dtype = lhs.datatype
+        assert lhs.dtype == rhs.dtype
+        dtype = lhs.dtype
 
-    return BinaryOpExpression(op_name="mul", placement=placement, inputs=[lhs, rhs], datatype=dtype)
+    return BinaryOpExpression(
+        op_name="mul", placement=placement, inputs=[lhs, rhs], dtype=dtype
+    )
 
 
 def dot(lhs, rhs, dtype=None, placement=None):
@@ -291,10 +321,12 @@ def dot(lhs, rhs, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
-        assert lhs.datatype == rhs.datatype
-        dtype = lhs.datatype
+        assert lhs.dtype == rhs.dtype
+        dtype = lhs.dtype
 
-    return BinaryOpExpression(op_name="dot", placement=placement, inputs=[lhs, rhs], datatype=dtype)
+    return BinaryOpExpression(
+        op_name="dot", placement=placement, inputs=[lhs, rhs], dtype=dtype
+    )
 
 
 def div(lhs, rhs, dtype=None, placement=None):
@@ -303,35 +335,43 @@ def div(lhs, rhs, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
-        assert lhs.datatype == rhs.datatype
-        dtype = lhs.datatype
+        assert lhs.dtype == rhs.dtype
+        dtype = lhs.dtype
 
-    return BinaryOpExpression(op_name="div", placement=placement, inputs=[lhs, rhs], datatype=dtype)
+    return BinaryOpExpression(
+        op_name="div", placement=placement, inputs=[lhs, rhs], dtype=dtype
+    )
 
 
 def inverse(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return InverseExpression(placement=placement, inputs=[x])
+    dtype = x.dtype
+    if dtype not in [dtypes.float32, dtypes.float64]:
+        raise ValueError(
+            "moose.inverse operation only supports arguments of type float32 or float64."
+        )
+    return InverseExpression(placement=placement, inputs=[x], dtype=x.dtype)
 
 
 def expand_dims(x, axis, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return ExpandDimsExpression(placement=placement, inputs=[x], axis=axis)
+    return ExpandDimsExpression(
+        placement=placement, inputs=[x], axis=axis, dtype=x.dtype
+    )
 
 
 def squeeze(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return SqueezeExpression(placement=placement, inputs=[x], axis=axis)
+    return SqueezeExpression(placement=placement, inputs=[x], axis=axis, dtype=x.dtype)
 
 
 def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
-    # NOTE Do we use dtype attribute or existing datatype on Expression
-    return OnesExpression(placement=placement, inputs=[shape], datatype=dtype)
+    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype)
 
 
 def square(x, dtype=None, placement=None):
@@ -339,9 +379,11 @@ def square(x, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
-        dtype = x.datatype
+        dtype = x.dtype
 
-    return BinaryOpExpression(op_name="mul", placement=placement, inputs=[x, x], datatype=dtype)
+    return BinaryOpExpression(
+        op_name="mul", placement=placement, inputs=[x, x], dtype=dtype
+    )
 
 
 def sum(x, axis=None, dtype=None, placement=None):
@@ -349,9 +391,9 @@ def sum(x, axis=None, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
-        dtype = x.datatype
+        dtype = x.dtype
 
-    return SumExpression(placement=placement, inputs=[x], axis=axis, datatype=dtype)
+    return SumExpression(placement=placement, inputs=[x], axis=axis, dtype=dtype)
 
 
 def mean(x, axis=None, dtype=None, placement=None):
@@ -359,15 +401,15 @@ def mean(x, axis=None, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
-        dtype = x.datatype
+        dtype = x.dtype
 
-    return MeanExpression(placement=placement, inputs=[x], axis=axis, datatype=dtype)
+    return MeanExpression(placement=placement, inputs=[x], axis=axis, dtype=dtype)
 
 
 def shape(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return ShapeExpression(placement=placement, inputs=[x])
+    return ShapeExpression(placement=placement, inputs=[x], dtype=None)
 
 
 def slice(x, begin, end, placement=None):
@@ -375,20 +417,27 @@ def slice(x, begin, end, placement=None):
     assert isinstance(begin, int)
     assert isinstance(end, int)
     placement = placement or get_current_placement()
-    return SliceExpression(placement=placement, inputs=[x], begin=begin, end=end)
+    return SliceExpression(
+        placement=placement, inputs=[x], begin=begin, end=end, dtype=x.dtype
+    )
 
 
 def transpose(x, axes=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return TransposeExpression(placement=placement, inputs=[x], axes=axes)
+    return TransposeExpression(
+        placement=placement, inputs=[x], axes=axes, dtype=x.dtype
+    )
 
 
 def atleast_2d(x, to_column_vector=False, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return Atleast2DExpression(
-        placement=placement, inputs=[x], to_column_vector=to_column_vector
+        placement=placement,
+        inputs=[x],
+        to_column_vector=to_column_vector,
+        dtype=x.dtype,
     )
 
 
@@ -398,7 +447,7 @@ def reshape(x, shape, placement=None):
         shape = constant(shape, placement=placement)
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
-    return ReshapeExpression(placement=placement, inputs=[x, shape])
+    return ReshapeExpression(placement=placement, inputs=[x, shape], dtype=x.dtype)
 
 
 def abs(x, placement=None):
@@ -410,37 +459,42 @@ def abs(x, placement=None):
 def load(key, dtype=None, placement=None):
     placement = placement or get_current_placement()
     if isinstance(key, str):
-        key = constant(key, placement=placement)
-    elif isinstance(key, Argument) and key.datatype not in [str, None]:
+        if dtype is not None or dtype != dtypes.string:
+            raise ValueError(
+                f"Dtype {dtype} given in load operation does not match `key` argument "
+                "of type `str`."
+            )
+        dtype = dtype or dtypes.string
+        key = constant(key, placement=placement, dtype=dtype)
+    elif isinstance(key, Argument) and key.dtype not in [str, None]:
         raise ValueError(
-            f"Function 'edsl.load' encountered argument of datatype {key.datatype}; "
-            "expected datatype 'str'."
+            f"Function 'edsl.load' encountered argument of dtype {key.dtype}; "
+            "expected dtype 'string'."
         )
     elif not isinstance(key, Expression):
         raise ValueError(
             f"Function 'edsl.load' encountered argument of type {type(key)}; "
-            "expected one of str, ConstantExpression, or ArgumentExpression."
+            "expected one of string, ConstantExpression, or ArgumentExpression."
         )
-    # NOTE Do we use dtype attribute or existing datatype on Expression
-    return LoadExpression(placement=placement, inputs=[key], datatype=dtype)
+    return LoadExpression(placement=placement, inputs=[key], dtype=dtype)
 
 
 def save(key, value, placement=None):
     assert isinstance(value, Expression)
     placement = placement or get_current_placement()
     if isinstance(key, str):
-        key = constant(key, placement=placement)
-    elif isinstance(key, Argument) and key.datatype not in [str, None]:
+        key = constant(key, placement=placement, dtype=dtypes.string)
+    elif isinstance(key, Argument) and key.dtype not in [str, None]:
         raise ValueError(
-            f"Function 'edsl.save' encountered argument of datatype {key.datatype}; "
-            "expected datatype 'str'."
+            f"Function 'edsl.save' encountered argument of dtype {key.dtype}; "
+            "expected dtype 'string'."
         )
     elif not isinstance(key, Expression):
         raise ValueError(
             f"Function 'edsl.save' encountered argument of type {type(key)}; "
-            "expected one of str, ConstantExpression, or ArgumentExpression."
+            "expected one of string, ConstantExpression, or ArgumentExpression."
         )
-    return SaveExpression(placement=placement, inputs=[key, value])
+    return SaveExpression(placement=placement, inputs=[key, value], dtype=None)
 
 
 def run_program(path, args, *inputs, output_type=None, placement=None):
