@@ -1,5 +1,17 @@
-# instances
-class _Dtype:
+import abc
+
+
+class DType:
+    @abc.abstractproperty
+    def is_fixedpoint(self):
+        pass
+
+    @abc.abstractproperty
+    def is_native(self):
+        pass
+
+
+class _ConcreteDType(DType):
     def __init__(self, name, short, is_native, is_fixedpoint):
         self._name = name
         self._short = short
@@ -22,15 +34,15 @@ class _Dtype:
         return self._is_fixedpoint
 
 
-int32 = _Dtype("int32", "i32", True, False)
-int64 = _Dtype("int64", "i64", True, False)
-float32 = _Dtype("float32", "f32", True, False)
-float64 = _Dtype("float64", "f64", True, False)
-string = _Dtype("string", "str", True, False)
+int32 = _ConcreteDType("int32", "i32", True, False)
+int64 = _ConcreteDType("int64", "i64", True, False)
+float32 = _ConcreteDType("float32", "f32", True, False)
+float64 = _ConcreteDType("float64", "f64", True, False)
+string = _ConcreteDType("string", "str", True, False)
 
 
 def fixed(integ, frac):
-    return _Dtype(
+    return _ConcreteDType(
         f"fixed{integ}_{frac}", f"q{integ}.{frac}", is_native=False, is_fixedpoint=True,
     )
 
