@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 from typing import Any
+from typing import List
 
 from moose.computation import fixedpoint as fixed_ops
 from moose.computation import host as host_ops
@@ -17,6 +18,12 @@ from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
 from moose.logger import get_tracer
 from moose.utils import AsyncStore
+
+
+class ExecutionError(Exception):
+    def __init__(self, msg: str, exceptions: List[Exception]):
+        super().__init__(msg)
+        self.exceptions = exceptions
 
 
 @dataclasses.dataclass
@@ -158,8 +165,9 @@ class AsyncExecutor:
                     t.cancel()
 
             if len(exceptions) > 0:
-                raise Exception(
-                    f"One or more errors occurred in '{placement}: {exceptions}'"
+                raise ExecutionError(
+                    f"One or more errors occurred in '{placement}': '{exceptions}'",
+                    exceptions,
                 )
 
     def schedule_execution(self, comp, placement):
