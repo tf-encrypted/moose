@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-from moose import edsl
+import moose as moo
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.memory import Networking
@@ -20,46 +20,46 @@ def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
 
 
 def mse(y_pred, y_true):
-    return edsl.mean(edsl.square(edsl.sub(y_pred, y_true)), axis=0)
+    return moo.mean(moo.square(moo.sub(y_pred, y_true)), axis=0)
 
 
 def ss_res(y_pred, y_true):
-    squared_residuals = edsl.square(edsl.sub(y_true, y_pred))
-    return edsl.sum(squared_residuals, axis=0)
+    squared_residuals = moo.square(moo.sub(y_true, y_pred))
+    return moo.sum(squared_residuals, axis=0)
 
 
 def ss_tot(y_true):
-    y_mean = edsl.mean(y_true)
-    squared_deviations = edsl.square(edsl.sub(y_true, y_mean))
-    return edsl.sum(squared_deviations, axis=0)
+    y_mean = moo.mean(y_true)
+    squared_deviations = moo.square(moo.sub(y_true, y_mean))
+    return moo.sum(squared_deviations, axis=0)
 
 
 def r_squared(ss_res, ss_tot):
-    residuals_ratio = edsl.div(ss_res, ss_tot)
-    return edsl.sub(edsl.constant(1.0), residuals_ratio)
+    residuals_ratio = moo.div(ss_res, ss_tot)
+    return moo.sub(moo.constant(1.0), residuals_ratio)
 
 
 class LinearRegressionExample(unittest.TestCase):
     def test_linear_regression_example(self):
-        x_owner = edsl.host_placement(name="x-owner")
-        y_owner = edsl.host_placement(name="y-owner")
-        model_owner = edsl.host_placement(name="model-owner")
-        replicated_plc = edsl.replicated_placement(
+        x_owner = moo.host_placement(name="x-owner")
+        y_owner = moo.host_placement(name="y-owner")
+        model_owner = moo.host_placement(name="model-owner")
+        replicated_plc = moo.replicated_placement(
             players=[x_owner, y_owner, model_owner], name="replicated-plc"
         )
 
-        @edsl.computation
+        @moo.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=x_owner, datatype=str),
-            y_uri: edsl.Argument(placement=y_owner, datatype=str),
-            w_uri: edsl.Argument(placement=model_owner, datatype=str),
-            mse_uri: edsl.Argument(placement=model_owner, datatype=str),
-            rsquared_uri: edsl.Argument(placement=model_owner, datatype=str),
+            x_uri: moo.Argument(placement=x_owner, datatype=str),
+            y_uri: moo.Argument(placement=y_owner, datatype=str),
+            w_uri: moo.Argument(placement=model_owner, datatype=str),
+            mse_uri: moo.Argument(placement=model_owner, datatype=str),
+            rsquared_uri: moo.Argument(placement=model_owner, datatype=str),
         ):
 
             with x_owner:
-                X = edsl.atleast_2d(
-                    edsl.load(x_uri, dtype=float), to_column_vector=True
+                X = moo.atleast_2d(
+                    moo.load(x_uri, dtype=float), to_column_vector=True
                 )
                 # NOTE: what would be most natural to do is this:
                 #     bias_shape = (slice(shape(X), begin=0, end=1), 1)
@@ -69,21 +69,21 @@ class LinearRegressionExample(unittest.TestCase):
                 # the past. For now, we've decided to implement squeeze and unsqueeze
                 # ops instead.
                 # But we have a feeling this issue will continue to come up!
-                bias = edsl.ones(edsl.slice(edsl.shape(X), begin=0, end=1), dtype=float)
-                reshaped_bias = edsl.expand_dims(bias, 1)
-                X_b = edsl.concatenate([reshaped_bias, X], axis=1)
-                A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
-                B = edsl.dot(A, edsl.transpose(X_b))
+                bias = moo.ones(moo.slice(moo.shape(X), begin=0, end=1), dtype=float)
+                reshaped_bias = moo.expand_dims(bias, 1)
+                X_b = moo.concatenate([reshaped_bias, X], axis=1)
+                A = moo.inverse(moo.dot(moo.transpose(X_b), X_b))
+                B = moo.dot(A, moo.transpose(X_b))
 
             with y_owner:
-                y_true = edsl.atleast_2d(
-                    edsl.load(y_uri, dtype=float), to_column_vector=True
+                y_true = moo.atleast_2d(
+                    moo.load(y_uri, dtype=float), to_column_vector=True
                 )
                 totals_ss = ss_tot(y_true)
 
             with replicated_plc:
-                w = edsl.dot(B, y_true)
-                y_pred = edsl.dot(X_b, w)
+                w = moo.dot(B, y_true)
+                y_pred = moo.dot(X_b, w)
                 mse_result = mse(y_pred, y_true)
                 residuals_ss = ss_res(y_pred, y_true)
 
@@ -92,14 +92,14 @@ class LinearRegressionExample(unittest.TestCase):
 
             with model_owner:
                 res = (
-                    edsl.save(w_uri, w),
-                    edsl.save(mse_uri, mse_result),
-                    edsl.save(rsquared_uri, rsquared_result),
+                    moo.save(w_uri, w),
+                    moo.save(mse_uri, mse_result),
+                    moo.save(rsquared_uri, rsquared_result),
                 )
 
             return res
 
-        concrete_comp = edsl.trace(my_comp)
+        concrete_comp = moo.trace(my_comp)
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         networking = Networking()
