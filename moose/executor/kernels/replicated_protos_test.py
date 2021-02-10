@@ -93,7 +93,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 value=x,
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
 
@@ -103,7 +103,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 value=y,
                 placement_name=bob.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         op_name = "rep_op"
@@ -113,7 +113,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="rep_op",
                 placement_name=rep.name,
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         if consecutive_flag:
@@ -122,7 +122,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                     name="rep_op_2",
                     placement_name=rep.name,
                     inputs={"lhs": "alice_input", "rhs": "rep_op"},
-                    output_type=TensorType(datatype="float"),
+                    output_type=TensorType(dtype="float"),
                 )
             )
             op_name = "rep_op_2"
@@ -169,7 +169,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 value=x,
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
 
@@ -179,7 +179,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 placement_name=rep.name,
                 axis=axis,
                 inputs={"x": "alice_input"},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
 
@@ -233,7 +233,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 value=x,
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -242,7 +242,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 placement_name=rep.name,
                 axis=axis,
                 inputs={"x": "alice_input"},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -289,7 +289,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 value=x,
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
 
@@ -299,7 +299,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 value=y,
                 placement_name=bob.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
 
@@ -308,7 +308,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="dot_op",
                 placement_name=rep.name,
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
 

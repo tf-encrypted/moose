@@ -53,7 +53,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=a,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -62,7 +62,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=b,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype="float"),
             )
         )
         comp.add_operation(ring_op_lmbd(alice))
@@ -104,7 +104,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=x,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -113,7 +113,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=y,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -238,7 +238,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=x,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype="float"),
             )
         )
         comp.add_operation(

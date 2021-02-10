@@ -8,14 +8,21 @@ from typing import Union
 
 import numpy as np
 
-from moose.computation.base import Operation
-from moose.computation.base import UnitType
-from moose.computation.base import ValueType
+from moose.computations.base import Operation
+from moose.computations.base import UnitType
+from moose.computations.base import ValueType
+from moose.edsl.dtypes import DType
 
 
-@dataclass
+@dataclass(init=False)
 class TensorType(ValueType):
-    datatype: str
+    dtype: DType
+
+    def __init__(self, dtype: DType):
+        super().__init__()
+        if not isinstance(dtype, DType):
+            raise ValueError(f"TensorType expects a DType, found {type(dtype)}")
+        self.dtype = dtype
 
 
 @dataclass

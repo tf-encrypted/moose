@@ -10,7 +10,7 @@ from moose.computations.ring import RingTensorType
 
 @dataclass
 class EncodedTensorType(ValueType):
-    datatype: str
+    dtype: str
     precision: int
 
 

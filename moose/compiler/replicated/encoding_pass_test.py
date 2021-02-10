@@ -32,7 +32,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -41,7 +41,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -49,7 +49,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -57,7 +57,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="mul",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -100,7 +100,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         expected_comp.add_operation(
@@ -109,7 +109,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         expected_comp.add_operation(
@@ -117,7 +117,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="encode_0",
                 inputs={"value": "alice_input"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=16),
+                output_type=EncodedTensorType(dtype="fixed64", precision=16),
                 precision=16,
             )
         )
@@ -126,7 +126,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="encode_1",
                 inputs={"value": "bob_input"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=16),
+                output_type=EncodedTensorType(dtype="fixed64", precision=16),
                 precision=16,
             )
         )
@@ -135,7 +135,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="fixed_add_0",
                 inputs={"lhs": "encode_0", "rhs": "encode_1"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=16),
+                output_type=EncodedTensorType(dtype="fixed64", precision=16),
             )
         )
         expected_comp.add_operation(
@@ -143,7 +143,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="fixed_mul_0",
                 inputs={"lhs": "encode_0", "rhs": "encode_1"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=32),
+                output_type=EncodedTensorType(dtype="fixed64", precision=32),
             )
         )
         expected_comp.add_operation(
@@ -152,7 +152,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "fixed_mul_0"},
                 precision=16,
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=16),
+                output_type=EncodedTensorType(dtype="fixed64", precision=16),
             )
         )
         expected_comp.add_operation(
@@ -160,7 +160,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="decode_0",
                 inputs={"value": "fixed_add_0"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
                 precision=16,
             )
         )
@@ -179,7 +179,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="decode_1",
                 inputs={"value": "trunc_pr_0"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
                 precision=16,
             )
         )
@@ -216,7 +216,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -225,7 +225,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -233,7 +233,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_0",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -241,7 +241,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_1",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -284,7 +284,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         expected_comp.add_operation(
@@ -293,7 +293,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         expected_comp.add_operation(
@@ -301,7 +301,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="encode_0",
                 inputs={"value": "alice_input"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=0),
+                output_type=EncodedTensorType(dtype="fixed64", precision=0),
                 precision=0,
             )
         )
@@ -310,7 +310,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="encode_1",
                 inputs={"value": "bob_input"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=0),
+                output_type=EncodedTensorType(dtype="fixed64", precision=0),
                 precision=0,
             )
         )
@@ -319,7 +319,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="fixed_add_0",
                 inputs={"lhs": "encode_0", "rhs": "encode_1"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=0),
+                output_type=EncodedTensorType(dtype="fixed64", precision=0),
             )
         )
         expected_comp.add_operation(
@@ -327,7 +327,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="fixed_mul_0",
                 inputs={"lhs": "encode_0", "rhs": "encode_1"},
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=0),
+                output_type=EncodedTensorType(dtype="fixed64", precision=0),
             )
         )
         expected_comp.add_operation(
@@ -336,7 +336,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "fixed_mul_0"},
                 precision=0,
                 placement_name="rep",
-                output_type=EncodedTensorType(datatype="fixed64", precision=0),
+                output_type=EncodedTensorType(dtype="fixed64", precision=0),
             )
         )
         expected_comp.add_operation(
@@ -344,7 +344,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="decode_0",
                 inputs={"value": "fixed_add_0"},
                 placement_name="rep",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
                 precision=0,
             )
         )
@@ -363,7 +363,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="decode_1",
                 inputs={"value": "trunc_pr_0"},
                 placement_name="rep",
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
                 precision=0,
             )
         )

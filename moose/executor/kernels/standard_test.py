@@ -39,7 +39,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -47,7 +47,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="y",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -55,7 +55,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="add",
                 placement_name=alice.name,
                 inputs={"lhs": "x", "rhs": "y"},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -98,7 +98,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x_0",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -106,7 +106,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x_1",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -115,7 +115,7 @@ class StandardKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 axis=axis,
                 inputs={"array0": "x_0", "array1": "x_1"},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -182,7 +182,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -191,7 +191,7 @@ class StandardKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={"x": "x"},
                 axis=axis,
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -228,7 +228,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -237,7 +237,7 @@ class StandardKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={"x": "x"},
                 axis=axis,
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -274,7 +274,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -282,7 +282,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="inverse",
                 placement_name=alice.name,
                 inputs={"x": "x"},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype="float"),
             )
         )
         comp.add_operation(
@@ -343,7 +343,7 @@ class StandardKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 dtype=dtype,
                 inputs={"shape": "shape_op"},
-                output_type=TensorType(datatype=datatype),
+                output_type=TensorType(dtype=datatype),
             )
         )
         comp.add_operation(
@@ -385,7 +385,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -394,7 +394,7 @@ class StandardKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 axis=axis,
                 inputs={"x": "x"},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -440,7 +440,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -449,7 +449,7 @@ class StandardKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 axes=axes,
                 inputs={"x": "x"},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -490,7 +490,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -499,7 +499,7 @@ class StandardKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={"x": "x"},
                 to_column_vector=to_column_vector,
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
         comp.add_operation(
@@ -532,7 +532,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="int64"),
+                output_type=TensorType(dtype="int64"),
             )
         )
 

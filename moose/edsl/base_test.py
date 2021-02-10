@@ -44,7 +44,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     def test_concatenate(self):
@@ -69,7 +69,7 @@ class EdslTest(parameterized.TestCase):
             name="concatenate_0",
             axis=1,
             inputs={"array0": "constant_0", "array1": "constant_1"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     def test_ones(self):
@@ -88,7 +88,7 @@ class EdslTest(parameterized.TestCase):
             name="ones_0",
             dtype=np.float64,
             inputs={"shape": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     def test_square(self):
@@ -107,7 +107,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name="mul_0",
             inputs={"lhs": "constant_0", "rhs": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     @parameterized.parameters(
@@ -136,7 +136,7 @@ class EdslTest(parameterized.TestCase):
             name=concrete_op_name,
             axis=axis,
             inputs={"x": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     def test_transpose(self):
@@ -156,7 +156,7 @@ class EdslTest(parameterized.TestCase):
             name="transpose_0",
             axes=None,
             inputs={"x": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     @parameterized.parameters(
@@ -197,7 +197,7 @@ class EdslTest(parameterized.TestCase):
             name="atleast_2d_0",
             inputs={"x": "constant_0"},
             to_column_vector=True,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     @parameterized.parameters(None, 1)
@@ -220,7 +220,7 @@ class EdslTest(parameterized.TestCase):
             name="squeeze_0",
             inputs={"x": "constant_0"},
             axis=axis,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     def test_unsqueeze(self):
@@ -242,7 +242,7 @@ class EdslTest(parameterized.TestCase):
             name="expand_dims_0",
             inputs={"x": "constant_0"},
             axis=1,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     def test_constant(self):
@@ -260,7 +260,7 @@ class EdslTest(parameterized.TestCase):
             name="constant_0",
             inputs={},
             value=1,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype="float"),
         )
 
     def test_arguments(self):
@@ -280,20 +280,20 @@ class EdslTest(parameterized.TestCase):
                     placement_name="player0",
                     name="x",
                     inputs={},
-                    output_type=TensorType(datatype="float"),
+                    output_type=TensorType(dtype="float"),
                 ),
                 "constant_0": standard_ops.ConstantOperation(
                     placement_name="player0",
                     name="constant_0",
                     inputs={},
                     value=1,
-                    output_type=TensorType(datatype="float"),
+                    output_type=TensorType(dtype="float"),
                 ),
                 "add_0": standard_ops.AddOperation(
                     placement_name="player0",
                     name="add_0",
                     inputs={"lhs": "x", "rhs": "constant_0"},
-                    output_type=TensorType(datatype="float"),
+                    output_type=TensorType(dtype="float"),
                 ),
                 "output_0": standard_ops.OutputOperation(
                     placement_name="player0",
