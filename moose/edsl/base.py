@@ -248,8 +248,15 @@ class SliceExpression(Expression):
 
 def concatenate(arrays, axis=0, dtype=None, placement=None):
     placement = placement or get_current_placement()
+    expected_dtype = arrays[0].dtype
+    for array in arrays:
+        if array.dtype != expected_dtype:
+            raise ValueError(
+                f"Values passed to concatenate must be same dtype: found {array.dtype} "
+                f"and {expected_dtype} in value of `arrays` argument."
+            )
     return ConcatenateExpression(
-        placement=placement, inputs=arrays, axis=axis, dtype=dtype
+        placement=placement, inputs=arrays, axis=axis, dtype=expected_dtype
     )
 
 
@@ -268,6 +275,8 @@ def constant(value, dtype=None, placement=None):
             )
         elif dtype is None:
             dtype = moose_dtype
+    elif isinstance(value, float):
+        dtype = dtypes.float32
 
     return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
 

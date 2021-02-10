@@ -10,20 +10,31 @@ class DType:
     def is_native(self):
         pass
 
+    @abc.abstractmethod
+    def __hash__(self):
+        pass
+
 
 class _ConcreteDType(DType):
     def __init__(self, name, short, is_native, is_fixedpoint):
         self._name = name
         self._short = short
-        self._id = hash(self._name + self._short)
         self._is_native = is_native
         self._is_fixedpoint = is_fixedpoint
 
     def __str__(self):
+        return self._name
+
+    def __repr__(self):
         return self._short
 
     def __eq__(self, other):
-        return self._id == other._id
+        if isinstance(other, _ConcreteDType):
+            return hash(self) == hash(other)
+        return False
+
+    def __hash__(self):
+        return hash(self._name + self._short)
 
     @property
     def is_native(self):
