@@ -9,7 +9,7 @@ from typing import Union
 
 import numpy as np
 
-from moose import dtypes
+from moose.edsl import dtypes
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
@@ -76,14 +76,14 @@ def get_current_placement():
 @dataclass
 class Argument:
     placement: PlacementExpression
-    dtype: Optional[dtypes.DType] = None
+    dtype: Optional[dtypes.DType]
 
 
 @dataclass
 class Expression:
     placement: PlacementExpression
     inputs: List
-    dtype: Optional[dtypes.DType] = None
+    dtype: Optional[dtypes.DType]
 
     def __hash__(self):
         return id(self)
@@ -92,7 +92,6 @@ class Expression:
 @dataclass
 class ArgumentExpression(Expression):
     arg_name: str
-    dtype: Optional[dtypes.DType] = None
 
     def __hash__(self):
         return id(self)
