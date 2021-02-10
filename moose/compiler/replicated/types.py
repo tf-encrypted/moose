@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
+from typing import List
 from typing import Tuple
 
 from moose.compiler.bit import BitTensor
@@ -21,6 +22,11 @@ class ReplicatedRingTensor(ReplicatedTensor):
     shares2: Tuple[RingTensor, RingTensor]
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
+
+
+@dataclass
+class ReplicatedConstantRingTensor:
+    shares: List[RingTensor]
 
 
 @dataclass

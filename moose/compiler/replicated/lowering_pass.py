@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from math import log
+from typing import List
 from typing import Optional
 from typing import Tuple
 
@@ -18,6 +19,7 @@ from moose.compiler.pruning import PruningPass
 from moose.compiler.replicated import bit_utils
 from moose.compiler.replicated import trunc_utils
 from moose.compiler.replicated.types import ReplicatedBitTensor
+from moose.compiler.replicated.types import ReplicatedConstantRingTensor
 from moose.compiler.replicated.types import ReplicatedRingTensor
 from moose.compiler.replicated.types import ReplicatedSetup
 from moose.compiler.replicated.types import ReplicatedTensor
@@ -1229,7 +1231,7 @@ def additive_to_replicated(x, x2_shape, setup, players):
     return ReplicatedRingTensor(
         shares0=(y_hat[0], corrected_shares[0]),
         shares1=(corrected_shares[1], y_hat[1]),
-        shares2=y3,
+        shares2=y3[::-1],
         computation=x[0].computation,
         context=x[0].context,
     )
@@ -1270,11 +1272,97 @@ def b2a_conversion(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_nam
     msb_ring_rep = additive_to_replicated(
         d, _get_shape(x.shares2[0], placement_name=players[2]), setup, players
     )
-    for i in range(3):
-        chain = print_replicated_tensor(
-            msb_ring_rep, players[i], prefix="msb_ring_rep=", suffix="\n", chain=chain
-        )
+    chain = print_replicated_tensor(
+        msb_ring_rep, players[0], prefix="msb_ring_rep=", suffix="\n", chain=chain
+    )
     return msb_ring_rep
+
+
+def replicated_ring_add_constant(
+    x: ReplicatedRingTensor, constant: ReplicatedConstantRingTensor, placement_name
+):
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(constant, ReplicatedConstantRingTensor)
+
+    replicated_placement = x.computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    return ReplicatedRingTensor(
+        shares0=(
+            ring_add(x.shares0[0], constant.shares[0], placement_name=players[0]),
+            x.shares0[1],
+        ),
+        shares1=(
+            ring_add(x.shares1[0], constant.shares[1], placement_name=players[1]),
+            x.shares1[1],
+        ),
+        shares2=(
+            ring_add(x.shares2[0], constant.shares[2], placement_name=players[2]),
+            x.shares2[1],
+        ),
+        computation=x.computation,
+        context=x.context,
+    )
+
+
+def _create_constant_replicated_ring_tensor(constant: int, shapes, placement_name):
+    assert isinstance(constant, int)
+    assert len(shapes) == 3
+
+    replicated_placement = shapes[0].computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    return ReplicatedConstantRingTensor(
+        shares=[fill_tensor(shapes[i], constant, players[i]) for i in range(3)]
+    )
+
+
+def replicated_ring_mul_constant(
+    x: ReplicatedRingTensor, constant: ReplicatedConstantRingTensor, placement_name
+):
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(constant, ReplicatedConstantRingTensor)
+
+    replicated_placement = x.computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    new_shares = [
+        [
+            ring_mul(
+                entry[i],
+                constant.shares[player_index],
+                placement_name=players[player_index],
+            )
+            for i in range(2)
+        ]
+        for player_index, entry in enumerate([x.shares0, x.shares1, x.shares2])
+    ]
+
+    return ReplicatedRingTensor(
+        shares0=new_shares[0],
+        shares1=new_shares[1],
+        shares2=new_shares[2],
+        computation=x.computation,
+        context=x.context,
+    )
+
+
+def replicated_sign_from_msb(msb: ReplicatedRingTensor, placement_name):
+    assert isinstance(msb, ReplicatedRingTensor)
+
+    replicated_placement = msb.computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    shapes = [entry[0].shape for entry in [msb.shares0, msb.shares1, msb.shares2]]
+    negative_two = _create_constant_replicated_ring_tensor(
+        2 ** 64 - 2, shapes, placement_name
+    )
+    one = _create_constant_replicated_ring_tensor(1, shapes, placement_name)
+
+    # compute -2*x
+    msb_double = replicated_ring_mul_constant(msb, negative_two, placement_name)
+    # compute 1 - 2 * x
+    return replicated_ring_add_constant(msb_double, one, placement_name)
 
 
 def replicated_abs(x: ReplicatedRingTensor, setup: ReplicatedSetup, placement_name):
@@ -1287,14 +1375,19 @@ def replicated_abs(x: ReplicatedRingTensor, setup: ReplicatedSetup, placement_na
     msb = replicated_ring_msb(x, setup, placement_name)
     # here need to insert share conversion
     msb_ring = b2a_conversion(msb, setup, placement_name)
-    out_abs = replicated_ring_mul(x, msb_ring, setup, placement_name=placement_name)
+    sign = replicated_sign_from_msb(msb_ring, placement_name)
 
-    for i in range(3):
-        print_replicated_tensor(
-            msb_ring, players[i], prefix="msb_ring_rep(2)=", suffix="\n"
-        )
-        print_replicated_tensor(x, players[i], prefix="input=", suffix="\n")
-        print_replicated_tensor(out_abs, players[i], prefix="res=", suffix="\n")
+    out_abs = replicated_ring_mul(x, sign, setup, placement_name=placement_name)
+
+    chain = None
+
+    print_replicated_tensor(sign, players[0], prefix="sign(x)=", suffix="\n")
+
+    print_replicated_tensor(
+        msb_ring, players[0], prefix="msb_ring_rep(2)=", suffix="\n"
+    )
+    print_replicated_tensor(x, players[0], prefix="input=", suffix="\n")
+    print_replicated_tensor(out_abs, players[0], prefix="res=", suffix="\n")
     return out_abs
 
 
