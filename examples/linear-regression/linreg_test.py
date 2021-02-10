@@ -50,11 +50,11 @@ class LinearRegressionExample(unittest.TestCase):
 
         @moo.computation
         def my_comp(
-            x_uri: moo.Argument(placement=x_owner, datatype=str),
-            y_uri: moo.Argument(placement=y_owner, datatype=str),
-            w_uri: moo.Argument(placement=model_owner, datatype=str),
-            mse_uri: moo.Argument(placement=model_owner, datatype=str),
-            rsquared_uri: moo.Argument(placement=model_owner, datatype=str),
+            x_uri: moo.Argument(placement=x_owner, dtype=str),
+            y_uri: moo.Argument(placement=y_owner, dtype=str),
+            w_uri: moo.Argument(placement=model_owner, dtype=str),
+            mse_uri: moo.Argument(placement=model_owner, dtype=str),
+            rsquared_uri: moo.Argument(placement=model_owner, dtype=str),
         ):
 
             with x_owner:

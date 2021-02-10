@@ -267,7 +267,7 @@ class EdslTest(parameterized.TestCase):
         player0 = edsl.host_placement(name="player0")
 
         @edsl.computation
-        def my_comp(x: edsl.Argument(placement=player0, datatype=float)):
+        def my_comp(x: edsl.Argument(placement=player0, dtype=float)):
             y = edsl.constant(1.0, placement=player0)
             z = edsl.add(x, y, placement=player0)
             return z

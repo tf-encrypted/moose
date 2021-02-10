@@ -69,7 +69,7 @@ def trace(abstract_computation, compiler_passes=None, render=False):
     symbolic_args = [
         ArgumentExpression(
             arg_name=arg_name,
-            datatype=parameter.annotation.datatype,
+            dtype=parameter.annotation.dtype,
             placement=parameter.annotation.placement,
             inputs=[],
         )
@@ -163,7 +163,7 @@ class AstTracer:
             float: TensorType(datatype="float"),
             str: StringType(),
             None: UnknownType(),
-        }[argument_expression.datatype]
+        }[argument_expression.dtype]
         return self.computation.add_operation(
             InputOperation(
                 placement_name=placement.name,
