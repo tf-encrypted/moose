@@ -5,12 +5,12 @@ from absl.testing import parameterized
 from moose.compiler.compiler import Compiler
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
-from moose.computation import fixedpoint as fixed_dialect
-from moose.computation import replicated as rep_dialect
-from moose.computation import standard as std_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.replicated import ReplicatedPlacement
+from moose.computations import fixedpoint as fixed_dialect
+from moose.computations import replicated as rep_dialect
+from moose.computations import standard as std_dialect
+from moose.computations.base import Computation
+from moose.computations.host import HostPlacement
+from moose.computations.replicated import ReplicatedPlacement
 
 
 class ReplicatedTest(parameterized.TestCase):

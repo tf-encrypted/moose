@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
-from moose.computation.base import Operation
-from moose.computation.primitives import DeriveSeedOperation
-from moose.computation.primitives import SampleKeyOperation
+from moose.computations.base import Operation
+from moose.computations.primitives import DeriveSeedOperation
+from moose.computations.primitives import SampleKeyOperation
 
 
 @dataclass

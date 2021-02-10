@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import List
 
-from moose.computation.base import Operation
-from moose.computation.base import Placement
-from moose.computation.base import UnitType
-from moose.computation.base import ValueType
+from moose.computations.base import Operation
+from moose.computations.base import Placement
+from moose.computations.base import UnitType
+from moose.computations.base import ValueType
 
 
 @dataclass

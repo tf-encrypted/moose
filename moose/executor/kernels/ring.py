@@ -9,17 +9,17 @@ from moose_kernels import ring_shr
 from moose_kernels import ring_sub
 from moose_kernels import ring_sum
 
-from moose.computation.ring import FillTensorOperation
-from moose.computation.ring import PrintRingTensorOperation
-from moose.computation.ring import RingAddOperation
-from moose.computation.ring import RingDotOperation
-from moose.computation.ring import RingMulOperation
-from moose.computation.ring import RingSampleOperation
-from moose.computation.ring import RingShapeOperation
-from moose.computation.ring import RingShlOperation
-from moose.computation.ring import RingShrOperation
-from moose.computation.ring import RingSubOperation
-from moose.computation.ring import RingSumOperation
+from moose.computations.ring import FillTensorOperation
+from moose.computations.ring import PrintRingTensorOperation
+from moose.computations.ring import RingAddOperation
+from moose.computations.ring import RingDotOperation
+from moose.computations.ring import RingMulOperation
+from moose.computations.ring import RingSampleOperation
+from moose.computations.ring import RingShapeOperation
+from moose.computations.ring import RingShlOperation
+from moose.computations.ring import RingShrOperation
+from moose.computations.ring import RingSubOperation
+from moose.computations.ring import RingSumOperation
 from moose.executor.kernels.base import Kernel
 
 

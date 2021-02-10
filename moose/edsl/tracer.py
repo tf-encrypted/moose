@@ -37,6 +37,7 @@ from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
+from moose.edsl import dtypes
 from moose.edsl.base import AbsExpression
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression

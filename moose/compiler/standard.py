@@ -3,11 +3,11 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
-from moose.computation.base import Computation
-from moose.computation.base import Operation
-from moose.computation.standard import DotOperation
-from moose.computation.standard import InverseOperation
-from moose.computation.standard import MulOperation
+from moose.computations.base import Computation
+from moose.computations.base import Operation
+from moose.computations.standard import DotOperation
+from moose.computations.standard import InverseOperation
+from moose.computations.standard import MulOperation
 
 
 @dataclass

@@ -2,7 +2,7 @@ import asyncio
 import random
 from typing import Dict
 
-from moose.computation.base import Computation
+from moose.computations.base import Computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.logger import get_tracer

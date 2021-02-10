@@ -1,12 +1,12 @@
 import numpy as np
 from absl.testing import parameterized
 
-from moose.computation import host as host_ops
-from moose.computation import standard as standard_ops
-from moose.computation.base import Computation
-from moose.computation.base import UnknownType
-from moose.computation.host import HostPlacement
-from moose.computation.standard import TensorType
+from moose.computations import host as host_ops
+from moose.computations import standard as standard_ops
+from moose.computations.base import Computation
+from moose.computations.base import UnknownType
+from moose.computations.host import HostPlacement
+from moose.computations.standard import TensorType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 from moose.testing import run_test_computation

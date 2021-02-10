@@ -6,11 +6,11 @@ from moose.compiler.compiler import Compiler
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
-from moose.computation import standard as standard_ops
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import TensorType
+from moose.computations import standard as standard_ops
+from moose.computations.base import Computation
+from moose.computations.host import HostPlacement
+from moose.computations.replicated import ReplicatedPlacement
+from moose.computations.standard import TensorType
 
 
 class ReplicatedTest(parameterized.TestCase):

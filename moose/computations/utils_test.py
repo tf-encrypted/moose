@@ -1,7 +1,7 @@
 from absl.testing import parameterized
 
-from moose.computation.utils import deserialize_computation
-from moose.computation.utils import serialize_computation
+from moose.computations.utils import deserialize_computation
+from moose.computations.utils import serialize_computation
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 

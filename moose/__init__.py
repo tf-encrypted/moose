@@ -32,6 +32,7 @@ from moose.edsl.dtypes import float32
 from moose.edsl.dtypes import float64
 from moose.edsl.dtypes import int32
 from moose.edsl.dtypes import int64
+from moose.edsl.dtypes import string
 from moose.edsl.tracer import trace
 
 __all__ = [
@@ -66,6 +67,7 @@ __all__ = [
     shape,
     square,
     squeeze,
+    string,
     sub,
     sum,
     transpose,

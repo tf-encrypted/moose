@@ -1,7 +1,7 @@
 from absl.testing import parameterized
 
-from moose.computation.standard import ReceiveOperation
-from moose.computation.standard import SendOperation
+from moose.computations.standard import ReceiveOperation
+from moose.computations.standard import SendOperation
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 

@@ -1,7 +1,7 @@
 from graphviz import Digraph
 
-from moose.computation.standard import ReceiveOperation
-from moose.computation.standard import SendOperation
+from moose.computations.standard import ReceiveOperation
+from moose.computations.standard import SendOperation
 
 
 def render_computation(
