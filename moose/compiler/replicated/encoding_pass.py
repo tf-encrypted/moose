@@ -184,8 +184,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
             )
         )
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
-            dtype=mean_output_type.dtype,
-            precision=mean_output_type.precision // 2,
+            dtype=mean_output_type.dtype, precision=mean_output_type.precision // 2,
         )
         precision_to_truncate = mean_output_type.precision - trunc_output_type.precision
         trunc_op = self.computation.add(

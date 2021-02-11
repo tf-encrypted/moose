@@ -282,7 +282,7 @@ def replicated_encode(x: StandardTensor, precision) -> RingTensor:
     return RingTensor(op=encode_op, computation=x.computation, context=x.context)
 
 
-def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
+def replicated_decode(x: RingTensor, precision, dtype) -> StandardTensor:
     assert isinstance(x, RingTensor)
     assert isinstance(precision, int)
     decode_op = x.computation.add(
@@ -291,11 +291,11 @@ def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
             inputs={"value": x.op.name},
             placement_name=x.op.placement_name,
             scaling_factor=2 ** precision,
-            output_type=TensorType(dtype=datatype),
+            output_type=TensorType(dtype=dtype),
         )
     )
     return StandardTensor(
-        op=decode_op, datatype=datatype, computation=x.computation, context=x.context
+        op=decode_op, dtype=dtype, computation=x.computation, context=x.context
     )
 
 
