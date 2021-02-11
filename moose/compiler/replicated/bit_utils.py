@@ -3,7 +3,6 @@ from moose.compiler.bit import bit_extract
 from moose.compiler.bit import ring_inject
 from moose.compiler.replicated.types import ReplicatedBitTensor
 from moose.compiler.replicated.types import ReplicatedRingTensor
-from moose.compiler.replicated.types import ReplicatedSetup
 from moose.compiler.replicated.types import RingTensor
 
 

@@ -135,8 +135,6 @@ class BitTensorOps(parameterized.TestCase):
     )
     def test_ring_inject(self, a):
         x = np.array(a, dtype=np.uint8)
-        x_ring = ring_inject(x, 0)
-
         np.testing.assert_array_equal(x, ring_inject(x, 0))
         np.testing.assert_array_equal(x << 1, ring_inject(x, 1))
         np.testing.assert_array_equal(x << 2, ring_inject(x, 2))

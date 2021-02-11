@@ -4,6 +4,7 @@ from moose_kernels import bit_fill
 from moose_kernels import bit_sample
 from moose_kernels import bit_xor
 from moose_kernels import ring_inject
+from moose_kernels import bit_shape
 
 from moose.computation.bit import BitAndOperation
 from moose.computation.bit import BitExtractOperation
@@ -31,8 +32,7 @@ class BitXorKernel(Kernel):
 class BitShapeKernel(Kernel):
     def execute_synchronous_block(self, op, session, tensor):
         assert isinstance(op, BitShapeOperation)
-        shape = bit_shape(tensor)
-        return shape
+        return bit_shape(tensor)
 
 
 class FillBitTensorKernel(Kernel):

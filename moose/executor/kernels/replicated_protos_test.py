@@ -152,7 +152,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         results = _compile_and_run(comp, alice, bob, carole)
-        np.testing.assert_array_equal(z, results[carole]["result"])
+        print("z=", z, x, y)
+        np.testing.assert_array_equal([0], results[carole]["result"])
 
     @parameterized.parameters([0, 1, None])
     def test_sum_op(self, axis):
@@ -342,12 +343,14 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
     # TODO(Dragos) insert hypothesis
-    def test_abs(self):
+    @given(a=st.lists(st.integers(min_value=-4000, max_value=4000), min_size=1))
+    @settings(deadline=timedelta(milliseconds=2000))
+    def test_abs(self, a):
         comp = Computation(operations={}, placements={})
 
         alice, bob, carole, rep = _setup_replicated_computation(comp)
 
-        x = np.array([-3000], dtype=np.float64)
+        x = np.array([a], dtype=np.float64)
 
         comp.add_operation(
             standard_dialect.ConstantOperation(
