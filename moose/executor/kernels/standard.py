@@ -35,6 +35,7 @@ from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
+from moose.edsl import dtypes
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
 from moose.logger import get_tracer
@@ -120,8 +121,9 @@ class SqueezeKernel(Kernel):
 class OnesKernel(Kernel):
     def execute_synchronous_block(self, op, session, shape):
         assert isinstance(op, OnesOperation)
-        assert op.dtype in (float, np.float64, int, np.int64)
-        return np.ones(shape=shape, dtype=op.dtype)
+        assert op.dtype.is_integer or op.dtype.is_float
+        kernel_dtype = op.dtype.numpy_dtype
+        return np.ones(shape=shape, dtype=kernel_dtype)
 
 
 class SumKernel(Kernel):

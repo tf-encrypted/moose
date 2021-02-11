@@ -3,7 +3,9 @@ import unittest
 
 from absl.testing import parameterized
 
+from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
+from moose.edsl import dtypes
 from moose.edsl.tracer import trace
 from moose.testing import run_test_computation
 
@@ -28,7 +30,7 @@ class HostKernelTest(parameterized.TestCase):
                 c0,
                 c1,
                 placement=player1,
-                output_type=float,
+                output_type=TensorType(dtype=dtypes.int64),
             )
             res = edsl.save("result", out, placement=player2)
             return res
