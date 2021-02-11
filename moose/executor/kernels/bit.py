@@ -2,9 +2,9 @@ from moose_kernels import bit_and
 from moose_kernels import bit_extract
 from moose_kernels import bit_fill
 from moose_kernels import bit_sample
+from moose_kernels import bit_shape
 from moose_kernels import bit_xor
 from moose_kernels import ring_inject
-from moose_kernels import bit_shape
 
 from moose.computation.bit import BitAndOperation
 from moose.computation.bit import BitExtractOperation

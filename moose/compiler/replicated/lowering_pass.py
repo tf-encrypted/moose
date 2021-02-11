@@ -580,7 +580,7 @@ def replicated_dot(
         )
 
     zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
-    zero_shares = _generate_zero_share(zero_shape, setup, players)
+    zero_shares = _generate_zero_share(zero_shape, setup, players, RingTensor)
     z_shares = [
         ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
         for i in range(3)

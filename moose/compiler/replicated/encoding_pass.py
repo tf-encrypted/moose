@@ -205,7 +205,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         assert isinstance(x_output_type, fixedpoint_dialect.EncodedTensorType)
         abs_op = self.computation.add(
             fixedpoint_dialect.AbsOperation(
-                name=self.context.get_fresh_name("abs"),
+                name=self.context.get_fresh_name("fixed_abs"),
                 placement_name=op.placement_name,
                 inputs={"x": lowered_x_op.name},
                 output_type=x_output_type,
