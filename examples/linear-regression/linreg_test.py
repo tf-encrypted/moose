@@ -36,7 +36,7 @@ def ss_tot(y_true):
 
 def r_squared(ss_res, ss_tot):
     residuals_ratio = edsl.div(ss_res, ss_tot)
-    return edsl.sub(edsl.constant(1.0), residuals_ratio)
+    return edsl.sub(edsl.constant(1.0, dtype=edsl.float32), residuals_ratio)
 
 
 class LinearRegressionExample(unittest.TestCase):
