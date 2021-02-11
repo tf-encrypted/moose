@@ -1,26 +1,58 @@
 import abc
 
+import numpy as np
+
 
 class DType:
+    @abc.abstractmethod
+    def __hash__(self):
+        pass
+
     @abc.abstractproperty
-    def is_fixedpoint(self):
+    def numpy_dtype(self):
         pass
 
     @abc.abstractproperty
     def is_native(self):
         pass
 
-    @abc.abstractmethod
-    def __hash__(self):
+    @abc.abstractproperty
+    def is_fixedpoint(self):
+        pass
+
+    @abc.abstractproperty
+    def is_integer(self):
+        pass
+
+    @abc.abstractproperty
+    def is_float(self):
+        pass
+
+    @abc.abstractproperty
+    def is_signed(self):
         pass
 
 
 class _ConcreteDType(DType):
-    def __init__(self, name, short, is_native, is_fixedpoint):
+    def __init__(
+        self,
+        name,
+        short,
+        numpy_dtype,
+        is_native,
+        is_fixedpoint,
+        is_integer,
+        is_float,
+        is_signed,
+    ):
         self._name = name
         self._short = short
+        self._numpy_dtype = numpy_dtype
         self._is_native = is_native
         self._is_fixedpoint = is_fixedpoint
+        self._is_integer = is_integer
+        self._is_float = is_float
+        self._is_signed = is_signed
 
     def __str__(self):
         return self._name
@@ -37,6 +69,10 @@ class _ConcreteDType(DType):
         return hash(self._name + self._short)
 
     @property
+    def numpy_dtype(self):
+        return self._numpy_dtype
+
+    @property
     def is_native(self):
         return self._is_native
 
@@ -44,17 +80,101 @@ class _ConcreteDType(DType):
     def is_fixedpoint(self):
         return self._is_fixedpoint
 
+    @property
+    def is_integer(self):
+        return self._is_integer
 
-int32 = _ConcreteDType("int32", "i32", True, False)
-int64 = _ConcreteDType("int64", "i64", True, False)
-float32 = _ConcreteDType("float32", "f32", True, False)
-float64 = _ConcreteDType("float64", "f64", True, False)
-string = _ConcreteDType("string", "str", True, False)
+    @property
+    def is_float(self):
+        return self._is_float
+
+    @property
+    def is_signed(self):
+        return self._is_signed
+
+
+int32 = _ConcreteDType(
+    "int32",
+    "i32",
+    numpy_dtype=np.int32,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=True,
+    is_float=False,
+    is_signed=True,
+)
+int64 = _ConcreteDType(
+    "int64",
+    "i64",
+    numpy_dtype=np.int64,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=True,
+    is_float=False,
+    is_signed=True,
+)
+uint32 = _ConcreteDType(
+    "uint32",
+    "u32",
+    numpy_dtype=np.uint32,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=True,
+    is_float=False,
+    is_signed=False,
+)
+uint64 = _ConcreteDType(
+    "uint64",
+    "u64",
+    numpy_dtype=np.uint64,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=True,
+    is_float=False,
+    is_signed=False,
+)
+float32 = _ConcreteDType(
+    "float32",
+    "f32",
+    numpy_dtype=np.float32,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=False,
+    is_float=True,
+    is_signed=True,
+)
+float64 = _ConcreteDType(
+    "float64",
+    "f64",
+    numpy_dtype=np.float64,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=False,
+    is_float=True,
+    is_signed=True,
+)
+string = _ConcreteDType(
+    "string",
+    "str",
+    numpy_dtype=np.str,
+    is_native=True,
+    is_fixedpoint=False,
+    is_integer=False,
+    is_float=False,
+    is_signed=False,
+)
 
 
 def fixed(integ, frac):
     return _ConcreteDType(
-        f"fixed{integ}_{frac}", f"q{integ}.{frac}", is_native=False, is_fixedpoint=True,
+        f"fixed{integ}_{frac}",
+        f"q{integ}.{frac}",
+        numpy_dtype=None,
+        is_native=False,
+        is_fixedpoint=True,
+        is_integer=False,
+        is_float=False,
+        is_signed=True,  # TODO(jason) does this make sense?
     )
 
 
