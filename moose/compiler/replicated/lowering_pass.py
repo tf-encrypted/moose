@@ -1258,31 +1258,6 @@ def _create_constant_replicated_ring_tensor(constant: int, shapes, placement_nam
     )
 
 
-def _create_replicated_ring_tensor_from_constant(constant: int, shapes, placement_name):
-    assert isinstance(constant, int)
-    assert len(shapes) == 3
-
-    replicated_placement = shapes[0].computation.placement(placement_name)
-    players = replicated_placement.player_names
-
-    return ReplicatedRingTensor(
-        shares0=[
-            fill_tensor(shapes[0], constant, players[0]),
-            fill_tensor(shapes[0], 0, players[0]),
-        ],
-        shares1=[
-            fill_tensor(shapes[1], 0, players[1]),
-            fill_tensor(shapes[1], 0, players[1]),
-        ],
-        shares2=[
-            fill_tensor(shapes[2], 0, players[2]),
-            fill_tensor(shapes[2], constant, players[2]),
-        ],
-        computation=shapes[0].computation,
-        context=shapes[0].context,
-    )
-
-
 def replicated_ring_mul_constant(
     x: ReplicatedRingTensor, constant: ReplicatedConstantRingTensor, placement_name
 ):
