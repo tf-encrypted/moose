@@ -9,10 +9,15 @@ from typing import Union
 
 import numpy as np
 
+from moose.computation.base import UnknownType
+from moose.computation.standard import StringType
+from moose.computation.standard import TensorType
 from moose.edsl import dtypes
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
+    np.uint32: dtypes.uint32,
+    np.uint64: dtypes.uint64,
     np.int32: dtypes.int32,
     np.int64: dtypes.int64,
     np.float32: dtypes.float32,
@@ -263,20 +268,29 @@ def concatenate(arrays, axis=0, dtype=None, placement=None):
 def constant(value, dtype=None, placement=None):
     placement = placement or get_current_placement()
     if isinstance(value, np.ndarray):
-        moose_dtype = _NUMPY_DTYPES_MAP.get(value.dtype, None)
+        moose_dtype = _NUMPY_DTYPES_MAP.get(value.dtype.type, None)
         if moose_dtype is None:
             raise NotImplementedError(
-                f"Arrays of dtype {value.dtype} not supported as graph constants."
+                f"Arrays of dtype `{value.dtype}` not supported as graph constants."
             )
         if dtype is not None and moose_dtype != dtype:
             raise ValueError(
-                f"Constant value of dtype f{value.dtype} does not match "
-                "supplied dtype argument: {dtype}."
+                f"Constant value of dtype `{value.dtype}` does not match "
+                "supplied dtype argument: `{dtype}`."
             )
         elif dtype is None:
             dtype = moose_dtype
     elif isinstance(value, float):
-        dtype = dtypes.float32
+        dtype = dtype or dtypes.float64
+    elif isinstance(value, int):
+        dtype = dtype or dtypes.int64
+    elif isinstance(value, str):
+        if dtype is not None and dtype != dtypes.string:
+            raise ValueError(
+                "Constant vaule of type `str` does not match "
+                f"user-supplied dtype argument `{dtype}`."
+            )
+        dtype = dtype or dtypes.string
 
     return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
 
@@ -301,6 +315,11 @@ def sub(lhs, rhs, dtype=None, placement=None):
     placement = placement or get_current_placement()
 
     if dtype is None:
+        if lhs.dtype != rhs.dtype:
+            raise ValueError(
+                "Function `sub` expected arguments of similar dtype: "
+                f"found `{lhs.dtype}` and `{rhs.dtype}`."
+            )
         assert lhs.dtype == rhs.dtype
         dtype = lhs.dtype
 
@@ -357,7 +376,7 @@ def inverse(x, placement=None):
     dtype = x.dtype
     if dtype not in [dtypes.float32, dtypes.float64]:
         raise ValueError(
-            "moose.inverse operation only supports arguments of type float32 or float64."
+            "moose.inverse operation only supports arguments of type `float32` or `float64`."
         )
     return InverseExpression(placement=placement, inputs=[x], dtype=x.dtype)
 
@@ -509,12 +528,14 @@ def run_program(path, args, *inputs, output_type=None, placement=None):
     assert isinstance(path, str)
     assert isinstance(args, (list, tuple))
     placement = placement or get_current_placement()
+    dtype = _infer_dtype_from_output_type(output_type)
     return RunProgramExpression(
         path=path,
         args=args,
         placement=placement,
         inputs=inputs,
         output_type=output_type,
+        dtype=dtype,
     )
 
 
@@ -528,12 +549,14 @@ def function(fn=None, output_type=None):
         if not isinstance(placement, MpspdzPlacementExpression):
             # TODO(jason) what to do about `placement` or `output_placements` kwargs?
             return fn(*inputs, **kwargs)
+        dtype = _infer_dtype_from_output_type(output_type)
         return ApplyFunctionExpression(
             fn=fn,
             placement=placement,
             inputs=inputs,
             output_placements=output_placements,
             output_type=output_type,
+            dtype=dtype,
         )
 
     return wrapper
@@ -546,3 +569,18 @@ def computation(func):
 class AbstractComputation:
     def __init__(self, func):
         self.func = func
+
+
+def _infer_dtype_from_output_type(output_type):
+    if isinstance(output_type, StringType):
+        dtype = dtypes.string
+    elif output_type is None or isinstance(output_type, UnknownType):
+        dtype = None
+    elif isinstance(output_type, TensorType):
+        dtype = output_type.dtype
+    else:
+        raise ValueError(
+            f"Improper `output_type` argument of type {type(output_type)}."
+            " Must be one of UnknownType, StringType, or TensorType."
+        )
+    return dtype

@@ -465,9 +465,12 @@ class AstTracer:
             f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
         }
         placement = self.visit_placement_expression(expression.placement)
-        output_type = {float: TensorType(dtype="float"), None: UnknownType()}[
-            expression.output_type
-        ]
+        if expression.dtype is None:
+            output_type = UnknownType()
+        elif expression.dtype == dtypes.string:
+            output_type = StringType()
+        else:
+            output_type = TensorType(expression.dtype)
         return self.computation.add_operation(
             ApplyFunctionOperation(
                 fn=expression.fn,
