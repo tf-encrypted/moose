@@ -152,8 +152,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         results = _compile_and_run(comp, alice, bob, carole)
-        print("z=", z, x, y)
-        np.testing.assert_array_equal([0], results[carole]["result"])
+        np.testing.assert_array_equal(z, results[carole]["result"])
 
     @parameterized.parameters([0, 1, None])
     def test_sum_op(self, axis):
