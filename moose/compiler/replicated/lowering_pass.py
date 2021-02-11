@@ -33,11 +33,11 @@ from moose.compiler.ring import ring_shape
 from moose.compiler.ring import ring_sub
 from moose.compiler.ring import ring_sum
 from moose.compiler.standard import StandardTensor
-from moose.computations import fixedpoint as fixed_dialect
-from moose.computations import replicated as replicated_ops
-from moose.computations.replicated import ReplicatedPlacement
-from moose.computations.ring import RingTensorType
-from moose.computations.standard import TensorType
+from moose.computation import fixedpoint as fixed_dialect
+from moose.computation import replicated as replicated_ops
+from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.ring import RingTensorType
+from moose.computation.standard import TensorType
 
 
 class ReplicatedLoweringPass:

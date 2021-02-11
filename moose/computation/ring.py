@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional
 
-from moose.computations.base import Operation
-from moose.computations.base import ValueType
-from moose.computations.standard import ShapeType
+from moose.computation.base import Operation
+from moose.computation.base import ValueType
+from moose.computation.standard import ShapeType
 
 
 @dataclass

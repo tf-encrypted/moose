@@ -2,11 +2,11 @@ import unittest
 
 from absl.testing import parameterized
 
-from moose.computations import primitives as primitives_dialect
-from moose.computations import ring as ring_dialect
-from moose.computations import standard as standard_dialect
-from moose.computations.base import Computation
-from moose.computations.host import HostPlacement
+from moose.computation import primitives as primitives_dialect
+from moose.computation import ring as ring_dialect
+from moose.computation import standard as standard_dialect
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
 from moose.testing import run_test_computation
 
 

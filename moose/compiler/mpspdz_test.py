@@ -1,8 +1,8 @@
 from absl.testing import parameterized
 
-from moose.computations.mpspdz import MpspdzCallOperation
-from moose.computations.mpspdz import MpspdzLoadOutputOperation
-from moose.computations.mpspdz import MpspdzSaveInputOperation
+from moose.computation.mpspdz import MpspdzCallOperation
+from moose.computation.mpspdz import MpspdzLoadOutputOperation
+from moose.computation.mpspdz import MpspdzSaveInputOperation
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 

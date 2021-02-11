@@ -3,22 +3,22 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
-import moose.computations.standard as standard_ops
+import moose.computation.standard as standard_ops
 from moose.compiler.primitives import Seed
 from moose.compiler.standard import Shape
-from moose.computations.base import Computation
-from moose.computations.base import Operation
-from moose.computations.ring import FillTensorOperation
-from moose.computations.ring import PrintRingTensorOperation
-from moose.computations.ring import RingAddOperation
-from moose.computations.ring import RingDotOperation
-from moose.computations.ring import RingMulOperation
-from moose.computations.ring import RingSampleOperation
-from moose.computations.ring import RingShapeOperation
-from moose.computations.ring import RingShlOperation
-from moose.computations.ring import RingShrOperation
-from moose.computations.ring import RingSubOperation
-from moose.computations.ring import RingSumOperation
+from moose.computation.base import Computation
+from moose.computation.base import Operation
+from moose.computation.ring import FillTensorOperation
+from moose.computation.ring import PrintRingTensorOperation
+from moose.computation.ring import RingAddOperation
+from moose.computation.ring import RingDotOperation
+from moose.computation.ring import RingMulOperation
+from moose.computation.ring import RingSampleOperation
+from moose.computation.ring import RingShapeOperation
+from moose.computation.ring import RingShlOperation
+from moose.computation.ring import RingShrOperation
+from moose.computation.ring import RingSubOperation
+from moose.computation.ring import RingSumOperation
 
 
 @dataclass

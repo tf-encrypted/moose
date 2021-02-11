@@ -8,9 +8,9 @@ from typing import Union
 
 import numpy as np
 
-from moose.computations.base import Operation
-from moose.computations.base import UnitType
-from moose.computations.base import ValueType
+from moose.computation.base import Operation
+from moose.computation.base import UnitType
+from moose.computation.base import ValueType
 from moose.edsl.dtypes import DType
 
 

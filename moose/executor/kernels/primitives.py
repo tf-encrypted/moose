@@ -1,8 +1,8 @@
 from moose_kernels import derive_seed
 from moose_kernels import sample_key
 
-from moose.computations.primitives import DeriveSeedOperation
-from moose.computations.primitives import SampleKeyOperation
+from moose.computation.primitives import DeriveSeedOperation
+from moose.computation.primitives import SampleKeyOperation
 from moose.executor.kernels.base import Kernel
 
 

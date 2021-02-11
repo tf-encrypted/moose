@@ -7,7 +7,7 @@ from moose.compiler.render import render_computation
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
-from moose.computations.base import Computation
+from moose.computation.base import Computation
 
 
 class Compiler:

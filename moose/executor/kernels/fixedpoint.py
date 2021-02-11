@@ -3,9 +3,9 @@ from moose_kernels import fixedpoint_decode
 from moose_kernels import fixedpoint_encode
 from moose_kernels import fixedpoint_ring_mean
 
-from moose.computations.fixedpoint import RingDecodeOperation
-from moose.computations.fixedpoint import RingEncodeOperation
-from moose.computations.fixedpoint import RingMeanOperation
+from moose.computation.fixedpoint import RingDecodeOperation
+from moose.computation.fixedpoint import RingEncodeOperation
+from moose.computation.fixedpoint import RingMeanOperation
 from moose.executor.kernels.base import Kernel
 
 

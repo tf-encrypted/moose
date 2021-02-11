@@ -4,9 +4,9 @@ import hashlib
 import tempfile
 from pathlib import Path
 
-from moose.computations.mpspdz import MpspdzCallOperation
-from moose.computations.mpspdz import MpspdzLoadOutputOperation
-from moose.computations.mpspdz import MpspdzSaveInputOperation
+from moose.computation.mpspdz import MpspdzCallOperation
+from moose.computation.mpspdz import MpspdzLoadOutputOperation
+from moose.computation.mpspdz import MpspdzSaveInputOperation
 from moose.executor.kernels.base import Kernel
 from moose.executor.kernels.base import run_external_program
 from moose.logger import get_logger

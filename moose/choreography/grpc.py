@@ -5,9 +5,9 @@ from typing import Dict
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.computations.base import Computation
-from moose.computations.utils import deserialize_computation
-from moose.computations.utils import serialize_computation
+from moose.computation.base import Computation
+from moose.computation.utils import deserialize_computation
+from moose.computation.utils import serialize_computation
 from moose.logger import get_logger
 from moose.protos import executor_pb2
 from moose.protos import executor_pb2_grpc

@@ -1,4 +1,4 @@
-from moose.computations.standard import OutputOperation
+from moose.computation.standard import OutputOperation
 
 
 class PruningPass:

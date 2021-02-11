@@ -4,9 +4,9 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from moose.computations.base import Operation
-from moose.computations.base import Placement
-from moose.computations.base import ValueType
+from moose.computation.base import Operation
+from moose.computation.base import Placement
+from moose.computation.base import ValueType
 
 
 @dataclass

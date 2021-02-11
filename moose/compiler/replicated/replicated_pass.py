@@ -1,6 +1,6 @@
 from moose.compiler.replicated.subgraph_replace_pass import SubgraphReplacementPass
-from moose.computations import fixedpoint as fixed_dialect
-from moose.computations import replicated as rep_dialect
+from moose.computation import fixedpoint as fixed_dialect
+from moose.computation import replicated as rep_dialect
 
 
 class ReplicatedOpsPass(SubgraphReplacementPass):

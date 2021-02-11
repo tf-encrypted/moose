@@ -4,11 +4,11 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 
-from moose.computations import standard as standard_dialect
-from moose.computations.base import Computation
-from moose.computations.host import HostPlacement
-from moose.computations.standard import ShapeType
-from moose.computations.standard import TensorType
+from moose.computation import standard as standard_dialect
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
+from moose.computation.standard import ShapeType
+from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
