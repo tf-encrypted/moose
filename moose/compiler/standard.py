@@ -8,6 +8,7 @@ from moose.computation.base import Operation
 from moose.computation.standard import DotOperation
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import MulOperation
+from moose.edsl import dtypes
 
 
 @dataclass
@@ -19,7 +20,7 @@ class Shape:
 
 @dataclass
 class StandardTensor:
-    datatype: str
+    dtype: dtypes.DType
     op: Operation
     computation: Computation = field(repr=False)
     context: Any = field(repr=False)
@@ -29,7 +30,7 @@ class StandardTensor:
 def standard_mul(x: StandardTensor, y: StandardTensor) -> StandardTensor:
     assert isinstance(x, StandardTensor)
     assert isinstance(y, StandardTensor)
-    assert x.datatype in ["int", "float"]
+    assert x.dtype.is_integer or x.dtype.is_float
     z_op = MulOperation(
         name=x.context.get_fresh_name("mul"),
         inputs={"lhs": x.op.name, "rhs": y.op.name},
@@ -39,7 +40,7 @@ def standard_mul(x: StandardTensor, y: StandardTensor) -> StandardTensor:
     x.computation.add(z_op)
     return StandardTensor(
         op=z_op,
-        datatype=x.datatype,
+        dtype=x.dtype,
         computation=x.computation,
         context=x.context,
         shape=x.shape,
@@ -49,7 +50,7 @@ def standard_mul(x: StandardTensor, y: StandardTensor) -> StandardTensor:
 def standard_dot(x: StandardTensor, y: StandardTensor) -> StandardTensor:
     assert isinstance(x, StandardTensor)
     assert isinstance(y, StandardTensor)
-    assert x.datatype in ["int", "float"]
+    assert x.dtype.is_integer or x.dtype.is_float
     z_op = DotOperation(
         name=x.context.get_fresh_name("dot"),
         inputs={"lhs": x.op.name, "rhs": y.op.name},
@@ -58,13 +59,13 @@ def standard_dot(x: StandardTensor, y: StandardTensor) -> StandardTensor:
     )
     x.computation.add(z_op)
     return StandardTensor(
-        op=z_op, datatype=x.datatype, computation=x.computation, context=x.context,
+        op=z_op, dtype=x.dtype, computation=x.computation, context=x.context,
     )
 
 
 def standard_inverse(x: StandardTensor) -> StandardTensor:
     assert isinstance(x, StandardTensor)
-    assert x.datatype == "float"
+    assert x.dtype.is_float
     z_op = InverseOperation(
         name=x.context.get_fresh_name("inverse"),
         inputs={"x": x.op.name},
@@ -73,5 +74,5 @@ def standard_inverse(x: StandardTensor) -> StandardTensor:
     )
     x.computation.add(z_op)
     return StandardTensor(
-        op=z_op, datatype=x.datatype, computation=x.computation, context=x.context,
+        op=z_op, dtype=x.dtype, computation=x.computation, context=x.context,
     )
