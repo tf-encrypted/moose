@@ -71,5 +71,5 @@ jobs:
       - name: Test the runtime.
         run: |
           . venv/bin/activate
-          HYPOTHESIS_PROFILE='ci-long'
+          HYPOTHESIS_PROFILE='ci'
           make test
