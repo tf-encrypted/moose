@@ -4,7 +4,7 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
-use crate::prng::{AesRng, PRNGSeed};
+use crate::prng::{AesRng, RngSeed};
 
 use crate::bit::BitTensor;
 
@@ -18,7 +18,7 @@ pub trait Sample {
 
 impl Sample for Ring64Tensor {
     fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
-        let seed: PRNGSeed = key.try_into().unwrap();
+        let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
@@ -26,7 +26,7 @@ impl Sample for Ring64Tensor {
         Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
     }
     fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
-        let seed: PRNGSeed = key.try_into().unwrap();
+        let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length)
