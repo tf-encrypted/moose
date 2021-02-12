@@ -31,7 +31,15 @@ clean:
 	rm -rf .pytest_cache
 	rm -Rf .hypothesis
 
-ci: fmt lint test
+ci-routines: fmt lint
+
+ci:
+	$(MAKE) ci-routines
+	HYPOTHESIS_PROFILE='ci' $(MAKE) test
+
+ci-long:
+	$(MAKE) ci-routines
+	HYPOTHESIS_PROFILE='ci-long' $(MAKE) test
 
 release: ci
 	cd rust && cargo release --workspace --skip-publish

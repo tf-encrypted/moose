@@ -1,11 +1,9 @@
 import itertools
 import unittest
-from datetime import timedelta
 
 import numpy as np
 from absl.testing import parameterized
 from hypothesis import given
-from hypothesis import settings
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
@@ -75,7 +73,6 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         (lambda x, y: x * y, False, standard_dialect.MulOperation),
         (lambda x, y: x * (x * y), True, standard_dialect.MulOperation),
     )
-    @settings(max_examples=50, deadline=timedelta(milliseconds=400))
     @given(pair_lists)
     def test_bin_op(self, numpy_lmbd, consecutive_flag, replicated_std_op, bin_args):
         comp = Computation(operations={}, placements={})
@@ -270,7 +267,6 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         results = _compile_and_run(comp, alice, bob, carole)
         np.testing.assert_array_equal(z, results[carole]["result"])
 
-    @settings(deadline=None)
     @given(dotprod_inputs)
     def test_dot_prod(self, dotprod_args):
         comp = Computation(operations={}, placements={})
@@ -341,9 +337,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             z, results[carole]["result"], rtol=1e-5, atol=1e-4,
         )
 
-    # TODO(Dragos) insert hypothesis
     @given(a=st.lists(st.integers(min_value=-4000, max_value=4000), min_size=1))
-    @settings(deadline=timedelta(milliseconds=2000))
     def test_abs(self, a):
         comp = Computation(operations={}, placements={})
 
