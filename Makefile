@@ -41,6 +41,9 @@ ci-long:
 	$(MAKE) ci-routines
 	HYPOTHESIS_PROFILE='ci-long' $(MAKE) test
 
+rust-ci:
+	cd rust && cargo fmt --all -- --check && cargo clippy -- -D warnings
+
 release: ci
 	cd rust && cargo release --workspace --skip-publish
 
