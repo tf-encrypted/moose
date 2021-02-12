@@ -927,6 +927,7 @@ def replicated_binary_adder(
 
     return z
 
+
 # TODO (fixme)
 def _create_constant_replicated_bit_tensor(shape, bit_value, placement_name):
     computation = shape.computation
