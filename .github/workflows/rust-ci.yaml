@@ -37,4 +37,4 @@ jobs:
           toolchain: nightly
           override: true
           components: rustfmt, clippy
-      - run: echo $PWD
+      - run: cd .. && make rust-ci
