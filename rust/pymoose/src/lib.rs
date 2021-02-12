@@ -1,9 +1,9 @@
-use crypto::bit::BitTensor;
-use crypto::bit::{BitExtractor, SampleBit};
-use crypto::fixedpoint::{ring_decode, ring_encode, ring_mean};
-use crypto::prng::AesRng;
-use crypto::ring::{BitInjector, Dot, Ring64Tensor, Sample};
-use crypto::utils;
+use moose::bit::BitTensor;
+use moose::bit::{BitExtractor, SampleBit};
+use moose::fixedpoint::{ring_decode, ring_encode, ring_mean};
+use moose::prng::AesRng;
+use moose::ring::{BitInjector, Dot, Ring64Tensor, Sample};
+use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};

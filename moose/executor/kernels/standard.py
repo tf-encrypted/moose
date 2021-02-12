@@ -207,7 +207,6 @@ class LoadKernel(Kernel):
                 f" kernel:{self.__class__.__name__},"
                 f" op:{op},"
                 f" session_id:{session.session_id},"
-                f" output:{value}"
             )
             output.set_result(value)
 
@@ -227,7 +226,6 @@ class SaveKernel(Kernel):
                 f" op:{op},"
                 f" session_id:{session.session_id},"
                 f" key:{key},"
-                f" value:{value}"
             )
             await self.store.save(
                 session_id=session.session_id, key=key, value=value,
@@ -251,7 +249,7 @@ class SerializeKernel(Kernel):
                 value_ser = msgpack.packb(value, default=_encode_tensor_info)
                 return output.set_result(value_ser)
             elif isinstance(value_type, ShapeType):
-                value_ser = json.dumps(value)
+                value_ser = json.dumps(value).encode()
                 return output.set_result(value_ser)
             elif isinstance(value_type, (PRFKeyType, SeedType)):
                 return output.set_result(value)
@@ -269,7 +267,7 @@ class DeserializeKernel(Kernel):
                 value = msgpack.unpackb(value, object_hook=_decode_tensor_info)
                 return output.set_result(value)
             elif isinstance(output_type, ShapeType):
-                value = json.loads(value)
+                value = json.loads(value.decode())
                 return output.set_result(value)
             elif isinstance(output_type, (PRFKeyType, SeedType)):
                 return output.set_result(value)

@@ -1,6 +1,7 @@
 import asyncio
 import dataclasses
 from typing import Any
+from typing import List
 
 from moose.computation import bit as bit_ops
 from moose.computation import fixedpoint as fixed_ops
@@ -19,6 +20,12 @@ from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
 from moose.logger import get_tracer
 from moose.utils import AsyncStore
+
+
+class ExecutionError(Exception):
+    def __init__(self, msg: str, exceptions: List[Exception]):
+        super().__init__(msg)
+        self.exceptions = exceptions
 
 
 @dataclasses.dataclass
@@ -143,11 +150,15 @@ class AsyncExecutor:
             # `asyncio.wait` will block otherwise
             if not tasks:
                 get_logger().warn(
-                    f"Computation had no tasks; session_id:{session.session_id}"
+                    f"Computation had no tasks;"
+                    f" placement:{placement},"
+                    f" session_id:{session.session_id}"
                 )
                 return
             # execute kernels
-            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            done, pending = await asyncio.wait(
+                tasks, return_when=asyncio.FIRST_EXCEPTION
+            )
             # address any errors that may have occurred
             except_tasks = [task for task in done if task.exception()]
             exceptions = []
@@ -155,9 +166,18 @@ class AsyncExecutor:
                 exceptions.append(t.exception())
                 get_logger().error(f"Task {t.get_name()} caused an exception")
                 t.print_stack()
+
+            if len(pending) > 0:
+                get_logger().warn(
+                    "There was probably an error; cancelling all pending tasks"
+                )
+                for t in pending:
+                    t.cancel()
+
             if len(exceptions) > 0:
-                raise Exception(
-                    f"One or more errors occurred in '{placement}: {exceptions}'"
+                raise ExecutionError(
+                    f"One or more errors occurred in '{placement}': '{exceptions}'",
+                    exceptions,
                 )
 
     def schedule_execution(self, comp, placement):

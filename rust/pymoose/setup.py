@@ -7,10 +7,10 @@ install_requires = ["numpy"]
 test_requires = install_requires + ["pytest", "absl-py"]
 
 setup(
-    name="moose_kernels",
-    version="0.1.0",
-    description="Example of python extension using rust-numpy",
-    rust_extensions=[RustExtension("moose_kernels.moose_kernels", "./Cargo.toml",)],
+    name="pymoose",
+    version="0.1.2-alpha.0",  # NOTE: auto-updated during release
+    description="Python-bindings for Moose",
+    rust_extensions=[RustExtension("pymoose.moose_kernels", "./Cargo.toml",)],
     install_requires=install_requires,
     setup_requires=setup_requires,
     test_requires=test_requires,
