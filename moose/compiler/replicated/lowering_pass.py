@@ -388,7 +388,14 @@ def replicated_ring_share(
 
 
 def abstract_replicated_share(
-    x: RingTensor, setup: ReplicatedSetup, placement_name, **kwargs,
+    x: RingTensor,
+    setup: ReplicatedSetup,
+    placement_name,
+    shape_op,
+    sub_op,
+    fill_op,
+    sample_op,
+    output_type,
 ) -> ReplicatedRingTensor:
     assert isinstance(setup, ReplicatedSetup)
 
@@ -397,7 +404,7 @@ def abstract_replicated_share(
 
     synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
 
-    shape = kwargs.get("shape_op")(x, placement_name=x.op.placement_name)
+    shape = shape_op(x, placement_name=x.op.placement_name)
 
     seed_mine = None
     input_player_id = None
@@ -406,18 +413,16 @@ def abstract_replicated_share(
             seed_mine = synced_seeds.seeds[i][0]
             input_player_id = i
 
-    x_mine = kwargs.get("sample_op")(
-        shape, seed_mine, placement_name=x.op.placement_name
-    )
-    x_other = kwargs.get("sub_op")(x, x_mine, placement_name=x.op.placement_name)
+    x_mine = sample_op(shape, seed_mine, placement_name=x.op.placement_name)
+    x_other = sub_op(x, x_mine, placement_name=x.op.placement_name)
 
     zero_tensors = [None] * 3
     for i in range(3):
         if i != input_player_id:
-            zero_tensors[i] = kwargs.get("fill_op")(shape, 0, placement_name=players[i])
+            zero_tensors[i] = fill_op(shape, 0, placement_name=players[i])
 
     prev_player_id = (input_player_id - 1) % 3
-    x_previous = kwargs.get("sample_op")(
+    x_previous = sample_op(
         shape,
         synced_seeds.seeds[prev_player_id][1],
         placement_name=players[prev_player_id],
@@ -432,7 +437,7 @@ def abstract_replicated_share(
         else:
             input_shares.append((x_other, zero_tensors[i]))
 
-    return kwargs.get("output_type")(
+    return output_type(
         shares0=input_shares[0],
         shares1=input_shares[1],
         shares2=input_shares[2],
@@ -471,7 +476,7 @@ def replicated_ring_mul(
     )
 
 
-def replicated_bit_mul(
+def replicated_bit_and(
     x: ReplicatedBitTensor,
     y: ReplicatedBitTensor,
     setup: ReplicatedSetup,
@@ -603,7 +608,7 @@ def replicated_ring_add(
     return abstract_replicated_add(x, y, ring_add, placement_name, ReplicatedRingTensor)
 
 
-def replicated_bit_add(
+def replicated_bit_xor(
     x: ReplicatedBitTensor, y: ReplicatedBitTensor, placement_name
 ) -> ReplicatedBitTensor:
     assert isinstance(x, ReplicatedBitTensor)
@@ -868,7 +873,7 @@ def ring_mean(ring_tensor_input, axis, precision, placement_name):
 
 # Kogge-Stone binary adder topology
 def replicated_binary_adder(
-    x, y, setup: ReplicatedSetup, placement_name, **kwargs,
+    x, y, setup: ReplicatedSetup, placement_name,
 ):
     R = 64
 
@@ -878,13 +883,13 @@ def replicated_binary_adder(
     def xor64(a, b):
         assert len(a) == R
         assert len(b) == R
-        return [replicated_bit_add(a[i], b[i], placement_name) for i in range(64)]
+        return [replicated_bit_xor(a[i], b[i], placement_name) for i in range(64)]
 
     def and64(a, b):
         assert len(a) == R
         assert len(b) == R
         return [
-            replicated_bit_mul(a[i], b[i], setup, placement_name) for i in range(64)
+            replicated_bit_and(a[i], b[i], setup, placement_name) for i in range(64)
         ]
 
     N = int(log(R, 2))
@@ -1065,14 +1070,9 @@ def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placemen
         for k in range(R)
     ]
 
-    msb = replicated_binary_adder(
-        rep_bit_left,
-        rep_bit_right,
-        setup,
-        placement_name,
-        player=players[0],
-        chain=chain,
-    )[-1]
+    msb = replicated_binary_adder(rep_bit_left, rep_bit_right, setup, placement_name,)[
+        -1
+    ]
     return msb
 
 
