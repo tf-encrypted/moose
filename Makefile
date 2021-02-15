@@ -19,30 +19,38 @@ install: pydep pylib
 fmt:
 	isort .
 	black .
+	cd rust; cargo fmt
+
+fmt-check:
+	cd rust && cargo fmt --all -- --check
 
 lint:
 	flake8 .
+	cd rust && cargo clippy
+
+lint-check:
+	cd rust && cargo clippy -- -D warnings
 
 test:
 	pytest .
+	cd rust && cargo test
 
 clean:
 	find ./moose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf .pytest_cache
 	rm -Rf .hypothesis
-
-ci-routines: fmt lint
+	cargo clean
 
 ci:
-	$(MAKE) ci-routines
+	make fmt
+	make lint
 	HYPOTHESIS_PROFILE='ci' $(MAKE) test
 
 ci-long:
-	$(MAKE) ci-routines
+	make fmt
+	make lint
 	HYPOTHESIS_PROFILE='ci-long' $(MAKE) test
 
-rust-ci:
-	cd rust && cargo fmt --all -- --check && cargo clippy -- -D warnings
 
 release: ci
 	cd rust && cargo release --workspace --skip-publish

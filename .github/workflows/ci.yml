@@ -28,6 +28,7 @@ jobs:
           profile: minimal
           toolchain: nightly
           override: true
+          components: rustfmt, clippy
 
       - uses: actions/cache@v2
         id: cache-deps
@@ -58,11 +59,16 @@ jobs:
           . venv/bin/activate
           make pylib
 
-      - name: Lint the runtime package.
+      - name: Lint check the runtime package.
         run: |
           . venv/bin/activate
-          make lint
+          make lint-check
 
+      - name: Fmt check the runtime package.
+        run: |
+          . venv/bin/activate
+          make fmt-check
+      
       - name: Build the runtime.
         run: |
           . venv/bin/activate
@@ -71,5 +77,4 @@ jobs:
       - name: Test the runtime.
         run: |
           . venv/bin/activate
-          echo $PWD
-          HYPOTHESIS_PROFILE='ci' && make test
+          HYPOTHESIS_PROFILE='ci' $(MAKE) test
