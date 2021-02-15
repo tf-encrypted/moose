@@ -197,8 +197,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "bit_fill")]
-    fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: bool) -> &'_ PyArrayDyn<u8> {
-        let res = BitTensor::fill(&shape, el as u8);
+    fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
+        let res = BitTensor::fill(&shape, el);
         bit_to_array(res).to_pyarray(py)
     }
 

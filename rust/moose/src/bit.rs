@@ -25,7 +25,14 @@ impl SampleBit for BitTensor {
 
 impl BitTensor {
     pub fn fill(shape: &[usize], el: u8) -> BitTensor {
-        BitTensor(ArrayD::from_elem(shape, el & 1))
+        let res = {
+            if el == 0 || el == 1 {
+                BitTensor(ArrayD::from_elem(shape, el & 1))
+            } else {
+                unimplemented!()
+            }
+        };
+        res
     }
 }
 
