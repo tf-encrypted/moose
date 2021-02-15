@@ -77,4 +77,4 @@ jobs:
       - name: Test the runtime.
         run: |
           . venv/bin/activate
-          HYPOTHESIS_PROFILE='ci' $(MAKE) test
+          make test-short

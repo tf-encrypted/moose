@@ -35,24 +35,24 @@ test:
 	pytest .
 	cd rust && cargo test
 
+test-long:
+	HYPOTHESIS_PROFILE='ci-long' $(MAKE) test
+
+test-short:
+	HYPOTHESIS_PROFILE='ci' $(MAKE) test
+
 clean:
 	find ./moose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf .pytest_cache
 	rm -Rf .hypothesis
 	cargo clean
 
-ci:
+ci-ready:
 	make fmt
 	make lint
-	HYPOTHESIS_PROFILE='ci' $(MAKE) test
+	make test-short
 
-ci-long:
-	make fmt
-	make lint
-	HYPOTHESIS_PROFILE='ci-long' $(MAKE) test
-
-
-release: ci
+release: ci-ready
 	cd rust && cargo release --workspace --skip-publish
 
-.PHONY: build pydep pylib install fmt lint test ci release
+.PHONY: build pydep pylib install fmt fmt-check lint-check test test-long test-short ci-ready release
