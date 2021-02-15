@@ -4,7 +4,6 @@ use std::convert::TryInto;
 use std::ops::{BitAnd, BitXor};
 
 use crate::prng::{AesRng, RngSeed};
-use crate::ring::Ring64Tensor;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>);
@@ -21,18 +20,6 @@ impl SampleBit for BitTensor {
         let values: Vec<_> = (0..length).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape);
         BitTensor(Array::from_shape_vec(ix, values).unwrap())
-    }
-}
-
-pub trait BitExtractor {
-    fn bit_extract(x: Ring64Tensor, bit_idx: usize) -> Self;
-}
-
-impl BitExtractor for BitTensor {
-    fn bit_extract(x: Ring64Tensor, bit_idx: usize) -> Self {
-        let temp = x >> bit_idx;
-        let lsb = temp.0.mapv(|ai| (ai.0 & 1) as u8);
-        BitTensor::from(lsb)
     }
 }
 
@@ -93,22 +80,6 @@ mod tests {
     fn bit_fill() {
         let r = BitTensor::fill(&[2], 1);
         assert_eq!(r, BitTensor::from(vec![1, 1]))
-    }
-
-    #[test]
-    fn bit_extract() {
-        let shape = 5;
-        let value = 7;
-
-        let r0 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 0);
-        assert_eq!(BitTensor::fill(&[shape], 1), r0,);
-
-        let r1 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 1);
-        assert_eq!(BitTensor::fill(&[shape], 1), r1,);
-        let r2 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 2);
-        assert_eq!(BitTensor::fill(&[shape], 1), r2,);
-        let r3 = BitTensor::bit_extract(Ring64Tensor::fill(&[shape], value), 3);
-        assert_eq!(BitTensor::fill(&[shape], 0), r3,)
     }
 
     #[test]

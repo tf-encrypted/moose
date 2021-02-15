@@ -1,8 +1,8 @@
 use moose::bit::BitTensor;
-use moose::bit::{BitExtractor, SampleBit};
+use moose::bit::SampleBit;
 use moose::fixedpoint::{ring_decode, ring_encode, ring_mean};
 use moose::prng::AesRng;
-use moose::ring::{BitInjector, Dot, Ring64Tensor, Sample};
+use moose::ring::{Dot, Ring64Tensor, Sample};
 use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
@@ -197,8 +197,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "bit_fill")]
-    fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
-        let res = BitTensor::fill(&shape, el);
+    fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: bool) -> &'_ PyArrayDyn<u8> {
+        let res = BitTensor::fill(&shape, el as u8);
         bit_to_array(res).to_pyarray(py)
     }
 
@@ -209,7 +209,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         bit_idx: usize,
     ) -> &'py PyArrayDyn<u8> {
         let x_ring = dynarray_to_ring64(&x);
-        let res = BitTensor::bit_extract(x_ring, bit_idx);
+        let res = x_ring.bit_extract(bit_idx);
         bit_to_array(res).to_pyarray(py)
     }
 
@@ -220,7 +220,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         bit_idx: usize,
     ) -> &'py PyArrayDyn<u64> {
         let b = BitTensor::from(x.to_owned_array());
-        let res = Ring64Tensor::bit_inject(b, bit_idx);
+        let res = Ring64Tensor::from(b) << bit_idx;
         ring64_to_array(res).to_pyarray(py)
     }
 

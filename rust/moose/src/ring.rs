@@ -38,19 +38,16 @@ impl Sample for Ring64Tensor {
 }
 
 impl Ring64Tensor {
-    pub fn fill(shape: &[usize], el: u64) -> Ring64Tensor {
-        Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
+    pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
+        let temp = &self.0 >> bit_idx;
+        let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
+        BitTensor::from(lsb)
     }
 }
 
-pub trait BitInjector {
-    fn bit_inject(x: BitTensor, bit_idx: usize) -> Self;
-}
-
-impl BitInjector for Ring64Tensor {
-    fn bit_inject(x: BitTensor, bit_idx: usize) -> Self {
-        let ring_rep = x.0.mapv(|ai| ((ai as u64) << bit_idx));
-        Ring64Tensor::from(ring_rep)
+impl Ring64Tensor {
+    pub fn fill(shape: &[usize], el: u64) -> Ring64Tensor {
+        Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
     }
 }
 
@@ -58,6 +55,13 @@ impl From<ArrayD<i64>> for Ring64Tensor {
     fn from(a: ArrayD<i64>) -> Ring64Tensor {
         let wrapped = a.mapv(|ai| Wrapping(ai as u64));
         Ring64Tensor(wrapped)
+    }
+}
+
+impl From<BitTensor> for Ring64Tensor {
+    fn from(b: BitTensor) -> Ring64Tensor {
+        let ring_rep = b.0.mapv(|ai| Wrapping(ai as u64));
+        Ring64Tensor(ring_rep)
     }
 }
 
@@ -293,5 +297,23 @@ mod tests {
         let exp = Ring64Tensor::from(exp_backing);
         let out = x.sum(None);
         assert_eq!(out, exp)
+    }
+
+    #[test]
+    fn bit_extract() {
+        let shape = 5;
+        let value = 7;
+
+        let r0 = Ring64Tensor::fill(&[shape], value).bit_extract(0);
+        assert_eq!(BitTensor::fill(&[shape], 1), r0,);
+
+        let r1 = Ring64Tensor::fill(&[shape], value).bit_extract(1);
+        assert_eq!(BitTensor::fill(&[shape], 1), r1,);
+
+        let r2 = Ring64Tensor::fill(&[shape], value).bit_extract(2);
+        assert_eq!(BitTensor::fill(&[shape], 1), r2,);
+
+        let r3 = Ring64Tensor::fill(&[shape], value).bit_extract(3);
+        assert_eq!(BitTensor::fill(&[shape], 0), r3,)
     }
 }
