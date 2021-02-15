@@ -495,8 +495,8 @@ def abstract_replicated_mul(
     y: ReplicatedTensor,
     setup: ReplicatedSetup,
     placement_name,
-    Add,
-    Mul,
+    add_op,
+    mul_op,
     out_type,
 ) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
@@ -519,15 +519,15 @@ def abstract_replicated_mul(
     z_shares = [None, None, None]
 
     for i in range(3):
-        z_shares[i] = Mul(x_shares[i][0], y_shares[i][0], players[i])
-        z_shares[i] = Add(
+        z_shares[i] = mul_op(x_shares[i][0], y_shares[i][0], players[i])
+        z_shares[i] = add_op(
             z_shares[i],
-            Mul(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
+            mul_op(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
             placement_name=players[i],
         )
-        z_shares[i] = Add(
+        z_shares[i] = add_op(
             z_shares[i],
-            Mul(x_shares[i][1], y_shares[i][0], placement_name=players[i]),
+            mul_op(x_shares[i][1], y_shares[i][0], placement_name=players[i]),
             placement_name=players[i],
         )
 
@@ -535,7 +535,7 @@ def abstract_replicated_mul(
     local_type = RingTensor if out_type is ReplicatedRingTensor else BitTensor
     zero_shares = _generate_zero_share(zero_shape, setup, players, local_type)
     z_shares = [
-        Add(z_shares[i], zero_shares[i], placement_name=players[i]) for i in range(3)
+        add_op(z_shares[i], zero_shares[i], placement_name=players[i]) for i in range(3)
     ]
     return out_type(
         shares0=(z_shares[2], z_shares[0]),
@@ -618,7 +618,7 @@ def replicated_bit_xor(
 
 
 def abstract_replicated_add(
-    x: ReplicatedTensor, y: ReplicatedTensor, Add, placement_name, out_type
+    x: ReplicatedTensor, y: ReplicatedTensor, add_op, placement_name, out_type
 ) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
     assert isinstance(y, ReplicatedTensor)
@@ -637,7 +637,7 @@ def abstract_replicated_add(
     z_shares = [None, None, None]
     for i in range(3):
         z_shares[i] = [
-            Add(x_shares[i][j], y_shares[i][j], placement_name=players[i])
+            add_op(x_shares[i][j], y_shares[i][j], placement_name=players[i])
             for j in range(2)
         ]
 
@@ -959,12 +959,14 @@ def _create_constant_replicated_bit_tensor(shape, bit_value, placement_name):
 
 
 def abstract_print_replicated_tensor(
-    x: ReplicatedBitTensor, Add, recipient_name, prefix, suffix, chain=None
+    x: ReplicatedBitTensor, add_op, recipient_name, prefix, suffix, chain=None
 ):
     (x0, x1) = x.shares0
     (_, x2) = x.shares1
-    revealed = Add(
-        x0, Add(x1, x2, placement_name=recipient_name), placement_name=recipient_name,
+    revealed = add_op(
+        x0,
+        add_op(x1, x2, placement_name=recipient_name),
+        placement_name=recipient_name,
     )
     print_op = (
         print_bit_tensor if isinstance(x, ReplicatedBitTensor) else print_ring_tensor
@@ -978,9 +980,11 @@ def abstract_print_replicated_tensor(
     )
 
 
-def abstract_print_additive_tensor(x, Add, recipient_name, prefix, suffix, chain=None):
+def abstract_print_additive_tensor(
+    x, add_op, recipient_name, prefix, suffix, chain=None
+):
     assert len(x) == 2
-    revealed = Add(x[0], x[1], placement_name=recipient_name)
+    revealed = add_op(x[0], x[1], placement_name=recipient_name)
     print_op = print_bit_tensor if isinstance(x[0], BitTensor) else print_ring_tensor
     print_op(
         revealed,
