@@ -25,14 +25,11 @@ impl SampleBit for BitTensor {
 
 impl BitTensor {
     pub fn fill(shape: &[usize], el: u8) -> BitTensor {
-        let res = {
-            if el == 0 || el == 1 {
-                BitTensor(ArrayD::from_elem(shape, el & 1))
-            } else {
-                unimplemented!()
-            }
-        };
-        res
+        if el == 0 || el == 1 {
+            BitTensor(ArrayD::from_elem(shape, el & 1))
+        } else {
+            unimplemented!()
+        }
     }
 }
 
@@ -55,6 +52,12 @@ impl From<&[u8]> for BitTensor {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| *vi & 1).collect();
         BitTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+    }
+}
+
+impl From<BitTensor> for ArrayD<u8> {
+    fn from(b: BitTensor) -> ArrayD<u8> {
+        b.0
     }
 }
 

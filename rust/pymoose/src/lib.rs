@@ -21,10 +21,6 @@ fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
     unwrapped.into_shape(shape).unwrap()
 }
 
-fn bit_to_array(b: BitTensor) -> ArrayD<u8> {
-    b.0
-}
-
 fn binary_pyfn<'py>(
     py: Python<'py>,
     x: PyReadonlyArrayDyn<u64>,
@@ -170,8 +166,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u8> {
         let b1 = BitTensor::from(x.to_owned_array());
         let b2 = BitTensor::from(y.to_owned_array());
-        let res = b1 ^ b2;
-        bit_to_array(res).to_pyarray(py)
+        ArrayD::<u8>::from(b1 ^ b2).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_and")]
@@ -182,8 +177,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u8> {
         let b1 = BitTensor::from(x.to_owned_array());
         let b2 = BitTensor::from(y.to_owned_array());
-        let res = b1 & b2;
-        bit_to_array(res).to_pyarray(py)
+        ArrayD::<u8>::from(b1 & b2).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_sample")]
@@ -193,13 +187,13 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         seed: &'py PyBytes,
     ) -> &'py PyArrayDyn<u8> {
         let b = BitTensor::sample_uniform(&shape, &seed.as_bytes());
-        bit_to_array(b).to_pyarray(py)
+        ArrayD::<u8>::from(b).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_fill")]
     fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
         let res = BitTensor::fill(&shape, el);
-        bit_to_array(res).to_pyarray(py)
+        ArrayD::<u8>::from(res).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_extract")]
@@ -210,7 +204,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u8> {
         let x_ring = dynarray_to_ring64(&x);
         let res = x_ring.bit_extract(bit_idx);
-        bit_to_array(res).to_pyarray(py)
+        ArrayD::<u8>::from(res).to_pyarray(py)
     }
 
     #[pyfn(m, "ring_inject")]
