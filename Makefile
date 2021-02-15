@@ -21,14 +21,13 @@ fmt:
 	black .
 	cd rust; cargo fmt
 
-fmt-check:
-	cd rust && cargo fmt --all -- --check
-
 lint:
 	flake8 .
 	cd rust && cargo clippy
 
 lint-check:
+	flake8 .
+	cd rust && cargo fmt --all -- --check
 	cd rust && cargo clippy -- -D warnings
 
 test:
@@ -36,9 +35,9 @@ test:
 	cd rust && cargo test
 
 test-long:
-	HYPOTHESIS_PROFILE='ci-long' $(MAKE) test
+	HYPOTHESIS_PROFILE='test-long' $(MAKE) test
 
-test-short:
+test-ci:
 	HYPOTHESIS_PROFILE='ci' $(MAKE) test
 
 clean:
@@ -50,9 +49,9 @@ clean:
 ci-ready:
 	make fmt
 	make lint
-	make test-short
+	make test-ci
 
 release: ci-ready
 	cd rust && cargo release --workspace --skip-publish
 
-.PHONY: build pydep pylib install fmt fmt-check lint-check test test-long test-short ci-ready release
+.PHONY: build pydep pylib install fmt lint-check test test-long test-ci clean ci-ready release

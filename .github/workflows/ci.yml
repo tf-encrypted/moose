@@ -64,11 +64,6 @@ jobs:
           . venv/bin/activate
           make lint-check
 
-      - name: Fmt check the runtime package.
-        run: |
-          . venv/bin/activate
-          make fmt-check
-      
       - name: Build the runtime.
         run: |
           . venv/bin/activate
@@ -77,4 +72,4 @@ jobs:
       - name: Test the runtime.
         run: |
           . venv/bin/activate
-          make test-short
+          make test-ci
