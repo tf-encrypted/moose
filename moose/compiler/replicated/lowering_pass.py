@@ -9,7 +9,6 @@ from moose.compiler.bit import bit_sample
 from moose.compiler.bit import bit_shape
 from moose.compiler.bit import bit_xor
 from moose.compiler.bit import fill_bit_tensor
-from moose.compiler.bit import print_bit_tensor
 from moose.compiler.primitives import PRFKey
 from moose.compiler.primitives import Seed
 from moose.compiler.primitives import derive_seed
@@ -26,7 +25,6 @@ from moose.compiler.replicated.types import ReplicatedTensor
 from moose.compiler.replicated.types import SetupContext
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import fill_tensor
-from moose.compiler.ring import print_ring_tensor
 from moose.compiler.ring import ring_add
 from moose.compiler.ring import ring_dot
 from moose.compiler.ring import ring_mul
@@ -933,104 +931,6 @@ def replicated_binary_adder(
     return z
 
 
-# TODO (fixme) see formula for constant tensor
-def _create_constant_replicated_bit_tensor(rep_shape, bit_value, placement_name):
-    computation = rep_shape.shapes[0].computation
-    context = rep_shape.shapes[0].context
-    replicated_placement = computation.placement(placement_name)
-    assert isinstance(replicated_placement, ReplicatedPlacement)
-    assert isinstance(rep_shape, ReplicatedShape)
-    assert 0 <= bit_value and bit_value <= 1
-
-    players = replicated_placement.player_names
-
-    shares = [
-        (
-            fill_bit_tensor(rep_shape.shapes[0], bit_value, placement_name=players[0]),
-            fill_bit_tensor(rep_shape.shapes[0], 0, placement_name=players[0]),
-        ),
-        (
-            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
-            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
-        ),
-        (
-            fill_bit_tensor(rep_shape.shapes[2], 0, placement_name=players[2]),
-            fill_bit_tensor(rep_shape.shapes[2], bit_value, placement_name=players[2]),
-        ),
-    ]
-    return ReplicatedBitTensor(
-        shares0=shares[0],
-        shares1=shares[1],
-        shares2=shares[2],
-        computation=computation,
-        context=context,
-    )
-
-
-def abstract_print_replicated_tensor(
-    x: ReplicatedBitTensor, add_op, recipient_name, prefix, suffix, chain=None
-):
-    (x0, x1) = x.shares0
-    (_, x2) = x.shares1
-    revealed = add_op(
-        x0,
-        add_op(x1, x2, placement_name=recipient_name),
-        placement_name=recipient_name,
-    )
-    print_op = (
-        print_bit_tensor if isinstance(x, ReplicatedBitTensor) else print_ring_tensor
-    )
-    print_op(
-        revealed,
-        prefix=prefix,
-        suffix=suffix,
-        placement_name=recipient_name,
-        chain=chain,
-    )
-
-
-def abstract_print_additive_tensor(
-    x, add_op, recipient_name, prefix, suffix, chain=None
-):
-    assert len(x) == 2
-    revealed = add_op(x[0], x[1], placement_name=recipient_name)
-    print_op = print_bit_tensor if isinstance(x[0], BitTensor) else print_ring_tensor
-    print_op(
-        revealed,
-        prefix=prefix,
-        suffix=suffix,
-        placement_name=recipient_name,
-        chain=chain,
-    )
-
-
-def print_replicated_tensor(x, recipient_name, prefix, suffix, chain=None):
-    if isinstance(x, ReplicatedBitTensor):
-        return abstract_print_replicated_tensor(
-            x, bit_xor, recipient_name, prefix, suffix, chain
-        )
-    elif isinstance(x, ReplicatedRingTensor):
-        return abstract_print_replicated_tensor(
-            x, ring_add, recipient_name, prefix, suffix, chain
-        )
-    else:
-        raise Exception("Mismatched type")
-
-
-def print_additive_tensor(x, recipient_name, prefix, suffix, chain=None):
-    assert len(x) == 2
-    if isinstance(x[0], BitTensor):
-        return abstract_print_additive_tensor(
-            x, bit_xor, recipient_name, prefix, suffix, chain
-        )
-    elif isinstance(x[0], RingTensor):
-        return abstract_print_additive_tensor(
-            x, ring_add, recipient_name, prefix, suffix, chain
-        )
-    else:
-        raise Exception("Mismatched type")
-
-
 def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name):
     computation = x.computation
     replicated_placement = computation.placement(placement_name)
@@ -1258,22 +1158,6 @@ def replicated_ring_add_constant(
     )
 
 
-def _create_constant_replicated_ring_tensor(
-    constant: int, rep_shape: ReplicatedShape, placement_name
-):
-    assert isinstance(constant, int)
-    assert isinstance(rep_shape, ReplicatedShape)
-
-    replicated_placement = rep_shape.shapes[0].computation.placement(placement_name)
-    players = replicated_placement.player_names
-
-    return ReplicatedConstantRingTensor(
-        shares=[
-            fill_tensor(rep_shape.shapes[i], constant, players[i]) for i in range(3)
-        ]
-    )
-
-
 def replicated_ring_mul_constant(
     x: ReplicatedRingTensor, constant: ReplicatedConstantRingTensor, placement_name
 ):
@@ -1401,3 +1285,52 @@ def _generate_zero_share(shape, setup, players, out_type):
         )
 
     return sub_shares  # alpha, beta, gamma
+
+
+def _create_constant_replicated_ring_tensor(
+    constant: int, rep_shape: ReplicatedShape, placement_name
+):
+    assert isinstance(constant, int)
+    assert isinstance(rep_shape, ReplicatedShape)
+
+    replicated_placement = rep_shape.shapes[0].computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    return ReplicatedConstantRingTensor(
+        shares=[
+            fill_tensor(rep_shape.shapes[i], constant, players[i]) for i in range(3)
+        ]
+    )
+
+
+def _create_constant_replicated_bit_tensor(rep_shape, bit_value, placement_name):
+    computation = rep_shape.shapes[0].computation
+    context = rep_shape.shapes[0].context
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+    assert isinstance(rep_shape, ReplicatedShape)
+    assert 0 <= bit_value and bit_value <= 1
+
+    players = replicated_placement.player_names
+
+    shares = [
+        (
+            fill_bit_tensor(rep_shape.shapes[0], bit_value, placement_name=players[0]),
+            fill_bit_tensor(rep_shape.shapes[0], 0, placement_name=players[0]),
+        ),
+        (
+            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
+            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
+        ),
+        (
+            fill_bit_tensor(rep_shape.shapes[2], 0, placement_name=players[2]),
+            fill_bit_tensor(rep_shape.shapes[2], bit_value, placement_name=players[2]),
+        ),
+    ]
+    return ReplicatedBitTensor(
+        shares0=shares[0],
+        shares1=shares[1],
+        shares2=shares[2],
+        computation=computation,
+        context=context,
+    )
