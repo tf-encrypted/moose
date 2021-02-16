@@ -4,6 +4,7 @@ import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
 from moose_kernels import bit_and
+from moose_kernels import bit_shape
 from moose_kernels import bit_xor
 from moose_kernels import derive_seed
 from moose_kernels import ring_add
@@ -138,6 +139,10 @@ class BitTensorOps(parameterized.TestCase):
         np.testing.assert_array_equal(x, ring_inject(x, 0))
         np.testing.assert_array_equal(x << 1, ring_inject(x, 1))
         np.testing.assert_array_equal(x << 2, ring_inject(x, 2))
+
+    def test_shape(self):
+        a = np.array([1, 2, 3], dtype=np.uint8)
+        assert bit_shape(a) == [3]
 
 
 if __name__ == "__main__":
