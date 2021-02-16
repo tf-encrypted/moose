@@ -25,11 +25,12 @@ impl SampleBit for BitTensor {
 
 impl BitTensor {
     pub fn fill(shape: &[usize], el: u8) -> BitTensor {
-        if el == 0 || el == 1 {
-            BitTensor(ArrayD::from_elem(shape, el & 1))
-        } else {
-            panic!("Cannot fill a BitTensor with value {:?}", el)
-        }
+        assert!(
+            el == 0 || el == 1,
+            "cannot fill a BitTensor with a value {:?}",
+            el
+        );
+        BitTensor(ArrayD::from_elem(shape, el & 1))
     }
 }
 
