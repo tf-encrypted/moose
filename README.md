@@ -68,7 +68,7 @@ make test-ci
 
 ### Testing
 
-There three types of testing regimes which can be found in the Makefile:
+There are three types of testing regimes which can be found in the Makefile:
 
 ```
 make test
