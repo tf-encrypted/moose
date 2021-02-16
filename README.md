@@ -66,6 +66,21 @@ make lint
 make test-ci
 ```
 
+### Testing
+
+There three types of testing regimes which can be found in the Makefile:
+
+```
+make test
+make test-ci
+make test-long
+```
+
+When doing local development we suggest using `make test` command. The
+`make-ci` command is used mostly for ci purposes and runs a smaller range of test cases. For
+a more extensive test suite we recommend using `make test-long` command.
+
+
 ### Releasing
 
 Follow these steps to release a new version:
