@@ -196,6 +196,12 @@ class InverseExpression(Expression):
 
 
 @dataclass
+class AbsExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SaveExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -358,6 +364,12 @@ def reshape(x, shape, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     return ReshapeExpression(placement=placement, inputs=[x, shape])
+
+
+def abs(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return AbsExpression(placement=placement, inputs=[x])
 
 
 def load(key, dtype=None, placement=None):

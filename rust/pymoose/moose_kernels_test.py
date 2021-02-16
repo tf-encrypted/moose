@@ -3,10 +3,14 @@ import random
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
+from moose_kernels import bit_and
+from moose_kernels import bit_shape
+from moose_kernels import bit_xor
 from moose_kernels import derive_seed
 from moose_kernels import ring_add
 from moose_kernels import ring_dot
 from moose_kernels import ring_fill
+from moose_kernels import ring_inject
 from moose_kernels import ring_mul
 from moose_kernels import ring_sample
 from moose_kernels import ring_shape
@@ -104,12 +108,41 @@ class FillOp(parameterized.TestCase):
         np.testing.assert_array_equal(actual, expected)
 
 
-class BitOps(parameterized.TestCase):
+class RingBitOps(parameterized.TestCase):
     def test_bitwise_ops(self):
         a = np.array([2 ** i for i in range(64)], dtype=np.uint64)
         for i in range(10):
             np.testing.assert_array_equal(a << i, ring_shl(a, i))
             np.testing.assert_array_equal(a >> i, ring_shr(a, i))
+
+
+class BitTensorOps(parameterized.TestCase):
+    @parameterized.parameters(
+        ([[0, 1], [0, 1]], [[1, 0], [1, 0]]),
+        ([0], [0]),
+        ([0], [1]),
+        ([1], [0]),
+        ([1], [1]),
+    )
+    def test_bitwise_ops(self, a, b):
+        x = np.array(a, dtype=np.uint8)
+        y = np.array(b, dtype=np.uint8)
+
+        np.testing.assert_array_equal(x & y, bit_and(x, y))
+        np.testing.assert_array_equal(x ^ y, bit_xor(x, y))
+
+    @parameterized.parameters(
+        ([0]), ([1]), [[0, 1, 1]],
+    )
+    def test_ring_inject(self, a):
+        x = np.array(a, dtype=np.uint8)
+        np.testing.assert_array_equal(x, ring_inject(x, 0))
+        np.testing.assert_array_equal(x << 1, ring_inject(x, 1))
+        np.testing.assert_array_equal(x << 2, ring_inject(x, 2))
+
+    def test_shape(self):
+        a = np.array([1, 2, 3], dtype=np.uint8)
+        assert bit_shape(a) == [3]
 
 
 if __name__ == "__main__":

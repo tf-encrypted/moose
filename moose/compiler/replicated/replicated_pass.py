@@ -54,7 +54,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("replicated_add"),
                 placement_name=op.placement_name,
                 inputs=inputs,
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=op.output_type.datatype
                 ),
             )
@@ -72,7 +72,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("replicated_sub"),
                 placement_name=op.placement_name,
                 inputs=inputs,
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=op.output_type.datatype
                 ),
             )
@@ -90,7 +90,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("replicated_mul"),
                 placement_name=op.placement_name,
                 inputs=inputs,
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=op.output_type.datatype
                 ),
             )
@@ -109,7 +109,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 placement_name=op.placement_name,
                 inputs=inputs,
                 precision=op.precision,
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=op.output_type.datatype
                 ),
             )
@@ -127,7 +127,25 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 name=self.context.get_fresh_name("replicated_dot"),
                 placement_name=op.placement_name,
                 inputs=inputs,
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
+                    datatype=op.output_type.datatype
+                ),
+            )
+        )
+
+    def process_AbsOperation(self, op, processed_inputs):
+        assert isinstance(op, fixed_dialect.AbsOperation)
+        inputs = {
+            input_key: input_op.name for input_key, input_op in processed_inputs.items()
+        }
+        assert "setup" not in inputs
+        inputs["setup"] = self.get_setup_op(op.placement_name).name
+        return self.computation.add_operation(
+            rep_dialect.AbsOperation(
+                name=self.context.get_fresh_name("replicated_abs"),
+                placement_name=op.placement_name,
+                inputs=inputs,
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=op.output_type.datatype
                 ),
             )
@@ -144,7 +162,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 placement_name=op.placement_name,
                 axis=op.axis,
                 inputs=inputs,
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=op.output_type.datatype
                 ),
             )
@@ -162,7 +180,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                     input_key: input_op.name
                     for input_key, input_op in processed_inputs.items()
                 },
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=op.output_type.datatype
                 ),
             )
@@ -190,7 +208,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                     "setup": self.get_setup_op(encode_op.placement_name).name,
                 },
                 placement_name=encode_op.placement_name,
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     datatype=encode_op.output_type.datatype
                 ),
             )

@@ -1,14 +1,26 @@
 from dataclasses import dataclass
+from math import log
 from typing import Optional
 from typing import Tuple
 
+from moose.compiler.bit import BitTensor
+from moose.compiler.bit import bit_and
+from moose.compiler.bit import bit_sample
+from moose.compiler.bit import bit_shape
+from moose.compiler.bit import bit_xor
+from moose.compiler.bit import fill_bit_tensor
 from moose.compiler.primitives import PRFKey
 from moose.compiler.primitives import Seed
 from moose.compiler.primitives import derive_seed
 from moose.compiler.primitives import sample_key
 from moose.compiler.pruning import PruningPass
+from moose.compiler.replicated import bit_utils
 from moose.compiler.replicated import trunc_utils
+from moose.compiler.replicated.types import ReplicatedBitTensor
+from moose.compiler.replicated.types import ReplicatedConstantRingTensor
+from moose.compiler.replicated.types import ReplicatedRingTensor
 from moose.compiler.replicated.types import ReplicatedSetup
+from moose.compiler.replicated.types import ReplicatedShape
 from moose.compiler.replicated.types import ReplicatedTensor
 from moose.compiler.replicated.types import SetupContext
 from moose.compiler.ring import RingTensor
@@ -121,11 +133,11 @@ class ReplicatedLoweringPass:
         x = self.lower(op.inputs["value"])
         precision = op.precision
         setup = self.lower(op.inputs["setup"])
-        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
         assert isinstance(precision, int), type(precision)
         assert isinstance(setup, ReplicatedSetup), type(setup)
         z = replicated_trunc_pr(x, precision, setup, placement_name=op.placement_name)
-        assert isinstance(z, ReplicatedTensor)
+        assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
 
@@ -148,15 +160,15 @@ class ReplicatedLoweringPass:
         assert isinstance(x, RingTensor), type(x)
         assert isinstance(setup, ReplicatedSetup), type(setup)
 
-        y = replicated_share(x, setup, placement_name=op.placement_name)
-        assert isinstance(y, ReplicatedTensor), type(y)
+        y = replicated_ring_share(x, setup, placement_name=op.placement_name)
+        assert isinstance(y, ReplicatedRingTensor), type(y)
         self.interpretations[op.name] = y
         return y
 
     def lower_RevealOperation(self, op):
         assert isinstance(op, replicated_ops.RevealOperation)
         x = self.lower(op.inputs["value"])
-        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
 
         y = replicated_reveal(x, recipient_name=op.recipient_name)
         assert isinstance(y, RingTensor), type(y)
@@ -167,11 +179,11 @@ class ReplicatedLoweringPass:
         assert isinstance(op, replicated_ops.AddOperation)
         x = self.lower(op.inputs["lhs"])
         y = self.lower(op.inputs["rhs"])
-        assert isinstance(x, ReplicatedTensor), type(x)
-        assert isinstance(y, ReplicatedTensor), type(y)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
+        assert isinstance(y, ReplicatedRingTensor), type(y)
 
-        z = replicated_add(x, y, placement_name=op.placement_name)
-        assert isinstance(z, ReplicatedTensor)
+        z = replicated_ring_add(x, y, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
 
@@ -179,11 +191,11 @@ class ReplicatedLoweringPass:
         assert isinstance(op, replicated_ops.SubOperation)
         x = self.lower(op.inputs["lhs"])
         y = self.lower(op.inputs["rhs"])
-        assert isinstance(x, ReplicatedTensor), type(x)
-        assert isinstance(y, ReplicatedTensor), type(y)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
+        assert isinstance(y, ReplicatedRingTensor), type(y)
 
         z = replicated_sub(x, y, placement_name=op.placement_name)
-        assert isinstance(z, ReplicatedTensor)
+        assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
 
@@ -192,12 +204,12 @@ class ReplicatedLoweringPass:
         x = self.lower(op.inputs["lhs"])
         y = self.lower(op.inputs["rhs"])
         setup = self.lower(op.inputs["setup"])
-        assert isinstance(x, ReplicatedTensor), type(x)
-        assert isinstance(y, ReplicatedTensor), type(y)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
+        assert isinstance(y, ReplicatedRingTensor), type(y)
         assert isinstance(setup, ReplicatedSetup), type(setup)
 
-        z = replicated_mul(x, y, setup, placement_name=op.placement_name)
-        assert isinstance(z, ReplicatedTensor)
+        z = replicated_ring_mul(x, y, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
 
@@ -206,32 +218,44 @@ class ReplicatedLoweringPass:
         x = self.lower(op.inputs["lhs"])
         y = self.lower(op.inputs["rhs"])
         setup = self.lower(op.inputs["setup"])
-        assert isinstance(x, ReplicatedTensor), type(x)
-        assert isinstance(y, ReplicatedTensor), type(y)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
+        assert isinstance(y, ReplicatedRingTensor), type(y)
         assert isinstance(setup, ReplicatedSetup), type(setup)
 
         z = replicated_dot(x, y, setup, placement_name=op.placement_name)
-        assert isinstance(z, ReplicatedTensor)
+        assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
 
     def lower_SumOperation(self, op):
         assert isinstance(op, replicated_ops.SumOperation)
         x = self.lower(op.inputs["x"])
-        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
 
         z = replicated_sum(x, op.axis, placement_name=op.placement_name)
-        assert isinstance(z, ReplicatedTensor)
+        assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
 
     def lower_MeanOperation(self, op):
         assert isinstance(op, replicated_ops.MeanOperation)
         x = self.lower(op.inputs["x"])
-        assert isinstance(x, ReplicatedTensor), type(x)
+        assert isinstance(x, ReplicatedRingTensor), type(x)
 
         z = replicated_mean(x, op.axis, op.precision, placement_name=op.placement_name)
-        assert isinstance(z, ReplicatedTensor)
+        assert isinstance(z, ReplicatedRingTensor)
+        self.interpretations[op.name] = z
+        return z
+
+    def lower_AbsOperation(self, op):
+        assert isinstance(op, replicated_ops.AbsOperation)
+        x = self.lower(op.inputs["x"])
+        setup = self.lower(op.inputs["setup"])
+        assert isinstance(x, ReplicatedRingTensor), type(x)
+        assert isinstance(setup, ReplicatedSetup), type(setup)
+
+        z = replicated_abs(x, setup, placement_name=op.placement_name)
+        assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
 
@@ -328,17 +352,58 @@ def sample_synchronized_seeds(setup: ReplicatedSetup, placement):
     return ReplicatedSynchronizedSeeds(seeds=seeds)
 
 
-def replicated_share(
-    x: RingTensor, setup: ReplicatedSetup, placement_name
-) -> ReplicatedTensor:
+def replicated_bit_share(
+    x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name,
+) -> ReplicatedBitTensor:
+    assert isinstance(x, BitTensor)
+
+    return abstract_replicated_share(
+        x,
+        setup,
+        placement_name,
+        shape_op=bit_shape,
+        sample_op=bit_sample,
+        sub_op=bit_xor,
+        fill_op=fill_bit_tensor,
+        output_type=ReplicatedBitTensor,
+    )
+
+
+def replicated_ring_share(
+    x: ReplicatedRingTensor, setup: ReplicatedSetup, placement_name,
+) -> ReplicatedRingTensor:
     assert isinstance(x, RingTensor)
+
+    return abstract_replicated_share(
+        x,
+        setup,
+        placement_name,
+        shape_op=ring_shape,
+        sample_op=ring_sample,
+        sub_op=ring_sub,
+        fill_op=fill_tensor,
+        output_type=ReplicatedRingTensor,
+    )
+
+
+def abstract_replicated_share(
+    x: RingTensor,
+    setup: ReplicatedSetup,
+    placement_name,
+    shape_op,
+    sub_op,
+    fill_op,
+    sample_op,
+    output_type,
+) -> ReplicatedRingTensor:
     assert isinstance(setup, ReplicatedSetup)
 
     replicated_placement = setup.context.computation.placement(placement_name)
     players = replicated_placement.player_names
 
     synced_seeds = sample_synchronized_seeds(setup, replicated_placement)
-    shape = ring_shape(x, placement_name=x.op.placement_name)
+
+    shape = shape_op(x, placement_name=x.op.placement_name)
 
     seed_mine = None
     input_player_id = None
@@ -347,16 +412,16 @@ def replicated_share(
             seed_mine = synced_seeds.seeds[i][0]
             input_player_id = i
 
-    x_mine = ring_sample(shape, seed_mine, placement_name=x.op.placement_name)
-    x_other = ring_sub(x, x_mine, placement_name=x.op.placement_name)
+    x_mine = sample_op(shape, seed_mine, placement_name=x.op.placement_name)
+    x_other = sub_op(x, x_mine, placement_name=x.op.placement_name)
 
     zero_tensors = [None] * 3
     for i in range(3):
         if i != input_player_id:
-            zero_tensors[i] = fill_tensor(shape, 0, placement_name=players[i])
+            zero_tensors[i] = fill_op(shape, 0, placement_name=players[i])
 
     prev_player_id = (input_player_id - 1) % 3
-    x_previous = ring_sample(
+    x_previous = sample_op(
         shape,
         synced_seeds.seeds[prev_player_id][1],
         placement_name=players[prev_player_id],
@@ -371,7 +436,7 @@ def replicated_share(
         else:
             input_shares.append((x_other, zero_tensors[i]))
 
-    return ReplicatedTensor(
+    return output_type(
         shares0=input_shares[0],
         shares1=input_shares[1],
         shares2=input_shares[2],
@@ -380,8 +445,8 @@ def replicated_share(
     )
 
 
-def replicated_reveal(x: ReplicatedTensor, recipient_name) -> RingTensor:
-    assert isinstance(x, ReplicatedTensor)
+def replicated_reveal(x: ReplicatedRingTensor, recipient_name) -> RingTensor:
+    assert isinstance(x, ReplicatedRingTensor)
     # TODO(Morten)
     # optimize who sends what by eg taking the recipient into account and only sending
     # two shares in the case where the recipient doesn't already hold a share. we can
@@ -396,8 +461,42 @@ def replicated_reveal(x: ReplicatedTensor, recipient_name) -> RingTensor:
     )
 
 
-def replicated_mul(
-    x: ReplicatedTensor, y: ReplicatedTensor, setup: ReplicatedSetup, placement_name
+def replicated_ring_mul(
+    x: ReplicatedRingTensor,
+    y: ReplicatedRingTensor,
+    setup: ReplicatedSetup,
+    placement_name,
+) -> ReplicatedRingTensor:
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(y, ReplicatedRingTensor)
+
+    return abstract_replicated_mul(
+        x, y, setup, placement_name, ring_add, ring_mul, ReplicatedRingTensor
+    )
+
+
+def replicated_bit_and(
+    x: ReplicatedBitTensor,
+    y: ReplicatedBitTensor,
+    setup: ReplicatedSetup,
+    placement_name,
+) -> ReplicatedBitTensor:
+    assert isinstance(x, ReplicatedBitTensor)
+    assert isinstance(y, ReplicatedBitTensor)
+
+    return abstract_replicated_mul(
+        x, y, setup, placement_name, bit_xor, bit_and, ReplicatedBitTensor
+    )
+
+
+def abstract_replicated_mul(
+    x: ReplicatedTensor,
+    y: ReplicatedTensor,
+    setup: ReplicatedSetup,
+    placement_name,
+    add_op,
+    mul_op,
+    out_type,
 ) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
     assert isinstance(y, ReplicatedTensor)
@@ -419,25 +518,25 @@ def replicated_mul(
     z_shares = [None, None, None]
 
     for i in range(3):
-        z_shares[i] = ring_mul(x_shares[i][0], y_shares[i][0], players[i])
-        z_shares[i] = ring_add(
+        z_shares[i] = mul_op(x_shares[i][0], y_shares[i][0], players[i])
+        z_shares[i] = add_op(
             z_shares[i],
-            ring_mul(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
+            mul_op(x_shares[i][0], y_shares[i][1], placement_name=players[i]),
             placement_name=players[i],
         )
-        z_shares[i] = ring_add(
+        z_shares[i] = add_op(
             z_shares[i],
-            ring_mul(x_shares[i][1], y_shares[i][0], placement_name=players[i]),
+            mul_op(x_shares[i][1], y_shares[i][0], placement_name=players[i]),
             placement_name=players[i],
         )
 
-    zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
-    zero_shares = _generate_zero_share(zero_shape, setup, players)
+    zero_shape = _get_shape(z_shares[0], z_shares[0].op.placement_name)
+    local_type = RingTensor if out_type is ReplicatedRingTensor else BitTensor
+    zero_shares = _generate_zero_share(zero_shape, setup, players, local_type)
     z_shares = [
-        ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
-        for i in range(3)
+        add_op(z_shares[i], zero_shares[i], placement_name=players[i]) for i in range(3)
     ]
-    return ReplicatedTensor(
+    return out_type(
         shares0=(z_shares[2], z_shares[0]),
         shares1=(z_shares[0], z_shares[1]),
         shares2=(z_shares[1], z_shares[2]),
@@ -447,10 +546,13 @@ def replicated_mul(
 
 
 def replicated_dot(
-    x: ReplicatedTensor, y: ReplicatedTensor, setup: ReplicatedSetup, placement_name
-) -> ReplicatedTensor:
-    assert isinstance(x, ReplicatedTensor)
-    assert isinstance(y, ReplicatedTensor)
+    x: ReplicatedRingTensor,
+    y: ReplicatedRingTensor,
+    setup: ReplicatedSetup,
+    placement_name,
+) -> ReplicatedRingTensor:
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(y, ReplicatedRingTensor)
     assert isinstance(setup, ReplicatedSetup)
 
     assert x.computation == y.computation
@@ -482,12 +584,12 @@ def replicated_dot(
         )
 
     zero_shape = ring_shape(z_shares[0], z_shares[0].op.placement_name)
-    zero_shares = _generate_zero_share(zero_shape, setup, players)
+    zero_shares = _generate_zero_share(zero_shape, setup, players, RingTensor)
     z_shares = [
         ring_add(z_shares[i], zero_shares[i], placement_name=players[i])
         for i in range(3)
     ]
-    return ReplicatedTensor(
+    return ReplicatedRingTensor(
         shares0=(z_shares[2], z_shares[0]),
         shares1=(z_shares[0], z_shares[1]),
         shares2=(z_shares[1], z_shares[2]),
@@ -496,8 +598,26 @@ def replicated_dot(
     )
 
 
-def replicated_add(
-    x: ReplicatedTensor, y: ReplicatedTensor, placement_name
+def replicated_ring_add(
+    x: ReplicatedRingTensor, y: ReplicatedRingTensor, placement_name
+) -> ReplicatedRingTensor:
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(y, ReplicatedRingTensor)
+
+    return abstract_replicated_add(x, y, ring_add, placement_name, ReplicatedRingTensor)
+
+
+def replicated_bit_xor(
+    x: ReplicatedBitTensor, y: ReplicatedBitTensor, placement_name
+) -> ReplicatedBitTensor:
+    assert isinstance(x, ReplicatedBitTensor)
+    assert isinstance(y, ReplicatedBitTensor)
+
+    return abstract_replicated_add(x, y, bit_xor, placement_name, ReplicatedBitTensor)
+
+
+def abstract_replicated_add(
+    x: ReplicatedTensor, y: ReplicatedTensor, add_op, placement_name, out_type
 ) -> ReplicatedTensor:
     assert isinstance(x, ReplicatedTensor)
     assert isinstance(y, ReplicatedTensor)
@@ -516,11 +636,11 @@ def replicated_add(
     z_shares = [None, None, None]
     for i in range(3):
         z_shares[i] = [
-            ring_add(x_shares[i][j], y_shares[i][j], placement_name=players[i])
+            add_op(x_shares[i][j], y_shares[i][j], placement_name=players[i])
             for j in range(2)
         ]
 
-    return ReplicatedTensor(
+    return out_type(
         shares0=z_shares[0],
         shares1=z_shares[1],
         shares2=z_shares[2],
@@ -530,10 +650,10 @@ def replicated_add(
 
 
 def replicated_sub(
-    x: ReplicatedTensor, y: ReplicatedTensor, placement_name
-) -> ReplicatedTensor:
-    assert isinstance(x, ReplicatedTensor)
-    assert isinstance(y, ReplicatedTensor)
+    x: ReplicatedRingTensor, y: ReplicatedRingTensor, placement_name
+) -> ReplicatedRingTensor:
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(y, ReplicatedRingTensor)
     assert x.computation == y.computation
     assert x.context == y.context
 
@@ -553,7 +673,7 @@ def replicated_sub(
             for j in range(2)
         ]
 
-    return ReplicatedTensor(
+    return ReplicatedRingTensor(
         shares0=z_shares[0],
         shares1=z_shares[1],
         shares2=z_shares[2],
@@ -563,9 +683,9 @@ def replicated_sub(
 
 
 def replicated_sum(
-    x: ReplicatedTensor, axis: Optional[int], placement_name
-) -> ReplicatedTensor:
-    assert isinstance(x, ReplicatedTensor)
+    x: ReplicatedRingTensor, axis: Optional[int], placement_name
+) -> ReplicatedRingTensor:
+    assert isinstance(x, ReplicatedRingTensor)
     computation = x.computation
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
@@ -578,7 +698,7 @@ def replicated_sum(
         for i in range(3)
     ]
 
-    return ReplicatedTensor(
+    return ReplicatedRingTensor(
         shares0=z_shares[0],
         shares1=z_shares[1],
         shares2=z_shares[2],
@@ -588,9 +708,9 @@ def replicated_sum(
 
 
 def replicated_trunc_pr(
-    x: ReplicatedTensor, m: int, setup: ReplicatedSetup, placement_name
-) -> ReplicatedTensor:
-    assert isinstance(x, ReplicatedTensor)
+    x: ReplicatedRingTensor, m: int, setup: ReplicatedSetup, placement_name
+) -> ReplicatedRingTensor:
+    assert isinstance(x, ReplicatedRingTensor)
     assert isinstance(m, int)
 
     assert isinstance(setup, ReplicatedSetup)
@@ -681,7 +801,7 @@ def replicated_trunc_pr(
         ring_sub(y_prime[i], y_recv[i], placement_name=players[i]) for i in range(2)
     ]
 
-    # computing y'[i] - y_recv[i] - y_tilde[i]
+    # computing y'[i] - y_recv[i] + y_tilde[i]
     new_shares = [None] * 2
     new_shares[0] = ring_add(
         ring_sub(y_prime[0], y_recv[0], placement_name=players[0]),
@@ -694,7 +814,7 @@ def replicated_trunc_pr(
         placement_name=players[1],
     )
 
-    output = ReplicatedTensor(
+    output = ReplicatedRingTensor(
         shares0=(y_recv[0], new_shares[0]),
         shares1=(new_shares[1], y_recv[1]),
         shares2=y_shares_provider[::-1],
@@ -705,8 +825,8 @@ def replicated_trunc_pr(
     return output
 
 
-def replicated_mean(x: ReplicatedTensor, axis, precision, placement_name):
-    assert isinstance(x, ReplicatedTensor)
+def replicated_mean(x: ReplicatedRingTensor, axis, precision, placement_name):
+    assert isinstance(x, ReplicatedRingTensor)
     computation = x.computation
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
@@ -722,7 +842,7 @@ def replicated_mean(x: ReplicatedTensor, axis, precision, placement_name):
         for i in range(3)
     ]
 
-    return ReplicatedTensor(
+    return ReplicatedRingTensor(
         shares0=z_shares[0],
         shares1=z_shares[1],
         shares2=z_shares[2],
@@ -750,7 +870,393 @@ def ring_mean(ring_tensor_input, axis, precision, placement_name):
     )
 
 
-def _generate_zero_share(shape, setup, players):
+# Kogge-Stone binary adder topology
+def replicated_binary_adder(
+    x, y, setup: ReplicatedSetup, placement_name,
+):
+    R = 64
+
+    assert len(x) == R
+    assert len(y) == R
+
+    def xor64(a, b):
+        assert len(a) == R
+        assert len(b) == R
+        return [replicated_bit_xor(a[i], b[i], placement_name) for i in range(64)]
+
+    def and64(a, b):
+        assert len(a) == R
+        assert len(b) == R
+        return [
+            replicated_bit_and(a[i], b[i], setup, placement_name) for i in range(64)
+        ]
+
+    N = int(log(R, 2))
+
+    G = and64(x, y)
+
+    P_store = xor64(x, y)
+
+    P = P_store
+
+    rep_shape = ReplicatedShape(
+        shapes=[x[0].shares0[0].shape, x[0].shares1[0].shape, x[0].shares2[0].shape]
+    )
+
+    zero_tensor = _create_constant_replicated_bit_tensor(rep_shape, 0, placement_name)
+    one_tensor = _create_constant_replicated_bit_tensor(rep_shape, 1, placement_name)
+
+    keep_masks = list()
+    for i in range(N):
+        mask_int = (1 << (2 ** i)) - 1
+        mask_bits = list()
+        for j in range(64):
+            if (mask_int >> j) & 1:
+                mask_bits.append(one_tensor)
+            else:
+                mask_bits.append(zero_tensor)
+        keep_masks.append(mask_bits)
+
+    for i in range(N):
+        G1 = bit_utils.rotate_left(G, 2 ** i, zero_tensor)
+        P1 = bit_utils.rotate_left(P, 2 ** i, zero_tensor)
+        P1 = xor64(P1, keep_masks[i])
+
+        G = xor64(G, and64(P, G1))
+        P = and64(P, P1)
+
+    C = bit_utils.rotate_left(G, 1, zero_tensor)
+    z = xor64(C, P_store)
+
+    return z
+
+
+def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name):
+    computation = x.computation
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+
+    x_shares = [x.shares0, x.shares1, x.shares2]
+    # shares are assembled in the following way:
+    # (x1, x2), (x2, x3), (x3, x1)
+
+    players = replicated_placement.player_names
+
+    # L = (x1 + x2). R = x3
+    # After party P1 inputs L, the parties compute [L]^B + [x3]^B using a binary adder
+    # to get MSB(x)
+
+    left = ring_add(x_shares[0][0], x_shares[0][1], placement_name=players[0])
+    left_bits = bit_utils.ring_bit_decompose(left, placement_name=players[0])
+
+    # TODO(Dragos) the following instruction would be nice to vectorize
+    rep_bit_left = [
+        replicated_bit_share(entry, setup, placement_name=placement_name)
+        for entry in left_bits
+    ]
+
+    # transform x3 into boolean sharing
+    x3_on_1 = bit_utils.ring_bit_decompose(x.shares1[1], placement_name=players[1])
+    x3_on_2 = bit_utils.ring_bit_decompose(x.shares2[0], placement_name=players[2])
+    R = 64
+    rep_bit_right = [
+        ReplicatedBitTensor(
+            shares0=tuple(
+                [
+                    fill_bit_tensor(x.shares0[i].shape, 0, placement_name=players[0])
+                    for i in range(2)
+                ]
+            ),
+            shares1=[
+                fill_bit_tensor(x.shares1[0].shape, 0, placement_name=players[1]),
+                x3_on_1[k],
+            ],
+            shares2=[
+                x3_on_2[k],
+                fill_bit_tensor(x.shares2[1].shape, 0, placement_name=players[2]),
+            ],
+            computation=x.computation,
+            context=x.context,
+        )
+        for k in range(R)
+    ]
+
+    msb = replicated_binary_adder(rep_bit_left, rep_bit_right, setup, placement_name,)[
+        -1
+    ]
+    return msb
+
+
+def replicated_to_additive(x: ReplicatedBitTensor, player0):
+    assert isinstance(x, ReplicatedBitTensor)
+    x0 = bit_xor(x.shares0[0], x.shares0[1], player0)
+    x1 = x.shares1[1]
+    return x0, x1
+
+
+# Party P2 generates a dabit and shares it to the other parties
+# P0 will receive full tensors while P1 just two seeds
+def get_dabit(x: ReplicatedBitTensor, setup: ReplicatedSetup, players):
+    assert isinstance(x, ReplicatedBitTensor)
+
+    ctx = setup.context
+    k2 = sample_key(
+        context=ctx.naming_context,
+        computation=ctx.computation,
+        placement_name=players[2],
+    )
+
+    x_shape = bit_shape(x.shares2[0], placement_name=players[2])
+    # derive the seed that's used to generate the random bits
+    seed_r = derive_seed(
+        key=k2,
+        nonce=bytes(2),
+        placement_name=players[2],
+        computation=ctx.computation,
+        context=ctx.naming_context,
+    )
+    r_bin = bit_sample(x_shape, seed_r, placement_name=players[2])
+    r_ring = bit_utils.inject(r_bin, players[2])
+
+    # derive seed that is sent to P1
+    seed_r_ring = derive_seed(
+        key=k2,
+        nonce=bytes(1),
+        placement_name=players[2],
+        computation=ctx.computation,
+        context=ctx.naming_context,
+    )
+    seed_r_bin = derive_seed(
+        key=k2,
+        nonce=bytes(0),
+        placement_name=players[2],
+        computation=ctx.computation,
+        context=ctx.naming_context,
+    )
+
+    # compute sharing of P1
+    # r_1^R = sample(seed_r^R)
+    # r_1^B = sample(seed_r^B)
+    r1_ring_on_2 = ring_sample(x_shape, seed_r_ring, placement_name=players[2])
+    r1_bin_on_2 = bit_sample(x_shape, seed_r_bin, placement_name=players[2])
+
+    # compute sharing of P0
+    # r_0^R = r^R - r_1^R
+    # r_0^B = r^B ^ r_1^B
+    r0_ring = ring_sub(r_ring, r1_ring_on_2, placement_name=players[2])
+    r0_bin = bit_xor(r_bin, r1_bin_on_2, placement_name=players[2])
+
+    # compute sharing on P1 using the seeds from P2
+    r1_ring = ring_sample(x_shape, seed_r_ring, placement_name=players[1])
+    r1_bin = bit_sample(x_shape, seed_r_bin, placement_name=players[1])
+
+    return (r0_bin, r1_bin), (r0_ring, r1_ring)
+
+
+# converts (2,2)->(2,3) sharing
+def additive_to_replicated(x, x2_shape, setup, players):
+    assert isinstance(setup, ReplicatedSetup)
+
+    ctx = setup.context
+    k2 = sample_key(
+        context=ctx.naming_context,
+        computation=ctx.computation,
+        placement_name=players[2],
+    )
+
+    # derive the seed that's used to generate the random bits
+    seeds = [
+        derive_seed(
+            key=k2,
+            nonce=bytes(i),
+            placement_name=players[2],
+            computation=ctx.computation,
+            context=ctx.naming_context,
+        )
+        for i in range(2)
+    ]
+
+    y3 = [ring_sample(x2_shape, seeds[i], placement_name=players[2]) for i in range(2)]
+
+    x_shapes = [_get_shape(x[i], placement_name=players[i]) for i in range(2)]
+    y_hat = [
+        ring_sample(x_shapes[i], seeds[i], placement_name=players[i]) for i in range(2)
+    ]
+
+    y_tilde_tmp = [
+        ring_sub(x[i], y_hat[i], placement_name=players[i]) for i in range(2)
+    ]
+    # reverse shares according to paper notation
+    y_tilde = y_tilde_tmp[::-1]
+
+    # compute x[i] - y_hat + y_tilde[1]
+    corrected_shares = [None] * 2
+    for i in range(2):
+        t1 = ring_sub(x[i], y_hat[i], placement_name=players[i])
+        corrected_shares[i] = ring_add(t1, y_tilde[i], placement_name=players[i])
+
+    return ReplicatedRingTensor(
+        shares0=(y_hat[0], corrected_shares[0]),
+        shares1=(corrected_shares[1], y_hat[1]),
+        shares2=y3[::-1],
+        computation=x[0].computation,
+        context=x[0].context,
+    )
+
+
+def b2a_conversion(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name):
+    replicated_placement = setup.context.computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    x_bin = replicated_to_additive(x, players[0])
+    b_bin, b_ring = get_dabit(x, setup, players)
+
+    c = [bit_xor(b_bin[i], x_bin[i], placement_name=players[i]) for i in range(2)]
+    c_open = [bit_xor(c[0], c[1], placement_name=players[i]) for i in range(2)]
+    c_open_ring = [
+        bit_utils.inject(c_open[i], placement_name=players[i]) for i in range(2)
+    ]
+    d = [None] * 2
+    # compute xor using ring shares: a xor b = a + b - 2ab
+    c_added = [
+        ring_add(c_open_ring[0], b_ring[0], placement_name=players[0]),
+        b_ring[1],
+    ]
+    for i in range(2):
+        t2 = ring_mul(c_open_ring[i], b_ring[i], placement_name=players[i])
+        t2 = ring_add(t2, t2, placement_name=players[i])
+        d[i] = ring_sub(c_added[i], t2, placement_name=players[i])
+
+    # now convert d from (2,2)->(2,3) sharing:
+    msb_ring_rep = additive_to_replicated(
+        d, _get_shape(x.shares2[0], placement_name=players[2]), setup, players
+    )
+    return msb_ring_rep
+
+
+def replicated_ring_add_constant(
+    x: ReplicatedRingTensor, constant: ReplicatedConstantRingTensor, placement_name
+):
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(constant, ReplicatedConstantRingTensor)
+
+    replicated_placement = x.computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    return ReplicatedRingTensor(
+        shares0=(
+            ring_add(x.shares0[0], constant.shares[0], placement_name=players[0]),
+            x.shares0[1],
+        ),
+        shares1=x.shares1,
+        shares2=(
+            x.shares2[0],
+            ring_add(x.shares2[1], constant.shares[2], placement_name=players[2]),
+        ),
+        computation=x.computation,
+        context=x.context,
+    )
+
+
+def replicated_ring_mul_constant(
+    x: ReplicatedRingTensor, constant: ReplicatedConstantRingTensor, placement_name
+):
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(constant, ReplicatedConstantRingTensor)
+
+    replicated_placement = x.computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    new_shares = [
+        [
+            ring_mul(
+                entry[i],
+                constant.shares[player_index],
+                placement_name=players[player_index],
+            )
+            for i in range(2)
+        ]
+        for player_index, entry in enumerate([x.shares0, x.shares1, x.shares2])
+    ]
+
+    return ReplicatedRingTensor(
+        shares0=new_shares[0],
+        shares1=new_shares[1],
+        shares2=new_shares[2],
+        computation=x.computation,
+        context=x.context,
+    )
+
+
+def replicated_sign_from_msb(msb: ReplicatedRingTensor, placement_name):
+    assert isinstance(msb, ReplicatedRingTensor)
+
+    rep_shape = ReplicatedShape(
+        shapes=[entry[0].shape for entry in [msb.shares0, msb.shares1, msb.shares2]]
+    )
+
+    negative_two = _create_constant_replicated_ring_tensor(
+        2 ** 64 - 2, rep_shape, placement_name
+    )
+    one = _create_constant_replicated_ring_tensor(1, rep_shape, placement_name)
+
+    # compute -2*x
+    msb_double = replicated_ring_mul_constant(msb, negative_two, placement_name)
+    # compute 1 - 2 * x
+    return replicated_ring_add_constant(msb_double, one, placement_name)
+
+
+def replicated_abs(x: ReplicatedRingTensor, setup: ReplicatedSetup, placement_name):
+    assert isinstance(x, ReplicatedRingTensor)
+    assert isinstance(setup, ReplicatedSetup)
+
+    msb = replicated_ring_msb(x, setup, placement_name)
+    # here need to insert share conversion
+    msb_ring = b2a_conversion(msb, setup, placement_name)
+    sign = replicated_sign_from_msb(msb_ring, placement_name)
+
+    out_abs = replicated_ring_mul(sign, x, setup, placement_name=placement_name)
+
+    return out_abs
+
+
+# TODO(Dragos) these functions should be methods on the RingTensor/BitTensor type
+def sample(shape, seed, placement_name, out_type):
+    sample_op = None
+
+    if out_type is RingTensor:
+        sample_op = ring_sample
+    elif out_type is BitTensor:
+        sample_op = bit_sample
+    else:
+        raise Exception("Incorrect type provided for sample operation")
+
+    return sample_op(shape, seed, placement_name)
+
+
+def sub(a, b, placement_name, out_type):
+    sub_op = None
+
+    if out_type is RingTensor:
+        sub_op = ring_sub
+    elif out_type is BitTensor:
+        sub_op = bit_xor
+    else:
+        raise Exception("Incorrect type provided for sub operation")
+
+    return sub_op(a, b, placement_name)
+
+
+def _get_shape(tensor, placement_name):
+    if isinstance(tensor, RingTensor):
+        return ring_shape(tensor, placement_name)
+    elif isinstance(tensor, BitTensor):
+        return bit_shape(tensor, placement_name)
+    else:
+        raise Exception("Incorrect type provided to shape operation")
+
+
+def _generate_zero_share(shape, setup, players, out_type):
     replicated_placement = setup.context.computation.placement(
         setup.context.placement_name
     )
@@ -759,15 +1265,72 @@ def _generate_zero_share(shape, setup, players):
     for i in range(3):
         sampled_shares.append(
             [
-                ring_sample(shape, synced_seeds.seeds[i][j], placement_name=players[i],)
+                sample(
+                    shape,
+                    synced_seeds.seeds[i][j],
+                    placement_name=players[i],
+                    out_type=out_type,
+                )
                 for j in range(2)
             ]
         )
 
     sub_shares = [None] * 3
     for i in range(3):
-        sub_shares[i] = ring_sub(
-            sampled_shares[i][0], sampled_shares[i][1], placement_name=players[i]
+        sub_shares[i] = sub(
+            sampled_shares[i][0],
+            sampled_shares[i][1],
+            placement_name=players[i],
+            out_type=out_type,
         )
 
     return sub_shares  # alpha, beta, gamma
+
+
+def _create_constant_replicated_ring_tensor(
+    constant: int, rep_shape: ReplicatedShape, placement_name
+):
+    assert isinstance(constant, int)
+    assert isinstance(rep_shape, ReplicatedShape)
+
+    replicated_placement = rep_shape.shapes[0].computation.placement(placement_name)
+    players = replicated_placement.player_names
+
+    return ReplicatedConstantRingTensor(
+        shares=[
+            fill_tensor(rep_shape.shapes[i], constant, players[i]) for i in range(3)
+        ]
+    )
+
+
+def _create_constant_replicated_bit_tensor(rep_shape, bit_value, placement_name):
+    computation = rep_shape.shapes[0].computation
+    context = rep_shape.shapes[0].context
+    replicated_placement = computation.placement(placement_name)
+    assert isinstance(replicated_placement, ReplicatedPlacement)
+    assert isinstance(rep_shape, ReplicatedShape)
+    assert 0 <= bit_value and bit_value <= 1
+
+    players = replicated_placement.player_names
+
+    shares = [
+        (
+            fill_bit_tensor(rep_shape.shapes[0], bit_value, placement_name=players[0]),
+            fill_bit_tensor(rep_shape.shapes[0], 0, placement_name=players[0]),
+        ),
+        (
+            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
+            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
+        ),
+        (
+            fill_bit_tensor(rep_shape.shapes[2], 0, placement_name=players[2]),
+            fill_bit_tensor(rep_shape.shapes[2], bit_value, placement_name=players[2]),
+        ),
+    ]
+    return ReplicatedBitTensor(
+        shares0=shares[0],
+        shares1=shares[1],
+        shares2=shares[2],
+        computation=computation,
+        context=context,
+    )

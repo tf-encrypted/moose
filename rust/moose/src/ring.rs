@@ -4,7 +4,9 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
-use crate::prng::{AesRng, PRNGSeed};
+use crate::prng::{AesRng, RngSeed};
+
+use crate::bit::BitTensor;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
@@ -16,7 +18,7 @@ pub trait Sample {
 
 impl Sample for Ring64Tensor {
     fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
-        let seed: PRNGSeed = key.try_into().unwrap();
+        let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
@@ -24,7 +26,7 @@ impl Sample for Ring64Tensor {
         Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
     }
     fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
-        let seed: PRNGSeed = key.try_into().unwrap();
+        let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length)
@@ -32,6 +34,14 @@ impl Sample for Ring64Tensor {
             .collect();
         let ix = IxDyn(shape);
         Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
+    }
+}
+
+impl Ring64Tensor {
+    pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
+        let temp = &self.0 >> bit_idx;
+        let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
+        BitTensor::from(lsb)
     }
 }
 
@@ -45,6 +55,13 @@ impl From<ArrayD<i64>> for Ring64Tensor {
     fn from(a: ArrayD<i64>) -> Ring64Tensor {
         let wrapped = a.mapv(|ai| Wrapping(ai as u64));
         Ring64Tensor(wrapped)
+    }
+}
+
+impl From<BitTensor> for Ring64Tensor {
+    fn from(b: BitTensor) -> Ring64Tensor {
+        let ring_rep = b.0.mapv(|ai| Wrapping(ai as u64));
+        Ring64Tensor(ring_rep)
     }
 }
 
@@ -181,19 +198,6 @@ impl Ring64Tensor {
     }
 }
 
-pub struct Replicated<T>(T, T, T);
-
-impl<T> Mul<Replicated<T>> for Replicated<T>
-where
-    T: Mul<T, Output = T>,
-{
-    type Output = Replicated<T>;
-    fn mul(self, other: Replicated<T>) -> Self::Output {
-        // TODO
-        Replicated(self.0 * other.0, self.1 * other.1, self.2 * other.2)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -293,5 +297,23 @@ mod tests {
         let exp = Ring64Tensor::from(exp_backing);
         let out = x.sum(None);
         assert_eq!(out, exp)
+    }
+
+    #[test]
+    fn bit_extract() {
+        let shape = 5;
+        let value = 7;
+
+        let r0 = Ring64Tensor::fill(&[shape], value).bit_extract(0);
+        assert_eq!(BitTensor::fill(&[shape], 1), r0,);
+
+        let r1 = Ring64Tensor::fill(&[shape], value).bit_extract(1);
+        assert_eq!(BitTensor::fill(&[shape], 1), r1,);
+
+        let r2 = Ring64Tensor::fill(&[shape], value).bit_extract(2);
+        assert_eq!(BitTensor::fill(&[shape], 1), r2,);
+
+        let r3 = Ring64Tensor::fill(&[shape], value).bit_extract(3);
+        assert_eq!(BitTensor::fill(&[shape], 0), r3,)
     }
 }

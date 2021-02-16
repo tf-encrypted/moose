@@ -23,7 +23,7 @@ class ReplicatedSetupType(ValueType):
 
 
 @dataclass
-class ReplicatedTensorType(ValueType):
+class ReplicatedRingTensorType(ValueType):
     datatype: str
 
 
@@ -86,4 +86,9 @@ class SumOperation(ReplicatedOperation):
 class MeanOperation(ReplicatedOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
+    output_type: ValueType
+
+
+@dataclass
+class AbsOperation(ReplicatedOperation):
     output_type: ValueType

@@ -3,12 +3,14 @@ import dataclasses
 from typing import Any
 from typing import List
 
+from moose.computation import bit as bit_ops
 from moose.computation import fixedpoint as fixed_ops
 from moose.computation import host as host_ops
 from moose.computation import mpspdz as mpspdz_ops
 from moose.computation import primitives as primitives_ops
 from moose.computation import ring as ring_ops
 from moose.computation import standard as standard_ops
+from moose.executor.kernels import bit as bit_kernels
 from moose.executor.kernels import fixedpoint as fixed_kernels
 from moose.executor.kernels import host as host_kernels
 from moose.executor.kernels import mpspdz as mpspdz_kernels
@@ -68,6 +70,14 @@ class AsyncExecutor:
             ring_ops.RingShlOperation: ring_kernels.RingShlKernel(),
             ring_ops.RingShrOperation: ring_kernels.RingShrKernel(),
             ring_ops.PrintRingTensorOperation: ring_kernels.PrintRingTensorKernel(),
+            bit_ops.BitXorOperation: bit_kernels.BitXorKernel(),
+            bit_ops.BitAndOperation: bit_kernels.BitAndKernel(),
+            bit_ops.BitExtractOperation: bit_kernels.BitExtractKernel(),
+            bit_ops.RingInjectOperation: bit_kernels.RingInjectKernel(),
+            bit_ops.BitSampleOperation: bit_kernels.BitSampleKernel(),
+            bit_ops.FillBitTensorOperation: bit_kernels.FillBitTensorKernel(),
+            bit_ops.BitShapeOperation: bit_kernels.BitShapeKernel(),
+            bit_ops.PrintBitTensorOperation: bit_kernels.PrintBitTensorKernel(),
             primitives_ops.DeriveSeedOperation: primitives_kernels.DeriveSeedKernel(),
             primitives_ops.SampleKeyOperation: primitives_kernels.SampleKeyKernel(),
             standard_ops.LoadOperation: standard_kernels.LoadKernel(storage),
