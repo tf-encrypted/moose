@@ -57,14 +57,29 @@ python main.py --runtime remote
 To ensure your changes will pass our CI, it's wise to run the following commands before committing:
 
 ```
-make ci
+make ci-ready
 
 # or, more verbosely:
 
 make fmt
 make lint
-make test
+make test-ci
 ```
+
+### Testing
+
+There are three types of testing regimes which can be found in the Makefile:
+
+```
+make test
+make test-ci
+make test-long
+```
+
+When doing local development we suggest using `make test` command. The
+`make-ci` command is used mostly for ci purposes and runs a smaller range of test cases. For
+a more extensive test suite we recommend using `make test-long` command.
+
 
 ### Releasing
 
