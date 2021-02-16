@@ -19,7 +19,7 @@ install: pydep pylib
 fmt:
 	isort .
 	black .
-	cd rust; cargo fmt
+	cd rust && cargo fmt
 
 lint:
 	flake8 .
@@ -44,12 +44,9 @@ clean:
 	find ./moose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf .pytest_cache
 	rm -Rf .hypothesis
-	cargo clean
+	cd rust && cargo clean
 
-ci-ready:
-	make fmt
-	make lint
-	make test-ci
+ci-ready: fmt lint test-ci
 
 release: ci-ready
 	cd rust && cargo release --workspace --skip-publish

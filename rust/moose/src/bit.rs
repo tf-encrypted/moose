@@ -28,7 +28,7 @@ impl BitTensor {
         if el == 0 || el == 1 {
             BitTensor(ArrayD::from_elem(shape, el & 1))
         } else {
-            unimplemented!()
+            panic!("Cannot fill a BitTensor with value {:?}", el)
         }
     }
 }
