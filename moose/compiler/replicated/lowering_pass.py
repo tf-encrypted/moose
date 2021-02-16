@@ -933,7 +933,7 @@ def replicated_binary_adder(
     return z
 
 
-# TODO (fixme)
+# TODO (fixme) see formula for constant tensor
 def _create_constant_replicated_bit_tensor(shape, bit_value, placement_name):
     computation = shape.computation
     replicated_placement = computation.placement(placement_name)
@@ -944,10 +944,17 @@ def _create_constant_replicated_bit_tensor(shape, bit_value, placement_name):
 
     shares = [
         (
-            fill_bit_tensor(shape, 0, placement_name=players[i]),
-            fill_bit_tensor(shape, bit_value, placement_name=players[i]),
-        )
-        for i in range(len(players))
+            fill_bit_tensor(shape, bit_value, placement_name=players[0]),
+            fill_bit_tensor(shape, 0, placement_name=players[0]),
+        ),
+        (
+            fill_bit_tensor(shape, 0, placement_name=players[1]),
+            fill_bit_tensor(shape, 0, placement_name=players[1]),
+        ),
+        (
+            fill_bit_tensor(shape, 0, placement_name=players[2]),
+            fill_bit_tensor(shape, bit_value, placement_name=players[2]),
+        ),
     ]
     return ReplicatedBitTensor(
         shares0=shares[0],
@@ -1026,8 +1033,6 @@ def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placemen
     computation = x.computation
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
-
-    chain = None
 
     x_shares = [x.shares0, x.shares1, x.shares2]
     # shares are assembled in the following way:
