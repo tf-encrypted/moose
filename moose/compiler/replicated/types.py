@@ -6,6 +6,7 @@ from typing import Tuple
 from moose.compiler.bit import BitTensor
 from moose.compiler.primitives import PRFKey
 from moose.compiler.ring import RingTensor
+from moose.compiler.standard import Shape
 from moose.computation.base import Computation
 
 
@@ -50,3 +51,8 @@ class SetupContext:
 class ReplicatedSetup:
     keys: Tuple[Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey], Tuple[PRFKey, PRFKey]]
     context: SetupContext
+
+
+@dataclass
+class ReplicatedShape:
+    shapes: Tuple[Shape, Shape, Shape]

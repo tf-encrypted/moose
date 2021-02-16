@@ -21,6 +21,7 @@ from moose.compiler.replicated.types import ReplicatedBitTensor
 from moose.compiler.replicated.types import ReplicatedConstantRingTensor
 from moose.compiler.replicated.types import ReplicatedRingTensor
 from moose.compiler.replicated.types import ReplicatedSetup
+from moose.compiler.replicated.types import ReplicatedShape
 from moose.compiler.replicated.types import ReplicatedTensor
 from moose.compiler.replicated.types import SetupContext
 from moose.compiler.ring import RingTensor
@@ -900,13 +901,12 @@ def replicated_binary_adder(
 
     P = P_store
 
-    shape = _get_shape(
-        x[0].shares0[0], placement_name
-    )  # extract the shape of the bit tensor
-    # this could probably be optimized to avoid sending
-    # shapes everytime we declare a tensor
-    zero_tensor = _create_constant_replicated_bit_tensor(shape, 0, placement_name)
-    one_tensor = _create_constant_replicated_bit_tensor(shape, 1, placement_name)
+    rep_shape = ReplicatedShape(
+        shapes=[x[0].shares0[0].shape, x[0].shares1[0].shape, x[0].shares2[0].shape]
+    )
+
+    zero_tensor = _create_constant_replicated_bit_tensor(rep_shape, 0, placement_name)
+    one_tensor = _create_constant_replicated_bit_tensor(rep_shape, 1, placement_name)
 
     keep_masks = list()
     for i in range(N):
@@ -934,34 +934,36 @@ def replicated_binary_adder(
 
 
 # TODO (fixme) see formula for constant tensor
-def _create_constant_replicated_bit_tensor(shape, bit_value, placement_name):
-    computation = shape.computation
+def _create_constant_replicated_bit_tensor(rep_shape, bit_value, placement_name):
+    computation = rep_shape.shapes[0].computation
+    context = rep_shape.shapes[0].context
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
+    assert isinstance(rep_shape, ReplicatedShape)
     assert 0 <= bit_value and bit_value <= 1
 
     players = replicated_placement.player_names
 
     shares = [
         (
-            fill_bit_tensor(shape, bit_value, placement_name=players[0]),
-            fill_bit_tensor(shape, 0, placement_name=players[0]),
+            fill_bit_tensor(rep_shape.shapes[0], bit_value, placement_name=players[0]),
+            fill_bit_tensor(rep_shape.shapes[0], 0, placement_name=players[0]),
         ),
         (
-            fill_bit_tensor(shape, 0, placement_name=players[1]),
-            fill_bit_tensor(shape, 0, placement_name=players[1]),
+            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
+            fill_bit_tensor(rep_shape.shapes[1], 0, placement_name=players[1]),
         ),
         (
-            fill_bit_tensor(shape, 0, placement_name=players[2]),
-            fill_bit_tensor(shape, bit_value, placement_name=players[2]),
+            fill_bit_tensor(rep_shape.shapes[2], 0, placement_name=players[2]),
+            fill_bit_tensor(rep_shape.shapes[2], bit_value, placement_name=players[2]),
         ),
     ]
     return ReplicatedBitTensor(
         shares0=shares[0],
         shares1=shares[1],
         shares2=shares[2],
-        computation=shape.computation,
-        context=shape.context,
+        computation=computation,
+        context=context,
     )
 
 
@@ -1256,15 +1258,19 @@ def replicated_ring_add_constant(
     )
 
 
-def _create_constant_replicated_ring_tensor(constant: int, shapes, placement_name):
+def _create_constant_replicated_ring_tensor(
+    constant: int, rep_shape: ReplicatedShape, placement_name
+):
     assert isinstance(constant, int)
-    assert len(shapes) == 3
+    assert isinstance(rep_shape, ReplicatedShape)
 
-    replicated_placement = shapes[0].computation.placement(placement_name)
+    replicated_placement = rep_shape.shapes[0].computation.placement(placement_name)
     players = replicated_placement.player_names
 
     return ReplicatedConstantRingTensor(
-        shares=[fill_tensor(shapes[i], constant, players[i]) for i in range(3)]
+        shares=[
+            fill_tensor(rep_shape.shapes[i], constant, players[i]) for i in range(3)
+        ]
     )
 
 
@@ -1301,11 +1307,14 @@ def replicated_ring_mul_constant(
 def replicated_sign_from_msb(msb: ReplicatedRingTensor, placement_name):
     assert isinstance(msb, ReplicatedRingTensor)
 
-    shapes = [entry[0].shape for entry in [msb.shares0, msb.shares1, msb.shares2]]
-    negative_two = _create_constant_replicated_ring_tensor(
-        2 ** 64 - 2, shapes, placement_name
+    rep_shape = ReplicatedShape(
+        shapes=[entry[0].shape for entry in [msb.shares0, msb.shares1, msb.shares2]]
     )
-    one = _create_constant_replicated_ring_tensor(1, shapes, placement_name)
+
+    negative_two = _create_constant_replicated_ring_tensor(
+        2 ** 64 - 2, rep_shape, placement_name
+    )
+    one = _create_constant_replicated_ring_tensor(1, rep_shape, placement_name)
 
     # compute -2*x
     msb_double = replicated_ring_mul_constant(msb, negative_two, placement_name)
