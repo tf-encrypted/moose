@@ -57,13 +57,13 @@ python main.py --runtime remote
 To ensure your changes will pass our CI, it's wise to run the following commands before committing:
 
 ```
-make ci
+make ci-ready
 
 # or, more verbosely:
 
 make fmt
 make lint
-make test
+make test-ci
 ```
 
 ### Releasing
