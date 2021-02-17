@@ -1,8 +1,8 @@
 from moose.compiler.replicated.subgraph_replace_pass import SubgraphReplacementPass
+from moose.computation import dtypes
 from moose.computation import fixedpoint as fixedpoint_dialect
 from moose.computation import replicated as rep_dialect
 from moose.computation import standard as std_dialect
-from moose.edsl import dtypes
 
 
 class ReplicatedEncodingPass(SubgraphReplacementPass):

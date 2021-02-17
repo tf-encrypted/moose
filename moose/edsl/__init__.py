@@ -1,3 +1,9 @@
+from moose.computation.dtypes import fixed
+from moose.computation.dtypes import float32
+from moose.computation.dtypes import float64
+from moose.computation.dtypes import int32
+from moose.computation.dtypes import int64
+from moose.computation.dtypes import string
 from moose.edsl.base import Argument
 from moose.edsl.base import abs
 from moose.edsl.base import add
@@ -27,12 +33,6 @@ from moose.edsl.base import squeeze
 from moose.edsl.base import sub
 from moose.edsl.base import sum
 from moose.edsl.base import transpose
-from moose.edsl.dtypes import fixed
-from moose.edsl.dtypes import float32
-from moose.edsl.dtypes import float64
-from moose.edsl.dtypes import int32
-from moose.edsl.dtypes import int64
-from moose.edsl.dtypes import string
 from moose.edsl.tracer import trace
 
 __all__ = [

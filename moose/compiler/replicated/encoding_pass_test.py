@@ -4,6 +4,7 @@ from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.computation import dtypes
 from moose.computation import fixedpoint as fixedpoint_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
@@ -11,7 +12,6 @@ from moose.computation.fixedpoint import EncodedTensorType
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
-from moose.edsl import dtypes
 
 
 class ReplicatedTest(parameterized.TestCase):

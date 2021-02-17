@@ -1,11 +1,11 @@
 from absl.testing import parameterized
 
+from moose.computation import dtypes
 from moose.computation.mpspdz import MpspdzCallOperation
 from moose.computation.mpspdz import MpspdzLoadOutputOperation
 from moose.computation.mpspdz import MpspdzSaveInputOperation
 from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
-from moose.edsl import dtypes
 from moose.edsl.tracer import trace
 
 

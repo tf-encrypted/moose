@@ -3,9 +3,9 @@ import unittest
 
 from absl.testing import parameterized
 
+from moose.computation import dtypes
 from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
-from moose.edsl import dtypes
 from moose.edsl.tracer import trace
 from moose.testing import run_test_computation
 

@@ -3,11 +3,11 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 
+from moose.computation import dtypes
 from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.edsl import dtypes
 from moose.testing import run_test_computation
 
 
