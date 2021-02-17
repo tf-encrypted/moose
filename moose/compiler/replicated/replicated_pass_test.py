@@ -127,7 +127,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "alice_input"},
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(15, 16), precision=16
+                    dtype=dtypes.fixed(44, 16), precision=16
                 ),
                 precision=16,
             )
@@ -138,7 +138,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "bob_input"},
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(15, 16), precision=16
+                    dtype=dtypes.fixed(44, 16), precision=16
                 ),
                 precision=16,
             )
@@ -149,7 +149,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "encode_2"},
                 placement_name="rep",
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=dtypes.fixed(15, 16)
+                    dtype=dtypes.fixed(44, 16)
                 ),
             )
         )
@@ -159,7 +159,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "encode_3"},
                 placement_name="rep",
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=dtypes.fixed(15, 16)
+                    dtype=dtypes.fixed(44, 16)
                 ),
             )
         )
@@ -173,7 +173,7 @@ class ReplicatedTest(parameterized.TestCase):
                 },
                 placement_name="rep",
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=dtypes.fixed(15, 16)
+                    dtype=dtypes.fixed(44, 16)
                 ),
             )
         )
@@ -184,7 +184,7 @@ class ReplicatedTest(parameterized.TestCase):
                 recipient_name="dave",
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(15, 16), precision=16
+                    dtype=dtypes.fixed(44, 16), precision=16
                 ),
             )
         )
@@ -217,7 +217,7 @@ class ReplicatedTest(parameterized.TestCase):
                 recipient_name="eric",
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(15, 16), precision=16
+                    dtype=dtypes.fixed(44, 16), precision=16
                 ),
             )
         )

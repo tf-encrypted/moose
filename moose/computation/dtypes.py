@@ -166,6 +166,14 @@ string = _ConcreteDType(
 
 
 def fixed(integ, frac):
+    for p in (integ, frac):
+        if not isinstance(p, int):
+            raise TypeError("Fixed-point dtype expects integers for its bounds.")
+    if integ + frac != 60:
+        raise ValueError(
+            "Fixed-point dtype precisions must add up to 60: found "
+            f"{integ} + {frac} = {integ + frac}."
+        )
     return _ConcreteDType(
         f"fixed{integ}_{frac}",
         f"q{integ}.{frac}",

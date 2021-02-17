@@ -222,9 +222,9 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         if cache_key not in self.incoming_edge_cache:
             (dtype, precision) = {
                 # TODO: check these values
-                dtypes.float64: (dtypes.fixed(15, 16), 16),
-                dtypes.float32: (dtypes.fixed(15, 16), 16),
-                dtypes.int64: (dtypes.fixed(31, 0), 0),
+                dtypes.float64: (dtypes.fixed(44, 16), 16),
+                dtypes.float32: (dtypes.fixed(44, 16), 16),
+                dtypes.int64: (dtypes.fixed(60, 0), 0),
             }[src_op.output_type.dtype]
             self.incoming_edge_cache[cache_key] = self.computation.add_operation(
                 fixedpoint_dialect.EncodeOperation(
