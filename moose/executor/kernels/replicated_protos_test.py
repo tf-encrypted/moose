@@ -357,7 +357,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 value=x,
                 placement_name=alice.name,
                 inputs={},
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float64),
             )
         )
 
@@ -366,7 +366,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="abs_op",
                 placement_name=rep.name,
                 inputs={"x": "alice_input"},
-                output_type=TensorType(datatype="int"),
+                output_type=TensorType(dtype=dtypes.float64),
             )
         )
         comp.add_operation(

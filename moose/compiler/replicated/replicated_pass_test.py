@@ -148,7 +148,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="share_0",
                 inputs={"setup": "replicated_setup_0", "value": "encode_2"},
                 placement_name="rep",
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     dtype=dtypes.fixed(15, 16)
                 ),
             )
@@ -158,7 +158,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="share_1",
                 inputs={"setup": "replicated_setup_0", "value": "encode_3"},
                 placement_name="rep",
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     dtype=dtypes.fixed(15, 16)
                 ),
             )
@@ -172,7 +172,7 @@ class ReplicatedTest(parameterized.TestCase):
                     "rhs": "share_1",
                 },
                 placement_name="rep",
-                output_type=rep_dialect.ReplicatedTensorType(
+                output_type=rep_dialect.ReplicatedRingTensorType(
                     dtype=dtypes.fixed(15, 16)
                 ),
             )
