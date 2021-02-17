@@ -1,4 +1,5 @@
 from moose.edsl.base import Argument
+from moose.edsl.base import abs
 from moose.edsl.base import add
 from moose.edsl.base import atleast_2d
 from moose.edsl.base import computation

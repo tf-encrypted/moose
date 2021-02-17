@@ -477,10 +477,12 @@ def reshape(x, shape, placement=None):
     return ReshapeExpression(placement=placement, inputs=[x, shape], dtype=x.dtype)
 
 
-def abs(x, placement=None):
+def abs(x, dtype=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return AbsExpression(placement=placement, inputs=[x])
+    if dtype is None:
+        dtype = x.dtype
+    return AbsExpression(placement=placement, inputs=[x], dtype=dtype)
 
 
 def load(key, dtype=None, placement=None):

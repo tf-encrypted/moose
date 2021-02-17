@@ -260,7 +260,7 @@ class AstTracer:
         (x_expression,) = abs_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(abs_expression.placement)
-        output_type = TensorType(datatype="float")
+        output_type = TensorType(dtype=abs_expression.dtype)
         return self.computation.add_operation(
             AbsOperation(
                 placement_name=placement.name,
