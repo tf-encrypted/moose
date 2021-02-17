@@ -376,7 +376,8 @@ def inverse(x, placement=None):
     dtype = x.dtype
     if dtype not in [dtypes.float32, dtypes.float64]:
         raise ValueError(
-            "moose.inverse operation only supports arguments of type `float32` or `float64`."
+            "moose.inverse operation only supports arguments of "
+            "type `float32` or `float64`."
         )
     return InverseExpression(placement=placement, inputs=[x], dtype=x.dtype)
 

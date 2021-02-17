@@ -121,9 +121,7 @@ class ReplicatedLoweringPass:
         assert isinstance(op, fixed_dialect.DecodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, RingTensor)
-        y = replicated_decode(
-            x, precision=op.precision, dtype=op.output_type.dtype,
-        )
+        y = replicated_decode(x, precision=op.precision, dtype=op.output_type.dtype)
         assert isinstance(y, StandardTensor), type(y)
         if y.dtype is not None:
             assert y.dtype.is_integer or y.dtype.is_float, y.dtype

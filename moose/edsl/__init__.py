@@ -36,6 +36,7 @@ from moose.edsl.dtypes import string
 from moose.edsl.tracer import trace
 
 __all__ = [
+    abs,
     add,
     Argument,
     atleast_2d,

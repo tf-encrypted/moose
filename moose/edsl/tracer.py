@@ -1,8 +1,6 @@
 import inspect
 from collections import defaultdict
 
-import numpy as np
-
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
 from moose.computation.base import UnknownType
