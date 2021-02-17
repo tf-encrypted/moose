@@ -110,7 +110,8 @@ class ReplicatedLoweringPass:
         assert isinstance(op, fixed_dialect.EncodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, StandardTensor)
-        assert x.datatype in ["unknown", "int", "float"], x.datatype
+        if x.dtype is not None:
+            assert x.dtype.is_integer or x.dtype.is_float, x.dtype
         y = replicated_encode(x, precision=op.precision)
         assert isinstance(y, RingTensor)
         self.interpretations[op.name] = y
@@ -121,10 +122,11 @@ class ReplicatedLoweringPass:
         x = self.lower(op.inputs["value"])
         assert isinstance(x, RingTensor)
         y = replicated_decode(
-            x, precision=op.precision, datatype=op.output_type.datatype
+            x, precision=op.precision, dtype=op.output_type.dtype,
         )
         assert isinstance(y, StandardTensor), type(y)
-        assert y.datatype in ["unknown", "int", "float"], y.datatype
+        if y.dtype is not None:
+            assert y.dtype.is_integer or y.dtype.is_float, y.dtype
         self.interpretations[op.name] = y
         return y
 
@@ -262,7 +264,7 @@ class ReplicatedLoweringPass:
     def interpret_input_op(self, op):
         assert isinstance(op.output_type, TensorType)
         return StandardTensor(
-            datatype=op.output_type.datatype,
+            dtype=op.output_type.dtype,
             op=op,
             computation=self.computation,
             context=self.context,

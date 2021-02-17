@@ -24,7 +24,7 @@ class ReplicatedSetupType(ValueType):
 
 @dataclass
 class ReplicatedRingTensorType(ValueType):
-    datatype: str
+    dtype: str
 
 
 @dataclass
