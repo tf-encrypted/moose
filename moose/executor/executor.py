@@ -108,8 +108,7 @@ class AsyncExecutor:
         placement,
         session_id,
         arguments={},
-        # default timeout of 10 minutes
-        timeout=600,
+        timeout=None,
     ):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
