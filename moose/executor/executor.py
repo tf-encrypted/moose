@@ -108,6 +108,8 @@ class AsyncExecutor:
         placement,
         session_id,
         arguments={},
+        # default timeout of 10 minutes
+        timeout=600,
     ):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
@@ -157,7 +159,7 @@ class AsyncExecutor:
                 return
             # execute kernels
             done, pending = await asyncio.wait(
-                tasks, return_when=asyncio.FIRST_EXCEPTION
+                tasks, timeout=timeout, return_when=asyncio.FIRST_EXCEPTION
             )
             # address any errors that may have occurred
             except_tasks = [task for task in done if task.exception()]
@@ -173,6 +175,14 @@ class AsyncExecutor:
                 )
                 for t in pending:
                     t.cancel()
+
+                # if exceptions are zero then was most likely caused by a timeout
+                if len(exceptions) == 0:
+                    exceptions.append(
+                        asyncio.TimeoutError(
+                            "Session {session.id} timed out after {timeout} seconds"
+                        )
+                    )
 
             if len(exceptions) > 0:
                 raise ExecutionError(
