@@ -179,7 +179,7 @@ class AsyncExecutor:
                 if len(exceptions) == 0:
                     exceptions.append(
                         asyncio.TimeoutError(
-                            "Session {session.id} timed out after {timeout} seconds"
+                            f"Session {session_id} timed out after {timeout} seconds"
                         )
                     )
 
