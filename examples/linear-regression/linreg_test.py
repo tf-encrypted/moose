@@ -52,6 +52,8 @@ class LinearRegressionExample(unittest.TestCase):
         def my_comp(
             x_uri: edsl.Argument(placement=x_owner, datatype=str),
             y_uri: edsl.Argument(placement=y_owner, datatype=str),
+            x_selected_columns: edsl.Argument(placement=x_owner, datatype=list),
+            y_selected_columns: edsl.Argument(placement=y_owner, datatype=list),
             w_uri: edsl.Argument(placement=model_owner, datatype=str),
             mse_uri: edsl.Argument(placement=model_owner, datatype=str),
             rsquared_uri: edsl.Argument(placement=model_owner, datatype=str),
@@ -59,7 +61,8 @@ class LinearRegressionExample(unittest.TestCase):
 
             with x_owner:
                 X = edsl.atleast_2d(
-                    edsl.load(x_uri, dtype=float), to_column_vector=True
+                    edsl.load(x_uri, dtype=float, select_columns=x_selected_columns),
+                    to_column_vector=True,
                 )
                 # NOTE: what would be most natural to do is this:
                 #     bias_shape = (slice(shape(X), begin=0, end=1), 1)
@@ -77,7 +80,8 @@ class LinearRegressionExample(unittest.TestCase):
 
             with y_owner:
                 y_true = edsl.atleast_2d(
-                    edsl.load(y_uri, dtype=float), to_column_vector=True
+                    edsl.load(y_uri, dtype=float, select_columns=y_selected_columns),
+                    to_column_vector=True,
                 )
                 totals_ss = ss_tot(y_true)
 
@@ -125,6 +129,8 @@ class LinearRegressionExample(unittest.TestCase):
             arguments={
                 "x_uri": "x_data",
                 "y_uri": "y_data",
+                "x_selected_columns": None,
+                "y_selected_columns": None,
                 "w_uri": "regression_weights",
                 "mse_uri": "mse_result",
                 "rsquared_uri": "rsquared_result",
