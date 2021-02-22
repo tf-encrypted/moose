@@ -200,9 +200,14 @@ class LoadKernel(Kernel):
                 f" kernel:{self.__class__.__name__},"
                 f" op:{op},"
                 f" session_id:{session.session_id},"
-                f" key:{key}"
+                f" key:{key},"
+                f" optional_arguments:{op.optional_arguments}"
             )
-            value = await self.store.load(session_id=session.session_id, key=key)
+            value = await self.store.load(
+                session_id=session.session_id,
+                key=key,
+                optional_arguments=op.optional_arguments,
+            )
             get_logger().debug(
                 f"Done executing:"
                 f" kernel:{self.__class__.__name__},"

@@ -439,6 +439,7 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("load"),
                 inputs={"key": key_operation.name},
+                optional_arguments=load_expression.optional_arguments,
                 output_type=output_type,
             )
         )
