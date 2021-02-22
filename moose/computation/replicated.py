@@ -4,6 +4,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+from moose.computation import dtypes
 from moose.computation.base import Operation
 from moose.computation.base import Placement
 from moose.computation.base import ValueType
@@ -24,7 +25,7 @@ class ReplicatedSetupType(ValueType):
 
 @dataclass
 class ReplicatedRingTensorType(ValueType):
-    dtype: str
+    dtype: dtypes.DType
 
 
 @dataclass
