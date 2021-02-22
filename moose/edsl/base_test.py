@@ -272,7 +272,9 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.load(
-                edsl.constant(1.0, placement=player0), dtype=float, placement=player0
+                edsl.constant("stored_data", placement=player0),
+                dtype=dtypes.float32,
+                placement=player0,
             )
             return x0
 
@@ -283,7 +285,7 @@ class EdslTest(parameterized.TestCase):
             name="load_0",
             inputs={"key": "constant_0"},
             optional_arguments={},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     def test_load_with_arg(self):
@@ -292,9 +294,9 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.load(
-                edsl.constant(1.0, placement=player0),
+                edsl.constant("stored_data", placement=player0),
                 select_columns=["x"],
-                dtype=float,
+                dtype=dtypes.float32,
                 placement=player0,
             )
             return x0
@@ -306,7 +308,7 @@ class EdslTest(parameterized.TestCase):
             name="load_0",
             inputs={"key": "constant_0"},
             optional_arguments={"select_columns": ["x"]},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     def test_arguments(self):
