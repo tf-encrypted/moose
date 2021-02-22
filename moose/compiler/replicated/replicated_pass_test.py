@@ -94,6 +94,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_placement(HostPlacement(name="dave"))
         expected_comp.add_placement(HostPlacement(name="eric"))
+        expected_encoded_dtype = dtypes.fixed(44, 16)
 
         expected_comp.add_operation(
             std_dialect.ConstantOperation(
@@ -127,9 +128,10 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "alice_input"},
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(44, 16), precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
-                precision=16,
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(
@@ -138,9 +140,10 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "bob_input"},
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(44, 16), precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
-                precision=16,
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(
@@ -149,7 +152,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "encode_2"},
                 placement_name="rep",
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=dtypes.fixed(44, 16)
+                    dtype=expected_encoded_dtype
                 ),
             )
         )
@@ -159,7 +162,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"setup": "replicated_setup_0", "value": "encode_3"},
                 placement_name="rep",
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=dtypes.fixed(44, 16)
+                    dtype=expected_encoded_dtype
                 ),
             )
         )
@@ -173,7 +176,7 @@ class ReplicatedTest(parameterized.TestCase):
                 },
                 placement_name="rep",
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=dtypes.fixed(44, 16)
+                    dtype=expected_encoded_dtype,
                 ),
             )
         )
@@ -184,7 +187,8 @@ class ReplicatedTest(parameterized.TestCase):
                 recipient_name="dave",
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(44, 16), precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
             )
         )
@@ -194,7 +198,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "reveal_0"},
                 placement_name="rep",
                 output_type=std_dialect.TensorType(dtype=dtypes.float64),
-                precision=16,
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(

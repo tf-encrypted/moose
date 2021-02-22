@@ -220,11 +220,10 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
 
         cache_key = (src_op.name, dst_op.placement_name)
         if cache_key not in self.incoming_edge_cache:
-            (dtype, precision) = {
-                # TODO: check these values
-                dtypes.float64: (dtypes.fixed(44, 16), 16),
-                dtypes.float32: (dtypes.fixed(44, 16), 16),
-                dtypes.int64: (dtypes.fixed(60, 0), 0),
+            dtype = {
+                dtypes.float64: dtypes.fixed(44, 16),
+                dtypes.float32: dtypes.fixed(44, 16),
+                dtypes.int64: dtypes.fixed(60, 0),
             }[src_op.output_type.dtype]
             self.incoming_edge_cache[cache_key] = self.computation.add_operation(
                 fixedpoint_dialect.EncodeOperation(
@@ -232,9 +231,9 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                     placement_name=dst_op.placement_name,
                     inputs={"value": src_op.name},
                     output_type=fixedpoint_dialect.EncodedTensorType(
-                        dtype=dtype, precision=precision
+                        dtype=dtype, precision=dtype.fractional_precision
                     ),
-                    precision=precision,
+                    precision=dtype.fractional_precision,
                 )
             )
 

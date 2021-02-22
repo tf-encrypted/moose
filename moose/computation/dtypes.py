@@ -44,6 +44,7 @@ class _ConcreteDType(DType):
         is_integer,
         is_float,
         is_signed,
+        precision=(None, None),
     ):
         self._name = name
         self._short = short
@@ -53,6 +54,16 @@ class _ConcreteDType(DType):
         self._is_integer = is_integer
         self._is_float = is_float
         self._is_signed = is_signed
+        self._integral_precision = precision[0]
+        self._fractional_precision = precision[1]
+
+    @property
+    def integral_precision(self):
+        return self._integral_precision
+
+    @property
+    def fractional_precision(self):
+        return self._fractional_precision
 
     def __str__(self):
         return self._name
@@ -182,7 +193,8 @@ def fixed(integ, frac):
         is_fixedpoint=True,
         is_integer=False,
         is_float=False,
-        is_signed=True,  # TODO(jason) does this make sense?
+        is_signed=True,
+        precision=(integ, frac),
     )
 
 
