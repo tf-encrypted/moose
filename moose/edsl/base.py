@@ -282,8 +282,12 @@ def constant(value, dtype=None, placement=None):
             dtype = moose_dtype
     elif isinstance(value, float):
         dtype = dtype or dtypes.float64
+        if not dtype.is_float and not dtype.is_integer:
+            raise TypeError("Passed non-numeric constant with numeric dtype.")
     elif isinstance(value, int):
         dtype = dtype or dtypes.int64
+        if not dtype.is_float and not dtype.is_integer:
+            raise TypeError("Passed non-numeric constant with numeric dtype.")
     elif isinstance(value, str):
         if dtype is not None and dtype != dtypes.string:
             raise ValueError(
@@ -295,34 +299,21 @@ def constant(value, dtype=None, placement=None):
     return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
 
 
-def add(lhs, rhs, dtype=None, placement=None):
+def add(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        assert lhs.dtype == rhs.dtype
-        dtype = lhs.dtype
-
+    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "add")
     return BinaryOpExpression(
         op_name="add", placement=placement, inputs=[lhs, rhs], dtype=dtype
     )
 
 
-def sub(lhs, rhs, dtype=None, placement=None):
+def sub(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        if lhs.dtype != rhs.dtype:
-            raise ValueError(
-                "Function `sub` expected arguments of similar dtype: "
-                f"found `{lhs.dtype}` and `{rhs.dtype}`."
-            )
-        assert lhs.dtype == rhs.dtype
-        dtype = lhs.dtype
-
+    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "sub")
     return BinaryOpExpression(
         op_name="sub", placement=placement, inputs=[lhs, rhs], dtype=dtype
     )
@@ -332,39 +323,27 @@ def mul(lhs, rhs, dtype=None, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        assert lhs.dtype == rhs.dtype
-        dtype = lhs.dtype
-
+    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "mul")
     return BinaryOpExpression(
         op_name="mul", placement=placement, inputs=[lhs, rhs], dtype=dtype
     )
 
 
-def dot(lhs, rhs, dtype=None, placement=None):
+def dot(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        assert lhs.dtype == rhs.dtype
-        dtype = lhs.dtype
-
+    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "dot")
     return BinaryOpExpression(
         op_name="dot", placement=placement, inputs=[lhs, rhs], dtype=dtype
     )
 
 
-def div(lhs, rhs, dtype=None, placement=None):
+def div(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        assert lhs.dtype == rhs.dtype
-        dtype = lhs.dtype
-
+    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "div")
     return BinaryOpExpression(
         op_name="div", placement=placement, inputs=[lhs, rhs], dtype=dtype
     )
@@ -402,36 +381,24 @@ def ones(shape, dtype, placement=None):
     return OnesExpression(placement=placement, inputs=[shape], dtype=dtype)
 
 
-def square(x, dtype=None, placement=None):
+def square(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        dtype = x.dtype
-
     return BinaryOpExpression(
-        op_name="mul", placement=placement, inputs=[x, x], dtype=dtype
+        op_name="mul", placement=placement, inputs=[x, x], dtype=x.dtype
     )
 
 
 def sum(x, axis=None, dtype=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        dtype = x.dtype
-
-    return SumExpression(placement=placement, inputs=[x], axis=axis, dtype=dtype)
+    return SumExpression(placement=placement, inputs=[x], axis=axis, dtype=x.dtype)
 
 
-def mean(x, axis=None, dtype=None, placement=None):
+def mean(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-
-    if dtype is None:
-        dtype = x.dtype
-
-    return MeanExpression(placement=placement, inputs=[x], axis=axis, dtype=dtype)
+    return MeanExpression(placement=placement, inputs=[x], axis=axis, dtype=x.dtype)
 
 
 def shape(x, placement=None):
@@ -489,21 +456,15 @@ def abs(x, dtype=None, placement=None):
 def load(key, dtype=None, placement=None):
     placement = placement or get_current_placement()
     if isinstance(key, str):
-        if dtype is not None or dtype != dtypes.string:
-            raise ValueError(
-                f"Dtype {dtype} given in load operation does not match `key` argument "
-                "of type `str`."
-            )
-        dtype = dtype or dtypes.string
-        key = constant(key, placement=placement, dtype=dtype)
-    elif isinstance(key, Argument) and key.dtype not in [str, None]:
+        key = constant(key, placement=placement, dtype=dtypes.string)
+    elif isinstance(key, Argument) and key.dtype not in [dtypes.string, None]:
         raise ValueError(
-            f"Function 'edsl.load' encountered argument of dtype {key.dtype}; "
+            f"Function 'edsl.load' encountered `key` argument of dtype {key.dtype}; "
             "expected dtype 'string'."
         )
     elif not isinstance(key, Expression):
         raise ValueError(
-            f"Function 'edsl.load' encountered argument of type {type(key)}; "
+            f"Function 'edsl.load' encountered `key` argument of type {type(key)}; "
             "expected one of string, ConstantExpression, or ArgumentExpression."
         )
     return LoadExpression(placement=placement, inputs=[key], dtype=dtype)
@@ -514,14 +475,14 @@ def save(key, value, placement=None):
     placement = placement or get_current_placement()
     if isinstance(key, str):
         key = constant(key, placement=placement, dtype=dtypes.string)
-    elif isinstance(key, Argument) and key.dtype not in [str, None]:
+    elif isinstance(key, Argument) and key.dtype not in [dtypes.string, None]:
         raise ValueError(
-            f"Function 'edsl.save' encountered argument of dtype {key.dtype}; "
+            f"Function 'edsl.save' encountered `key` argument of dtype {key.dtype}; "
             "expected dtype 'string'."
         )
     elif not isinstance(key, Expression):
         raise ValueError(
-            f"Function 'edsl.save' encountered argument of type {type(key)}; "
+            f"Function 'edsl.save' encountered `key` argument of type {type(key)}; "
             "expected one of string, ConstantExpression, or ArgumentExpression."
         )
     return SaveExpression(placement=placement, inputs=[key, value], dtype=None)
@@ -587,3 +548,12 @@ def _infer_dtype_from_output_type(output_type):
             " Must be one of UnknownType, StringType, or TensorType."
         )
     return dtype
+
+
+def _assimilate_arg_dtypes(lhs_dtype, rhs_dtype, fn_name):
+    if lhs_dtype != rhs_dtype:
+        raise ValueError(
+            f"Function `{fn_name}` expected arguments of similar dtype: "
+            f"found mismatched dtypes `{lhs_dtype}` and `{rhs_dtype}`."
+        )
+    return lhs_dtype
