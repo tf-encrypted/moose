@@ -94,7 +94,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_placement(HostPlacement(name="dave"))
         expected_comp.add_placement(HostPlacement(name="eric"))
-        expected_encoded_dtype = dtypes.fixed(44, 16)
+        expected_encoded_dtype = dtypes.fixed(28, 16)
 
         expected_comp.add_operation(
             std_dialect.ConstantOperation(
@@ -221,7 +221,8 @@ class ReplicatedTest(parameterized.TestCase):
                 recipient_name="eric",
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    dtype=dtypes.fixed(44, 16), precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
             )
         )
@@ -231,7 +232,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "reveal_1"},
                 placement_name="rep",
                 output_type=std_dialect.TensorType(dtype=dtypes.float64),
-                precision=16,
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(
