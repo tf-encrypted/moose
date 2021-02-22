@@ -251,7 +251,7 @@ class SliceExpression(Expression):
         return id(self)
 
 
-def concatenate(arrays, axis=0, dtype=None, placement=None):
+def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
     expected_dtype = arrays[0].dtype
     for array in arrays:
@@ -319,7 +319,7 @@ def sub(lhs, rhs, placement=None):
     )
 
 
-def mul(lhs, rhs, dtype=None, placement=None):
+def mul(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
@@ -387,7 +387,7 @@ def square(x, placement=None):
     return mul(x, x, placement=placement)
 
 
-def sum(x, axis=None, dtype=None, placement=None):
+def sum(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return SumExpression(placement=placement, inputs=[x], axis=axis, dtype=x.dtype)
@@ -443,12 +443,10 @@ def reshape(x, shape, placement=None):
     return ReshapeExpression(placement=placement, inputs=[x, shape], dtype=x.dtype)
 
 
-def abs(x, dtype=None, placement=None):
+def abs(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    if dtype is None:
-        dtype = x.dtype
-    return AbsExpression(placement=placement, inputs=[x], dtype=dtype)
+    return AbsExpression(placement=placement, inputs=[x], dtype=x.dtype)
 
 
 def load(key, dtype=None, placement=None):
