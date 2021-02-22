@@ -384,9 +384,7 @@ def ones(shape, dtype, placement=None):
 def square(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return BinaryOpExpression(
-        op_name="mul", placement=placement, inputs=[x, x], dtype=x.dtype
-    )
+    return mul(x, x, placement=placement)
 
 
 def sum(x, axis=None, dtype=None, placement=None):
