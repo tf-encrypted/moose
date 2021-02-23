@@ -2,12 +2,13 @@ import pickle
 import json
 import msgpack
 
-from dataclasses import asdict
+from dataclasses import fields
 
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.base import Placement
 from moose.computation.base import ValueType
+from moose.computation import standard as std_dialect
 from moose.logger import get_logger
 
 
@@ -21,28 +22,26 @@ def deserialize_computation(bytes_stream):
     return computation
 
 
-def _encode(obj):
-    if isinstance(obj, Computation):
-        return {"__computation__": type(obj).__name__, "operations": obj.operations, "placements": obj.placements}
-    if isinstance(obj, Operation):
-        d = asdict(obj)
-        d["__operation__"] = type(obj).__name__
-        return d
-    if isinstance(obj, Placement):
-        d = asdict(obj)
-        d["__placement__"] = type(obj).__name__
-        return d
-    if isinstance(obj, ValueType):
-        d = asdict(obj)
-        d["__valuetype__"] = type(obj).__name__
-        return d
-    return obj
+
+SUPPORTED_TYPES = [
+    std_dialect.InputOperation,
+    std_dialect.OutputOperation,
+]
 
 
-def _decode(msg):
-    print(msg, "\n")
-    if "__computation__" in msg:
-        return Computation(operations=msg["operations"], placements=msg["placements"])
-    if "__operation__" in msg:
-        op_ty = msg["__operation__"]
-    return msg
+TYPES_MAP = { ty.__name__: ty for ty in SUPPORTED_TYPES }
+
+
+def _encode(val):
+    type_name = type(val).__name__
+    assert type_name in TYPES_MAP, type_name
+    d = {field.name: getattr(val, field.name) for field in fields(val)}        
+    d["__type__"] = type_name
+    return d
+
+
+def _decode(obj):
+    assert "__type__" in obj
+    ty = types_map[obj["__type__"]]
+    del obj["__type__"]
+    return ty(**obj)
