@@ -17,7 +17,7 @@
 //! # Usage example for already seeded PRNG
 //! ```
 //! use rand::{RngCore, SeedableRng};
-//! use crypto::prng::{AesRng};
+//! use moose::prng::{AesRng};
 //!
 //! // initialize PRNG seed using sodiumoxide entropy pool
 //! let mut rng: AesRng = AesRng::from_random_seed();
@@ -33,7 +33,7 @@
 //!
 //! # Usage example for setting manually the PRNG seed
 //! ```
-//! use crypto::prng::{AesRng, SEED_SIZE};
+//! use moose::prng::{AesRng, SEED_SIZE};
 //! use rand::{RngCore, SeedableRng};
 //! // seed is full of zeroes here, note this would be insecure
 //! // in an actual implementation
@@ -73,7 +73,7 @@ const PIPELINES_U128: u128 = 8;
 const PIPELINES_USIZE: usize = 8;
 const STATE_SIZE: usize = PIPELINES_USIZE * AES_BLK_SIZE;
 pub const SEED_SIZE: usize = AES_BLK_SIZE;
-pub type PRNGSeed = [u8; SEED_SIZE];
+pub type RngSeed = [u8; SEED_SIZE];
 
 type Block128 = GenericArray<u8, U16>;
 type Block128x8 = GenericArray<Block128, U8>;
@@ -150,7 +150,7 @@ pub struct AesRng {
 }
 
 impl SeedableRng for AesRng {
-    type Seed = PRNGSeed;
+    type Seed = RngSeed;
     /// Ideally this should be passed as a reference as we want
     /// to avoid copying the seed around. However this is probably going
     /// to be used few times, by default we should go with AesRng::from_random_seed

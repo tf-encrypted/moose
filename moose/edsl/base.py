@@ -184,6 +184,7 @@ class Atleast2DExpression(Expression):
 @dataclass
 class LoadExpression(Expression):
     dtype: Optional
+    optional_arguments: dict
 
     def __hash__(self):
         return id(self)
@@ -191,6 +192,12 @@ class LoadExpression(Expression):
 
 @dataclass
 class InverseExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
+class AbsExpression(Expression):
     def __hash__(self):
         return id(self)
 
@@ -360,7 +367,13 @@ def reshape(x, shape, placement=None):
     return ReshapeExpression(placement=placement, inputs=[x, shape])
 
 
-def load(key, dtype=None, placement=None):
+def abs(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return AbsExpression(placement=placement, inputs=[x])
+
+
+def load(key, dtype=None, placement=None, **kwargs):
     placement = placement or get_current_placement()
     if isinstance(key, str):
         key = constant(key, placement=placement)
@@ -374,7 +387,9 @@ def load(key, dtype=None, placement=None):
             f"Function 'edsl.load' encountered argument of type {type(key)}; "
             "expected one of str, ConstantExpression, or ArgumentExpression."
         )
-    return LoadExpression(placement=placement, inputs=[key], dtype=dtype)
+    return LoadExpression(
+        placement=placement, inputs=[key], dtype=dtype, optional_arguments=kwargs
+    )
 
 
 def save(key, value, placement=None):

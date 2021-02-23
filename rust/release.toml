@@ -1,0 +1,5 @@
+disable-publish = true
+disable-tag = true
+disable-push = true
+pre-release-commit-message = "release {{version}} of {{crate_name}}"
+post-release-commit-message = "starting {{next_version}} of {{crate_name}}"

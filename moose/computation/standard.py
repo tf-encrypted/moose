@@ -78,6 +78,11 @@ class MulOperation(StandardOperation):
 
 
 @dataclass
+class AbsOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class DotOperation(StandardOperation):
     output_type: ValueType
 
@@ -154,6 +159,7 @@ class SliceOperation(StandardOperation):
 @dataclass
 class LoadOperation(StandardOperation):
     output_type: ValueType
+    optional_arguments: dict
 
 
 @dataclass

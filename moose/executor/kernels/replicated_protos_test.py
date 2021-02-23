@@ -75,7 +75,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         (lambda x, y: x * y, False, standard_dialect.MulOperation),
         (lambda x, y: x * (x * y), True, standard_dialect.MulOperation),
     )
-    @settings(max_examples=50, deadline=timedelta(milliseconds=400))
+    @settings(deadline=timedelta(milliseconds=400))
     @given(pair_lists)
     def test_bin_op(self, numpy_lmbd, consecutive_flag, replicated_std_op, bin_args):
         comp = Computation(operations={}, placements={})
@@ -270,7 +270,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         results = _compile_and_run(comp, alice, bob, carole)
         np.testing.assert_array_equal(z, results[carole]["result"])
 
-    @settings(deadline=None)
+    @settings(deadline=timedelta(milliseconds=400))
     @given(dotprod_inputs)
     def test_dot_prod(self, dotprod_args):
         comp = Computation(operations={}, placements={})
@@ -339,6 +339,63 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         results = _compile_and_run(comp, alice, bob, carole)
         np.testing.assert_allclose(
             z, results[carole]["result"], rtol=1e-5, atol=1e-4,
+        )
+
+    @settings(deadline=timedelta(milliseconds=2000))
+    @given(a=st.lists(st.integers(min_value=-4000, max_value=4000), min_size=1))
+    def test_abs(self, a):
+        comp = Computation(operations={}, placements={})
+
+        alice, bob, carole, rep = _setup_replicated_computation(comp)
+
+        x = np.array([a], dtype=np.float64)
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="alice_input",
+                value=x,
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(datatype="float"),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.AbsOperation(
+                name="abs_op",
+                placement_name=rep.name,
+                inputs={"x": "alice_input"},
+                output_type=TensorType(datatype="int"),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value="result",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                inputs={"key": "save_key", "value": "abs_op"},
+                placement_name=carole.name,
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.OutputOperation(
+                name="output", placement_name=carole.name, inputs={"value": "save"},
+            )
+        )
+
+        results = _compile_and_run(comp, alice, bob, carole)
+
+        np.testing.assert_allclose(
+            np.abs(x), results[carole]["result"],
         )
 
 

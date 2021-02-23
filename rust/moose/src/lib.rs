@@ -1,3 +1,4 @@
+pub mod bit;
 pub mod fixedpoint;
 pub mod prng;
 pub mod ring;

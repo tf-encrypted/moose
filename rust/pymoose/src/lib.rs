@@ -1,7 +1,9 @@
-use crypto::fixedpoint::{ring_decode, ring_encode, ring_mean};
-use crypto::prng::AesRng;
-use crypto::ring::{Dot, Ring64Tensor, Sample};
-use crypto::utils;
+use moose::bit::BitTensor;
+use moose::bit::SampleBit;
+use moose::fixedpoint::{ring_decode, ring_encode, ring_mean};
+use moose::prng::AesRng;
+use moose::ring::{Dot, Ring64Tensor, Sample};
+use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};
@@ -154,6 +156,72 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let res = x_ring >> (amount as usize);
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_xor")]
+    fn bit_xor<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u8>,
+        y: PyReadonlyArrayDyn<u8>,
+    ) -> &'py PyArrayDyn<u8> {
+        let b1 = BitTensor::from(x.to_owned_array());
+        let b2 = BitTensor::from(y.to_owned_array());
+        ArrayD::<u8>::from(b1 ^ b2).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_and")]
+    fn bit_and<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u8>,
+        y: PyReadonlyArrayDyn<u8>,
+    ) -> &'py PyArrayDyn<u8> {
+        let b1 = BitTensor::from(x.to_owned_array());
+        let b2 = BitTensor::from(y.to_owned_array());
+        ArrayD::<u8>::from(b1 & b2).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_sample")]
+    fn bit_sample<'py>(
+        py: Python<'py>,
+        shape: Vec<usize>,
+        seed: &'py PyBytes,
+    ) -> &'py PyArrayDyn<u8> {
+        let b = BitTensor::sample_uniform(&shape, &seed.as_bytes());
+        ArrayD::<u8>::from(b).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_fill")]
+    fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
+        let res = BitTensor::fill(&shape, el);
+        ArrayD::<u8>::from(res).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_extract")]
+    fn bit_extract<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u64>,
+        bit_idx: usize,
+    ) -> &'py PyArrayDyn<u8> {
+        let x_ring = dynarray_to_ring64(&x);
+        let res = x_ring.bit_extract(bit_idx);
+        ArrayD::<u8>::from(res).to_pyarray(py)
+    }
+
+    #[pyfn(m, "ring_inject")]
+    fn ring_inject<'py>(
+        py: Python<'py>,
+        x: PyReadonlyArrayDyn<u8>,
+        bit_idx: usize,
+    ) -> &'py PyArrayDyn<u64> {
+        let b = BitTensor::from(x.to_owned_array());
+        let res = Ring64Tensor::from(b) << bit_idx;
+        ring64_to_array(res).to_pyarray(py)
+    }
+
+    #[pyfn(m, "bit_shape")]
+    fn bit_shape<'py>(py: Python<'py>, x: PyReadonlyArrayDyn<u8>) -> &'py PyList {
+        let shape: &[usize] = x.shape();
+        PyList::new(py, shape.iter())
     }
 
     #[pyfn(m, "fixedpoint_encode")]

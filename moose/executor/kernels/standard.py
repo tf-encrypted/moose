@@ -3,6 +3,7 @@ import json
 import msgpack
 import numpy as np
 
+from moose.computation.bit import BitTensorType
 from moose.computation.primitives import PRFKeyType
 from moose.computation.primitives import SeedType
 from moose.computation.ring import RingTensorType
@@ -198,9 +199,14 @@ class LoadKernel(Kernel):
                 f" kernel:{self.__class__.__name__},"
                 f" op:{op},"
                 f" session_id:{session.session_id},"
-                f" key:{key}"
+                f" key:{key},"
+                f" optional_arguments:{op.optional_arguments}"
             )
-            value = await self.store.load(session_id=session.session_id, key=key)
+            value = await self.store.load(
+                session_id=session.session_id,
+                key=key,
+                optional_arguments=op.optional_arguments,
+            )
             get_logger().debug(
                 f"Done executing:"
                 f" kernel:{self.__class__.__name__},"
@@ -244,7 +250,7 @@ class SerializeKernel(Kernel):
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
             value_type = op.value_type
-            if isinstance(value_type, (TensorType, RingTensorType)):
+            if isinstance(value_type, (TensorType, BitTensorType, RingTensorType)):
                 value_ser = msgpack.packb(value, default=_encode_tensor_info)
                 return output.set_result(value_ser)
             elif isinstance(value_type, ShapeType):
@@ -262,7 +268,7 @@ class DeserializeKernel(Kernel):
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
             output_type = op.output_type
-            if isinstance(output_type, (TensorType, RingTensorType)):
+            if isinstance(output_type, (TensorType, BitTensorType, RingTensorType)):
                 value = msgpack.unpackb(value, object_hook=_decode_tensor_info)
                 return output.set_result(value)
             elif isinstance(output_type, ShapeType):

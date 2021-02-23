@@ -1,13 +1,16 @@
 import asyncio
 import dataclasses
 from typing import Any
+from typing import List
 
+from moose.computation import bit as bit_ops
 from moose.computation import fixedpoint as fixed_ops
 from moose.computation import host as host_ops
 from moose.computation import mpspdz as mpspdz_ops
 from moose.computation import primitives as primitives_ops
 from moose.computation import ring as ring_ops
 from moose.computation import standard as standard_ops
+from moose.executor.kernels import bit as bit_kernels
 from moose.executor.kernels import fixedpoint as fixed_kernels
 from moose.executor.kernels import host as host_kernels
 from moose.executor.kernels import mpspdz as mpspdz_kernels
@@ -17,6 +20,12 @@ from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
 from moose.logger import get_tracer
 from moose.utils import AsyncStore
+
+
+class ExecutionError(Exception):
+    def __init__(self, msg: str, exceptions: List[Exception]):
+        super().__init__(msg)
+        self.exceptions = exceptions
 
 
 @dataclasses.dataclass
@@ -61,6 +70,14 @@ class AsyncExecutor:
             ring_ops.RingShlOperation: ring_kernels.RingShlKernel(),
             ring_ops.RingShrOperation: ring_kernels.RingShrKernel(),
             ring_ops.PrintRingTensorOperation: ring_kernels.PrintRingTensorKernel(),
+            bit_ops.BitXorOperation: bit_kernels.BitXorKernel(),
+            bit_ops.BitAndOperation: bit_kernels.BitAndKernel(),
+            bit_ops.BitExtractOperation: bit_kernels.BitExtractKernel(),
+            bit_ops.RingInjectOperation: bit_kernels.RingInjectKernel(),
+            bit_ops.BitSampleOperation: bit_kernels.BitSampleKernel(),
+            bit_ops.FillBitTensorOperation: bit_kernels.FillBitTensorKernel(),
+            bit_ops.BitShapeOperation: bit_kernels.BitShapeKernel(),
+            bit_ops.PrintBitTensorOperation: bit_kernels.PrintBitTensorKernel(),
             primitives_ops.DeriveSeedOperation: primitives_kernels.DeriveSeedKernel(),
             primitives_ops.SampleKeyOperation: primitives_kernels.SampleKeyKernel(),
             standard_ops.LoadOperation: standard_kernels.LoadKernel(storage),
@@ -91,6 +108,7 @@ class AsyncExecutor:
         placement,
         session_id,
         arguments={},
+        timeout=None,
     ):
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
@@ -139,7 +157,9 @@ class AsyncExecutor:
                 )
                 return
             # execute kernels
-            done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            done, pending = await asyncio.wait(
+                tasks, timeout=timeout, return_when=asyncio.FIRST_EXCEPTION
+            )
             # address any errors that may have occurred
             except_tasks = [task for task in done if task.exception()]
             exceptions = []
@@ -147,9 +167,26 @@ class AsyncExecutor:
                 exceptions.append(t.exception())
                 get_logger().error(f"Task {t.get_name()} caused an exception")
                 t.print_stack()
+
+            if len(pending) > 0:
+                get_logger().warn(
+                    "There was probably an error; cancelling all pending tasks"
+                )
+                for t in pending:
+                    t.cancel()
+
+                # if exceptions are zero then was most likely caused by a timeout
+                if len(exceptions) == 0:
+                    exceptions.append(
+                        asyncio.TimeoutError(
+                            f"Session {session_id} timed out after {timeout} seconds"
+                        )
+                    )
+
             if len(exceptions) > 0:
-                raise Exception(
-                    f"One or more errors occurred in '{placement}: {exceptions}'"
+                raise ExecutionError(
+                    f"One or more errors occurred in '{placement}': '{exceptions}'",
+                    exceptions,
                 )
 
     def schedule_execution(self, comp, placement):

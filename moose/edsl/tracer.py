@@ -10,6 +10,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.standard import AbsOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import Atleast2DOperation
@@ -36,6 +37,7 @@ from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
+from moose.edsl.base import AbsExpression
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import Atleast2DExpression
@@ -257,6 +259,21 @@ class AstTracer:
             )
         )
 
+    def visit_AbsExpression(self, abs_expression):
+        assert isinstance(abs_expression, AbsExpression)
+        (x_expression,) = abs_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(abs_expression.placement)
+        output_type = TensorType(datatype="float")
+        return self.computation.add_operation(
+            AbsOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("abs"),
+                output_type=output_type,
+                inputs={"x": x_operation.name},
+            )
+        )
+
     def visit_ExpandDimsExpression(self, expand_dims_expression):
         assert isinstance(expand_dims_expression, ExpandDimsExpression)
         (x_expression,) = expand_dims_expression.inputs
@@ -436,6 +453,7 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("load"),
                 inputs={"key": key_operation.name},
+                optional_arguments=load_expression.optional_arguments,
                 output_type=output_type,
             )
         )

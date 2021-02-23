@@ -263,6 +263,49 @@ class EdslTest(parameterized.TestCase):
             output_type=TensorType(datatype="float"),
         )
 
+    def test_load(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.load(
+                edsl.constant(1.0, placement=player0), dtype=float, placement=player0
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        constant_op = concrete_comp.operation("load_0")
+        assert constant_op == standard_ops.LoadOperation(
+            placement_name="player0",
+            name="load_0",
+            inputs={"key": "constant_0"},
+            optional_arguments={},
+            output_type=TensorType(datatype="float"),
+        )
+
+    def test_load_with_arg(self):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            x0 = edsl.load(
+                edsl.constant(1.0, placement=player0),
+                select_columns=["x"],
+                dtype=float,
+                placement=player0,
+            )
+            return x0
+
+        concrete_comp = trace(my_comp)
+        constant_op = concrete_comp.operation("load_0")
+        assert constant_op == standard_ops.LoadOperation(
+            placement_name="player0",
+            name="load_0",
+            inputs={"key": "constant_0"},
+            optional_arguments={"select_columns": ["x"]},
+            output_type=TensorType(datatype="float"),
+        )
+
     def test_arguments(self):
         player0 = edsl.host_placement(name="player0")
 

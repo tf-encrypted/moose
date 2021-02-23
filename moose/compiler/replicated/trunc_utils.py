@@ -1,7 +1,7 @@
 from moose.compiler.primitives import derive_seed
 from moose.compiler.primitives import sample_key
+from moose.compiler.replicated.types import ReplicatedRingTensor
 from moose.compiler.replicated.types import ReplicatedSetup
-from moose.compiler.replicated.types import ReplicatedTensor
 from moose.compiler.ring import RingTensor
 from moose.compiler.ring import ring_add
 from moose.compiler.ring import ring_mul
@@ -58,7 +58,7 @@ def bit_compose(bits, placement_name):
 # assume x, r, r_top, r_msb is a two entry array where each entry corresponds
 # to a share
 def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players):
-    assert isinstance(x_rep, ReplicatedTensor)
+    assert isinstance(x_rep, ReplicatedRingTensor)
 
     def reconstruct(x0: RingTensor, x1: RingTensor):
         assert isinstance(x0, RingTensor)
