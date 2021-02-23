@@ -2,8 +2,12 @@ from dataclasses import fields
 
 import msgpack
 
+from moose.computation import bit as bit_dialect
+from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import host as host_dialect
+from moose.computation import primitives as prim_dialect
 from moose.computation import replicated as rep_dialect
+from moose.computation import ring as ring_dialect
 from moose.computation import standard as std_dialect
 from moose.computation.base import Computation
 from moose.logger import get_logger
@@ -20,8 +24,64 @@ def deserialize_computation(bytes_stream):
 
 
 SUPPORTED_TYPES = [
+    bit_dialect.BitTensorType,
+    bit_dialect.BitXorOperation,
+    bit_dialect.BitAndOperation,
+    bit_dialect.BitShapeOperation,
+    bit_dialect.BitSampleOperation,
+    bit_dialect.BitExtractOperation,
+    bit_dialect.RingInjectOperation,
+    bit_dialect.FillBitTensorOperation,
+    fixed_dialect.EncodedTensorType,
+    fixed_dialect.AddOperation,
+    fixed_dialect.SubOperation,
+    fixed_dialect.MulOperation,
+    fixed_dialect.TruncPrOperation,
+    fixed_dialect.DotOperation,
+    fixed_dialect.SumOperation,
+    fixed_dialect.MeanOperation,
+    fixed_dialect.RingMeanOperation,
+    fixed_dialect.AbsOperation,
+    fixed_dialect.EncodeOperation,
+    fixed_dialect.DecodeOperation,
+    fixed_dialect.RingEncodeOperation,
+    fixed_dialect.RingDecodeOperation,
+    host_dialect.HostPlacement,
+    prim_dialect.SeedType,
+    prim_dialect.PRFKeyType,
+    prim_dialect.DeriveSeedOperation,
+    prim_dialect.SampleKeyOperation,
+    rep_dialect.ReplicatedPlacement,
+    rep_dialect.ReplicatedSetupType,
+    rep_dialect.ReplicatedRingTensorType,
+    rep_dialect.SetupOperation,
+    rep_dialect.ShareOperation,
+    rep_dialect.RevealOperation,
+    rep_dialect.AddOperation,
+    rep_dialect.SubOperation,
+    rep_dialect.MulOperation,
+    rep_dialect.TruncPrOperation,
+    rep_dialect.DotOperation,
+    rep_dialect.SumOperation,
+    rep_dialect.MeanOperation,
+    rep_dialect.AbsOperation,
+    ring_dialect.RingTensorType,
+    ring_dialect.RingAddOperation,
+    ring_dialect.RingSubOperation,
+    ring_dialect.RingMulOperation,
+    ring_dialect.RingShlOperation,
+    ring_dialect.RingShrOperation,
+    ring_dialect.RingDotOperation,
+    ring_dialect.RingSumOperation,
+    ring_dialect.RingShapeOperation,
+    ring_dialect.RingSampleOperation,
+    ring_dialect.FillTensorOperation,
     std_dialect.UnitType,
     std_dialect.UnknownType,
+    std_dialect.TensorType,
+    std_dialect.BytesType,
+    std_dialect.StringType,
+    std_dialect.ShapeType,
     std_dialect.InputOperation,
     std_dialect.OutputOperation,
     std_dialect.ConcatenateOperation,
@@ -49,25 +109,6 @@ SUPPORTED_TYPES = [
     std_dialect.DeserializeOperation,
     std_dialect.SendOperation,
     std_dialect.ReceiveOperation,
-    std_dialect.TensorType,
-    std_dialect.BytesType,
-    std_dialect.StringType,
-    std_dialect.ShapeType,
-    host_dialect.HostPlacement,
-    rep_dialect.ReplicatedPlacement,
-    rep_dialect.ReplicatedSetupType,
-    rep_dialect.ReplicatedRingTensorType,
-    rep_dialect.SetupOperation,
-    rep_dialect.ShareOperation,
-    rep_dialect.RevealOperation,
-    rep_dialect.AddOperation,
-    rep_dialect.SubOperation,
-    rep_dialect.MulOperation,
-    rep_dialect.TruncPrOperation,
-    rep_dialect.DotOperation,
-    rep_dialect.SumOperation,
-    rep_dialect.MeanOperation,
-    rep_dialect.AbsOperation,
 ]
 
 
