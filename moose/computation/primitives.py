@@ -16,7 +16,6 @@ class SeedType(PrimitiveType):
     pass
 
 
-
 @dataclass
 class PRFKeyType(PrimitiveType):
     pass

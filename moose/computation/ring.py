@@ -6,13 +6,11 @@ from moose.computation.base import ValueType
 from moose.computation.standard import ShapeType
 
 
-
 @dataclass
 class RingType(ValueType):
     @classmethod
     def dialect(cls):
         return "ring"
-
 
 
 @dataclass
