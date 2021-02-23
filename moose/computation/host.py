@@ -11,11 +11,15 @@ class HostPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
+    @classmethod
+    def dialect(cls):
+        return "host"
+
 
 @dataclass
 class HostOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "host"
 
 

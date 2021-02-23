@@ -9,34 +9,50 @@ from typing import Union
 import numpy as np
 
 from moose.computation.base import Operation
-from moose.computation.base import UnitType
 from moose.computation.base import ValueType
 
 
 @dataclass
-class TensorType(ValueType):
+class StandardType(ValueType):
+    @classmethod
+    def dialect(cls):
+        return "std"
+
+
+@dataclass
+class UnitType(StandardType):
+    pass
+
+
+@dataclass
+class UnknownType(StandardType):
+    pass
+
+
+@dataclass
+class TensorType(StandardType):
     datatype: str
 
 
 @dataclass
-class BytesType(ValueType):
+class BytesType(StandardType):
     pass
 
 
 @dataclass
-class StringType(ValueType):
+class StringType(StandardType):
     pass
 
 
 @dataclass
-class ShapeType(ValueType):
+class ShapeType(StandardType):
     pass
 
 
 @dataclass
 class StandardOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "std"
 
 

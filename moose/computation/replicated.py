@@ -16,21 +16,32 @@ class ReplicatedPlacement(Placement):
     def __hash__(self):
         return hash(self.name)
 
+    @classmethod
+    def dialect(cls):
+        return "rep"
+
 
 @dataclass
-class ReplicatedSetupType(ValueType):
+class ReplicatedType(ValueType):
+    @classmethod
+    def dialect(cls):
+        return "rep"
+
+
+@dataclass
+class ReplicatedSetupType(ReplicatedType):
     pass
 
 
 @dataclass
-class ReplicatedRingTensorType(ValueType):
+class ReplicatedRingTensorType(ReplicatedType):
     datatype: str
 
 
 @dataclass
 class ReplicatedOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "rep"
 
 

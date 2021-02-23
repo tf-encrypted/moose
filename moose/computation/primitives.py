@@ -5,26 +5,34 @@ from moose.computation.base import ValueType
 
 
 @dataclass
-class PrimitiveOperation(Operation):
-    @property
-    def dialect(self):
+class PrimitiveType(ValueType):
+    @classmethod
+    def dialect(cls):
         return "prim"
 
 
 @dataclass
-class SeedType(ValueType):
+class SeedType(PrimitiveType):
     pass
+
+
+
+@dataclass
+class PRFKeyType(PrimitiveType):
+    pass
+
+
+@dataclass
+class PrimitiveOperation(Operation):
+    @classmethod
+    def dialect(cls):
+        return "prim"
 
 
 @dataclass
 class DeriveSeedOperation(PrimitiveOperation):
     nonce: bytes
     output_type: ValueType = SeedType()
-
-
-@dataclass
-class PRFKeyType(ValueType):
-    pass
 
 
 @dataclass

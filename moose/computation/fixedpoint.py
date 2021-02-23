@@ -9,15 +9,22 @@ from moose.computation.ring import RingTensorType
 
 
 @dataclass
-class EncodedTensorType(ValueType):
+class FixedpointType(ValueType):
+    @classmethod
+    def dialect(cls):
+        return "fixed"
+
+
+@dataclass
+class EncodedTensorType(FixedpointType):
     datatype: str
     precision: int
 
 
 @dataclass
 class FixedpointOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "fixed"
 
 

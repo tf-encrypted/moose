@@ -40,7 +40,7 @@ def render_computation(
         if placement_type.endswith("Placement"):
             placement_type = placement_type[: -len("Placement")]
         node_label = (
-            f"{op.name}: {op.dialect}::{op_type}\n"
+            f"{op.name}: {op.dialect()}::{op_type}\n"
             f"@{placement.name}: {placement_type}"
         )
         dot.node(

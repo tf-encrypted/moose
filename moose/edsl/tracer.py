@@ -5,7 +5,6 @@ import numpy as np
 
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
-from moose.computation.base import UnknownType
 from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
 from moose.computation.mpspdz import MpspdzPlacement
@@ -37,6 +36,7 @@ from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
+from moose.computation.standard import UnknownType
 from moose.edsl.base import AbsExpression
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression

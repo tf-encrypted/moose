@@ -17,20 +17,9 @@ class ValueType:
 
 
 @dataclass
-class UnitType(ValueType):
-    pass
-
-
-@dataclass
-class UnknownType(ValueType):
-    pass
-
-
-@dataclass
 class Operation:
     name: str
     inputs: Dict[str, str]
-    attributes: Dict[str, Any]
     placement_name: str
 
     @classmethod
