@@ -12,6 +12,23 @@ from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 from moose.testing import run_test_computation
 
+_MOOSE_DTYPES = [
+    dtypes.float32,
+    dtypes.float64,
+    dtypes.int32,
+    dtypes.int64,
+    dtypes.uint32,
+    dtypes.uint64,
+]
+_NUMPY_DTYPES = [
+    np.float32,
+    np.float64,
+    np.int32,
+    np.int64,
+    np.uint32,
+    np.uint64,
+]
+
 
 class EdslTest(parameterized.TestCase):
     @parameterized.parameters(
@@ -376,3 +393,108 @@ class EdslTest(parameterized.TestCase):
             args=["local_computation.py"],
             output_type=UnknownType(),
         )
+
+    @parameterized.parameters(
+        (1, None, dtypes.int64),
+        (1, dtypes.int64, dtypes.int64),
+        (1, dtypes.int32, dtypes.int32),
+        (1.0, dtypes.float32, dtypes.float32),
+        (1.0, dtypes.float64, dtypes.float64),
+        (1.0, None, dtypes.float64),
+        (np.array([1.0]), None, dtypes.float64),
+        (np.array([1.0], dtype=np.float32), dtypes.float32, dtypes.float32),
+        (np.array([1.0]), dtypes.float64, dtypes.float64),
+    )
+    def test_cast_noop(self, input_value, from_dtype, into_dtype):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            with player0:
+                x = edsl.constant(input_value, dtype=from_dtype)
+                x_new = edsl.cast(x, dtype=into_dtype)
+                return x_new
+
+        concrete_comp = trace(my_comp)
+        self.assertRaises(KeyError, lambda: concrete_comp.operation("cast_0"))
+
+    @parameterized.parameters(
+        # Cast python native numbers
+        *[
+            (value, from_dtype, into_dtype)
+            for value in (1, 1.0)
+            for from_dtype in _MOOSE_DTYPES
+            for into_dtype in _MOOSE_DTYPES
+            if from_dtype != into_dtype
+        ],
+        # Cast numpy array, explicit moose dtype
+        *[
+            (np.array([1.0]), dtypes.float64, into_dtype)
+            for into_dtype in _MOOSE_DTYPES
+            if into_dtype != dtypes.float64
+        ],
+        *[
+            (np.array([1]), dtypes.int64, into_dtype)
+            for into_dtype in _MOOSE_DTYPES
+            if into_dtype != dtypes.int64
+        ],
+        # Cast numpy array w/ implicit dtype
+        *[
+            (np.array([1], dtype=from_dtype), None, into_dtype)
+            for from_dtype in _NUMPY_DTYPES
+            for into_dtype in _MOOSE_DTYPES
+            if into_dtype.numpy_dtype != from_dtype
+        ],
+    )
+    def test_cast(self, input_value, from_dtype, into_dtype):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            with player0:
+                x = edsl.constant(input_value, dtype=from_dtype)
+                x_new = edsl.cast(x, dtype=into_dtype)
+                return x_new
+
+        concrete_comp = trace(my_comp)
+        cast_op = concrete_comp.operation("cast_0")
+        assert cast_op == standard_ops.CastOperation(
+            placement_name="player0",
+            name="cast_0",
+            inputs={"x": "constant_0"},
+            output_type=TensorType(dtype=into_dtype),
+        )
+
+    @parameterized.parameters(
+        *[
+            (np.array([1.0]), into_dtype)
+            for into_dtype in _MOOSE_DTYPES
+            if into_dtype != dtypes.float64
+        ],
+        *[
+            (np.array([1]), into_dtype)
+            for into_dtype in _MOOSE_DTYPES
+            if into_dtype != dtypes.int64
+        ],
+    )
+    def test_implicit_cast(self, input_value, dtype):
+        player0 = edsl.host_placement(name="player0")
+
+        @edsl.computation
+        def my_comp():
+            with player0:
+                x = edsl.constant(input_value, dtype=dtype)
+                return x
+
+        concrete_comp = trace(my_comp)
+        cast_op = concrete_comp.operation("cast_0")
+        assert cast_op == standard_ops.CastOperation(
+            placement_name="player0",
+            name="cast_0",
+            inputs={"x": "constant_0"},
+            output_type=TensorType(dtype=dtype),
+        )
+
+
+def _npdtype_into_moose_dtype(npdtype):
+    return dtypes._NUMPY_DTYPES_MAP(npdtype)

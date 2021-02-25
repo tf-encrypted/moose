@@ -283,10 +283,13 @@ def constant(value, dtype=None, placement=None):
                 f"Arrays of dtype `{value.dtype}` not supported as graph constants."
             )
         if dtype is not None and moose_dtype != dtype:
-            raise ValueError(
-                f"Constant value of dtype `{value.dtype}` does not match "
-                "supplied dtype argument: `{dtype}`."
-            )
+            if not isinstance(dtype, dtypes.DType):
+                raise TypeError(
+                    "`dtype` argument to `constant` must be of type DType, "
+                    f"found {type(dtype)}."
+                )
+            implicit_const = constant(value, moose_dtype, placement)
+            return cast(implicit_const, dtype, placement)
         elif dtype is None:
             dtype = moose_dtype
     elif isinstance(value, float):
