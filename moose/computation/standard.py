@@ -90,6 +90,11 @@ class AbsOperation(StandardOperation):
 
 
 @dataclass
+class CastOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class DotOperation(StandardOperation):
     output_type: ValueType
 

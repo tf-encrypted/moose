@@ -15,6 +15,15 @@ from moose.edsl.tracer import trace
 from moose.executor.executor import AsyncExecutor
 from moose.testing import run_test_computation
 
+_MOOSE_DTYPES = [
+    dtypes.float32,
+    dtypes.float64,
+    dtypes.int32,
+    dtypes.int64,
+    dtypes.uint32,
+    dtypes.uint64,
+]
+
 
 class StandardKernelTest(parameterized.TestCase):
     def test_constant(self):
@@ -78,6 +87,54 @@ class StandardKernelTest(parameterized.TestCase):
 
         results = run_test_computation(comp, [alice], arguments={"x": 5, "y": 10})
         assert results[alice]["z"] == 15
+
+    @parameterized.parameters(
+        *[
+            (np.array([1], dtype=from_dtype.numpy_dtype), from_dtype, into_dtype)
+            for from_dtype in _MOOSE_DTYPES
+            for into_dtype in _MOOSE_DTYPES
+            if from_dtype != into_dtype
+        ]
+    )
+    def test_cast(self, value, from_dtype, into_dtype):
+        comp = Computation(operations={}, placements={})
+
+        alice = comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="constant",
+                placement_name=alice.name,
+                inputs={},
+                value=value,
+                output_type=standard_dialect.TensorType(from_dtype),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.CastOperation(
+                name="cast",
+                placement_name=alice.name,
+                inputs={"x": "constant"},
+                output_type=standard_dialect.TensorType(into_dtype),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=alice.name,
+                value="z",
+                output_type=standard_dialect.StringType(),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                placement_name=alice.name,
+                inputs={"key": "save_key", "value": "cast"},
+            )
+        )
+        comp_result = run_test_computation(comp, [alice])
+        np.testing.assert_equal(comp_result[alice]["z"].dtype, into_dtype.numpy_dtype)
 
     @parameterized.parameters(
         {"axis": axis, "expected_result": expected_result}
