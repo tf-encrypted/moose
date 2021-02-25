@@ -1,14 +1,8 @@
 import argparse
 import logging
 
+from moose import edsl
 from moose.choreography.grpc import Choreographer
-from moose.edsl import add
-from moose.edsl import computation
-from moose.edsl import constant
-from moose.edsl import function
-from moose.edsl import host_placement
-from moose.edsl import save
-from moose.edsl import trace
 from moose.logger import get_logger
 
 parser = argparse.ArgumentParser(description="Run example")
@@ -19,40 +13,40 @@ if args.verbose:
     get_logger().setLevel(level=logging.DEBUG)
 
 
-inputter0 = host_placement(name="inputter0")
-inputter1 = host_placement(name="inputter1")
-aggregator = host_placement(name="aggregator")
-outputter = host_placement(name="outputter")
+inputter0 = edsl.host_placement(name="inputter0")
+inputter1 = edsl.host_placement(name="inputter1")
+aggregator = edsl.host_placement(name="aggregator")
+outputter = edsl.host_placement(name="outputter")
 
 
-@function
+@edsl.function
 def mul_fn(x, y):
     return x * y
 
 
-@computation
+@edsl.computation
 def my_comp():
 
     with inputter0:
-        c0_0 = constant(1)
-        c1_0 = constant(2)
+        c0_0 = edsl.constant(1)
+        c1_0 = edsl.constant(2)
         x0 = mul_fn(c0_0, c1_0)
 
     with inputter1:
-        c0_1 = constant(2)
-        c1_1 = constant(3)
+        c0_1 = edsl.constant(2)
+        c1_1 = edsl.constant(3)
         x1 = mul_fn(c0_1, c1_1)
 
     with aggregator:
-        y = add(x0, x1)
+        y = edsl.add(x0, x1)
 
     with outputter:
-        res = save("y", y)
+        res = edsl.save("y", y)
 
     return res
 
 
-concrete_comp = trace(my_comp)
+concrete_comp = edsl.trace(my_comp)
 
 if __name__ == "__main__":
     runtime = Choreographer()

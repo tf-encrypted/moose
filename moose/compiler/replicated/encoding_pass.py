@@ -1,4 +1,5 @@
 from moose.compiler.replicated.subgraph_replace_pass import SubgraphReplacementPass
+from moose.computation import dtypes
 from moose.computation import fixedpoint as fixedpoint_dialect
 from moose.computation import replicated as rep_dialect
 from moose.computation import standard as std_dialect
@@ -37,10 +38,10 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         rhs_output_type = lowered_rhs_op.output_type
         assert isinstance(lhs_output_type, fixedpoint_dialect.EncodedTensorType)
         assert isinstance(rhs_output_type, fixedpoint_dialect.EncodedTensorType)
-        assert lhs_output_type.datatype == rhs_output_type.datatype
+        assert lhs_output_type.dtype == rhs_output_type.dtype
         assert lhs_output_type.precision == rhs_output_type.precision
         output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=lhs_output_type.datatype, precision=lhs_output_type.precision,
+            dtype=lhs_output_type.dtype, precision=lhs_output_type.precision,
         )
         return self.computation.add(
             fixedpoint_dialect.AddOperation(
@@ -59,10 +60,10 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         rhs_output_type = lowered_rhs_op.output_type
         assert isinstance(lhs_output_type, fixedpoint_dialect.EncodedTensorType)
         assert isinstance(rhs_output_type, fixedpoint_dialect.EncodedTensorType)
-        assert lhs_output_type.datatype == rhs_output_type.datatype
+        assert lhs_output_type.dtype == rhs_output_type.dtype
         assert lhs_output_type.precision == rhs_output_type.precision
         output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=lhs_output_type.datatype, precision=lhs_output_type.precision,
+            dtype=lhs_output_type.dtype, precision=lhs_output_type.precision,
         )
         return self.computation.add(
             fixedpoint_dialect.SubOperation(
@@ -81,10 +82,10 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         rhs_output_type = lowered_rhs_op.output_type
         assert isinstance(lhs_output_type, fixedpoint_dialect.EncodedTensorType)
         assert isinstance(rhs_output_type, fixedpoint_dialect.EncodedTensorType)
-        assert lhs_output_type.datatype == rhs_output_type.datatype
+        assert lhs_output_type.dtype == rhs_output_type.dtype
         assert lhs_output_type.precision == rhs_output_type.precision
         mul_output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=lhs_output_type.datatype,
+            dtype=lhs_output_type.dtype,
             precision=lhs_output_type.precision + rhs_output_type.precision,
         )
         mul_op = self.computation.add(
@@ -97,7 +98,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         )
 
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=mul_output_type.datatype, precision=mul_output_type.precision // 2,
+            dtype=mul_output_type.dtype, precision=mul_output_type.precision // 2,
         )
         precision_to_truncate = mul_output_type.precision - trunc_output_type.precision
         trunc_op = self.computation.add(
@@ -119,10 +120,10 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         rhs_output_type = lowered_rhs_op.output_type
         assert isinstance(lhs_output_type, fixedpoint_dialect.EncodedTensorType)
         assert isinstance(rhs_output_type, fixedpoint_dialect.EncodedTensorType)
-        assert lhs_output_type.datatype == rhs_output_type.datatype
+        assert lhs_output_type.dtype == rhs_output_type.dtype
         assert lhs_output_type.precision == rhs_output_type.precision
         dot_output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=lhs_output_type.datatype,
+            dtype=lhs_output_type.dtype,
             precision=lhs_output_type.precision + rhs_output_type.precision,
         )
         dot_op = self.computation.add(
@@ -134,7 +135,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
             )
         )
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=dot_output_type.datatype, precision=dot_output_type.precision // 2,
+            dtype=dot_output_type.dtype, precision=dot_output_type.precision // 2,
         )
         precision_to_truncate = dot_output_type.precision - trunc_output_type.precision
         trunc_op = self.computation.add(
@@ -170,7 +171,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         arg_output_type = lowered_arg_op.output_type
         assert isinstance(arg_output_type, fixedpoint_dialect.EncodedTensorType)
         mean_output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=arg_output_type.datatype, precision=2 * arg_output_type.precision,
+            dtype=arg_output_type.dtype, precision=2 * arg_output_type.precision,
         )
         mean_op = self.computation.add(
             fixedpoint_dialect.MeanOperation(
@@ -183,8 +184,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
             )
         )
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
-            datatype=mean_output_type.datatype,
-            precision=mean_output_type.precision // 2,
+            dtype=mean_output_type.dtype, precision=mean_output_type.precision // 2,
         )
         precision_to_truncate = mean_output_type.precision - trunc_output_type.precision
         trunc_op = self.computation.add(
@@ -220,18 +220,20 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
 
         cache_key = (src_op.name, dst_op.placement_name)
         if cache_key not in self.incoming_edge_cache:
-            (datatype, precision) = {"float": ("fixed64", 16), "int64": ("fixed64", 0)}[
-                src_op.output_type.datatype
-            ]
+            dtype = {
+                dtypes.float64: dtypes.fixed(28, 16),
+                dtypes.float32: dtypes.fixed(28, 16),
+                dtypes.int64: dtypes.fixed(60, 0),
+            }[src_op.output_type.dtype]
             self.incoming_edge_cache[cache_key] = self.computation.add_operation(
                 fixedpoint_dialect.EncodeOperation(
                     name=self.context.get_fresh_name("encode"),
                     placement_name=dst_op.placement_name,
                     inputs={"value": src_op.name},
                     output_type=fixedpoint_dialect.EncodedTensorType(
-                        datatype=datatype, precision=precision
+                        dtype=dtype, precision=dtype.fractional_precision
                     ),
-                    precision=precision,
+                    precision=dtype.fractional_precision,
                 )
             )
 
@@ -242,17 +244,17 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
 
         cache_key = (src_op.name,)
         if cache_key not in self.outgoing_edge_cache:
-            assert src_op.output_type.datatype == "fixed64"
+            assert src_op.output_type.dtype.is_fixedpoint
             if src_op.output_type.precision > 0:
-                datatype = "float"
+                dtype = dtypes.float64
             else:
-                datatype = "int64"
+                dtype = dtypes.int64
             self.outgoing_edge_cache[cache_key] = self.computation.add_operation(
                 fixedpoint_dialect.DecodeOperation(
                     name=self.context.get_fresh_name("decode"),
                     placement_name=src_op.placement_name,
                     inputs={"value": src_op.name},
-                    output_type=std_dialect.TensorType(datatype=datatype),
+                    output_type=std_dialect.TensorType(dtype=dtype),
                     precision=src_op.output_type.precision,
                 )
             )

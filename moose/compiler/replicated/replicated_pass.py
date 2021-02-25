@@ -55,7 +55,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 placement_name=op.placement_name,
                 inputs=inputs,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -73,7 +73,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 placement_name=op.placement_name,
                 inputs=inputs,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -91,7 +91,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 placement_name=op.placement_name,
                 inputs=inputs,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -110,7 +110,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 inputs=inputs,
                 precision=op.precision,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -128,7 +128,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 placement_name=op.placement_name,
                 inputs=inputs,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -146,7 +146,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 placement_name=op.placement_name,
                 inputs=inputs,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -163,7 +163,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 axis=op.axis,
                 inputs=inputs,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -181,7 +181,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                     for input_key, input_op in processed_inputs.items()
                 },
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=op.output_type.datatype
+                    dtype=op.output_type.dtype
                 ),
             )
         )
@@ -209,7 +209,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 },
                 placement_name=encode_op.placement_name,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    datatype=encode_op.output_type.datatype
+                    dtype=encode_op.output_type.dtype
                 ),
             )
         )
@@ -251,7 +251,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
                     output_type=fixed_dialect.EncodedTensorType(
-                        datatype=src_input_op.output_type.datatype,
+                        dtype=src_input_op.output_type.dtype,
                         precision=src_op.precision,
                     ),
                 )

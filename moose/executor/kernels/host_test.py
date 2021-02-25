@@ -3,38 +3,36 @@ import unittest
 
 from absl.testing import parameterized
 
-from moose.edsl.base import computation
-from moose.edsl.base import constant
-from moose.edsl.base import host_placement
-from moose.edsl.base import run_program
-from moose.edsl.base import save
+from moose.computation import dtypes
+from moose.computation.standard import TensorType
+from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 from moose.testing import run_test_computation
 
 
 class HostKernelTest(parameterized.TestCase):
     def test_run_program(self):
-        player0 = host_placement("player0")
-        player1 = host_placement("player1")
-        player2 = host_placement("player2")
+        player0 = edsl.host_placement("player0")
+        player1 = edsl.host_placement("player1")
+        player2 = edsl.host_placement("player2")
 
         test_fixtures_file = str(
             pathlib.Path(__file__).parent.absolute().joinpath("host_test_fixtures.py")
         )
 
-        @computation
+        @edsl.computation
         def my_comp():
-            c0 = constant(3, placement=player0)
-            c1 = constant(2, placement=player0)
-            out = run_program(
+            c0 = edsl.constant(3, placement=player0)
+            c1 = edsl.constant(2, placement=player0)
+            out = edsl.run_program(
                 "python",
                 [test_fixtures_file],
                 c0,
                 c1,
                 placement=player1,
-                output_type=float,
+                output_type=TensorType(dtype=dtypes.int64),
             )
-            res = save("result", out, placement=player2)
+            res = edsl.save("result", out, placement=player2)
             return res
 
         comp_result = run_test_computation(trace(my_comp), [player0, player1, player2])

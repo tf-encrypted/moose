@@ -5,6 +5,7 @@ from absl.testing import parameterized
 from moose.compiler.compiler import Compiler
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
+from moose.computation import dtypes
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import replicated as rep_dialect
 from moose.computation import standard as std_dialect
@@ -33,7 +34,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         comp.add_operation(
@@ -42,7 +43,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
 
@@ -51,7 +52,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         comp.add_operation(
@@ -59,7 +60,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_dave",
                 inputs={"lhs": "add", "rhs": "add"},
                 placement_name="dave",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         comp.add_operation(
@@ -72,7 +73,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_eric",
                 inputs={"lhs": "add", "rhs": "add"},
                 placement_name="eric",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         comp.add_operation(
@@ -93,6 +94,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_placement(HostPlacement(name="dave"))
         expected_comp.add_placement(HostPlacement(name="eric"))
+        expected_encoded_dtype = dtypes.fixed(28, 16)
 
         expected_comp.add_operation(
             std_dialect.ConstantOperation(
@@ -100,7 +102,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         expected_comp.add_operation(
@@ -109,7 +111,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         expected_comp.add_operation(
@@ -126,9 +128,10 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "alice_input"},
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    datatype="fixed64", precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
-                precision=16,
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(
@@ -137,9 +140,10 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"value": "bob_input"},
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    datatype="fixed64", precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
-                precision=16,
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(
@@ -147,7 +151,9 @@ class ReplicatedTest(parameterized.TestCase):
                 name="share_0",
                 inputs={"setup": "replicated_setup_0", "value": "encode_2"},
                 placement_name="rep",
-                output_type=rep_dialect.ReplicatedRingTensorType(datatype="fixed64"),
+                output_type=rep_dialect.ReplicatedRingTensorType(
+                    dtype=expected_encoded_dtype
+                ),
             )
         )
         expected_comp.add_operation(
@@ -155,7 +161,9 @@ class ReplicatedTest(parameterized.TestCase):
                 name="share_1",
                 inputs={"setup": "replicated_setup_0", "value": "encode_3"},
                 placement_name="rep",
-                output_type=rep_dialect.ReplicatedRingTensorType(datatype="fixed64"),
+                output_type=rep_dialect.ReplicatedRingTensorType(
+                    dtype=expected_encoded_dtype
+                ),
             )
         )
         expected_comp.add_operation(
@@ -167,7 +175,9 @@ class ReplicatedTest(parameterized.TestCase):
                     "rhs": "share_1",
                 },
                 placement_name="rep",
-                output_type=rep_dialect.ReplicatedRingTensorType(datatype="fixed64"),
+                output_type=rep_dialect.ReplicatedRingTensorType(
+                    dtype=expected_encoded_dtype,
+                ),
             )
         )
         expected_comp.add_operation(
@@ -177,7 +187,8 @@ class ReplicatedTest(parameterized.TestCase):
                 recipient_name="dave",
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    datatype="fixed64", precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
             )
         )
@@ -186,8 +197,8 @@ class ReplicatedTest(parameterized.TestCase):
                 name="decode_2",
                 inputs={"value": "reveal_0"},
                 placement_name="rep",
-                output_type=std_dialect.TensorType(datatype="float"),
-                precision=16,
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(
@@ -195,7 +206,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_dave",
                 inputs={"lhs": "decode_2", "rhs": "decode_2"},
                 placement_name="dave",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         expected_comp.add_operation(
@@ -210,7 +221,8 @@ class ReplicatedTest(parameterized.TestCase):
                 recipient_name="eric",
                 placement_name="rep",
                 output_type=fixed_dialect.EncodedTensorType(
-                    datatype="fixed64", precision=16
+                    dtype=expected_encoded_dtype,
+                    precision=expected_encoded_dtype.fractional_precision,
                 ),
             )
         )
@@ -219,8 +231,8 @@ class ReplicatedTest(parameterized.TestCase):
                 name="decode_3",
                 inputs={"value": "reveal_1"},
                 placement_name="rep",
-                output_type=std_dialect.TensorType(datatype="float"),
-                precision=16,
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
+                precision=expected_encoded_dtype.fractional_precision,
             )
         )
         expected_comp.add_operation(
@@ -228,7 +240,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_eric",
                 inputs={"lhs": "decode_3", "rhs": "decode_3"},
                 placement_name="eric",
-                output_type=std_dialect.TensorType(datatype="float"),
+                output_type=std_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         expected_comp.add_operation(

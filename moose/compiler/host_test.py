@@ -2,24 +2,20 @@ from absl.testing import parameterized
 
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SendOperation
-from moose.edsl.base import add
-from moose.edsl.base import computation
-from moose.edsl.base import constant
-from moose.edsl.base import host_placement
-from moose.edsl.base import mul
+from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 
 
 class HostTest(parameterized.TestCase):
     def test_send_receive(self):
-        player0 = host_placement(name="player0")
-        player1 = host_placement(name="player1")
+        player0 = edsl.host_placement(name="player0")
+        player1 = edsl.host_placement(name="player1")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            x0 = constant(1, placement=player0)
-            x1 = constant(1, placement=player0)
-            x2 = add(x0, x1, placement=player1)
+            x0 = edsl.constant(1, placement=player0)
+            x1 = edsl.constant(1, placement=player0)
+            x2 = edsl.add(x0, x1, placement=player1)
 
             return x2
 
@@ -45,19 +41,19 @@ class HostTest(parameterized.TestCase):
         )
 
     def test_pass_networking(self):
-        alice = host_placement(name="alice")
-        bob = host_placement(name="bob")
-        carole = host_placement(name="carole")
-        dave = host_placement(name="dave")
+        alice = edsl.host_placement(name="alice")
+        bob = edsl.host_placement(name="bob")
+        carole = edsl.host_placement(name="carole")
+        dave = edsl.host_placement(name="dave")
 
-        @computation
+        @edsl.computation
         def my_comp():
-            a = constant(1, placement=alice)
-            b = constant(2, placement=bob)
-            c1 = add(a, b, placement=carole)
-            c2 = add(a, b, placement=carole)
-            c3 = mul(c1, c2, placement=carole)
-            d = add(a, c3, placement=dave)
+            a = edsl.constant(1, placement=alice)
+            b = edsl.constant(2, placement=bob)
+            c1 = edsl.add(a, b, placement=carole)
+            c2 = edsl.add(a, b, placement=carole)
+            c3 = edsl.mul(c1, c2, placement=carole)
+            d = edsl.add(a, c3, placement=dave)
             return d
 
         concrete_comp = trace(my_comp)
