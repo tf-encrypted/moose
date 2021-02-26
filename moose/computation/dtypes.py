@@ -80,6 +80,10 @@ class _ConcreteDType(DType):
         return hash(self._name + self._short)
 
     @property
+    def name(self):
+        return self._name
+
+    @property
     def numpy_dtype(self):
         return self._numpy_dtype
 

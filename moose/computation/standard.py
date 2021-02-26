@@ -10,12 +10,28 @@ import numpy as np
 
 from moose.computation import dtypes
 from moose.computation.base import Operation
-from moose.computation.base import UnitType
 from moose.computation.base import ValueType
 
 
+@dataclass
+class StandardType(ValueType):
+    @classmethod
+    def dialect(cls):
+        return "std"
+
+
+@dataclass
+class UnitType(StandardType):
+    pass
+
+
+@dataclass
+class UnknownType(StandardType):
+    pass
+
+
 @dataclass(init=False)
-class TensorType(ValueType):
+class TensorType(StandardType):
     dtype: dtypes.DType
 
     def __init__(self, dtype: dtypes.DType):
@@ -26,24 +42,24 @@ class TensorType(ValueType):
 
 
 @dataclass
-class BytesType(ValueType):
+class BytesType(StandardType):
     pass
 
 
 @dataclass
-class StringType(ValueType):
+class StringType(StandardType):
     pass
 
 
 @dataclass
-class ShapeType(ValueType):
+class ShapeType(StandardType):
     pass
 
 
 @dataclass
 class StandardOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "std"
 
 

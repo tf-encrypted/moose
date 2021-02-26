@@ -7,14 +7,21 @@ from moose.computation.standard import ShapeType
 
 
 @dataclass
-class BitTensorType(ValueType):
+class BitType(ValueType):
+    @classmethod
+    def dialect(cls):
+        return "bit"
+
+
+@dataclass
+class BitTensorType(BitType):
     pass
 
 
 @dataclass
 class BitOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "bit"
 
 

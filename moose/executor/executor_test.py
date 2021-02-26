@@ -4,6 +4,7 @@ from absl.testing import parameterized
 
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
+from moose.computation.dtypes import int64
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
 from moose.executor.executor import AsyncExecutor
@@ -21,7 +22,7 @@ class ExecutorTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=12345,
-                output_type=TensorType("int64"),
+                output_type=TensorType(dtype=int64),
             )
         )
 
