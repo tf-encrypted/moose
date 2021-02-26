@@ -110,7 +110,8 @@ class ReplicatedLoweringPass:
         assert isinstance(op, fixed_dialect.EncodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, StandardTensor)
-        assert x.datatype in ["unknown", "int", "float"], x.datatype
+        if x.dtype is not None:
+            assert x.dtype.is_integer or x.dtype.is_float, x.dtype
         y = replicated_encode(x, precision=op.precision)
         assert isinstance(y, RingTensor)
         self.interpretations[op.name] = y
@@ -120,11 +121,10 @@ class ReplicatedLoweringPass:
         assert isinstance(op, fixed_dialect.DecodeOperation)
         x = self.lower(op.inputs["value"])
         assert isinstance(x, RingTensor)
-        y = replicated_decode(
-            x, precision=op.precision, datatype=op.output_type.datatype
-        )
+        y = replicated_decode(x, precision=op.precision, dtype=op.output_type.dtype)
         assert isinstance(y, StandardTensor), type(y)
-        assert y.datatype in ["unknown", "int", "float"], y.datatype
+        if y.dtype is not None:
+            assert y.dtype.is_integer or y.dtype.is_float, y.dtype
         self.interpretations[op.name] = y
         return y
 
@@ -262,7 +262,7 @@ class ReplicatedLoweringPass:
     def interpret_input_op(self, op):
         assert isinstance(op.output_type, TensorType)
         return StandardTensor(
-            datatype=op.output_type.datatype,
+            dtype=op.output_type.dtype,
             op=op,
             computation=self.computation,
             context=self.context,
@@ -282,7 +282,7 @@ def replicated_encode(x: StandardTensor, precision) -> RingTensor:
     return RingTensor(op=encode_op, computation=x.computation, context=x.context)
 
 
-def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
+def replicated_decode(x: RingTensor, precision, dtype) -> StandardTensor:
     assert isinstance(x, RingTensor)
     assert isinstance(precision, int)
     decode_op = x.computation.add(
@@ -291,11 +291,11 @@ def replicated_decode(x: RingTensor, precision, datatype) -> StandardTensor:
             inputs={"value": x.op.name},
             placement_name=x.op.placement_name,
             scaling_factor=2 ** precision,
-            output_type=TensorType(datatype=datatype),
+            output_type=TensorType(dtype=dtype),
         )
     )
     return StandardTensor(
-        op=decode_op, datatype=datatype, computation=x.computation, context=x.context
+        op=decode_op, dtype=dtype, computation=x.computation, context=x.context
     )
 
 

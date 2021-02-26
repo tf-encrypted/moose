@@ -6,6 +6,7 @@ from moose.compiler.compiler import Compiler
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
+from moose.computation import dtypes
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
@@ -33,7 +34,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -42,7 +43,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -50,7 +51,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -58,7 +59,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_dave",
                 inputs={"lhs": "add", "rhs": "add"},
                 placement_name="dave",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -71,7 +72,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_eric",
                 inputs={"lhs": "add", "rhs": "add"},
                 placement_name="eric",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -113,7 +114,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -122,7 +123,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -130,7 +131,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="secure_mul",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -138,7 +139,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_dave",
                 inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
                 placement_name="dave",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -151,7 +152,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_eric",
                 inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
                 placement_name="eric",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -192,7 +193,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -201,7 +202,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=2,
                 placement_name="bob",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -209,7 +210,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="secure_dot",
                 inputs={"lhs": "alice_input", "rhs": "bob_input"},
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -217,7 +218,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_dave",
                 inputs={"lhs": "secure_dot", "rhs": "secure_dot"},
                 placement_name="dave",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -230,7 +231,7 @@ class ReplicatedTest(parameterized.TestCase):
                 name="add_eric",
                 inputs={"lhs": "secure_dot", "rhs": "secure_dot"},
                 placement_name="eric",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -272,7 +273,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={},
                 value=1,
                 placement_name="alice",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -281,7 +282,7 @@ class ReplicatedTest(parameterized.TestCase):
                 inputs={"x": "alice_input"},
                 axis=None,
                 placement_name="rep",
-                output_type=TensorType(datatype="float"),
+                output_type=TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(

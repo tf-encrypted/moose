@@ -3,6 +3,7 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 
+from moose.computation import dtypes
 from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
@@ -53,7 +54,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=a,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -62,7 +63,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=b,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(ring_op_lmbd(alice))
@@ -104,7 +105,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=x,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -113,7 +114,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=y,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
         comp.add_operation(
@@ -197,7 +198,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=x,
-                output_type=standard_dialect.TensorType("int64"),
+                output_type=standard_dialect.TensorType(dtype=dtypes.uint64),
             )
         )
         comp.add_operation(
@@ -238,7 +239,7 @@ class RingKernelTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 value=x,
-                output_type=standard_dialect.TensorType(datatype="float"),
+                output_type=standard_dialect.TensorType(dtype=dtypes.float64),
             )
         )
         comp.add_operation(

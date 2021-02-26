@@ -1,6 +1,7 @@
 import numpy as np
 from absl.testing import parameterized
 
+from moose.computation import dtypes
 from moose.computation import host as host_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
@@ -44,7 +45,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name=f"{op_name}_0",
             inputs={"lhs": "constant_0", "rhs": "constant_1"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float64),
         )
 
     def test_concatenate(self):
@@ -54,8 +55,8 @@ class EdslTest(parameterized.TestCase):
         def my_comp():
             x0 = edsl.concatenate(
                 [
-                    edsl.constant(np.array([1]), placement=player0),
-                    edsl.constant(np.array([1]), placement=player0),
+                    edsl.constant(np.array([1], dtype=np.float32), placement=player0),
+                    edsl.constant(np.array([1], dtype=np.float32), placement=player0),
                 ],
                 axis=1,
                 placement=player0,
@@ -69,7 +70,7 @@ class EdslTest(parameterized.TestCase):
             name="concatenate_0",
             axis=1,
             inputs={"array0": "constant_0", "array1": "constant_1"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     def test_ones(self):
@@ -78,7 +79,7 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             shape = edsl.constant([2, 2], placement=player0)
-            x0 = edsl.ones(shape, dtype=np.float64, placement=player0)
+            x0 = edsl.ones(shape, dtype=dtypes.float64, placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
@@ -86,9 +87,9 @@ class EdslTest(parameterized.TestCase):
         assert op == standard_ops.OnesOperation(
             placement_name="player0",
             name="ones_0",
-            dtype=np.float64,
+            dtype=dtypes.float64,
             inputs={"shape": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float64),
         )
 
     def test_square(self):
@@ -97,7 +98,8 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.square(
-                edsl.constant(np.array([1.0]), placement=player0), placement=player0
+                edsl.constant(np.array([1.0], dtype=np.float32), placement=player0),
+                placement=player0,
             )
             return x0
 
@@ -107,7 +109,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name="mul_0",
             inputs={"lhs": "constant_0", "rhs": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     @parameterized.parameters(
@@ -122,7 +124,7 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = reduce_op_fn(
-                edsl.constant(np.array([1, 1]), placement=player0),
+                edsl.constant(np.array([1, 1], dtype=np.float32), placement=player0),
                 axis=axis,
                 placement=player0,
             )
@@ -136,7 +138,7 @@ class EdslTest(parameterized.TestCase):
             name=concrete_op_name,
             axis=axis,
             inputs={"x": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     def test_transpose(self):
@@ -145,7 +147,8 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.transpose(
-                edsl.constant(np.array([1]), placement=player0), placement=player0,
+                edsl.constant(np.array([1], dtype=np.float32), placement=player0),
+                placement=player0,
             )
             return x0
 
@@ -156,7 +159,7 @@ class EdslTest(parameterized.TestCase):
             name="transpose_0",
             axes=None,
             inputs={"x": "constant_0"},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     @parameterized.parameters(
@@ -197,7 +200,7 @@ class EdslTest(parameterized.TestCase):
             name="atleast_2d_0",
             inputs={"x": "constant_0"},
             to_column_vector=True,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float64),
         )
 
     @parameterized.parameters(None, 1)
@@ -220,7 +223,7 @@ class EdslTest(parameterized.TestCase):
             name="squeeze_0",
             inputs={"x": "constant_0"},
             axis=axis,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.int64),
         )
 
     def test_unsqueeze(self):
@@ -229,7 +232,7 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.expand_dims(
-                edsl.constant(np.array([1]), placement=player0),
+                edsl.constant(np.array([1.0]), placement=player0),
                 axis=1,
                 placement=player0,
             )
@@ -242,7 +245,7 @@ class EdslTest(parameterized.TestCase):
             name="expand_dims_0",
             inputs={"x": "constant_0"},
             axis=1,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float64),
         )
 
     def test_constant(self):
@@ -260,7 +263,7 @@ class EdslTest(parameterized.TestCase):
             name="constant_0",
             inputs={},
             value=1,
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float64),
         )
 
     def test_load(self):
@@ -269,7 +272,9 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.load(
-                edsl.constant(1.0, placement=player0), dtype=float, placement=player0
+                edsl.constant("stored_data", placement=player0),
+                dtype=dtypes.float32,
+                placement=player0,
             )
             return x0
 
@@ -280,7 +285,7 @@ class EdslTest(parameterized.TestCase):
             name="load_0",
             inputs={"key": "constant_0"},
             optional_arguments={},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     def test_load_with_arg(self):
@@ -289,9 +294,9 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = edsl.load(
-                edsl.constant(1.0, placement=player0),
+                edsl.constant("stored_data", placement=player0),
                 select_columns=["x"],
-                dtype=float,
+                dtype=dtypes.float32,
                 placement=player0,
             )
             return x0
@@ -303,14 +308,14 @@ class EdslTest(parameterized.TestCase):
             name="load_0",
             inputs={"key": "constant_0"},
             optional_arguments={"select_columns": ["x"]},
-            output_type=TensorType(datatype="float"),
+            output_type=TensorType(dtype=dtypes.float32),
         )
 
     def test_arguments(self):
         player0 = edsl.host_placement(name="player0")
 
         @edsl.computation
-        def my_comp(x: edsl.Argument(placement=player0, datatype=float)):
+        def my_comp(x: edsl.Argument(placement=player0, dtype=dtypes.float64)):
             y = edsl.constant(1.0, placement=player0)
             z = edsl.add(x, y, placement=player0)
             return z
@@ -323,20 +328,20 @@ class EdslTest(parameterized.TestCase):
                     placement_name="player0",
                     name="x",
                     inputs={},
-                    output_type=TensorType(datatype="float"),
+                    output_type=TensorType(dtype=dtypes.float64),
                 ),
                 "constant_0": standard_ops.ConstantOperation(
                     placement_name="player0",
                     name="constant_0",
                     inputs={},
                     value=1,
-                    output_type=TensorType(datatype="float"),
+                    output_type=TensorType(dtype=dtypes.float64),
                 ),
                 "add_0": standard_ops.AddOperation(
                     placement_name="player0",
                     name="add_0",
                     inputs={"lhs": "x", "rhs": "constant_0"},
-                    output_type=TensorType(datatype="float"),
+                    output_type=TensorType(dtype=dtypes.float64),
                 ),
                 "output_0": standard_ops.OutputOperation(
                     placement_name="player0",

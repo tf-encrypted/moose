@@ -3,6 +3,7 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+from moose.computation import dtypes
 from moose.computation.base import Operation
 from moose.computation.base import ValueType
 from moose.computation.ring import RingTensorType
@@ -17,7 +18,7 @@ class FixedpointType(ValueType):
 
 @dataclass
 class EncodedTensorType(FixedpointType):
-    datatype: str
+    dtype: dtypes.DType
     precision: int
 
 

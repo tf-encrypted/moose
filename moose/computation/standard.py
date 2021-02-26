@@ -8,6 +8,7 @@ from typing import Union
 
 import numpy as np
 
+from moose.computation import dtypes
 from moose.computation.base import Operation
 from moose.computation.base import ValueType
 
@@ -29,9 +30,15 @@ class UnknownType(StandardType):
     pass
 
 
-@dataclass
+@dataclass(init=False)
 class TensorType(StandardType):
-    datatype: str
+    dtype: dtypes.DType
+
+    def __init__(self, dtype: dtypes.DType):
+        super().__init__()
+        if not isinstance(dtype, dtypes.DType):
+            raise ValueError(f"TensorType expects a DType, found {type(dtype)}")
+        self.dtype = dtype
 
 
 @dataclass

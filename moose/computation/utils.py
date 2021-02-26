@@ -3,6 +3,7 @@ from dataclasses import fields
 import msgpack
 
 from moose.computation import bit as bit_dialect
+from moose.computation import dtypes
 from moose.computation import fixedpoint as fixed_dialect
 from moose.computation import host as host_dialect
 from moose.computation import primitives as prim_dialect
@@ -10,6 +11,9 @@ from moose.computation import replicated as rep_dialect
 from moose.computation import ring as ring_dialect
 from moose.computation import standard as std_dialect
 from moose.computation.base import Computation
+from moose.computation.base import Operation
+from moose.computation.base import Placement
+from moose.computation.base import ValueType
 from moose.logger import get_logger
 
 
@@ -122,12 +126,15 @@ def _encode(val):
             "operations": val.operations,
             "placements": val.placements,
         }
-    else:
+    elif isinstance(val, (Operation, ValueType, Placement)):
         type_name = f"{val.dialect()}::{type(val).__name__}"
         assert type_name in TYPES_MAP, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
         return d
+    elif isinstance(val, dtypes.DType):
+        return {"__type__": "DType", "name": val.name}
+    assert False, (type(val), val)
 
 
 def _decode(obj):
@@ -135,6 +142,16 @@ def _decode(obj):
         if obj["__type__"] == "Computation":
             del obj["__type__"]
             return Computation(**obj)
+        elif obj["__type__"] == "DType":
+            return {
+                dtypes.int32.name: dtypes.int32,
+                dtypes.int64.name: dtypes.int64,
+                dtypes.uint32.name: dtypes.uint32,
+                dtypes.uint64.name: dtypes.uint64,
+                dtypes.float32.name: dtypes.float32,
+                dtypes.float64.name: dtypes.float64,
+                dtypes.string.name: dtypes.string,
+            }[obj["name"]]
         else:
             ty = TYPES_MAP[obj["__type__"]]
             del obj["__type__"]
