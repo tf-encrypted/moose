@@ -134,7 +134,7 @@ def _encode(val):
         return d
     elif isinstance(val, dtypes.DType):
         return {"__type__": "DType", "name": val.name}
-    assert False, (type(val), val)
+    raise NotImplementedError()
 
 
 def _decode(obj):
