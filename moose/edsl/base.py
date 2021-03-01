@@ -10,9 +10,9 @@ from typing import Union
 import numpy as np
 
 from moose.computation import dtypes
-from moose.computation.base import UnknownType
 from moose.computation.standard import StringType
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnknownType
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {

@@ -37,6 +37,7 @@ class Session:
 
 class AsyncExecutor:
     def __init__(self, networking, storage):
+        self.known_sessions = set()
         self.storage = storage  # NOTE: this is used by the test runtime in unit tests
         self.kernels = {
             standard_ops.InputOperation: standard_kernels.InputKernel(),
@@ -111,6 +112,13 @@ class AsyncExecutor:
         arguments={},
         timeout=None,
     ):
+        if session_id in self.known_sessions:
+            raise ValueError(
+                "Attempted to re-run a computation with the same session id, "
+                f"which is generally not safe; session_id:{session_id}"
+            )
+        self.known_sessions.add(session_id)
+
         physical_computation = self.compile_computation(logical_computation)
         execution_plan = self.schedule_execution(physical_computation, placement)
         session = Session(

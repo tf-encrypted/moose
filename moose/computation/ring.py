@@ -7,14 +7,21 @@ from moose.computation.standard import ShapeType
 
 
 @dataclass
-class RingTensorType(ValueType):
+class RingType(ValueType):
+    @classmethod
+    def dialect(cls):
+        return "ring"
+
+
+@dataclass
+class RingTensorType(RingType):
     pass
 
 
 @dataclass
 class RingOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "ring"
 
 

@@ -4,8 +4,8 @@ from typing import List
 
 from moose.computation.base import Operation
 from moose.computation.base import Placement
-from moose.computation.base import UnitType
 from moose.computation.base import ValueType
+from moose.computation.standard import UnitType
 
 
 @dataclass
@@ -18,8 +18,8 @@ class MpspdzPlacement(Placement):
 
 @dataclass
 class MpspdzOperation(Operation):
-    @property
-    def dialect(self):
+    @classmethod
+    def dialect(cls):
         return "mpspdz"
 
 

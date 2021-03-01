@@ -5,9 +5,9 @@ from moose.computation import dtypes
 from moose.computation import host as host_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
-from moose.computation.base import UnknownType
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnknownType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 from moose.testing import run_test_computation
