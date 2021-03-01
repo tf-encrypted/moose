@@ -9,6 +9,7 @@ from moose.computation.primitives import SeedType
 from moose.computation.ring import RingTensorType
 from moose.computation.standard import AddOperation
 from moose.computation.standard import Atleast2DOperation
+from moose.computation.standard import CastOperation
 from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DeserializeOperation
@@ -52,6 +53,12 @@ class OutputKernel(Kernel):
     def execute_synchronous_block(self, op, session, value):
         assert isinstance(op, OutputOperation)
         return None
+
+
+class CastKernel(Kernel):
+    def execute_synchronous_block(self, op, session, x):
+        assert isinstance(op, CastOperation)
+        return x.astype(op.output_type.dtype.numpy_dtype)
 
 
 class ConcatenateKernel(Kernel):

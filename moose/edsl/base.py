@@ -214,6 +214,12 @@ class AbsExpression(Expression):
 
 
 @dataclass
+class CastExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class SaveExpression(Expression):
     def __hash__(self):
         return id(self)
@@ -277,10 +283,13 @@ def constant(value, dtype=None, placement=None):
                 f"Arrays of dtype `{value.dtype}` not supported as graph constants."
             )
         if dtype is not None and moose_dtype != dtype:
-            raise ValueError(
-                f"Constant value of dtype `{value.dtype}` does not match "
-                "supplied dtype argument: `{dtype}`."
-            )
+            if not isinstance(dtype, dtypes.DType):
+                raise TypeError(
+                    "`dtype` argument to `constant` must be of type DType, "
+                    f"found {type(dtype)}."
+                )
+            implicit_const = constant(value, moose_dtype, placement)
+            return cast(implicit_const, dtype, placement)
         elif dtype is None:
             dtype = moose_dtype
     elif isinstance(value, float):
@@ -450,6 +459,45 @@ def abs(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return AbsExpression(placement=placement, inputs=[x], dtype=x.dtype)
+
+
+def cast(x, dtype, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+
+    # Check dtype args are well-defined
+    if x.dtype is None:
+        raise ValueError(
+            "Argument to `cast` function must have well-defined dtype; "
+            "found value with dtype=None."
+        )
+    elif dtype is None:
+        raise ValueError(
+            "Invalid `dtype` argument to `cast` function: cannot cast to dtype=None."
+        )
+
+    # Ensure value can be cast by compiler/executor into the well-defined dtype arg
+    if isinstance(dtype, dtypes.DType):
+        if x.dtype.numpy_dtype is None or dtype.numpy_dtype is None:
+            # TODO(jason): allow casting from/into fixed(i, f) dtype
+            raise ValueError(
+                "Casting to and from non-numpy dtypes not yet supported by `cast` "
+                f"function, found dtype {dtype}."
+            )
+        moose_dtype = dtype
+    elif dtype in _NUMPY_DTYPES_MAP:
+        moose_dtype = _NUMPY_DTYPES_MAP[dtype]
+    else:
+        raise ValueError(
+            "Unsupported dtype arg in `cast` function: expected argument "
+            f"of type DType, found type {type(dtype)}."
+        )
+
+    if x.dtype == moose_dtype:
+        # This is a no-op
+        return x
+
+    return CastExpression(placement=placement, inputs=[x], dtype=moose_dtype)
 
 
 def load(key, dtype=None, placement=None, **kwargs):

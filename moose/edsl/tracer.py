@@ -12,6 +12,7 @@ from moose.computation.standard import AbsOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import Atleast2DOperation
+from moose.computation.standard import CastOperation
 from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
 from moose.computation.standard import DivOperation
@@ -41,6 +42,7 @@ from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import Atleast2DExpression
 from moose.edsl.base import BinaryOpExpression
+from moose.edsl.base import CastExpression
 from moose.edsl.base import ConcatenateExpression
 from moose.edsl.base import ConstantExpression
 from moose.edsl.base import ExpandDimsExpression
@@ -263,6 +265,21 @@ class AstTracer:
             AbsOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("abs"),
+                output_type=output_type,
+                inputs={"x": x_operation.name},
+            )
+        )
+
+    def visit_CastExpression(self, cast_expression):
+        assert isinstance(cast_expression, CastExpression)
+        (x_expression,) = cast_expression.inputs
+        x_operation = self.visit(x_expression)
+        placement = self.visit_placement_expression(cast_expression.placement)
+        output_type = TensorType(dtype=cast_expression.dtype)
+        return self.computation.add_operation(
+            CastOperation(
+                placement_name=placement.name,
+                name=self.get_fresh_name("cast"),
                 output_type=output_type,
                 inputs={"x": x_operation.name},
             )
