@@ -198,9 +198,10 @@ class LoadKernel(Kernel):
     def __init__(self, store):
         self.store = store
 
-    async def execute(self, op, session, output, key):
+    async def execute(self, op, session, output, key, query):
         assert isinstance(op, LoadOperation)
         key = await key
+        query = await query
         with get_tracer().start_as_current_span(f"{op.name}"):
             get_logger().debug(
                 f"Executing:"
@@ -208,12 +209,10 @@ class LoadKernel(Kernel):
                 f" op:{op},"
                 f" session_id:{session.session_id},"
                 f" key:{key},"
-                f" optional_arguments:{op.optional_arguments}"
+                f" query:{query}"
             )
             value = await self.store.load(
-                session_id=session.session_id,
-                key=key,
-                optional_arguments=op.optional_arguments,
+                session_id=session.session_id, key=key, query=query,
             )
             get_logger().debug(
                 f"Done executing:"

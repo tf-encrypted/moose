@@ -444,8 +444,9 @@ class AstTracer:
 
     def visit_LoadExpression(self, load_expression):
         assert isinstance(load_expression, LoadExpression)
-        (key_expression,) = load_expression.inputs
+        key_expression, query_expression = load_expression.inputs
         key_operation = self.visit(key_expression)
+        query_operation = self.visit(query_expression)
         placement = self.visit_placement_expression(load_expression.placement)
         if load_expression.dtype is None:
             output_type = UnknownType()
@@ -455,8 +456,7 @@ class AstTracer:
             LoadOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("load"),
-                inputs={"key": key_operation.name},
-                optional_arguments=load_expression.optional_arguments,
+                inputs={"key": key_operation.name, "query": query_operation.name},
                 output_type=output_type,
             )
         )
