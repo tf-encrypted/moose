@@ -518,8 +518,8 @@ def load(key, query="", dtype=None, placement=None):
         query = constant(query, placement=placement, dtype=dtypes.string)
     elif isinstance(query, Argument) and query.dtype not in [dtypes.string, None]:
         raise ValueError(
-            f"Function 'edsl.load' encountered `query` argument of dtype {query.dtype}; "
-            "expected dtype 'string'."
+            f"Function 'edsl.load' encountered `query` argument of "
+            f"dtype {query.dtype}; expected dtype 'string'."
         )
     elif not isinstance(query, Expression):
         raise ValueError(
