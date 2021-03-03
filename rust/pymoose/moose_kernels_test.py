@@ -68,9 +68,7 @@ class SamplingOperations(parameterized.TestCase):
         assert len(key) == 16
         assert isinstance(key, bytes)
 
-    @parameterized.parameters(
-        (b"0"), (b"1"), (b"123456"),
-    )
+    @parameterized.parameters((b"0"), (b"1"), (b"123456"))
     def test_expand_seed(self, nonce):
         key = sample_key()
         seed0 = derive_seed(key, nonce)
@@ -131,9 +129,7 @@ class BitTensorOps(parameterized.TestCase):
         np.testing.assert_array_equal(x & y, bit_and(x, y))
         np.testing.assert_array_equal(x ^ y, bit_xor(x, y))
 
-    @parameterized.parameters(
-        ([0]), ([1]), [[0, 1, 1]],
-    )
+    @parameterized.parameters(([0]), ([1]), [[0, 1, 1]])
     def test_ring_inject(self, a):
         x = np.array(a, dtype=np.uint8)
         np.testing.assert_array_equal(x, ring_inject(x, 0))
