@@ -187,7 +187,6 @@ class SliceOperation(StandardOperation):
 @dataclass
 class LoadOperation(StandardOperation):
     output_type: ValueType
-    optional_arguments: dict
 
 
 @dataclass

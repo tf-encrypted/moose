@@ -195,7 +195,6 @@ class Atleast2DExpression(Expression):
 @dataclass
 class LoadExpression(Expression):
     dtype: Optional
-    optional_arguments: dict
 
     def __hash__(self):
         return id(self)
@@ -500,7 +499,7 @@ def cast(x, dtype, placement=None):
     return CastExpression(placement=placement, inputs=[x], dtype=moose_dtype)
 
 
-def load(key, dtype=None, placement=None, **kwargs):
+def load(key, query="", dtype=None, placement=None):
     placement = placement or get_current_placement()
     if isinstance(key, str):
         key = constant(key, placement=placement, dtype=dtypes.string)
@@ -514,9 +513,21 @@ def load(key, dtype=None, placement=None, **kwargs):
             f"Function 'edsl.load' encountered `key` argument of type {type(key)}; "
             "expected one of string, ConstantExpression, or ArgumentExpression."
         )
-    return LoadExpression(
-        placement=placement, inputs=[key], dtype=dtype, optional_arguments=kwargs
-    )
+
+    if isinstance(query, str):
+        query = constant(query, placement=placement, dtype=dtypes.string)
+    elif isinstance(query, Argument) and query.dtype not in [dtypes.string, None]:
+        raise ValueError(
+            f"Function 'edsl.load' encountered `query` argument of "
+            f"dtype {query.dtype}; expected dtype 'string'."
+        )
+    elif not isinstance(query, Expression):
+        raise ValueError(
+            f"Function 'edsl.load' encountered `query` argument of type {type(query)}; "
+            "expected one of string, ConstantExpression, or ArgumentExpression."
+        )
+
+    return LoadExpression(placement=placement, inputs=[key, query], dtype=dtype)
 
 
 def save(key, value, placement=None):

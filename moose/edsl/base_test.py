@@ -300,19 +300,18 @@ class EdslTest(parameterized.TestCase):
         assert constant_op == standard_ops.LoadOperation(
             placement_name="player0",
             name="load_0",
-            inputs={"key": "constant_0"},
-            optional_arguments={},
+            inputs={"key": "constant_0", "query": "constant_1"},
             output_type=TensorType(dtype=dtypes.float32),
         )
 
-    def test_load_with_arg(self):
+    def test_load_with_query(self):
         player0 = edsl.host_placement(name="player0")
 
         @edsl.computation
         def my_comp():
             x0 = edsl.load(
                 edsl.constant("stored_data", placement=player0),
-                select_columns=["x"],
+                query=edsl.constant('{"select_columns": ["x"]}', placement=player0),
                 dtype=dtypes.float32,
                 placement=player0,
             )
@@ -323,8 +322,7 @@ class EdslTest(parameterized.TestCase):
         assert constant_op == standard_ops.LoadOperation(
             placement_name="player0",
             name="load_0",
-            inputs={"key": "constant_0"},
-            optional_arguments={"select_columns": ["x"]},
+            inputs={"key": "constant_0", "query": "constant_1"},
             output_type=TensorType(dtype=dtypes.float32),
         )
 

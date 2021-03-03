@@ -3,7 +3,7 @@ import abc
 
 class DataStore:
     @abc.abstractmethod
-    async def load(self, session_id, key, optional_arguments):
+    async def load(self, session_id, key, query):
         pass
 
     @abc.abstractmethod
