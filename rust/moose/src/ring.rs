@@ -2,7 +2,6 @@ use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use num_traits::Zero;
 use rand::prelude::*;
-use std::convert::TryFrom;
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::num::Wrapping;
@@ -90,15 +89,27 @@ where
     }
 }
 
-impl<T, U> From<ArrayD<U>> for ConcreteRingTensor<T>
+impl<T> From<ArrayD<T>> for ConcreteRingTensor<T>
 where
-    T: TryFrom<U>,
-    U: Clone,
-    T::Error: Debug,
+    T: Clone,
 {
-    fn from(a: ArrayD<U>) -> ConcreteRingTensor<T> {
-        let wrapped = a.mapv(|ai| Wrapping(T::try_from(ai).unwrap()));
+    fn from(a: ArrayD<T>) -> ConcreteRingTensor<T> {
+        let wrapped = a.mapv(Wrapping);
         ConcreteRingTensor(wrapped)
+    }
+}
+
+impl From<ArrayD<i64>> for ConcreteRingTensor<u64> {
+    fn from(a: ArrayD<i64>) -> ConcreteRingTensor<u64> {
+        let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
+        ConcreteRingTensor(ring_rep)
+    }
+}
+
+impl From<ArrayD<i128>> for ConcreteRingTensor<u128> {
+    fn from(a: ArrayD<i128>) -> ConcreteRingTensor<u128> {
+        let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
+        ConcreteRingTensor(ring_rep)
     }
 }
 

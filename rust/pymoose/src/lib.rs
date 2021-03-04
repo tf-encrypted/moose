@@ -2,19 +2,19 @@ use moose::bit::BitTensor;
 use moose::bit::SampleBit;
 use moose::fixedpoint::{ring_decode, ring_encode, ring_mean};
 use moose::prng::AesRng;
-use moose::ring::{ConcreteRingTensor, Dot, Sample};
+use moose::ring::{Dot, Ring64Tensor, Sample};
 use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};
 use std::num::Wrapping;
 
-fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> ConcreteRingTensor<u64> {
+fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
-    ConcreteRingTensor(arr_wrap)
+    Ring64Tensor::new(arr_wrap)
 }
 
-fn ring64_to_array(r: ConcreteRingTensor<u64>) -> ArrayD<u64> {
+fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
     let inner_arr = r.0;
     let shape = inner_arr.shape();
     let unwrapped = inner_arr.mapv(|x| x.0);
@@ -25,7 +25,7 @@ fn binary_pyfn<'py>(
     py: Python<'py>,
     x: PyReadonlyArrayDyn<u64>,
     y: PyReadonlyArrayDyn<u64>,
-    binary_op: impl Fn(ConcreteRingTensor<u64>, ConcreteRingTensor<u64>) -> ConcreteRingTensor<u64>,
+    binary_op: impl Fn(Ring64Tensor, Ring64Tensor) -> Ring64Tensor,
 ) -> &'py PyArrayDyn<u64> {
     let x_ring = dynarray_to_ring64(&x);
     let y_ring = dynarray_to_ring64(&y);
@@ -108,7 +108,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m, "ring_fill")]
     fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
-        let res = ConcreteRingTensor::<u64>::fill(&shape, el);
+        let res = Ring64Tensor::fill(&shape, el);
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
@@ -121,10 +121,10 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         max_value: Option<u64>,
     ) -> &'py PyArrayDyn<u64> {
         let res = match max_value {
-            None => ConcreteRingTensor::<u64>::sample_uniform(&shape, &seed.as_bytes()),
+            None => Ring64Tensor::sample_uniform(&shape, &seed.as_bytes()),
             Some(max_value) => {
                 if max_value == 1 {
-                    ConcreteRingTensor::<u64>::sample_bits(&shape, &seed.as_bytes())
+                    Ring64Tensor::sample_bits(&shape, &seed.as_bytes())
                 } else {
                     unimplemented!()
                 }
@@ -214,7 +214,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         bit_idx: usize,
     ) -> &'py PyArrayDyn<u64> {
         let b = BitTensor::from(x.to_owned_array());
-        let res = ConcreteRingTensor::<u64>::from(b) << bit_idx;
+        let res = Ring64Tensor::from(b) << bit_idx;
         ring64_to_array(res).to_pyarray(py)
     }
 
