@@ -400,16 +400,16 @@ mod tests {
         let shape = 5;
         let value = 7;
 
-        let r0 = ConcreteRingTensor::<u64>::fill(&[shape], value).bit_extract(0);
+        let r0 = Ring64Tensor::fill(&[shape], value).bit_extract(0);
         assert_eq!(BitTensor::fill(&[shape], 1), r0,);
 
-        let r1 = ConcreteRingTensor::<u64>::fill(&[shape], value).bit_extract(1);
+        let r1 = Ring64Tensor::fill(&[shape], value).bit_extract(1);
         assert_eq!(BitTensor::fill(&[shape], 1), r1,);
 
-        let r2 = ConcreteRingTensor::<u64>::fill(&[shape], value).bit_extract(2);
+        let r2 = Ring64Tensor::fill(&[shape], value).bit_extract(2);
         assert_eq!(BitTensor::fill(&[shape], 1), r2,);
 
-        let r3 = ConcreteRingTensor::<u64>::fill(&[shape], value).bit_extract(3);
+        let r3 = Ring64Tensor::fill(&[shape], value).bit_extract(3);
         assert_eq!(BitTensor::fill(&[shape], 0), r3,)
     }
 }
