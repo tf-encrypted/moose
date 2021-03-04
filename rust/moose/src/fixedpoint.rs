@@ -1,31 +1,27 @@
-use crate::ring::ConcreteRingTensor;
+use crate::ring::Ring64Tensor;
 use ndarray::prelude::*;
 use std::ops::Mul;
 
-pub fn ring_encode(x: &ArrayViewD<f64>, scaling_factor: u64) -> ConcreteRingTensor<u64> {
+pub fn ring_encode(x: &ArrayViewD<f64>, scaling_factor: u64) -> Ring64Tensor {
     let x_upshifted = x * scaling_factor as f64;
     let x_converted: ArrayD<i64> = x_upshifted.mapv(|el| el as i64);
-    ConcreteRingTensor::<u64>::from(x_converted)
+    Ring64Tensor::from(x_converted)
 }
 
-pub fn ring_decode(x: &ConcreteRingTensor<u64>, scaling_factor: u64) -> ArrayD<f64> {
+pub fn ring_decode(x: &Ring64Tensor, scaling_factor: u64) -> ArrayD<f64> {
     let x_upshifted: ArrayD<i64> = x.into();
     let x_converted = x_upshifted.mapv(|el| el as f64);
     x_converted / scaling_factor as f64
 }
 
-pub fn ring_mean(
-    x: ConcreteRingTensor<u64>,
-    axis: Option<usize>,
-    scaling_factor: u64,
-) -> ConcreteRingTensor<u64> {
+pub fn ring_mean(x: Ring64Tensor, axis: Option<usize>, scaling_factor: u64) -> Ring64Tensor {
     let mean_weight = compute_mean_weight(&x, &axis);
     let encoded_weight = ring_encode(&mean_weight.view(), scaling_factor);
     let operand_sum = x.sum(axis);
     operand_sum.mul(encoded_weight)
 }
 
-fn compute_mean_weight(x: &ConcreteRingTensor<u64>, &axis: &Option<usize>) -> ArrayD<f64> {
+fn compute_mean_weight(x: &Ring64Tensor, &axis: &Option<usize>) -> ArrayD<f64> {
     let shape: &[usize] = x.0.shape();
     if let Some(ax) = axis {
         let dim_len = shape[ax] as f64;
@@ -55,7 +51,7 @@ mod tests {
         let x_encoded = ring_encode(&x.view(), scaling_factor);
         assert_eq!(
             x_encoded,
-            ConcreteRingTensor::from(vec![
+            Ring64Tensor::from(vec![
                 65536,
                 18446744073709420544,
                 196608,
