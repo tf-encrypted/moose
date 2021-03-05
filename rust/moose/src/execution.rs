@@ -113,12 +113,10 @@ where
 {
     fn from(typed_kernel: TypedNullaryKernel<Y>) -> Kernel {
         match typed_kernel {
-            TypedNullaryKernel::Function(k) => {
-                Kernel::Nullary(Arc::new(move || {
-                    let y = k();
-                    Value::from(y)
-                }))
-            }
+            TypedNullaryKernel::Function(k) => Kernel::Nullary(Arc::new(move || {
+                let y = k();
+                Value::from(y)
+            })),
             TypedNullaryKernel::Closure(k) => {
                 let k = k.clone();
                 Kernel::Nullary(Arc::new(move || {
@@ -143,13 +141,11 @@ where
 {
     fn from(typed_kernel: TypedUnaryKernel<X0, Y>) -> Kernel {
         match typed_kernel {
-            TypedUnaryKernel::Function(k) => {
-                Kernel::Unary(Arc::new(move |x0| {
-                    let x0 = X0::from(x0);
-                    let y = k(x0);
-                    Value::from(y)
-                }))
-            }
+            TypedUnaryKernel::Function(k) => Kernel::Unary(Arc::new(move |x0| {
+                let x0 = X0::from(x0);
+                let y = k(x0);
+                Value::from(y)
+            })),
             TypedUnaryKernel::Closure(k) => {
                 let k = k.clone();
                 Kernel::Unary(Arc::new(move |x0| {
@@ -175,14 +171,12 @@ where
 {
     fn from(typed_kernel: TypedBinaryKernel<X0, X1, Y>) -> Kernel {
         match typed_kernel {
-            TypedBinaryKernel::Function(k) => {
-                Kernel::Binary(Arc::new(move |x0, x1| {
-                    let x0 = X0::from(x0);
-                    let x1 = X1::from(x1);
-                    let y = k(x0, x1);
-                    Value::from(y)
-                }))
-            }
+            TypedBinaryKernel::Function(k) => Kernel::Binary(Arc::new(move |x0, x1| {
+                let x0 = X0::from(x0);
+                let x1 = X1::from(x1);
+                let y = k(x0, x1);
+                Value::from(y)
+            })),
             TypedBinaryKernel::Closure(k) => {
                 let k = k.clone();
                 Kernel::Binary(Arc::new(move |x0, x1| {
