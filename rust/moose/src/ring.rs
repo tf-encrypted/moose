@@ -119,16 +119,12 @@ impl<T> ConcreteRingTensor<T> {
     }
 }
 
-impl From<BitTensor> for ConcreteRingTensor<u64> {
-    fn from(b: BitTensor) -> ConcreteRingTensor<u64> {
-        let ring_rep = b.0.mapv(|ai| Wrapping(ai as u64));
-        ConcreteRingTensor(ring_rep)
-    }
-}
-
-impl From<BitTensor> for ConcreteRingTensor<u128> {
-    fn from(b: BitTensor) -> ConcreteRingTensor<u128> {
-        let ring_rep = b.0.mapv(|ai| Wrapping(ai as u128));
+impl<T> From<BitTensor> for ConcreteRingTensor<T>
+where
+    T: From<u8>,
+{
+    fn from(b: BitTensor) -> ConcreteRingTensor<T> {
+        let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
         ConcreteRingTensor(ring_rep)
     }
 }
