@@ -10,14 +10,8 @@ use std::sync::Arc;
 use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
 use tokio;
 use tokio::sync::broadcast::{Receiver, Sender};
+use std::ops::Add;
 
-#[derive(Clone, Debug)]
-pub enum Value {
-    Ring64Tensor(Ring64Tensor),
-    Ring128Tensor(Ring128Tensor),
-    Shape(Vec<usize>),
-    Seed(Vec<u8>),
-}
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash)]
 pub enum Ty {
@@ -27,7 +21,42 @@ pub enum Ty {
     SeedTy,
 }
 
-// TODO(Morten) this should be TryFrom instead, with proper error handling
+#[derive(Clone, Debug)]
+pub enum Value {
+    Ring64Tensor(Ring64Tensor),
+    Ring128Tensor(Ring128Tensor),
+    Shape(Vec<usize>),
+    Seed(Vec<u8>),
+}
+
+impl From<Ring64Tensor> for Value {
+    fn from(v: Ring64Tensor) -> Self {
+        Value::Ring64Tensor(v)
+    }
+}
+
+impl From<Ring128Tensor> for Value {
+    fn from(v: Ring128Tensor) -> Self {
+        Value::Ring128Tensor(v)
+    }
+}
+
+// TODO(Morten) we'll want a newtype for shapes
+impl From<Vec<usize>> for Value {
+    fn from(v: Vec<usize>) -> Self {
+        Value::Shape(v)
+    }
+}
+
+// TODO(Morten) we'll want a newtype for seeds
+impl From<Vec<u8>> for Value {
+    fn from(v: Vec<u8>) -> Self {
+        Value::Seed(v)
+    }
+}
+
+// TODO(Morten) all the From<Value> below should be TryFrom instead, with proper error handling
+
 impl From<Value> for Ring64Tensor {
     fn from(v: Value) -> Self {
         match v {
@@ -55,7 +84,6 @@ impl From<Value> for Ring128Tensor {
     }
 }
 
-// TODO(Morten) this should be TryFrom instead, with proper error handling
 impl From<Value> for Vec<usize> {
     fn from(v: Value) -> Self {
         match v {
@@ -65,7 +93,6 @@ impl From<Value> for Vec<usize> {
     }
 }
 
-// TODO(Morten) this should be TryFrom instead, with proper error handling
 impl From<Value> for Vec<u8> {
     fn from(v: Value) -> Self {
         match v {
@@ -73,33 +100,6 @@ impl From<Value> for Vec<u8> {
             _ => unimplemented!(),
         }
     }
-}
-
-impl From<Ring64Tensor> for Value {
-    fn from(v: Ring64Tensor) -> Self {
-        Value::Ring64Tensor(v)
-    }
-}
-
-impl From<Ring128Tensor> for Value {
-    fn from(v: Ring128Tensor) -> Self {
-        Value::Ring128Tensor(v)
-    }
-}
-
-#[enum_dispatch(Compile)]
-#[derive(Serialize, Deserialize, Debug, Hash)]
-pub enum Operator {
-    RingAdd(RingAddOp),
-    RingSub(RingSubOp),
-    RingMul(RingMulOp),
-    RingDot(RingDotOp),
-    RingSum(RingSumOp),
-    RingShape(RingShapeOp),
-    RingSample(RingSampleOp),
-    RingFill(RingFillOp),
-    RingShl(RingShlOp),
-    RingShr(RingShrOp),
 }
 
 enum TypedNullaryKernel<Y> {
@@ -361,38 +361,20 @@ trait Compile {
     }
 }
 
-#[derive(Clone)]
-pub struct FooOp(Ty);
 
-impl Compile for FooOp {
-    fn compile(&self) -> Kernel {
-        match self.0 {
-            Ty::Ring64TensorTy => binary_kernel!(Ring64Tensor, Ring64Tensor),
-            Ty::Ring128TensorTy => binary_kernel!(self, Ring128Tensor, Ring128Tensor),
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl BinaryFunction<Ring64Tensor, Ring64Tensor> for FooOp {
-    type Output = Ring64Tensor;
-    fn execute(x: Ring64Tensor, y: Ring64Tensor) -> Self::Output {
-        x + y
-    }
-}
-
-impl BinaryFunction<Ring128Tensor, Ring128Tensor> for FooOp {
-    type Output = Ring128Tensor;
-    fn execute(x: Ring128Tensor, y: Ring128Tensor) -> Ring128Tensor {
-        x + y
-    }
-}
-
-impl BinaryClosure<Ring128Tensor, Ring128Tensor> for FooOp {
-    type Output = Ring128Tensor;
-    fn execute(&self, x: Ring128Tensor, y: Ring128Tensor) -> Ring128Tensor {
-        x + y
-    }
+#[enum_dispatch(Compile)]
+#[derive(Serialize, Deserialize, Debug, Hash)]
+pub enum Operator {
+    RingAdd(RingAddOp),
+    RingSub(RingSubOp),
+    RingMul(RingMulOp),
+    RingDot(RingDotOp),
+    RingSum(RingSumOp),
+    RingShape(RingShapeOp),
+    RingSample(RingSampleOp),
+    RingFill(RingFillOp),
+    RingShl(RingShlOp),
+    RingShr(RingShrOp),
 }
 
 #[derive(Serialize, Deserialize, Debug, Hash)]
@@ -401,19 +383,33 @@ pub struct RingAddOp {
     rhs: Ty,
 }
 
-impl BinaryFunction<Ring64Tensor, Ring64Tensor> for RingAddOp {
-    type Output = Ring64Tensor;
-    fn execute(x: Ring64Tensor, y: Ring64Tensor) -> Self::Output {
-        x + y
-    }
-}
-
 impl Compile for RingAddOp {
     fn compile(&self) -> Kernel {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => binary_kernel!(Ring64Tensor, Ring64Tensor),
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => binary_kernel!(Ring128Tensor, Ring128Tensor),
             _ => unimplemented!(),
         }
+    }
+}
+
+impl<U> BinaryFunction<Ring64Tensor, U> for RingAddOp
+where
+    Ring64Tensor: Add<U>
+{
+    type Output = <Ring64Tensor as Add<U>>::Output;
+    fn execute(x: Ring64Tensor, y: U) -> Self::Output {
+        x + y
+    }
+}
+
+impl<U> BinaryFunction<Ring128Tensor, U> for RingAddOp
+where
+    Ring128Tensor: Add<U>
+{
+    type Output = <Ring128Tensor as Add<U>>::Output;
+    fn execute(x: Ring128Tensor, y: U) -> Self::Output {
+        x + y
     }
 }
 
@@ -431,30 +427,12 @@ impl Compile for RingSubOp {
     fn compile(&self) -> Kernel {
         binary_kernel!(Ring64Tensor, Ring64Tensor)
     }
-
-    fn async_compile(&self) -> AsyncKernel {
-        AsyncKernel::Binary(Box::new(move |mut x, mut y| {
-            let (sender, _) = tokio::sync::broadcast::channel(1);
-            let subscriber = sender.clone();
-            tokio::spawn(async move {
-                let x = x.recv().await.unwrap();
-                let y = y.recv().await.unwrap();
-
-                let x: Ring64Tensor = x.into();
-                let y: Ring64Tensor = y.into();
-                let z = x - y;
-                let z = z.into();
-
-                sender.send(z)
-            });
-            subscriber
-        }))
-    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct RingMulOp;
 
+// TODO(Morten) rewrite
 impl Compile for RingMulOp {
     fn compile(&self) -> Kernel {
         Kernel::Binary(Arc::new(move |x, y| {
@@ -469,6 +447,7 @@ impl Compile for RingMulOp {
 #[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct RingDotOp;
 
+// TODO(Morten) rewrite
 impl Compile for RingDotOp {
     fn compile(&self) -> Kernel {
         Kernel::Binary(Arc::new(move |x, y| {
@@ -485,6 +464,7 @@ pub struct RingSumOp {
     axis: Option<usize>, // TODO(Morten) use platform independent type instead?
 }
 
+// TODO(Morten) rewrite
 impl Compile for RingSumOp {
     fn compile(&self) -> Kernel {
         let axis = self.axis;
@@ -499,6 +479,7 @@ impl Compile for RingSumOp {
 #[derive(Serialize, Deserialize, Debug, Hash)]
 pub struct RingShapeOp;
 
+// TODO(Morten) rewrite
 impl Compile for RingShapeOp {
     fn compile(&self) -> Kernel {
         Kernel::Unary(Arc::new(move |x| match x {
@@ -513,6 +494,7 @@ pub struct RingFillOp {
     value: u64,
 }
 
+// TODO(Morten) rewrite
 impl Compile for RingFillOp {
     fn compile(&self) -> Kernel {
         let value = self.value;
@@ -528,6 +510,7 @@ pub struct RingSampleOp {
     pub max_value: Option<u64>,
 }
 
+// TODO(Morten) rewrite
 impl Compile for RingSampleOp {
     fn compile(&self) -> Kernel {
         match self.max_value {
@@ -555,6 +538,7 @@ pub struct RingShlOp {
     amount: usize,
 }
 
+// TODO(Morten) rewrite
 impl Compile for RingShlOp {
     fn compile(&self) -> Kernel {
         let amount = self.amount;
@@ -571,6 +555,7 @@ pub struct RingShrOp {
     amount: usize,
 }
 
+// TODO(Morten) rewrite
 impl Compile for RingShrOp {
     fn compile(&self) -> Kernel {
         let amount = self.amount;
