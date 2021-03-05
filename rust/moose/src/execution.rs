@@ -100,57 +100,92 @@ pub enum Operator {
     RingShr(RingShrOp),
 }
 
-pub enum SyncKernel {
-    Nullary(Box<dyn Fn() -> Value>),
-    Unary(Box<dyn Fn(Value) -> Value>),
-    Binary(Box<dyn Fn(Value, Value) -> Value>),
-    Ternary(Box<dyn Fn(Value, Value, Value) -> Value>),
-    Variadic(Box<dyn Fn(&[Value]) -> Value>),
+
+
+
+
+
+
+
+
+enum NullaryKernel<Y> {
+    Function(fn() -> Y),
+    Closure(Rc<dyn Fn() -> Y>),
 }
 
-pub enum AsyncKernel {
-    Nullary(Box<dyn Fn() -> Sender<Value>>),
-    Unary(Box<dyn Fn(Receiver<Value>) -> Sender<Value>>),
-    Binary(Box<dyn Fn(Receiver<Value>, Receiver<Value>) -> Sender<Value>>),
-    Ternary(Box<dyn Fn(Receiver<Value>, Receiver<Value>, Receiver<Value>) -> Sender<Value>>),
-    Variadic(Box<dyn Fn(&[Receiver<Value>]) -> Sender<Value>>),
-}
-
-#[enum_dispatch]
-trait Compile {
-    fn compile(&self) -> SyncKernel;
-    fn async_compile(&self) -> AsyncKernel {
-        unimplemented!()
+impl<Y> Lift for NullaryKernel<Y>
+where
+    Y: 'static,
+    Value: From<Y>,
+{
+    fn lift(&self) -> SyncKernel {
+        match self {
+            NullaryKernel::Function(k) => {
+                let k = k.clone();  // TODO(Morten) avoid clone if possible
+                SyncKernel::Nullary(Box::new(move || {
+                    let y = k();
+                    Value::from(y)
+                }))
+            }
+            NullaryKernel::Closure(k) => {
+                let k = k.clone();
+                SyncKernel::Nullary(Box::new(move || {
+                    let y = k();
+                    Value::from(y)
+                }))
+            }
+        }
     }
 }
 
-
-#[derive(Serialize, Deserialize, Debug, Hash)]
-pub struct RingAddOp{ lhs: Ty, rhs: Ty }
-
-#[derive(Clone)]
-pub struct FooOp(Ty);
-
-trait Untype {
-    fn wrap(&self) -> SyncKernel;
+enum UnaryKernel<X0, Y> {
+    Function(fn(X0) -> Y),
+    Closure(Rc<dyn Fn(X0) -> Y>),
 }
 
+impl<X0, Y> Lift for UnaryKernel<X0, Y>
+where
+    X0: 'static + From<Value>,
+    Y: 'static,
+    Value: From<Y>,
+{
+    fn lift(&self) -> SyncKernel {
+        match self {
+            UnaryKernel::Function(k) => {
+                let k = k.clone();  // TODO(Morten) avoid clone if possible
+                SyncKernel::Unary(Box::new(move |x0| {
+                    let x0 = X0::from(x0);
+                    let y = k(x0);
+                    Value::from(y)
+                }))
+            }
+            UnaryKernel::Closure(k) => {
+                let k = k.clone();
+                SyncKernel::Unary(Box::new(move |x0| {
+                    let x0 = X0::from(x0);
+                    let y = k(x0);
+                    Value::from(y)
+                }))
+            }
+        }
+    }
+}
 enum BinaryKernel<X0, X1, Y> {
     Function(fn(X0, X1) -> Y),
     Closure(Rc<dyn Fn(X0, X1) -> Y>),
 }
 
-impl<X0, X1, Y> Untype for BinaryKernel<X0, X1, Y>
+impl<X0, X1, Y> Lift for BinaryKernel<X0, X1, Y>
 where
     X0: 'static + From<Value>,
     X1: 'static + From<Value>,
     Y: 'static,
     Value: From<Y>,
 {
-    fn wrap(&self) -> SyncKernel {
+    fn lift(&self) -> SyncKernel {
         match self {
             BinaryKernel::Function(k) => {
-                let k = k.clone();
+                let k = k.clone();  // TODO(Morten) avoid clone if possible
                 SyncKernel::Binary(Box::new(move |x0, x1| {
                     let x0 = X0::from(x0);
                     let x1 = X1::from(x1);
@@ -171,75 +206,181 @@ where
     }
 }
 
-pub struct TypedKernel(Box<dyn Untype>);
-
-impl<X0, X1, Y> From<BinaryKernel<X0, X1, Y>> for TypedKernel
-where
-    X0: 'static + From<Value>,
-    X1: 'static + From<Value>,
-    Y: 'static,
-    Value: From<Y>,
-{
-    fn from(k: BinaryKernel<X0, X1, Y>) -> Self {
-        TypedKernel(Box::new(k))
-    }
+pub trait NullaryFunction {
+    type Output;
+    fn execute() -> Self::Output;
 }
 
-trait Fu {
-    fn kernel(&self) -> TypedKernel;
-    fn async_kernel(&self) -> () {
-        unimplemented!()
-    }
+pub trait UnaryFunction<X0> {
+    type Output;
+    fn execute(x0: X0) -> Self::Output;
 }
 
-trait BinaryFunction<X0, X1, Y> {
-    fn execute(x0: X0, x1: X1) -> Y;
+pub trait UnaryClosure<X0> {
+    type Output;
+    fn execute(&self, x0: X0) -> Self::Output;
 }
 
-impl BinaryFunction<Ring64Tensor, Ring64Tensor, Ring64Tensor> for FooOp {
-    fn execute(x: Ring64Tensor, y: Ring64Tensor) -> Ring64Tensor {
-        x + y
-    }
+pub trait BinaryFunction<X0, X1> {
+    type Output;
+    fn execute(x0: X0, x1: X1) -> Self::Output;
 }
 
-impl BinaryFunction<Ring128Tensor, Ring128Tensor, Ring128Tensor> for FooOp {
-    fn execute(x: Ring128Tensor, y: Ring128Tensor) -> Ring128Tensor {
-        x + y
-    }
+pub trait BinaryClosure<X0, X1> {
+    type Output;
+    fn execute(&self, x0: X0, x1: X1) -> Self::Output;
 }
 
-macro_rules! binary_function {
-    ($x0:ty, $x1:ty, $y:ty) => {
+
+macro_rules! nullary_kernel {
+    () => {
         {
-            let f: fn($x0, $x1) -> $y = |x, y| { <Self as BinaryFunction::<$x0, $x1, $y>>::execute(x, y) };
-            BinaryKernel::Function(f).into()
+            let k = NullarayKernel::Function(<Self as NullarayFunction::execute);
+            CompilableKernel(Box::new(k))
+        }
+    };
+    ($self:ident) => {
+        {
+            let s = $self.clone();
+            let k = NullarayKernel::Closure(Rc::new(move || <Self as NullarayClosure::execute(&s)));
+            CompilableKernel(Box::new(k))
         }
     };
 }
 
-impl Fu for FooOp {
-    fn kernel(&self) -> TypedKernel {
-        match self.0 {
-            Ty::Ring64TensorTy => binary_function!(Ring64Tensor, Ring64Tensor, Ring64Tensor),
-            Ty::Ring128TensorTy => binary_function!(Ring128Tensor, Ring128Tensor, Ring128Tensor),
+macro_rules! unary_kernel {
+    ($t0:ty) => {
+        {
+            let k = UnaryKernel::Function(<Self as UnaryFunction::<$t0>>::execute);
+            CompilableKernel(Box::new(k))
+        }
+    };
+    ($self:ident, $t0:ty) => {
+        {
+            let s = $self.clone();
+            let k = UnaryKernel::Closure(Rc::new(move |x0| <Self as UnaryClosure::<$t0>>::execute(&s, x0)));
+            CompilableKernel(Box::new(k))
+        }
+    };
+}
 
-            // {
-            //     let ty = self.0.clone();
-            //     BinaryKernel::Closure(Rc::new(move |x: Ring128Tensor, y: Ring128Tensor| { 
-            //         let _ = ty;
-            //         x + y
-            //     })).into()
-            // }
+macro_rules! binary_kernel {
+    ($t0:ty, $t1:ty) => {
+        {
+            let k = BinaryKernel::Function(<Self as BinaryFunction::<$t0, $t1>>::execute);
+            CompilableKernel(Box::new(k))
+        }
+    };
+    ($self:ident, $t0:ty, $t1:ty) => {
+        {
+            let s = $self.clone();
+            let k = BinaryKernel::Closure(Rc::new(move |x0, x1| <Self as BinaryClosure::<$t0, $t1>>::execute(&s, x0, x1)));
+            CompilableKernel(Box::new(k))
+        }
+    };
+}
+
+
+
+
+
+pub struct CompilableKernel(Box<dyn Lift>);
+
+
+
+
+
+pub enum SyncKernel {
+    Nullary(Box<dyn Fn() -> Value>),
+    Unary(Box<dyn Fn(Value) -> Value>),
+    Binary(Box<dyn Fn(Value, Value) -> Value>),
+    Ternary(Box<dyn Fn(Value, Value, Value) -> Value>),
+    Variadic(Box<dyn Fn(&[Value]) -> Value>),
+}
+
+pub enum AsyncKernel {
+    Nullary(Box<dyn Fn() -> Sender<Value>>),
+    Unary(Box<dyn Fn(Receiver<Value>) -> Sender<Value>>),
+    Binary(Box<dyn Fn(Receiver<Value>, Receiver<Value>) -> Sender<Value>>),
+    Ternary(Box<dyn Fn(Receiver<Value>, Receiver<Value>, Receiver<Value>) -> Sender<Value>>),
+    Variadic(Box<dyn Fn(&[Receiver<Value>]) -> Sender<Value>>),
+}
+
+
+
+
+#[enum_dispatch]
+trait Compile {
+    fn compile(&self) -> SyncKernel;
+    fn async_compile(&self) -> AsyncKernel {
+        unimplemented!()
+    }
+}
+
+pub trait Lift {
+    fn lift(&self) -> SyncKernel;
+    fn async_lift(&self) -> AsyncKernel {
+        unimplemented!()
+    }
+}
+
+
+trait Kernel {
+    fn kernel(&self) -> CompilableKernel;
+    fn async_kernel(&self) -> () {
+        // TODO: default impl calling `kernel`
+        unimplemented!()
+    }
+}
+
+
+
+
+
+
+
+
+
+#[derive(Clone)]
+pub struct FooOp(Ty);
+
+impl Kernel for FooOp {
+    fn kernel(&self) -> CompilableKernel {
+        match self.0 {
+            Ty::Ring64TensorTy => binary_kernel!(Ring64Tensor, Ring64Tensor),
+            Ty::Ring128TensorTy => binary_kernel!(self, Ring128Tensor, Ring128Tensor),
             _ => unimplemented!()
         }
     }
 }
 
+impl BinaryFunction<Ring64Tensor, Ring64Tensor> for FooOp {
+    type Output = Ring64Tensor;
+    fn execute(x: Ring64Tensor, y: Ring64Tensor) -> Self::Output {
+        x + y
+    }
+}
+
+impl BinaryFunction<Ring128Tensor, Ring128Tensor> for FooOp {
+    type Output = Ring128Tensor;
+    fn execute(x: Ring128Tensor, y: Ring128Tensor) -> Ring128Tensor {
+        x + y
+    }
+}
+
+impl BinaryClosure<Ring128Tensor, Ring128Tensor> for FooOp {
+    type Output = Ring128Tensor;
+    fn execute(&self, x: Ring128Tensor, y: Ring128Tensor) -> Ring128Tensor {
+        x + y
+    }
+}
+
+
 
 fn fubar() {
     let op = FooOp(Ty::Ring64TensorTy);
     let k = op.kernel();
-    let c = k.0.wrap(); // TODO
+    let c = k.0.lift(); // TODO
 }
 
 // impl BinaryKernel<Ring64Tensor, Ring64Tensor> for RingAddOp {
@@ -272,6 +413,11 @@ fn fubar() {
 //         }))
 //     }
 // }
+
+
+#[derive(Serialize, Deserialize, Debug, Hash)]
+pub struct RingAddOp{ lhs: Ty, rhs: Ty }
+
 
 impl Compile for RingAddOp {
     fn compile(&self) -> SyncKernel {
