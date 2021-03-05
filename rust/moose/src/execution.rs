@@ -271,7 +271,11 @@ pub enum Kernel {
     Binary(Arc<dyn Fn(Value, Value) -> Value + Send + Sync>),
     Ternary(Arc<dyn Fn(Value, Value, Value) -> Value + Send + Sync>),
     Variadic(Arc<dyn Fn(&[Value]) -> Value + Send + Sync>),
+    NullaryFunction(fn() -> Value),
+    UnaryFunction(fn(Value) -> Value),
     BinaryFunction(fn(Value, Value) -> Value),
+    TernaryFunction(fn(Value, Value) -> Value),
+    VariadicFunction(fn(&[Value]) -> Value),
 }
 
 pub enum AsyncKernel {
