@@ -264,6 +264,8 @@ macro_rules! binary_kernel {
     }};
 }
 
+// TODO(Morten) use *Function variants where possible
+// TODO(Morten) postfix non *Function variants with Closure
 pub enum Kernel {
     Nullary(Arc<dyn Fn() -> Value + Send + Sync>),
     Unary(Arc<dyn Fn(Value) -> Value + Send + Sync>),
