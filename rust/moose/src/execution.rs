@@ -114,7 +114,6 @@ where
     fn from(typed_kernel: TypedNullaryKernel<Y>) -> Kernel {
         match typed_kernel {
             TypedNullaryKernel::Function(k) => {
-                let k = k.clone(); // TODO(Morten) avoid clone if possible
                 Kernel::Nullary(Arc::new(move || {
                     let y = k();
                     Value::from(y)
@@ -145,7 +144,6 @@ where
     fn from(typed_kernel: TypedUnaryKernel<X0, Y>) -> Kernel {
         match typed_kernel {
             TypedUnaryKernel::Function(k) => {
-                let k = k.clone(); // TODO(Morten) avoid clone if possible
                 Kernel::Unary(Arc::new(move |x0| {
                     let x0 = X0::from(x0);
                     let y = k(x0);
@@ -178,7 +176,6 @@ where
     fn from(typed_kernel: TypedBinaryKernel<X0, X1, Y>) -> Kernel {
         match typed_kernel {
             TypedBinaryKernel::Function(k) => {
-                let k = k.clone(); // TODO(Morten) avoid clone if possible
                 Kernel::Binary(Arc::new(move |x0, x1| {
                     let x0 = X0::from(x0);
                     let x1 = X1::from(x1);
@@ -264,19 +261,12 @@ macro_rules! binary_kernel {
     }};
 }
 
-// TODO(Morten) use *Function variants where possible
-// TODO(Morten) postfix non *Function variants with Closure
 pub enum Kernel {
     Nullary(Arc<dyn Fn() -> Value + Send + Sync>),
     Unary(Arc<dyn Fn(Value) -> Value + Send + Sync>),
     Binary(Arc<dyn Fn(Value, Value) -> Value + Send + Sync>),
     Ternary(Arc<dyn Fn(Value, Value, Value) -> Value + Send + Sync>),
     Variadic(Arc<dyn Fn(&[Value]) -> Value + Send + Sync>),
-    NullaryFunction(fn() -> Value),
-    UnaryFunction(fn(Value) -> Value),
-    BinaryFunction(fn(Value, Value) -> Value),
-    TernaryFunction(fn(Value, Value) -> Value),
-    VariadicFunction(fn(&[Value]) -> Value),
 }
 
 pub enum AsyncKernel {
