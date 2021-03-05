@@ -5,13 +5,12 @@ use maplit::hashmap;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::future::Future;
+use std::ops::Add;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
 use tokio;
 use tokio::sync::broadcast::{Receiver, Sender};
-use std::ops::Add;
-
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash)]
 pub enum Ty {
@@ -361,7 +360,6 @@ trait Compile {
     }
 }
 
-
 #[enum_dispatch(Compile)]
 #[derive(Serialize, Deserialize, Debug, Hash)]
 pub enum Operator {
@@ -387,7 +385,9 @@ impl Compile for RingAddOp {
     fn compile(&self) -> Kernel {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => binary_kernel!(Ring64Tensor, Ring64Tensor),
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => binary_kernel!(Ring128Tensor, Ring128Tensor),
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+                binary_kernel!(Ring128Tensor, Ring128Tensor)
+            }
             _ => unimplemented!(),
         }
     }
@@ -395,7 +395,7 @@ impl Compile for RingAddOp {
 
 impl<U> BinaryFunction<Ring64Tensor, U> for RingAddOp
 where
-    Ring64Tensor: Add<U>
+    Ring64Tensor: Add<U>,
 {
     type Output = <Ring64Tensor as Add<U>>::Output;
     fn execute(x: Ring64Tensor, y: U) -> Self::Output {
@@ -405,7 +405,7 @@ where
 
 impl<U> BinaryFunction<Ring128Tensor, U> for RingAddOp
 where
-    Ring128Tensor: Add<U>
+    Ring128Tensor: Add<U>,
 {
     type Output = <Ring128Tensor as Add<U>>::Output;
     fn execute(x: Ring128Tensor, y: U) -> Self::Output {
