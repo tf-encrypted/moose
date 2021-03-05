@@ -348,10 +348,10 @@ mod tests {
     #[test]
     fn ring_sample() {
         let key = [0u8; 16];
-        let r = ConcreteRingTensor::<u64>::sample_uniform(&[5], &key);
+        let r = Ring64Tensor::sample_uniform(&[5], &key);
         assert_eq!(
             r,
-            ConcreteRingTensor::<u64>::from(vec![
+            Ring64Tensor::from(vec![
                 4263935709876578662,
                 3326810793440857224,
                 17325099178452873543,
@@ -360,14 +360,14 @@ mod tests {
             ])
         );
 
-        let r_bits = ConcreteRingTensor::<u64>::sample_bits(&[5], &key);
-        assert_eq!(r_bits, ConcreteRingTensor::from(vec![0, 1, 1, 0, 0]));
+        let r_bits = Ring64Tensor::sample_bits(&[5], &key);
+        assert_eq!(r_bits, Ring64Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 
     #[test]
     fn ring_fill() {
-        let r = ConcreteRingTensor::fill(&[2], 1);
-        assert_eq!(r, ConcreteRingTensor::from(vec![1, 1]))
+        let r = Ring64Tensor::fill(&[2], 1);
+        assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
     }
 
     #[test]
@@ -375,9 +375,9 @@ mod tests {
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = ConcreteRingTensor::<u64>::from(x_backing);
+        let x = Ring64Tensor::from(x_backing);
         let out = x.sum(Some(0));
-        assert_eq!(out, ConcreteRingTensor::<u64>::from(vec![4, 6]))
+        assert_eq!(out, Ring64Tensor::from(vec![4, 6]))
     }
 
     #[test]
