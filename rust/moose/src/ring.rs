@@ -1,6 +1,9 @@
 use ndarray::prelude::*;
+use ndarray::LinalgScalar;
+use num_traits::Zero;
 use rand::prelude::*;
 use std::convert::TryInto;
+use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
@@ -9,7 +12,9 @@ use crate::prng::{AesRng, RngSeed};
 use crate::bit::BitTensor;
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ring64Tensor(pub ArrayD<Wrapping<u64>>);
+pub struct ConcreteRingTensor<T>(pub ArrayD<Wrapping<T>>);
+pub type Ring64Tensor = ConcreteRingTensor<u64>;
+pub type Ring128Tensor = ConcreteRingTensor<u128>;
 
 pub trait Sample {
     fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
@@ -17,13 +22,13 @@ pub trait Sample {
 }
 
 impl Sample for Ring64Tensor {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
+    fn sample_uniform(shape: &[usize], key: &[u8]) -> Ring64Tensor {
         let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
         let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape);
-        Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
+        Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
     fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
         let seed: RngSeed = key.try_into().unwrap();
@@ -33,11 +38,41 @@ impl Sample for Ring64Tensor {
             .map(|_| Wrapping(rng.get_bit() as u64))
             .collect();
         let ix = IxDyn(shape);
-        Ring64Tensor(Array::from_shape_vec(ix, values).unwrap())
+        Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 }
 
-impl Ring64Tensor {
+impl Sample for ConcreteRingTensor<u128> {
+    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
+        let seed: RngSeed = key.try_into().unwrap();
+        let mut rng = AesRng::from_seed(seed);
+        let length = shape.iter().product();
+        let values: Vec<_> = (0..length)
+            .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
+            .collect();
+        let ix = IxDyn(shape);
+        Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+    fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
+        let seed: RngSeed = key.try_into().unwrap();
+        let mut rng = AesRng::from_seed(seed);
+        let length = shape.iter().product();
+        let values: Vec<_> = (0..length)
+            .map(|_| Wrapping(rng.get_bit() as u128))
+            .collect();
+        let ix = IxDyn(shape);
+        Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+}
+
+impl ConcreteRingTensor<u64> {
+    pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
+        let temp = &self.0 >> bit_idx;
+        let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
+        BitTensor::from(lsb)
+    }
+}
+impl ConcreteRingTensor<u128> {
     pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
@@ -45,88 +80,139 @@ impl Ring64Tensor {
     }
 }
 
-impl Ring64Tensor {
-    pub fn fill(shape: &[usize], el: u64) -> Ring64Tensor {
-        Ring64Tensor(ArrayD::from_elem(shape, Wrapping(el)))
+impl<T> ConcreteRingTensor<T>
+where
+    Wrapping<T>: Clone,
+{
+    pub fn fill(shape: &[usize], el: T) -> ConcreteRingTensor<T> {
+        ConcreteRingTensor(ArrayD::from_elem(shape, Wrapping(el)))
     }
 }
 
-impl From<ArrayD<i64>> for Ring64Tensor {
-    fn from(a: ArrayD<i64>) -> Ring64Tensor {
-        let wrapped = a.mapv(|ai| Wrapping(ai as u64));
-        Ring64Tensor(wrapped)
+impl<T> From<ArrayD<T>> for ConcreteRingTensor<T>
+where
+    T: Clone,
+{
+    fn from(a: ArrayD<T>) -> ConcreteRingTensor<T> {
+        let wrapped = a.mapv(Wrapping);
+        ConcreteRingTensor(wrapped)
     }
 }
 
-impl From<BitTensor> for Ring64Tensor {
-    fn from(b: BitTensor) -> Ring64Tensor {
-        let ring_rep = b.0.mapv(|ai| Wrapping(ai as u64));
-        Ring64Tensor(ring_rep)
+impl From<ArrayD<i64>> for ConcreteRingTensor<u64> {
+    fn from(a: ArrayD<i64>) -> ConcreteRingTensor<u64> {
+        let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
+        ConcreteRingTensor(ring_rep)
     }
 }
 
-impl From<&Ring64Tensor> for ArrayD<i64> {
-    fn from(r: &Ring64Tensor) -> ArrayD<i64> {
+impl From<ArrayD<i128>> for ConcreteRingTensor<u128> {
+    fn from(a: ArrayD<i128>) -> ConcreteRingTensor<u128> {
+        let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
+        ConcreteRingTensor(ring_rep)
+    }
+}
+
+impl<T> ConcreteRingTensor<T> {
+    pub fn new(a: ArrayD<Wrapping<T>>) -> ConcreteRingTensor<T> {
+        ConcreteRingTensor(a)
+    }
+}
+
+impl<T> From<BitTensor> for ConcreteRingTensor<T>
+where
+    T: From<u8>,
+{
+    fn from(b: BitTensor) -> ConcreteRingTensor<T> {
+        let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
+        ConcreteRingTensor(ring_rep)
+    }
+}
+
+impl From<&ConcreteRingTensor<u64>> for ArrayD<i64> {
+    fn from(r: &ConcreteRingTensor<u64>) -> ArrayD<i64> {
         r.0.mapv(|element| element.0 as i64)
     }
 }
 
-impl From<ArrayD<u64>> for Ring64Tensor {
-    fn from(a: ArrayD<u64>) -> Ring64Tensor {
-        let wrapped = a.mapv(Wrapping);
-        Ring64Tensor(wrapped)
+impl From<&ConcreteRingTensor<u128>> for ArrayD<i128> {
+    fn from(r: &ConcreteRingTensor<u128>) -> ArrayD<i128> {
+        r.0.mapv(|element| element.0 as i128)
     }
 }
 
-impl From<Vec<u64>> for Ring64Tensor {
-    fn from(v: Vec<u64>) -> Ring64Tensor {
+impl<T> From<Vec<T>> for ConcreteRingTensor<T> {
+    fn from(v: Vec<T>) -> ConcreteRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         use vec_utils::VecExt;
         let v_wrapped: Vec<_> = v.map(Wrapping);
-        Ring64Tensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        ConcreteRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
 
-impl From<&[u64]> for Ring64Tensor {
-    fn from(v: &[u64]) -> Ring64Tensor {
+impl<T> From<&[T]> for ConcreteRingTensor<T>
+where
+    T: Copy,
+{
+    fn from(v: &[T]) -> ConcreteRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        Ring64Tensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        ConcreteRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
 
-impl Add for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn add(self, other: Self) -> Self::Output {
-        Ring64Tensor(self.0.add(other.0))
+impl<T> Add<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+where
+    Wrapping<T>: Clone,
+    Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
+{
+    type Output = ConcreteRingTensor<T>;
+    fn add(self, other: ConcreteRingTensor<T>) -> Self::Output {
+        ConcreteRingTensor(self.0 + other.0)
     }
 }
 
-impl Mul for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn mul(self, other: Self) -> Self::Output {
-        Ring64Tensor(self.0.mul(other.0))
+impl<T> Mul<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+where
+    Wrapping<T>: Clone,
+    Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
+{
+    type Output = ConcreteRingTensor<T>;
+    fn mul(self, other: ConcreteRingTensor<T>) -> Self::Output {
+        ConcreteRingTensor(self.0.mul(other.0))
     }
 }
 
-impl Sub for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn sub(self, other: Self) -> Self::Output {
-        Ring64Tensor(self.0.sub(other.0))
+impl<T> Sub<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+where
+    Wrapping<T>: Clone,
+    Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
+{
+    type Output = ConcreteRingTensor<T>;
+    fn sub(self, other: ConcreteRingTensor<T>) -> Self::Output {
+        ConcreteRingTensor(self.0.sub(other.0))
     }
 }
 
-impl Shl<usize> for Ring64Tensor {
-    type Output = Ring64Tensor;
+impl<T> Shl<usize> for ConcreteRingTensor<T>
+where
+    Wrapping<T>: Clone,
+    Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+{
+    type Output = ConcreteRingTensor<T>;
     fn shl(self, other: usize) -> Self::Output {
-        Ring64Tensor(self.0 << other)
+        ConcreteRingTensor(self.0 << other)
     }
 }
 
-impl Shr<usize> for Ring64Tensor {
-    type Output = Ring64Tensor;
+impl<T> Shr<usize> for ConcreteRingTensor<T>
+where
+    Wrapping<T>: Clone,
+    Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
+{
+    type Output = ConcreteRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
-        Ring64Tensor(self.0 >> other)
+        ConcreteRingTensor(self.0 >> other)
     }
 }
 
@@ -135,9 +221,12 @@ pub trait Dot<Rhs> {
     fn dot(self, rhs: Rhs) -> Self::Output;
 }
 
-impl Dot<Ring64Tensor> for Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn dot(self, rhs: Ring64Tensor) -> Self::Output {
+impl<T> Dot<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+where
+    Wrapping<T>: LinalgScalar,
+{
+    type Output = ConcreteRingTensor<T>;
+    fn dot(self, rhs: ConcreteRingTensor<T>) -> Self::Output {
         match self.0.ndim() {
             1 => match rhs.0.ndim() {
                 1 => {
@@ -146,16 +235,16 @@ impl Dot<Ring64Tensor> for Ring64Tensor {
                     let res = Array::from_elem([], l.dot(&r))
                         .into_dimensionality::<IxDyn>()
                         .unwrap();
-                    Ring64Tensor(res)
+                    ConcreteRingTensor(res)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix1>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    Ring64Tensor(res)
+                    ConcreteRingTensor(res)
                 }
                 other => panic!(
-                    "Dot<Ring64Tensor> cannot handle argument of rank {:?} ",
+                    "Dot<ConcreteRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ),
             },
@@ -164,36 +253,39 @@ impl Dot<Ring64Tensor> for Ring64Tensor {
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix1>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    Ring64Tensor(res)
+                    ConcreteRingTensor(res)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    Ring64Tensor(res)
+                    ConcreteRingTensor(res)
                 }
                 other => panic!(
-                    "Dot<Ring64Tensor> cannot handle argument of rank {:?} ",
+                    "Dot<ConcreteRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ),
             },
             other => panic!(
-                "Dot<Ring64Tensor> not implemented for tensors of rank {:?}",
+                "Dot<ConcreteRingTensor> not implemented for tensors of rank {:?}",
                 other
             ),
         }
     }
 }
 
-impl Ring64Tensor {
-    pub fn sum(self, axis: Option<usize>) -> Ring64Tensor {
+impl<T> ConcreteRingTensor<T>
+where
+    Wrapping<T>: Clone + Zero,
+{
+    pub fn sum(self, axis: Option<usize>) -> ConcreteRingTensor<T> {
         if let Some(i) = axis {
-            Ring64Tensor(self.0.sum_axis(Axis(i)))
+            ConcreteRingTensor(self.0.sum_axis(Axis(i)))
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
-            Ring64Tensor(out)
+            ConcreteRingTensor(out)
         }
     }
 }
@@ -245,7 +337,7 @@ mod tests {
         let r_backing = Array::from_elem([], Wrapping(3))
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let result = Ring64Tensor(r_backing);
+        let result = Ring64Tensor::new(r_backing);
         assert_eq!(result, z)
     }
 

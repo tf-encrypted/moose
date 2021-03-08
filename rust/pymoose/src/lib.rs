@@ -11,7 +11,7 @@ use std::num::Wrapping;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
-    Ring64Tensor(arr_wrap)
+    Ring64Tensor::new(arr_wrap)
 }
 
 fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
