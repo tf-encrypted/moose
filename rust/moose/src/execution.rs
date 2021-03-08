@@ -1,4 +1,5 @@
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
+use anyhow::{anyhow, Result};
 use enum_dispatch::enum_dispatch;
 use futures::prelude::*;
 use maplit::hashmap;
@@ -11,16 +12,14 @@ use std::sync::Arc;
 use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
 use tokio;
 use tokio::sync::broadcast::{Receiver, Sender};
-use anyhow::{Result, anyhow};
 
-
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Seed(Vec<u8>);
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Shape(Vec<usize>);
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug, Hash)]
+#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
 pub enum Ty {
     Ring64TensorTy,
     Ring128TensorTy,
@@ -28,7 +27,7 @@ pub enum Ty {
     SeedTy,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Value {
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
@@ -203,7 +202,7 @@ pub trait NullaryFunction {
 
 pub trait NullaryClosure
 where
-    Self: Clone
+    Self: Clone,
 {
     type Output;
     fn execute(&self) -> Self::Output;
@@ -216,7 +215,7 @@ pub trait UnaryFunction<X0> {
 
 pub trait UnaryClosure<X0>
 where
-    Self: Clone
+    Self: Clone,
 {
     type Output;
     fn execute(&self, x0: X0) -> Self::Output;
@@ -229,7 +228,7 @@ pub trait BinaryFunction<X0, X1> {
 
 pub trait BinaryClosure<X0, X1>
 where
-    Self: Clone
+    Self: Clone,
 {
     type Output;
     fn execute(&self, x0: X0, x1: X1) -> Self::Output;
@@ -368,7 +367,7 @@ trait Compile {
 }
 
 #[enum_dispatch(Compile)]
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Operator {
     Constant(ConstantOp),
     RingAdd(RingAddOp),
@@ -385,7 +384,9 @@ pub enum Operator {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ConstantOp{value: Value}
+pub struct ConstantOp {
+    value: Value,
+}
 
 impl Compile for ConstantOp {
     fn compile(&self) -> Kernel {
@@ -400,7 +401,7 @@ impl NullaryClosure for ConstantOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Hash)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PrimDeriveSeedOp;
 
 impl Compile for PrimDeriveSeedOp {
@@ -416,7 +417,7 @@ impl NullaryClosure for PrimDeriveSeedOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingAddOp {
     lhs: Ty,
     rhs: Ty,
@@ -454,7 +455,7 @@ where
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingSubOp;
 
 impl BinaryFunction<Ring64Tensor, Ring64Tensor> for RingSubOp {
@@ -470,7 +471,7 @@ impl Compile for RingSubOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingMulOp;
 
 // TODO(Morten) rewrite
@@ -485,7 +486,7 @@ impl Compile for RingMulOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingDotOp;
 
 // TODO(Morten) rewrite
@@ -500,7 +501,7 @@ impl Compile for RingDotOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingSumOp {
     axis: Option<usize>, // TODO(Morten) use platform independent type instead?
 }
@@ -517,13 +518,15 @@ impl Compile for RingSumOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
-pub struct RingShapeOp{ty: Ty}
+#[derive(Serialize, Deserialize, Debug)]
+pub struct RingShapeOp {
+    ty: Ty,
+}
 
 // TODO(Morten) rewrite
 impl Compile for RingShapeOp {
     fn compile(&self) -> Kernel {
-        match self.ty { 
+        match self.ty {
             Ty::Ring64TensorTy => unary_kernel!(Ring64Tensor),
             Ty::Ring128TensorTy => unary_kernel!(Ring128Tensor),
             _ => unimplemented!(),
@@ -534,18 +537,18 @@ impl Compile for RingShapeOp {
 impl UnaryFunction<Ring64Tensor> for RingShapeOp {
     type Output = Shape;
     fn execute(x: Ring64Tensor) -> Self::Output {
-        Shape(x.0.shape().into())  // TODO(Morten) wrapping should not happen here
+        Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
     }
 }
 
 impl UnaryFunction<Ring128Tensor> for RingShapeOp {
     type Output = Shape;
     fn execute(x: Ring128Tensor) -> Self::Output {
-        Shape(x.0.shape().into())  // TODO(Morten) wrapping should not happen here
+        Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingFillOp {
     value: u64,
 }
@@ -555,13 +558,13 @@ impl Compile for RingFillOp {
     fn compile(&self) -> Kernel {
         let value = self.value;
         Kernel::Unary(Arc::new(move |shape| match shape {
-            Value::Shape(shape) => Value::Ring64Tensor(Ring64Tensor::fill(&shape.0, value)),  // TODO(Morten) should not call .0 here
+            Value::Shape(shape) => Value::Ring64Tensor(Ring64Tensor::fill(&shape.0, value)), // TODO(Morten) should not call .0 here
             _ => unimplemented!(),
         }))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Default, Hash)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct RingSampleOp {
     pub max_value: Option<u64>,
 }
@@ -572,24 +575,26 @@ impl Compile for RingSampleOp {
         match self.max_value {
             None => Kernel::Binary(Arc::new(|shape, seed| match (shape, seed) {
                 (Value::Shape(shape), Value::Seed(seed)) => {
-                    Value::Ring64Tensor(Ring64Tensor::sample_uniform(&shape.0, &seed.0))  // TODO(Morten) should not call .0 here
+                    Value::Ring64Tensor(Ring64Tensor::sample_uniform(&shape.0, &seed.0))
+                    // TODO(Morten) should not call .0 here
                 }
                 _ => unimplemented!(),
             })),
             Some(max_value) if max_value == 1 => {
                 Kernel::Binary(Arc::new(|shape, seed| match (shape, seed) {
                     (Value::Shape(shape), Value::Seed(seed)) => {
-                        Value::Ring64Tensor(Ring64Tensor::sample_bits(&shape.0, &seed.0))  // TODO(Morten) should not call .0 here
+                        Value::Ring64Tensor(Ring64Tensor::sample_bits(&shape.0, &seed.0))
+                        // TODO(Morten) should not call .0 here
                     }
                     _ => unimplemented!(),
                 }))
-            },
-            _ => unimplemented!()  // TODO
+            }
+            _ => unimplemented!(), // TODO
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingShlOp {
     amount: usize,
 }
@@ -606,7 +611,7 @@ impl Compile for RingShlOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct RingShrOp {
     amount: usize,
 }
@@ -623,12 +628,12 @@ impl Compile for RingShrOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub enum Placement {
     Host,
 }
 
-#[derive(Serialize, Deserialize, Debug, Hash)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Operation {
     pub name: String,
     pub kind: Operator,
@@ -774,7 +779,6 @@ impl Operation {
     }
 }
 
-#[derive(Hash)]
 pub struct Computation {
     pub operations: Vec<Operation>,
 }
@@ -784,7 +788,9 @@ pub struct CompiledComputation<V>(Arc<dyn Fn(Environment<V>) -> Environment<V>>)
 impl Computation {
     pub fn compile(&self) -> Result<CompiledComputation<Value>> {
         // TODO(Morten) type check computation
-        let compiled_ops: Vec<CompiledOperation<_>> = self.operations.iter()
+        let compiled_ops: Vec<CompiledOperation<_>> = self
+            .operations
+            .iter()
             .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
         // TODO(Morten) we want to sort topologically here, outside the closure
@@ -888,7 +894,7 @@ fn test_foo() {
     };
 
     let y_seed_op = Operation {
-        name: "x_seed".into(),
+        name: "y_seed".into(),
         kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp),
         inputs: vec![],
         placement: Placement::Host,
@@ -917,13 +923,18 @@ fn test_foo() {
 
     let v_op = Operation {
         name: "v".into(),
-        kind: Operator::RingAdd(RingAddOp{lhs: Ty::Ring64TensorTy, rhs: Ty::Ring64TensorTy}),
+        kind: Operator::RingAdd(RingAddOp {
+            lhs: Ty::Ring64TensorTy,
+            rhs: Ty::Ring64TensorTy,
+        }),
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host,
     };
 
     let comp = Computation {
-        operations: vec![x_op, y_op, z_op, v_op],
+        operations: vec![
+            x_seed_op, x_shape_op, x_op, y_seed_op, y_shape_op, y_op, z_op, v_op,
+        ],
     };
 
     let exec = EagerExecutor;
