@@ -217,20 +217,6 @@ where
     }
 }
 
-impl Shl<usize> for &Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn shl(self, other: usize) -> Self::Output {
-        Ring64Tensor(&self.0 << other)
-    }
-}
-
-impl Shr<usize> for &Ring64Tensor {
-    type Output = Ring64Tensor;
-    fn shr(self, other: usize) -> Self::Output {
-        Ring64Tensor(&self.0 >> other)
-    }
-}
-
 pub trait Dot<Rhs> {
     type Output;
     fn dot(self, rhs: Rhs) -> Self::Output;
