@@ -321,19 +321,19 @@ pub enum Kernel {
     Variadic(Arc<dyn Fn(&[Value]) -> Value + Send + Sync>),
 }
 
-pub type Async<V> = Shared<Map<oneshot::Receiver<V>, fn(Result<Value, tokio::sync::oneshot::error::RecvError>) -> Option<Value>>>;
+pub type AsyncValue = Shared<Map<oneshot::Receiver<Value>, fn(Result<Value, tokio::sync::oneshot::error::RecvError>) -> Option<Value>>>;
 
-fn shared(receiver: oneshot::Receiver<Value>) -> Async<Value> {
+fn shared(receiver: oneshot::Receiver<Value>) -> AsyncValue {
     let f: fn(Result<Value, tokio::sync::oneshot::error::RecvError>) -> Option<Value> = |v| v.ok();
     receiver.map(f).shared()
 }
 
 pub enum AsyncKernel {
-    Nullary(Box<dyn Fn() -> Async<Value>>),
-    Unary(Box<dyn Fn(Async<Value>) -> Async<Value>>),
-    Binary(Box<dyn Fn(Async<Value>, Async<Value>) -> Async<Value>>),
-    Ternary(Box<dyn Fn(Async<Value>, Async<Value>, Async<Value>) -> Async<Value>>),
-    Variadic(Box<dyn Fn(&[Async<Value>]) -> Async<Value>>),
+    Nullary(Box<dyn Fn() -> AsyncValue>),
+    Unary(Box<dyn Fn(AsyncValue) -> AsyncValue>),
+    Binary(Box<dyn Fn(AsyncValue, AsyncValue) -> AsyncValue>),
+    Ternary(Box<dyn Fn(AsyncValue, AsyncValue, AsyncValue) -> AsyncValue>),
+    Variadic(Box<dyn Fn(&[AsyncValue]) -> AsyncValue>),
 }
 
 impl From<Kernel> for AsyncKernel {
@@ -344,40 +344,70 @@ impl From<Kernel> for AsyncKernel {
                 let k = k.clone();
                 tokio::spawn(async move {
                     let y = k();
-                    sender.send(y)
+                    match sender.send(y) {
+                        Ok(_) => Ok(()),
+                        Err(_) => Err(()),
+                    }
                 });
                 shared(receiver)
             })),
-            Kernel::Unary(k) => AsyncKernel::Unary(Box::new(move |mut x0| {
+            Kernel::Unary(k) => AsyncKernel::Unary(Box::new(move |x0| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 tokio::spawn(async move {
-                    let x0 = x0.await.unwrap();
+                    let x0 = match x0.await {
+                        Some(v) => Ok(v),
+                        None => Err(()),
+                    }?;
                     let y = k(x0);
-                    sender.send(y)
+                    match sender.send(y) {
+                        Ok(_) => Ok(()),
+                        Err(_) => Err(()),
+                    }
                 });
                 shared(receiver)
             })),
-            Kernel::Binary(k) => AsyncKernel::Binary(Box::new(move |mut x0, mut x1| {
+            Kernel::Binary(k) => AsyncKernel::Binary(Box::new(move |x0, x1| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 tokio::spawn(async move {
-                    let x0 = x0.await.unwrap();
-                    let x1 = x1.await.unwrap();
+                    let x0 = match x0.await {
+                        Some(v) => Ok(v),
+                        None => Err(()),
+                    }?;
+                    let x1 = match x1.await {
+                        Some(v) => Ok(v),
+                        None => Err(()),
+                    }?;
                     let y = k(x0, x1);
-                    sender.send(y)
+                    match sender.send(y) {
+                        Ok(_) => Ok(()),
+                        Err(_) => Err(()),
+                    }
                 });
                 shared(receiver)
             })),
-            Kernel::Ternary(k) => AsyncKernel::Ternary(Box::new(move |mut x0, mut x1, mut x2| {
+            Kernel::Ternary(k) => AsyncKernel::Ternary(Box::new(move |x0, x1, x2| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 tokio::spawn(async move {
-                    let x0 = x0.await.unwrap();
-                    let x1 = x1.await.unwrap();
-                    let x2 = x2.await.unwrap();
+                    let x0 = match x0.await {
+                        Some(v) => Ok(v),
+                        None => Err(())
+                    }?;
+                    let x1 = match x1.await {
+                        Some(v) => Ok(v),
+                        None => Err(())
+                    }?;
+                    let x2 = match x2.await {
+                        Some(v) => Ok(v),
+                        None => Err(())
+                    }?;
                     let y = k(x0, x1, x2);
-                    sender.send(y)
+                    match sender.send(y) {
+                        Ok(_) => Ok(()),
+                        Err(_) => Err(()),
+                    }
                 });
                 shared(receiver)
             })),
@@ -705,8 +735,6 @@ impl<V> CompiledOperation<V> {
     }
 }
 
-pub type AsyncEnvironment<V> = Environment<Shared<Receiver<V>>>;
-
 impl Operation {
     pub fn compile(&self) -> Result<CompiledOperation<Value>> {
         let operator_kernel: Kernel = self.kind.compile();
@@ -774,20 +802,20 @@ impl Operation {
         }
     }
 
-    pub fn async_compile(&self) -> Result<CompiledOperation<Async<Value>>> {
+    pub fn async_compile(&self) -> Result<CompiledOperation<AsyncValue>> {
         let operator_kernel: AsyncKernel = self.kind.async_compile();
         match (operator_kernel, self.inputs.len()) {
             (AsyncKernel::Nullary(k), 0) => {
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |_: &Environment<Async<Value>>| k()),
+                    kernel: Box::new(move |_: &Environment<AsyncValue>| k()),
                 })
             }
             (AsyncKernel::Unary(k), 1) => {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Async<Value>>| {
+                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         k(x0)
                     }),
@@ -798,7 +826,7 @@ impl Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Async<Value>>| {
+                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
                         k(x0, x1)
@@ -878,7 +906,7 @@ impl Computation {
         })))
     }
 
-    pub fn async_compile(&self) -> Result<CompiledComputation<Async<Value>>> {
+    pub fn async_compile(&self) -> Result<CompiledComputation<AsyncValue>> {
         // TODO(Morten) type check computation
         let compiled_ops: Vec<CompiledOperation<_>> = self
             .operations
@@ -926,7 +954,7 @@ impl EagerExecutor {
 pub struct AsyncExecutor;
 
 impl AsyncExecutor {
-    pub fn run_computation(&self, comp: &Computation, args: Environment<Async<Value>>) -> Result<()> {
+    pub fn run_computation(&self, comp: &Computation, args: Environment<AsyncValue>) -> Result<()> {
         let compiled_comp = comp.async_compile()?;
 
         let rt = tokio::runtime::Runtime::new()?;
