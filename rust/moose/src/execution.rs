@@ -902,8 +902,6 @@ impl<V> CompiledComputation<V> {
 
 pub type Environment<V> = HashMap<String, V>;
 
-pub type EagerEnvironment = Environment<Value>;
-
 /// In-order single-threaded executor.
 ///
 /// This executor evaluates the operations of computations in-order, raising an error
@@ -912,7 +910,7 @@ pub type EagerEnvironment = Environment<Value>;
 pub struct EagerExecutor;
 
 impl EagerExecutor {
-    pub fn run_computation(&self, comp: &Computation, args: EagerEnvironment) -> Result<()> {
+    pub fn run_computation(&self, comp: &Computation, args: Environment<Value>) -> Result<()> {
         let compiled_comp = comp.compile()?;
         let env = compiled_comp.apply(args);
         println!("{:?}", env);
