@@ -321,12 +321,7 @@ pub enum Kernel {
     Variadic(Arc<dyn Fn(&[Value]) -> Value + Send + Sync>),
 }
 
-pub type AsyncValue = Shared<Map<oneshot::Receiver<Value>, fn(Result<Value, tokio::sync::oneshot::error::RecvError>) -> Option<Value>>>;
-
-fn shared(receiver: oneshot::Receiver<Value>) -> AsyncValue {
-    let f: fn(Result<Value, tokio::sync::oneshot::error::RecvError>) -> Option<Value> = |v| v.ok();
-    receiver.map(f).shared()
-}
+pub type AsyncValue = Shared<Map<oneshot::Receiver<Value>, fn(Result<Value, oneshot::error::RecvError>) -> Result<Value, ()>>>;
 
 pub enum AsyncKernel {
     Nullary(Box<dyn Fn() -> AsyncValue>),
@@ -334,6 +329,10 @@ pub enum AsyncKernel {
     Binary(Box<dyn Fn(AsyncValue, AsyncValue) -> AsyncValue>),
     Ternary(Box<dyn Fn(AsyncValue, AsyncValue, AsyncValue) -> AsyncValue>),
     Variadic(Box<dyn Fn(&[AsyncValue]) -> AsyncValue>),
+}
+
+fn remove_err<T, E>(r: Result<T, E>) -> Result<T, ()> {
+    r.map_err(|_| ())
 }
 
 impl From<Kernel> for AsyncKernel {
@@ -344,72 +343,42 @@ impl From<Kernel> for AsyncKernel {
                 let k = k.clone();
                 tokio::spawn(async move {
                     let y = k();
-                    match sender.send(y) {
-                        Ok(_) => Ok(()),
-                        Err(_) => Err(()),
-                    }
+                    sender.send(y).map_err(|_| ())
                 });
-                shared(receiver)
+                receiver.map(remove_err as fn(_) -> _).shared()
             })),
             Kernel::Unary(k) => AsyncKernel::Unary(Box::new(move |x0| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 tokio::spawn(async move {
-                    let x0 = match x0.await {
-                        Some(v) => Ok(v),
-                        None => Err(()),
-                    }?;
+                    let x0 = x0.await?;
                     let y = k(x0);
-                    match sender.send(y) {
-                        Ok(_) => Ok(()),
-                        Err(_) => Err(()),
-                    }
+                    sender.send(y).map_err(|_| ())
                 });
-                shared(receiver)
+                receiver.map(remove_err as fn(_) -> _).shared()
             })),
             Kernel::Binary(k) => AsyncKernel::Binary(Box::new(move |x0, x1| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 tokio::spawn(async move {
-                    let x0 = match x0.await {
-                        Some(v) => Ok(v),
-                        None => Err(()),
-                    }?;
-                    let x1 = match x1.await {
-                        Some(v) => Ok(v),
-                        None => Err(()),
-                    }?;
+                    let x0 = x0.await?;
+                    let x1 = x1.await?;
                     let y = k(x0, x1);
-                    match sender.send(y) {
-                        Ok(_) => Ok(()),
-                        Err(_) => Err(()),
-                    }
+                    sender.send(y).map_err(|_| ())
                 });
-                shared(receiver)
+                receiver.map(remove_err as fn(_) -> _).shared()
             })),
             Kernel::Ternary(k) => AsyncKernel::Ternary(Box::new(move |x0, x1, x2| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 tokio::spawn(async move {
-                    let x0 = match x0.await {
-                        Some(v) => Ok(v),
-                        None => Err(())
-                    }?;
-                    let x1 = match x1.await {
-                        Some(v) => Ok(v),
-                        None => Err(())
-                    }?;
-                    let x2 = match x2.await {
-                        Some(v) => Ok(v),
-                        None => Err(())
-                    }?;
+                    let x0 = x0.await?;
+                    let x1 = x1.await?;
+                    let x2 = x2.await?;
                     let y = k(x0, x1, x2);
-                    match sender.send(y) {
-                        Ok(_) => Ok(()),
-                        Err(_) => Err(()),
-                    }
+                    sender.send(y).map_err(|_| ())
                 });
-                shared(receiver)
+                receiver.map(remove_err as fn(_) -> _).shared()
             })),
             // TODO
             _ => unimplemented!()
