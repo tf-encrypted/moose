@@ -2,8 +2,10 @@ use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use anyhow::{anyhow, Result};
 use enum_dispatch::enum_dispatch;
+use futures::future::{Map, Shared};
 use futures::prelude::*;
 use maplit::hashmap;
+use ndarray::prelude::*;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
@@ -11,7 +13,6 @@ use std::sync::Arc;
 use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
 use tokio;
 use tokio::sync::oneshot;
-use futures::future::{Map, Shared};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Seed(pub Vec<u8>);
@@ -317,7 +318,6 @@ pub struct Session {
     id: u128,
 }
 
-
 pub enum SyncKernel {
     Nullary(Arc<dyn Fn() -> Value + Send + Sync>),
     Unary(Arc<dyn Fn(Value) -> Value + Send + Sync>),
@@ -326,7 +326,12 @@ pub enum SyncKernel {
     Variadic(Arc<dyn Fn(&[Value]) -> Value + Send + Sync>),
 }
 
-pub type AsyncValue = Shared<Map<oneshot::Receiver<Value>, fn(Result<Value, oneshot::error::RecvError>) -> Result<Value, ()>>>;
+pub type AsyncValue = Shared<
+    Map<
+        oneshot::Receiver<Value>,
+        fn(Result<Value, oneshot::error::RecvError>) -> Result<Value, ()>,
+    >,
+>;
 
 pub enum AsyncKernel {
     Nullary(Box<dyn Fn() -> AsyncValue>),
@@ -411,7 +416,6 @@ trait Kernel {
     }
 }
 
-
 #[enum_dispatch(Kernel)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
@@ -428,6 +432,7 @@ pub enum Operator {
     RingShr(RingShrOp),
     PrimDeriveSeed(PrimDeriveSeedOp),
     PrimGenPrfKey(PrimGenPrfKeyOp),
+    FixedpointRingEncode(FixedpointRingEncodeOp),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -516,7 +521,7 @@ impl Kernel for RingSubOp {
             (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
                 binary_kernel!(Ring128Tensor, Ring128Tensor)
             }
-            _ => unimplemented!()
+            _ => unimplemented!(),
         }
     }
 }
@@ -644,12 +649,14 @@ impl Kernel for RingSampleOp {
             (Ty::Ring64TensorTy, None) => {
                 TypedBinaryKernel::Function(move |shape: Shape, seed: Seed| {
                     Ring64Tensor::sample_uniform(&shape.0, &seed.0)
-                }).into()
+                })
+                .into()
             }
             (Ty::Ring64TensorTy, Some(max_value)) if max_value == 1 => {
                 TypedBinaryKernel::Function(move |shape: Shape, seed: Seed| {
                     Ring64Tensor::sample_bits(&shape.0, &seed.0)
-                }).into()
+                })
+                .into()
             }
             _ => unimplemented!(), // TODO
         }
@@ -683,6 +690,24 @@ impl Kernel for RingShrOp {
             let y = x >> amount;
             y.into()
         }))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FixedpointRingEncodeOp {
+    pub scaling_factor: u64,
+}
+
+impl Kernel for FixedpointRingEncodeOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        unary_kernel!(self, &ArrayViewD<f64>)
+    }
+}
+
+impl UnaryClosure<Ring64Tensor> for FixedpointRingEncodeOp {
+    type Output = Ring64Tensor;
+    fn execute(&self, x: &ArrayViewD<f64>) -> Self::Output {
+        crate::fixedpoint::ring_encode(x, self.scaling_factor).into()
     }
 }
 
@@ -887,13 +912,15 @@ where
             .collect::<Result<Vec<_>>>()?;
         // TODO(Morten) we want to sort topologically here, outside the closure
         // TODO(Morten) do we want to insert instructions for when values can be dropped from the environment?
-        Ok(CompiledComputation(Arc::new(move |mut env: Environment<V>| {
-            for compiled_op in compiled_ops.iter() {
-                let value = compiled_op.apply(&env);
-                env.insert(compiled_op.name.clone(), value);
-            }
-            env
-        })))
+        Ok(CompiledComputation(Arc::new(
+            move |mut env: Environment<V>| {
+                for compiled_op in compiled_ops.iter() {
+                    let value = compiled_op.apply(&env);
+                    env.insert(compiled_op.name.clone(), value);
+                }
+                env
+            },
+        )))
     }
 }
 
@@ -974,20 +1001,22 @@ fn test_foo() {
         placement: Placement::Host,
     };
 
-    let sample_ops: Vec<_> = (0..100000).map(|i| {
-        // Operation {
-        //     name: format!("x{}", i),
-        //     kind: Operator::RingSample(RingSampleOp { output: Ty::Ring64TensorTy, max_value: None }),
-        //     inputs: vec!["x_shape".into(), "x_seed".into()],
-        //     placement: Placement::Host,
-        // }
-        Operation {
-            name: "key".into(),
-            kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
-            inputs: vec![],
-            placement: Placement::Host,
-        }
-    }).collect();
+    let sample_ops: Vec<_> = (0..100000)
+        .map(|i| {
+            // Operation {
+            //     name: format!("x{}", i),
+            //     kind: Operator::RingSample(RingSampleOp { output: Ty::Ring64TensorTy, max_value: None }),
+            //     inputs: vec!["x_shape".into(), "x_seed".into()],
+            //     placement: Placement::Host,
+            // }
+            Operation {
+                name: "key".into(),
+                kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
+                inputs: vec![],
+                placement: Placement::Host,
+            }
+        })
+        .collect();
 
     let comp = Computation {
         // operations: [vec![key_op, x_seed_op, x_shape_op], sample_ops].concat(),
