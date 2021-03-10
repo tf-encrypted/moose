@@ -313,6 +313,11 @@ macro_rules! ternary_kernel {
     };
 }
 
+pub struct Session {
+    id: u128,
+}
+
+
 pub enum SyncKernel {
     Nullary(Arc<dyn Fn() -> Value + Send + Sync>),
     Unary(Arc<dyn Fn(Value) -> Value + Send + Sync>),
