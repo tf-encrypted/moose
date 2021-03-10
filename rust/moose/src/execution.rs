@@ -705,7 +705,7 @@ impl<V> Apply<V> for CompiledOperation<V> {
     }
 }
 
-impl Compilation<CompiledOperation<Value>> for Operation {
+impl Compile<CompiledOperation<Value>> for Operation {
     fn compile(&self) -> Result<CompiledOperation<Value>> {
         let operator_kernel: SyncKernel = self.kind.sync_kernel();
         match (operator_kernel, self.inputs.len()) {
@@ -773,7 +773,7 @@ impl Compilation<CompiledOperation<Value>> for Operation {
     }
 }
 
-impl Compilation<CompiledOperation<AsyncValue>> for Operation {
+impl Compile<CompiledOperation<AsyncValue>> for Operation {
     fn compile(&self) -> Result<CompiledOperation<AsyncValue>> {
         let operator_kernel: AsyncKernel = self.kind.async_kernel();
         match (operator_kernel, self.inputs.len()) {
@@ -865,13 +865,13 @@ trait Apply<V> {
     fn apply(&self, env: &Environment<V>) -> V;
 }
 
-pub trait Compilation<C> {
+pub trait Compile<C> {
     fn compile(&self) -> Result<C>;
 }
 
-impl<V: 'static> Compilation<CompiledComputation<V>> for Computation
+impl<V: 'static> Compile<CompiledComputation<V>> for Computation
 where
-    Operation: Compilation<CompiledOperation<V>>,
+    Operation: Compile<CompiledOperation<V>>,
 {
     fn compile(&self) -> Result<CompiledComputation<V>> {
         // TODO(Morten) type check computation
