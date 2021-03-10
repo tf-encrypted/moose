@@ -4,6 +4,8 @@ from moose.computation import standard as std_dialect
 
 
 class HostEncodingPass:
+    """Convert casting ops with fixedpoint dtypes to encode/decode ops."""
+
     def __init__(self):
         self.computation = None
         self.context = None
@@ -44,7 +46,11 @@ class HostEncodingPass:
 
     def lower_to_encode(self, op):
         assert isinstance(op, std_dialect.CastOperation)
+        assert len(op.inputs) == 1
         assert op.output_type.dtype.is_fixedpoint
+        [(input_key, input_op_name)] = op.inputs.items()
+        input_op = self.computation.operation(input_op_name)
+        assert input_op.output_type.dtype.is_float
         precision = op.output_type.dtype.fractional_precision
         encode_op = self.computation.add_operation(
             fixedpoint_dialect.EncodeOperation(

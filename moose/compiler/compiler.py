@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
+from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
 from moose.compiler.host import NetworkingPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.pruning import PruningPass
@@ -19,6 +20,7 @@ class Compiler:
             else [
                 MpspdzApplyFunctionPass(),
                 HostEncodingPass(),
+                HostLoweringPass(),
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
                 ReplicatedLoweringPass(),

@@ -45,6 +45,12 @@ class MulOperation(FixedpointOperation):
 
 
 @dataclass
+class TruncOperation(FixedpointOperation):
+    precision: int
+    output_type: ValueType
+
+
+@dataclass
 class TruncPrOperation(FixedpointOperation):
     precision: int
     output_type: ValueType
