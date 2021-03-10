@@ -4,6 +4,9 @@ use anyhow::{anyhow, Result};
 use enum_dispatch::enum_dispatch;
 use futures::prelude::*;
 use maplit::hashmap;
+use petgraph::algo::toposort;
+use petgraph::graph::NodeIndex;
+use petgraph::Graph;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
@@ -900,6 +903,14 @@ where
 
         let toposort = toposort(&graph, None)
             .map_err(|_| anyhow!("There is a cycle detected in the runtime graph"))?;
+
+
+        let operations = toposort
+            .iter()
+            .map(|node| self.operations[inv_map[node]].clone())
+            .collect();
+
+        Ok(Computation { operations })
     }
 
 
