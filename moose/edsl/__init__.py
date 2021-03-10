@@ -8,6 +8,7 @@ from moose.edsl.base import Argument
 from moose.edsl.base import abs
 from moose.edsl.base import add
 from moose.edsl.base import atleast_2d
+from moose.edsl.base import cast
 from moose.edsl.base import computation
 from moose.edsl.base import concatenate
 from moose.edsl.base import constant
@@ -40,6 +41,7 @@ __all__ = [
     add,
     Argument,
     atleast_2d,
+    cast,
     computation,
     concatenate,
     constant,
