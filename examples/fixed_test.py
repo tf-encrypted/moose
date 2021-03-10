@@ -18,7 +18,7 @@ class FixedpointExample(unittest.TestCase):
         def my_comp():
 
             with alice:
-                x = edsl.constant(np.array([10.0, 12.0]), dtype=edsl.fixed(14, 23))
+                x = edsl.constant(np.array([10.0, 12.0]), dtype=edsl.fixed(8, 27))
                 y = edsl.mul(x, x)
                 interm = edsl.save("interm", y)
                 z = edsl.cast(y, dtype=edsl.float64)
