@@ -872,12 +872,37 @@ trait Apply<V> {
 
 pub trait Compile<C> {
     fn compile(&self) -> Result<C>;
+    fn toposort(&self) -> Result<Computation>;
 }
 
 impl<V: 'static> Compile<CompiledComputation<V>> for Computation
 where
     Operation: Compile<CompiledOperation<V>>,
 {
+    fn toposort(&self) -> Result<Computation> {
+        let mut graph = Graph::<String, ()>::new();
+
+        let mut vertex_map: HashMap<String, NodeIndex> = HashMap::new();
+        let mut inv_map: HashMap<NodeIndex, usize> = HashMap::new();
+
+        for (i, op) in self.operations.iter().enumerate() {
+            let vertex = graph.add_node(op.name.clone());
+
+            vertex_map.insert(op.name.clone(), vertex);
+            inv_map.insert(vertex, i);
+        }
+
+        for op in self.operations.iter() {
+            for ins in op.inputs.iter() {
+                graph.add_edge(vertex_map[ins], vertex_map[&op.name], ());
+            }
+        }
+
+        let toposort = toposort(&graph, None)
+            .map_err(|_| anyhow!("There is a cycle detected in the runtime graph"))?;
+    }
+
+
     fn compile(&self) -> Result<CompiledComputation<V>> {
         // TODO(Morten) type check computation
         let compiled_ops: Vec<CompiledOperation<V>> = self
