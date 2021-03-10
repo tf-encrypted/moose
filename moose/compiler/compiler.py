@@ -21,11 +21,9 @@ class Compiler:
             else [
                 MpspdzApplyFunctionPass(),
                 HostEncodingPass(),
-<<<<<<< HEAD
                 HostLoweringPass(),
                 HostRingLoweringPass(),
-=======
->>>>>>> 73be5b0... introduce fixedpoint encoding pass on host placements
+                HostLoweringPass(),
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
                 ReplicatedLoweringPass(),
