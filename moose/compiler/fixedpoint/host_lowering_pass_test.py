@@ -71,7 +71,7 @@ class HostLoweringPassTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler(passes=[host_lowering_pass.HostLoweringPass(),])
+        compiler = Compiler(passes=[host_lowering_pass.HostLoweringPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})

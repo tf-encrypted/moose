@@ -44,7 +44,7 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass(),])
+        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
@@ -104,7 +104,7 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass(),])
+        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
@@ -129,7 +129,9 @@ class RingLoweringPassTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "ring_decode_0"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "ring_decode_0"},
+                placement_name="alice",
             )
         )
 
@@ -178,11 +180,13 @@ class RingLoweringPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "fixed_trunc_0"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "fixed_trunc_0"},
+                placement_name="alice",
             )
         )
 
-        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass(),])
+        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
