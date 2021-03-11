@@ -867,21 +867,7 @@ pub struct Computation {
     pub operations: Vec<Operation>,
 }
 
-pub struct CompiledComputation<V>(Arc<dyn Fn(Environment<V>) -> Environment<V>>);
-
-trait Apply<V> {
-    fn apply(&self, env: &Environment<V>) -> V;
-}
-
-pub trait Compile<C> {
-    fn compile(&self) -> Result<C>;
-    fn toposort(&self) -> Result<Computation>;
-}
-
-impl<V: 'static> Compile<CompiledComputation<V>> for Computation
-where
-    Operation: Compile<CompiledOperation<V>>,
-{
+impl Computation {
     fn toposort(&self) -> Result<Computation> {
         let mut graph = Graph::<String, ()>::new();
 
@@ -912,7 +898,23 @@ where
 
         Ok(Computation { operations })
     }
+}
 
+
+pub struct CompiledComputation<V>(Arc<dyn Fn(Environment<V>) -> Environment<V>>);
+
+trait Apply<V> {
+    fn apply(&self, env: &Environment<V>) -> V;
+}
+
+pub trait Compile<C> {
+    fn compile(&self) -> Result<C>;
+}
+
+impl<V: 'static> Compile<CompiledComputation<V>> for Computation
+where
+    Operation: Compile<CompiledOperation<V>>,
+{
 
     fn compile(&self) -> Result<CompiledComputation<V>> {
         // TODO(Morten) type check computation
@@ -1028,7 +1030,7 @@ fn test_foo() {
     let comp = Computation {
         // operations: [vec![key_op, x_seed_op, x_shape_op], sample_ops].concat(),
         operations: sample_ops,
-    };
+    }.toposort().unwrap();
 
     let exec = AsyncExecutor;
     exec.run_computation(&comp, env).ok();
