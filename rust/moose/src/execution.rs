@@ -591,7 +591,7 @@ trait TypeCheck {
 
 impl TypeCheck for RingShapeOp {
     fn output_type(&self) -> Ty {
-        self.ty.clone()
+        self.ty
     }
 }
 
@@ -774,7 +774,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                         let xs: Vec<_> = inputs
                             .iter()
                             .map(|input| env.get(input).unwrap())
-                            .map(|value| value.clone()) // TODO(Morten) avoid cloning
+                            .cloned() // TODO(Morten) avoid cloning
                             .collect();
                         k(&xs)
                     }),
@@ -839,7 +839,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                         let xs: Vec<_> = inputs
                             .iter()
                             .map(|input| env.get(input).unwrap())
-                            .map(|value| value.clone())
+                            .cloned()
                             .collect();
                         k(&xs)
                     }),
