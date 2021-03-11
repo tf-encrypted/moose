@@ -1,18 +1,18 @@
+#![allow(unused_macros)]
+
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use anyhow::{anyhow, Result};
 use enum_dispatch::enum_dispatch;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
-use maplit::hashmap;
 use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
-use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::Arc;
-use std::{collections::HashMap, convert::TryFrom, marker::PhantomData};
 use tokio;
 use tokio::sync::oneshot;
 
@@ -149,7 +149,7 @@ impl From<Value> for Nonce {
     }
 }
 
-enum TypedNullaryKernel<Y> {
+pub enum TypedNullaryKernel<Y> {
     Function(fn() -> Y),
     Closure(Arc<dyn Fn() -> Y + Send + Sync>),
 }
@@ -176,7 +176,7 @@ where
     }
 }
 
-enum TypedUnaryKernel<X0, Y> {
+pub enum TypedUnaryKernel<X0, Y> {
     Function(fn(X0) -> Y),
     Closure(Arc<dyn Fn(X0) -> Y + Send + Sync>),
 }
@@ -205,7 +205,7 @@ where
         }
     }
 }
-enum TypedBinaryKernel<X0, X1, Y> {
+pub enum TypedBinaryKernel<X0, X1, Y> {
     Function(fn(X0, X1) -> Y),
     Closure(Arc<dyn Fn(X0, X1) -> Y + Send + Sync>),
 }
@@ -317,7 +317,7 @@ macro_rules! ternary_kernel {
 }
 
 pub struct Session {
-    id: u128,
+    pub id: u128,
 }
 
 pub enum SyncKernel {
@@ -863,7 +863,7 @@ impl Operation {
         Ok(())
     }
 
-    pub fn type_check(&self, env: &Environment<Ty>) -> Ty {
+    pub fn type_check(&self, _env: &Environment<Ty>) -> Ty {
         unimplemented!()
     }
 }
@@ -873,7 +873,7 @@ pub struct Computation {
 }
 
 impl Computation {
-    fn toposort(&self) -> Result<Computation> {
+    pub fn toposort(&self) -> Result<Computation> {
         let mut graph = Graph::<String, ()>::new();
 
         let mut vertex_map: HashMap<String, NodeIndex> = HashMap::new();
@@ -957,7 +957,7 @@ pub struct EagerExecutor;
 impl EagerExecutor {
     pub fn run_computation(&self, comp: &Computation, args: Environment<Value>) -> Result<()> {
         let compiled_comp: CompiledComputation<Value> = comp.compile()?;
-        let env = compiled_comp.apply(args);
+        let _env = compiled_comp.apply(args);
         println!("Done");
         Ok(())
     }
@@ -978,7 +978,7 @@ impl AsyncExecutor {
 
         println!("Running");
         rt.block_on(async {
-            let env = compiled_comp.apply(args);
+            let _env = compiled_comp.apply(args);
             // let vals = futures::future::join_all(
             //     env.values().map(|op| op.clone()).collect::<Vec<_>>()).await;
             println!("Done");
