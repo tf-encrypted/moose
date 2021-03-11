@@ -337,11 +337,11 @@ pub type AsyncValue = Shared<
 >;
 
 pub enum AsyncKernel {
-    Nullary(Arc<dyn Fn() -> AsyncValue>),
-    Unary(Arc<dyn Fn(AsyncValue) -> AsyncValue>),
-    Binary(Arc<dyn Fn(AsyncValue, AsyncValue) -> AsyncValue>),
-    Ternary(Arc<dyn Fn(AsyncValue, AsyncValue, AsyncValue) -> AsyncValue>),
-    Variadic(Arc<dyn Fn(&[AsyncValue]) -> AsyncValue>),
+    Nullary(Box<dyn Fn() -> AsyncValue>),
+    Unary(Box<dyn Fn(AsyncValue) -> AsyncValue>),
+    Binary(Box<dyn Fn(AsyncValue, AsyncValue) -> AsyncValue>),
+    Ternary(Box<dyn Fn(AsyncValue, AsyncValue, AsyncValue) -> AsyncValue>),
+    Variadic(Box<dyn Fn(&[AsyncValue]) -> AsyncValue>),
 }
 
 fn remove_err<T, E>(r: Result<T, E>) -> Result<T, ()> {
@@ -351,7 +351,7 @@ fn remove_err<T, E>(r: Result<T, E>) -> Result<T, ()> {
 impl From<SyncKernel> for AsyncKernel {
     fn from(sync_kernel: SyncKernel) -> AsyncKernel {
         match sync_kernel {
-            SyncKernel::Nullary(k) => AsyncKernel::Nullary(Arc::new(move || {
+            SyncKernel::Nullary(k) => AsyncKernel::Nullary(Box::new(move || {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 let _task = tokio::spawn(async move {
@@ -360,7 +360,7 @@ impl From<SyncKernel> for AsyncKernel {
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             })),
-            SyncKernel::Unary(k) => AsyncKernel::Unary(Arc::new(move |x0| {
+            SyncKernel::Unary(k) => AsyncKernel::Unary(Box::new(move |x0| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 let _task = tokio::spawn(async move {
@@ -370,7 +370,7 @@ impl From<SyncKernel> for AsyncKernel {
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             })),
-            SyncKernel::Binary(k) => AsyncKernel::Binary(Arc::new(move |x0, x1| {
+            SyncKernel::Binary(k) => AsyncKernel::Binary(Box::new(move |x0, x1| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 let _task = tokio::spawn(async move {
@@ -381,7 +381,7 @@ impl From<SyncKernel> for AsyncKernel {
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             })),
-            SyncKernel::Ternary(k) => AsyncKernel::Ternary(Arc::new(move |x0, x1, x2| {
+            SyncKernel::Ternary(k) => AsyncKernel::Ternary(Box::new(move |x0, x1, x2| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let k = k.clone();
                 let _task = tokio::spawn(async move {
@@ -734,7 +734,7 @@ pub struct Operation {
 
 pub struct CompiledOperation<V> {
     name: String,
-    kernel: Arc<dyn Send + Fn(&Environment<V>) -> V>,
+    kernel: Box<dyn Fn(&Environment<V>) -> V>,
 }
 
 impl<V> Apply<V> for CompiledOperation<V> {
@@ -750,14 +750,14 @@ impl Compile<CompiledOperation<Value>> for Operation {
             (SyncKernel::Nullary(k), 0) => {
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |_: &Environment<Value>| k()),
+                    kernel: Box::new(move |_: &Environment<Value>| k()),
                 })
             }
             (SyncKernel::Unary(k), 1) => {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |env: &Environment<Value>| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         k(x0)
@@ -769,7 +769,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |env: &Environment<Value>| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
@@ -783,7 +783,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env| {
+                    kernel: Box::new(move |env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
@@ -796,7 +796,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env| {
+                    kernel: Box::new(move |env| {
                         let xs: Vec<_> = inputs
                             .iter()
                             .map(|input| env.get(input).unwrap())
@@ -818,14 +818,14 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
             (AsyncKernel::Nullary(k), 0) => {
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |_: &Environment<AsyncValue>| k()),
+                    kernel: Box::new(move |_: &Environment<AsyncValue>| k()),
                 })
             }
             (AsyncKernel::Unary(k), 1) => {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env: &Environment<AsyncValue>| {
+                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         k(x0)
                     }),
@@ -836,7 +836,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env: &Environment<AsyncValue>| {
+                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
                         k(x0, x1)
@@ -849,7 +849,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env| {
+                    kernel: Box::new(move |env| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
                         let x2 = env.get(&x2_name).unwrap().clone();
@@ -861,7 +861,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Arc::new(move |env| {
+                    kernel: Box::new(move |env| {
                         let xs: Vec<_> = inputs
                             .iter()
                             .map(|input| env.get(input).unwrap())
@@ -929,7 +929,7 @@ impl Computation {
     }
 }
 
-pub struct CompiledComputation<V>(Arc<dyn Send + Fn(Session, Environment<V>) -> Environment<V>>);
+pub struct CompiledComputation<V>(Arc<dyn Fn(Session, Environment<V>) -> Environment<V>>);
 
 trait Apply<V> {
     fn apply(&self, env: &Environment<V>) -> V;
@@ -947,7 +947,8 @@ where
         // TODO(Morten) type check computation
         let compiled_ops: Vec<CompiledOperation<V>> = self
             .operations
-            .par_iter()
+            .iter()
+            // .par_iter()
             .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
         // TODO(Morten) we want to sort topologically here, outside the closure
@@ -1047,6 +1048,7 @@ fn test_foo() {
     };
 
     let sample_ops: Vec<_> = (0..100000)
+        // .into_par_iter()
         .map(|i| {
             // Operation {
             //     name: format!("x{}", i),
