@@ -1,46 +1,19 @@
 from moose.compiler import host as host_dialect
-from moose.compiler.pruning import PruningPass
+from moose.compiler import substitution_pass
 from moose.computation import fixedpoint as fixedpoint_dialect
 from moose.computation import ring as ring_dialect
 
 
-class RingLoweringPass:
+class RingLoweringPass(substitution_pass.SubstitutionPass):
     """Lower fixedpoint ops into ring ops."""
 
-    def __init__(self):
-        self.computation = None
-        self.context = None
-
-    def run(self, computation, context):
-        self.computation = computation
-        self.context = context
-
-        # determine which ops we should lower; these should just be
-        # any fixedpoint ops found on host placements.
-        op_names_to_lower = set()
-        for op in computation.operations.values():
-            if not isinstance(op, fixedpoint_dialect.FixedpointOperation):
-                continue
-            op_placement = computation.placement(op.placement_name)
-            if not isinstance(op_placement, host_dialect.HostPlacement):
-                continue
-            op_names_to_lower.add(op.name)
-        # lower the ops
-        op_names_to_rewire = set()
-        for op_name in op_names_to_lower:
-            lowered_op = self.lower(op_name)
-            op_names_to_rewire.add((lowered_op.name, op_name))
-        # rewire outputs of lowered ops
-        for lowered_op_name, old_op_name in op_names_to_rewire:
-            old_op = computation.operation(old_op_name)
-            lowered_op = computation.operation(lowered_op_name)
-            self._rewire_output_ops(old_op, lowered_op)
-        # prune old ops
-        pruning_pass = PruningPass()
-        computation, pruning_performed_changes = pruning_pass.run(computation, context)
-        # if we changed the graph at all, let the compiler know
-        performed_changes = len(op_names_to_lower) > 0 or pruning_performed_changes
-        return computation, performed_changes
+    def qualify_substitution(self, op):
+        if not isinstance(op, fixedpoint_dialect.FixedpointOperation):
+            return False
+        op_placement = self.computation.placement(op.placement_name)
+        if not isinstance(op_placement, host_dialect.HostPlacement):
+            return False
+        return True
 
     def lower(self, op_name):
         op = self.computation.operation(op_name)
@@ -50,16 +23,6 @@ class RingLoweringPass:
             raise NotImplementedError(f"{type(op)}")
         lowered_op = lowering_fn(op)
         return lowered_op
-
-    def _rewire_output_ops(self, old_src_op, new_src_op):
-        dst_ops = self.computation.find_destinations(old_src_op)
-        for dst_op in dst_ops:
-            updated_wirings = {
-                k: new_src_op.name
-                for k, v in dst_op.inputs.items()
-                if v == old_src_op.name
-            }
-            dst_op.inputs.update(updated_wirings)
 
     def lower_EncodeOperation(self, op):
         assert isinstance(op, fixedpoint_dialect.EncodeOperation)
