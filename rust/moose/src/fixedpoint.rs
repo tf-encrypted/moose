@@ -1,9 +1,19 @@
 use crate::ring::Ring64Tensor;
 use ndarray::prelude::*;
 use std::ops::Mul;
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct Float64Tensor(pub ArrayD<f64>);
 
 pub fn ring_encode(x: &ArrayViewD<f64>, scaling_factor: u64) -> Ring64Tensor {
     let x_upshifted = x * scaling_factor as f64;
+    let x_converted: ArrayD<i64> = x_upshifted.mapv(|el| el as i64);
+    Ring64Tensor::from(x_converted)
+}
+
+pub fn ring_encode2(x: &Float64Tensor, scaling_factor: u64) -> Ring64Tensor {
+    let x_upshifted = &x.0 * scaling_factor as f64;
     let x_converted: ArrayD<i64> = x_upshifted.mapv(|el| el as i64);
     Ring64Tensor::from(x_converted)
 }
@@ -13,6 +23,13 @@ pub fn ring_decode(x: &Ring64Tensor, scaling_factor: u64) -> ArrayD<f64> {
     let x_converted = x_upshifted.mapv(|el| el as f64);
     x_converted / scaling_factor as f64
 }
+
+pub fn ring_decode2(x: &Ring64Tensor, scaling_factor: u64) -> Float64Tensor {
+    let x_upshifted: ArrayD<i64> = x.into();
+    let x_converted = x_upshifted.mapv(|el| el as f64);
+    Float64Tensor(x_converted / scaling_factor as f64)
+}
+
 
 pub fn ring_mean(x: Ring64Tensor, axis: Option<usize>, scaling_factor: u64) -> Ring64Tensor {
     let mean_weight = compute_mean_weight(&x, &axis);
