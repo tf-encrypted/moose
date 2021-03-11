@@ -26,7 +26,7 @@ class FixedpointExample(unittest.TestCase):
 
             return interm, res
 
-        concrete_comp = edsl.trace(my_comp, render=True)
+        concrete_comp = edsl.trace(my_comp, render=False)
 
         runtime = Runtime()
         runtime.evaluate_computation(
