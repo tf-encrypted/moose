@@ -69,6 +69,19 @@ class RingLoweringPass(substitution_pass.SubstitutionPass):
             )
         )
 
+    def lower_SumOperation(self, op):
+        assert isinstance(op, fixedpoint_dialect.SumOperation)
+        assert len(op.inputs) == 1
+        assert isinstance(op.output_type, fixedpoint_dialect.EncodedTensorType)
+        return self.computation.add_operation(
+            ring_dialect.RingSumOperation(
+                name=self.context.get_fresh_name("ring_sum"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+                axis=op.axis,
+            )
+        )
+
     def lower_TruncOperation(self, op):
         assert isinstance(op, fixedpoint_dialect.TruncOperation)
         assert len(op.inputs) == 1
