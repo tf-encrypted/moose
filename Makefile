@@ -42,7 +42,11 @@ clean:
 	rm -Rf .hypothesis
 	cd rust && cargo clean
 
-ci-ready: fmt lint test-ci
+ci-ready:
+	cd rust && cargo clean
+	$(MAKE) fmt
+	$(MAKE) lint
+	$(MAKE) test-ci
 
 release: ci-ready
 	cd rust && cargo release --workspace --skip-publish
