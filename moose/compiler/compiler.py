@@ -2,11 +2,7 @@ from collections import defaultdict
 
 from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
 from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-<<<<<<< HEAD
 from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
-=======
-from moose.compiler.fixedpoint.ring_lowering_pass import RingLoweringPass
->>>>>>> 4d17893... introduce fixedpoint RingLoweringPass
 from moose.compiler.host import NetworkingPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.pruning import PruningPass
