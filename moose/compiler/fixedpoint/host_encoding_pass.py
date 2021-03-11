@@ -40,7 +40,7 @@ class HostEncodingPass(substitution_pass.SubstitutionPass):
         precision = op.output_type.dtype.fractional_precision
         encode_op = self.computation.add_operation(
             fixedpoint_dialect.EncodeOperation(
-                name=self.context.get_fresh_name("encode"),
+                name=self.context.get_fresh_name("fixed_encode"),
                 placement_name=op.placement_name,
                 inputs=op.inputs,
                 output_type=fixedpoint_dialect.EncodedTensorType(
@@ -61,7 +61,7 @@ class HostEncodingPass(substitution_pass.SubstitutionPass):
         precision = input_op.output_type.dtype.fractional_precision
         decode_op = self.computation.add_operation(
             fixedpoint_dialect.DecodeOperation(
-                name=self.context.get_fresh_name("encode"),
+                name=self.context.get_fresh_name("fixed_decode"),
                 placement_name=op.placement_name,
                 inputs=op.inputs,
                 output_type=op.output_type,
