@@ -23,10 +23,6 @@ fmt:
 
 lint:
 	flake8 .
-	cd rust && cargo clippy
-
-lint-check:
-	flake8 .
 	cd rust && cargo fmt --all -- --check
 	cd rust && cargo clippy -- -D warnings
 
@@ -46,9 +42,13 @@ clean:
 	rm -Rf .hypothesis
 	cd rust && cargo clean
 
-ci-ready: fmt lint test-ci
+ci-ready:
+	cd rust && cargo clean
+	$(MAKE) fmt
+	$(MAKE) lint
+	$(MAKE) test-ci
 
 release: ci-ready
 	cd rust && cargo release --workspace --skip-publish
 
-.PHONY: build pydep pylib install fmt lint-check test test-long test-ci clean ci-ready release
+.PHONY: build pydep pylib install fmt lint test test-long test-ci clean ci-ready release

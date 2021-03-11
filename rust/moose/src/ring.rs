@@ -2,6 +2,7 @@ use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use num_traits::Zero;
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::convert::TryInto;
 use std::fmt::Debug;
 use std::num::Wrapping;
@@ -11,7 +12,7 @@ use crate::prng::{AesRng, RngSeed};
 
 use crate::bit::BitTensor;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ConcreteRingTensor<T>(pub ArrayD<Wrapping<T>>);
 pub type Ring64Tensor = ConcreteRingTensor<u64>;
 pub type Ring128Tensor = ConcreteRingTensor<u128>;
