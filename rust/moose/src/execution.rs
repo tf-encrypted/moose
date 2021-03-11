@@ -4,6 +4,9 @@ use anyhow::{anyhow, Result};
 use enum_dispatch::enum_dispatch;
 use futures::prelude::*;
 use maplit::hashmap;
+use petgraph::algo::toposort;
+use petgraph::graph::NodeIndex;
+use petgraph::Graph;
 use rmp_serde::{Deserializer, Serializer};
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Sub};
@@ -864,6 +867,40 @@ pub struct Computation {
     pub operations: Vec<Operation>,
 }
 
+impl Computation {
+    fn toposort(&self) -> Result<Computation> {
+        let mut graph = Graph::<String, ()>::new();
+
+        let mut vertex_map: HashMap<String, NodeIndex> = HashMap::new();
+        let mut inv_map: HashMap<NodeIndex, usize> = HashMap::new();
+
+        for (i, op) in self.operations.iter().enumerate() {
+            let vertex = graph.add_node(op.name.clone());
+
+            vertex_map.insert(op.name.clone(), vertex);
+            inv_map.insert(vertex, i);
+        }
+
+        for op in self.operations.iter() {
+            for ins in op.inputs.iter() {
+                graph.add_edge(vertex_map[ins], vertex_map[&op.name], ());
+            }
+        }
+
+        let toposort = toposort(&graph, None)
+            .map_err(|_| anyhow!("There is a cycle detected in the runtime graph"))?;
+
+
+        let operations = toposort
+            .iter()
+            .map(|node| self.operations[inv_map[node]].clone())
+            .collect();
+
+        Ok(Computation { operations })
+    }
+}
+
+
 pub struct CompiledComputation<V>(Arc<dyn Fn(Environment<V>) -> Environment<V>>);
 
 trait Apply<V> {
@@ -878,6 +915,7 @@ impl<V: 'static> Compile<CompiledComputation<V>> for Computation
 where
     Operation: Compile<CompiledOperation<V>>,
 {
+
     fn compile(&self) -> Result<CompiledComputation<V>> {
         // TODO(Morten) type check computation
         let compiled_ops: Vec<CompiledOperation<V>> = self
@@ -992,7 +1030,7 @@ fn test_foo() {
     let comp = Computation {
         // operations: [vec![key_op, x_seed_op, x_shape_op], sample_ops].concat(),
         operations: sample_ops,
-    };
+    }.toposort().unwrap();
 
     let exec = AsyncExecutor;
     exec.run_computation(&comp, env).ok();
