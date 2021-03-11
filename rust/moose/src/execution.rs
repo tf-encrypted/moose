@@ -989,6 +989,8 @@ impl AsyncExecutor {
 
 #[test]
 fn test_foo() {
+    use maplit::hashmap;
+
     let mut env = hashmap![];
 
     let key_op = Operation {
