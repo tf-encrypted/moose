@@ -139,6 +139,21 @@ mod tests {
 
         let x_decoded = Ring64Tensor::decode(&x_encoded, scaling_factor);
         assert_eq!(x_decoded, x);
+
+        let scaling_factor_long = 2u128.pow(80);
+        let x_encoded = Ring128Tensor::encode(&x, scaling_factor_long);
+        assert_eq!(
+            x_encoded,
+            Ring128Tensor::from(vec![
+                1208925819614629174706176,
+                340282366920936045611735378173418799104,
+                3626777458843887524118528,
+                340282366920933627760096148915069386752
+            ])
+        );
+
+        let x_decoded_long = Ring128Tensor::decode(&x_encoded, scaling_factor_long);
+        assert_eq!(x_decoded_long, x);
     }
 
     #[test]
