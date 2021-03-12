@@ -1,4 +1,3 @@
-use crate::ring::ConcreteRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -41,14 +40,10 @@ impl Convert<Float64Tensor> for Ring128Tensor {
     }
 }
 
-impl ConcreteRingTensor<u64> {
-    pub fn ring_mean(
-        x: Self,
-        axis: Option<usize>,
-        scaling_factor: u64,
-    ) -> ConcreteRingTensor<u64> {
+impl Ring64Tensor {
+    pub fn ring_mean(x: Self, axis: Option<usize>, scaling_factor: u64) -> Ring64Tensor {
         let mean_weight = Self::compute_mean_weight(&x, &axis);
-        let encoded_weight = ConcreteRingTensor::encode(&mean_weight, scaling_factor);
+        let encoded_weight = Ring64Tensor::encode(&mean_weight, scaling_factor);
         let operand_sum = x.sum(axis);
         operand_sum.mul(encoded_weight)
     }
@@ -73,14 +68,10 @@ impl ConcreteRingTensor<u64> {
     }
 }
 
-impl ConcreteRingTensor<u128> {
-    pub fn ring_mean(
-        x: Self,
-        axis: Option<usize>,
-        scaling_factor: u128,
-    ) -> ConcreteRingTensor<u128> {
+impl Ring128Tensor {
+    pub fn ring_mean(x: Self, axis: Option<usize>, scaling_factor: u128) -> Ring128Tensor {
         let mean_weight = Self::compute_mean_weight(&x, &axis);
-        let encoded_weight = ConcreteRingTensor::encode(&mean_weight, scaling_factor);
+        let encoded_weight = Ring128Tensor::encode(&mean_weight, scaling_factor);
         let operand_sum = x.sum(axis);
         operand_sum.mul(encoded_weight)
     }
