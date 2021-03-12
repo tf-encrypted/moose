@@ -94,7 +94,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_placement(HostPlacement(name="dave"))
         expected_comp.add_placement(HostPlacement(name="eric"))
-        expected_encoded_dtype = dtypes.fixed(28, 16)
+        expected_encoded_dtype = dtypes.fixed(8, 27)
 
         expected_comp.add_operation(
             std_dialect.ConstantOperation(

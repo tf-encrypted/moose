@@ -94,7 +94,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_placement(HostPlacement(name="dave"))
         expected_comp.add_placement(HostPlacement(name="eric"))
-        expected_encoded_dtype = dtypes.fixed(28, 16)
+        expected_encoded_dtype = dtypes.fixed(8, 27)
 
         expected_comp.add_operation(
             standard_ops.ConstantOperation(
@@ -164,7 +164,7 @@ class ReplicatedTest(parameterized.TestCase):
             fixedpoint_ops.TruncPrOperation(
                 name="trunc_pr_0",
                 inputs={"value": "fixed_mul_0"},
-                precision=16,
+                precision=expected_encoded_dtype.fractional_precision,
                 placement_name="rep",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
