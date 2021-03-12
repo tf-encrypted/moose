@@ -135,7 +135,15 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
 
-    def test_fixed_sub_lowering(self):
+    @parameterized.parameters(
+        {"fixedpoint_op": fixedpoint_op, "ring_op": ring_op, "op_name": op_name}
+        for (fixedpoint_op, ring_op, op_name) in zip(
+            [fixedpoint_ops.AddOperation, fixedpoint_ops.SubOperation],
+            [ring_ops.RingAddOperation, ring_ops.RingSubOperation],
+            ["add", "sub"],
+        )
+    )
+    def test_fixed_binary_op_lowering(self, fixedpoint_op, ring_op, op_name):
         comp = Computation(placements={}, operations={})
 
         comp.add_placement(HostPlacement(name="alice"))
@@ -158,8 +166,8 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            fixedpoint_ops.SubOperation(
-                name="fixed_sub_0",
+            fixedpoint_op(
+                name=f"fixed_{op_name}_0",
                 placement_name="alice",
                 inputs={"lhs": "x_input", "rhs": "y_input"},
                 output_type=fixedpoint_ops.EncodedTensorType(
@@ -170,7 +178,7 @@ class RingLoweringPassTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_0",
-                inputs={"value": "fixed_sub_0"},
+                inputs={"value": f"fixed_{op_name}_0"},
                 placement_name="alice",
             )
         )
@@ -199,15 +207,17 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
-            ring_ops.RingSubOperation(
-                name="ring_sub_0",
+            ring_op(
+                name=f"ring_{op_name}_0",
                 placement_name="alice",
                 inputs={"lhs": "x_input", "rhs": "y_input"},
             )
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "ring_sub_0"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": f"ring_{op_name}_0"},
+                placement_name="alice",
             )
         )
         assert comp.operations == expected_comp.operations

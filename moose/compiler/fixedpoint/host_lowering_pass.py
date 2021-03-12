@@ -26,7 +26,31 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
             raise NotImplementedError(f"{type(op)}")
         lowered_op = lowering_fn(op)
         return lowered_op
-
+        
+    def lower_AddOperation(self, op):
+        assert isinstance(op, std_dialect.AddOperation)
+        assert len(op.inputs) == 2
+        assert op.output_type.dtype.is_fixedpoint
+        op_dtype = op.output_type.dtype
+        input_ops = [
+            self.computation.operation(input_op_name)
+            for _, input_op_name in op.inputs.items()
+        ]
+        assert all(inp.output_type.dtype.is_fixedpoint for inp in input_ops)
+        add_precision = input_ops[0].output_type.dtype.fractional_precision
+        add_dtype = dtypes.fixed(op_dtype.integral_precision, add_precision)
+        add_op = self.computation.add_operation(
+            fixedpoint_dialect.AddOperation(
+                name=self.context.get_fresh_name("fixed_add"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+                output_type=fixedpoint_dialect.EncodedTensorType(
+                    dtype=add_dtype, precision=add_precision,
+                ),
+            )
+        )
+        return add_op
+    
     def lower_MeanOperation(self, op):
         assert isinstance(op, std_dialect.MeanOperation)
         assert len(op.inputs) == 1
