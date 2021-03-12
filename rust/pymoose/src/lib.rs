@@ -1,6 +1,6 @@
 use moose::bit::BitTensor;
 use moose::bit::SampleBit;
-use moose::fixedpoint::{Convert, Float64Tensor, Mean};
+use moose::fixedpoint::{Convert, Float64Tensor};
 use moose::prng::AesRng;
 use moose::ring::{Dot, Ring64Tensor, Sample};
 use moose::utils;

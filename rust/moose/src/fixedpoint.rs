@@ -41,18 +41,11 @@ impl Convert<Float64Tensor> for Ring128Tensor {
     }
 }
 
-pub trait Mean<T> {
-    type Scale;
-    fn ring_mean(x: Self, axis: Option<usize>, scaling_factor: Self::Scale) -> Self;
-    fn compute_mean_weight(x: &Self, axis: &Option<usize>) -> Float64Tensor;
-}
-
-impl Mean<Float64Tensor> for ConcreteRingTensor<u64> {
-    type Scale = u64;
-    fn ring_mean(
+impl ConcreteRingTensor<u64> {
+    pub fn ring_mean(
         x: Self,
         axis: Option<usize>,
-        scaling_factor: Self::Scale,
+        scaling_factor: u64,
     ) -> ConcreteRingTensor<u64> {
         let mean_weight = Self::compute_mean_weight(&x, &axis);
         let encoded_weight = ConcreteRingTensor::encode(&mean_weight, scaling_factor);
@@ -80,12 +73,11 @@ impl Mean<Float64Tensor> for ConcreteRingTensor<u64> {
     }
 }
 
-impl Mean<Float64Tensor> for ConcreteRingTensor<u128> {
-    type Scale = u128;
-    fn ring_mean(
+impl ConcreteRingTensor<u128> {
+    pub fn ring_mean(
         x: Self,
         axis: Option<usize>,
-        scaling_factor: Self::Scale,
+        scaling_factor: u128,
     ) -> ConcreteRingTensor<u128> {
         let mean_weight = Self::compute_mean_weight(&x, &axis);
         let encoded_weight = ConcreteRingTensor::encode(&mean_weight, scaling_factor);
