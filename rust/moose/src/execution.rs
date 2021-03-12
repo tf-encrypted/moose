@@ -1,6 +1,6 @@
 #![allow(unused_macros)]
 
-use crate::fixedpoint::{Convert, Float64Tensor};
+use crate::fixedpoint::{Convert, Float64Tensor, Mean};
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use anyhow::{anyhow, Result};
@@ -765,7 +765,7 @@ impl Kernel for FixedpointRingMeanOp {
 impl UnaryClosure<Ring64Tensor> for FixedpointRingMeanOp {
     type Output = Ring64Tensor;
     fn execute(&self, x: Ring64Tensor) -> Self::Output {
-        crate::fixedpoint::ring_mean(x, self.axis, self.scaling_factor)
+        Ring64Tensor::ring_mean(x, self.axis, self.scaling_factor)
     }
 }
 
