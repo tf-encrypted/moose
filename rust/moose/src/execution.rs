@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 
+use crate::fixedpoint::{Convert, Float64Tensor};
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use anyhow::{anyhow, Result};
@@ -35,6 +36,7 @@ pub enum Ty {
     SeedTy,
     PrfKeyTy,
     NonceTy,
+    Float64TensorTy,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -45,6 +47,7 @@ pub enum Value {
     Seed(Seed),
     PrfKey(PrfKey),
     Nonce(Nonce),
+    Float64Tensor(Float64Tensor),
 }
 
 impl From<Ring64Tensor> for Value {
@@ -80,6 +83,12 @@ impl From<PrfKey> for Value {
 impl From<Nonce> for Value {
     fn from(v: Nonce) -> Self {
         Value::Nonce(v)
+    }
+}
+
+impl From<Float64Tensor> for Value {
+    fn from(v: Float64Tensor) -> Self {
+        Value::Float64Tensor(v)
     }
 }
 
@@ -143,6 +152,15 @@ impl From<Value> for Nonce {
     fn from(v: Value) -> Self {
         match v {
             Value::Nonce(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Float64Tensor {
+    fn from(v: Value) -> Self {
+        match v {
+            Value::Float64Tensor(x) => x,
             _ => unimplemented!(),
         }
     }
@@ -433,6 +451,9 @@ pub enum Operator {
     RingShr(RingShrOp),
     PrimDeriveSeed(PrimDeriveSeedOp),
     PrimGenPrfKey(PrimGenPrfKeyOp),
+    FixedpointRingEncode(FixedpointRingEncodeOp),
+    FixedpointRingDecode(FixedpointRingDecodeOp),
+    FixedpointRingMean(FixedpointRingMeanOp),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -690,6 +711,61 @@ impl Kernel for RingShrOp {
             let y = x >> amount;
             y.into()
         }))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FixedpointRingEncodeOp {
+    pub scaling_factor: u64,
+}
+
+impl Kernel for FixedpointRingEncodeOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        unary_kernel!(self, Float64Tensor)
+    }
+}
+
+impl UnaryClosure<Float64Tensor> for FixedpointRingEncodeOp {
+    type Output = Ring64Tensor;
+    fn execute(&self, x: Float64Tensor) -> Self::Output {
+        Ring64Tensor::encode(&x, self.scaling_factor)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FixedpointRingDecodeOp {
+    pub scaling_factor: u64,
+}
+
+impl Kernel for FixedpointRingDecodeOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        unary_kernel!(self, Ring64Tensor)
+    }
+}
+
+impl UnaryClosure<Ring64Tensor> for FixedpointRingDecodeOp {
+    type Output = Float64Tensor;
+    fn execute(&self, x: Ring64Tensor) -> Self::Output {
+        Ring64Tensor::decode(&x, self.scaling_factor)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct FixedpointRingMeanOp {
+    pub axis: Option<usize>,
+    pub scaling_factor: u64,
+}
+
+impl Kernel for FixedpointRingMeanOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        unary_kernel!(self, Ring64Tensor)
+    }
+}
+
+impl UnaryClosure<Ring64Tensor> for FixedpointRingMeanOp {
+    type Output = Ring64Tensor;
+    fn execute(&self, x: Ring64Tensor) -> Self::Output {
+        Ring64Tensor::ring_mean(x, self.axis, self.scaling_factor)
     }
 }
 

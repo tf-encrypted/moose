@@ -1,6 +1,6 @@
 use moose::bit::BitTensor;
 use moose::bit::SampleBit;
-use moose::fixedpoint::{ring_decode, ring_encode, ring_mean};
+use moose::fixedpoint::{Convert, Float64Tensor};
 use moose::prng::AesRng;
 use moose::ring::{Dot, Ring64Tensor, Sample};
 use moose::utils;
@@ -230,8 +230,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<f64>,
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<u64> {
-        let x = x.as_array();
-        let y = ring_encode(&x, scaling_factor);
+        let x = Float64Tensor(x.to_owned_array());
+        let y = Ring64Tensor::encode(&x, scaling_factor);
         ring64_to_array(y).to_pyarray(py)
     }
 
@@ -242,8 +242,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<f64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = ring_decode(&x_ring, scaling_factor);
-        y.to_pyarray(py)
+        let y = Ring64Tensor::decode(&x_ring, scaling_factor);
+        y.0.to_pyarray(py)
     }
 
     #[pyfn(m, "fixedpoint_ring_mean")]
@@ -254,7 +254,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         precision: u32,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = ring_mean(x_ring, axis, 2u64.pow(precision));
+        let y = Ring64Tensor::ring_mean(x_ring, axis, 2u64.pow(precision));
         ring64_to_array(y).to_pyarray(py)
     }
 
