@@ -1,5 +1,5 @@
-use crate::ring::Ring64Tensor;
 use crate::ring::ConcreteRingTensor;
+use crate::ring::Ring64Tensor;
 use ndarray::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;

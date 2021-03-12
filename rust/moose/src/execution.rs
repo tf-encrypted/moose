@@ -1,6 +1,6 @@
 #![allow(unused_macros)]
 
-use crate::fixedpoint::{Float64Tensor, Convert};
+use crate::fixedpoint::{Convert, Float64Tensor};
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use anyhow::{anyhow, Result};
