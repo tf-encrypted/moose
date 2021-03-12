@@ -166,7 +166,7 @@ impl From<Value> for Float64Tensor {
     }
 }
 
-enum TypedNullaryKernel<Y> {
+pub enum TypedNullaryKernel<Y> {
     Function(fn() -> Y),
     Closure(Arc<dyn Fn() -> Y + Send + Sync>),
 }
@@ -453,7 +453,7 @@ pub enum Operator {
     PrimGenPrfKey(PrimGenPrfKeyOp),
     FixedpointRingEncode(FixedpointRingEncodeOp),
     FixedpointRingDecode(FixedpointRingDecodeOp),
-    // FixedpointRingMean(FixedpointRingMeanOp),
+    FixedpointRingMean(FixedpointRingMeanOp),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
