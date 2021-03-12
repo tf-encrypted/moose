@@ -9,12 +9,12 @@ use futures::prelude::*;
 use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use rayon::prelude::*;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Seed(pub Vec<u8>);
@@ -521,7 +521,6 @@ impl TypeCheck for RingShapeOp {
     }
 }
 
-// TODO(Morten) rewrite
 impl Kernel for RingShapeOp {
     fn sync_kernel(&self) -> SyncKernel {
         match self.ty {
@@ -541,14 +540,11 @@ pub struct RingFillOp {
     value: u64,
 }
 
-// TODO(Morten) rewrite
 impl Kernel for RingFillOp {
     fn sync_kernel(&self) -> SyncKernel {
         let value = self.value;
-        SyncKernel::UnaryClosure(Arc::new(move |shape| match shape {
-            Value::Shape(shape) => Value::Ring64Tensor(Ring64Tensor::fill(&shape.0, value)), // TODO(Morten) should not call .0 here
-            _ => unimplemented!(),
-        }))
+        // TODO(Morten) should not call .0 here
+        closure_kernel!(Shape, |shape: Shape| Ring64Tensor::fill(&shape.0, value))
     }
 }
 
@@ -558,15 +554,18 @@ pub struct RingSampleOp {
     pub max_value: Option<usize>,
 }
 
-// TODO(Morten) rewrite
 impl Kernel for RingSampleOp {
     fn sync_kernel(&self) -> SyncKernel {
         match (self.output, self.max_value) {
             (Ty::Ring64TensorTy, None) => {
-                function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(&shape.0, &seed.0))
+                function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
+                    &shape.0, &seed.0
+                ))
             }
             (Ty::Ring64TensorTy, Some(max_value)) if max_value == 1 => {
-                function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_bits(&shape.0, &seed.0))
+                function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_bits(
+                    &shape.0, &seed.0
+                ))
             }
             _ => unimplemented!(), // TODO
         }
@@ -578,7 +577,6 @@ pub struct RingShlOp {
     pub amount: usize,
 }
 
-// TODO(Morten) rewrite
 impl Kernel for RingShlOp {
     fn sync_kernel(&self) -> SyncKernel {
         let amount = self.amount;
@@ -591,7 +589,6 @@ pub struct RingShrOp {
     pub amount: usize,
 }
 
-// TODO(Morten) rewrite
 impl Kernel for RingShrOp {
     fn sync_kernel(&self) -> SyncKernel {
         let amount = self.amount;
@@ -615,7 +612,7 @@ pub struct Operation {
     pub name: String,
     // pub kind: OperatorRef,
     pub kind: Operator,
-    pub inputs: Vec<String>,  // TODO(Morten) use indices instead of strings?
+    pub inputs: Vec<String>, // TODO(Morten) use indices instead of strings?
     pub placement: Placement,
 }
 
@@ -632,7 +629,12 @@ impl<V> Apply<V> for CompiledOperation<V> {
 
 fn check_arity<T>(operation_name: &str, inputs: &[T], arity: usize) -> Result<()> {
     if inputs.len() != arity {
-        Err(anyhow!("Arity mismatch for operation '{}'; operator expects {} arguments but were given {}", operation_name, arity, inputs.len()))
+        Err(anyhow!(
+            "Arity mismatch for operation '{}'; operator expects {} arguments but were given {}",
+            operation_name,
+            arity,
+            inputs.len()
+        ))
     } else {
         Ok(())
     }
@@ -962,7 +964,7 @@ pub struct EagerExecutor;
 impl EagerExecutor {
     pub fn run_computation(&self, comp: &Computation, args: Environment<Value>) -> Result<()> {
         let compiled_comp: CompiledComputation<Value> = comp.compile()?;
-        let sess = Session{ id: 12345 };
+        let sess = Session { id: 12345 };
         let _env = compiled_comp.apply(sess, args);
         println!("Done");
         Ok(())
@@ -982,7 +984,7 @@ impl AsyncExecutor {
             .build()
             .unwrap();
 
-        let sess = Session{ id: 12345 };
+        let sess = Session { id: 12345 };
 
         println!("Running");
         rt.block_on(async {
