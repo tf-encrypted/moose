@@ -186,6 +186,12 @@ macro_rules! function_kernel {
 }
 
 macro_rules! closure_kernel {
+    ($f:expr) => {
+        SyncKernel::NullaryClosure(Arc::new(move || {
+            let y = $f();
+            Value::from(y)
+        }))
+    };
     ($t0:ty, $f:expr) => {
         SyncKernel::UnaryClosure(Arc::new(move |x0| {
             let x0 = <$t0 as From<Value>>::from(x0);
