@@ -1,6 +1,6 @@
 #![allow(unused_macros)]
 
-use crate::fixedpoint::Float64Tensor;
+use crate::fixedpoint::{Float64Tensor, Convert};
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use anyhow::{anyhow, Result};
@@ -728,7 +728,7 @@ impl Kernel for FixedpointRingEncodeOp {
 impl UnaryClosure<Float64Tensor> for FixedpointRingEncodeOp {
     type Output = Ring64Tensor;
     fn execute(&self, x: Float64Tensor) -> Self::Output {
-        crate::fixedpoint::ring_encode(&x, self.scaling_factor)
+        Ring64Tensor::encode(&x, self.scaling_factor)
     }
 }
 
@@ -746,7 +746,7 @@ impl Kernel for FixedpointRingDecodeOp {
 impl UnaryClosure<Ring64Tensor> for FixedpointRingDecodeOp {
     type Output = Float64Tensor;
     fn execute(&self, x: Ring64Tensor) -> Self::Output {
-        crate::fixedpoint::ring_decode(&x, self.scaling_factor)
+        Ring64Tensor::decode(&x, self.scaling_factor)
     }
 }
 

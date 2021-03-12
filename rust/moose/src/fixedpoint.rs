@@ -1,4 +1,5 @@
 use crate::ring::Ring64Tensor;
+use crate::ring::ConcreteRingTensor;
 use ndarray::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::Mul;
@@ -6,21 +7,43 @@ use std::ops::Mul;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Float64Tensor(pub ArrayD<f64>);
 
-pub fn ring_encode(x: &Float64Tensor, scaling_factor: u64) -> Ring64Tensor {
-    let x_upshifted = &x.0 * scaling_factor as f64;
-    let x_converted: ArrayD<i64> = x_upshifted.mapv(|el| el as i64);
-    Ring64Tensor::from(x_converted)
+pub trait Convert<T> {
+    type Scale;
+    fn encode(x: &T, scaling_factor: Self::Scale) -> Self;
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
 }
 
-pub fn ring_decode(x: &Ring64Tensor, scaling_factor: u64) -> Float64Tensor {
-    let x_upshifted: ArrayD<i64> = x.into();
-    let x_converted = x_upshifted.mapv(|el| el as f64);
-    Float64Tensor(x_converted / scaling_factor as f64)
+impl Convert<Float64Tensor> for ConcreteRingTensor<u64> {
+    type Scale = u64;
+    fn encode(x: &Float64Tensor, scaling_factor: u64) -> ConcreteRingTensor<u64> {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
+        ConcreteRingTensor::from(x_converted)
+    }
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> Float64Tensor {
+        let x_upshifted: ArrayD<i64> = x.into();
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        Float64Tensor(x_converted / scaling_factor as f64)
+    }
+}
+
+impl Convert<Float64Tensor> for ConcreteRingTensor<u128> {
+    type Scale = u128;
+    fn encode(x: &Float64Tensor, scaling_factor: Self::Scale) -> ConcreteRingTensor<u128> {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
+        ConcreteRingTensor::from(x_converted)
+    }
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> Float64Tensor {
+        let x_upshifted: ArrayD<i128> = x.into();
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        Float64Tensor(x_converted / scaling_factor as f64)
+    }
 }
 
 pub fn ring_mean(x: Ring64Tensor, axis: Option<usize>, scaling_factor: u64) -> Ring64Tensor {
     let mean_weight = compute_mean_weight(&x, &axis);
-    let encoded_weight = ring_encode(&mean_weight, scaling_factor);
+    let encoded_weight = Ring64Tensor::encode(&mean_weight, scaling_factor);
     let operand_sum = x.sum(axis);
     operand_sum.mul(encoded_weight)
 }
@@ -58,7 +81,7 @@ mod tests {
         );
 
         let scaling_factor = 2u64.pow(16);
-        let x_encoded = ring_encode(&x, scaling_factor);
+        let x_encoded = Ring64Tensor::encode(&x, scaling_factor);
         assert_eq!(
             x_encoded,
             Ring64Tensor::from(vec![
@@ -69,7 +92,7 @@ mod tests {
             ])
         );
 
-        let x_decoded = ring_decode(&x_encoded, scaling_factor);
+        let x_decoded = Ring64Tensor::decode(&x_encoded, scaling_factor);
         assert_eq!(x_decoded, x);
     }
 
@@ -82,9 +105,9 @@ mod tests {
         );
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = ring_encode(&x_backing, encoding_factor);
+        let x = Ring64Tensor::encode(&x_backing, encoding_factor);
         let out = ring_mean(x, Some(0), encoding_factor);
-        let dec = ring_decode(&out, decoding_factor);
+        let dec = Ring64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec,
             Float64Tensor(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
@@ -100,9 +123,9 @@ mod tests {
         );
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = ring_encode(&x_backing, encoding_factor);
+        let x = Ring64Tensor::encode(&x_backing, encoding_factor);
         let out = ring_mean(x, None, encoding_factor);
-        let dec = ring_decode(&out, decoding_factor);
+        let dec = Ring64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec.0.into_shape((1,)).unwrap(),
             array![2.5].into_shape((1,)).unwrap()
