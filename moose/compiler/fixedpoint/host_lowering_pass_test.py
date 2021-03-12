@@ -204,11 +204,7 @@ class HostLoweringPassTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             fixedpoint_ops.EncodeOperation(
-                name="x_encode",
                 placement_name="alice",
-                inputs={"value": "x_input"},
-                output_type=fixedpoint_ops.EncodedTensorType(
-                    dtype=dtypes.fixed(14, 23), precision=23,
                 ),
                 precision=23,
             )

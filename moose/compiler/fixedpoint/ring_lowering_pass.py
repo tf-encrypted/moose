@@ -69,6 +69,18 @@ class RingLoweringPass(substitution_pass.SubstitutionPass):
             )
         )
 
+    def lower_SubOperation(self, op):
+        assert isinstance(op, fixedpoint_dialect.SubOperation)
+        assert len(op.inputs) == 2
+        assert isinstance(op.output_type, fixedpoint_dialect.EncodedTensorType)
+        return self.computation.add_operation(
+            ring_dialect.RingSubOperation(
+                name=self.context.get_fresh_name("ring_sub"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+            )
+        )
+
     def lower_SumOperation(self, op):
         assert isinstance(op, fixedpoint_dialect.SumOperation)
         assert len(op.inputs) == 1
