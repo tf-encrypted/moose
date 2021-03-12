@@ -2,30 +2,85 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rayon::prelude::*;
 
 fn par(c: &mut Criterion) {
-    c.bench_function("par_iter", |b| {
+    c.bench_function("par_channel_rayon", |b| {
         b.iter(|| {
             let channels: Vec<_> = (0..100_000)
                 .into_par_iter()
-                .map(|_| {
-                    tokio::sync::oneshot::channel::<u64>()
-                })
+                .map(|_| tokio::sync::oneshot::channel::<u64>())
                 .collect();
             black_box(channels);
         })
     });
 
-    c.bench_function("iter", |b| {
+    c.bench_function("par_channel_seq", |b| {
         b.iter(|| {
             let channels: Vec<_> = (0..100_000)
-                .map(|_| {
-                    tokio::sync::oneshot::channel::<u64>()
-                })
+                .map(|_| tokio::sync::oneshot::channel::<u64>())
                 .collect();
             black_box(channels);
+        })
+    });
+
+    c.bench_function("par_compile_rayon_closure", |b| {
+        use moose::execution::*;
+
+        let operator = Operator::RingShr(RingShrOp { amount: 1 });
+
+        b.iter(|| {
+            let compiled: Vec<_> = (0..1_000_000)
+                .into_par_iter()
+                .map(|_| operator.sync_kernel())
+                .collect();
+            black_box(compiled);
+        })
+    });
+
+    c.bench_function("par_compile_seq_closure", |b| {
+        use moose::execution::*;
+
+        let operator = Operator::RingShr(RingShrOp { amount: 1 });
+
+        b.iter(|| {
+            let compiled: Vec<_> = (0..1_000_000)
+                .map(|_| operator.sync_kernel())
+                .collect();
+            black_box(compiled);
+        })
+    });
+
+    c.bench_function("par_compile_rayon_function", |b| {
+        use moose::execution::*;
+
+        let operator = Operator::RingAdd(RingAddOp {
+            lhs: Ty::Ring64TensorTy,
+            rhs: Ty::Ring64TensorTy,
+        });
+
+        b.iter(|| {
+            let compiled: Vec<_> = (0..1_000_000)
+                .into_par_iter()
+                .map(|_| operator.sync_kernel())
+                .collect();
+            black_box(compiled);
+        })
+    });
+
+    c.bench_function("par_compile_seq_function", |b| {
+        use moose::execution::*;
+
+        let operator = Operator::RingAdd(RingAddOp {
+            lhs: Ty::Ring64TensorTy,
+            rhs: Ty::Ring64TensorTy,
+        });
+
+        b.iter(|| {
+            let compiled: Vec<_> = (0..1_000_000)
+                .map(|_| operator.sync_kernel())
+                .collect();
+            black_box(compiled);
         })
     });
 }
-
 
 /// This bench is to figure out how to efficiently pass an Arc
 /// that the recipient may or may not make use of.
@@ -89,7 +144,6 @@ fn arc(c: &mut Criterion) {
             black_box(foo(&a));
         })
     });
-
 }
 
 fn closure(c: &mut Criterion) {
@@ -106,9 +160,7 @@ fn closure(c: &mut Criterion) {
     });
 
     c.bench_function("closure_fn", |b| {
-        let foo = || {
-            3
-        };
+        let foo = || 3;
 
         b.iter(|| {
             black_box(foo());
@@ -117,9 +169,7 @@ fn closure(c: &mut Criterion) {
 
     c.bench_function("closure_ArcFnUntyped", |b| {
         let x = 3;
-        let foo: Arc<_> = Arc::new(move || {
-            x
-        });
+        let foo: Arc<_> = Arc::new(move || x);
 
         b.iter(|| {
             black_box(foo());
@@ -128,9 +178,7 @@ fn closure(c: &mut Criterion) {
 
     c.bench_function("closure_BoxFnUntyped", |b| {
         let x = 3;
-        let foo: Box<_> = Box::new(move || {
-            x
-        });
+        let foo: Box<_> = Box::new(move || x);
 
         b.iter(|| {
             black_box(foo());
@@ -139,9 +187,7 @@ fn closure(c: &mut Criterion) {
 
     c.bench_function("closure_ArcFnTyped", |b| {
         let x = 3;
-        let foo: Arc<dyn Fn() -> u64> = Arc::new(move || {
-            x
-        });
+        let foo: Arc<dyn Fn() -> u64> = Arc::new(move || x);
 
         b.iter(|| {
             black_box(foo());
@@ -150,9 +196,7 @@ fn closure(c: &mut Criterion) {
 
     c.bench_function("closure_BoxFnTyped", |b| {
         let x = 3;
-        let foo: Box<dyn Fn() -> u64> = Box::new(move || {
-            x
-        });
+        let foo: Box<dyn Fn() -> u64> = Box::new(move || x);
 
         b.iter(|| {
             black_box(foo());
@@ -192,9 +236,7 @@ fn enum_closure(c: &mut Criterion) {
     });
 
     c.bench_function("enum_closure_fn", |b| {
-        let foo = || {
-            3
-        };
+        let foo = || 3;
 
         let k = Kernel::Function(foo);
 
@@ -205,9 +247,7 @@ fn enum_closure(c: &mut Criterion) {
 
     c.bench_function("enum_closure_ArcFnUntyped", |b| {
         let x = 3;
-        let foo: Arc<_> = Arc::new(move || {
-            x
-        });
+        let foo: Arc<_> = Arc::new(move || x);
 
         let k = Kernel::ArcClosure(foo);
 
@@ -218,9 +258,7 @@ fn enum_closure(c: &mut Criterion) {
 
     c.bench_function("enum_closure_BoxFnUntyped", |b| {
         let x = 3;
-        let foo: Box<_> = Box::new(move || {
-            x
-        });
+        let foo: Box<_> = Box::new(move || x);
 
         let k = Kernel::BoxClosure(foo);
 
@@ -231,9 +269,7 @@ fn enum_closure(c: &mut Criterion) {
 
     c.bench_function("enum_closure_ArcFnTyped", |b| {
         let x = 3;
-        let foo: Arc<dyn Fn() -> u64> = Arc::new(move || {
-            x
-        });
+        let foo: Arc<dyn Fn() -> u64> = Arc::new(move || x);
 
         let k = Kernel::ArcClosure(foo);
 
@@ -244,9 +280,7 @@ fn enum_closure(c: &mut Criterion) {
 
     c.bench_function("enum_closure_BoxFnTyped", |b| {
         let x = 3;
-        let foo: Box<dyn Fn() -> u64> = Box::new(move || {
-            x
-        });
+        let foo: Box<dyn Fn() -> u64> = Box::new(move || x);
 
         let k = Kernel::BoxClosure(foo);
 
@@ -266,7 +300,7 @@ fn ret(c: &mut Criterion) {
 
         impl Compile<fn(u64) -> u64> for K {
             fn foo(&self) -> fn(u64) -> u64 {
-                |x| { x + 3 }
+                |x| x + 3
             }
         }
 
@@ -283,7 +317,7 @@ fn ret(c: &mut Criterion) {
 
         impl Compile<fn(u64) -> u64> for K {
             fn foo(&self) -> fn(u64) -> u64 {
-                |x| { x + 3 }
+                |x| x + 3
             }
         }
 
@@ -300,7 +334,7 @@ fn ret(c: &mut Criterion) {
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
             fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
-                Box::new(|x| { x + 3 })
+                Box::new(|x| x + 3)
             }
         }
 
@@ -317,7 +351,7 @@ fn ret(c: &mut Criterion) {
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
             fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
-                Box::new(|x| { x + 3 })
+                Box::new(|x| x + 3)
             }
         }
 
@@ -334,8 +368,8 @@ fn ret(c: &mut Criterion) {
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
             fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
-                let c = 3; 
-                Box::new(move |x| { x + c })
+                let c = 3;
+                Box::new(move |x| x + c)
             }
         }
 
@@ -353,7 +387,7 @@ fn ret(c: &mut Criterion) {
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
             fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
                 let c = 3;
-                Box::new(move |x| { x + c })
+                Box::new(move |x| x + c)
             }
         }
 
@@ -366,7 +400,6 @@ fn ret(c: &mut Criterion) {
     });
 }
 
-
 fn compile(c: &mut Criterion) {
     use moose::execution::*;
 
@@ -375,9 +408,9 @@ fn compile(c: &mut Criterion) {
     //     rhs: Ty::Ring64TensorTy,
     // });
 
-    let operator = Operator::RingShl(RingShlOp {
-        amount: 1,
-    });
+    let operator = Operator::RingShr(RingShrOp { amount: 1 });
+
+    // let operator = Operator::RingMul(RingMulOp);
 
     c.bench_function("compile_operator_sync", |b| {
         b.iter(|| {
