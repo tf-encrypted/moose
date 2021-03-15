@@ -402,6 +402,7 @@ fn ret(c: &mut Criterion) {
 
 fn compile(c: &mut Criterion) {
     use moose::execution::*;
+    use std::sync::Arc;
 
     // let operator = Operator::RingAdd(RingAddOp {
     //     lhs: Ty::Ring64TensorTy,
@@ -409,12 +410,14 @@ fn compile(c: &mut Criterion) {
     // });
 
     let operator = Operator::RingShr(RingShrOp { amount: 1 });
+    let context = Arc::new(KernelContext);
 
     // let operator = Operator::RingMul(RingMulOp);
 
     c.bench_function("compile_operator_sync", |b| {
         b.iter(|| {
-            let kernel: SyncKernel = operator.sync_kernel();
+            let kernel: SyncKernel = operator.new_sync_kernel(&context);
+            // let kernel: SyncKernel = operator.sync_kernel();
             black_box(kernel);
         })
     });

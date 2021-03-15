@@ -12,9 +12,9 @@ use petgraph::Graph;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::ops::{Add, Sub};
 use std::sync::Arc;
 use tokio::sync::oneshot;
+use async_trait::async_trait;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Seed(pub Vec<u8>);
@@ -40,6 +40,7 @@ pub enum Ty {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Value {
+    Unit,
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Shape(Shape),
@@ -193,7 +194,7 @@ macro_rules! closure_kernel {
         }))
     };
     ($t0:ty, $f:expr) => {
-        SyncKernel::UnaryClosure(Arc::new(move |x0| {
+        SyncKernel::UnaryClosure(Arc::new(move |_, x0| {
             let x0 = <$t0 as From<Value>>::from(x0);
             let y = $f(x0);
             Value::from(y)
@@ -218,15 +219,11 @@ macro_rules! closure_kernel {
     };
 }
 
-#[derive(Clone, Debug)]
-pub struct Session {
-    pub id: u128,
-}
 
 pub enum SyncKernel {
-    NullaryClosure(Arc<dyn Fn() -> Value + Send + Sync>),
+    NullaryClosure(Arc<dyn Fn(&Arc<Session>) -> Value + Send + Sync>),
     NullaryFunction(fn() -> Value),
-    UnaryClosure(Arc<dyn Fn(Value) -> Value + Send + Sync>),
+    UnaryClosure(Arc<dyn Fn(&Arc<Session>, Value) -> Value + Send + Sync>),
     UnaryFunction(fn(Value) -> Value),
     BinaryClosure(Arc<dyn Fn(Value, Value) -> Value + Send + Sync>),
     BinaryFunction(fn(Value, Value) -> Value),
@@ -244,8 +241,8 @@ pub type AsyncValue = Shared<
 >;
 
 pub enum AsyncKernel {
-    Nullary(Box<dyn Fn() -> AsyncValue>),
-    Unary(Box<dyn Fn(AsyncValue) -> AsyncValue>),
+    Nullary(Box<dyn Fn(&Arc<Session>) -> AsyncValue>),
+    Unary(Box<dyn Fn(&Arc<Session>, AsyncValue) -> AsyncValue>),
     Binary(Box<dyn Fn(AsyncValue, AsyncValue) -> AsyncValue>),
     BinaryFunction(fn(AsyncValue, AsyncValue) -> AsyncValue),
     Ternary(Box<dyn Fn(AsyncValue, AsyncValue, AsyncValue) -> AsyncValue>),
@@ -259,7 +256,7 @@ fn remove_err<T, E>(r: Result<T, E>) -> Result<T, ()> {
 impl From<SyncKernel> for AsyncKernel {
     fn from(sync_kernel: SyncKernel) -> AsyncKernel {
         match sync_kernel {
-            SyncKernel::NullaryFunction(k) => AsyncKernel::Nullary(Box::new(move || {
+            SyncKernel::NullaryFunction(k) => AsyncKernel::Nullary(Box::new(move |_| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let _task = tokio::spawn(async move {
                     let y = k();
@@ -267,16 +264,17 @@ impl From<SyncKernel> for AsyncKernel {
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             })),
-            SyncKernel::NullaryClosure(k) => AsyncKernel::Nullary(Box::new(move || {
+            SyncKernel::NullaryClosure(k) => AsyncKernel::Nullary(Box::new(move |sess| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
+                let k = Arc::clone(&k);
+                let sess = Arc::clone(&sess);
                 let _task = tokio::spawn(async move {
-                    let y = k();
+                    let y = k(&sess);
                     sender.send(y).map_err(|_| ())
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             })),
-            SyncKernel::UnaryFunction(k) => AsyncKernel::Unary(Box::new(move |x0| {
+            SyncKernel::UnaryFunction(k) => AsyncKernel::Unary(Box::new(move |_, x0| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let _task = tokio::spawn(async move {
                     let x0 = x0.await?;
@@ -285,12 +283,13 @@ impl From<SyncKernel> for AsyncKernel {
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             })),
-            SyncKernel::UnaryClosure(k) => AsyncKernel::Unary(Box::new(move |x0| {
+            SyncKernel::UnaryClosure(k) => AsyncKernel::Unary(Box::new(move |sess, x0| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
+                let k = Arc::clone(&k);
+                let sess = Arc::clone(&sess);
                 let _task = tokio::spawn(async move {
                     let x0 = x0.await?;
-                    let y = k(x0);
+                    let y = k(&sess, x0);
                     sender.send(y).map_err(|_| ())
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
@@ -307,7 +306,7 @@ impl From<SyncKernel> for AsyncKernel {
             })),
             SyncKernel::BinaryClosure(k) => AsyncKernel::Binary(Box::new(move |x0, x1| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
+                let k = Arc::clone(&k);
                 let _task = tokio::spawn(async move {
                     let x0 = x0.await?;
                     let x1 = x1.await?;
@@ -329,7 +328,7 @@ impl From<SyncKernel> for AsyncKernel {
             })),
             SyncKernel::TernaryClosure(k) => AsyncKernel::Ternary(Box::new(move |x0, x1, x2| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
+                let k = Arc::clone(&k);
                 let _task = tokio::spawn(async move {
                     let x0 = x0.await?;
                     let x1 = x1.await?;
@@ -339,9 +338,50 @@ impl From<SyncKernel> for AsyncKernel {
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             })),
-            SyncKernel::VariadicFunction(k) => unimplemented!(),
-            SyncKernel::VariadicClosure(k) => unimplemented!(),
+            SyncKernel::VariadicFunction(_k) => unimplemented!(),  // TODO
+            SyncKernel::VariadicClosure(_k) => unimplemented!(),  // TODO
         }
+    }
+}
+
+pub type RendezvousKey = str;
+pub type SessionId = u128;
+pub struct Session {
+    pub id: SessionId,
+    networking: Arc<dyn Send + Sync + SyncNetworking>,
+}
+
+impl Session {
+    pub fn new_subsession(&self) -> Session {
+        let id = self.id; // TODO
+        Session {
+            id,
+            networking: self.networking.clone(),  // TODO
+        }
+    }
+}
+
+pub trait SyncNetworking {
+    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
+    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Value;
+}
+
+#[async_trait]
+pub trait AsyncNetworking {
+    async fn send(&self, v: &Value);
+    async fn receive(&self) -> Value;
+}
+
+pub struct DummyNetworking;
+
+impl SyncNetworking for DummyNetworking {
+    fn send(&self, _v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) {
+        println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
+    }
+
+    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Value {
+        println!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
+        Value::Shape(Shape(vec![0]))
     }
 }
 
@@ -370,7 +410,7 @@ pub enum Operator {
     PrimDeriveSeed(PrimDeriveSeedOp),
     PrimGenPrfKey(PrimGenPrfKeyOp),
     Send(SendOp),
-    Recv(RecvOp),
+    Receive(ReceiveOp),
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -380,18 +420,25 @@ pub struct SendOp {
 
 impl Kernel for SendOp {
     fn sync_kernel(&self) -> SyncKernel {
-        unimplemented!()
+        let rdv = self.rendezvous_key.clone();
+        SyncKernel::UnaryClosure(Arc::new(move |sess, v| {
+            sess.networking.send(&v, &rdv, &sess.id);
+            Value::Unit
+        }))
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RecvOp {
+pub struct ReceiveOp {
     pub rendezvous_key: String,
 }
 
-impl Kernel for RecvOp {
+impl Kernel for ReceiveOp {
     fn sync_kernel(&self) -> SyncKernel {
-        unimplemented!()
+        let rdv = self.rendezvous_key.clone();
+        SyncKernel::NullaryClosure(Arc::new(move |sess| {
+            sess.networking.receive(&rdv, &sess.id)
+        }))
     }
 }
 
@@ -403,7 +450,7 @@ pub struct ConstantOp {
 impl Kernel for ConstantOp {
     fn sync_kernel(&self) -> SyncKernel {
         let value = self.value.clone(); // TODO(Morten) avoid clone here
-        SyncKernel::NullaryClosure(Arc::new(move || value.clone()))
+        SyncKernel::NullaryClosure(Arc::new(move |_| value.clone()))
     }
 }
 
@@ -504,7 +551,7 @@ pub struct RingSumOp {
 impl Kernel for RingSumOp {
     fn sync_kernel(&self) -> SyncKernel {
         let axis = self.axis;
-        SyncKernel::UnaryClosure(Arc::new(move |x| {
+        SyncKernel::UnaryClosure(Arc::new(move |_, x| {
             let x: Ring64Tensor = x.into();
             let y = x.sum(axis);
             Value::from(y)
@@ -624,12 +671,12 @@ pub struct Operation {
 
 pub struct CompiledOperation<V> {
     name: String,
-    kernel: Box<dyn Fn(&Environment<V>) -> V>,
+    kernel: Box<dyn Fn(&Arc<Session>, &Environment<V>) -> V>,
 }
 
 impl<V> Apply<V> for CompiledOperation<V> {
-    fn apply(&self, inputs: &Environment<V>) -> V {
-        (self.kernel)(inputs)
+    fn apply(&self, session: &Arc<Session>, inputs: &Environment<V>) -> V {
+        (self.kernel)(session, inputs)
     }
 }
 
@@ -654,14 +701,14 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 check_arity(&self.name, &self.inputs, 0)?;
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |_: &Environment<Value>| k()),
+                    kernel: Box::new(move |_, _| k()),
                 })
             }
             SyncKernel::NullaryClosure(k) => {
                 check_arity(&self.name, &self.inputs, 0)?;
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |_: &Environment<Value>| k()),
+                    kernel: Box::new(move |sess, _| k(sess)),
                 })
             }
             SyncKernel::UnaryFunction(k) => {
@@ -669,7 +716,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |_, env: &Environment<Value>| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         k(x0)
@@ -681,10 +728,10 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |sess, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
-                        k(x0)
+                        k(sess, x0)
                     }),
                 })
             }
@@ -694,7 +741,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |_, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
@@ -708,7 +755,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |_, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
@@ -723,7 +770,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
+                    kernel: Box::new(move |_, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
@@ -739,7 +786,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
+                    kernel: Box::new(move |_, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
@@ -752,7 +799,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
+                    kernel: Box::new(move |_, env| {
                         let xs: Vec<_> = inputs
                             .iter()
                             .map(|input| env.get(input).unwrap())
@@ -766,7 +813,7 @@ impl Compile<CompiledOperation<Value>> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
+                    kernel: Box::new(move |_, env| {
                         let xs: Vec<_> = inputs
                             .iter()
                             .map(|input| env.get(input).unwrap())
@@ -788,7 +835,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 check_arity(&self.name, &self.inputs, 0)?;
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |_: &Environment<AsyncValue>| k()),
+                    kernel: Box::new(move |sess, _| k(sess)),
                 })
             }
             AsyncKernel::Unary(k) => {
@@ -796,9 +843,9 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
+                    kernel: Box::new(move |sess, env| {
                         let x0 = env.get(&x0_name).unwrap().clone();
-                        k(x0)
+                        k(sess, x0)
                     }),
                 })
             }
@@ -808,7 +855,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
+                    kernel: Box::new(move |_, env| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
                         k(x0, x1)
@@ -821,7 +868,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
+                    kernel: Box::new(move |_, env| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
                         k(x0, x1)
@@ -835,7 +882,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
+                    kernel: Box::new(move |_, env| {
                         let x0 = env.get(&x0_name).unwrap().clone();
                         let x1 = env.get(&x1_name).unwrap().clone();
                         let x2 = env.get(&x2_name).unwrap().clone();
@@ -847,7 +894,7 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
+                    kernel: Box::new(move |_, env| {
                         let xs: Vec<_> = inputs
                             .iter()
                             .map(|input| env.get(input).unwrap())
@@ -862,13 +909,13 @@ impl Compile<CompiledOperation<AsyncValue>> for Operation {
 }
 
 impl Operation {
-    pub fn apply(&self, env: &Environment<Value>) -> Result<Value> {
+    pub fn apply(&self, sess: &Arc<Session>, env: &Environment<Value>) -> Result<Value> {
         let compiled: CompiledOperation<Value> = self.compile()?;
-        Ok(compiled.apply(env))
+        Ok(compiled.apply(sess, env))
     }
 
-    pub fn apply_and_insert(&self, env: &mut Environment<Value>) -> Result<()> {
-        let value = self.apply(env)?;
+    pub fn apply_and_insert(&self, sess: &Arc<Session>, env: &mut Environment<Value>) -> Result<()> {
+        let value = self.apply(sess, env)?;
         env.insert(self.name.clone(), value);
         Ok(())
     }
@@ -919,11 +966,11 @@ impl Computation {
 pub struct CompiledComputation<V>(Arc<dyn Fn(Session, Environment<V>) -> Environment<V>>);
 
 trait Apply<V> {
-    fn apply(&self, env: &Environment<V>) -> V;
+    fn apply(&self, session: &Arc<Session>, env: &Environment<V>) -> V;
 }
 
 pub trait Compile<C> {
-    fn compile(&self) -> Result<C>;
+    fn compile(&self) -> Result<C>;  // TODO(Morten) should be AsyncKernelContext
 }
 
 impl<V: 'static> Compile<CompiledComputation<V>> for Computation
@@ -942,8 +989,9 @@ where
         // TODO(Morten) do we want to insert instructions for when values can be dropped from the environment?
         Ok(CompiledComputation(Arc::new(
             move |sess: Session, mut env: Environment<V>| {
+                let sess = Arc::new(sess);
                 for compiled_op in compiled_ops.iter() {
-                    let value = compiled_op.apply(&env);
+                    let value = compiled_op.apply(&sess, &env);
                     env.insert(compiled_op.name.clone(), value);
                 }
                 env
@@ -970,7 +1018,7 @@ pub struct EagerExecutor;
 impl EagerExecutor {
     pub fn run_computation(&self, comp: &Computation, args: Environment<Value>) -> Result<()> {
         let compiled_comp: CompiledComputation<Value> = comp.compile()?;
-        let sess = Session { id: 12345 };
+        let sess = Session { id: 12345, networking: Arc::new(DummyNetworking), };
         let _env = compiled_comp.apply(sess, args);
         println!("Done");
         Ok(())
@@ -990,7 +1038,7 @@ impl AsyncExecutor {
             .build()
             .unwrap();
 
-        let sess = Session { id: 12345 };
+        let sess = Session { id: 12345, networking: Arc::new(DummyNetworking) };
 
         println!("Running");
         rt.block_on(async {
@@ -1052,14 +1100,32 @@ fn test_foo() {
         })
         .collect();
 
+    let ops = vec![
+        key_op,
+        x_seed_op,
+        Operation {
+            name: "send".into(),
+            kind: Operator::Send(SendOp{ rendezvous_key: "rdv0".into() }),
+            inputs: vec!["x_seed".into()],
+            placement: Placement::Host,
+        },
+        Operation {
+            name: "recv".into(),
+            kind: Operator::Receive(ReceiveOp{ rendezvous_key: "rdv0".into() }),
+            inputs: vec![],
+            placement: Placement::Host,
+        },
+    ];
+
     let comp = Computation {
         // operations: [vec![key_op, x_seed_op, x_shape_op], sample_ops].concat(),
-        operations: sample_ops,
+        operations: ops,
     }
     .toposort()
     .unwrap();
 
-    let exec = AsyncExecutor;
+    // let exec = AsyncExecutor;
+    let exec = EagerExecutor;
     exec.run_computation(&comp, env).ok();
-    // assert!(false);
+    assert!(false);
 }
