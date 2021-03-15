@@ -477,12 +477,6 @@ def cast(x, dtype, placement=None):
 
     # Ensure value can be cast by compiler/executor into the well-defined dtype arg
     if isinstance(dtype, dtypes.DType):
-        if x.dtype.numpy_dtype is None or dtype.numpy_dtype is None:
-            # TODO(jason): allow casting from/into fixed(i, f) dtype
-            raise ValueError(
-                "Casting to and from non-numpy dtypes not yet supported by `cast` "
-                f"function, found dtype {dtype}."
-            )
         moose_dtype = dtype
     elif dtype in _NUMPY_DTYPES_MAP:
         moose_dtype = _NUMPY_DTYPES_MAP[dtype]

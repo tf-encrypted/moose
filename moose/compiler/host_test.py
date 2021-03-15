@@ -1,5 +1,10 @@
+import numpy as np
 from absl.testing import parameterized
 
+from moose.computation import dtypes
+from moose.computation import fixedpoint as fixedpoint_ops
+from moose.computation import ring as ring_ops
+from moose.computation import standard as standard_ops
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SendOperation
 from moose.edsl import base as edsl
@@ -7,6 +12,44 @@ from moose.edsl.tracer import trace
 
 
 class HostTest(parameterized.TestCase):
+    def test_fixedpoint_example_lowering(self):
+        alice = edsl.host_placement(name="alice")
+
+        @edsl.computation
+        def my_comp():
+            x = edsl.constant(
+                np.array([10.0, 12.0]), dtype=dtypes.fixed(8, 27), placement=alice
+            )
+            y = edsl.mul(x, x, placement=alice)
+            z = edsl.cast(y, dtype=dtypes.float64, placement=alice)
+            return z
+
+        concrete_comp = trace(my_comp)
+        fp_comp = concrete_comp.find_operations_of_type(
+            fixedpoint_ops.FixedpointOperation
+        )
+        encode = concrete_comp.find_operations_of_type(
+            fixedpoint_ops.RingEncodeOperation
+        )
+        decode = concrete_comp.find_operations_of_type(
+            fixedpoint_ops.RingEncodeOperation
+        )
+        ring_comp = concrete_comp.find_operations_of_type(ring_ops.RingOperation)
+        ring_mul = concrete_comp.find_operations_of_type(ring_ops.RingMulOperation)
+        ring_trunc = concrete_comp.find_operations_of_type(ring_ops.RingShrOperation)
+        const = concrete_comp.find_operations_of_type(standard_ops.ConstantOperation)
+        output = concrete_comp.find_operations_of_type(standard_ops.OutputOperation)
+
+        assert len(concrete_comp.operations) == 6
+        assert len(fp_comp) == 2
+        assert len(ring_comp) == 2
+        assert len(encode) == 1
+        assert len(decode) == 1
+        assert len(ring_mul) == 1
+        assert len(ring_trunc) == 1
+        assert len(const) == 1
+        assert len(output) == 1
+
     def test_send_receive(self):
         player0 = edsl.host_placement(name="player0")
         player1 = edsl.host_placement(name="player1")
