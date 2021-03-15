@@ -1,5 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rayon::prelude::*;
+use tokio::sync::mpsc::Receiver;
 
 fn par(c: &mut Criterion) {
     c.bench_function("par_channel_rayon", |b| {
@@ -13,10 +14,59 @@ fn par(c: &mut Criterion) {
     });
 
     c.bench_function("par_channel_seq", |b| {
+        use tokio::sync::oneshot::{Sender, Receiver};
         b.iter(|| {
-            let channels: Vec<_> = (0..100_000)
+            let channels: Vec<(Sender<_>, Receiver<_>)> = (0..100_000)
                 .map(|_| tokio::sync::oneshot::channel::<u64>())
                 .collect();
+            black_box(channels);
+        })
+    });
+
+    c.bench_function("par_channel_seq_arc", |b| {
+        use std::sync::Arc;
+
+        let creator: Arc<dyn Fn() -> (_, _)> = Arc::new(|| tokio::sync::oneshot::channel::<u64>());
+
+        b.iter(|| {
+            let channels: Vec<_> = (0..100_000)
+                .map(|_| &creator)
+                .collect();
+            black_box(channels);
+        })
+    });
+
+    c.bench_function("par_spawn_rayon", |b| {
+        b.iter(|| {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            let channels: Vec<_> = (0..100_000)
+                .into_par_iter()
+                .map(|_| rt.spawn(async move {
+                    black_box(5)
+                }))
+                .collect();
+
+            black_box(channels);
+        })
+    });
+
+    c.bench_function("par_spawn_seq", |b| {
+        b.iter(|| {
+            let rt = tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            let channels: Vec<_> = (0..100_000)
+                .map(|_| rt.spawn(async move {
+                    black_box(5)
+                }))
+                .collect();
+
             black_box(channels);
         })
     });
@@ -410,14 +460,14 @@ fn compile(c: &mut Criterion) {
     // });
 
     let operator = Operator::RingShr(RingShrOp { amount: 1 });
-    let context = Arc::new(KernelContext);
+    // let context = Arc::new(KernelContext);
 
     // let operator = Operator::RingMul(RingMulOp);
 
     c.bench_function("compile_operator_sync", |b| {
         b.iter(|| {
-            let kernel: SyncKernel = operator.new_sync_kernel(&context);
-            // let kernel: SyncKernel = operator.sync_kernel();
+            // let kernel: SyncKernel = operator.new_sync_kernel();
+            let kernel: SyncKernel = operator.sync_kernel();
             black_box(kernel);
         })
     });
