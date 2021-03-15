@@ -4,8 +4,8 @@ from moose.computation import fixedpoint as fixedpoint_dialect
 from moose.computation import ring as ring_dialect
 
 
-class RingLoweringPass(substitution_pass.SubstitutionPass):
-    """Lower fixedpoint ops into ring ops."""
+class HostRingLoweringPass(substitution_pass.SubstitutionPass):
+    """Lower fixedpoint ops into ring ops on HostPlacement."""
 
     def qualify_substitution(self, op):
         if not isinstance(op, fixedpoint_dialect.FixedpointOperation):

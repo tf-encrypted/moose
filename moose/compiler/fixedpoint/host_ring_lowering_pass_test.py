@@ -3,7 +3,7 @@ import unittest
 from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
-from moose.compiler.fixedpoint import ring_lowering_pass
+from moose.compiler.fixedpoint import host_ring_lowering_pass
 from moose.computation import dtypes
 from moose.computation import fixedpoint as fixedpoint_ops
 from moose.computation import ring as ring_ops
@@ -13,7 +13,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
 
 
-class RingLoweringPassTest(parameterized.TestCase):
+class HostRingLoweringPassTest(parameterized.TestCase):
     def test_fixed_encode_lowering(self):
         comp = Computation(placements={}, operations={})
 
@@ -44,7 +44,7 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass()])
+        compiler = Compiler(passes=[host_ring_lowering_pass.HostRingLoweringPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
@@ -104,7 +104,7 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass()])
+        compiler = Compiler(passes=[host_ring_lowering_pass.HostRingLoweringPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
@@ -186,7 +186,7 @@ class RingLoweringPassTest(parameterized.TestCase):
             )
         )
 
-        compiler = Compiler(passes=[ring_lowering_pass.RingLoweringPass()])
+        compiler = Compiler(passes=[host_ring_lowering_pass.HostRingLoweringPass()])
         comp = compiler.run_passes(comp)
 
         expected_comp = Computation(placements={}, operations={})
