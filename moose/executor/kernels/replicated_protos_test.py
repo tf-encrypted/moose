@@ -23,7 +23,7 @@ from moose.testing import run_test_computation
 
 pair_lists = st.lists(
     st.tuples(
-        st.integers(min_value=1, max_value=100), st.integers(min_value=1, max_value=100)
+        st.integers(min_value=1, max_value=8), st.integers(min_value=1, max_value=8)
     ),
     min_size=1,
 )
