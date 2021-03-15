@@ -148,3 +148,26 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
             )
         )
         return sub_op
+
+    def lower_SumOperation(self, op):
+        assert isinstance(op, std_dialect.SumOperation)
+        assert len(op.inputs) == 1
+        assert op.output_type.dtype.is_fixedpoint
+        op_dtype = op.output_type.dtype
+        input_ops = [
+            self.computation.operation(input_op_name)
+            for _, input_op_name in op.inputs.items()
+        ]
+        assert all(inp.output_type.dtype.is_fixedpoint for inp in input_ops)
+        sum_op = self.computation.add_operation(
+            fixedpoint_dialect.SumOperation(
+                name=self.context.get_fresh_name("fixed_sum"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+                axis=op.axis,
+                output_type=fixedpoint_dialect.EncodedTensorType(
+                    dtype=op_dtype, precision=op_dtype.fractional_precision,
+                ),
+            )
+        )
+        return sum_op

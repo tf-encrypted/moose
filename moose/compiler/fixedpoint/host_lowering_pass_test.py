@@ -380,6 +380,91 @@ class HostLoweringPassTest(parameterized.TestCase):
         assert comp.operations == expected_comp.operations
         assert comp == expected_comp
 
+    def test_sum_lowering(self):
+        comp = Computation(placements={}, operations={})
+
+        comp.add_placement(HostPlacement(name="alice"))
+        comp.add_operation(
+            standard_ops.ConstantOperation(
+                name="x_input",
+                inputs={},
+                value=2,
+                placement_name="alice",
+                output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="x_encode",
+                placement_name="alice",
+                inputs={"value": "x_input"},
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=dtypes.fixed(14, 23), precision=23,
+                ),
+                precision=23,
+            )
+        )
+        comp.add_operation(
+            standard_ops.SumOperation(
+                name="x_sum",
+                placement_name="alice",
+                axis=0,
+                inputs={"x": "x_encode"},
+                output_type=TensorType(dtype=dtypes.fixed(14, 23)),
+            )
+        )
+        comp.add_operation(
+            standard_ops.OutputOperation(
+                name="output_0", inputs={"value": "x_sum"}, placement_name="alice",
+            )
+        )
+
+        compiler = Compiler(passes=[host_lowering_pass.HostLoweringPass()])
+        comp = compiler.run_passes(comp)
+
+        expected_comp = Computation(placements={}, operations={})
+        expected_comp.add_placement(HostPlacement(name="alice"))
+        expected_comp.add_operation(
+            standard_ops.ConstantOperation(
+                name="x_input",
+                inputs={},
+                value=2,
+                placement_name="alice",
+                output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+        expected_comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="x_encode",
+                placement_name="alice",
+                inputs={"value": "x_input"},
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=dtypes.fixed(14, 23), precision=23,
+                ),
+                precision=23,
+            )
+        )
+        expected_comp.add_operation(
+            fixedpoint_ops.SumOperation(
+                name="fixed_sum_0",
+                placement_name="alice",
+                inputs={"x": "x_encode"},
+                axis=0,
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=dtypes.fixed(14, 23), precision=23,
+                ),
+            )
+        )
+        expected_comp.add_operation(
+            standard_ops.OutputOperation(
+                name="output_0",
+                inputs={"value": "fixed_sum_0"},
+                placement_name="alice",
+            )
+        )
+        assert comp.operations == expected_comp.operations
+        assert comp == expected_comp
+
 
 if __name__ == "__main__":
     unittest.main()
