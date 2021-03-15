@@ -27,6 +27,46 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
         lowered_op = lowering_fn(op)
         return lowered_op
 
+    def lower_MeanOperation(self, op):
+        assert isinstance(op, std_dialect.MeanOperation)
+        assert len(op.inputs) == 1
+        assert op.output_type.dtype.is_fixedpoint
+        op_dtype = op.output_type.dtype
+        (input_op,) = (
+            self.computation.operation(input_op_name)
+            for _, input_op_name in op.inputs.items()
+        )
+        input_precision = input_op.output_type.dtype.fractional_precision
+        mean_precision = 2 * input_precision
+        mean_dtype = dtypes.fixed(op_dtype.integral_precision, mean_precision)
+        mean_output_type = fixedpoint_dialect.EncodedTensorType(
+            dtype=mean_dtype, precision=mean_precision,
+        )
+        mean_op = self.computation.add_operation(
+            fixedpoint_dialect.RingMeanOperation(
+                name=self.context.get_fresh_name("fixed_ring_mean"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+                output_type=mean_output_type,
+                axis=op.axis,
+                precision=input_precision,
+            )
+        )
+        trunc_output_type = fixedpoint_dialect.EncodedTensorType(
+            dtype=op_dtype, precision=mean_output_type.precision // 2,
+        )
+        precision_to_truncate = mean_output_type.precision - trunc_output_type.precision
+        trunc_op = self.computation.add_operation(
+            fixedpoint_dialect.TruncOperation(
+                name=self.context.get_fresh_name("fixed_trunc"),
+                placement_name=op.placement_name,
+                inputs={"value": mean_op.name},
+                precision=precision_to_truncate,
+                output_type=trunc_output_type,
+            )
+        )
+        return trunc_op
+
     def lower_MulOperation(self, op):
         assert isinstance(op, std_dialect.MulOperation)
         assert len(op.inputs) == 2
@@ -40,7 +80,6 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
         mul_precision = sum(
             inp.output_type.dtype.fractional_precision for inp in input_ops
         )
-        # TODO(jason): double-check integral precision here
         mul_dtype = dtypes.fixed(op_dtype.integral_precision, mul_precision)
         mul_op = self.computation.add_operation(
             fixedpoint_dialect.MulOperation(
