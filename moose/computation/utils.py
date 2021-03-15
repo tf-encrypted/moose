@@ -116,7 +116,7 @@ SUPPORTED_TYPES = [
 ]
 
 
-TYPES_MAP = {f"{ty.dialect()}::{ty.__name__}": ty for ty in SUPPORTED_TYPES}
+TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
 
 
 def _encode(val):
@@ -127,14 +127,14 @@ def _encode(val):
             "placements": val.placements,
         }
     elif isinstance(val, (Operation, ValueType, Placement)):
-        type_name = f"{val.dialect()}::{type(val).__name__}"
+        type_name = f"{val.dialect()}_{type(val).__name__}"
         assert type_name in TYPES_MAP, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
         return d
     elif isinstance(val, dtypes.DType):
         return {"__type__": "DType", "name": val.name}
-    raise NotImplementedError()
+    raise NotImplementedError(f"{type(val)}")
 
 
 def _decode(obj):
