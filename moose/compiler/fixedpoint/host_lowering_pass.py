@@ -26,7 +26,7 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
             raise NotImplementedError(f"{type(op)}")
         lowered_op = lowering_fn(op)
         return lowered_op
-        
+
     def lower_AddOperation(self, op):
         assert isinstance(op, std_dialect.AddOperation)
         assert len(op.inputs) == 2
@@ -37,20 +37,18 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
             for _, input_op_name in op.inputs.items()
         ]
         assert all(inp.output_type.dtype.is_fixedpoint for inp in input_ops)
-        add_precision = input_ops[0].output_type.dtype.fractional_precision
-        add_dtype = dtypes.fixed(op_dtype.integral_precision, add_precision)
         add_op = self.computation.add_operation(
             fixedpoint_dialect.AddOperation(
                 name=self.context.get_fresh_name("fixed_add"),
                 placement_name=op.placement_name,
                 inputs=op.inputs,
                 output_type=fixedpoint_dialect.EncodedTensorType(
-                    dtype=add_dtype, precision=add_precision,
+                    dtype=op_dtype, precision=op_dtype.fractional_precision,
                 ),
             )
         )
         return add_op
-    
+
     def lower_MeanOperation(self, op):
         assert isinstance(op, std_dialect.MeanOperation)
         assert len(op.inputs) == 1
@@ -139,15 +137,13 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
             for _, input_op_name in op.inputs.items()
         ]
         assert all(inp.output_type.dtype.is_fixedpoint for inp in input_ops)
-        sub_precision = input_ops[0].output_type.dtype.fractional_precision
-        sub_dtype = dtypes.fixed(op_dtype.integral_precision, sub_precision)
         sub_op = self.computation.add_operation(
             fixedpoint_dialect.SubOperation(
                 name=self.context.get_fresh_name("fixed_sub"),
                 placement_name=op.placement_name,
                 inputs=op.inputs,
                 output_type=fixedpoint_dialect.EncodedTensorType(
-                    dtype=sub_dtype, precision=sub_precision,
+                    dtype=op_dtype, precision=op_dtype.fractional_precision,
                 ),
             )
         )
@@ -163,10 +159,6 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
             for _, input_op_name in op.inputs.items()
         ]
         assert all(inp.output_type.dtype.is_fixedpoint for inp in input_ops)
-        sum_precision = sum(
-            inp.output_type.dtype.fractional_precision for inp in input_ops
-        )
-        sum_dtype = dtypes.fixed(op_dtype.integral_precision, sum_precision)
         sum_op = self.computation.add_operation(
             fixedpoint_dialect.SumOperation(
                 name=self.context.get_fresh_name("fixed_sum"),
@@ -174,7 +166,7 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
                 inputs=op.inputs,
                 axis=op.axis,
                 output_type=fixedpoint_dialect.EncodedTensorType(
-                    dtype=sum_dtype, precision=sum_precision,
+                    dtype=op_dtype, precision=op_dtype.fractional_precision,
                 ),
             )
         )
