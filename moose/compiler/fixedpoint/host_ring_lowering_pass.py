@@ -57,6 +57,18 @@ class HostRingLoweringPass(substitution_pass.SubstitutionPass):
             )
         )
 
+    def lower_AddOperation(self, op):
+        assert isinstance(op, fixedpoint_dialect.AddOperation)
+        assert len(op.inputs) == 2
+        assert isinstance(op.output_type, fixedpoint_dialect.EncodedTensorType)
+        return self.computation.add_operation(
+            ring_dialect.RingAddOperation(
+                name=self.context.get_fresh_name("ring_add"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+            )
+        )
+
     def lower_MulOperation(self, op):
         assert isinstance(op, fixedpoint_dialect.MulOperation)
         assert len(op.inputs) == 2
@@ -66,6 +78,31 @@ class HostRingLoweringPass(substitution_pass.SubstitutionPass):
                 name=self.context.get_fresh_name("ring_mul"),
                 placement_name=op.placement_name,
                 inputs=op.inputs,
+            )
+        )
+
+    def lower_SubOperation(self, op):
+        assert isinstance(op, fixedpoint_dialect.SubOperation)
+        assert len(op.inputs) == 2
+        assert isinstance(op.output_type, fixedpoint_dialect.EncodedTensorType)
+        return self.computation.add_operation(
+            ring_dialect.RingSubOperation(
+                name=self.context.get_fresh_name("ring_sub"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+            )
+        )
+
+    def lower_SumOperation(self, op):
+        assert isinstance(op, fixedpoint_dialect.SumOperation)
+        assert len(op.inputs) == 1
+        assert isinstance(op.output_type, fixedpoint_dialect.EncodedTensorType)
+        return self.computation.add_operation(
+            ring_dialect.RingSumOperation(
+                name=self.context.get_fresh_name("ring_sum"),
+                placement_name=op.placement_name,
+                inputs=op.inputs,
+                axis=op.axis,
             )
         )
 
