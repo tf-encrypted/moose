@@ -1,8 +1,9 @@
 use moose::bit::BitTensor;
 use moose::bit::SampleBit;
-use moose::fixedpoint::{Convert, Float64Tensor};
+use moose::fixedpoint::Convert;
 use moose::prng::AesRng;
 use moose::ring::{Dot, Ring64Tensor, Sample};
+use moose::standard::Float64Tensor;
 use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
@@ -230,7 +231,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<f64>,
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<u64> {
-        let x = Float64Tensor(x.to_owned_array());
+        let x = Float64Tensor::from(x.to_owned_array());
         let y = Ring64Tensor::encode(&x, scaling_factor);
         ring64_to_array(y).to_pyarray(py)
     }

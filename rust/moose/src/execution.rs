@@ -1,8 +1,9 @@
 #![allow(unused_macros)]
 
-use crate::fixedpoint::{Convert, Float64Tensor};
+use crate::fixedpoint::Convert;
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
+use crate::standard::*;
 use anyhow::{anyhow, Result};
 use enum_dispatch::enum_dispatch;
 use futures::future::{Map, Shared};
@@ -12,7 +13,7 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::ops::{Add, Sub};
+use std::ops::{Add, Sub, Mul, Div};
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
@@ -36,7 +37,16 @@ pub enum Ty {
     SeedTy,
     PrfKeyTy,
     NonceTy,
+    Float32TensorTy,
     Float64TensorTy,
+    Int8TensorTy,
+    Int16TensorTy,
+    Int32TensorTy,
+    Int64TensorTy,
+    Uint8TensorTy,
+    Uint16TensorTy,
+    Uint32TensorTy,
+    Uint64TensorTy,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -47,7 +57,16 @@ pub enum Value {
     Seed(Seed),
     PrfKey(PrfKey),
     Nonce(Nonce),
+    Float32Tensor(Float32Tensor),
     Float64Tensor(Float64Tensor),
+    Int8Tensor(Int8Tensor),
+    Int16Tensor(Int16Tensor),
+    Int32Tensor(Int32Tensor),
+    Int64Tensor(Int64Tensor),
+    Uint8Tensor(Uint8Tensor),
+    Uint16Tensor(Uint16Tensor),
+    Uint32Tensor(Uint32Tensor),
+    Uint64Tensor(Uint64Tensor),
 }
 
 impl From<Ring64Tensor> for Value {
@@ -86,9 +105,63 @@ impl From<Nonce> for Value {
     }
 }
 
+impl From<Float32Tensor> for Value {
+    fn from(v: Float32Tensor) -> Self {
+        Value::Float32Tensor(v)
+    }
+}
+
 impl From<Float64Tensor> for Value {
     fn from(v: Float64Tensor) -> Self {
         Value::Float64Tensor(v)
+    }
+}
+
+impl From<Int8Tensor> for Value {
+    fn from(v: Int8Tensor) -> Self {
+        Value::Int8Tensor(v)
+    }
+}
+
+impl From<Int16Tensor> for Value {
+    fn from(v: Int16Tensor) -> Self {
+        Value::Int16Tensor(v)
+    }
+}
+
+impl From<Int32Tensor> for Value {
+    fn from(v: Int32Tensor) -> Self {
+        Value::Int32Tensor(v)
+    }
+}
+
+impl From<Int64Tensor> for Value {
+    fn from(v: Int64Tensor) -> Self {
+        Value::Int64Tensor(v)
+    }
+}
+
+impl From<Uint8Tensor> for Value {
+    fn from(v: Uint8Tensor) -> Self {
+        Value::Uint8Tensor(v)
+    }
+}
+
+impl From<Uint16Tensor> for Value {
+    fn from(v: Uint16Tensor) -> Self {
+        Value::Uint16Tensor(v)
+    }
+}
+
+impl From<Uint32Tensor> for Value {
+    fn from(v: Uint32Tensor) -> Self {
+        Value::Uint32Tensor(v)
+    }
+}
+
+impl From<Uint64Tensor> for Value {
+    fn from(v: Uint64Tensor) -> Self {
+        Value::Uint64Tensor(v)
     }
 }
 
@@ -157,10 +230,91 @@ impl From<Value> for Nonce {
     }
 }
 
+impl From<Value> for Float32Tensor {
+    fn from(v: Value) -> Float32Tensor {
+        match v {
+            Value::Float32Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
 impl From<Value> for Float64Tensor {
-    fn from(v: Value) -> Self {
+    fn from(v: Value) -> Float64Tensor {
         match v {
             Value::Float64Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Int8Tensor {
+    fn from(v: Value) -> Int8Tensor {
+        match v {
+            Value::Int8Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Int16Tensor {
+    fn from(v: Value) -> Int16Tensor {
+        match v {
+            Value::Int16Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Int32Tensor {
+    fn from(v: Value) -> Int32Tensor {
+        match v {
+            Value::Int32Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Int64Tensor {
+    fn from(v: Value) -> Int64Tensor {
+        match v {
+            Value::Int64Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Uint8Tensor {
+    fn from(v: Value) -> Uint8Tensor {
+        match v {
+            Value::Uint8Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Uint16Tensor {
+    fn from(v: Value) -> Uint16Tensor {
+        match v {
+            Value::Uint16Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Uint32Tensor {
+    fn from(v: Value) -> Uint32Tensor {
+        match v {
+            Value::Uint32Tensor(x) => x,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl From<Value> for Uint64Tensor {
+    fn from(v: Value) -> Uint64Tensor {
+        match v {
+            Value::Uint64Tensor(x) => x,
             _ => unimplemented!(),
         }
     }
@@ -439,6 +593,10 @@ trait Kernel {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
     Constant(ConstantOp),
+    Add(AddOp),
+    Sub(SubOp),
+    Mul(MulOp),
+    Div(DivOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -465,6 +623,162 @@ impl Kernel for ConstantOp {
     fn sync_kernel(&self) -> SyncKernel {
         let value = self.value.clone(); // TODO(Morten) avoid clone here
         SyncKernel::Nullary(Arc::new(move || value.clone()))
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct AddOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
+}
+
+impl Kernel for AddOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        match (self.lhs, self.rhs) {
+            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                binary_kernel!(Float32Tensor, Float32Tensor)
+            }
+            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                binary_kernel!(Float64Tensor, Float64Tensor)
+            }
+            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                binary_kernel!(Int32Tensor, Int32Tensor)
+            }
+            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                binary_kernel!(Int64Tensor, Int64Tensor)
+            }
+            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                binary_kernel!(Uint32Tensor, Uint32Tensor)
+            }
+            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                binary_kernel!(Uint64Tensor, Uint64Tensor)
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl<T: Add<U>, U> BinaryFunction<T, U> for AddOp {
+    type Output = <T as Add<U>>::Output;
+    fn execute(x: T, y: U) -> Self::Output {
+        x + y
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SubOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
+}
+
+impl Kernel for SubOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        match (self.lhs, self.rhs) {
+            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                binary_kernel!(Float32Tensor, Float32Tensor)
+            }
+            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                binary_kernel!(Float64Tensor, Float64Tensor)
+            }
+            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                binary_kernel!(Int32Tensor, Int32Tensor)
+            }
+            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                binary_kernel!(Int64Tensor, Int64Tensor)
+            }
+            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                binary_kernel!(Uint32Tensor, Uint32Tensor)
+            }
+            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                binary_kernel!(Uint64Tensor, Uint64Tensor)
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl<T: Sub<U>, U> BinaryFunction<T, U> for SubOp {
+    type Output = <T as Sub<U>>::Output;
+    fn execute(x: T, y: U) -> Self::Output {
+        x - y
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct MulOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
+}
+
+impl Kernel for MulOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        match (self.lhs, self.rhs) {
+            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                binary_kernel!(Float32Tensor, Float32Tensor)
+            }
+            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                binary_kernel!(Float64Tensor, Float64Tensor)
+            }
+            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                binary_kernel!(Int32Tensor, Int32Tensor)
+            }
+            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                binary_kernel!(Int64Tensor, Int64Tensor)
+            }
+            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                binary_kernel!(Uint32Tensor, Uint32Tensor)
+            }
+            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                binary_kernel!(Uint64Tensor, Uint64Tensor)
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl<T: Mul<U>, U> BinaryFunction<T, U> for MulOp {
+    type Output = <T as Mul<U>>::Output;
+    fn execute(x: T, y: U) -> Self::Output {
+        x * y
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DivOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
+}
+
+impl Kernel for DivOp {
+    fn sync_kernel(&self) -> SyncKernel {
+        match (self.lhs, self.rhs) {
+            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                binary_kernel!(Float32Tensor, Float32Tensor)
+            }
+            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                binary_kernel!(Float64Tensor, Float64Tensor)
+            }
+            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                binary_kernel!(Int32Tensor, Int32Tensor)
+            }
+            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                binary_kernel!(Int64Tensor, Int64Tensor)
+            }
+            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                binary_kernel!(Uint32Tensor, Uint32Tensor)
+            }
+            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                binary_kernel!(Uint64Tensor, Uint64Tensor)
+            }
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl<T: Div<U>, U> BinaryFunction<T, U> for DivOp {
+    type Output = <T as Div<U>>::Output;
+    fn execute(x: T, y: U) -> Self::Output {
+        x / y
     }
 }
 
