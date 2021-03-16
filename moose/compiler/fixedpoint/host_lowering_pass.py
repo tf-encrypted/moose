@@ -154,11 +154,11 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
         assert len(op.inputs) == 1
         assert op.output_type.dtype.is_fixedpoint
         op_dtype = op.output_type.dtype
-        input_ops = [
+        (input_op,) = (
             self.computation.operation(input_op_name)
             for _, input_op_name in op.inputs.items()
-        ]
-        assert all(inp.output_type.dtype.is_fixedpoint for inp in input_ops)
+        )
+        assert input_op.output_type.dtype.is_fixedpoint
         sum_op = self.computation.add_operation(
             fixedpoint_dialect.SumOperation(
                 name=self.context.get_fresh_name("fixed_sum"),
