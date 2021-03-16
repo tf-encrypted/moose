@@ -14,7 +14,7 @@ fn par(c: &mut Criterion) {
     });
 
     c.bench_function("par_channel_seq", |b| {
-        use tokio::sync::oneshot::{Sender, Receiver};
+        use tokio::sync::oneshot::{Receiver, Sender};
         b.iter(|| {
             let channels: Vec<(Sender<_>, Receiver<_>)> = (0..100_000)
                 .map(|_| tokio::sync::oneshot::channel::<u64>())
@@ -29,9 +29,7 @@ fn par(c: &mut Criterion) {
         let creator: Arc<dyn Fn() -> (_, _)> = Arc::new(|| tokio::sync::oneshot::channel::<u64>());
 
         b.iter(|| {
-            let channels: Vec<_> = (0..100_000)
-                .map(|_| &creator)
-                .collect();
+            let channels: Vec<_> = (0..100_000).map(|_| &creator).collect();
             black_box(channels);
         })
     });
@@ -45,9 +43,7 @@ fn par(c: &mut Criterion) {
 
             let channels: Vec<_> = (0..100_000)
                 .into_par_iter()
-                .map(|_| rt.spawn(async move {
-                    black_box(5)
-                }))
+                .map(|_| rt.spawn(async move { black_box(5) }))
                 .collect();
 
             black_box(channels);
@@ -62,9 +58,7 @@ fn par(c: &mut Criterion) {
                 .unwrap();
 
             let channels: Vec<_> = (0..100_000)
-                .map(|_| rt.spawn(async move {
-                    black_box(5)
-                }))
+                .map(|_| rt.spawn(async move { black_box(5) }))
                 .collect();
 
             black_box(channels);
@@ -91,9 +85,7 @@ fn par(c: &mut Criterion) {
         let operator = Operator::RingShr(RingShrOp { amount: 1 });
 
         b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000)
-                .map(|_| operator.sync_kernel())
-                .collect();
+            let compiled: Vec<_> = (0..1_000_000).map(|_| operator.sync_kernel()).collect();
             black_box(compiled);
         })
     });
@@ -124,9 +116,7 @@ fn par(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000)
-                .map(|_| operator.sync_kernel())
-                .collect();
+            let compiled: Vec<_> = (0..1_000_000).map(|_| operator.sync_kernel()).collect();
             black_box(compiled);
         })
     });

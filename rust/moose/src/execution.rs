@@ -3,6 +3,7 @@
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -14,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::oneshot;
-use async_trait::async_trait;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Seed(pub Vec<u8>);
@@ -235,7 +235,6 @@ pub enum Kernel {
 
 pub enum SyncKernel {
     // TODO(Morten) get rid of Arc
-
     Nullary(Box<dyn Fn(&SyncSession) -> Value + Send + Sync>),
     Unary(Box<dyn Fn(&SyncSession, Value) -> Value + Send + Sync>),
     Binary(Box<dyn Fn(&SyncSession, Value, Value) -> Value + Send + Sync>),
@@ -269,17 +268,27 @@ where
     fn compile(&self) -> Result<SyncKernel> {
         let kernel: Kernel = self.compile()?;
         match kernel {
-            Kernel::NullaryClosure(k) => Ok(SyncKernel::Nullary(Box::new(move |_| { k() }))),
-            Kernel::UnaryClosure(k) => Ok(SyncKernel::Unary(Box::new(move |_, x0| { k(x0) }))),
-            Kernel::BinaryClosure(k) => Ok(SyncKernel::Binary(Box::new(move |_, x0, x1| { k(x0, x1) }))),
-            Kernel::TernaryClosure(k) => Ok(SyncKernel::Ternary(Box::new(move |_, x0, x1, x2| { k(x0, x1, x2) }))),
-            Kernel::VariadicClosure(k) => Ok(SyncKernel::Variadic(Box::new(move |_, xs| { k(xs) }))),
+            Kernel::NullaryClosure(k) => Ok(SyncKernel::Nullary(Box::new(move |_| k()))),
+            Kernel::UnaryClosure(k) => Ok(SyncKernel::Unary(Box::new(move |_, x0| k(x0)))),
+            Kernel::BinaryClosure(k) => {
+                Ok(SyncKernel::Binary(Box::new(move |_, x0, x1| k(x0, x1))))
+            }
+            Kernel::TernaryClosure(k) => Ok(SyncKernel::Ternary(Box::new(move |_, x0, x1, x2| {
+                k(x0, x1, x2)
+            }))),
+            Kernel::VariadicClosure(k) => Ok(SyncKernel::Variadic(Box::new(move |_, xs| k(xs)))),
 
-            Kernel::NullaryFunction(k) => Ok(SyncKernel::Nullary(Box::new(move |_| { k() }))),
-            Kernel::UnaryFunction(k) => Ok(SyncKernel::Unary(Box::new(move |_, x0| { k(x0) }))),
-            Kernel::BinaryFunction(k) => Ok(SyncKernel::Binary(Box::new(move |_, x0, x1| { k(x0, x1) }))),
-            Kernel::TernaryFunction(k) => Ok(SyncKernel::Ternary(Box::new(move |_, x0, x1, x2| { k(x0, x1, x2) }))),
-            Kernel::VariadicFunction(k) => Ok(SyncKernel::Variadic(Box::new(move |_, xs| { k(xs) }))),
+            Kernel::NullaryFunction(k) => Ok(SyncKernel::Nullary(Box::new(move |_| k()))),
+            Kernel::UnaryFunction(k) => Ok(SyncKernel::Unary(Box::new(move |_, x0| k(x0)))),
+            Kernel::BinaryFunction(k) => {
+                Ok(SyncKernel::Binary(Box::new(move |_, x0, x1| k(x0, x1))))
+            }
+            Kernel::TernaryFunction(k) => {
+                Ok(SyncKernel::Ternary(Box::new(move |_, x0, x1, x2| {
+                    k(x0, x1, x2)
+                })))
+            }
+            Kernel::VariadicFunction(k) => Ok(SyncKernel::Variadic(Box::new(move |_, xs| k(xs)))),
         }
     }
 }
@@ -321,20 +330,22 @@ where
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             }))),
-            Kernel::TernaryClosure(k) => Ok(AsyncKernel::Ternary(Box::new(move |_, x0, x1, x2| {
-                let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = Arc::clone(&k);
-                let _task = tokio::spawn(async move {
-                    let x0 = x0.await?;
-                    let x1 = x1.await?;
-                    let x2 = x2.await?;
-                    let y = k(x0, x1, x2);
-                    sender.send(y).map_err(|_| ())
-                });
-                receiver.map(remove_err as fn(_) -> _).shared()
-            }))),
-            Kernel::VariadicClosure(_k) => unimplemented!(),  // TODO
-            
+            Kernel::TernaryClosure(k) => {
+                Ok(AsyncKernel::Ternary(Box::new(move |_, x0, x1, x2| {
+                    let (sender, receiver) = tokio::sync::oneshot::channel();
+                    let k = Arc::clone(&k);
+                    let _task = tokio::spawn(async move {
+                        let x0 = x0.await?;
+                        let x1 = x1.await?;
+                        let x2 = x2.await?;
+                        let y = k(x0, x1, x2);
+                        sender.send(y).map_err(|_| ())
+                    });
+                    receiver.map(remove_err as fn(_) -> _).shared()
+                })))
+            }
+            Kernel::VariadicClosure(_k) => unimplemented!(), // TODO
+
             Kernel::NullaryFunction(k) => Ok(AsyncKernel::Nullary(Box::new(move |_| {
                 let (sender, receiver) = tokio::sync::oneshot::channel();
                 let _task = tokio::spawn(async move {
@@ -362,18 +373,20 @@ where
                 });
                 receiver.map(remove_err as fn(_) -> _).shared()
             }))),
-            Kernel::TernaryFunction(k) => Ok(AsyncKernel::Ternary(Box::new(move |_, x0, x1, x2| {
-                let (sender, receiver) = tokio::sync::oneshot::channel();
-                let _task = tokio::spawn(async move {
-                    let x0 = x0.await?;
-                    let x1 = x1.await?;
-                    let x2 = x2.await?;
-                    let y = k(x0, x1, x2);
-                    sender.send(y).map_err(|_| ())
-                });
-                receiver.map(remove_err as fn(_) -> _).shared()
-            }))),
-            Kernel::VariadicFunction(_k) => unimplemented!(),  // TODO
+            Kernel::TernaryFunction(k) => {
+                Ok(AsyncKernel::Ternary(Box::new(move |_, x0, x1, x2| {
+                    let (sender, receiver) = tokio::sync::oneshot::channel();
+                    let _task = tokio::spawn(async move {
+                        let x0 = x0.await?;
+                        let x1 = x1.await?;
+                        let x2 = x2.await?;
+                        let y = k(x0, x1, x2);
+                        sender.send(y).map_err(|_| ())
+                    });
+                    receiver.map(remove_err as fn(_) -> _).shared()
+                })))
+            }
+            Kernel::VariadicFunction(_k) => unimplemented!(), // TODO
         }
     }
 }
@@ -395,7 +408,7 @@ impl SyncSession {
         let id = self.id; // TODO
         SyncSession {
             id,
-            networking: Arc::clone(&self.networking),  // TODO
+            networking: Arc::clone(&self.networking), // TODO
         }
     }
 }
@@ -433,7 +446,10 @@ impl AsyncNetworking for DummyAsyncNetworking {
     }
 
     async fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Value {
-        println!("Async receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
+        println!(
+            "Async receiving; rdv:'{}', sid:{}",
+            rendezvous_key, session_id
+        );
         Value::Shape(Shape(vec![0]))
     }
 }
@@ -525,7 +541,7 @@ impl SyncCompile for ReceiveOp {
 impl AsyncCompile for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         let rdv = Arc::new(self.rendezvous_key.clone());
-        Ok(AsyncKernel::Nullary(Box::new( move |sess| {
+        Ok(AsyncKernel::Nullary(Box::new(move |sess| {
             let (sender, receiver) = tokio::sync::oneshot::channel();
             let sess = Arc::clone(&sess);
             let rdv = Arc::clone(&rdv);
@@ -980,10 +996,8 @@ pub trait Apply<V, S> {
 }
 
 pub trait Compile<C> {
-    fn compile(&self) -> Result<C>;  // TODO(Morten) should be AsyncKernelContext
+    fn compile(&self) -> Result<C>; // TODO(Morten) should be AsyncKernelContext
 }
-
-
 
 impl<V: 'static, S: 'static> Compile<CompiledComputation<V, S>> for Computation
 where
@@ -1030,7 +1044,10 @@ pub struct EagerExecutor;
 impl EagerExecutor {
     pub fn run_computation(&self, comp: &Computation, args: Environment<Value>) -> Result<()> {
         let compiled_comp: CompiledComputation<_, _> = comp.compile()?;
-        let sess = SyncSession { id: 12345, networking: Arc::new(DummySyncNetworking) };
+        let sess = SyncSession {
+            id: 12345,
+            networking: Arc::new(DummySyncNetworking),
+        };
         let _env = compiled_comp.apply(sess, args);
         println!("Done");
         Ok(())
@@ -1050,13 +1067,17 @@ impl AsyncExecutor {
             .build()
             .unwrap();
 
-        let sess = Arc::new(AsyncSession { id: 12345, networking: Arc::new(DummyAsyncNetworking) });
+        let sess = Arc::new(AsyncSession {
+            id: 12345,
+            networking: Arc::new(DummyAsyncNetworking),
+        });
 
         println!("Running");
         rt.block_on(async {
             let env = compiled_comp.apply(sess, args);
-            let vals = futures::future::join_all(
-                env.values().map(|op| op.clone()).collect::<Vec<_>>()).await;
+            let vals =
+                futures::future::join_all(env.values().map(|op| op.clone()).collect::<Vec<_>>())
+                    .await;
             println!("Done");
         });
         Ok(())
@@ -1117,13 +1138,17 @@ fn test_foo() {
         x_seed_op,
         Operation {
             name: "send".into(),
-            kind: Operator::Send(SendOp{ rendezvous_key: "rdv0".into() }),
+            kind: Operator::Send(SendOp {
+                rendezvous_key: "rdv0".into(),
+            }),
             inputs: vec!["x_seed".into()],
             placement: Placement::Host,
         },
         Operation {
             name: "recv".into(),
-            kind: Operator::Receive(ReceiveOp{ rendezvous_key: "rdv0".into() }),
+            kind: Operator::Receive(ReceiveOp {
+                rendezvous_key: "rdv0".into(),
+            }),
             inputs: vec![],
             placement: Placement::Host,
         },
