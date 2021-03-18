@@ -119,7 +119,7 @@ def generate_additive_share(
     for i in range(num_players - 1):
         seed = derive_seed(
             key=k,
-            nonce=bytes(i),
+            nonce=i.to_bytes(16, byteorder="little"),
             placement_name=placement_name,
             computation=ctx.computation,
             context=ctx.naming_context,
