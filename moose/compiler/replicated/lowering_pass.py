@@ -737,7 +737,7 @@ def replicated_trunc_pr(
     for i in range(ring_size):
         seed_r = derive_seed(
             key=k2,
-            nonce=bytes(i),
+            nonce=i.to_bytes(16, byteorder="little"),
             placement_name=players[2],
             computation=ctx.computation,
             context=ctx.naming_context,
@@ -759,7 +759,7 @@ def replicated_trunc_pr(
     shared_seeds = [
         derive_seed(
             key=k2,
-            nonce=bytes(ring_size + i),
+            nonce=(ring_size + i).to_bytes(16, byteorder="little"),
             placement_name=players[2],
             computation=ctx.computation,
             context=ctx.naming_context,
@@ -1008,9 +1008,10 @@ def get_dabit(x: ReplicatedBitTensor, setup: ReplicatedSetup, players):
 
     x_shape = bit_shape(x.shares2[0], placement_name=players[2])
     # derive the seed that's used to generate the random bits
+    ctr = 0
     seed_r = derive_seed(
         key=k2,
-        nonce=bytes(2),
+        nonce=ctr.to_bytes(16, byteorder="little"),
         placement_name=players[2],
         computation=ctx.computation,
         context=ctx.naming_context,
@@ -1021,14 +1022,14 @@ def get_dabit(x: ReplicatedBitTensor, setup: ReplicatedSetup, players):
     # derive seed that is sent to P1
     seed_r_ring = derive_seed(
         key=k2,
-        nonce=bytes(1),
+        nonce=(ctr + 1).to_bytes(16, byteorder="little"),
         placement_name=players[2],
         computation=ctx.computation,
         context=ctx.naming_context,
     )
     seed_r_bin = derive_seed(
         key=k2,
-        nonce=bytes(0),
+        nonce=(ctr + 2).to_bytes(16, byteorder="little"),
         placement_name=players[2],
         computation=ctx.computation,
         context=ctx.naming_context,
@@ -1068,7 +1069,7 @@ def additive_to_replicated(x, x2_shape, setup, players):
     seeds = [
         derive_seed(
             key=k2,
-            nonce=bytes(i),
+            nonce=i.to_bytes(16, byteorder="little"),
             placement_name=players[2],
             computation=ctx.computation,
             context=ctx.naming_context,
