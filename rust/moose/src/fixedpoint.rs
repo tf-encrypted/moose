@@ -1,10 +1,7 @@
 use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::ops::Mul;
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct Float64Tensor(pub ArrayD<f64>);
 
 pub trait Convert<T> {
     type Scale;
@@ -22,7 +19,7 @@ impl Convert<Float64Tensor> for Ring64Tensor {
     fn decode(x: &Self, scaling_factor: Self::Scale) -> Float64Tensor {
         let x_upshifted: ArrayD<i64> = x.into();
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        Float64Tensor(x_converted / scaling_factor as f64)
+        Float64Tensor::from(x_converted / scaling_factor as f64)
     }
 }
 
@@ -36,7 +33,7 @@ impl Convert<Float64Tensor> for Ring128Tensor {
     fn decode(x: &Self, scaling_factor: Self::Scale) -> Float64Tensor {
         let x_upshifted: ArrayD<i128> = x.into();
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        Float64Tensor(x_converted / scaling_factor as f64)
+        Float64Tensor::from(x_converted / scaling_factor as f64)
     }
 }
 
@@ -51,7 +48,7 @@ impl Ring64Tensor {
         let shape: &[usize] = x.0.shape();
         if let Some(ax) = axis {
             let dim_len = shape[ax] as f64;
-            Float64Tensor(
+            Float64Tensor::from(
                 Array::from_elem([], 1.0 / dim_len)
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
@@ -59,7 +56,7 @@ impl Ring64Tensor {
         } else {
             let dim_prod: usize = std::iter::Product::product(shape.iter());
             let prod_inv = 1.0 / dim_prod as f64;
-            Float64Tensor(
+            Float64Tensor::from(
                 Array::from_elem([], prod_inv)
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
@@ -79,7 +76,7 @@ impl Ring128Tensor {
         let shape: &[usize] = x.0.shape();
         if let Some(ax) = axis {
             let dim_len = shape[ax] as f64;
-            Float64Tensor(
+            Float64Tensor::from(
                 Array::from_elem([], 1.0 / dim_len)
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
@@ -87,7 +84,7 @@ impl Ring128Tensor {
         } else {
             let dim_prod: usize = std::iter::Product::product(shape.iter());
             let prod_inv = 1.0 / dim_prod as f64;
-            Float64Tensor(
+            Float64Tensor::from(
                 Array::from_elem([], prod_inv)
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
@@ -102,7 +99,7 @@ mod tests {
 
     #[test]
     fn ring_fixedpoint() {
-        let x = Float64Tensor(
+        let x = Float64Tensor::from(
             array![1.0, -2.0, 3.0, -4.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -141,7 +138,7 @@ mod tests {
 
     #[test]
     fn ring_mean_with_axis() {
-        let x_backing: Float64Tensor = Float64Tensor(
+        let x_backing: Float64Tensor = Float64Tensor::from(
             array![[1., 2.], [3., 4.]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -153,13 +150,13 @@ mod tests {
         let dec = Ring64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec,
-            Float64Tensor(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
+            Float64Tensor::from(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
         );
     }
 
     #[test]
     fn ring_mean_no_axis() {
-        let x_backing: Float64Tensor = Float64Tensor(
+        let x_backing: Float64Tensor = Float64Tensor::from(
             array![[1., 2.], [3., 4.]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
