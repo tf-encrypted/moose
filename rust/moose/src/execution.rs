@@ -593,10 +593,10 @@ trait Kernel {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
     Constant(ConstantOp),
-    Add(AddOp),
-    Sub(SubOp),
-    Mul(MulOp),
-    Div(DivOp),
+    StdAdd(StdAddOp),
+    StdSub(StdSubOp),
+    StdMul(StdMulOp),
+    StdDiv(StdDivOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -627,12 +627,12 @@ impl Kernel for ConstantOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct AddOp {
+pub struct StdAddOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-impl Kernel for AddOp {
+impl Kernel for StdAddOp {
     fn sync_kernel(&self) -> SyncKernel {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
@@ -658,7 +658,7 @@ impl Kernel for AddOp {
     }
 }
 
-impl<T: Add<U>, U> BinaryFunction<T, U> for AddOp {
+impl<T: Add<U>, U> BinaryFunction<T, U> for StdAddOp {
     type Output = <T as Add<U>>::Output;
     fn execute(x: T, y: U) -> Self::Output {
         x + y
@@ -666,12 +666,12 @@ impl<T: Add<U>, U> BinaryFunction<T, U> for AddOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SubOp {
+pub struct StdSubOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-impl Kernel for SubOp {
+impl Kernel for StdSubOp {
     fn sync_kernel(&self) -> SyncKernel {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
@@ -697,7 +697,7 @@ impl Kernel for SubOp {
     }
 }
 
-impl<T: Sub<U>, U> BinaryFunction<T, U> for SubOp {
+impl<T: Sub<U>, U> BinaryFunction<T, U> for StdSubOp {
     type Output = <T as Sub<U>>::Output;
     fn execute(x: T, y: U) -> Self::Output {
         x - y
@@ -705,12 +705,12 @@ impl<T: Sub<U>, U> BinaryFunction<T, U> for SubOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct MulOp {
+pub struct StdMulOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-impl Kernel for MulOp {
+impl Kernel for StdMulOp {
     fn sync_kernel(&self) -> SyncKernel {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
@@ -736,7 +736,7 @@ impl Kernel for MulOp {
     }
 }
 
-impl<T: Mul<U>, U> BinaryFunction<T, U> for MulOp {
+impl<T: Mul<U>, U> BinaryFunction<T, U> for StdMulOp {
     type Output = <T as Mul<U>>::Output;
     fn execute(x: T, y: U) -> Self::Output {
         x * y
@@ -744,12 +744,12 @@ impl<T: Mul<U>, U> BinaryFunction<T, U> for MulOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DivOp {
+pub struct StdDivOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-impl Kernel for DivOp {
+impl Kernel for StdDivOp {
     fn sync_kernel(&self) -> SyncKernel {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
@@ -775,7 +775,7 @@ impl Kernel for DivOp {
     }
 }
 
-impl<T: Div<U>, U> BinaryFunction<T, U> for DivOp {
+impl<T: Div<U>, U> BinaryFunction<T, U> for StdDivOp {
     type Output = <T as Div<U>>::Output;
     fn execute(x: T, y: U) -> Self::Output {
         x / y
