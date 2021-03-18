@@ -2,10 +2,10 @@
 
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
-use std::ops::{Add, Sub, Mul, Div};
 use serde::{Deserialize, Serialize};
+use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct StandardTensor<T>(pub ArrayD<T>);
 
 pub type Float32Tensor = StandardTensor<f32>;
@@ -20,15 +20,17 @@ pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
 
 impl<T> From<ArrayD<T>> for StandardTensor<T>
-    where T: LinalgScalar
+where
+    T: LinalgScalar,
 {
     fn from(v: ArrayD<T>) -> StandardTensor<T> {
         StandardTensor::<T>(v)
     }
 }
 
-impl<T> Add for StandardTensor<T> 
-    where T: LinalgScalar
+impl<T> Add for StandardTensor<T>
+where
+    T: LinalgScalar,
 {
     type Output = StandardTensor<T>;
     fn add(self, other: StandardTensor<T>) -> Self::Output {
@@ -36,8 +38,9 @@ impl<T> Add for StandardTensor<T>
     }
 }
 
-impl<T> Sub for StandardTensor<T> 
-    where T: LinalgScalar
+impl<T> Sub for StandardTensor<T>
+where
+    T: LinalgScalar,
 {
     type Output = StandardTensor<T>;
     fn sub(self, other: StandardTensor<T>) -> Self::Output {
@@ -45,8 +48,9 @@ impl<T> Sub for StandardTensor<T>
     }
 }
 
-impl<T> Mul for StandardTensor<T> 
-    where T: LinalgScalar
+impl<T> Mul for StandardTensor<T>
+where
+    T: LinalgScalar,
 {
     type Output = StandardTensor<T>;
     fn mul(self, other: StandardTensor<T>) -> Self::Output {
@@ -54,8 +58,9 @@ impl<T> Mul for StandardTensor<T>
     }
 }
 
-impl<T> Div for StandardTensor<T> 
-    where T: LinalgScalar
+impl<T> Div for StandardTensor<T>
+where
+    T: LinalgScalar,
 {
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {

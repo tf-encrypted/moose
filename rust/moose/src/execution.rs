@@ -13,7 +13,7 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::ops::{Add, Sub, Mul, Div};
+use std::ops::{Add, Div, Mul, Sub};
 use std::sync::Arc;
 use tokio::sync::oneshot;
 
