@@ -44,43 +44,20 @@ fn main() {
     for i in 0..10_000_000 {
         operations.push(Operation {
             name: format!("y{}", i),
-            kind: Operator::RingMul(RingMulOp), // { lhs: Ty::Ring64TensorTy, rhs: Ty::Ring64TensorTy }),
+            kind: Operator::RingMul(RingMulOp {
+                lhs: Ty::Ring64TensorTy,
+                rhs: Ty::Ring64TensorTy,
+            }),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host,
         });
-    }
-
-    println!("Looping");
-    let mut count = 0;
-    for op in operations.iter() {
-        if op.name == "not" {
-            count += 1;
-        }
     }
 
     println!("Computation");
     let comp = Computation { operations };
 
     println!("Executing");
+    // let executor = EagerExecutor;
     let executor = AsyncExecutor;
-    let _ = executor.run_computation(&comp, env);
-
-    // println!("Compiling");
-    // let compiled_comp: CompiledComputation<Value> = comp.compile().unwrap();
-
-    // // let rt = tokio::runtime::Builder::new_multi_thread()
-    // //     .enable_all()
-    // //     .build()
-    // //     .unwrap();
-
-    // // rt.block_on(async {
-    //     println!("Launching");
-    //     let env = compiled_comp.apply(env);
-    //     println!("Running");
-    //     // tokio::time::sleep(tokio::time::Duration::from_secs(120)).await;
-    //     // let vals = futures::future::join_all(
-    //     //     env.values().map(|op| op.clone()).collect::<Vec<_>>()).await;
-    // // });
-    // // rt.shutdown_timeout(tokio::time::Duration::from_secs(120));
-    // println!("Done");
+    let _ = executor.run_computation(&comp, 12345, env);
 }

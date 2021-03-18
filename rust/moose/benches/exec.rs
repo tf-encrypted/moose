@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rayon::prelude::*;
-use tokio::sync::mpsc::Receiver;
+use std::collections::HashMap;
 
 fn par(c: &mut Criterion) {
     c.bench_function("par_channel_rayon", |b| {
@@ -73,7 +73,7 @@ fn par(c: &mut Criterion) {
         b.iter(|| {
             let compiled: Vec<_> = (0..1_000_000)
                 .into_par_iter()
-                .map(|_| operator.sync_kernel())
+                .map(|_| SyncCompile::compile(&operator))
                 .collect();
             black_box(compiled);
         })
@@ -85,7 +85,9 @@ fn par(c: &mut Criterion) {
         let operator = Operator::RingShr(RingShrOp { amount: 1 });
 
         b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000).map(|_| operator.sync_kernel()).collect();
+            let compiled: Vec<_> = (0..1_000_000)
+                .map(|_| SyncCompile::compile(&operator))
+                .collect();
             black_box(compiled);
         })
     });
@@ -101,7 +103,7 @@ fn par(c: &mut Criterion) {
         b.iter(|| {
             let compiled: Vec<_> = (0..1_000_000)
                 .into_par_iter()
-                .map(|_| operator.sync_kernel())
+                .map(|_| SyncCompile::compile(&operator))
                 .collect();
             black_box(compiled);
         })
@@ -116,7 +118,9 @@ fn par(c: &mut Criterion) {
         });
 
         b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000).map(|_| operator.sync_kernel()).collect();
+            let compiled: Vec<_> = (0..1_000_000)
+                .map(|_| SyncCompile::compile(&operator))
+                .collect();
             black_box(compiled);
         })
     });
@@ -444,30 +448,30 @@ fn compile(c: &mut Criterion) {
     use moose::execution::*;
     use std::sync::Arc;
 
-    // let operator = Operator::RingAdd(RingAddOp {
-    //     lhs: Ty::Ring64TensorTy,
-    //     rhs: Ty::Ring64TensorTy,
-    // });
+    let operator = Operator::RingAdd(RingAddOp {
+        lhs: Ty::Ring64TensorTy,
+        rhs: Ty::Ring64TensorTy,
+    });
 
-    let operator = Operator::RingShr(RingShrOp { amount: 1 });
+    // let operator = Operator::RingShr(RingShrOp { amount: 1 });
     // let context = Arc::new(KernelContext);
 
     // let operator = Operator::RingMul(RingMulOp);
 
-    c.bench_function("compile_operator_sync", |b| {
-        b.iter(|| {
-            // let kernel: SyncKernel = operator.new_sync_kernel();
-            let kernel: SyncKernel = operator.sync_kernel();
-            black_box(kernel);
-        })
-    });
+    // c.bench_function("compile_operator_sync", |b| {
+    //     b.iter(|| {
+    //         // let kernel: SyncKernel = operator.new_sync_kernel();
+    //         let kernel: SyncKernel = operator.sync_kernel();
+    //         black_box(kernel);
+    //     })
+    // });
 
-    c.bench_function("compile_operator_async", |b| {
-        b.iter(|| {
-            let kernel: AsyncKernel = operator.async_kernel();
-            black_box(kernel);
-        })
-    });
+    // c.bench_function("compile_operator_async", |b| {
+    //     b.iter(|| {
+    //         let kernel: AsyncKernel = operator.async_kernel();
+    //         black_box(kernel);
+    //     })
+    // });
 
     let operation = Operation {
         name: "z".into(),
@@ -478,18 +482,124 @@ fn compile(c: &mut Criterion) {
 
     c.bench_function("compile_operation_sync", |b| {
         b.iter(|| {
-            let compiled: CompiledOperation<Value> = operation.compile().unwrap();
+            let compiled: CompiledSyncOperation = operation.compile().unwrap();
             black_box(compiled);
         })
     });
 
     c.bench_function("compile_operation_async", |b| {
         b.iter(|| {
-            let compiled: CompiledOperation<AsyncValue> = operation.compile().unwrap();
+            let compiled: CompiledAsyncOperation = operation.compile().unwrap();
             black_box(compiled);
         })
     });
 }
 
-criterion_group!(benches, par, arc, closure, enum_closure, ret, compile);
+fn exec(c: &mut Criterion) {
+    use maplit::hashmap;
+    use moose::execution::*;
+    use moose::ring::*;
+    use std::sync::Arc;
+
+    let mut ops: Vec<_> = (0..500_000)
+        .map(|i| Operation {
+            name: format!("y{}", i),
+            kind: Operator::RingAdd(RingAddOp {
+                lhs: Ty::Ring64TensorTy,
+                rhs: Ty::Ring64TensorTy,
+            }),
+            inputs: vec!["x".into(), "x".into()],
+            placement: Placement::Host,
+        })
+        .collect();
+
+    let x_op = Operation {
+        name: "x".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Ring64Tensor(Ring64Tensor::from(vec![1, 2, 3, 4])),
+        }),
+        inputs: vec![],
+        placement: Placement::Host,
+    };
+
+    ops.push(x_op);
+
+    let comp = Computation { operations: ops }.toposort().unwrap();
+
+    c.bench_function("exec_sync_compile", |b| {
+        b.iter(|| {
+            let compiled: CompiledSyncComputation = comp.compile().unwrap();
+            black_box(compiled);
+        })
+    });
+
+    c.bench_function("exec_async_compile", |b| {
+        b.iter(|| {
+            let compiled: CompiledAsyncComputation = comp.compile().unwrap();
+            black_box(compiled);
+        })
+    });
+
+    c.bench_function("exec_compiled_sync", |b| {
+        let comp_compiled: CompiledSyncComputation = comp.compile().unwrap();
+
+        b.iter(|| {
+            let ctx = SyncContext {
+                networking: Box::new(DummySyncNetworking),
+            };
+
+            let sid = 12345;
+
+            let env = HashMap::new();
+            // let env = HashMap::with_capacity(500_000);
+
+            let res = comp_compiled.apply(&ctx, &sid, env);
+            black_box(res);
+        })
+    });
+
+    c.bench_function("exec_compiled_async", |b| {
+        let comp_compiled: CompiledAsyncComputation = comp.compile().unwrap();
+
+        b.iter(|| {
+            let ctx = Arc::new(AsyncContext {
+                runtime: tokio::runtime::Runtime::new().unwrap(),
+                networking: Box::new(DummyAsyncNetworking),
+            });
+
+            let sid = Arc::new(12345);
+
+            let env = HashMap::new();
+            // let env = HashMap::with_capacity(500_000);
+
+            let (sess, res) = comp_compiled.apply(&ctx, &sid, env).unwrap();
+            ctx.join_session(sess).unwrap();
+            black_box(ctx);
+        })
+    });
+
+    c.bench_function("exec_sync_direct", |b| {
+        b.iter(|| {
+            let ctx = SyncContext {
+                networking: Box::new(DummySyncNetworking),
+            };
+
+            let sid = 12345;
+
+            let env = hashmap!();
+
+            let res = comp.apply(&ctx, &sid, env);
+            black_box(res);
+        })
+    });
+
+    // c.bench_function("compile_computation_async", |b| {
+    //     b.iter(|| {
+    //         let compiled: CompiledAsyncOperation = operation.compile().unwrap();
+    //         black_box(compiled);
+    //     })
+    // });
+}
+
+criterion_group!(benches, par, arc, closure, enum_closure, ret, compile, exec);
 criterion_main!(benches);
