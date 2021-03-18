@@ -26,10 +26,10 @@ class ReplicatedExample(unittest.TestCase):
         def my_comp():
 
             with alice:
-                x = edsl.load("x", dtype=edsl.float64)
+                x = edsl.constant(np.array([1, 2], dtype=np.float64))
 
             with bob:
-                y = edsl.load("y", dtype=edsl.float64)
+                y = edsl.constant(np.array([1, 1], dtype=np.float64))
 
             with rep:
                 z1 = edsl.mul(x, y)
@@ -48,14 +48,6 @@ class ReplicatedExample(unittest.TestCase):
             return (res_dave, abs_dave, res_eric)
 
         concrete_comp = edsl.trace(my_comp)
-        with open("computation.tmp", "wb") as f:
-            f.write(serialize_computation(concrete_comp))
-
-        with open("computation.tmp", "rb") as f:
-            concrete_comp_restored = deserialize_computation(f.read())
-            assert concrete_comp_restored == concrete_comp
-
-        exit(0)
 
         runtime = Runtime()
         runtime.evaluate_computation(
