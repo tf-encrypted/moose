@@ -1,11 +1,14 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use moose::execution::Computation;
 use rayon::prelude::*;
 use std::collections::HashMap;
 
-fn par(c: &mut Criterion) {
-    c.bench_function("par_channel_rayon", |b| {
+/// Benchmark iter vs par_iter for channel creation
+/// Conclusion is that this never seems worth it.
+fn par_channel(c: &mut Criterion) {
+    c.bench_function("par_channel/rayon", |b| {
         b.iter(|| {
-            let channels: Vec<_> = (0..100_000)
+            let channels: Vec<_> = (0..250_000)
                 .into_par_iter()
                 .map(|_| tokio::sync::oneshot::channel::<u64>())
                 .collect();
@@ -13,127 +16,101 @@ fn par(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("par_channel_seq", |b| {
+    c.bench_function("par_channel/seq", |b| {
         use tokio::sync::oneshot::{Receiver, Sender};
         b.iter(|| {
-            let channels: Vec<(Sender<_>, Receiver<_>)> = (0..100_000)
+            let channels: Vec<(Sender<_>, Receiver<_>)> = (0..250_000)
                 .map(|_| tokio::sync::oneshot::channel::<u64>())
                 .collect();
             black_box(channels);
-        })
-    });
-
-    c.bench_function("par_channel_seq_arc", |b| {
-        use std::sync::Arc;
-
-        let creator: Arc<dyn Fn() -> (_, _)> = Arc::new(|| tokio::sync::oneshot::channel::<u64>());
-
-        b.iter(|| {
-            let channels: Vec<_> = (0..100_000).map(|_| &creator).collect();
-            black_box(channels);
-        })
-    });
-
-    c.bench_function("par_spawn_rayon", |b| {
-        b.iter(|| {
-            let rt = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-
-            let channels: Vec<_> = (0..100_000)
-                .into_par_iter()
-                .map(|_| rt.spawn(async move { black_box(5) }))
-                .collect();
-
-            black_box(channels);
-        })
-    });
-
-    c.bench_function("par_spawn_seq", |b| {
-        b.iter(|| {
-            let rt = tokio::runtime::Builder::new_multi_thread()
-                .enable_all()
-                .build()
-                .unwrap();
-
-            let channels: Vec<_> = (0..100_000)
-                .map(|_| rt.spawn(async move { black_box(5) }))
-                .collect();
-
-            black_box(channels);
-        })
-    });
-
-    c.bench_function("par_compile_rayon_closure", |b| {
-        use moose::execution::*;
-
-        let operator = Operator::RingShr(RingShrOp { amount: 1 });
-
-        b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000)
-                .into_par_iter()
-                .map(|_| SyncCompile::compile(&operator))
-                .collect();
-            black_box(compiled);
-        })
-    });
-
-    c.bench_function("par_compile_seq_closure", |b| {
-        use moose::execution::*;
-
-        let operator = Operator::RingShr(RingShrOp { amount: 1 });
-
-        b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000)
-                .map(|_| SyncCompile::compile(&operator))
-                .collect();
-            black_box(compiled);
-        })
-    });
-
-    c.bench_function("par_compile_rayon_function", |b| {
-        use moose::execution::*;
-
-        let operator = Operator::RingAdd(RingAddOp {
-            lhs: Ty::Ring64TensorTy,
-            rhs: Ty::Ring64TensorTy,
-        });
-
-        b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000)
-                .into_par_iter()
-                .map(|_| SyncCompile::compile(&operator))
-                .collect();
-            black_box(compiled);
-        })
-    });
-
-    c.bench_function("par_compile_seq_function", |b| {
-        use moose::execution::*;
-
-        let operator = Operator::RingAdd(RingAddOp {
-            lhs: Ty::Ring64TensorTy,
-            rhs: Ty::Ring64TensorTy,
-        });
-
-        b.iter(|| {
-            let compiled: Vec<_> = (0..1_000_000)
-                .map(|_| SyncCompile::compile(&operator))
-                .collect();
-            black_box(compiled);
         })
     });
 }
 
-/// This bench is to figure out how to efficiently pass an Arc
+/// Benchmark iter vs par_iter for spawning tasks.
+/// Conclusion is that this never seems worth it.
+fn par_spawn(c: &mut Criterion) {
+    c.bench_function("par_spawn/rayon", |b| {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        b.iter(|| {
+            let channels: Vec<_> = (0..250_000)
+                .into_par_iter()
+                .map(|_| rt.spawn(async move { black_box(5) }))
+                .collect();
+
+            black_box(channels);
+        })
+    });
+
+    c.bench_function("par_spawn/seq", |b| {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        b.iter(|| {
+            let channels: Vec<_> = (0..250_000)
+                .map(|_| rt.spawn(async move { black_box(5) }))
+                .collect();
+
+            black_box(channels);
+        })
+    });
+}
+
+/// Benchmark iter vs par_iter for compiling operations.
+/// Conclusion is that
+fn par_compile(c: &mut Criterion) {
+    use moose::execution::*;
+
+    let operator = Operator::RingAdd(RingAddOp {
+        lhs: Ty::Ring64TensorTy,
+        rhs: Ty::Ring64TensorTy,
+    });
+    let operation = Operation {
+        name: "y".into(),
+        kind: operator,
+        inputs: vec!["x".into(), "x".into()],
+        placement: Placement::Host,
+    };
+
+    let mut group = c.benchmark_group("par_compile");
+    for size in [10_000, 100_000, 250_000, 500_000, 1_000_000].iter() {
+        group.bench_function(BenchmarkId::new("rayon", size), |b| {
+            b.iter(|| {
+                let compiled: Vec<_> = (0..*size)
+                    .into_par_iter()
+                    .map(|_| Compile::<CompiledAsyncOperation>::compile(&operation))
+                    .collect();
+                black_box(compiled);
+            })
+        });
+
+        group.bench_function(BenchmarkId::new("seq", size), |b| {
+            b.iter(|| {
+                let compiled: Vec<_> = (0..*size)
+                    .map(|_| Compile::<CompiledAsyncOperation>::compile(&operation))
+                    .collect();
+                black_box(compiled);
+            })
+        });
+    }
+}
+
+criterion_group!(par, par_channel, par_spawn, par_compile);
+
+/// This bench was used to figure out how to efficiently pass an Arc
 /// that the recipient may or may not make use of.
-fn arc(c: &mut Criterion) {
+fn prim_arc(c: &mut Criterion) {
     use std::sync::Arc;
 
     struct Session(u64);
 
-    c.bench_function("arc_direct", |b| {
+    c.bench_function("prim_arc_direct", |b| {
         fn foo(s: &Session) -> u64 {
             3
         }
@@ -144,7 +121,7 @@ fn arc(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("arc_none", |b| {
+    c.bench_function("prim_arc_none", |b| {
         fn foo() -> u64 {
             3
         }
@@ -155,7 +132,7 @@ fn arc(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("arc_clone", |b| {
+    c.bench_function("prim_arc_clone", |b| {
         fn foo(x: Arc<Session>) -> u64 {
             3
         }
@@ -166,7 +143,7 @@ fn arc(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("arc_ref", |b| {
+    c.bench_function("prim_arc_ref", |b| {
         fn foo(x: &Arc<Session>) -> u64 {
             3
         }
@@ -177,7 +154,7 @@ fn arc(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("arc_ref_clone", |b| {
+    c.bench_function("prim_arc_ref_clone", |b| {
         fn foo(x: &Arc<Session>) -> u64 {
             let x = x.clone();
             3
@@ -190,10 +167,15 @@ fn arc(c: &mut Criterion) {
     });
 }
 
-fn closure(c: &mut Criterion) {
+/// This bench was used to figure out overheads of using closures,
+/// including any difference between Arc and Box, and using enums.
+/// Conclusion seems to be that there is a non-trivial overhead
+/// for typed closures, which unfortunately is needed, but enums do
+/// not add anything, nor is there a difference between Arc and Box.
+fn prim_closure(c: &mut Criterion) {
     use std::sync::Arc;
 
-    c.bench_function("closure_symbol", |b| {
+    c.bench_function("prim_closure_symbol", |b| {
         fn foo() -> u64 {
             3
         }
@@ -203,7 +185,7 @@ fn closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("closure_fn", |b| {
+    c.bench_function("prim_closure_fn", |b| {
         let foo = || 3;
 
         b.iter(|| {
@@ -211,7 +193,7 @@ fn closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("closure_ArcFnUntyped", |b| {
+    c.bench_function("prim_closure_ArcFnUntyped", |b| {
         let x = 3;
         let foo: Arc<_> = Arc::new(move || x);
 
@@ -220,7 +202,7 @@ fn closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("closure_BoxFnUntyped", |b| {
+    c.bench_function("prim_closure_BoxFnUntyped", |b| {
         let x = 3;
         let foo: Box<_> = Box::new(move || x);
 
@@ -229,7 +211,7 @@ fn closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("closure_ArcFnTyped", |b| {
+    c.bench_function("prim_closure_ArcFnTyped", |b| {
         let x = 3;
         let foo: Arc<dyn Fn() -> u64> = Arc::new(move || x);
 
@@ -238,7 +220,7 @@ fn closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("closure_BoxFnTyped", |b| {
+    c.bench_function("prim_closure_BoxFnTyped", |b| {
         let x = 3;
         let foo: Box<dyn Fn() -> u64> = Box::new(move || x);
 
@@ -246,10 +228,6 @@ fn closure(c: &mut Criterion) {
             black_box(foo());
         })
     });
-}
-
-fn enum_closure(c: &mut Criterion) {
-    use std::sync::Arc;
 
     pub enum Kernel {
         Function(fn() -> u64),
@@ -267,7 +245,7 @@ fn enum_closure(c: &mut Criterion) {
         }
     }
 
-    c.bench_function("enum_closure_symbol", |b| {
+    c.bench_function("prim_closure_enum_symbol", |b| {
         fn foo() -> u64 {
             3
         }
@@ -279,7 +257,7 @@ fn enum_closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("enum_closure_fn", |b| {
+    c.bench_function("prim_closure_enum_fn", |b| {
         let foo = || 3;
 
         let k = Kernel::Function(foo);
@@ -289,7 +267,7 @@ fn enum_closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("enum_closure_ArcFnUntyped", |b| {
+    c.bench_function("prim_closure_enum_ArcFnUntyped", |b| {
         let x = 3;
         let foo: Arc<_> = Arc::new(move || x);
 
@@ -300,7 +278,7 @@ fn enum_closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("enum_closure_BoxFnUntyped", |b| {
+    c.bench_function("prim_closure_enum_BoxFnUntyped", |b| {
         let x = 3;
         let foo: Box<_> = Box::new(move || x);
 
@@ -311,7 +289,7 @@ fn enum_closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("enum_closure_ArcFnTyped", |b| {
+    c.bench_function("prim_closure_enum_ArcFnTyped", |b| {
         let x = 3;
         let foo: Arc<dyn Fn() -> u64> = Arc::new(move || x);
 
@@ -322,7 +300,7 @@ fn enum_closure(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("enum_closure_BoxFnTyped", |b| {
+    c.bench_function("prim_closure_enum_BoxFnTyped", |b| {
         let x = 3;
         let foo: Box<dyn Fn() -> u64> = Box::new(move || x);
 
@@ -334,12 +312,16 @@ fn enum_closure(c: &mut Criterion) {
     });
 }
 
-fn ret(c: &mut Criterion) {
+/// This bench was used to determine when to create kernels.
+/// Surprisingly, rustc seems to do some magic that suggests late
+/// creation ("inner"); however, this has a significant impact
+/// for capturing closures.
+fn prim_capture(c: &mut Criterion) {
     trait Compile<F: Fn(u64) -> u64> {
         fn foo(&self) -> F;
     }
 
-    c.bench_function("ret_symbol_outer", |b| {
+    c.bench_function("prim_capture_symbol_outer", |b| {
         struct K;
 
         impl Compile<fn(u64) -> u64> for K {
@@ -356,7 +338,7 @@ fn ret(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("ret_symbol_inner", |b| {
+    c.bench_function("prim_capture_symbol_inner", |b| {
         struct K;
 
         impl Compile<fn(u64) -> u64> for K {
@@ -373,7 +355,7 @@ fn ret(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("ret_Fn_outer", |b| {
+    c.bench_function("prim_capture_Box_outer", |b| {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
@@ -390,7 +372,7 @@ fn ret(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("ret_Fn_inner", |b| {
+    c.bench_function("prim_capture_Box_inner", |b| {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
@@ -407,7 +389,41 @@ fn ret(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("ret_Box_outer", |b| {
+    c.bench_function("prim_capture_Box_move_empty_outer", |b| {
+        struct K;
+
+        impl Compile<Box<dyn Fn(u64) -> u64>> for K {
+            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+                Box::new(move |x| x + 3)
+            }
+        }
+
+        let k = K;
+        let f = k.foo();
+
+        b.iter(|| {
+            black_box(f(5));
+        })
+    });
+
+    c.bench_function("prim_capture_Box_move_empty_inner", |b| {
+        struct K;
+
+        impl Compile<Box<dyn Fn(u64) -> u64>> for K {
+            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+                Box::new(move |x| x + 3)
+            }
+        }
+
+        let k = K;
+
+        b.iter(|| {
+            let f = k.foo();
+            black_box(f(5));
+        })
+    });
+
+    c.bench_function("prim_capture_Box_move_nonempty_outer", |b| {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
@@ -425,7 +441,7 @@ fn ret(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("ret_Box_inner", |b| {
+    c.bench_function("prim_capture_Box_move_nonempty_inner", |b| {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
@@ -444,162 +460,162 @@ fn ret(c: &mut Criterion) {
     });
 }
 
+criterion_group!(prim, prim_arc, prim_closure, prim_capture);
+
+fn gen_sample_graph(size: usize) -> Computation {
+    use moose::execution::*;
+    use moose::ring::*;
+
+    let operator = Operator::RingMul(RingMulOp {
+        lhs: Ty::Ring64TensorTy,
+        rhs: Ty::Ring64TensorTy,
+    });
+
+    let mut operations: Vec<_> = (0..size)
+        .map(|i| Operation {
+            name: format!("y{}", i),
+            kind: operator.clone(),
+            inputs: vec!["x".into(), "x".into()],
+            placement: Placement::Host,
+        })
+        .collect();
+
+    let raw_tensor: ndarray::ArrayD<u64> =
+        ndarray::ArrayBase::from_shape_vec([10, 10], (0..100).collect())
+            .unwrap()
+            .into_dyn();
+
+    operations.push(Operation {
+        name: "x".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Ring64Tensor(Ring64Tensor::from(raw_tensor)),
+        }),
+        inputs: vec![],
+        placement: Placement::Host,
+    });
+
+    Computation { operations }.toposort().unwrap()
+}
+
 fn compile(c: &mut Criterion) {
     use moose::execution::*;
-    use std::sync::Arc;
 
     let operator = Operator::RingAdd(RingAddOp {
         lhs: Ty::Ring64TensorTy,
         rhs: Ty::Ring64TensorTy,
     });
 
-    // let operator = Operator::RingShr(RingShrOp { amount: 1 });
-    // let context = Arc::new(KernelContext);
+    c.bench_function("compile_operator/sync", |b| {
+        b.iter(|| {
+            let kernel: SyncKernel = SyncCompile::compile(&operator).unwrap();
+            black_box(kernel);
+        })
+    });
 
-    // let operator = Operator::RingMul(RingMulOp);
-
-    // c.bench_function("compile_operator_sync", |b| {
-    //     b.iter(|| {
-    //         // let kernel: SyncKernel = operator.new_sync_kernel();
-    //         let kernel: SyncKernel = operator.sync_kernel();
-    //         black_box(kernel);
-    //     })
-    // });
-
-    // c.bench_function("compile_operator_async", |b| {
-    //     b.iter(|| {
-    //         let kernel: AsyncKernel = operator.async_kernel();
-    //         black_box(kernel);
-    //     })
-    // });
+    c.bench_function("compile_operator/async", |b| {
+        b.iter(|| {
+            let kernel: AsyncKernel = AsyncCompile::compile(&operator).unwrap();
+            black_box(kernel);
+        })
+    });
 
     let operation = Operation {
         name: "z".into(),
-        kind: operator,
+        kind: operator.clone(),
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host,
     };
 
-    c.bench_function("compile_operation_sync", |b| {
+    c.bench_function("compile_operation/sync", |b| {
         b.iter(|| {
             let compiled: CompiledSyncOperation = operation.compile().unwrap();
             black_box(compiled);
         })
     });
 
-    c.bench_function("compile_operation_async", |b| {
+    c.bench_function("compile_operation/async", |b| {
         b.iter(|| {
             let compiled: CompiledAsyncOperation = operation.compile().unwrap();
             black_box(compiled);
         })
     });
+
+    let mut group = c.benchmark_group("compile_computation");
+    for size in [10_000, 100_000, 250_000, 500_000, 1_000_000].iter() {
+        let comp = gen_sample_graph(*size);
+
+        group.bench_function(BenchmarkId::new("sync", size), |b| {
+            b.iter(|| {
+                let compiled: CompiledSyncComputation = comp.compile().unwrap();
+                black_box(compiled);
+            });
+        });
+
+        group.bench_function(BenchmarkId::new("async", size), |b| {
+            b.iter(|| {
+                let compiled: CompiledAsyncComputation = comp.compile().unwrap();
+                black_box(compiled);
+            });
+        });
+    }
 }
 
-fn exec(c: &mut Criterion) {
+fn execute(c: &mut Criterion) {
     use maplit::hashmap;
     use moose::execution::*;
-    use moose::ring::*;
     use std::sync::Arc;
 
-    let mut ops: Vec<_> = (0..500_000)
-        .map(|i| Operation {
-            name: format!("y{}", i),
-            kind: Operator::RingAdd(RingAddOp {
-                lhs: Ty::Ring64TensorTy,
-                rhs: Ty::Ring64TensorTy,
-            }),
-            inputs: vec!["x".into(), "x".into()],
-            placement: Placement::Host,
-        })
-        .collect();
+    let mut group = c.benchmark_group("execute");
+    for size in [10_000, 100_000, 250_000, 500_000].iter() {
+        let comp = gen_sample_graph(*size);
 
-    let x_op = Operation {
-        name: "x".into(),
-        kind: Operator::Constant(ConstantOp {
-            value: Value::Ring64Tensor(Ring64Tensor::from(vec![1, 2, 3, 4])),
-        }),
-        inputs: vec![],
-        placement: Placement::Host,
-    };
-
-    ops.push(x_op);
-
-    let comp = Computation { operations: ops }.toposort().unwrap();
-
-    c.bench_function("exec_sync_compile", |b| {
-        b.iter(|| {
-            let compiled: CompiledSyncComputation = comp.compile().unwrap();
-            black_box(compiled);
-        })
-    });
-
-    c.bench_function("exec_async_compile", |b| {
-        b.iter(|| {
-            let compiled: CompiledAsyncComputation = comp.compile().unwrap();
-            black_box(compiled);
-        })
-    });
-
-    c.bench_function("exec_compiled_sync", |b| {
-        let comp_compiled: CompiledSyncComputation = comp.compile().unwrap();
-
-        b.iter(|| {
+        group.bench_function(BenchmarkId::new("sync_direct", size), |b| {
             let ctx = SyncContext {
                 networking: Box::new(DummySyncNetworking),
             };
 
-            let sid = 12345;
+            b.iter(|| {
+                let sid = 12345;
+                let env = hashmap!();
+                let res = comp.apply(&ctx, &sid, env);
+                black_box(res);
+            });
+        });
 
-            let env = HashMap::new();
-            // let env = HashMap::with_capacity(500_000);
+        group.bench_function(BenchmarkId::new("sync_compiled", size), |b| {
+            let comp_compiled: CompiledSyncComputation = comp.compile().unwrap();
 
-            let res = comp_compiled.apply(&ctx, &sid, env);
-            black_box(res);
-        })
-    });
+            let ctx = SyncContext {
+                networking: Box::new(DummySyncNetworking),
+            };
 
-    c.bench_function("exec_compiled_async", |b| {
-        let comp_compiled: CompiledAsyncComputation = comp.compile().unwrap();
+            b.iter(|| {
+                let sid = 12345;
+                let env = HashMap::new();
+                let res = comp_compiled.apply(&ctx, &sid, env);
+                black_box(res);
+            });
+        });
 
-        b.iter(|| {
+        group.bench_function(BenchmarkId::new("async_compiled", size), |b| {
+            let comp_compiled: CompiledAsyncComputation = comp.compile().unwrap();
+
             let ctx = Arc::new(AsyncContext {
                 runtime: tokio::runtime::Runtime::new().unwrap(),
                 networking: Box::new(DummyAsyncNetworking),
             });
 
-            let sid = Arc::new(12345);
-
-            let env = HashMap::new();
-            // let env = HashMap::with_capacity(500_000);
-
-            let (sess, res) = comp_compiled.apply(&ctx, &sid, env).unwrap();
-            ctx.join_session(sess).unwrap();
-            black_box(ctx);
-        })
-    });
-
-    c.bench_function("exec_sync_direct", |b| {
-        b.iter(|| {
-            let ctx = SyncContext {
-                networking: Box::new(DummySyncNetworking),
-            };
-
-            let sid = 12345;
-
-            let env = hashmap!();
-
-            let res = comp.apply(&ctx, &sid, env);
-            black_box(res);
-        })
-    });
-
-    // c.bench_function("compile_computation_async", |b| {
-    //     b.iter(|| {
-    //         let compiled: CompiledAsyncOperation = operation.compile().unwrap();
-    //         black_box(compiled);
-    //     })
-    // });
+            b.iter(|| {
+                let sid = Arc::new(12345);
+                let env = HashMap::new();
+                let (sess, res) = comp_compiled.apply(&ctx, &sid, env).unwrap();
+                ctx.join_session(sess).unwrap();
+                black_box(res);
+            });
+        });
+    }
 }
 
-criterion_group!(benches, par, arc, closure, enum_closure, ret, compile, exec);
-criterion_main!(benches);
+criterion_group!(computations, compile, execute);
+
+criterion_main!(computations, par, prim);

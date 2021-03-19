@@ -1128,8 +1128,10 @@ impl Computation {
         &self,
         ctx: &SyncContext,
         sid: &SessionId,
-        mut env: Environment<Value>,
+        args: Environment<Value>,
     ) -> Result<Environment<Value>> {
+        let mut env = args;
+        env.reserve(self.operations.len());
         for op in self.operations.iter() {
             let value = op.apply(ctx, sid, &env)?;
             env.insert(op.name.clone(), value);
@@ -1150,19 +1152,20 @@ where
         // TODO(Morten) type check computation
         let compiled_ops: Vec<CompiledSyncOperation> = self
             .operations
-            // .iter()
-            .par_iter()
+            .par_iter() // par_iter seems to make sense here, see benches
             .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
         // TODO(Morten) we want to sort topologically here, outside the closure
         // TODO(Morten) do we want to insert instructions for when values can be dropped from the environment?
         Ok(CompiledSyncComputation(Box::new(
-            move |ctx: &SyncContext, sid: &SessionId, mut args: Environment<Value>| {
+            move |ctx: &SyncContext, sid: &SessionId, args: Environment<Value>| {
+                let mut env = args;
+                env.reserve(compiled_ops.len());
                 for compiled_op in compiled_ops.iter() {
-                    let value = compiled_op.apply(ctx, sid, &args)?;
-                    args.insert(compiled_op.name.clone(), value);
+                    let value = compiled_op.apply(ctx, sid, &env)?;
+                    env.insert(compiled_op.name.clone(), value);
                 }
-                Ok(args)
+                Ok(env)
             },
         )))
     }
@@ -1196,7 +1199,7 @@ where
     fn compile(&self) -> Result<CompiledAsyncComputation> {
         let compiled_ops: Vec<CompiledAsyncOperation> = self
             .operations
-            .par_iter() // par_iter seems to make sense here
+            .par_iter() // par_iter seems to make sense here, see benches
             .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
 
