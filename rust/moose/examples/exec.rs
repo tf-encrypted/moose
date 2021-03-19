@@ -2,8 +2,6 @@ use maplit::hashmap;
 use moose::execution::*;
 
 fn main() {
-    let mut env = hashmap![];
-
     let key_op = Operation {
         name: "key".into(),
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
@@ -39,7 +37,6 @@ fn main() {
         placement: Placement::Host,
     };
 
-    println!("Constructing");
     let mut operations = vec![key_op, x_seed_op, x_shape_op, x_op];
     for i in 0..10_000_000 {
         operations.push(Operation {
@@ -53,11 +50,11 @@ fn main() {
         });
     }
 
-    println!("Computation");
     let comp = Computation { operations };
+    let args = hashmap![];
+    let sid = 12345;
 
-    println!("Executing");
     // let executor = EagerExecutor;
-    let executor = AsyncExecutor;
-    let _ = executor.run_computation(&comp, 12345, env);
+    let executor = AsyncExecutor::new();
+    let _ = executor.run_computation(&comp, sid, args);
 }

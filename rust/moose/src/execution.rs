@@ -1329,10 +1329,10 @@ impl AsyncExecutor {
 }
 
 #[test]
-fn test_foo() {
+fn test_eager_executor() {
     use maplit::hashmap;
 
-    let mut env = hashmap![];
+    let env = hashmap![];
 
     let key_op = Operation {
         name: "key".into(),
@@ -1341,8 +1341,8 @@ fn test_foo() {
         placement: Placement::Host,
     };
 
-    let x_seed_op = Operation {
-        name: "x_seed".into(),
+    let seed_op = Operation {
+        name: "seed".into(),
         kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp {
             nonce: Nonce(vec![1, 2, 3]),
         }),
@@ -1350,8 +1350,8 @@ fn test_foo() {
         placement: Placement::Host,
     };
 
-    let x_shape_op = Operation {
-        name: "x_shape".into(),
+    let shape_op = Operation {
+        name: "shape".into(),
         kind: Operator::Constant(ConstantOp {
             value: Value::Shape(Shape(vec![2, 3])),
         }),
@@ -1359,54 +1359,24 @@ fn test_foo() {
         placement: Placement::Host,
     };
 
-    let sample_ops: Vec<_> = (0..100_000)
-        // .into_par_iter()
+    let sample_ops: Vec<_> = (0..100)
         .map(|i| {
-            // Operation {
-            //     name: format!("x{}", i),
-            //     kind: Operator::RingSample(RingSampleOp { output: Ty::Ring64TensorTy, max_value: None }),
-            //     inputs: vec!["x_shape".into(), "x_seed".into()],
-            //     placement: Placement::Host,
-            // }
             Operation {
-                name: "key".into(),
-                kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
-                inputs: vec![],
+                name: format!("x{}", i),
+                kind: Operator::RingSample(RingSampleOp { output: Ty::Ring64TensorTy, max_value: None }),
+                inputs: vec!["shape".into(), "seed".into()],
                 placement: Placement::Host,
             }
         })
         .collect();
 
-    let ops = vec![
-        key_op,
-        x_seed_op,
-        Operation {
-            name: "send".into(),
-            kind: Operator::Send(SendOp {
-                rendezvous_key: "rdv0".into(),
-            }),
-            inputs: vec!["x_seed".into()],
-            placement: Placement::Host,
-        },
-        Operation {
-            name: "recv".into(),
-            kind: Operator::Receive(ReceiveOp {
-                rendezvous_key: "rdv0".into(),
-            }),
-            inputs: vec![],
-            placement: Placement::Host,
-        },
-    ];
+    let mut operations = sample_ops;
+    operations.extend(vec![key_op, seed_op, shape_op]);
 
-    let comp = Computation {
-        // operations: [vec![key_op, x_seed_op, x_shape_op], sample_ops].concat(),
-        operations: ops,
-    }
-    .toposort()
-    .unwrap();
+    let comp = Computation { operations }
+        .toposort()
+        .unwrap();
 
-    // let exec = AsyncExecutor;
     let exec = EagerExecutor::new();
     exec.run_computation(&comp, 12345, env).ok();
-    // assert!(false);
 }
