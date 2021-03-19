@@ -98,271 +98,52 @@ pub enum Value {
     Uint64Tensor(Uint64Tensor),
 }
 
-impl From<Ring64Tensor> for Value {
-    fn from(v: Ring64Tensor) -> Self {
-        Value::Ring64Tensor(v)
-    }
-}
-
-impl From<Ring128Tensor> for Value {
-    fn from(v: Ring128Tensor) -> Self {
-        Value::Ring128Tensor(v)
-    }
-}
-
-impl From<Shape> for Value {
-    fn from(v: Shape) -> Self {
-        Value::Shape(v)
-    }
-}
-
-impl From<Seed> for Value {
-    fn from(v: Seed) -> Self {
-        Value::Seed(v)
-    }
-}
-
-impl From<PrfKey> for Value {
-    fn from(v: PrfKey) -> Self {
-        Value::PrfKey(v)
-    }
-}
-
-impl From<Nonce> for Value {
-    fn from(v: Nonce) -> Self {
-        Value::Nonce(v)
-    }
-}
-
-impl From<Float32Tensor> for Value {
-    fn from(v: Float32Tensor) -> Self {
-        Value::Float32Tensor(v)
-    }
-}
-
-impl From<Float64Tensor> for Value {
-    fn from(v: Float64Tensor) -> Self {
-        Value::Float64Tensor(v)
-    }
-}
-
-impl From<Int8Tensor> for Value {
-    fn from(v: Int8Tensor) -> Self {
-        Value::Int8Tensor(v)
-    }
-}
-
-impl From<Int16Tensor> for Value {
-    fn from(v: Int16Tensor) -> Self {
-        Value::Int16Tensor(v)
-    }
-}
-
-impl From<Int32Tensor> for Value {
-    fn from(v: Int32Tensor) -> Self {
-        Value::Int32Tensor(v)
-    }
-}
-
-impl From<Int64Tensor> for Value {
-    fn from(v: Int64Tensor) -> Self {
-        Value::Int64Tensor(v)
-    }
-}
-
-impl From<Uint8Tensor> for Value {
-    fn from(v: Uint8Tensor) -> Self {
-        Value::Uint8Tensor(v)
-    }
-}
-
-impl From<Uint16Tensor> for Value {
-    fn from(v: Uint16Tensor) -> Self {
-        Value::Uint16Tensor(v)
-    }
-}
-
-impl From<Uint32Tensor> for Value {
-    fn from(v: Uint32Tensor) -> Self {
-        Value::Uint32Tensor(v)
-    }
-}
-
-impl From<Uint64Tensor> for Value {
-    fn from(v: Uint64Tensor) -> Self {
-        Value::Uint64Tensor(v)
-    }
-}
-
-impl TryFrom<Value> for Ring64Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Ring64Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
+macro_rules! convert {
+    ($raw_type:ident) => {
+        impl From<$raw_type> for Value {
+            fn from(x: $raw_type) -> Self {
+                Value::$raw_type(x)
+            }
         }
-    }
+
+        impl TryFrom<Value> for $raw_type {
+            type Error = Error;
+            fn try_from(v: Value) -> Result<Self> {
+                match v {
+                    Value::$raw_type(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch),
+                }
+            }
+        }
+
+        impl<'v> TryFrom<&'v Value> for &'v $raw_type {
+            type Error = Error;
+            fn try_from(v: &'v Value) -> Result<Self> {
+                match v {
+                    Value::$raw_type(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch),
+                }
+            }
+        }
+    };
 }
 
-impl<'v> TryFrom<&'v Value> for &'v Ring64Tensor {
-    type Error = Error;
-    fn try_from(v: &'v Value) -> Result<Self> {
-        match v {
-            Value::Ring64Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Ring128Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Ring128Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Shape {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Shape(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Seed {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Seed(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for PrfKey {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::PrfKey(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Nonce {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Nonce(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Float32Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Float32Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Float64Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Float64Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Int8Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Int8Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Int16Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Int16Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Int32Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Int32Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Int64Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Int64Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Uint8Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Uint8Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Uint16Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Uint16Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Uint32Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Uint32Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
-
-impl TryFrom<Value> for Uint64Tensor {
-    type Error = Error;
-    fn try_from(v: Value) -> Result<Self> {
-        match v {
-            Value::Uint64Tensor(x) => Ok(x),
-            _ => Err(Error::TypeMismatch),
-        }
-    }
-}
+convert!(Ring64Tensor);
+convert!(Ring128Tensor);
+convert!(Shape);
+convert!(Seed);
+convert!(PrfKey);
+convert!(Nonce);
+convert!(Float32Tensor);
+convert!(Float64Tensor);
+convert!(Int8Tensor);
+convert!(Int16Tensor);
+convert!(Int32Tensor);
+convert!(Int64Tensor);
+convert!(Uint8Tensor);
+convert!(Uint16Tensor);
+convert!(Uint32Tensor);
+convert!(Uint64Tensor);
 
 macro_rules! function_kernel {
     ($f:expr) => {
