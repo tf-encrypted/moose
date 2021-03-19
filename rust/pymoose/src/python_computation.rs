@@ -1,13 +1,17 @@
+use moose::execution;
 use pyo3::{
     prelude::*,
     types::{IntoPyDict, PyBytes, PyModule},
 };
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::convert::TryInto;
 use std::fmt::Binary;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
+#[allow(non_camel_case_types)]
 enum Operation {
     prim_SampleKeyOperation(SampleKeyOperation),
     prim_DeriveSeedOperation(DeriveSeedOperation),
@@ -154,12 +158,16 @@ struct ReceiveOperation {
 struct RingEncodeOperation {
     name: String,
     scaling_factor: u64,
+    inputs: HashMap<String, String>,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct RingDecodeOperation {
     name: String,
     scaling_factor: u64,
+    inputs: HashMap<String, String>,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -176,14 +184,108 @@ struct HostPlacement {
 
 #[derive(Deserialize, Debug)]
 struct ReplicatedPlacement {
-    name: String,
+    player_names: Vec<String>,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
-struct Computation {
+struct PythonComputation {
     operations: HashMap<String, Operation>,
     placements: HashMap<String, Placement>,
+}
+
+impl TryFrom<&Placement> for execution::Placement {
+    type Error = anyhow::Error;
+    fn try_from(placement: &Placement) -> anyhow::Result<execution::Placement> {
+        match placement {
+            Placement::host_HostPlacement(plc) => {
+                Ok(execution::Placement::Host(execution::HostPlacement {
+                    name: plc.name.clone(),
+                }))
+            }
+            Placement::rep_ReplicatedPlacement(plc) => {
+                if plc.player_names.len() != 3 {
+                    return Err(anyhow::anyhow!("Placement doesn't have 3 players"));
+                }
+                Ok(execution::Placement::Replicated(
+                    execution::ReplicatedPlacement {
+                        players: [
+                            plc.player_names[0].clone(),
+                            plc.player_names[1].clone(),
+                            plc.player_names[2].clone(),
+                        ],
+                    },
+                ))
+            }
+        }
+    }
+}
+
+fn map_inputs(
+    inputs: &HashMap<String, String>,
+    expected_inputs: &[&str],
+) -> anyhow::Result<Vec<String>> {
+    expected_inputs
+        .iter()
+        .map(|item| {
+            inputs
+                .get(*item)
+                .cloned()
+                .ok_or(anyhow::anyhow!("No value found in input vector"))
+        })
+        .collect::<anyhow::Result<Vec<_>>>()
+}
+fn map_placement(
+    plc: &HashMap<String, execution::Placement>,
+    name: &str,
+) -> anyhow::Result<execution::Placement> {
+    plc.get(name).cloned()
+        .ok_or(anyhow::anyhow!("No key found in placement dictionary"))
+}
+
+impl TryFrom<PythonComputation> for execution::Computation {
+    type Error = anyhow::Error;
+    fn try_from(python_computation: PythonComputation) -> anyhow::Result<execution::Computation> {
+        let placements: HashMap<String, execution::Placement> = python_computation
+            .placements
+            .iter()
+            .map(|(placement_name, python_placement)| {
+                Ok((placement_name.clone(), python_placement.try_into()?))
+            })
+            .collect::<anyhow::Result<HashMap<_, _>>>()?;
+        let operations: Vec<execution::Operation> = python_computation
+            .operations
+            .values()
+            .map(|op| {
+                use Operation::*;
+                use execution::Operator::*;
+                match op {
+                    fixed_RingEncodeOperation(op) => Ok(execution::Operation {
+                        kind: FixedpointRingEncode(
+                            execution::FixedpointRingEncodeOp {
+                                scaling_factor: op.scaling_factor,
+                            },
+                        ),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_RingDecodeOperation(op) => Ok(execution::Operation {
+                        kind: FixedpointRingDecode(
+                            execution::FixedpointRingDecodeOp {
+                                scaling_factor: op.scaling_factor,
+                            },
+                        ),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    _ => unimplemented!(),
+                }
+            })
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        Ok(execution::Computation { operations })
+    }
 }
 
 #[test]
@@ -228,7 +330,7 @@ def f():
     let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call0().unwrap();
     let buf: Vec<u8> = py_any.extract().unwrap();
 
-    let comp: Computation = rmp_serde::from_read_ref(&buf).unwrap();
+    let comp: PythonComputation = rmp_serde::from_read_ref(&buf).unwrap();
     println!("{:?}", comp);
 
     assert_eq!(true, false);

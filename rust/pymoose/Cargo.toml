@@ -15,6 +15,7 @@ name = "moose_kernels"
 crate-type = ["cdylib"]
 
 [dependencies]
+anyhow = "~1.0"
 numpy = "~0.12"
 ndarray = "~0.13.1"
 moose = { path = "../moose" }

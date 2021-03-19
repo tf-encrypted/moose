@@ -771,7 +771,18 @@ impl UnaryClosure<Ring64Tensor> for FixedpointRingMeanOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Placement {
-    Host,
+    Host(HostPlacement),
+    Replicated(ReplicatedPlacement),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HostPlacement {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReplicatedPlacement {
+    pub players: [String; 3],
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
