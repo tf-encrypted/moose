@@ -1,43 +1,41 @@
 use moose::execution;
-use pyo3::{
-    prelude::*,
-    types::{IntoPyDict, PyBytes, PyModule},
-};
+use moose::execution::*;
+use pyo3::{prelude::*, types::PyModule};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use std::fmt::Binary;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
-enum Operation {
-    prim_SampleKeyOperation(SampleKeyOperation),
-    prim_DeriveSeedOperation(DeriveSeedOperation),
-    ring_RingShapeOperation(RingShapeOperation),
-    ring_RingSampleOperation(RingSampleOperation),
-    ring_RingSubOperation(RingSubOperation),
-    ring_RingShlOperation(RingShlOperation),
-    ring_RingShrOperation(RingShrOperation),
-    ring_RingAddOperation(RingAddOperation),
-    ring_FillTensorOperation(FillTensorOperation),
-    ring_RingMulOperation(RingMulOperation),
-    std_AddOperation(AddOperation),
-    std_ConstantOperation(ConstantOperation),
-    std_LoadOperation(LoadOperation),
-    std_SaveOperation(SaveOperation),
-    std_OutputOperation(OutputOperation),
-    std_SerializeOperation(SerializeOperation),
-    std_DeserializeOperation(DeserializeOperation),
-    std_SendOperation(SendOperation),
-    std_ReceiveOperation(ReceiveOperation),
-    fixed_RingEncodeOperation(RingEncodeOperation),
-    fixed_RingDecodeOperation(RingDecodeOperation),
+enum PyOperation {
+    prim_SampleKeyOperation(PySampleKeyOperation),
+    prim_DeriveSeedOperation(PyDeriveSeedOperation),
+    ring_RingShapeOperation(PyRingShapeOperation),
+    ring_RingSampleOperation(PyRingSampleOperation),
+    ring_RingSubOperation(PyRingSubOperation),
+    ring_RingShlOperation(PyRingShlOperation),
+    ring_RingShrOperation(PyRingShrOperation),
+    ring_RingAddOperation(PyRingAddOperation),
+    ring_FillTensorOperation(PyFillTensorOperation),
+    ring_RingMulOperation(PyRingMulOperation),
+    std_AddOperation(PyAddOperation),
+    std_ConstantOperation(PyConstantOperation),
+    std_LoadOperation(PyLoadOperation),
+    std_SaveOperation(PySaveOperation),
+    std_OutputOperation(PyOutputOperation),
+    std_SerializeOperation(PySerializeOperation),
+    std_DeserializeOperation(PyDeserializeOperation),
+    std_SendOperation(PySendOperation),
+    std_ReceiveOperation(PyReceiveOperation),
+    fixed_RingEncodeOperation(PyRingEncodeOperation),
+    fixed_RingDecodeOperation(PyRingDecodeOperation),
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
+#[allow(non_camel_case_types)]
 enum ValueType {
     prim_PRFKeyType,
     prim_SeedType,
@@ -46,100 +44,105 @@ enum ValueType {
 }
 
 #[derive(Deserialize, Debug)]
-struct SampleKeyOperation {
+struct PySampleKeyOperation {
     name: String,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct DeriveSeedOperation {
+struct PyDeriveSeedOperation {
     name: String,
+    inputs: HashMap<String, String>,
+    placement_name: String,
     #[serde(with = "serde_bytes")]
     nonce: Vec<u8>,
 }
 
 #[derive(Deserialize, Debug)]
-struct RingShapeOperation {
+struct PyRingShapeOperation {
     name: String,
+    inputs: HashMap<String, String>,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct RingSampleOperation {
+struct PyRingSampleOperation {
     name: String,
     max_value: Option<u64>,
 }
 
 #[derive(Deserialize, Debug)]
-struct RingSubOperation {
+struct PyRingSubOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct RingAddOperation {
+struct PyRingAddOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct RingMulOperation {
+struct PyRingMulOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct RingShlOperation {
-    name: String,
-    amount: u64,
-}
-
-#[derive(Deserialize, Debug)]
-struct RingShrOperation {
+struct PyRingShlOperation {
     name: String,
     amount: u64,
 }
 
 #[derive(Deserialize, Debug)]
-struct FillTensorOperation {
+struct PyRingShrOperation {
+    name: String,
+    amount: u64,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFillTensorOperation {
     name: String,
     value: i64,
 }
 
 #[derive(Deserialize, Debug)]
-struct ConstantOperation {
+struct PyConstantOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct LoadOperation {
+struct PyLoadOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct AddOperation {
+struct PyAddOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct SaveOperation {
+struct PySaveOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct OutputOperation {
+struct PyOutputOperation {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct SerializeOperation {
-    name: String,
-    value_type: ValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct DeserializeOperation {
+struct PySerializeOperation {
     name: String,
     value_type: ValueType,
 }
 
 #[derive(Deserialize, Debug)]
-struct SendOperation {
+struct PyDeserializeOperation {
+    name: String,
+    value_type: ValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySendOperation {
     name: String,
     sender: String,
     receiver: String,
@@ -147,7 +150,7 @@ struct SendOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct ReceiveOperation {
+struct PyReceiveOperation {
     name: String,
     sender: String,
     receiver: String,
@@ -155,7 +158,7 @@ struct ReceiveOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct RingEncodeOperation {
+struct PyRingEncodeOperation {
     name: String,
     scaling_factor: u64,
     inputs: HashMap<String, String>,
@@ -163,7 +166,7 @@ struct RingEncodeOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct RingDecodeOperation {
+struct PyRingDecodeOperation {
     name: String,
     scaling_factor: u64,
     inputs: HashMap<String, String>,
@@ -172,38 +175,39 @@ struct RingDecodeOperation {
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
-enum Placement {
-    host_HostPlacement(HostPlacement),
-    rep_ReplicatedPlacement(ReplicatedPlacement),
+#[allow(non_camel_case_types)]
+enum PyPlacement {
+    host_HostPlacement(PyHostPlacement),
+    rep_ReplicatedPlacement(PyReplicatedPlacement),
 }
 
 #[derive(Deserialize, Debug)]
-struct HostPlacement {
+struct PyHostPlacement {
     name: String,
 }
 
 #[derive(Deserialize, Debug)]
-struct ReplicatedPlacement {
+struct PyReplicatedPlacement {
     player_names: Vec<String>,
 }
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
-struct PythonComputation {
-    operations: HashMap<String, Operation>,
-    placements: HashMap<String, Placement>,
+struct PyComputation {
+    operations: HashMap<String, PyOperation>,
+    placements: HashMap<String, PyPlacement>,
 }
 
-impl TryFrom<&Placement> for execution::Placement {
+impl TryFrom<&PyPlacement> for Placement {
     type Error = anyhow::Error;
-    fn try_from(placement: &Placement) -> anyhow::Result<execution::Placement> {
+    fn try_from(placement: &PyPlacement) -> anyhow::Result<Placement> {
         match placement {
-            Placement::host_HostPlacement(plc) => {
+            PyPlacement::host_HostPlacement(plc) => {
                 Ok(execution::Placement::Host(execution::HostPlacement {
                     name: plc.name.clone(),
                 }))
             }
-            Placement::rep_ReplicatedPlacement(plc) => {
+            PyPlacement::rep_ReplicatedPlacement(plc) => {
                 if plc.player_names.len() != 3 {
                     return Err(anyhow::anyhow!("Placement doesn't have 3 players"));
                 }
@@ -239,13 +243,14 @@ fn map_placement(
     plc: &HashMap<String, execution::Placement>,
     name: &str,
 ) -> anyhow::Result<execution::Placement> {
-    plc.get(name).cloned()
+    plc.get(name)
+        .cloned()
         .ok_or(anyhow::anyhow!("No key found in placement dictionary"))
 }
 
-impl TryFrom<PythonComputation> for execution::Computation {
+impl TryFrom<PyComputation> for execution::Computation {
     type Error = anyhow::Error;
-    fn try_from(python_computation: PythonComputation) -> anyhow::Result<execution::Computation> {
+    fn try_from(python_computation: PyComputation) -> anyhow::Result<execution::Computation> {
         let placements: HashMap<String, execution::Placement> = python_computation
             .placements
             .iter()
@@ -257,30 +262,59 @@ impl TryFrom<PythonComputation> for execution::Computation {
             .operations
             .values()
             .map(|op| {
-                use Operation::*;
                 use execution::Operator::*;
+                use PyOperation::*;
                 match op {
+                    prim_SampleKeyOperation(op) => Ok(execution::Operation {
+                        kind: PrimGenPrfKey(PrimGenPrfKeyOp {}),
+                        name: op.name.clone(),
+                        inputs: Vec::new(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    prim_DeriveSeedOperation(op) => Ok(execution::Operation {
+                        kind: PrimDeriveSeed(PrimDeriveSeedOp {
+                            nonce: Nonce(op.nonce.clone()),
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["key"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ring_RingShapeOperation(op) => Ok(execution::Operation {
+                        kind: RingShape(RingShapeOp {
+                            ty: execution::Ty::Ring64TensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["tensor"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ring_RingSampleOperation(op) => Ok(execution::Operation {
+                        kind: RingSample(RingSampleOp {
+                            ty: execution::Ty::Ring64TensorTy,
+                            max_value: op.max_value as Option<usize>,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["shape", "seed"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    // ring_RingSampleOperation(PyRingSampleOperation),
                     fixed_RingEncodeOperation(op) => Ok(execution::Operation {
-                        kind: FixedpointRingEncode(
-                            execution::FixedpointRingEncodeOp {
-                                scaling_factor: op.scaling_factor,
-                            },
-                        ),
+                        kind: FixedpointRingEncode(execution::FixedpointRingEncodeOp {
+                            scaling_factor: op.scaling_factor,
+                        }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingDecodeOperation(op) => Ok(execution::Operation {
-                        kind: FixedpointRingDecode(
-                            execution::FixedpointRingDecodeOp {
-                                scaling_factor: op.scaling_factor,
-                            },
-                        ),
+                        kind: FixedpointRingDecode(execution::FixedpointRingDecodeOp {
+                            scaling_factor: op.scaling_factor,
+                        }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     _ => unimplemented!(),
+                    // unimplemented!(),
                 }
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
@@ -330,8 +364,13 @@ def f():
     let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call0().unwrap();
     let buf: Vec<u8> = py_any.extract().unwrap();
 
-    let comp: PythonComputation = rmp_serde::from_read_ref(&buf).unwrap();
-    println!("{:?}", comp);
+    let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
+
+    // println!("{:?}", comp);
+    let rust_comp: Computation = comp.try_into().unwrap();
+    for operation in rust_comp.operations {
+        println!("{:?}", operation);
+    }
 
     assert_eq!(true, false);
     // let computation: Computation = rmp_serde::from_slice(&serialized).unwrap();

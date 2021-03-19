@@ -603,7 +603,7 @@ impl Kernel for RingSumOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingShapeOp {
-    ty: Ty,
+    pub ty: Ty,
 }
 
 trait TypeCheck {
