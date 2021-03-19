@@ -2,7 +2,6 @@
 
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
-use anyhow::anyhow;
 use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use futures::future::{Map, Shared};
@@ -1210,7 +1209,8 @@ where
         Ok(CompiledAsyncComputation(Box::new(
             move |ctx: &Arc<AsyncContext>,
                   sid: &Arc<SessionId>,
-                  mut args: Environment<AsyncReceiver>| {
+                  _args: Environment<AsyncReceiver>| {
+                // TODO(Morten) args should be passed into the op.apply's
                 let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
                     compiled_ops
                         .iter() // par_iter doesn't seem to improve performance here
@@ -1251,9 +1251,18 @@ pub type Environment<V> = HashMap<String, V>;
 /// This executor evaluates the operations of computations in-order, raising an error
 /// in case data dependencies are not respected. This executor is intended for debug
 /// and development only due to its unforgiving but highly predictable behaviour.
-pub struct EagerExecutor;
+pub struct EagerExecutor {
+    ctx: SyncContext,
+}
 
 impl EagerExecutor {
+    pub fn new() -> EagerExecutor {
+        let ctx = SyncContext {
+            networking: Box::new(DummySyncNetworking),
+        };
+        EagerExecutor { ctx }
+    }
+
     pub fn run_computation(
         &self,
         comp: &Computation,
@@ -1261,16 +1270,10 @@ impl EagerExecutor {
         args: Environment<Value>,
     ) -> Result<()> {
         let compiled_comp: CompiledSyncComputation = comp.compile()?;
-        let ctx = SyncContext {
-            networking: Box::new(DummySyncNetworking),
-        };
-        let _env = compiled_comp.apply(&ctx, &sid, args)?;
-        println!("Done {}", _env.len());
+        let _env = compiled_comp.apply(&self.ctx, &sid, args)?;
         Ok(())
     }
 }
-
-pub struct AsyncExecutor;
 
 pub struct AsyncContext {
     pub runtime: tokio::runtime::Runtime,
@@ -1293,7 +1296,19 @@ pub struct AsyncSession {
     tasks: Vec<AsyncTask>,
 }
 
+pub struct AsyncExecutor {
+    ctx: Arc<AsyncContext>,
+}
+
 impl AsyncExecutor {
+    pub fn new() -> AsyncExecutor {
+        let ctx = Arc::new(AsyncContext {
+            runtime: tokio::runtime::Runtime::new().expect("Failed to build tokio runtime"),
+            networking: Box::new(DummyAsyncNetworking),
+        });
+        AsyncExecutor { ctx }
+    }
+
     pub fn run_computation(
         &self,
         comp: &Computation,
@@ -1301,34 +1316,15 @@ impl AsyncExecutor {
         args: Environment<AsyncReceiver>,
     ) -> Result<()> {
         let compiled_comp: CompiledAsyncComputation = comp.compile()?;
-        println!("Compiled");
-
-        // let rt = tokio::runtime::Runtime::new()?;
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
-        let ctx = Arc::new(AsyncContext {
-            runtime: runtime,
-            networking: Box::new(DummyAsyncNetworking),
-        });
-
         let sid = Arc::new(sid);
-
-        println!("Scheduling");
-        let (sess, vals) = match compiled_comp.apply(&ctx, &sid, args) {
+        let (sess, _vals) = match compiled_comp.apply(&self.ctx, &sid, args) {
             Ok(res) => res,
-            Err(e) => {
-                println!("Error");
+            Err(_e) => {
                 return Err(Error::Unexpected); // TODO
             }
         };
-
-        println!("Joining {}", sess.tasks.len());
-        ctx.join_session(sess)?;
-        println!("Done");
-        Ok(()) // TODO return vals
+        self.ctx.join_session(sess)?;
+        Ok(()) // TODO(Morten) return vals
     }
 }
 
@@ -1410,7 +1406,7 @@ fn test_foo() {
     .unwrap();
 
     // let exec = AsyncExecutor;
-    let exec = EagerExecutor;
+    let exec = EagerExecutor::new();
     exec.run_computation(&comp, 12345, env).ok();
     // assert!(false);
 }
