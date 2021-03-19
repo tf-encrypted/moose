@@ -8,9 +8,6 @@ from moose import edsl
 from moose.logger import get_logger
 from moose.testing import TestRuntime as Runtime
 
-from moose.computation.utils import deserialize_computation
-from moose.computation.utils import serialize_computation
-
 
 class ReplicatedExample(unittest.TestCase):
     def test_replicated_example(self):
