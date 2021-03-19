@@ -221,8 +221,8 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
         cache_key = (src_op.name, dst_op.placement_name)
         if cache_key not in self.incoming_edge_cache:
             dtype = {
-                dtypes.float64: dtypes.fixed(28, 16),
-                dtypes.float32: dtypes.fixed(28, 16),
+                dtypes.float64: dtypes.fixed(8, 27),
+                dtypes.float32: dtypes.fixed(8, 27),
                 dtypes.int64: dtypes.fixed(60, 0),
             }[src_op.output_type.dtype]
             self.incoming_edge_cache[cache_key] = self.computation.add_operation(
