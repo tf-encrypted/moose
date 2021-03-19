@@ -228,60 +228,74 @@ pub enum Kernel {
     VariadicFunction(fn(&[Value]) -> Result<Value>),
 }
 
+pub type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
+
+pub type UnarySyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Value) -> Result<Value> + Send + Sync>;
+
+pub type BinarySyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Value, Value) -> Result<Value> + Send + Sync>;
+
+pub type TernarySyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Value, Value, Value) -> Result<Value> + Send + Sync>;
+
+pub type VariadicSyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, &[Value]) -> Result<Value> + Send + Sync>;
+
 pub enum SyncKernel {
-    Nullary(Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>),
-    Unary(Box<dyn Fn(&SyncContext, &SessionId, Value) -> Result<Value> + Send + Sync>),
-    Binary(Box<dyn Fn(&SyncContext, &SessionId, Value, Value) -> Result<Value> + Send + Sync>),
-    Ternary(
-        Box<dyn Fn(&SyncContext, &SessionId, Value, Value, Value) -> Result<Value> + Send + Sync>,
-    ),
-    Variadic(Box<dyn Fn(&SyncContext, &SessionId, &[Value]) -> Result<Value> + Send + Sync>),
+    Nullary(NullarySyncKernel),
+    Unary(UnarySyncKernel),
+    Binary(BinarySyncKernel),
+    Ternary(TernarySyncKernel),
+    Variadic(VariadicSyncKernel),
 }
+
+pub type NullaryAsyncKernel =
+    Box<dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncSender) -> AsyncTask + Send + Sync>;
+
+pub type UnaryAsyncKernel = Box<
+    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncReceiver, AsyncSender) -> AsyncTask
+        + Send
+        + Sync,
+>;
+
+pub type BinaryAsyncKernel = Box<
+    dyn Fn(
+            &Arc<AsyncContext>,
+            &Arc<SessionId>,
+            AsyncReceiver,
+            AsyncReceiver,
+            AsyncSender,
+        ) -> AsyncTask
+        + Send
+        + Sync,
+>;
+
+pub type TernaryAsyncKernel = Box<
+    dyn Fn(
+            &Arc<AsyncContext>,
+            &Arc<SessionId>,
+            AsyncReceiver,
+            AsyncReceiver,
+            AsyncReceiver,
+            AsyncSender,
+        ) -> AsyncTask
+        + Send
+        + Sync,
+>;
+
+pub type VariadicAsyncKernel = Box<
+    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, &[AsyncReceiver], AsyncSender) -> AsyncTask
+        + Send
+        + Sync,
+>;
+
 pub enum AsyncKernel {
-    Nullary(
-        Box<dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncSender) -> AsyncTask + Send + Sync>,
-    ),
-    Unary(
-        Box<
-            dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncReceiver, AsyncSender) -> AsyncTask
-                + Send
-                + Sync,
-        >,
-    ),
-    Binary(
-        Box<
-            dyn Fn(
-                    &Arc<AsyncContext>,
-                    &Arc<SessionId>,
-                    AsyncReceiver,
-                    AsyncReceiver,
-                    AsyncSender,
-                ) -> AsyncTask
-                + Send
-                + Sync,
-        >,
-    ),
-    Ternary(
-        Box<
-            dyn Fn(
-                    &Arc<AsyncContext>,
-                    &Arc<SessionId>,
-                    AsyncReceiver,
-                    AsyncReceiver,
-                    AsyncReceiver,
-                    AsyncSender,
-                ) -> AsyncTask
-                + Send
-                + Sync,
-        >,
-    ),
-    Variadic(
-        Box<
-            dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, &[AsyncReceiver], AsyncSender) -> AsyncTask
-                + Send
-                + Sync,
-        >,
-    ),
+    Nullary(NullaryAsyncKernel),
+    Unary(UnaryAsyncKernel),
+    Binary(BinaryAsyncKernel),
+    Ternary(TernaryAsyncKernel),
+    Variadic(VariadicAsyncKernel),
 }
 
 pub type AsyncSender = oneshot::Sender<Value>;
@@ -963,7 +977,11 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self) -> Result<Kernel> {
         let axis = self.axis;
         let scaling_factor = self.scaling_factor;
-        closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(x, axis, scaling_factor))
+        closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(
+            x,
+            axis,
+            scaling_factor
+        ))
     }
 }
 
@@ -980,10 +998,12 @@ pub struct Operation {
     pub placement: Placement,
 }
 
+type SyncOperationKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, &Environment<Value>) -> Result<Value> + Send + Sync>;
+
 pub struct CompiledSyncOperation {
     name: String,
-    kernel:
-        Box<dyn Fn(&SyncContext, &SessionId, &Environment<Value>) -> Result<Value> + Send + Sync>,
+    kernel: SyncOperationKernel,
 }
 
 impl CompiledSyncOperation {
@@ -997,18 +1017,20 @@ impl CompiledSyncOperation {
     }
 }
 
+type AsyncOperationKernel = Box<
+    dyn Fn(
+            &Arc<AsyncContext>,
+            &Arc<SessionId>,
+            &Environment<AsyncReceiver>,
+            AsyncSender,
+        ) -> Result<AsyncTask>
+        + Send
+        + Sync,
+>;
+
 pub struct CompiledAsyncOperation {
     name: String,
-    kernel: Box<
-        dyn Fn(
-                &Arc<AsyncContext>,
-                &Arc<SessionId>,
-                &Environment<AsyncReceiver>,
-                AsyncSender,
-            ) -> Result<AsyncTask>
-            + Send
-            + Sync,
-    >,
+    kernel: AsyncOperationKernel,
 }
 
 impl CompiledAsyncOperation {
@@ -1275,9 +1297,10 @@ impl Computation {
     }
 }
 
-pub struct CompiledSyncComputation(
-    Box<dyn Fn(&SyncContext, &SessionId, Environment<Value>) -> Result<Environment<Value>>>,
-);
+type SyncComputationKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Environment<Value>) -> Result<Environment<Value>>>;
+
+pub struct CompiledSyncComputation(SyncComputationKernel);
 
 impl Compile<CompiledSyncComputation> for Computation
 where
@@ -1317,15 +1340,15 @@ impl CompiledSyncComputation {
     }
 }
 
-pub struct CompiledAsyncComputation(
-    Box<
-        dyn Fn(
-            &Arc<AsyncContext>,
-            &Arc<SessionId>,
-            Environment<AsyncReceiver>,
-        ) -> Result<(AsyncSession, Environment<AsyncReceiver>)>,
-    >,
-);
+type AsyncComputationKernel = Box<
+    dyn Fn(
+        &Arc<AsyncContext>,
+        &Arc<SessionId>,
+        Environment<AsyncReceiver>,
+    ) -> Result<(AsyncSession, Environment<AsyncReceiver>)>,
+>;
+
+pub struct CompiledAsyncComputation(AsyncComputationKernel);
 
 impl Compile<CompiledAsyncComputation> for Computation
 where
@@ -1411,6 +1434,12 @@ impl EagerExecutor {
     }
 }
 
+impl Default for EagerExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct AsyncContext {
     pub runtime: tokio::runtime::Runtime,
     pub networking: Box<dyn Send + Sync + AsyncNetworking>,
@@ -1464,6 +1493,12 @@ impl AsyncExecutor {
     }
 }
 
+impl Default for AsyncExecutor {
+    fn default() -> Self {
+        AsyncExecutor::new()
+    }
+}
+
 #[test]
 fn test_eager_executor() {
     use maplit::hashmap;
@@ -1496,22 +1531,21 @@ fn test_eager_executor() {
     };
 
     let sample_ops: Vec<_> = (0..100)
-        .map(|i| {
-            Operation {
-                name: format!("x{}", i),
-                kind: Operator::RingSample(RingSampleOp { output: Ty::Ring64TensorTy, max_value: None }),
-                inputs: vec!["shape".into(), "seed".into()],
-                placement: Placement::Host,
-            }
+        .map(|i| Operation {
+            name: format!("x{}", i),
+            kind: Operator::RingSample(RingSampleOp {
+                output: Ty::Ring64TensorTy,
+                max_value: None,
+            }),
+            inputs: vec!["shape".into(), "seed".into()],
+            placement: Placement::Host,
         })
         .collect();
 
     let mut operations = sample_ops;
     operations.extend(vec![key_op, seed_op, shape_op]);
 
-    let comp = Computation { operations }
-        .toposort()
-        .unwrap();
+    let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();
     exec.run_computation(&comp, 12345, env).ok();
