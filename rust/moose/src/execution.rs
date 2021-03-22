@@ -578,6 +578,7 @@ pub enum Operator {
     StdDiv(StdDivOp),
     StdReshape(StdReshapeOp),
     StdSum(StdSumOp),
+    StdOnes(StdOnesOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -742,6 +743,38 @@ impl Compile<Kernel> for StdDivOp {
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
                 function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x / y)
             }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdOnesOp {
+    pub ty: Ty,
+}
+
+impl Compile<Kernel> for StdOnesOp {
+    fn compile(&self) -> Result<Kernel> {
+        match self.ty {
+            Ty::Float32TensorTy => {
+                function_kernel!(Shape, |shape| Float32Tensor::ones(shape))
+            }
+            Ty::Float64TensorTy => {
+                function_kernel!(Shape, |shape| Float64Tensor::ones(shape))
+            }
+            Ty::Int32TensorTy => {
+                function_kernel!(Shape, |shape| Int32Tensor::ones(shape))
+            }
+            Ty::Int64TensorTy => {
+                function_kernel!(Shape, |shape| Int64Tensor::ones(shape))
+            }
+            Ty::Uint32TensorTy => {
+                function_kernel!(Shape, |shape| Uint32Tensor::ones(shape))
+            }
+            Ty::Uint64TensorTy => {
+                function_kernel!(Shape, |shape| Uint64Tensor::ones(shape))
+            }
+
             _ => Err(Error::UnimplementedOperator),
         }
     }

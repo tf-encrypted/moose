@@ -73,6 +73,15 @@ impl<T> StandardTensor<T>
 where
     T: LinalgScalar,
 {
+    pub fn ones(shape: Shape) -> Self {
+        StandardTensor::<T>(ArrayD::ones(shape.0))
+    }
+}
+
+impl<T> StandardTensor<T>
+where
+    T: LinalgScalar,
+{
     pub fn reshape(self, newshape: Shape) -> Self {
         StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
     }
