@@ -745,6 +745,36 @@ impl Compile<Kernel> for StdDivOp {
     }
 }
 
+pub struct StdReshapeOp {
+    pub ty: Ty,
+}
+
+impl Compile<Kernel> for StdReshapeOp {
+    fn compile(&self) -> Result<Kernel> {
+        match self.ty {
+            Ty::Float32TensorTy => {
+                function_kernel!(Float32Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            Ty::Float64TensorTy => {
+                function_kernel!(Float64Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            Ty::Int32TensorTy => {
+                function_kernel!(Int32Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            Ty::Int64TensorTy => {
+                function_kernel!(Int64Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            Ty::Uint32TensorTy => {
+                function_kernel!(Uint32Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            Ty::Uint64TensorTy => {
+                function_kernel!(Uint64Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PrimDeriveSeedOp {
     pub nonce: Nonce,
