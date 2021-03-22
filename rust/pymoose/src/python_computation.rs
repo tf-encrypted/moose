@@ -15,6 +15,7 @@ enum PyOperation {
     ring_RingAddOperation(PyRingAddOperation),
     ring_RingSubOperation(PyRingSubOperation),
     ring_RingMulOperation(PyRingMulOperation),
+    ring_RingDotOperation(PyRingDotOperation),
     ring_RingShapeOperation(PyRingShapeOperation),
     ring_RingSampleOperation(PyRingSampleOperation),
     ring_FillTensorOperation(PyFillTensorOperation),
@@ -99,7 +100,6 @@ struct PyRingShrOperation {
     placement_name: String,
 }
 
-
 #[derive(Deserialize, Debug)]
 struct PyRingAddOperation {
     name: String,
@@ -114,6 +114,12 @@ struct PyRingMulOperation {
     placement_name: String,
 }
 
+#[derive(Deserialize, Debug)]
+struct PyRingDotOperation {
+    name: String,
+    inputs: HashMap<String, String>,
+    placement_name: String,
+}
 
 #[derive(Deserialize, Debug)]
 struct PyFillTensorOperation {
@@ -314,14 +320,14 @@ impl TryFrom<PyComputation> for execution::Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingAddOperation(op) => Ok(execution::Operation {
-                            kind: RingAdd(RingAddOp {
-                                lhs: execution::Ty::Ring64TensorTy,
-                                rhs: execution::Ty::Ring64TensorTy,
-                            }),
-                            name: op.name.clone(),
-                            inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
-                            placement: map_placement(&placements, &op.placement_name)?,
+                        kind: RingAdd(RingAddOp {
+                            lhs: execution::Ty::Ring64TensorTy,
+                            rhs: execution::Ty::Ring64TensorTy,
                         }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     ring_RingSubOperation(op) => Ok(execution::Operation {
                         kind: RingSub(RingSubOp {
                             lhs: execution::Ty::Ring64TensorTy,
@@ -331,24 +337,24 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    // ring_RingMulOperation(op) => Ok(execution::Operation {
-                    //     kind: RingMul(RingMulOp {
-                    //         lhs: execution::Ty::Ring64TensorTy,
-                    //         rhs: execution::Ty::Ring64TensorTy,
-                    //     }),
-                    //     name: op.name.clone(),
-                    //     inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
-                    //     placement: map_placement(&placements, &op.placement_name)?,
-                    // }),
-                    // // ring_RingDotOperation(op) => Ok(execution::Operation {
-                    //     kind: RingDot(RingDotOp {
-                    //         lhs: execution::Ty::Ring64TensorTy,
-                    //         rhs: execution::Ty::Ring64TensorTy,
-                    //     }),
-                    //     name: op.name.clone(),
-                    //     inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
-                    //     placement: map_placement(&placements, &op.placement_name)?,
-                    // }),
+                    ring_RingMulOperation(op) => Ok(execution::Operation {
+                        kind: RingMul(RingMulOp {
+                            lhs: execution::Ty::Ring64TensorTy,
+                            rhs: execution::Ty::Ring64TensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ring_RingDotOperation(op) => Ok(execution::Operation {
+                        kind: RingDot(RingDotOp {
+                            lhs: execution::Ty::Ring64TensorTy,
+                            rhs: execution::Ty::Ring64TensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     ring_RingShlOperation(op) => Ok(execution::Operation {
                         kind: RingShl(RingShlOp {
                             amount: op.amount as usize,

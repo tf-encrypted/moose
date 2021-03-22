@@ -898,7 +898,7 @@ impl Compile<Kernel> for RingFillOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingSampleOp {
     pub output: Ty,
-    pub max_value: Option<usize>,
+    pub max_value: Option<u64>,
 }
 
 impl Compile<Kernel> for RingSampleOp {
