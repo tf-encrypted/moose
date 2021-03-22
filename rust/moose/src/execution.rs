@@ -746,6 +746,7 @@ impl Compile<Kernel> for StdDivOp {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdReshapeOp {
     pub ty: Ty,
 }
