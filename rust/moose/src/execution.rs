@@ -4,18 +4,46 @@ use crate::fixedpoint::Convert;
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use crate::standard::*;
-use anyhow::{anyhow, Result};
+use async_trait::async_trait;
 use enum_dispatch::enum_dispatch;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
 use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
+use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::ops::{Add, Div, Mul, Sub};
+use std::convert::TryFrom;
 use std::sync::Arc;
 use tokio::sync::oneshot;
+use tracing::debug;
+
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Unexpected error")]
+    Unexpected,
+
+    #[error("Input to kernel unavailable")]
+    InputUnavailable,
+
+    #[error("Type mismatch")]
+    TypeMismatch,
+
+    #[error("Operator instantiation not supported")]
+    UnimplementedOperator,
+
+    #[error("Malformed environment")]
+    MalformedEnvironment,
+
+    #[error("Malformed computation")]
+    MalformedComputation(String),
+
+    #[error("Compilation error: {0}")]
+    Compilation(String),
+}
+
+pub type Result<T> = anyhow::Result<T, Error>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Seed(pub Vec<u8>);
@@ -51,6 +79,7 @@ pub enum Ty {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Value {
+    Unit,
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Shape(Shape),
@@ -69,527 +98,477 @@ pub enum Value {
     Uint64Tensor(Uint64Tensor),
 }
 
-impl From<Ring64Tensor> for Value {
-    fn from(v: Ring64Tensor) -> Self {
-        Value::Ring64Tensor(v)
-    }
-}
-
-impl From<Ring128Tensor> for Value {
-    fn from(v: Ring128Tensor) -> Self {
-        Value::Ring128Tensor(v)
-    }
-}
-
-impl From<Shape> for Value {
-    fn from(v: Shape) -> Self {
-        Value::Shape(v)
-    }
-}
-
-impl From<Seed> for Value {
-    fn from(v: Seed) -> Self {
-        Value::Seed(v)
-    }
-}
-
-impl From<PrfKey> for Value {
-    fn from(v: PrfKey) -> Self {
-        Value::PrfKey(v)
-    }
-}
-
-impl From<Nonce> for Value {
-    fn from(v: Nonce) -> Self {
-        Value::Nonce(v)
-    }
-}
-
-impl From<Float32Tensor> for Value {
-    fn from(v: Float32Tensor) -> Self {
-        Value::Float32Tensor(v)
-    }
-}
-
-impl From<Float64Tensor> for Value {
-    fn from(v: Float64Tensor) -> Self {
-        Value::Float64Tensor(v)
-    }
-}
-
-impl From<Int8Tensor> for Value {
-    fn from(v: Int8Tensor) -> Self {
-        Value::Int8Tensor(v)
-    }
-}
-
-impl From<Int16Tensor> for Value {
-    fn from(v: Int16Tensor) -> Self {
-        Value::Int16Tensor(v)
-    }
-}
-
-impl From<Int32Tensor> for Value {
-    fn from(v: Int32Tensor) -> Self {
-        Value::Int32Tensor(v)
-    }
-}
-
-impl From<Int64Tensor> for Value {
-    fn from(v: Int64Tensor) -> Self {
-        Value::Int64Tensor(v)
-    }
-}
-
-impl From<Uint8Tensor> for Value {
-    fn from(v: Uint8Tensor) -> Self {
-        Value::Uint8Tensor(v)
-    }
-}
-
-impl From<Uint16Tensor> for Value {
-    fn from(v: Uint16Tensor) -> Self {
-        Value::Uint16Tensor(v)
-    }
-}
-
-impl From<Uint32Tensor> for Value {
-    fn from(v: Uint32Tensor) -> Self {
-        Value::Uint32Tensor(v)
-    }
-}
-
-impl From<Uint64Tensor> for Value {
-    fn from(v: Uint64Tensor) -> Self {
-        Value::Uint64Tensor(v)
-    }
-}
-
-// TODO(Morten) all the From<Value> below should be TryFrom instead, with proper error handling
-
-impl From<Value> for Ring64Tensor {
-    fn from(v: Value) -> Self {
-        match v {
-            Value::Ring64Tensor(x) => x,
-            _ => panic!("Cannot convert {:?} to Ring64Tensor", v),
-        }
-    }
-}
-
-impl<'v> From<&'v Value> for &'v Ring64Tensor {
-    fn from(v: &'v Value) -> Self {
-        match v {
-            Value::Ring64Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Ring128Tensor {
-    fn from(v: Value) -> Self {
-        match v {
-            Value::Ring128Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Shape {
-    fn from(v: Value) -> Self {
-        match v {
-            Value::Shape(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Seed {
-    fn from(v: Value) -> Self {
-        match v {
-            Value::Seed(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for PrfKey {
-    fn from(v: Value) -> Self {
-        match v {
-            Value::PrfKey(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Nonce {
-    fn from(v: Value) -> Self {
-        match v {
-            Value::Nonce(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Float32Tensor {
-    fn from(v: Value) -> Float32Tensor {
-        match v {
-            Value::Float32Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Float64Tensor {
-    fn from(v: Value) -> Float64Tensor {
-        match v {
-            Value::Float64Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Int8Tensor {
-    fn from(v: Value) -> Int8Tensor {
-        match v {
-            Value::Int8Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Int16Tensor {
-    fn from(v: Value) -> Int16Tensor {
-        match v {
-            Value::Int16Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Int32Tensor {
-    fn from(v: Value) -> Int32Tensor {
-        match v {
-            Value::Int32Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Int64Tensor {
-    fn from(v: Value) -> Int64Tensor {
-        match v {
-            Value::Int64Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Uint8Tensor {
-    fn from(v: Value) -> Uint8Tensor {
-        match v {
-            Value::Uint8Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Uint16Tensor {
-    fn from(v: Value) -> Uint16Tensor {
-        match v {
-            Value::Uint16Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Uint32Tensor {
-    fn from(v: Value) -> Uint32Tensor {
-        match v {
-            Value::Uint32Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-impl From<Value> for Uint64Tensor {
-    fn from(v: Value) -> Uint64Tensor {
-        match v {
-            Value::Uint64Tensor(x) => x,
-            _ => unimplemented!(),
-        }
-    }
-}
-
-pub enum TypedNullaryKernel<Y> {
-    Function(fn() -> Y),
-    Closure(Arc<dyn Fn() -> Y + Send + Sync>),
-}
-
-impl<Y> From<TypedNullaryKernel<Y>> for SyncKernel
-where
-    Y: 'static,
-    Value: From<Y>,
-{
-    fn from(typed_kernel: TypedNullaryKernel<Y>) -> SyncKernel {
-        match typed_kernel {
-            TypedNullaryKernel::Function(k) => SyncKernel::Nullary(Arc::new(move || {
-                let y = k();
-                Value::from(y)
-            })),
-            TypedNullaryKernel::Closure(k) => {
-                let k = k.clone();
-                SyncKernel::Nullary(Arc::new(move || {
-                    let y = k();
-                    Value::from(y)
-                }))
+macro_rules! convert {
+    ($raw_type:ident) => {
+        impl From<$raw_type> for Value {
+            fn from(x: $raw_type) -> Self {
+                Value::$raw_type(x)
             }
         }
-    }
-}
 
-pub enum TypedUnaryKernel<X0, Y> {
-    Function(fn(X0) -> Y),
-    Closure(Arc<dyn Fn(X0) -> Y + Send + Sync>),
-}
-
-impl<X0, Y> From<TypedUnaryKernel<X0, Y>> for SyncKernel
-where
-    X0: 'static + From<Value>,
-    Y: 'static,
-    Value: From<Y>,
-{
-    fn from(typed_kernel: TypedUnaryKernel<X0, Y>) -> SyncKernel {
-        match typed_kernel {
-            TypedUnaryKernel::Function(k) => SyncKernel::Unary(Arc::new(move |x0| {
-                let x0 = X0::from(x0);
-                let y = k(x0);
-                Value::from(y)
-            })),
-            TypedUnaryKernel::Closure(k) => {
-                let k = k.clone();
-                SyncKernel::Unary(Arc::new(move |x0| {
-                    let x0 = X0::from(x0);
-                    let y = k(x0);
-                    Value::from(y)
-                }))
+        impl TryFrom<Value> for $raw_type {
+            type Error = Error;
+            fn try_from(v: Value) -> Result<Self> {
+                match v {
+                    Value::$raw_type(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch),
+                }
             }
         }
-    }
-}
-pub enum TypedBinaryKernel<X0, X1, Y> {
-    Function(fn(X0, X1) -> Y),
-    Closure(Arc<dyn Fn(X0, X1) -> Y + Send + Sync>),
-}
 
-impl<X0, X1, Y> From<TypedBinaryKernel<X0, X1, Y>> for SyncKernel
-where
-    X0: 'static + From<Value>,
-    X1: 'static + From<Value>,
-    Y: 'static,
-    Value: From<Y>,
-{
-    fn from(typed_kernel: TypedBinaryKernel<X0, X1, Y>) -> SyncKernel {
-        match typed_kernel {
-            TypedBinaryKernel::Function(k) => SyncKernel::Binary(Arc::new(move |x0, x1| {
-                let x0 = X0::from(x0);
-                let x1 = X1::from(x1);
-                let y = k(x0, x1);
-                Value::from(y)
-            })),
-            TypedBinaryKernel::Closure(k) => {
-                let k = k.clone();
-                SyncKernel::Binary(Arc::new(move |x0, x1| {
-                    let x0 = X0::from(x0);
-                    let x1 = X1::from(x1);
-                    let y = k(x0, x1);
-                    Value::from(y)
-                }))
+        impl<'v> TryFrom<&'v Value> for &'v $raw_type {
+            type Error = Error;
+            fn try_from(v: &'v Value) -> Result<Self> {
+                match v {
+                    Value::$raw_type(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch),
+                }
             }
         }
-    }
-}
-
-pub trait NullaryFunction {
-    type Output;
-    fn execute() -> Self::Output;
-}
-
-pub trait NullaryClosure
-where
-    Self: Clone,
-{
-    type Output;
-    fn execute(&self) -> Self::Output;
-}
-
-pub trait UnaryFunction<X0> {
-    type Output;
-    fn execute(x0: X0) -> Self::Output;
-}
-
-pub trait UnaryClosure<X0>
-where
-    Self: Clone,
-{
-    type Output;
-    fn execute(&self, x0: X0) -> Self::Output;
-}
-
-pub trait BinaryFunction<X0, X1> {
-    type Output;
-    fn execute(x0: X0, x1: X1) -> Self::Output;
-}
-
-pub trait BinaryClosure<X0, X1>
-where
-    Self: Clone,
-{
-    type Output;
-    fn execute(&self, x0: X0, x1: X1) -> Self::Output;
-}
-
-macro_rules! unary_kernel {
-    ($t0:ty) => {
-        TypedUnaryKernel::Function(<Self as UnaryFunction<$t0>>::execute).into()
     };
-    ($self:ident, $t0:ty) => {{
-        let s = $self.clone();
-        TypedUnaryKernel::Closure(Arc::new(move |x0| {
-            <Self as UnaryClosure<$t0>>::execute(&s, x0)
+}
+
+convert!(Ring64Tensor);
+convert!(Ring128Tensor);
+convert!(Shape);
+convert!(Seed);
+convert!(PrfKey);
+convert!(Nonce);
+convert!(Float32Tensor);
+convert!(Float64Tensor);
+convert!(Int8Tensor);
+convert!(Int16Tensor);
+convert!(Int32Tensor);
+convert!(Int64Tensor);
+convert!(Uint8Tensor);
+convert!(Uint16Tensor);
+convert!(Uint32Tensor);
+convert!(Uint64Tensor);
+
+macro_rules! function_kernel {
+    ($f:expr) => {
+        Ok(Kernel::NullaryFunction(|| {
+            let y = $f();
+            Ok(Value::from(y))
         }))
-        .into()
-    }};
-}
-
-macro_rules! binary_kernel {
-    ($t0:ty, $t1:ty) => {
-        TypedBinaryKernel::Function(<Self as BinaryFunction<$t0, $t1>>::execute).into()
     };
-    ($self:ident, $t0:ty, $t1:ty) => {
-        let s = $self.clone();
-        TypedBinaryKernel::Closure(Arc::new(move |x0, x1| {
-            <Self as BinaryClosure<$t0, $t1>>::execute(&s, x0, x1)
+    ($t0:ty, $f:expr) => {
+        Ok(Kernel::UnaryFunction(|x0| {
+            let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
+            let g: fn($t0) -> _ = $f;
+            let y = g(x0);
+            Ok(Value::from(y))
         }))
-        .into()
     };
-}
-
-macro_rules! ternary_kernel {
+    ($t0:ty, $t1:ty, $f:expr) => {
+        Ok(Kernel::BinaryFunction(|x0, x1| {
+            let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
+            let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
+            let g: fn($t0, $t1) -> _ = $f;
+            let y = g(x0, x1);
+            Ok(Value::from(y))
+        }))
+    };
     ($t0:ty, $t1:ty, $t2:ty) => {
-        TypedTernaryKernel::Function(<Self as TernaryFunction<$t0, $t1, $t2>>::execute).into()
-    };
-    ($self:ident, $t0:ty, $t1:ty, $t2:ty) => {
-        let s = $self.clone();
-        TypedTernaryKernel::Closure(Arc::new(move |x0, x1, x2| {
-            <Self as TernaryClosure<$t0, $t1, $t2>>::execute(&s, x0, x1, x2)
+        Ok(Kernel::TernaryFunction(|x0, x1, x2| {
+            let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
+            let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
+            let x2 = <$t2 as TryFrom<Value>>::try_from(x2)?;
+            let g: fn($t0, $t1, $t2) -> _ = $f;
+            let y = g(x0, x1, x2);
+            Ok(Value::from(y))
         }))
-        .into()
     };
 }
 
-pub struct Session {
-    pub id: u128,
+macro_rules! closure_kernel {
+    ($f:expr) => {
+        Ok(Kernel::NullaryClosure(Arc::new(move || {
+            let y = $f();
+            Ok(Value::from(y))
+        })))
+    };
+    ($t0:ty, $f:expr) => {
+        Ok(Kernel::UnaryClosure(Arc::new(move |x0| {
+            let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
+            let y = $f(x0);
+            Ok(Value::from(y))
+        })))
+    };
+    ($t0:ty, $t1:ty, $f:expr) => {
+        Ok(Kernel::BinaryClosure(Arc::new(move |x0, x1| {
+            let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
+            let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
+            let y = $f(x0, x1);
+            Ok(Value::from(y))
+        })))
+    };
+    ($t0:ty, $t1:ty, $t2:ty, $f:expr) => {
+        Ok(Kernel::TernaryClosure(Arc::new(move |x0, x1, x2| {
+            let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
+            let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
+            let x2 = <$t2 as TryFrom<Value>>::try_from(x2)?;
+            let y = $f(x0, x1, x2);
+            Ok(Value::from(y))
+        })))
+    };
 }
+
+pub enum Kernel {
+    NullaryClosure(Arc<dyn Fn() -> Result<Value> + Send + Sync>),
+    UnaryClosure(Arc<dyn Fn(Value) -> Result<Value> + Send + Sync>),
+    BinaryClosure(Arc<dyn Fn(Value, Value) -> Result<Value> + Send + Sync>),
+    TernaryClosure(Arc<dyn Fn(Value, Value, Value) -> Result<Value> + Send + Sync>),
+    VariadicClosure(Arc<dyn Fn(&[Value]) -> Result<Value> + Send + Sync>),
+
+    NullaryFunction(fn() -> Result<Value>),
+    UnaryFunction(fn(Value) -> Result<Value>),
+    BinaryFunction(fn(Value, Value) -> Result<Value>),
+    TernaryFunction(fn(Value, Value, Value) -> Result<Value>),
+    VariadicFunction(fn(&[Value]) -> Result<Value>),
+}
+
+pub type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
+
+pub type UnarySyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Value) -> Result<Value> + Send + Sync>;
+
+pub type BinarySyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Value, Value) -> Result<Value> + Send + Sync>;
+
+pub type TernarySyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Value, Value, Value) -> Result<Value> + Send + Sync>;
+
+pub type VariadicSyncKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, &[Value]) -> Result<Value> + Send + Sync>;
 
 pub enum SyncKernel {
-    Nullary(Arc<dyn Fn() -> Value + Send + Sync>),
-    Unary(Arc<dyn Fn(Value) -> Value + Send + Sync>),
-    Binary(Arc<dyn Fn(Value, Value) -> Value + Send + Sync>),
-    Ternary(Arc<dyn Fn(Value, Value, Value) -> Value + Send + Sync>),
-    Variadic(Arc<dyn Fn(&[Value]) -> Value + Send + Sync>),
+    Nullary(NullarySyncKernel),
+    Unary(UnarySyncKernel),
+    Binary(BinarySyncKernel),
+    Ternary(TernarySyncKernel),
+    Variadic(VariadicSyncKernel),
 }
 
-pub type AsyncValue = Shared<
-    Map<
-        oneshot::Receiver<Value>,
-        fn(Result<Value, oneshot::error::RecvError>) -> Result<Value, ()>,
-    >,
+pub type NullaryAsyncKernel =
+    Box<dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncSender) -> AsyncTask + Send + Sync>;
+
+pub type UnaryAsyncKernel = Box<
+    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncReceiver, AsyncSender) -> AsyncTask
+        + Send
+        + Sync,
+>;
+
+pub type BinaryAsyncKernel = Box<
+    dyn Fn(
+            &Arc<AsyncContext>,
+            &Arc<SessionId>,
+            AsyncReceiver,
+            AsyncReceiver,
+            AsyncSender,
+        ) -> AsyncTask
+        + Send
+        + Sync,
+>;
+
+pub type TernaryAsyncKernel = Box<
+    dyn Fn(
+            &Arc<AsyncContext>,
+            &Arc<SessionId>,
+            AsyncReceiver,
+            AsyncReceiver,
+            AsyncReceiver,
+            AsyncSender,
+        ) -> AsyncTask
+        + Send
+        + Sync,
+>;
+
+pub type VariadicAsyncKernel = Box<
+    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, &[AsyncReceiver], AsyncSender) -> AsyncTask
+        + Send
+        + Sync,
 >;
 
 pub enum AsyncKernel {
-    Nullary(Box<dyn Fn() -> AsyncValue>),
-    Unary(Box<dyn Fn(AsyncValue) -> AsyncValue>),
-    Binary(Box<dyn Fn(AsyncValue, AsyncValue) -> AsyncValue>),
-    Ternary(Box<dyn Fn(AsyncValue, AsyncValue, AsyncValue) -> AsyncValue>),
-    Variadic(Box<dyn Fn(&[AsyncValue]) -> AsyncValue>),
+    Nullary(NullaryAsyncKernel),
+    Unary(UnaryAsyncKernel),
+    Binary(BinaryAsyncKernel),
+    Ternary(TernaryAsyncKernel),
+    Variadic(VariadicAsyncKernel),
 }
 
-fn remove_err<T, E>(r: Result<T, E>) -> Result<T, ()> {
-    r.map_err(|_| ())
+pub type AsyncSender = oneshot::Sender<Value>;
+
+pub type AsyncReceiver = Shared<
+    Map<
+        oneshot::Receiver<Value>,
+        fn(anyhow::Result<Value, oneshot::error::RecvError>) -> anyhow::Result<Value, ()>,
+    >,
+>;
+
+pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
+
+pub trait Compile<C> {
+    fn compile(&self) -> Result<C>;
 }
 
-impl From<SyncKernel> for AsyncKernel {
-    fn from(sync_kernel: SyncKernel) -> AsyncKernel {
-        match sync_kernel {
-            SyncKernel::Nullary(k) => AsyncKernel::Nullary(Box::new(move || {
-                let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
-                let _task = tokio::spawn(async move {
-                    let y = k();
-                    sender.send(y).map_err(|_| ())
-                });
-                receiver.map(remove_err as fn(_) -> _).shared()
-            })),
-            SyncKernel::Unary(k) => AsyncKernel::Unary(Box::new(move |x0| {
-                let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
-                let _task = tokio::spawn(async move {
-                    let x0 = x0.await?;
-                    let y = k(x0);
-                    sender.send(y).map_err(|_| ())
-                });
-                receiver.map(remove_err as fn(_) -> _).shared()
-            })),
-            SyncKernel::Binary(k) => AsyncKernel::Binary(Box::new(move |x0, x1| {
-                let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
-                let _task = tokio::spawn(async move {
-                    let x0 = x0.await?;
-                    let x1 = x1.await?;
-                    let y = k(x0, x1);
-                    sender.send(y).map_err(|_| ())
-                });
-                receiver.map(remove_err as fn(_) -> _).shared()
-            })),
-            SyncKernel::Ternary(k) => AsyncKernel::Ternary(Box::new(move |x0, x1, x2| {
-                let (sender, receiver) = tokio::sync::oneshot::channel();
-                let k = k.clone();
-                let _task = tokio::spawn(async move {
-                    let x0 = x0.await?;
-                    let x1 = x1.await?;
-                    let x2 = x2.await?;
-                    let y = k(x0, x1, x2);
-                    sender.send(y).map_err(|_| ())
-                });
-                receiver.map(remove_err as fn(_) -> _).shared()
-            })),
-            // TODO
-            _ => unimplemented!()
-            // SyncKernel::Variadic(k) => AsyncKernel::Variadic(Box::new(move |mut xs| {
-            //     let (sender, _) = tokio::sync::broadcast::channel(1);
-            //     let subscriber = sender.clone();
-            //     let k = k.clone();
-            //     tokio::spawn(async move {
-            //         let xs = futures::future::join_all(xs.iter().map(|xi| xi.recv())).await;
-            //         let xs: Vec<Value> = xs.iter().map(|xi| xi.unwrap()).collect();
-            //         let y = k(&xs);
-            //         sender.send(y)
-            //     });
-            //     subscriber
-            // })),
+impl<O> SyncCompile for O
+where
+    O: Compile<Kernel>,
+{
+    fn compile(&self) -> Result<SyncKernel> {
+        let kernel: Kernel = self.compile()?;
+        match kernel {
+            Kernel::NullaryClosure(k) => Ok(SyncKernel::Nullary(Box::new(move |_, _| k()))),
+            Kernel::UnaryClosure(k) => Ok(SyncKernel::Unary(Box::new(move |_, _, x0| k(x0)))),
+            Kernel::BinaryClosure(k) => {
+                Ok(SyncKernel::Binary(Box::new(move |_, _, x0, x1| k(x0, x1))))
+            }
+            Kernel::TernaryClosure(k) => {
+                Ok(SyncKernel::Ternary(Box::new(move |_, _, x0, x1, x2| {
+                    k(x0, x1, x2)
+                })))
+            }
+            Kernel::VariadicClosure(k) => Ok(SyncKernel::Variadic(Box::new(move |_, _, xs| k(xs)))),
+            Kernel::NullaryFunction(k) => Ok(SyncKernel::Nullary(Box::new(move |_, _| k()))),
+            Kernel::UnaryFunction(k) => Ok(SyncKernel::Unary(Box::new(move |_, _, x0| k(x0)))),
+            Kernel::BinaryFunction(k) => {
+                Ok(SyncKernel::Binary(Box::new(move |_, _, x0, x1| k(x0, x1))))
+            }
+            Kernel::TernaryFunction(k) => {
+                Ok(SyncKernel::Ternary(Box::new(move |_, _, x0, x1, x2| {
+                    k(x0, x1, x2)
+                })))
+            }
+            Kernel::VariadicFunction(k) => {
+                Ok(SyncKernel::Variadic(Box::new(move |_, _, xs| k(xs))))
+            }
         }
+    }
+}
+
+impl SyncCompile for SendOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        let rdv = self.rendezvous_key.clone();
+        Ok(SyncKernel::Unary(Box::new(move |ctx, sid, v| {
+            ctx.networking.send(&v, &rdv, &sid);
+            Ok(Value::Unit)
+        })))
+    }
+}
+
+impl SyncCompile for ReceiveOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        let rdv = self.rendezvous_key.clone();
+        Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
+            ctx.networking.receive(&rdv, sid)
+        })))
+    }
+}
+
+fn map_send_error<T>(_: T) -> Error {
+    debug!("Failed to send result on channel, receiver was dropped");
+    Error::Unexpected
+}
+
+fn map_receive_error<T>(_: T) -> Error {
+    Error::InputUnavailable
+}
+
+impl<O> AsyncCompile for O
+where
+    O: Compile<Kernel>,
+{
+    fn compile(&self) -> Result<AsyncKernel> {
+        let kernel: Kernel = self.compile()?;
+        match kernel {
+            Kernel::NullaryClosure(k) => {
+                Ok(AsyncKernel::Nullary(Box::new(move |ctx, _, sender| {
+                    let k = Arc::clone(&k);
+                    ctx.runtime.spawn(async move {
+                        let y: Value = k()?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                })))
+            }
+            Kernel::UnaryClosure(k) => {
+                Ok(AsyncKernel::Unary(Box::new(move |ctx, _, x0, sender| {
+                    let k = Arc::clone(&k);
+                    ctx.runtime.spawn(async move {
+                        let x0: Value = x0.await.map_err(map_receive_error)?;
+                        let y: Value = k(x0)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                })))
+            }
+            Kernel::BinaryClosure(k) => Ok(AsyncKernel::Binary(Box::new(
+                move |ctx, _, x0, x1, sender| {
+                    let k = Arc::clone(&k);
+                    ctx.runtime.spawn(async move {
+                        let x0: Value = x0.await.map_err(map_receive_error)?;
+                        let x1: Value = x1.await.map_err(map_receive_error)?;
+                        let y: Value = k(x0, x1)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
+            Kernel::TernaryClosure(k) => Ok(AsyncKernel::Ternary(Box::new(
+                move |ctx, _, x0, x1, x2, sender| {
+                    let k = Arc::clone(&k);
+                    ctx.runtime.spawn(async move {
+                        let x0: Value = x0.await.map_err(map_receive_error)?;
+                        let x1: Value = x1.await.map_err(map_receive_error)?;
+                        let x2: Value = x2.await.map_err(map_receive_error)?;
+                        let y: Value = k(x0, x1, x2)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
+            Kernel::VariadicClosure(_k) => unimplemented!(), // TODO
+
+            Kernel::NullaryFunction(k) => {
+                Ok(AsyncKernel::Nullary(Box::new(move |ctx, _, sender| {
+                    ctx.runtime.spawn(async move {
+                        let y = k()?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                })))
+            }
+            Kernel::UnaryFunction(k) => {
+                Ok(AsyncKernel::Unary(Box::new(move |ctx, _, x0, sender| {
+                    ctx.runtime.spawn(async move {
+                        let x0: Value = x0.await.map_err(map_receive_error)?;
+                        let y: Value = k(x0)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                })))
+            }
+            Kernel::BinaryFunction(k) => Ok(AsyncKernel::Binary(Box::new(
+                move |ctx, _, x0, x1, sender| {
+                    ctx.runtime.spawn(async move {
+                        let x0: Value = x0.await.map_err(map_receive_error)?;
+                        let x1: Value = x1.await.map_err(map_receive_error)?;
+                        let y: Value = k(x0, x1)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
+            Kernel::TernaryFunction(k) => Ok(AsyncKernel::Ternary(Box::new(
+                move |ctx, _, x0, x1, x2, sender| {
+                    ctx.runtime.spawn(async move {
+                        let x0: Value = x0.await.map_err(map_receive_error)?;
+                        let x1: Value = x1.await.map_err(map_receive_error)?;
+                        let x2: Value = x2.await.map_err(map_receive_error)?;
+                        let y: Value = k(x0, x1, x2)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
+            Kernel::VariadicFunction(_k) => unimplemented!(), // TODO
+        }
+    }
+}
+
+impl AsyncCompile for SendOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        let rdv = Arc::new(self.rendezvous_key.clone());
+        Ok(AsyncKernel::Unary(Box::new(move |ctx, sid, v, sender| {
+            let ctx = Arc::clone(ctx);
+            let sid = Arc::clone(sid);
+            let rdv = Arc::clone(&rdv);
+            tokio::spawn(async move {
+                let v: Value = v.await.map_err(map_receive_error)?;
+                ctx.networking.send(&v, &rdv, &sid).await;
+                sender.send(Value::Unit).map_err(map_send_error)
+            })
+        })))
+    }
+}
+
+impl AsyncCompile for ReceiveOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        let rdv = Arc::new(self.rendezvous_key.clone());
+        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sid, sender| {
+            let ctx = Arc::clone(ctx);
+            let sid = Arc::clone(sid);
+            let rdv = Arc::clone(&rdv);
+            tokio::spawn(async move {
+                let v: Value = ctx.networking.receive(&rdv, &sid).await?;
+                sender.send(v).map_err(map_send_error)
+            })
+        })))
+    }
+}
+
+pub type RendezvousKey = str;
+
+pub type SessionId = u128;
+
+pub struct SyncContext {
+    pub networking: Box<dyn Send + Sync + SyncNetworking>,
+}
+
+pub trait SyncNetworking {
+    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
+    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value>;
+}
+
+#[async_trait]
+pub trait AsyncNetworking {
+    async fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
+    async fn receive(
+        &self,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<Value>;
+}
+
+pub struct DummySyncNetworking;
+
+impl SyncNetworking for DummySyncNetworking {
+    fn send(&self, _v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) {
+        println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
+    }
+
+    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value> {
+        println!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
+        Ok(Value::Shape(Shape(vec![0])))
+    }
+}
+
+pub struct DummyAsyncNetworking;
+
+#[async_trait]
+impl AsyncNetworking for DummyAsyncNetworking {
+    async fn send(&self, _v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) {
+        println!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
+    }
+
+    async fn receive(
+        &self,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<Value> {
+        println!(
+            "Async receiving; rdv:'{}', sid:{}",
+            rendezvous_key, session_id
+        );
+        Ok(Value::Shape(Shape(vec![0])))
     }
 }
 
 #[enum_dispatch]
-trait Kernel {
-    fn sync_kernel(&self) -> SyncKernel;
-    fn async_kernel(&self) -> AsyncKernel {
-        AsyncKernel::from(self.sync_kernel())
-    }
+pub trait SyncCompile {
+    fn compile(&self) -> Result<SyncKernel>;
 }
 
-#[enum_dispatch(Kernel)]
+#[enum_dispatch]
+pub trait AsyncCompile {
+    fn compile(&self) -> Result<AsyncKernel>;
+}
+
+#[enum_dispatch(AsyncCompile, SyncCompile)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
     Constant(ConstantOp),
@@ -609,9 +588,21 @@ pub enum Operator {
     RingShr(RingShrOp),
     PrimDeriveSeed(PrimDeriveSeedOp),
     PrimGenPrfKey(PrimGenPrfKeyOp),
+    Send(SendOp),
+    Receive(ReceiveOp),
     FixedpointRingEncode(FixedpointRingEncodeOp),
     FixedpointRingDecode(FixedpointRingDecodeOp),
     FixedpointRingMean(FixedpointRingMeanOp),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SendOp {
+    pub rendezvous_key: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReceiveOp {
+    pub rendezvous_key: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -619,10 +610,10 @@ pub struct ConstantOp {
     pub value: Value,
 }
 
-impl Kernel for ConstantOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        let value = self.value.clone(); // TODO(Morten) avoid clone here
-        SyncKernel::Nullary(Arc::new(move || value.clone()))
+impl Compile<Kernel> for ConstantOp {
+    fn compile(&self) -> Result<Kernel> {
+        let value = self.value.clone();
+        Ok(Kernel::NullaryClosure(Arc::new(move || Ok(value.clone()))))
     }
 }
 
@@ -632,36 +623,29 @@ pub struct StdAddOp {
     pub rhs: Ty,
 }
 
-impl Kernel for StdAddOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for StdAddOp {
+    fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                binary_kernel!(Float32Tensor, Float32Tensor)
+                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x + y)
             }
             (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                binary_kernel!(Float64Tensor, Float64Tensor)
+                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x + y)
             }
             (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                binary_kernel!(Int32Tensor, Int32Tensor)
+                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x + y)
             }
             (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                binary_kernel!(Int64Tensor, Int64Tensor)
+                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x + y)
             }
             (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                binary_kernel!(Uint32Tensor, Uint32Tensor)
+                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x + y)
             }
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                binary_kernel!(Uint64Tensor, Uint64Tensor)
+                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x + y)
             }
-            _ => unimplemented!(),
+            _ => Err(Error::UnimplementedOperator),
         }
-    }
-}
-
-impl<T: Add<U>, U> BinaryFunction<T, U> for StdAddOp {
-    type Output = <T as Add<U>>::Output;
-    fn execute(x: T, y: U) -> Self::Output {
-        x + y
     }
 }
 
@@ -671,36 +655,29 @@ pub struct StdSubOp {
     pub rhs: Ty,
 }
 
-impl Kernel for StdSubOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for StdSubOp {
+    fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                binary_kernel!(Float32Tensor, Float32Tensor)
+                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x - y)
             }
             (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                binary_kernel!(Float64Tensor, Float64Tensor)
+                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x - y)
             }
             (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                binary_kernel!(Int32Tensor, Int32Tensor)
+                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x - y)
             }
             (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                binary_kernel!(Int64Tensor, Int64Tensor)
+                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x - y)
             }
             (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                binary_kernel!(Uint32Tensor, Uint32Tensor)
+                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x - y)
             }
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                binary_kernel!(Uint64Tensor, Uint64Tensor)
+                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x - y)
             }
-            _ => unimplemented!(),
+            _ => Err(Error::UnimplementedOperator),
         }
-    }
-}
-
-impl<T: Sub<U>, U> BinaryFunction<T, U> for StdSubOp {
-    type Output = <T as Sub<U>>::Output;
-    fn execute(x: T, y: U) -> Self::Output {
-        x - y
     }
 }
 
@@ -710,36 +687,29 @@ pub struct StdMulOp {
     pub rhs: Ty,
 }
 
-impl Kernel for StdMulOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for StdMulOp {
+    fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                binary_kernel!(Float32Tensor, Float32Tensor)
+                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x * y)
             }
             (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                binary_kernel!(Float64Tensor, Float64Tensor)
+                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x * y)
             }
             (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                binary_kernel!(Int32Tensor, Int32Tensor)
+                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x * y)
             }
             (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                binary_kernel!(Int64Tensor, Int64Tensor)
+                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x * y)
             }
             (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                binary_kernel!(Uint32Tensor, Uint32Tensor)
+                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x * y)
             }
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                binary_kernel!(Uint64Tensor, Uint64Tensor)
+                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x * y)
             }
-            _ => unimplemented!(),
+            _ => Err(Error::UnimplementedOperator),
         }
-    }
-}
-
-impl<T: Mul<U>, U> BinaryFunction<T, U> for StdMulOp {
-    type Output = <T as Mul<U>>::Output;
-    fn execute(x: T, y: U) -> Self::Output {
-        x * y
     }
 }
 
@@ -749,36 +719,29 @@ pub struct StdDivOp {
     pub rhs: Ty,
 }
 
-impl Kernel for StdDivOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for StdDivOp {
+    fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                binary_kernel!(Float32Tensor, Float32Tensor)
+                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x / y)
             }
             (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                binary_kernel!(Float64Tensor, Float64Tensor)
+                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x / y)
             }
             (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                binary_kernel!(Int32Tensor, Int32Tensor)
+                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x / y)
             }
             (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                binary_kernel!(Int64Tensor, Int64Tensor)
+                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x / y)
             }
             (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                binary_kernel!(Uint32Tensor, Uint32Tensor)
+                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x / y)
             }
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                binary_kernel!(Uint64Tensor, Uint64Tensor)
+                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x / y)
             }
-            _ => unimplemented!(),
+            _ => Err(Error::UnimplementedOperator),
         }
-    }
-}
-
-impl<T: Div<U>, U> BinaryFunction<T, U> for StdDivOp {
-    type Output = <T as Div<U>>::Output;
-    fn execute(x: T, y: U) -> Self::Output {
-        x / y
     }
 }
 
@@ -787,30 +750,26 @@ pub struct PrimDeriveSeedOp {
     pub nonce: Nonce,
 }
 
-impl Kernel for PrimDeriveSeedOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        unary_kernel!(self, PrfKey)
-    }
-}
-
-impl UnaryClosure<PrfKey> for PrimDeriveSeedOp {
-    type Output = Seed;
-    fn execute(&self, key: PrfKey) -> Self::Output {
-        let todo = crate::utils::derive_seed(&key.0, &self.nonce.0);
-        Seed(todo.into())
+impl Compile<Kernel> for PrimDeriveSeedOp {
+    fn compile(&self) -> Result<Kernel> {
+        let nonce = self.nonce.0.clone();
+        closure_kernel!(PrfKey, |key: PrfKey| {
+            // TODO(Morten) pass key as-is without unwrapping
+            Seed(crate::utils::derive_seed(&key.0, &nonce).into())
+        })
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PrimGenPrfKeyOp;
 
-impl Kernel for PrimGenPrfKeyOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        SyncKernel::Nullary(Arc::new(move || {
+impl Compile<Kernel> for PrimGenPrfKeyOp {
+    fn compile(&self) -> Result<Kernel> {
+        function_kernel!(|| {
             // TODO(Morten) we shouldn't have core logic directly in kernels
             let raw_key = AesRng::generate_random_key();
             Value::PrfKey(PrfKey(raw_key.into()))
-        }))
+        })
     }
 }
 
@@ -820,154 +779,119 @@ pub struct RingAddOp {
     pub rhs: Ty,
 }
 
-impl Kernel for RingAddOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for RingAddOp {
+    fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                binary_kernel!(Ring64Tensor, Ring64Tensor)
+                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x + y)
             }
             (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
-                binary_kernel!(Ring128Tensor, Ring128Tensor)
+                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x + y)
             }
-            _ => unimplemented!(),
+            _ => Err(Error::UnimplementedOperator),
         }
-    }
-}
-
-impl<T: Add<U>, U> BinaryFunction<T, U> for RingAddOp {
-    type Output = <T as Add<U>>::Output;
-    fn execute(x: T, y: U) -> Self::Output {
-        x + y
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingSubOp {
-    lhs: Ty,
-    rhs: Ty,
+    pub lhs: Ty,
+    pub rhs: Ty,
 }
 
-impl Kernel for RingSubOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for RingSubOp {
+    fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                binary_kernel!(Ring64Tensor, Ring64Tensor)
+                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x - y)
             }
             (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
-                binary_kernel!(Ring128Tensor, Ring128Tensor)
+                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x - y)
             }
-            _ => unimplemented!(),
+            _ => Err(Error::UnimplementedOperator),
         }
     }
 }
 
-impl<T: Sub<U>, U> BinaryFunction<T, U> for RingSubOp {
-    type Output = <T as Sub<U>>::Output;
-    fn execute(x: T, y: U) -> Self::Output {
-        x - y
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct RingMulOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
+}
+
+impl Compile<Kernel> for RingMulOp {
+    fn compile(&self) -> Result<Kernel> {
+        match (self.lhs, self.rhs) {
+            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingMulOp;
-
-// TODO(Morten) rewrite
-impl Kernel for RingMulOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        SyncKernel::Binary(Arc::new(move |x, y| {
-            let x: Ring64Tensor = x.into();
-            let y: Ring64Tensor = y.into();
-            let z = x * y;
-            z.into()
-        }))
-    }
+pub struct RingDotOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingDotOp;
-
-// TODO(Morten) rewrite
-impl Kernel for RingDotOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        SyncKernel::Binary(Arc::new(move |x, y| {
-            let x: Ring64Tensor = x.into();
-            let y: Ring64Tensor = y.into();
-            let z = x.dot(y);
-            z.into()
-        }))
+impl Compile<Kernel> for RingDotOp {
+    fn compile(&self) -> Result<Kernel> {
+        match (self.lhs, self.rhs) {
+            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingSumOp {
-    axis: Option<usize>, // TODO(Morten) use platform independent type instead?
+    pub ty: Ty,
+    pub axis: Option<u32>,
 }
 
-// TODO(Morten) rewrite
-impl Kernel for RingSumOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        let axis = self.axis;
-        SyncKernel::Unary(Arc::new(move |x| {
-            let x: Ring64Tensor = x.into();
-            let y = x.sum(axis);
-            Value::from(y)
-        }))
+impl Compile<Kernel> for RingSumOp {
+    fn compile(&self) -> Result<Kernel> {
+        let axis = self.axis.map(|a| a as usize);
+        match self.ty {
+            Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x: Ring64Tensor| x.sum(axis)),
+            _ => Err(Error::UnimplementedOperator),
+        }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingShapeOp {
-    ty: Ty,
+    pub ty: Ty,
 }
 
-trait TypeCheck {
-    fn output_type(&self) -> Ty;
-}
-
-impl TypeCheck for RingShapeOp {
-    fn output_type(&self) -> Ty {
-        self.ty
-    }
-}
-
-// TODO(Morten) rewrite
-impl Kernel for RingShapeOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for RingShapeOp {
+    fn compile(&self) -> Result<Kernel> {
         match self.ty {
-            Ty::Ring64TensorTy => unary_kernel!(Ring64Tensor),
-            Ty::Ring128TensorTy => unary_kernel!(Ring128Tensor),
-            _ => unimplemented!(),
+            Ty::Ring64TensorTy => function_kernel!(Ring64Tensor, |x| {
+                Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
+            }),
+            Ty::Ring128TensorTy => function_kernel!(Ring128Tensor, |x| {
+                Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
+            }),
+            _ => Err(Error::UnimplementedOperator),
         }
-    }
-}
-
-impl UnaryFunction<Ring64Tensor> for RingShapeOp {
-    type Output = Shape;
-    fn execute(x: Ring64Tensor) -> Self::Output {
-        Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
-    }
-}
-
-impl UnaryFunction<Ring128Tensor> for RingShapeOp {
-    type Output = Shape;
-    fn execute(x: Ring128Tensor) -> Self::Output {
-        Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingFillOp {
-    value: u64,
+    pub value: u64,
 }
 
-// TODO(Morten) rewrite
-impl Kernel for RingFillOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for RingFillOp {
+    fn compile(&self) -> Result<Kernel> {
         let value = self.value;
-        SyncKernel::Unary(Arc::new(move |shape| match shape {
-            Value::Shape(shape) => Value::Ring64Tensor(Ring64Tensor::fill(&shape.0, value)), // TODO(Morten) should not call .0 here
-            _ => unimplemented!(),
-        }))
+        // TODO(Morten) should not call .0 here
+        closure_kernel!(Shape, |shape: Shape| Ring64Tensor::fill(&shape.0, value))
     }
 }
 
@@ -977,54 +901,45 @@ pub struct RingSampleOp {
     pub max_value: Option<usize>,
 }
 
-// TODO(Morten) rewrite
-impl Kernel for RingSampleOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for RingSampleOp {
+    fn compile(&self) -> Result<Kernel> {
         match (self.output, self.max_value) {
             (Ty::Ring64TensorTy, None) => {
-                TypedBinaryKernel::Function(move |shape: Shape, seed: Seed| {
-                    Ring64Tensor::sample_uniform(&shape.0, &seed.0)
-                })
-                .into()
+                function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
+                    &shape.0, &seed.0
+                ))
             }
             (Ty::Ring64TensorTy, Some(max_value)) if max_value == 1 => {
-                TypedBinaryKernel::Function(move |shape: Shape, seed: Seed| {
-                    Ring64Tensor::sample_bits(&shape.0, &seed.0)
-                })
-                .into()
+                function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_bits(
+                    &shape.0, &seed.0
+                ))
             }
-            _ => unimplemented!(), // TODO
+            _ => Err(Error::UnimplementedOperator),
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingShlOp {
-    amount: usize,
+    pub amount: usize,
 }
 
-// TODO(Morten) rewrite
-impl Kernel for RingShlOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for RingShlOp {
+    fn compile(&self) -> Result<Kernel> {
         let amount = self.amount;
-        TypedUnaryKernel::Closure(Arc::new(move |x: Ring64Tensor| x << amount)).into()
+        closure_kernel!(Ring64Tensor, |x| x << amount)
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingShrOp {
-    amount: usize,
+    pub amount: usize,
 }
 
-// TODO(Morten) rewrite
-impl Kernel for RingShrOp {
-    fn sync_kernel(&self) -> SyncKernel {
+impl Compile<Kernel> for RingShrOp {
+    fn compile(&self) -> Result<Kernel> {
         let amount = self.amount;
-        SyncKernel::Unary(Arc::new(move |x| {
-            let x: Ring64Tensor = x.into();
-            let y = x >> amount;
-            y.into()
-        }))
+        closure_kernel!(Ring64Tensor, |x| x >> amount)
     }
 }
 
@@ -1033,16 +948,10 @@ pub struct FixedpointRingEncodeOp {
     pub scaling_factor: u64,
 }
 
-impl Kernel for FixedpointRingEncodeOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        unary_kernel!(self, Float64Tensor)
-    }
-}
-
-impl UnaryClosure<Float64Tensor> for FixedpointRingEncodeOp {
-    type Output = Ring64Tensor;
-    fn execute(&self, x: Float64Tensor) -> Self::Output {
-        Ring64Tensor::encode(&x, self.scaling_factor)
+impl Compile<Kernel> for FixedpointRingEncodeOp {
+    fn compile(&self) -> Result<Kernel> {
+        let scaling_factor = self.scaling_factor;
+        closure_kernel!(Float64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
     }
 }
 
@@ -1051,16 +960,10 @@ pub struct FixedpointRingDecodeOp {
     pub scaling_factor: u64,
 }
 
-impl Kernel for FixedpointRingDecodeOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        unary_kernel!(self, Ring64Tensor)
-    }
-}
-
-impl UnaryClosure<Ring64Tensor> for FixedpointRingDecodeOp {
-    type Output = Float64Tensor;
-    fn execute(&self, x: Ring64Tensor) -> Self::Output {
-        Ring64Tensor::decode(&x, self.scaling_factor)
+impl Compile<Kernel> for FixedpointRingDecodeOp {
+    fn compile(&self) -> Result<Kernel> {
+        let scaling_factor = self.scaling_factor;
+        closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
     }
 }
 
@@ -1070,16 +973,15 @@ pub struct FixedpointRingMeanOp {
     pub scaling_factor: u64,
 }
 
-impl Kernel for FixedpointRingMeanOp {
-    fn sync_kernel(&self) -> SyncKernel {
-        unary_kernel!(self, Ring64Tensor)
-    }
-}
-
-impl UnaryClosure<Ring64Tensor> for FixedpointRingMeanOp {
-    type Output = Ring64Tensor;
-    fn execute(&self, x: Ring64Tensor) -> Self::Output {
-        Ring64Tensor::ring_mean(x, self.axis, self.scaling_factor)
+impl Compile<Kernel> for FixedpointRingMeanOp {
+    fn compile(&self) -> Result<Kernel> {
+        let axis = self.axis;
+        let scaling_factor = self.scaling_factor;
+        closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(
+            x,
+            axis,
+            scaling_factor
+        ))
     }
 }
 
@@ -1092,172 +994,258 @@ pub enum Placement {
 pub struct Operation {
     pub name: String,
     pub kind: Operator,
-    pub inputs: Vec<String>,
+    pub inputs: Vec<String>, // TODO(Morten) use indices instead of strings?
     pub placement: Placement,
 }
 
-pub struct CompiledOperation<V> {
+type SyncOperationKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, &Environment<Value>) -> Result<Value> + Send + Sync>;
+
+pub struct CompiledSyncOperation {
     name: String,
-    kernel: Box<dyn Fn(&Environment<V>) -> V>,
+    kernel: SyncOperationKernel,
 }
 
-impl<V> Apply<V> for CompiledOperation<V> {
-    fn apply(&self, inputs: &Environment<V>) -> V {
-        (self.kernel)(inputs)
+impl CompiledSyncOperation {
+    pub fn apply(
+        &self,
+        ctx: &SyncContext,
+        sid: &SessionId,
+        args: &Environment<Value>,
+    ) -> Result<Value> {
+        (self.kernel)(ctx, sid, args)
     }
 }
 
-impl Compile<CompiledOperation<Value>> for Operation {
-    fn compile(&self) -> Result<CompiledOperation<Value>> {
-        let operator_kernel: SyncKernel = self.kind.sync_kernel();
-        match (operator_kernel, self.inputs.len()) {
-            (SyncKernel::Nullary(k), 0) => {
-                Ok(CompiledOperation {
+type AsyncOperationKernel = Box<
+    dyn Fn(
+            &Arc<AsyncContext>,
+            &Arc<SessionId>,
+            &Environment<AsyncReceiver>,
+            AsyncSender,
+        ) -> Result<AsyncTask>
+        + Send
+        + Sync,
+>;
+
+pub struct CompiledAsyncOperation {
+    name: String,
+    kernel: AsyncOperationKernel,
+}
+
+impl CompiledAsyncOperation {
+    pub fn apply(
+        &self,
+        ctx: &Arc<AsyncContext>,
+        sid: &Arc<SessionId>,
+        env: &Environment<AsyncReceiver>,
+        sender: AsyncSender,
+    ) -> Result<AsyncTask> {
+        (self.kernel)(ctx, sid, env, sender)
+    }
+}
+
+fn check_arity<T>(operation_name: &str, inputs: &[T], arity: usize) -> Result<()> {
+    if inputs.len() != arity {
+        Err(Error::Compilation(format!(
+            "Arity mismatch for operation '{}'; operator expects {} arguments but were given {}",
+            operation_name,
+            arity,
+            inputs.len()
+        )))
+    } else {
+        Ok(())
+    }
+}
+
+impl Compile<CompiledSyncOperation> for Operation {
+    fn compile(&self) -> Result<CompiledSyncOperation> {
+        let operator_kernel = SyncCompile::compile(&self.kind)?;
+        match operator_kernel {
+            SyncKernel::Nullary(k) => {
+                check_arity(&self.name, &self.inputs, 0)?;
+                Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |_: &Environment<Value>| k()),
+                    kernel: Box::new(move |ctx, sid, _| k(ctx, sid)),
                 })
             }
-            (SyncKernel::Unary(k), 1) => {
+            SyncKernel::Unary(k) => {
+                check_arity(&self.name, &self.inputs, 1)?;
                 let x0_name = self.inputs[0].clone();
-                Ok(CompiledOperation {
+                Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |ctx, sid, env| {
                         // TODO(Morten) avoid cloning
-                        let x0 = env.get(&x0_name).unwrap().clone();
-                        k(x0)
+                        let x0 = env
+                            .get(&x0_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        k(ctx, sid, x0)
                     }),
                 })
             }
-            (SyncKernel::Binary(k), 2) => {
+            SyncKernel::Binary(k) => {
+                check_arity(&self.name, &self.inputs, 2)?;
                 let x0_name = self.inputs[0].clone();
                 let x1_name = self.inputs[1].clone();
-                Ok(CompiledOperation {
+                Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<Value>| {
+                    kernel: Box::new(move |ctx, sid, env| {
                         // TODO(Morten) avoid cloning
-                        let x0 = env.get(&x0_name).unwrap().clone();
-                        let x1 = env.get(&x1_name).unwrap().clone();
-                        k(x0, x1)
+                        let x0 = env
+                            .get(&x0_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        let x1 = env
+                            .get(&x1_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        k(ctx, sid, x0, x1)
                     }),
                 })
             }
-            (SyncKernel::Ternary(k), 3) => {
+            SyncKernel::Ternary(k) => {
+                check_arity(&self.name, &self.inputs, 3)?;
                 let x0_name = self.inputs[0].clone();
                 let x1_name = self.inputs[1].clone();
                 let x2_name = self.inputs[2].clone();
-                Ok(CompiledOperation {
+                Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
+                    kernel: Box::new(move |ctx, sid, env| {
                         // TODO(Morten) avoid cloning
-                        let x0 = env.get(&x0_name).unwrap().clone();
-                        let x1 = env.get(&x1_name).unwrap().clone();
-                        let x2 = env.get(&x2_name).unwrap().clone();
-                        k(x0, x1, x2)
+                        let x0 = env
+                            .get(&x0_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        let x1 = env
+                            .get(&x1_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        let x2 = env
+                            .get(&x2_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        k(ctx, sid, x0, x1, x2)
                     }),
                 })
             }
-            (SyncKernel::Variadic(k), _) => {
+            SyncKernel::Variadic(k) => {
                 let inputs = self.inputs.clone();
-                Ok(CompiledOperation {
+                Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
-                        let xs: Vec<_> = inputs
+                    kernel: Box::new(move |ctx, sid, env| {
+                        let xs = inputs
                             .iter()
-                            .map(|input| env.get(input).unwrap())
-                            .cloned() // TODO(Morten) avoid cloning
-                            .collect();
-                        k(&xs)
+                            .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment)) // TODO(Morten avoid cloning
+                            .collect::<Result<Vec<_>>>()?;
+                        k(ctx, sid, &xs)
                     }),
                 })
             }
-            _ => Err(anyhow!("Failed to compile kernel for operation '{}' due to arity mismatch; {} inputs were given", self.name, self.inputs.len())),
         }
     }
 }
 
-impl Compile<CompiledOperation<AsyncValue>> for Operation {
-    fn compile(&self) -> Result<CompiledOperation<AsyncValue>> {
-        let operator_kernel: AsyncKernel = self.kind.async_kernel();
-        match (operator_kernel, self.inputs.len()) {
-            (AsyncKernel::Nullary(k), 0) => {
-                Ok(CompiledOperation {
+impl Compile<CompiledAsyncOperation> for Operation {
+    fn compile(&self) -> Result<CompiledAsyncOperation> {
+        let operator_kernel = AsyncCompile::compile(&self.kind)?;
+        match operator_kernel {
+            AsyncKernel::Nullary(k) => {
+                check_arity(&self.name, &self.inputs, 0)?;
+                Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |_: &Environment<AsyncValue>| k()),
+                    kernel: Box::new(move |ctx, sid, _, sender| Ok(k(ctx, sid, sender))),
                 })
             }
-            (AsyncKernel::Unary(k), 1) => {
+            AsyncKernel::Unary(k) => {
+                check_arity(&self.name, &self.inputs, 1)?;
                 let x0_name = self.inputs[0].clone();
-                Ok(CompiledOperation {
+                Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
-                        let x0 = env.get(&x0_name).unwrap().clone();
-                        k(x0)
+                    kernel: Box::new(move |ctx, sid, env, sender| {
+                        let x0 = env
+                            .get(&x0_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        Ok(k(ctx, sid, x0, sender))
                     }),
                 })
             }
-            (AsyncKernel::Binary(k), 2) => {
+            AsyncKernel::Binary(k) => {
+                check_arity(&self.name, &self.inputs, 2)?;
                 let x0_name = self.inputs[0].clone();
                 let x1_name = self.inputs[1].clone();
-                Ok(CompiledOperation {
+                Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env: &Environment<AsyncValue>| {
-                        let x0 = env.get(&x0_name).unwrap().clone();
-                        let x1 = env.get(&x1_name).unwrap().clone();
-                        k(x0, x1)
+                    kernel: Box::new(move |ctx, sid, env, sender| {
+                        let x0 = env
+                            .get(&x0_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        let x1 = env
+                            .get(&x1_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        Ok(k(ctx, sid, x0, x1, sender))
                     }),
                 })
             }
-            (AsyncKernel::Ternary(k), 3) => {
+            AsyncKernel::Ternary(k) => {
+                check_arity(&self.name, &self.inputs, 3)?;
                 let x0_name = self.inputs[0].clone();
                 let x1_name = self.inputs[1].clone();
                 let x2_name = self.inputs[2].clone();
-                Ok(CompiledOperation {
+                Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
-                        let x0 = env.get(&x0_name).unwrap().clone();
-                        let x1 = env.get(&x1_name).unwrap().clone();
-                        let x2 = env.get(&x2_name).unwrap().clone();
-                        k(x0, x1, x2)
+                    kernel: Box::new(move |ctx, sid, env, sender| {
+                        let x0 = env
+                            .get(&x0_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        let x1 = env
+                            .get(&x1_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        let x2 = env
+                            .get(&x2_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        Ok(k(ctx, sid, x0, x1, x2, sender))
                     }),
                 })
             }
-            (AsyncKernel::Variadic(k), _) => {
+            AsyncKernel::Variadic(k) => {
                 let inputs = self.inputs.clone();
-                Ok(CompiledOperation {
+                Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |env| {
-                        let xs: Vec<_> = inputs
+                    kernel: Box::new(move |ctx, sid, env, sender| {
+                        let xs = inputs
                             .iter()
-                            .map(|input| env.get(input).unwrap())
-                            .cloned()
-                            .collect();
-                        k(&xs)
+                            .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment))
+                            .collect::<Result<Vec<_>>>()?;
+                        Ok(k(ctx, sid, &xs, sender))
                     }),
                 })
             }
-            _ => Err(anyhow!("Failed to compile async kernel for operation '{}' due to arity mismatch; {} inputs were given", self.name, self.inputs.len())),
         }
     }
 }
 
 impl Operation {
-    pub fn apply(&self, env: &Environment<Value>) -> Result<Value> {
-        let compiled: CompiledOperation<Value> = self.compile()?;
-        Ok(compiled.apply(env))
-    }
-
-    pub fn apply_and_insert(&self, env: &mut Environment<Value>) -> Result<()> {
-        let value = self.apply(env)?;
-        env.insert(self.name.clone(), value);
-        Ok(())
-    }
-
-    pub fn type_check(&self, _env: &Environment<Ty>) -> Ty {
-        unimplemented!()
+    pub fn apply(
+        &self,
+        ctx: &SyncContext,
+        sid: &SessionId,
+        args: &Environment<Value>,
+    ) -> Result<Value> {
+        let compiled: CompiledSyncOperation = self.compile()?;
+        Ok(compiled.apply(ctx, sid, args)?)
     }
 }
 
 pub struct Computation {
+    // pub constants: Vec<Value>,
+    // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
 }
 
@@ -1281,8 +1269,9 @@ impl Computation {
             }
         }
 
-        let toposort = toposort(&graph, None)
-            .map_err(|_| anyhow!("There is a cycle detected in the runtime graph"))?;
+        let toposort = toposort(&graph, None).map_err(|_| {
+            Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
+        })?;
 
         let operations = toposort
             .iter()
@@ -1291,46 +1280,126 @@ impl Computation {
 
         Ok(Computation { operations })
     }
+
+    pub fn apply(
+        &self,
+        ctx: &SyncContext,
+        sid: &SessionId,
+        args: Environment<Value>,
+    ) -> Result<Environment<Value>> {
+        let mut env = args;
+        env.reserve(self.operations.len());
+        for op in self.operations.iter() {
+            let value = op.apply(ctx, sid, &env)?;
+            env.insert(op.name.clone(), value);
+        }
+        Ok(env)
+    }
 }
 
-pub struct CompiledComputation<V>(Arc<dyn Fn(Environment<V>) -> Environment<V>>);
+type SyncComputationKernel =
+    Box<dyn Fn(&SyncContext, &SessionId, Environment<Value>) -> Result<Environment<Value>>>;
 
-trait Apply<V> {
-    fn apply(&self, env: &Environment<V>) -> V;
-}
+pub struct CompiledSyncComputation(SyncComputationKernel);
 
-pub trait Compile<C> {
-    fn compile(&self) -> Result<C>;
-}
-
-impl<V: 'static> Compile<CompiledComputation<V>> for Computation
+impl Compile<CompiledSyncComputation> for Computation
 where
-    Operation: Compile<CompiledOperation<V>>,
+    Operation: Compile<CompiledSyncOperation>,
 {
-    fn compile(&self) -> Result<CompiledComputation<V>> {
+    fn compile(&self) -> Result<CompiledSyncComputation> {
         // TODO(Morten) type check computation
-        let compiled_ops: Vec<CompiledOperation<V>> = self
+        let compiled_ops: Vec<CompiledSyncOperation> = self
             .operations
-            .iter()
+            .par_iter() // par_iter seems to make sense here, see benches
             .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
         // TODO(Morten) we want to sort topologically here, outside the closure
         // TODO(Morten) do we want to insert instructions for when values can be dropped from the environment?
-        Ok(CompiledComputation(Arc::new(
-            move |mut env: Environment<V>| {
+        Ok(CompiledSyncComputation(Box::new(
+            move |ctx: &SyncContext, sid: &SessionId, args: Environment<Value>| {
+                let mut env = args;
+                env.reserve(compiled_ops.len());
                 for compiled_op in compiled_ops.iter() {
-                    let value = compiled_op.apply(&env);
+                    let value = compiled_op.apply(ctx, sid, &env)?;
                     env.insert(compiled_op.name.clone(), value);
                 }
-                env
+                Ok(env)
             },
         )))
     }
 }
 
-impl<V> CompiledComputation<V> {
-    pub fn apply(&self, env: Environment<V>) -> Environment<V> {
-        (self.0)(env)
+impl CompiledSyncComputation {
+    pub fn apply(
+        &self,
+        ctx: &SyncContext,
+        sid: &SessionId,
+        args: Environment<Value>,
+    ) -> Result<Environment<Value>> {
+        (self.0)(ctx, sid, args)
+    }
+}
+
+type AsyncComputationKernel = Box<
+    dyn Fn(
+        &Arc<AsyncContext>,
+        &Arc<SessionId>,
+        Environment<AsyncReceiver>,
+    ) -> Result<(AsyncSession, Environment<AsyncReceiver>)>,
+>;
+
+pub struct CompiledAsyncComputation(AsyncComputationKernel);
+
+impl Compile<CompiledAsyncComputation> for Computation
+where
+    Operation: Compile<CompiledAsyncOperation>,
+{
+    fn compile(&self) -> Result<CompiledAsyncComputation> {
+        let compiled_ops: Vec<CompiledAsyncOperation> = self
+            .operations
+            .par_iter() // par_iter seems to make sense here, see benches
+            .map(|op| op.compile())
+            .collect::<Result<Vec<_>>>()?;
+
+        fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
+            r.map_err(|_| ())
+        }
+
+        Ok(CompiledAsyncComputation(Box::new(
+            move |ctx: &Arc<AsyncContext>,
+                  sid: &Arc<SessionId>,
+                  _args: Environment<AsyncReceiver>| {
+                // TODO(Morten) args should be passed into the op.apply's
+                let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
+                    compiled_ops
+                        .iter() // par_iter doesn't seem to improve performance here
+                        .map(|op| {
+                            let (sender, receiver) = oneshot::channel();
+                            let shared_receiver: AsyncReceiver =
+                                receiver.map(remove_err as fn(_) -> _).shared();
+                            (sender, (op.name.clone(), shared_receiver))
+                        })
+                        .unzip();
+                let tasks: Vec<AsyncTask> = senders
+                    .into_iter() // into_par_iter seems to hurt performance here
+                    .zip(&compiled_ops)
+                    .map(|(sender, op)| op.apply(ctx, sid, &receivers, sender))
+                    .collect::<Result<Vec<_>>>()?;
+                let outputs = receivers; // TODO filter to Output nodes
+                Ok((AsyncSession { tasks }, outputs))
+            },
+        )))
+    }
+}
+
+impl CompiledAsyncComputation {
+    pub fn apply(
+        &self,
+        ctx: &Arc<AsyncContext>,
+        sid: &Arc<SessionId>,
+        args: Environment<AsyncReceiver>,
+    ) -> Result<(AsyncSession, Environment<AsyncReceiver>)> {
+        (self.0)(ctx, sid, args)
     }
 }
 
@@ -1341,46 +1410,100 @@ pub type Environment<V> = HashMap<String, V>;
 /// This executor evaluates the operations of computations in-order, raising an error
 /// in case data dependencies are not respected. This executor is intended for debug
 /// and development only due to its unforgiving but highly predictable behaviour.
-pub struct EagerExecutor;
+pub struct EagerExecutor {
+    ctx: SyncContext,
+}
 
 impl EagerExecutor {
-    pub fn run_computation(&self, comp: &Computation, args: Environment<Value>) -> Result<()> {
-        let compiled_comp: CompiledComputation<Value> = comp.compile()?;
-        let _env = compiled_comp.apply(args);
-        println!("Done");
+    pub fn new() -> EagerExecutor {
+        let ctx = SyncContext {
+            networking: Box::new(DummySyncNetworking),
+        };
+        EagerExecutor { ctx }
+    }
+
+    pub fn run_computation(
+        &self,
+        comp: &Computation,
+        sid: SessionId,
+        args: Environment<Value>,
+    ) -> Result<()> {
+        let compiled_comp: CompiledSyncComputation = comp.compile()?;
+        let _env = compiled_comp.apply(&self.ctx, &sid, args)?;
         Ok(())
     }
 }
 
-pub struct AsyncExecutor;
+impl Default for EagerExecutor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub struct AsyncContext {
+    pub runtime: tokio::runtime::Runtime,
+    pub networking: Box<dyn Send + Sync + AsyncNetworking>,
+}
+
+impl AsyncContext {
+    pub fn join_session(&self, sess: AsyncSession) -> Result<()> {
+        for task in sess.tasks {
+            let res = self.runtime.block_on(task);
+            if res.is_err() {
+                unimplemented!() // TODO
+            }
+        }
+        Ok(())
+    }
+}
+
+pub struct AsyncSession {
+    tasks: Vec<AsyncTask>,
+}
+
+pub struct AsyncExecutor {
+    ctx: Arc<AsyncContext>,
+}
 
 impl AsyncExecutor {
-    pub fn run_computation(&self, comp: &Computation, args: Environment<AsyncValue>) -> Result<()> {
-        let compiled_comp: CompiledComputation<AsyncValue> = comp.compile()?;
-        println!("Compiled");
-
-        // let rt = tokio::runtime::Runtime::new()?;
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
-
-        println!("Running");
-        rt.block_on(async {
-            let _env = compiled_comp.apply(args);
-            // let vals = futures::future::join_all(
-            //     env.values().map(|op| op.clone()).collect::<Vec<_>>()).await;
-            println!("Done");
+    pub fn new() -> AsyncExecutor {
+        let ctx = Arc::new(AsyncContext {
+            runtime: tokio::runtime::Runtime::new().expect("Failed to build tokio runtime"),
+            networking: Box::new(DummyAsyncNetworking),
         });
-        Ok(())
+        AsyncExecutor { ctx }
+    }
+
+    pub fn run_computation(
+        &self,
+        comp: &Computation,
+        sid: SessionId,
+        args: Environment<AsyncReceiver>,
+    ) -> Result<()> {
+        let compiled_comp: CompiledAsyncComputation = comp.compile()?;
+        let sid = Arc::new(sid);
+        let (sess, _vals) = match compiled_comp.apply(&self.ctx, &sid, args) {
+            Ok(res) => res,
+            Err(_e) => {
+                return Err(Error::Unexpected); // TODO
+            }
+        };
+        self.ctx.join_session(sess)?;
+        Ok(()) // TODO(Morten) return vals
+    }
+}
+
+impl Default for AsyncExecutor {
+    fn default() -> Self {
+        AsyncExecutor::new()
     }
 }
 
 #[test]
-fn test_foo() {
+fn test_eager_executor() {
     use maplit::hashmap;
 
-    let mut env = hashmap![];
+    let env = hashmap![];
 
     let key_op = Operation {
         name: "key".into(),
@@ -1389,8 +1512,8 @@ fn test_foo() {
         placement: Placement::Host,
     };
 
-    let x_seed_op = Operation {
-        name: "x_seed".into(),
+    let seed_op = Operation {
+        name: "seed".into(),
         kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp {
             nonce: Nonce(vec![1, 2, 3]),
         }),
@@ -1398,8 +1521,8 @@ fn test_foo() {
         placement: Placement::Host,
     };
 
-    let x_shape_op = Operation {
-        name: "x_shape".into(),
+    let shape_op = Operation {
+        name: "shape".into(),
         kind: Operator::Constant(ConstantOp {
             value: Value::Shape(Shape(vec![2, 3])),
         }),
@@ -1407,31 +1530,23 @@ fn test_foo() {
         placement: Placement::Host,
     };
 
-    let sample_ops: Vec<_> = (0..100000)
-        .map(|i| {
-            // Operation {
-            //     name: format!("x{}", i),
-            //     kind: Operator::RingSample(RingSampleOp { output: Ty::Ring64TensorTy, max_value: None }),
-            //     inputs: vec!["x_shape".into(), "x_seed".into()],
-            //     placement: Placement::Host,
-            // }
-            Operation {
-                name: "key".into(),
-                kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
-                inputs: vec![],
-                placement: Placement::Host,
-            }
+    let sample_ops: Vec<_> = (0..100)
+        .map(|i| Operation {
+            name: format!("x{}", i),
+            kind: Operator::RingSample(RingSampleOp {
+                output: Ty::Ring64TensorTy,
+                max_value: None,
+            }),
+            inputs: vec!["shape".into(), "seed".into()],
+            placement: Placement::Host,
         })
         .collect();
 
-    let comp = Computation {
-        // operations: [vec![key_op, x_seed_op, x_shape_op], sample_ops].concat(),
-        operations: sample_ops,
-    }
-    .toposort()
-    .unwrap();
+    let mut operations = sample_ops;
+    operations.extend(vec![key_op, seed_op, shape_op]);
 
-    let exec = AsyncExecutor;
-    exec.run_computation(&comp, env).ok();
-    // assert!(false);
+    let comp = Computation { operations }.toposort().unwrap();
+
+    let exec = EagerExecutor::new();
+    exec.run_computation(&comp, 12345, env).ok();
 }
