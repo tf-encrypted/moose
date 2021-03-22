@@ -754,8 +754,8 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self) -> Result<Kernel> {
         let nonce = self.nonce.0.clone();
         closure_kernel!(PrfKey, |key: PrfKey| {
-            let todo = crate::utils::derive_seed(&key.0, &nonce);
-            Seed(todo.into())
+            // TODO(Morten) pass key as-is without unwrapping
+            Seed(crate::utils::derive_seed(&key.0, &nonce).into())
         })
     }
 }
