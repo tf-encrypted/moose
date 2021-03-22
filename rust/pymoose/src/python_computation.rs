@@ -32,6 +32,13 @@ enum PyOperation {
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
     fixed_RingDecodeOperation(PyRingDecodeOperation),
+    // std_UnknownOperation(PyUnknownOperation),
+}
+
+#[derive(Deserialize, Debug)]
+struct PyUnknownOperation {
+    name: String,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -60,48 +67,14 @@ struct PyDeriveSeedOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct PyRingShapeOperation {
+struct PyRingAddOperation {
     name: String,
-    inputs: HashMap<String, String>,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingSampleOperation {
-    name: String,
-    max_value: Option<u64>,
-
     inputs: HashMap<String, String>,
     placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct PyRingSubOperation {
-    name: String,
-    inputs: HashMap<String, String>,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingShlOperation {
-    name: String,
-    amount: u64,
-
-    inputs: HashMap<String, String>,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingShrOperation {
-    name: String,
-    amount: u64,
-
-    inputs: HashMap<String, String>,
-    placement_name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyRingAddOperation {
     name: String,
     inputs: HashMap<String, String>,
     placement_name: String,
@@ -122,9 +95,44 @@ struct PyRingDotOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyRingShapeOperation {
+    name: String,
+    inputs: HashMap<String, String>,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyRingSampleOperation {
+    name: String,
+    max_value: Option<u64>,
+
+    inputs: HashMap<String, String>,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyFillTensorOperation {
     name: String,
-    value: i64,
+    value: u64,
+    inputs: HashMap<String, String>,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyRingShlOperation {
+    name: String,
+    amount: u64,
+    inputs: HashMap<String, String>,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyRingShrOperation {
+    name: String,
+    amount: u64,
+
+    inputs: HashMap<String, String>,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -170,6 +178,9 @@ struct PySendOperation {
     sender: String,
     receiver: String,
     rendezvous_key: String,
+
+    inputs: HashMap<String, String>,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -178,6 +189,7 @@ struct PyReceiveOperation {
     sender: String,
     receiver: String,
     rendezvous_key: String,
+    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -302,23 +314,6 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["key"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingShapeOperation(op) => Ok(execution::Operation {
-                        kind: RingShape(RingShapeOp {
-                            ty: execution::Ty::Ring64TensorTy,
-                        }),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["tensor"])?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
-                    ring_RingSampleOperation(op) => Ok(execution::Operation {
-                        kind: RingSample(RingSampleOp {
-                            output: execution::Ty::Ring64TensorTy,
-                            max_value: op.max_value,
-                        }),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape", "seed"])?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
                     ring_RingAddOperation(op) => Ok(execution::Operation {
                         kind: RingAdd(RingAddOp {
                             lhs: execution::Ty::Ring64TensorTy,
@@ -355,6 +350,30 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+
+                    ring_RingShapeOperation(op) => Ok(execution::Operation {
+                        kind: RingShape(RingShapeOp {
+                            ty: execution::Ty::Ring64TensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["tensor"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ring_RingSampleOperation(op) => Ok(execution::Operation {
+                        kind: RingSample(RingSampleOp {
+                            output: execution::Ty::Ring64TensorTy,
+                            max_value: op.max_value,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["shape", "seed"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    ring_FillTensorOperation(op) => Ok(execution::Operation {
+                        kind: RingFill(RingFillOp { value: op.value }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["shape"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     ring_RingShlOperation(op) => Ok(execution::Operation {
                         kind: RingShl(RingShlOp {
                             amount: op.amount as usize,
@@ -371,7 +390,26 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-
+                    std_SendOperation(op) => Ok(execution::Operation {
+                        kind: Send(execution::SendOp {
+                            rendezvous_key: op.rendezvous_key.clone(),
+                            sender: execution::HostPlacement { name: op.sender.clone() },
+                            receiver: execution::HostPlacement { name: op.receiver.clone() },
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_ReceiveOperation(op) => Ok(execution::Operation {
+                        kind: Receive(execution::ReceiveOp {
+                            rendezvous_key: op.rendezvous_key.clone(),
+                            sender: execution::HostPlacement { name: op.sender.clone() },
+                            receiver: execution::HostPlacement { name: op.receiver.clone() },
+                        }),
+                        name: op.name.clone(),
+                        inputs: Vec::new(), //  TODO(Dragos): is this OK?
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     fixed_RingEncodeOperation(op) => Ok(execution::Operation {
                         kind: FixedpointRingEncode(execution::FixedpointRingEncodeOp {
                             scaling_factor: op.scaling_factor,
@@ -388,7 +426,9 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    _ => unimplemented!(),
+                    _ => Err(anyhow::anyhow!(
+                        "Python to Rust op conversion not implemented",
+                    )),
                 }
             })
             .collect::<anyhow::Result<Vec<_>>>()?;

@@ -598,11 +598,15 @@ pub enum Operator {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SendOp {
     pub rendezvous_key: String,
+    pub sender: HostPlacement,
+    pub receiver: HostPlacement,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReceiveOp {
     pub rendezvous_key: String,
+    pub sender: HostPlacement,
+    pub receiver: HostPlacement,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
