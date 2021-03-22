@@ -576,6 +576,8 @@ pub enum Operator {
     StdSub(StdSubOp),
     StdMul(StdMulOp),
     StdDiv(StdDivOp),
+    StdLoad(StdLoadOp),
+    StdSave(StdSaveOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -748,6 +750,17 @@ impl Compile<Kernel> for StdDivOp {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdLoadOp {
+    pub output: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdSaveOp {
+    pub output: Ty,
+}
+
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct PrimDeriveSeedOp {

@@ -32,7 +32,6 @@ enum PyOperation {
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
     fixed_RingDecodeOperation(PyRingDecodeOperation),
-    // std_UnknownOperation(PyUnknownOperation),
 }
 
 #[derive(Deserialize, Debug)]
@@ -487,6 +486,4 @@ def f():
     }
 
     assert_eq!(true, false);
-    // let computation: Computation = rmp_serde::from_slice(&serialized).unwrap();
-    // println!("deserialized = {:?}", deserialized);
 }
