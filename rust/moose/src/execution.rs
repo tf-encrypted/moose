@@ -576,6 +576,7 @@ pub enum Operator {
     StdSub(StdSubOp),
     StdMul(StdMulOp),
     StdDiv(StdDivOp),
+    StdReshape(StdReshapeOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
