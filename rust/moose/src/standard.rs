@@ -77,3 +77,19 @@ where
         StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
     }
 }
+
+impl<T> StandardTensor<T>
+where
+    T: LinalgScalar,
+{
+    pub fn sum(self, axis: Option<usize>) -> Self {
+        if let Some(i) = axis {
+            StandardTensor::<T>(self.0.sum_axis(Axis(i)))
+        } else {
+            let out = Array::from_elem([], self.0.sum())
+                .into_dimensionality::<IxDyn>()
+                .unwrap();
+            StandardTensor::<T>(out)
+        }
+    }
+}

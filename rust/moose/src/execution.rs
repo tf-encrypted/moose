@@ -577,6 +577,7 @@ pub enum Operator {
     StdMul(StdMulOp),
     StdDiv(StdDivOp),
     StdReshape(StdReshapeOp),
+    StdSum(StdSumOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -771,6 +772,39 @@ impl Compile<Kernel> for StdReshapeOp {
             }
             Ty::Uint64TensorTy => {
                 function_kernel!(Uint64Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdSumOp {
+    pub ty: Ty,
+    pub axis: Option<u32>,
+}
+
+impl Compile<Kernel> for StdSumOp {
+    fn compile(&self) -> Result<Kernel> {
+        let axis = self.axis.map(|a| a as usize);
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(Float32Tensor, |x: Float32Tensor| x.sum(axis))
+            }
+            Ty::Float64TensorTy => {
+                closure_kernel!(Float64Tensor, |x: Float64Tensor| x.sum(axis))
+            }
+            Ty::Int32TensorTy => {
+                closure_kernel!(Int32Tensor, |x: Int32Tensor| x.sum(axis))
+            }
+            Ty::Int64TensorTy => {
+                closure_kernel!(Int64Tensor, |x: Int64Tensor| x.sum(axis))
+            }
+            Ty::Uint32TensorTy => {
+                closure_kernel!(Uint32Tensor, |x: Uint32Tensor| x.sum(axis))
+            }
+            Ty::Uint64TensorTy => {
+                closure_kernel!(Uint64Tensor, |x: Uint64Tensor| x.sum(axis))
             }
             _ => Err(Error::UnimplementedOperator),
         }
