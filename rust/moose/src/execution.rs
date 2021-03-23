@@ -5,7 +5,8 @@ use crate::fixedpoint::Convert;
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use crate::standard::*;
-use crate::types::*;
+use crate::prim::*;
+use crate::error::{Error, Result};
 use async_trait::async_trait;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -18,8 +19,6 @@ use std::convert::TryFrom;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tracing::debug;
-
-pub type Result<T> = anyhow::Result<T, Error>;
 
 macro_rules! function_kernel {
     ($f:expr) => {

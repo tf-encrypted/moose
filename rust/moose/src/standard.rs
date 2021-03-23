@@ -1,10 +1,12 @@
 // Standard dialect operations.
 
-use crate::types::Shape;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub};
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct Shape(pub Vec<usize>);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct StandardTensor<T>(pub ArrayD<T>);
