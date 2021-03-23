@@ -1,5 +1,3 @@
-// Standard dialect operations.
-
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use serde::{Deserialize, Serialize};

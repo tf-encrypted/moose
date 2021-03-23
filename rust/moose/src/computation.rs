@@ -1,9 +1,12 @@
-use crate::prim::*;
-use crate::ring::*;
-use crate::standard::*;
 use crate::error::{Error, Result};
-use std::convert::TryFrom;
+use crate::prim::{Nonce, PrfKey, Seed};
+use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::standard::{
+    Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, Shape,
+    Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+};
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 pub type RendezvousKey = str;
 
@@ -96,7 +99,6 @@ convert!(Uint8Tensor);
 convert!(Uint16Tensor);
 convert!(Uint32Tensor);
 convert!(Uint64Tensor);
-
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {

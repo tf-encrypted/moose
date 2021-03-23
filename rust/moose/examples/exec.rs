@@ -1,5 +1,8 @@
 use maplit::hashmap;
-use moose::execution::*;
+use moose::computation::*;
+use moose::execution::EagerExecutor;
+use moose::prim::Nonce;
+use moose::standard::Shape;
 
 fn main() {
     let key_op = Operation {
@@ -54,7 +57,7 @@ fn main() {
     let args = hashmap![];
     let sid = 12345;
 
-    // let executor = EagerExecutor;
-    let executor = AsyncExecutor::new();
+    let executor = EagerExecutor::new();
+    // let executor = AsyncExecutor::new();
     let _ = executor.run_computation(&comp, sid, args);
 }
