@@ -179,6 +179,17 @@ macro_rules! function_kernel {
             Ok(Value::from(y))
         }))
     };
+    (vec[$t:ty], $f:expr) => {
+        Ok(Kernel::VariadicFunction(|xs| {
+            let xs = xs
+                .into_iter()
+                .map(|xi| <$t as TryFrom<Value>>::try_from(xi))
+                .collect::<Result<Vec<_>>>()?;
+            let g: fn(Vec<$t>) -> _ = $f;
+            let y = g(xs);
+            Ok(Value::from(y))
+        }))
+    };
 }
 
 macro_rules! closure_kernel {
@@ -212,6 +223,16 @@ macro_rules! closure_kernel {
             Ok(Value::from(y))
         })))
     };
+    (vec[$t:ty], $f:expr) => {
+        Ok(Kernel::VariadicClosure(Arc::new(move |xs| {
+            let xs = xs
+                .into_iter()
+                .map(|xi| <$t as TryFrom<Value>>::try_from(xi))
+                .collect::<Result<Vec<_>>>()?;
+            let y = $f(xs);
+            Ok(Value::from(y))
+        })))
+    };
 }
 
 pub enum Kernel {
@@ -219,13 +240,13 @@ pub enum Kernel {
     UnaryClosure(Arc<dyn Fn(Value) -> Result<Value> + Send + Sync>),
     BinaryClosure(Arc<dyn Fn(Value, Value) -> Result<Value> + Send + Sync>),
     TernaryClosure(Arc<dyn Fn(Value, Value, Value) -> Result<Value> + Send + Sync>),
-    VariadicClosure(Arc<dyn Fn(&[Value]) -> Result<Value> + Send + Sync>),
+    VariadicClosure(Arc<dyn Fn(Vec<Value>) -> Result<Value> + Send + Sync>),
 
     NullaryFunction(fn() -> Result<Value>),
     UnaryFunction(fn(Value) -> Result<Value>),
     BinaryFunction(fn(Value, Value) -> Result<Value>),
     TernaryFunction(fn(Value, Value, Value) -> Result<Value>),
-    VariadicFunction(fn(&[Value]) -> Result<Value>),
+    VariadicFunction(fn(Vec<Value>) -> Result<Value>),
 }
 
 pub type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
@@ -240,7 +261,7 @@ pub type TernarySyncKernel =
     Box<dyn Fn(&SyncContext, &SessionId, Value, Value, Value) -> Result<Value> + Send + Sync>;
 
 pub type VariadicSyncKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, &[Value]) -> Result<Value> + Send + Sync>;
+    Box<dyn Fn(&SyncContext, &SessionId, Vec<Value>) -> Result<Value> + Send + Sync>;
 
 pub enum SyncKernel {
     Nullary(NullarySyncKernel),
@@ -431,7 +452,7 @@ where
                     ctx.runtime.spawn(async move {
                         use futures::future::try_join_all;
                         let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
-                        let y: Value = k(&xs)?;
+                        let y: Value = k(xs)?;
                         sender.send(y).map_err(map_send_error)
                     })
                 },
@@ -480,7 +501,7 @@ where
                     ctx.runtime.spawn(async move {
                         use futures::future::try_join_all;
                         let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
-                        let y: Value = k(&xs)?;
+                        let y: Value = k(xs)?;
                         sender.send(y).map_err(map_send_error)
                     })
                 },
@@ -1157,7 +1178,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                             .iter()
                             .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment)) // TODO(Morten avoid cloning
                             .collect::<Result<Vec<_>>>()?;
-                        k(ctx, sid, &xs)
+                        k(ctx, sid, xs)
                     }),
                 })
             }
