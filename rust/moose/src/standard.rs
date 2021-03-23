@@ -1,5 +1,6 @@
 // Standard dialect operations.
 
+use crate::execution::Shape;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use serde::{Deserialize, Serialize};
@@ -65,5 +66,14 @@ where
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
         StandardTensor::<T>(self.0 / other.0)
+    }
+}
+
+impl<T> StandardTensor<T>
+where
+    T: LinalgScalar,
+{
+    pub fn reshape(self, newshape: Shape) -> Self {
+        StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
     }
 }
