@@ -169,13 +169,24 @@ macro_rules! function_kernel {
             Ok(Value::from(y))
         }))
     };
-    ($t0:ty, $t1:ty, $t2:ty) => {
+    ($t0:ty, $t1:ty, $t2:ty, $f:expr) => {
         Ok(Kernel::TernaryFunction(|x0, x1, x2| {
             let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
             let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
             let x2 = <$t2 as TryFrom<Value>>::try_from(x2)?;
             let g: fn($t0, $t1, $t2) -> _ = $f;
             let y = g(x0, x1, x2);
+            Ok(Value::from(y))
+        }))
+    };
+    (vec[$t:ty], $f:expr) => {
+        Ok(Kernel::VariadicFunction(|xs| {
+            let xs = xs
+                .into_iter()
+                .map(|xi| <$t as TryFrom<Value>>::try_from(xi))
+                .collect::<Result<Vec<_>>>()?;
+            let g: fn(Vec<$t>) -> _ = $f;
+            let y = g(xs);
             Ok(Value::from(y))
         }))
     };
@@ -212,6 +223,16 @@ macro_rules! closure_kernel {
             Ok(Value::from(y))
         })))
     };
+    (vec[$t:ty], $f:expr) => {
+        Ok(Kernel::VariadicClosure(Arc::new(move |xs| {
+            let xs = xs
+                .into_iter()
+                .map(|xi| <$t as TryFrom<Value>>::try_from(xi))
+                .collect::<Result<Vec<_>>>()?;
+            let y = $f(xs);
+            Ok(Value::from(y))
+        })))
+    };
 }
 
 pub enum Kernel {
@@ -219,13 +240,13 @@ pub enum Kernel {
     UnaryClosure(Arc<dyn Fn(Value) -> Result<Value> + Send + Sync>),
     BinaryClosure(Arc<dyn Fn(Value, Value) -> Result<Value> + Send + Sync>),
     TernaryClosure(Arc<dyn Fn(Value, Value, Value) -> Result<Value> + Send + Sync>),
-    VariadicClosure(Arc<dyn Fn(&[Value]) -> Result<Value> + Send + Sync>),
+    VariadicClosure(Arc<dyn Fn(Vec<Value>) -> Result<Value> + Send + Sync>),
 
     NullaryFunction(fn() -> Result<Value>),
     UnaryFunction(fn(Value) -> Result<Value>),
     BinaryFunction(fn(Value, Value) -> Result<Value>),
     TernaryFunction(fn(Value, Value, Value) -> Result<Value>),
-    VariadicFunction(fn(&[Value]) -> Result<Value>),
+    VariadicFunction(fn(Vec<Value>) -> Result<Value>),
 }
 
 pub type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
@@ -240,7 +261,7 @@ pub type TernarySyncKernel =
     Box<dyn Fn(&SyncContext, &SessionId, Value, Value, Value) -> Result<Value> + Send + Sync>;
 
 pub type VariadicSyncKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, &[Value]) -> Result<Value> + Send + Sync>;
+    Box<dyn Fn(&SyncContext, &SessionId, Vec<Value>) -> Result<Value> + Send + Sync>;
 
 pub enum SyncKernel {
     Nullary(NullarySyncKernel),
@@ -285,7 +306,7 @@ pub type TernaryAsyncKernel = Box<
 >;
 
 pub type VariadicAsyncKernel = Box<
-    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, &[AsyncReceiver], AsyncSender) -> AsyncTask
+    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, Vec<AsyncReceiver>, AsyncSender) -> AsyncTask
         + Send
         + Sync,
 >;
@@ -425,7 +446,17 @@ where
                     })
                 },
             ))),
-            Kernel::VariadicClosure(_k) => unimplemented!(), // TODO
+            Kernel::VariadicClosure(k) => Ok(AsyncKernel::Variadic(Box::new(
+                move |ctx, _, xs, sender| {
+                    let k = Arc::clone(&k);
+                    ctx.runtime.spawn(async move {
+                        use futures::future::try_join_all;
+                        let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
+                        let y: Value = k(xs)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
 
             Kernel::NullaryFunction(k) => {
                 Ok(AsyncKernel::Nullary(Box::new(move |ctx, _, sender| {
@@ -465,7 +496,16 @@ where
                     })
                 },
             ))),
-            Kernel::VariadicFunction(_k) => unimplemented!(), // TODO
+            Kernel::VariadicFunction(k) => Ok(AsyncKernel::Variadic(Box::new(
+                move |ctx, _, xs, sender| {
+                    ctx.runtime.spawn(async move {
+                        use futures::future::try_join_all;
+                        let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
+                        let y: Value = k(xs)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
         }
     }
 }
@@ -1204,7 +1244,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                             .iter()
                             .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment)) // TODO(Morten avoid cloning
                             .collect::<Result<Vec<_>>>()?;
-                        k(ctx, sid, &xs)
+                        k(ctx, sid, xs)
                     }),
                 })
             }
@@ -1289,7 +1329,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                             .iter()
                             .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment))
                             .collect::<Result<Vec<_>>>()?;
-                        Ok(k(ctx, sid, &xs, sender))
+                        Ok(k(ctx, sid, xs, sender))
                     }),
                 })
             }
@@ -1305,7 +1345,7 @@ impl Operation {
         args: &Environment<Value>,
     ) -> Result<Value> {
         let compiled: CompiledSyncOperation = self.compile()?;
-        Ok(compiled.apply(ctx, sid, args)?)
+        compiled.apply(ctx, sid, args)
     }
 }
 
