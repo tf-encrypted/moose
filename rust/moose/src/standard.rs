@@ -20,6 +20,58 @@ pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
 
+impl<T> StandardTensor<T>
+where
+    T: LinalgScalar + Clone,
+{
+    fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
+        match self.0.ndim() {
+            1 => match other.0.ndim() {
+                1 => {
+                    let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                    let r = other.0.into_dimensionality::<Ix1>().unwrap();
+                    let res = Array::from_elem([], l.dot(&r))
+                        .into_dimensionality::<IxDyn>()
+                        .unwrap();
+                    StandardTensor::<T>(res)
+                }
+                2 => {
+                    let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                    let r = other.0.into_dimensionality::<Ix2>().unwrap();
+                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                    StandardTensor::<T>(res)
+                }
+                other_rank => panic!(
+                    "Dot<StandardTensor> cannot handle argument of rank {:?} ",
+                    other_rank
+                ),
+            },
+            2 => match other.0.ndim() {
+                1 => {
+                    let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                    let r = other.0.into_dimensionality::<Ix1>().unwrap();
+                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                    StandardTensor::<T>(res)
+                }
+                2 => {
+                    let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                    let r = other.0.into_dimensionality::<Ix2>().unwrap();
+                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                    StandardTensor::<T>(res)
+                }
+                other_rank => panic!(
+                    "Dot<StandardTensor> cannot handle argument of rank {:?} ",
+                    other_rank
+                ),
+            },
+            other_rank => panic!(
+                "Dot<StandardTensor> not implemented for tensors of rank {:?}",
+                other_rank
+            ),
+        }
+    }
+}
+
 impl<T> From<ArrayD<T>> for StandardTensor<T>
 where
     T: LinalgScalar,
@@ -100,5 +152,29 @@ where
                 .unwrap();
             StandardTensor::<T>(out)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dot_prod_f32() {
+        let x = StandardTensor::<f32>::from(
+            array![[1.0, -2.0], [3.0, -4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let y = x.clone();
+        let z = x.dot(y);
+        assert_eq!(
+            z,
+            StandardTensor::<f32>::from(
+                array![[-5.0, 6.0], [-9.0, 10.0]]
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap()
+            )
+        );
     }
 }
