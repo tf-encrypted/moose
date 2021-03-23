@@ -1,6 +1,6 @@
 // Standard dialect operations.
 
-use crate::execution::Shape;
+use crate::types::Shape;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use serde::{Deserialize, Serialize};
