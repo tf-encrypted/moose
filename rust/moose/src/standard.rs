@@ -22,7 +22,7 @@ pub type Uint64Tensor = StandardTensor<u64>;
 
 impl<T> StandardTensor<T>
 where
-    T: LinalgScalar + Clone,
+    T: LinalgScalar,
 {
     pub fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
         match self.0.ndim() {
@@ -68,6 +68,25 @@ where
                 "Dot<StandardTensor> not implemented for tensors of rank {:?}",
                 other_rank
             ),
+        }
+    }
+
+    pub fn ones(shape: Shape) -> Self {
+        StandardTensor::<T>(ArrayD::ones(shape.0))
+    }
+
+    pub fn reshape(self, newshape: Shape) -> Self {
+        StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
+    }
+
+    pub fn sum(self, axis: Option<usize>) -> Self {
+        if let Some(i) = axis {
+            StandardTensor::<T>(self.0.sum_axis(Axis(i)))
+        } else {
+            let out = Array::from_elem([], self.0.sum())
+                .into_dimensionality::<IxDyn>()
+                .unwrap();
+            StandardTensor::<T>(out)
         }
     }
 }
@@ -118,40 +137,6 @@ where
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
         StandardTensor::<T>(self.0 / other.0)
-    }
-}
-
-impl<T> StandardTensor<T>
-where
-    T: LinalgScalar,
-{
-    pub fn ones(shape: Shape) -> Self {
-        StandardTensor::<T>(ArrayD::ones(shape.0))
-    }
-}
-
-impl<T> StandardTensor<T>
-where
-    T: LinalgScalar,
-{
-    pub fn reshape(self, newshape: Shape) -> Self {
-        StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
-    }
-}
-
-impl<T> StandardTensor<T>
-where
-    T: LinalgScalar,
-{
-    pub fn sum(self, axis: Option<usize>) -> Self {
-        if let Some(i) = axis {
-            StandardTensor::<T>(self.0.sum_axis(Axis(i)))
-        } else {
-            let out = Array::from_elem([], self.0.sum())
-                .into_dimensionality::<IxDyn>()
-                .unwrap();
-            StandardTensor::<T>(out)
-        }
     }
 }
 
