@@ -1279,7 +1279,7 @@ impl Operation {
         args: &Environment<Value>,
     ) -> Result<Value> {
         let compiled: CompiledSyncOperation = self.compile()?;
-        Ok(compiled.apply(ctx, sid, args)?)
+        compiled.apply(ctx, sid, args)
     }
 }
 
