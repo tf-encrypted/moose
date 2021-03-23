@@ -24,7 +24,7 @@ impl<T> StandardTensor<T>
 where
     T: LinalgScalar + Clone,
 {
-    fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
+    pub fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
         match self.0.ndim() {
             1 => match other.0.ndim() {
                 1 => {
