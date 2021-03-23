@@ -27,7 +27,7 @@ pub enum Error {
     Compilation(String),
 }
 
-pub type Result<T> = anyhow::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct Seed(pub Vec<u8>);
