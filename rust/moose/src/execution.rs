@@ -7,7 +7,6 @@ use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
 use crate::standard::*;
 use crate::types::*;
 use async_trait::async_trait;
-use enum_dispatch::enum_dispatch;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
 use petgraph::algo::toposort;
@@ -211,7 +210,39 @@ pub trait Compile<C> {
     fn compile(&self) -> Result<C>;
 }
 
-impl<O> SyncCompile for O
+impl Compile<SyncKernel> for Operator {
+    fn compile(&self) -> Result<SyncKernel> {
+        use Operator::*;
+        match self {
+            Constant(op) => Compile::<SyncKernel>::compile(op),
+            StdAdd(op) => Compile::<SyncKernel>::compile(op),
+            StdSub(op) => Compile::<SyncKernel>::compile(op),
+            StdMul(op) => Compile::<SyncKernel>::compile(op),
+            StdDiv(op) => Compile::<SyncKernel>::compile(op),
+            StdReshape(op) => Compile::<SyncKernel>::compile(op),
+            StdSum(op) => Compile::<SyncKernel>::compile(op),
+            RingAdd(op) => Compile::<SyncKernel>::compile(op),
+            RingSub(op) => Compile::<SyncKernel>::compile(op),
+            RingMul(op) => Compile::<SyncKernel>::compile(op),
+            RingDot(op) => Compile::<SyncKernel>::compile(op),
+            RingSum(op) => Compile::<SyncKernel>::compile(op),
+            RingShape(op) => Compile::<SyncKernel>::compile(op),
+            RingSample(op) => Compile::<SyncKernel>::compile(op),
+            RingFill(op) => Compile::<SyncKernel>::compile(op),
+            RingShl(op) => Compile::<SyncKernel>::compile(op),
+            RingShr(op) => Compile::<SyncKernel>::compile(op),
+            PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op),
+            PrimGenPrfKey(op) => Compile::<SyncKernel>::compile(op),
+            Send(op) => Compile::<SyncKernel>::compile(op),
+            Receive(op) => Compile::<SyncKernel>::compile(op),
+            FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op),
+            FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op),
+            FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op),
+        }
+    }
+}
+
+impl<O> Compile<SyncKernel> for O
 where
     O: Compile<Kernel>,
 {
@@ -246,7 +277,7 @@ where
     }
 }
 
-impl SyncCompile for SendOp {
+impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
         Ok(SyncKernel::Unary(Box::new(move |ctx, sid, v| {
@@ -256,7 +287,7 @@ impl SyncCompile for SendOp {
     }
 }
 
-impl SyncCompile for ReceiveOp {
+impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
         Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
@@ -274,7 +305,39 @@ fn map_receive_error<T>(_: T) -> Error {
     Error::InputUnavailable
 }
 
-impl<O> AsyncCompile for O
+impl Compile<AsyncKernel> for Operator {
+    fn compile(&self) -> Result<AsyncKernel> {
+        use Operator::*;
+        match self {
+            Constant(op) => Compile::<AsyncKernel>::compile(op),
+            StdAdd(op) => Compile::<AsyncKernel>::compile(op),
+            StdSub(op) => Compile::<AsyncKernel>::compile(op),
+            StdMul(op) => Compile::<AsyncKernel>::compile(op),
+            StdDiv(op) => Compile::<AsyncKernel>::compile(op),
+            StdReshape(op) => Compile::<AsyncKernel>::compile(op),
+            StdSum(op) => Compile::<AsyncKernel>::compile(op),
+            RingAdd(op) => Compile::<AsyncKernel>::compile(op),
+            RingSub(op) => Compile::<AsyncKernel>::compile(op),
+            RingMul(op) => Compile::<AsyncKernel>::compile(op),
+            RingDot(op) => Compile::<AsyncKernel>::compile(op),
+            RingSum(op) => Compile::<AsyncKernel>::compile(op),
+            RingShape(op) => Compile::<AsyncKernel>::compile(op),
+            RingSample(op) => Compile::<AsyncKernel>::compile(op),
+            RingFill(op) => Compile::<AsyncKernel>::compile(op),
+            RingShl(op) => Compile::<AsyncKernel>::compile(op),
+            RingShr(op) => Compile::<AsyncKernel>::compile(op),
+            PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op),
+            PrimGenPrfKey(op) => Compile::<AsyncKernel>::compile(op),
+            Send(op) => Compile::<AsyncKernel>::compile(op),
+            Receive(op) => Compile::<AsyncKernel>::compile(op),
+            FixedpointRingEncode(op) => Compile::<AsyncKernel>::compile(op),
+            FixedpointRingDecode(op) => Compile::<AsyncKernel>::compile(op),
+            FixedpointRingMean(op) => Compile::<AsyncKernel>::compile(op),
+        }
+    }
+}
+
+impl<O> Compile<AsyncKernel> for O
 where
     O: Compile<Kernel>,
 {
@@ -387,7 +450,7 @@ where
     }
 }
 
-impl AsyncCompile for SendOp {
+impl Compile<AsyncKernel> for SendOp {
     fn compile(&self) -> Result<AsyncKernel> {
         let rdv = Arc::new(self.rendezvous_key.clone());
         Ok(AsyncKernel::Unary(Box::new(move |ctx, sid, v, sender| {
@@ -403,7 +466,7 @@ impl AsyncCompile for SendOp {
     }
 }
 
-impl AsyncCompile for ReceiveOp {
+impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         let rdv = Arc::new(self.rendezvous_key.clone());
         Ok(AsyncKernel::Nullary(Box::new(move |ctx, sid, sender| {
@@ -469,16 +532,6 @@ impl AsyncNetworking for DummyAsyncNetworking {
         );
         Ok(Value::Shape(Shape(vec![0])))
     }
-}
-
-#[enum_dispatch]
-pub trait SyncCompile {
-    fn compile(&self) -> Result<SyncKernel>;
-}
-
-#[enum_dispatch]
-pub trait AsyncCompile {
-    fn compile(&self) -> Result<AsyncKernel>;
 }
 
 impl Compile<Kernel> for ConstantOp {
@@ -867,7 +920,7 @@ fn check_arity<T>(operation_name: &str, inputs: &[T], arity: usize) -> Result<()
 
 impl Compile<CompiledSyncOperation> for Operation {
     fn compile(&self) -> Result<CompiledSyncOperation> {
-        let operator_kernel = SyncCompile::compile(&self.kind)?;
+        let operator_kernel = Compile::<SyncKernel>::compile(&self.kind)?;
         match operator_kernel {
             SyncKernel::Nullary(k) => {
                 check_arity(&self.name, &self.inputs, 0)?;
@@ -955,7 +1008,7 @@ impl Compile<CompiledSyncOperation> for Operation {
 
 impl Compile<CompiledAsyncOperation> for Operation {
     fn compile(&self) -> Result<CompiledAsyncOperation> {
-        let operator_kernel = AsyncCompile::compile(&self.kind)?;
+        let operator_kernel = Compile::<AsyncKernel>::compile(&self.kind)?;
         match operator_kernel {
             AsyncKernel::Nullary(k) => {
                 check_arity(&self.name, &self.inputs, 0)?;

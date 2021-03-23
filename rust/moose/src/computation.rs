@@ -1,8 +1,6 @@
 use crate::types::*;
-use enum_dispatch::enum_dispatch;
 use serde::{Deserialize, Serialize};
 
-#[enum_dispatch(AsyncCompile, SyncCompile)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
     Constant(ConstantOp),
