@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 
+use crate::computation::*;
 use crate::fixedpoint::Convert;
 use crate::prng::AesRng;
 use crate::ring::{Dot, Ring128Tensor, Ring64Tensor, Sample};
@@ -13,7 +14,6 @@ use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -481,61 +481,11 @@ pub trait AsyncCompile {
     fn compile(&self) -> Result<AsyncKernel>;
 }
 
-#[enum_dispatch(AsyncCompile, SyncCompile)]
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Operator {
-    Constant(ConstantOp),
-    StdAdd(StdAddOp),
-    StdSub(StdSubOp),
-    StdMul(StdMulOp),
-    StdDiv(StdDivOp),
-    StdReshape(StdReshapeOp),
-    StdSum(StdSumOp),
-    RingAdd(RingAddOp),
-    RingSub(RingSubOp),
-    RingMul(RingMulOp),
-    RingDot(RingDotOp),
-    RingSum(RingSumOp),
-    RingShape(RingShapeOp),
-    RingSample(RingSampleOp),
-    RingFill(RingFillOp),
-    RingShl(RingShlOp),
-    RingShr(RingShrOp),
-    PrimDeriveSeed(PrimDeriveSeedOp),
-    PrimGenPrfKey(PrimGenPrfKeyOp),
-    Send(SendOp),
-    Receive(ReceiveOp),
-    FixedpointRingEncode(FixedpointRingEncodeOp),
-    FixedpointRingDecode(FixedpointRingDecodeOp),
-    FixedpointRingMean(FixedpointRingMeanOp),
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct SendOp {
-    pub rendezvous_key: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ReceiveOp {
-    pub rendezvous_key: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ConstantOp {
-    pub value: Value,
-}
-
 impl Compile<Kernel> for ConstantOp {
     fn compile(&self) -> Result<Kernel> {
         let value = self.value.clone();
         Ok(Kernel::NullaryClosure(Arc::new(move || Ok(value.clone()))))
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StdAddOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
 }
 
 impl Compile<Kernel> for StdAddOp {
@@ -564,12 +514,6 @@ impl Compile<Kernel> for StdAddOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StdSubOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
-}
-
 impl Compile<Kernel> for StdSubOp {
     fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
@@ -594,12 +538,6 @@ impl Compile<Kernel> for StdSubOp {
             _ => Err(Error::UnimplementedOperator),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StdMulOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
 }
 
 impl Compile<Kernel> for StdMulOp {
@@ -628,12 +566,6 @@ impl Compile<Kernel> for StdMulOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StdDivOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
-}
-
 impl Compile<Kernel> for StdDivOp {
     fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
@@ -660,11 +592,6 @@ impl Compile<Kernel> for StdDivOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StdReshapeOp {
-    pub ty: Ty,
-}
-
 impl Compile<Kernel> for StdReshapeOp {
     fn compile(&self) -> Result<Kernel> {
         match self.ty {
@@ -689,12 +616,6 @@ impl Compile<Kernel> for StdReshapeOp {
             _ => Err(Error::UnimplementedOperator),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct StdSumOp {
-    pub ty: Ty,
-    pub axis: Option<u32>,
 }
 
 impl Compile<Kernel> for StdSumOp {
@@ -724,11 +645,6 @@ impl Compile<Kernel> for StdSumOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PrimDeriveSeedOp {
-    pub nonce: Nonce,
-}
-
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self) -> Result<Kernel> {
         let nonce = self.nonce.0.clone();
@@ -739,9 +655,6 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct PrimGenPrfKeyOp;
-
 impl Compile<Kernel> for PrimGenPrfKeyOp {
     fn compile(&self) -> Result<Kernel> {
         function_kernel!(|| {
@@ -750,12 +663,6 @@ impl Compile<Kernel> for PrimGenPrfKeyOp {
             Value::PrfKey(PrfKey(raw_key.into()))
         })
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingAddOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
 }
 
 impl Compile<Kernel> for RingAddOp {
@@ -772,12 +679,6 @@ impl Compile<Kernel> for RingAddOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingSubOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
-}
-
 impl Compile<Kernel> for RingSubOp {
     fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
@@ -792,12 +693,6 @@ impl Compile<Kernel> for RingSubOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingMulOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
-}
-
 impl Compile<Kernel> for RingMulOp {
     fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
@@ -807,12 +702,6 @@ impl Compile<Kernel> for RingMulOp {
             _ => Err(Error::UnimplementedOperator),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingDotOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
 }
 
 impl Compile<Kernel> for RingDotOp {
@@ -826,12 +715,6 @@ impl Compile<Kernel> for RingDotOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingSumOp {
-    pub ty: Ty,
-    pub axis: Option<u32>,
-}
-
 impl Compile<Kernel> for RingSumOp {
     fn compile(&self) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -840,11 +723,6 @@ impl Compile<Kernel> for RingSumOp {
             _ => Err(Error::UnimplementedOperator),
         }
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingShapeOp {
-    pub ty: Ty,
 }
 
 impl Compile<Kernel> for RingShapeOp {
@@ -861,23 +739,12 @@ impl Compile<Kernel> for RingShapeOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingFillOp {
-    pub value: u64,
-}
-
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self) -> Result<Kernel> {
         let value = self.value;
         // TODO(Morten) should not call .0 here
         closure_kernel!(Shape, |shape: Shape| Ring64Tensor::fill(&shape.0, value))
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingSampleOp {
-    pub output: Ty,
-    pub max_value: Option<usize>,
 }
 
 impl Compile<Kernel> for RingSampleOp {
@@ -898,21 +765,11 @@ impl Compile<Kernel> for RingSampleOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingShlOp {
-    pub amount: usize,
-}
-
 impl Compile<Kernel> for RingShlOp {
     fn compile(&self) -> Result<Kernel> {
         let amount = self.amount;
         closure_kernel!(Ring64Tensor, |x| x << amount)
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct RingShrOp {
-    pub amount: usize,
 }
 
 impl Compile<Kernel> for RingShrOp {
@@ -922,11 +779,6 @@ impl Compile<Kernel> for RingShrOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FixedpointRingEncodeOp {
-    pub scaling_factor: u64,
-}
-
 impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self) -> Result<Kernel> {
         let scaling_factor = self.scaling_factor;
@@ -934,22 +786,11 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FixedpointRingDecodeOp {
-    pub scaling_factor: u64,
-}
-
 impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self) -> Result<Kernel> {
         let scaling_factor = self.scaling_factor;
         closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FixedpointRingMeanOp {
-    pub axis: Option<usize>,
-    pub scaling_factor: u64,
 }
 
 impl Compile<Kernel> for FixedpointRingMeanOp {
@@ -962,19 +803,6 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
             scaling_factor
         ))
     }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum Placement {
-    Host,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct Operation {
-    pub name: String,
-    pub kind: Operator,
-    pub inputs: Vec<String>, // TODO(Morten) use indices instead of strings?
-    pub placement: Placement,
 }
 
 type SyncOperationKernel =
@@ -1220,12 +1048,6 @@ impl Operation {
         let compiled: CompiledSyncOperation = self.compile()?;
         compiled.apply(ctx, sid, args)
     }
-}
-
-pub struct Computation {
-    // pub constants: Vec<Value>,
-    // pub operators: Vec<Operator>,
-    pub operations: Vec<Operation>,
 }
 
 impl Computation {

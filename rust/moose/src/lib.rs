@@ -1,4 +1,5 @@
 pub mod bit;
+pub mod computation;
 pub mod execution;
 pub mod fixedpoint;
 pub mod prng;
