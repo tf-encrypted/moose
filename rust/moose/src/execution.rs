@@ -169,7 +169,7 @@ macro_rules! function_kernel {
             Ok(Value::from(y))
         }))
     };
-    ($t0:ty, $t1:ty, $t2:ty) => {
+    ($t0:ty, $t1:ty, $t2:ty, $f:expr) => {
         Ok(Kernel::TernaryFunction(|x0, x1, x2| {
             let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
             let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
@@ -285,7 +285,7 @@ pub type TernaryAsyncKernel = Box<
 >;
 
 pub type VariadicAsyncKernel = Box<
-    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, &[AsyncReceiver], AsyncSender) -> AsyncTask
+    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, Vec<AsyncReceiver>, AsyncSender) -> AsyncTask
         + Send
         + Sync,
 >;
@@ -425,7 +425,17 @@ where
                     })
                 },
             ))),
-            Kernel::VariadicClosure(_k) => unimplemented!(), // TODO
+            Kernel::VariadicClosure(k) => Ok(AsyncKernel::Variadic(Box::new(
+                move |ctx, _, xs, sender| {
+                    let k = Arc::clone(&k);
+                    ctx.runtime.spawn(async move {
+                        use futures::future::try_join_all;
+                        let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
+                        let y: Value = k(&xs)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
 
             Kernel::NullaryFunction(k) => {
                 Ok(AsyncKernel::Nullary(Box::new(move |ctx, _, sender| {
@@ -465,7 +475,16 @@ where
                     })
                 },
             ))),
-            Kernel::VariadicFunction(_k) => unimplemented!(), // TODO
+            Kernel::VariadicFunction(k) => Ok(AsyncKernel::Variadic(Box::new(
+                move |ctx, _, xs, sender| {
+                    ctx.runtime.spawn(async move {
+                        use futures::future::try_join_all;
+                        let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
+                        let y: Value = k(&xs)?;
+                        sender.send(y).map_err(map_send_error)
+                    })
+                },
+            ))),
         }
     }
 }
@@ -1223,7 +1242,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                             .iter()
                             .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment))
                             .collect::<Result<Vec<_>>>()?;
-                        Ok(k(ctx, sid, &xs, sender))
+                        Ok(k(ctx, sid, xs, sender))
                     }),
                 })
             }
