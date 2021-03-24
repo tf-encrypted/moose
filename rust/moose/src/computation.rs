@@ -109,6 +109,7 @@ pub enum Operator {
     StdDiv(StdDivOp),
     StdReshape(StdReshapeOp),
     StdSum(StdSumOp),
+    StdOnes(StdOnesOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -165,6 +166,11 @@ pub struct StdMulOp {
 pub struct StdDivOp {
     pub lhs: Ty,
     pub rhs: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdOnesOp {
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
