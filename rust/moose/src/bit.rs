@@ -1,36 +1,31 @@
+use crate::prim::Seed;
+use crate::prng::AesRng;
+use crate::standard::Shape;
 use ndarray::prelude::*;
 use rand::prelude::*;
-use std::convert::TryInto;
 use std::ops::{BitAnd, BitXor};
-
-use crate::prng::{AesRng, RngSeed};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>);
 
-pub trait SampleBit {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
-}
-
-impl SampleBit for BitTensor {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
-        let seed: RngSeed = key.try_into().unwrap();
-        let mut rng = AesRng::from_seed(seed);
-        let length = shape.iter().product();
-        let values: Vec<_> = (0..length).map(|_| rng.get_bit()).collect();
-        let ix = IxDyn(shape);
+impl BitTensor {
+    pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Self {
+        let mut rng = AesRng::from_seed(seed.0);
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
+        let ix = IxDyn(shape.0.as_ref());
         BitTensor(Array::from_shape_vec(ix, values).unwrap())
     }
 }
 
 impl BitTensor {
-    pub fn fill(shape: &[usize], el: u8) -> BitTensor {
+    pub fn fill(shape: &Shape, el: u8) -> BitTensor {
         assert!(
             el == 0 || el == 1,
             "cannot fill a BitTensor with a value {:?}",
             el
         );
-        BitTensor(ArrayD::from_elem(shape, el & 1))
+        BitTensor(ArrayD::from_elem(shape.0.as_ref(), el & 1))
     }
 }
 
@@ -82,55 +77,57 @@ mod tests {
 
     #[test]
     fn bit_sample() {
-        let key = [0u8; 16];
-        let r = BitTensor::sample_uniform(&[5], &key);
+        let shape = Shape(vec![5]);
+        let seed = Seed([0u8; 16]);
+        let r = BitTensor::sample_uniform(&shape, &seed);
         assert_eq!(r, BitTensor::from(vec![0, 1, 1, 0, 0,]));
     }
 
     #[test]
     fn bit_fill() {
-        let r = BitTensor::fill(&[2], 1);
+        let shape = Shape(vec![2]);
+        let r = BitTensor::fill(&shape, 1);
         assert_eq!(r, BitTensor::from(vec![1, 1]))
     }
 
     #[test]
     fn bit_ops() {
-        let shape = 5;
+        let shape = Shape(vec![5]);
 
         // test xor
         assert_eq!(
-            BitTensor::fill(&[shape], 0) ^ BitTensor::fill(&[shape], 1),
-            BitTensor::fill(&[shape], 1)
+            BitTensor::fill(&shape, 0) ^ BitTensor::fill(&shape, 1),
+            BitTensor::fill(&shape, 1)
         );
         assert_eq!(
-            BitTensor::fill(&[shape], 1) ^ BitTensor::fill(&[shape], 0),
-            BitTensor::fill(&[shape], 1)
+            BitTensor::fill(&shape, 1) ^ BitTensor::fill(&shape, 0),
+            BitTensor::fill(&shape, 1)
         );
         assert_eq!(
-            BitTensor::fill(&[shape], 1) ^ BitTensor::fill(&[shape], 1),
-            BitTensor::fill(&[shape], 0)
+            BitTensor::fill(&shape, 1) ^ BitTensor::fill(&shape, 1),
+            BitTensor::fill(&shape, 0)
         );
         assert_eq!(
-            BitTensor::fill(&[shape], 0) ^ BitTensor::fill(&[shape], 0),
-            BitTensor::fill(&[shape], 0)
+            BitTensor::fill(&shape, 0) ^ BitTensor::fill(&shape, 0),
+            BitTensor::fill(&shape, 0)
         );
 
         // test and
         assert_eq!(
-            BitTensor::fill(&[shape], 0) & BitTensor::fill(&[shape], 1),
-            BitTensor::fill(&[shape], 0)
+            BitTensor::fill(&shape, 0) & BitTensor::fill(&shape, 1),
+            BitTensor::fill(&shape, 0)
         );
         assert_eq!(
-            BitTensor::fill(&[shape], 1) & BitTensor::fill(&[shape], 0),
-            BitTensor::fill(&[shape], 0)
+            BitTensor::fill(&shape, 1) & BitTensor::fill(&shape, 0),
+            BitTensor::fill(&shape, 0)
         );
         assert_eq!(
-            BitTensor::fill(&[shape], 1) & BitTensor::fill(&[shape], 1),
-            BitTensor::fill(&[shape], 1)
+            BitTensor::fill(&shape, 1) & BitTensor::fill(&shape, 1),
+            BitTensor::fill(&shape, 1)
         );
         assert_eq!(
-            BitTensor::fill(&[shape], 0) & BitTensor::fill(&[shape], 0),
-            BitTensor::fill(&[shape], 0)
+            BitTensor::fill(&shape, 0) & BitTensor::fill(&shape, 0),
+            BitTensor::fill(&shape, 0)
         );
     }
 }
