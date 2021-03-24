@@ -972,7 +972,16 @@ fn test_standard_prod_ops() {
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host,
     };
-    let operations = vec![x_op, y_op, mul_op, dot_op];
+    let mean_op = Operation {
+        name: "mean".into(),
+        kind: Operator::StdMean(StdMeanOp {
+            ty: Ty::Float32TensorTy,
+            axis: Some(0),
+        }),
+        inputs: vec!["dot".into()],
+        placement: Placement::Host,
+    };
+    let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
     let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();

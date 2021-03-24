@@ -20,6 +20,7 @@ impl Compile<SyncKernel> for Operator {
             StdMul(op) => op.compile(),
             StdDiv(op) => op.compile(),
             StdDot(op) => op.compile(),
+            StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdSum(op) => op.compile(),
@@ -54,6 +55,7 @@ impl Compile<AsyncKernel> for Operator {
             StdMul(op) => op.compile(),
             StdDiv(op) => op.compile(),
             StdDot(op) => op.compile(),
+            StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdSum(op) => op.compile(),
@@ -202,6 +204,33 @@ impl Compile<Kernel> for StdDotOp {
             }
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
                 function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x.dot(y))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdMeanOp {
+    fn compile(&self) -> Result<Kernel> {
+        let axis = self.axis.map(|x| x as usize);
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(Float32Tensor, |x: Float32Tensor| x.mean(axis))
+            }
+            Ty::Float64TensorTy => {
+                closure_kernel!(Float64Tensor, |x: Float64Tensor| x.mean(axis))
+            }
+            Ty::Int32TensorTy => {
+                closure_kernel!(Int32Tensor, |x: Int32Tensor| x.mean(axis))
+            }
+            Ty::Int64TensorTy => {
+                closure_kernel!(Int64Tensor, |x: Int64Tensor| x.mean(axis))
+            }
+            Ty::Uint32TensorTy => {
+                closure_kernel!(Uint32Tensor, |x: Uint32Tensor| x.mean(axis))
+            }
+            Ty::Uint64TensorTy => {
+                closure_kernel!(Uint64Tensor, |x: Uint64Tensor| x.mean(axis))
             }
             _ => Err(Error::UnimplementedOperator),
         }
