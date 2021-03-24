@@ -2,7 +2,7 @@ use moose::bit::BitTensor;
 use moose::bit::SampleBit;
 use moose::fixedpoint::Convert;
 use moose::prng::AesRng;
-use moose::ring::{Dot, Ring64Tensor, Sample};
+use moose::ring::Ring64Tensor;
 use moose::standard::Float64Tensor;
 use moose::utils;
 use ndarray::ArrayD;

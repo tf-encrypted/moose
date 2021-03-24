@@ -17,13 +17,8 @@ pub struct ConcreteRingTensor<T>(pub ArrayD<Wrapping<T>>);
 pub type Ring64Tensor = ConcreteRingTensor<u64>;
 pub type Ring128Tensor = ConcreteRingTensor<u128>;
 
-pub trait Sample {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
-    fn sample_bits(shape: &[usize], key: &[u8]) -> Self;
-}
-
-impl Sample for Ring64Tensor {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Ring64Tensor {
+impl Ring64Tensor {
+    pub fn sample_uniform(shape: &[usize], key: &[u8]) -> Ring64Tensor {
         let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
@@ -31,7 +26,7 @@ impl Sample for Ring64Tensor {
         let ix = IxDyn(shape);
         Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
+    pub fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
         let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
@@ -43,8 +38,8 @@ impl Sample for Ring64Tensor {
     }
 }
 
-impl Sample for ConcreteRingTensor<u128> {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
+impl Ring128Tensor {
+    pub fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
         let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
@@ -54,7 +49,7 @@ impl Sample for ConcreteRingTensor<u128> {
         let ix = IxDyn(shape);
         Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
+    pub fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
         let seed: RngSeed = key.try_into().unwrap();
         let mut rng = AesRng::from_seed(seed);
         let length = shape.iter().product();
@@ -73,6 +68,7 @@ impl ConcreteRingTensor<u64> {
         BitTensor::from(lsb)
     }
 }
+
 impl ConcreteRingTensor<u128> {
     pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
         let temp = &self.0 >> bit_idx;
@@ -217,17 +213,11 @@ where
     }
 }
 
-pub trait Dot<Rhs> {
-    type Output;
-    fn dot(self, rhs: Rhs) -> Self::Output;
-}
-
-impl<T> Dot<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+impl<T> ConcreteRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
 {
-    type Output = ConcreteRingTensor<T>;
-    fn dot(self, rhs: ConcreteRingTensor<T>) -> Self::Output {
+    pub fn dot(self, rhs: ConcreteRingTensor<T>) -> ConcreteRingTensor<T> {
         match self.0.ndim() {
             1 => match rhs.0.ndim() {
                 1 => {

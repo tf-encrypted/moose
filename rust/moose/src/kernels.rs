@@ -295,7 +295,6 @@ impl Compile<Kernel> for RingDotOp {
     fn compile(&self) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                use crate::ring::Dot;
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
             }
             _ => Err(Error::UnimplementedOperator),
@@ -339,13 +338,11 @@ impl Compile<Kernel> for RingSampleOp {
     fn compile(&self) -> Result<Kernel> {
         match (self.output, self.max_value) {
             (Ty::Ring64TensorTy, None) => {
-                use crate::ring::Sample;
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
                     &shape.0, &seed.0
                 ))
             }
             (Ty::Ring64TensorTy, Some(max_value)) if max_value == 1 => {
-                use crate::ring::Sample;
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_bits(
                     &shape.0, &seed.0
                 ))
