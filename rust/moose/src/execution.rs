@@ -138,8 +138,7 @@ pub enum Kernel {
 
 type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
 
-type UnarySyncKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, Value) -> Result<Value> + Send + Sync>;
+type UnarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId, Value) -> Result<Value> + Send + Sync>;
 
 type BinarySyncKernel =
     Box<dyn Fn(&SyncContext, &SessionId, Value, Value) -> Result<Value> + Send + Sync>;

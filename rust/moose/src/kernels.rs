@@ -334,12 +334,12 @@ impl Compile<Kernel> for RingSampleOp {
         match (self.output, self.max_value) {
             (Ty::Ring64TensorTy, None) => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
-                    &shape.0, &seed.0
+                    &shape, &seed
                 ))
             }
             (Ty::Ring64TensorTy, Some(max_value)) if max_value == 1 => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_bits(
-                    &shape.0, &seed.0
+                    &shape, &seed
                 ))
             }
             _ => Err(Error::UnimplementedOperator),

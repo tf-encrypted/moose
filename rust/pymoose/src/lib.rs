@@ -1,6 +1,7 @@
 use moose::bit::BitTensor;
 use moose::bit::SampleBit;
 use moose::fixedpoint::Convert;
+use moose::prim::Seed;
 use moose::prng::AesRng;
 use moose::ring::Ring64Tensor;
 use moose::standard::{Float64Tensor, Shape};
@@ -8,6 +9,7 @@ use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};
+use std::convert::TryInto;
 use std::num::Wrapping;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -122,10 +124,16 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         max_value: Option<u64>,
     ) -> &'py PyArrayDyn<u64> {
         let res = match max_value {
-            None => Ring64Tensor::sample_uniform(&shape, &seed.as_bytes()),
+            None => Ring64Tensor::sample_uniform(
+                &Shape(shape),
+                &Seed(seed.as_bytes().try_into().unwrap()),
+            ),
             Some(max_value) => {
                 if max_value == 1 {
-                    Ring64Tensor::sample_bits(&shape, &seed.as_bytes())
+                    Ring64Tensor::sample_bits(
+                        &Shape(shape),
+                        &Seed(seed.as_bytes().try_into().unwrap()),
+                    )
                 } else {
                     unimplemented!()
                 }
