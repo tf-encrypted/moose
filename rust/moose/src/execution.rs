@@ -922,6 +922,64 @@ impl Default for AsyncExecutor {
 }
 
 #[test]
+fn test_standard_prod_ops() {
+    use crate::standard::Float32Tensor;
+    use maplit::hashmap;
+    use ndarray::prelude::*;
+
+    let env = hashmap![];
+    let x = Float32Tensor::from(
+        array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
+    let x_op = Operation {
+        name: "x".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Float32Tensor(x),
+        }),
+        inputs: vec![],
+        placement: Placement::Host,
+    };
+    let y = Float32Tensor::from(
+        array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
+    let y_op = Operation {
+        name: "y".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Float32Tensor(y),
+        }),
+        inputs: vec![],
+        placement: Placement::Host,
+    };
+    let mul_op = Operation {
+        name: "mul".into(),
+        kind: Operator::StdMul(StdMulOp {
+            lhs: Ty::Float32TensorTy,
+            rhs: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into(), "y".into()],
+        placement: Placement::Host,
+    };
+    let dot_op = Operation {
+        name: "dot".into(),
+        kind: Operator::StdDot(StdDotOp {
+            lhs: Ty::Float32TensorTy,
+            rhs: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into(), "y".into()],
+        placement: Placement::Host,
+    };
+    let operations = vec![x_op, y_op, mul_op, dot_op];
+    let comp = Computation { operations }.toposort().unwrap();
+
+    let exec = EagerExecutor::new();
+    exec.run_computation(&comp, 12345, env).ok();
+}
+
+#[test]
 fn test_eager_executor() {
     use crate::prim::Nonce;
     use crate::standard::Shape;

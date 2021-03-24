@@ -19,6 +19,7 @@ impl Compile<SyncKernel> for Operator {
             StdSub(op) => op.compile(),
             StdMul(op) => op.compile(),
             StdDiv(op) => op.compile(),
+            StdDot(op) => op.compile(),
             StdOnes(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdSum(op) => op.compile(),
@@ -52,6 +53,7 @@ impl Compile<AsyncKernel> for Operator {
             StdSub(op) => op.compile(),
             StdMul(op) => op.compile(),
             StdDiv(op) => op.compile(),
+            StdDot(op) => op.compile(),
             StdOnes(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdSum(op) => op.compile(),
@@ -174,6 +176,32 @@ impl Compile<Kernel> for StdDivOp {
             }
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
                 function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x / y)
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdDotOp {
+    fn compile(&self) -> Result<Kernel> {
+        match (self.lhs, self.rhs) {
+            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x.dot(y))
             }
             _ => Err(Error::UnimplementedOperator),
         }

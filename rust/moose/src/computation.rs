@@ -107,6 +107,7 @@ pub enum Operator {
     StdSub(StdSubOp),
     StdMul(StdMulOp),
     StdDiv(StdDivOp),
+    StdDot(StdDotOp),
     StdReshape(StdReshapeOp),
     StdSum(StdSumOp),
     StdOnes(StdOnesOp),
@@ -164,6 +165,12 @@ pub struct StdMulOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdDivOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdDotOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
