@@ -13,6 +13,7 @@ from moose.computation import standard as std_dialect
 from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.base import Placement
+from moose.computation.base import Value
 from moose.computation.base import ValueType
 from moose.logger import get_logger
 
@@ -113,12 +114,14 @@ SUPPORTED_TYPES = [
     std_dialect.DeserializeOperation,
     std_dialect.SendOperation,
     std_dialect.ReceiveOperation,
+    std_dialect.ShapeValue,
+    std_dialect.StringValue,
 ]
 
 
 TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
 
-
+import numpy as np
 def _encode(val):
     if isinstance(val, Computation):
         return {
@@ -126,7 +129,7 @@ def _encode(val):
             "operations": val.operations,
             "placements": val.placements,
         }
-    elif isinstance(val, (Operation, ValueType, Placement)):
+    elif isinstance(val, (Operation, ValueType, Placement, Value)):
         type_name = f"{val.dialect()}_{type(val).__name__}"
         assert type_name in TYPES_MAP, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
@@ -134,6 +137,10 @@ def _encode(val):
         return d
     elif isinstance(val, dtypes.DType):
         return {"__type__": "DType", "name": val.name}
+    elif isinstance(val, np.ndarray):
+        assert val.dtype is np.dtype('float64')
+        return {"__type__": "std_Float64Tensor", "items": val.tolist(), "shape": val.shape()}
+
     raise NotImplementedError(f"{type(val)}")
 
 

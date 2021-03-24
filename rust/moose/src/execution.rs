@@ -756,9 +756,27 @@ pub struct StdLoadOp {
     pub output: Ty,
 }
 
+
+impl Compile<Kernel> for StdLoadOp {
+    fn compile(&self) -> Result<Kernel> {
+        Ok(Kernel::NullaryFunction(|| {
+            Ok(Value::Unit)
+        }))
+    }
+}
+
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdSaveOp {
     pub output: Ty,
+}
+
+impl Compile<Kernel> for StdSaveOp {
+    fn compile(&self) -> Result<Kernel> {
+        Ok(Kernel::NullaryFunction(|| {
+            Ok(Value::Unit)
+        }))
+    }
 }
 
 

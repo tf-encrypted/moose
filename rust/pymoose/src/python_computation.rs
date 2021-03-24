@@ -1,5 +1,7 @@
+use maplit::hashmap;
 use moose::execution;
 use moose::execution::*;
+use moose::standard::Float64Tensor;
 use pyo3::{prelude::*, types::PyModule};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -43,11 +45,22 @@ struct PyUnknownOperation {
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
-enum ValueType {
-    prim_PRFKeyType,
-    prim_SeedType,
+enum PyValueType {
+    // prim_PRFKeyType,
+    // prim_SeedType,
+    // ShapeType(String),
     std_ShapeType,
-    ring_RingTensorType,
+    std_StringType,
+    // std_UnitType,
+    // ring_RingTensorType(String),
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "__type__")]
+#[allow(non_camel_case_types)]
+enum PyValue {
+    std_ShapeValue { value: Vec<u8> },
+    std_StringValue { value: String },
 }
 
 #[derive(Deserialize, Debug)]
@@ -129,7 +142,6 @@ struct PyRingShlOperation {
 struct PyRingShrOperation {
     name: String,
     amount: u64,
-
     inputs: HashMap<String, String>,
     placement_name: String,
 }
@@ -137,6 +149,9 @@ struct PyRingShrOperation {
 #[derive(Deserialize, Debug)]
 struct PyConstantOperation {
     name: String,
+    placement_name: String,
+    output_type: PyValueType,
+    value: PyValue,
 }
 
 #[derive(Deserialize, Debug)]
@@ -162,13 +177,13 @@ struct PyOutputOperation {
 #[derive(Deserialize, Debug)]
 struct PySerializeOperation {
     name: String,
-    value_type: ValueType,
+    value_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
 struct PyDeserializeOperation {
     name: String,
-    value_type: ValueType,
+    value_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -177,7 +192,6 @@ struct PySendOperation {
     sender: String,
     receiver: String,
     rendezvous_key: String,
-
     inputs: HashMap<String, String>,
     placement_name: String,
 }
@@ -349,7 +363,6 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-
                     ring_RingShapeOperation(op) => Ok(execution::Operation {
                         kind: RingShape(RingShapeOp {
                             ty: execution::Ty::Ring64TensorTy,
@@ -389,11 +402,28 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_ConstantOperation(op) => Ok(execution::Operation {
+                        kind: Constant(ConstantOp {
+                            value: match op.value {
+                                PyValue::std_ShapeValue { ref value } => {
+                                    Shape(value.iter().map(|i| *i as usize).collect()).into()
+                                }
+                                PyValue::std_StringValue { ref value } => unimplemented!(),
+                            },
+                        }),
+                        name: op.name.clone(),
+                        inputs: Vec::new(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_SendOperation(op) => Ok(execution::Operation {
                         kind: Send(execution::SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
-                            sender: execution::HostPlacement { name: op.sender.clone() },
-                            receiver: execution::HostPlacement { name: op.receiver.clone() },
+                            sender: execution::HostPlacement {
+                                name: op.sender.clone(),
+                            },
+                            receiver: execution::HostPlacement {
+                                name: op.receiver.clone(),
+                            },
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])?,
@@ -402,8 +432,12 @@ impl TryFrom<PyComputation> for execution::Computation {
                     std_ReceiveOperation(op) => Ok(execution::Operation {
                         kind: Receive(execution::ReceiveOp {
                             rendezvous_key: op.rendezvous_key.clone(),
-                            sender: execution::HostPlacement { name: op.sender.clone() },
-                            receiver: execution::HostPlacement { name: op.receiver.clone() },
+                            sender: execution::HostPlacement {
+                                name: op.sender.clone(),
+                            },
+                            receiver: execution::HostPlacement {
+                                name: op.receiver.clone(),
+                            },
                         }),
                         name: op.name.clone(),
                         inputs: Vec::new(), //  TODO(Dragos): is this OK?
@@ -436,38 +470,39 @@ impl TryFrom<PyComputation> for execution::Computation {
 }
 
 #[test]
-fn test_deserialize_python_computation() {
+fn test_deserialize_python_simple_computation() {
     let gil = Python::acquire_gil();
     let py = gil.python();
     let comp_graph_py = PyModule::from_code(
         py,
         r#"
-from moose import edsl
+from moose.computation import ring as ring_dialect
+from moose.computation import standard as standard_dialect
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
 from moose.computation.utils import serialize_computation
 
-alice = edsl.host_placement(name="alice")
-bob = edsl.host_placement(name="bob")
-carole = edsl.host_placement(name="carole")
-dave = edsl.host_placement(name="dave")
-rep = edsl.replicated_placement(name="rep", players=[alice, bob, carole])
-
 def f():
-    @edsl.computation
-    def my_comp():
-        with alice:
-            x = edsl.load("x", dtype=edsl.float64)
-        with bob:
-            y = edsl.load("y", dtype=edsl.float64)
-        with rep:
-            z1 = edsl.mul(x, y)
-
-        with dave:
-            res_dave = edsl.save("res", z1)
-
-        return res_dave
-
-    concrete_comp = edsl.trace(my_comp)
-    return serialize_computation(concrete_comp)
+    comp = Computation(operations={}, placements={})
+    alice = comp.add_placement(HostPlacement(name="alice"))
+    comp.add_operation(
+        standard_dialect.ConstantOperation(
+            name="x_shape",
+            placement_name=alice.name,
+            inputs={},
+            value=standard_dialect.ShapeValue(value = (2, 2)),
+            output_type=standard_dialect.ShapeType(),
+        )
+    )
+    comp.add_operation(
+        ring_dialect.FillTensorOperation(
+            name="x",
+            placement_name=alice.name,
+            value=1,
+            inputs={"shape": "x_shape"},
+        )
+    )
+    return serialize_computation(comp)
 
 "#,
         "comp_graph.py",
@@ -478,12 +513,9 @@ def f():
     let buf: Vec<u8> = py_any.extract().unwrap();
 
     let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
-
-    println!("{:?}", comp);
     let rust_comp: Computation = comp.try_into().unwrap();
-    for operation in rust_comp.operations {
-        println!("{:?}", operation);
-    }
 
-    assert_eq!(true, false);
+    let env = hashmap![];
+    let exec = EagerExecutor::new();
+    exec.run_computation(&rust_comp, 12345, env).ok();
 }

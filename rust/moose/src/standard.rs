@@ -67,3 +67,11 @@ where
         StandardTensor::<T>(self.0 / other.0)
     }
 }
+
+impl<T> From<Vec<T>> for StandardTensor<T> {
+    fn from(v: Vec<T>) -> StandardTensor<T> {
+        let ix = IxDyn(&[v.len()]);
+        StandardTensor(Array::from_shape_vec(ix, v).unwrap())
+    }
+}
+

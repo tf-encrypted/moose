@@ -15,6 +15,9 @@ class Placement:
 class ValueType:
     pass
 
+@dataclass
+class Value:
+    pass
 
 @dataclass
 class Operation:
