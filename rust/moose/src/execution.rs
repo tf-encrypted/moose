@@ -512,14 +512,16 @@ where
 
 impl AsyncCompile for SendOp {
     fn compile(&self) -> Result<AsyncKernel> {
-        let rdv = Arc::new(self.rendezvous_key.clone());
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Unary(Box::new(move |ctx, sid, v, sender| {
             let ctx = Arc::clone(ctx);
             let sid = Arc::clone(sid);
-            let rdv = Arc::clone(&rdv);
+            let op = Arc::clone(&op);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                ctx.networking.send(&v, &rdv, &sid).await;
+                ctx.networking
+                    .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sid)
+                    .await;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
@@ -550,15 +552,37 @@ pub struct SyncContext {
 }
 
 pub trait SyncNetworking {
-    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
-    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value>;
+    fn send(
+        &self,
+        v: &Value,
+        sender: &str,
+        receiver: &str,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    );
+    fn receive(
+        &self,
+        sender: &str,
+        receiver: &str,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<Value>;
 }
 
 #[async_trait]
 pub trait AsyncNetworking {
-    async fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
+    async fn send(
+        &self,
+        v: &Value,
+        sender: &str,
+        receiver: &str,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    );
     async fn receive(
         &self,
+        sender: &str,
+        receiver: &str,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value>;
@@ -567,11 +591,24 @@ pub trait AsyncNetworking {
 pub struct DummySyncNetworking;
 
 impl SyncNetworking for DummySyncNetworking {
-    fn send(&self, _v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) {
+    fn send(
+        &self,
+        _v: &Value,
+        sender: &str,
+        receiver: &str,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) {
         println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
     }
 
-    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value> {
+    fn receive(
+        &self,
+        sender: &str,
+        receiver: &str,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<Value> {
         println!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
         Ok(Value::Shape(Shape(vec![0])))
     }
@@ -581,12 +618,21 @@ pub struct DummyAsyncNetworking;
 
 #[async_trait]
 impl AsyncNetworking for DummyAsyncNetworking {
-    async fn send(&self, _v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) {
+    async fn send(
+        &self,
+        _v: &Value,
+        sender: &str,
+        receiver: &str,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) {
         println!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
     }
 
     async fn receive(
         &self,
+        sender: &str,
+        receiver: &str,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value> {
@@ -640,11 +686,15 @@ pub enum Operator {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SendOp {
+    pub sender: String,   // TODO
+    pub receiver: String, // TODO
     pub rendezvous_key: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReceiveOp {
+    pub sender: String,   // TODO
+    pub receiver: String, // TODO
     pub rendezvous_key: String,
 }
 
