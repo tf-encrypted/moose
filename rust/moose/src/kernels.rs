@@ -240,12 +240,7 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
 
 impl Compile<Kernel> for PrimGenPrfKeyOp {
     fn compile(&self) -> Result<Kernel> {
-        use crate::prng::AesRng;
-        function_kernel!(|| {
-            // TODO(Morten) we shouldn't have core logic directly in kernels
-            let raw_key = AesRng::generate_random_key();
-            Value::PrfKey(PrfKey(raw_key.into()))
-        })
+        function_kernel!(PrfKey::generate)
     }
 }
 
