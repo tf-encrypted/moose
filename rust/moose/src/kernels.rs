@@ -14,30 +14,30 @@ impl Compile<SyncKernel> for Operator {
     fn compile(&self) -> Result<SyncKernel> {
         use Operator::*;
         match self {
-            Constant(op) => Compile::<SyncKernel>::compile(op),
-            StdAdd(op) => Compile::<SyncKernel>::compile(op),
-            StdSub(op) => Compile::<SyncKernel>::compile(op),
-            StdMul(op) => Compile::<SyncKernel>::compile(op),
-            StdDiv(op) => Compile::<SyncKernel>::compile(op),
-            StdReshape(op) => Compile::<SyncKernel>::compile(op),
-            StdSum(op) => Compile::<SyncKernel>::compile(op),
-            RingAdd(op) => Compile::<SyncKernel>::compile(op),
-            RingSub(op) => Compile::<SyncKernel>::compile(op),
-            RingMul(op) => Compile::<SyncKernel>::compile(op),
-            RingDot(op) => Compile::<SyncKernel>::compile(op),
-            RingSum(op) => Compile::<SyncKernel>::compile(op),
-            RingShape(op) => Compile::<SyncKernel>::compile(op),
-            RingSample(op) => Compile::<SyncKernel>::compile(op),
-            RingFill(op) => Compile::<SyncKernel>::compile(op),
-            RingShl(op) => Compile::<SyncKernel>::compile(op),
-            RingShr(op) => Compile::<SyncKernel>::compile(op),
-            PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op),
-            PrimGenPrfKey(op) => Compile::<SyncKernel>::compile(op),
-            Send(op) => Compile::<SyncKernel>::compile(op),
-            Receive(op) => Compile::<SyncKernel>::compile(op),
-            FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op),
-            FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op),
-            FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op),
+            Constant(op) => op.compile(),
+            StdAdd(op) => op.compile(),
+            StdSub(op) => op.compile(),
+            StdMul(op) => op.compile(),
+            StdDiv(op) => op.compile(),
+            StdReshape(op) => op.compile(),
+            StdSum(op) => op.compile(),
+            RingAdd(op) => op.compile(),
+            RingSub(op) => op.compile(),
+            RingMul(op) => op.compile(),
+            RingDot(op) => op.compile(),
+            RingSum(op) => op.compile(),
+            RingShape(op) => op.compile(),
+            RingSample(op) => op.compile(),
+            RingFill(op) => op.compile(),
+            RingShl(op) => op.compile(),
+            RingShr(op) => op.compile(),
+            PrimDeriveSeed(op) => op.compile(),
+            PrimGenPrfKey(op) => op.compile(),
+            Send(op) => op.compile(),
+            Receive(op) => op.compile(),
+            FixedpointRingEncode(op) => op.compile(),
+            FixedpointRingDecode(op) => op.compile(),
+            FixedpointRingMean(op) => op.compile(),
         }
     }
 }
@@ -46,39 +46,31 @@ impl Compile<AsyncKernel> for Operator {
     fn compile(&self) -> Result<AsyncKernel> {
         use Operator::*;
         match self {
-            Constant(op) => Compile::<AsyncKernel>::compile(op),
-            StdAdd(op) => Compile::<AsyncKernel>::compile(op),
-            StdSub(op) => Compile::<AsyncKernel>::compile(op),
-            StdMul(op) => Compile::<AsyncKernel>::compile(op),
-            StdDiv(op) => Compile::<AsyncKernel>::compile(op),
-            StdReshape(op) => Compile::<AsyncKernel>::compile(op),
-            StdSum(op) => Compile::<AsyncKernel>::compile(op),
-            RingAdd(op) => Compile::<AsyncKernel>::compile(op),
-            RingSub(op) => Compile::<AsyncKernel>::compile(op),
-            RingMul(op) => Compile::<AsyncKernel>::compile(op),
-            RingDot(op) => Compile::<AsyncKernel>::compile(op),
-            RingSum(op) => Compile::<AsyncKernel>::compile(op),
-            RingShape(op) => Compile::<AsyncKernel>::compile(op),
-            RingSample(op) => Compile::<AsyncKernel>::compile(op),
-            RingFill(op) => Compile::<AsyncKernel>::compile(op),
-            RingShl(op) => Compile::<AsyncKernel>::compile(op),
-            RingShr(op) => Compile::<AsyncKernel>::compile(op),
-            PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op),
-            PrimGenPrfKey(op) => Compile::<AsyncKernel>::compile(op),
-            Send(op) => Compile::<AsyncKernel>::compile(op),
-            Receive(op) => Compile::<AsyncKernel>::compile(op),
-            FixedpointRingEncode(op) => Compile::<AsyncKernel>::compile(op),
-            FixedpointRingDecode(op) => Compile::<AsyncKernel>::compile(op),
-            FixedpointRingMean(op) => Compile::<AsyncKernel>::compile(op),
+            Constant(op) => op.compile(),
+            StdAdd(op) => op.compile(),
+            StdSub(op) => op.compile(),
+            StdMul(op) => op.compile(),
+            StdDiv(op) => op.compile(),
+            StdReshape(op) => op.compile(),
+            StdSum(op) => op.compile(),
+            RingAdd(op) => op.compile(),
+            RingSub(op) => op.compile(),
+            RingMul(op) => op.compile(),
+            RingDot(op) => op.compile(),
+            RingSum(op) => op.compile(),
+            RingShape(op) => op.compile(),
+            RingSample(op) => op.compile(),
+            RingFill(op) => op.compile(),
+            RingShl(op) => op.compile(),
+            RingShr(op) => op.compile(),
+            PrimDeriveSeed(op) => op.compile(),
+            PrimGenPrfKey(op) => op.compile(),
+            Send(op) => op.compile(),
+            Receive(op) => op.compile(),
+            FixedpointRingEncode(op) => op.compile(),
+            FixedpointRingDecode(op) => op.compile(),
+            FixedpointRingMean(op) => op.compile(),
         }
-    }
-}
-
-impl Compile<Kernel> for ConstantOp {
-    fn compile(&self) -> Result<Kernel> {
-        use std::sync::Arc;
-        let value = self.value.clone();
-        Ok(Kernel::NullaryClosure(Arc::new(move || Ok(value.clone()))))
     }
 }
 
@@ -402,6 +394,14 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
             axis,
             scaling_factor
         ))
+    }
+}
+
+impl Compile<Kernel> for ConstantOp {
+    fn compile(&self) -> Result<Kernel> {
+        use std::sync::Arc;
+        let value = self.value.clone();
+        Ok(Kernel::NullaryClosure(Arc::new(move || Ok(value.clone()))))
     }
 }
 

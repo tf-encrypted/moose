@@ -136,18 +136,18 @@ pub enum Kernel {
     VariadicFunction(fn(Vec<Value>) -> Result<Value>),
 }
 
-pub type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
+type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
 
-pub type UnarySyncKernel =
+type UnarySyncKernel =
     Box<dyn Fn(&SyncContext, &SessionId, Value) -> Result<Value> + Send + Sync>;
 
-pub type BinarySyncKernel =
+type BinarySyncKernel =
     Box<dyn Fn(&SyncContext, &SessionId, Value, Value) -> Result<Value> + Send + Sync>;
 
-pub type TernarySyncKernel =
+type TernarySyncKernel =
     Box<dyn Fn(&SyncContext, &SessionId, Value, Value, Value) -> Result<Value> + Send + Sync>;
 
-pub type VariadicSyncKernel =
+type VariadicSyncKernel =
     Box<dyn Fn(&SyncContext, &SessionId, Vec<Value>) -> Result<Value> + Send + Sync>;
 
 pub enum SyncKernel {
@@ -158,16 +158,16 @@ pub enum SyncKernel {
     Variadic(VariadicSyncKernel),
 }
 
-pub type NullaryAsyncKernel =
+type NullaryAsyncKernel =
     Box<dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncSender) -> AsyncTask + Send + Sync>;
 
-pub type UnaryAsyncKernel = Box<
+type UnaryAsyncKernel = Box<
     dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncReceiver, AsyncSender) -> AsyncTask
         + Send
         + Sync,
 >;
 
-pub type BinaryAsyncKernel = Box<
+type BinaryAsyncKernel = Box<
     dyn Fn(
             &Arc<AsyncContext>,
             &Arc<SessionId>,
@@ -179,7 +179,7 @@ pub type BinaryAsyncKernel = Box<
         + Sync,
 >;
 
-pub type TernaryAsyncKernel = Box<
+type TernaryAsyncKernel = Box<
     dyn Fn(
             &Arc<AsyncContext>,
             &Arc<SessionId>,
@@ -192,7 +192,7 @@ pub type TernaryAsyncKernel = Box<
         + Sync,
 >;
 
-pub type VariadicAsyncKernel = Box<
+type VariadicAsyncKernel = Box<
     dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, Vec<AsyncReceiver>, AsyncSender) -> AsyncTask
         + Send
         + Sync,
