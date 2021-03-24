@@ -74,7 +74,7 @@ impl<T> ConcreteRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
-    pub fn fill(shape: Shape, el: T) -> ConcreteRingTensor<T> {
+    pub fn fill(shape: &Shape, el: T) -> ConcreteRingTensor<T> {
         ConcreteRingTensor(ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)))
     }
 }
@@ -333,8 +333,9 @@ mod tests {
 
     #[test]
     fn ring_sample() {
-        let key = [0u8; 16];
-        let r = Ring64Tensor::sample_uniform(&[5], &key);
+        let shape = Shape(vec![5]);
+        let seed = Seed([0u8; 16]);
+        let r = Ring64Tensor::sample_uniform(&shape, &seed);
         assert_eq!(
             r,
             Ring64Tensor::from(vec![
@@ -346,13 +347,13 @@ mod tests {
             ])
         );
 
-        let r_bits = Ring64Tensor::sample_bits(&[5], &key);
+        let r_bits = Ring64Tensor::sample_bits(&shape, &seed);
         assert_eq!(r_bits, Ring64Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 
     #[test]
     fn ring_fill() {
-        let r = Ring64Tensor::fill(&[2], 1);
+        let r = Ring64Tensor::fill(&Shape(vec![2]), 1);
         assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
     }
 
@@ -383,19 +384,19 @@ mod tests {
 
     #[test]
     fn bit_extract() {
-        let shape = 5;
+        let shape = Shape(vec![5]);
         let value = 7;
 
-        let r0 = Ring64Tensor::fill(&[shape], value).bit_extract(0);
-        assert_eq!(BitTensor::fill(&[shape], 1), r0,);
+        let r0 = Ring64Tensor::fill(&shape, value).bit_extract(0);
+        assert_eq!(BitTensor::fill(&shape, 1), r0,);
 
-        let r1 = Ring64Tensor::fill(&[shape], value).bit_extract(1);
-        assert_eq!(BitTensor::fill(&[shape], 1), r1,);
+        let r1 = Ring64Tensor::fill(&shape, value).bit_extract(1);
+        assert_eq!(BitTensor::fill(&shape, 1), r1,);
 
-        let r2 = Ring64Tensor::fill(&[shape], value).bit_extract(2);
-        assert_eq!(BitTensor::fill(&[shape], 1), r2,);
+        let r2 = Ring64Tensor::fill(&shape, value).bit_extract(2);
+        assert_eq!(BitTensor::fill(&shape, 1), r2,);
 
-        let r3 = Ring64Tensor::fill(&[shape], value).bit_extract(3);
-        assert_eq!(BitTensor::fill(&[shape], 0), r3,)
+        let r3 = Ring64Tensor::fill(&shape, value).bit_extract(3);
+        assert_eq!(BitTensor::fill(&shape, 0), r3,)
     }
 }
