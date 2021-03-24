@@ -613,6 +613,7 @@ pub trait AsyncCompile {
 pub enum Operator {
     Constant(ConstantOp),
     StdAdd(StdAddOp),
+    StdDot(StdDotOp),
     StdSub(StdSubOp),
     StdMul(StdMulOp),
     StdDiv(StdDivOp),
@@ -686,6 +687,38 @@ impl Compile<Kernel> for StdAddOp {
             }
             (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
                 function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x + y)
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdDotOp {
+    pub lhs: Ty,
+    pub rhs: Ty,
+}
+
+impl Compile<Kernel> for StdDotOp {
+    fn compile(&self) -> Result<Kernel> {
+        match (self.lhs, self.rhs) {
+            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x.dot(y))
+            }
+            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x.dot(y))
             }
             _ => Err(Error::UnimplementedOperator),
         }
@@ -1636,6 +1669,63 @@ impl Default for AsyncExecutor {
     fn default() -> Self {
         AsyncExecutor::new()
     }
+}
+
+#[test]
+fn test_standard_prod_ops() {
+    use maplit::hashmap;
+    use ndarray::prelude::*;
+
+    let env = hashmap![];
+    let x = Float32Tensor::from(
+        array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
+    let x_op = Operation {
+        name: "x".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Float32Tensor(x),
+        }),
+        inputs: vec![],
+        placement: Placement::Host,
+    };
+    let y = Float32Tensor::from(
+        array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
+    let y_op = Operation {
+        name: "y".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Float32Tensor(y),
+        }),
+        inputs: vec![],
+        placement: Placement::Host,
+    };
+    let mul_op = Operation {
+        name: "mul".into(),
+        kind: Operator::StdMul(StdMulOp {
+            lhs: Ty::Float32TensorTy,
+            rhs: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into(), "y".into()],
+        placement: Placement::Host,
+    };
+    let dot_op = Operation {
+        name: "dot".into(),
+        kind: Operator::StdDot(StdDotOp {
+            lhs: Ty::Float32TensorTy,
+            rhs: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into(), "y".into()],
+        placement: Placement::Host,
+    };
+    let operations = vec![x_op, y_op, mul_op, dot_op];
+    let comp = Computation { operations }.toposort().unwrap();
+
+    let exec = EagerExecutor::new();
+    exec.run_computation(&comp, 12345, env).ok();
 }
 
 #[test]
