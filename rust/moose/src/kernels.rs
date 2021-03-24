@@ -233,11 +233,8 @@ impl Compile<Kernel> for StdSumOp {
 
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self) -> Result<Kernel> {
-        let nonce = self.nonce.0.clone();
-        closure_kernel!(PrfKey, |key: PrfKey| {
-            // TODO(Morten) pass key as-is without unwrapping
-            Seed(crate::utils::derive_seed(&key.0, &nonce).into())
-        })
+        let nonce = self.nonce.clone();
+        closure_kernel!(PrfKey, |key| Seed::from_prf(&key, &nonce))
     }
 }
 
