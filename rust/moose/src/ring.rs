@@ -81,8 +81,8 @@ impl<T> ConcreteRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
-    pub fn fill(shape: &[usize], el: T) -> ConcreteRingTensor<T> {
-        ConcreteRingTensor(ArrayD::from_elem(shape, Wrapping(el)))
+    pub fn fill(shape: Shape, el: T) -> ConcreteRingTensor<T> {
+        ConcreteRingTensor(ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)))
     }
 }
 

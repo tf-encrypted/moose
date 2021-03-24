@@ -325,8 +325,7 @@ impl Compile<Kernel> for RingShapeOp {
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self) -> Result<Kernel> {
         let value = self.value;
-        // TODO(Morten) should not call .0 here
-        closure_kernel!(Shape, |shape: Shape| Ring64Tensor::fill(&shape.0, value))
+        closure_kernel!(Shape, |shape: Shape| Ring64Tensor::fill(shape, value))
     }
 }
 
