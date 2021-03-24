@@ -315,12 +315,8 @@ impl Compile<Kernel> for RingSumOp {
 impl Compile<Kernel> for RingShapeOp {
     fn compile(&self) -> Result<Kernel> {
         match self.ty {
-            Ty::Ring64TensorTy => function_kernel!(Ring64Tensor, |x| {
-                Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
-            }),
-            Ty::Ring128TensorTy => function_kernel!(Ring128Tensor, |x| {
-                Shape(x.0.shape().into()) // TODO(Morten) wrapping should not happen here
-            }),
+            Ty::Ring64TensorTy => function_kernel!(Ring64Tensor, |x| x.shape()),
+            Ty::Ring128TensorTy => function_kernel!(Ring128Tensor, |x| x.shape()),
             _ => Err(Error::UnimplementedOperator),
         }
     }

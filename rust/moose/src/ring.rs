@@ -9,7 +9,7 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
 use crate::prng::{AesRng, RngSeed};
-
+use crate::standard::Shape;
 use crate::bit::BitTensor;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -83,6 +83,12 @@ where
 {
     pub fn fill(shape: &[usize], el: T) -> ConcreteRingTensor<T> {
         ConcreteRingTensor(ArrayD::from_elem(shape, Wrapping(el)))
+    }
+}
+
+impl<T> ConcreteRingTensor<T> {
+    pub fn shape(&self) -> Shape {
+        Shape(self.0.shape().into())
     }
 }
 
