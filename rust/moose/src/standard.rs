@@ -25,48 +25,37 @@ where
     T: LinalgScalar,
 {
     pub fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
-        match self.0.ndim() {
-            1 => match other.0.ndim() {
-                1 => {
-                    let l = self.0.into_dimensionality::<Ix1>().unwrap();
-                    let r = other.0.into_dimensionality::<Ix1>().unwrap();
-                    let res = Array::from_elem([], l.dot(&r))
-                        .into_dimensionality::<IxDyn>()
-                        .unwrap();
-                    StandardTensor::<T>(res)
-                }
-                2 => {
-                    let l = self.0.into_dimensionality::<Ix1>().unwrap();
-                    let r = other.0.into_dimensionality::<Ix2>().unwrap();
-                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    StandardTensor::<T>(res)
-                }
-                other_rank => panic!(
-                    "Dot<StandardTensor> cannot handle argument of rank {:?} ",
-                    other_rank
-                ),
-            },
-            2 => match other.0.ndim() {
-                1 => {
-                    let l = self.0.into_dimensionality::<Ix2>().unwrap();
-                    let r = other.0.into_dimensionality::<Ix1>().unwrap();
-                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    StandardTensor::<T>(res)
-                }
-                2 => {
-                    let l = self.0.into_dimensionality::<Ix2>().unwrap();
-                    let r = other.0.into_dimensionality::<Ix2>().unwrap();
-                    let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    StandardTensor::<T>(res)
-                }
-                other_rank => panic!(
-                    "Dot<StandardTensor> cannot handle argument of rank {:?} ",
-                    other_rank
-                ),
-            },
-            other_rank => panic!(
-                "Dot<StandardTensor> not implemented for tensors of rank {:?}",
-                other_rank
+        match (self.0.ndim(), other.0.ndim()) {
+            (1, 1) => {
+                let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                let r = other.0.into_dimensionality::<Ix1>().unwrap();
+                let res = Array::from_elem([], l.dot(&r))
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
+                StandardTensor::<T>(res)
+            }
+            (1, 2) => {
+                let l = self.0.into_dimensionality::<Ix1>().unwrap();
+                let r = other.0.into_dimensionality::<Ix2>().unwrap();
+                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                StandardTensor::<T>(res)
+            }
+            (2, 1) => {
+                let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                let r = other.0.into_dimensionality::<Ix1>().unwrap();
+                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                StandardTensor::<T>(res)
+            }
+            (2, 2) => {
+                let l = self.0.into_dimensionality::<Ix2>().unwrap();
+                let r = other.0.into_dimensionality::<Ix2>().unwrap();
+                let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
+                StandardTensor::<T>(res)
+            }
+            (self_rank, other_rank) => panic!(
+                // TODO: replace with proper error handling
+                "Dot<StandardTensor> not implemented between tensors of rank {:?} and {:?}.",
+                self_rank, other_rank,
             ),
         }
     }
