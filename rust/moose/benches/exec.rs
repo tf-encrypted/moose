@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use moose::execution::Computation;
+use moose::computation::Computation;
 use rayon::prelude::*;
 use std::collections::HashMap;
 
@@ -65,6 +65,7 @@ fn par_spawn(c: &mut Criterion) {
 /// Benchmark iter vs par_iter for compiling operations.
 /// Conclusion is that
 fn par_compile(c: &mut Criterion) {
+    use moose::computation::*;
     use moose::execution::*;
 
     let operator = Operator::RingAdd(RingAddOp {
@@ -463,7 +464,7 @@ fn prim_capture(c: &mut Criterion) {
 criterion_group!(prim, prim_arc, prim_closure, prim_capture);
 
 fn gen_sample_graph(size: usize) -> Computation {
-    use moose::execution::*;
+    use moose::computation::*;
     use moose::ring::*;
 
     let operator = Operator::RingMul(RingMulOp {
@@ -498,6 +499,7 @@ fn gen_sample_graph(size: usize) -> Computation {
 }
 
 fn compile(c: &mut Criterion) {
+    use moose::computation::*;
     use moose::execution::*;
 
     let operator = Operator::RingAdd(RingAddOp {
@@ -507,14 +509,14 @@ fn compile(c: &mut Criterion) {
 
     c.bench_function("compile_operator/sync", |b| {
         b.iter(|| {
-            let kernel: SyncKernel = SyncCompile::compile(&operator).unwrap();
+            let kernel: SyncKernel = operator.compile().unwrap();
             black_box(kernel);
         })
     });
 
     c.bench_function("compile_operator/async", |b| {
         b.iter(|| {
-            let kernel: AsyncKernel = AsyncCompile::compile(&operator).unwrap();
+            let kernel: AsyncKernel = operator.compile().unwrap();
             black_box(kernel);
         })
     });
@@ -577,7 +579,7 @@ fn execute(c: &mut Criterion) {
             b.iter(|| {
                 let sid = 12345;
                 let env = hashmap!();
-                let res = comp.apply(&ctx, &sid, env);
+                let res = comp.apply(&ctx, &sid, env).unwrap();
                 black_box(res);
             });
         });
@@ -592,7 +594,7 @@ fn execute(c: &mut Criterion) {
             b.iter(|| {
                 let sid = 12345;
                 let env = HashMap::new();
-                let res = comp_compiled.apply(&ctx, &sid, env);
+                let res = comp_compiled.apply(&ctx, &sid, env).unwrap();
                 black_box(res);
             });
         });
