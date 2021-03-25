@@ -30,6 +30,7 @@ impl Compile<SyncKernel> for Operator {
             StdReshape(op) => op.compile(),
             StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
+            StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
             RingSub(op) => op.compile(),
             RingMul(op) => op.compile(),
@@ -69,6 +70,7 @@ impl Compile<AsyncKernel> for Operator {
             StdReshape(op) => op.compile(),
             StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
+            StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
             RingSub(op) => op.compile(),
             RingMul(op) => op.compile(),
@@ -278,6 +280,32 @@ impl Compile<Kernel> for StdSumOp {
             }
             Ty::Uint64TensorTy => {
                 closure_kernel!(Uint64Tensor, |x| x.sum(axis))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdTransposeOp {
+    fn compile(&self) -> Result<Kernel> {
+        match self.ty {
+            Ty::Float32TensorTy => {
+                function_kernel!(Float32Tensor, |x| x.t())
+            }
+            Ty::Float64TensorTy => {
+                function_kernel!(Float64Tensor, |x| x.t())
+            }
+            Ty::Int32TensorTy => {
+                function_kernel!(Int32Tensor, |x| x.t())
+            }
+            Ty::Int64TensorTy => {
+                function_kernel!(Int64Tensor, |x| x.t())
+            }
+            Ty::Uint32TensorTy => {
+                function_kernel!(Uint32Tensor, |x| x.t())
+            }
+            Ty::Uint64TensorTy => {
+                function_kernel!(Uint64Tensor, |x| x.t())
             }
             _ => Err(Error::UnimplementedOperator),
         }
