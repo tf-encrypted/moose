@@ -1003,15 +1003,7 @@ fn test_standard_prod_ops() {
             name: "alice".into(),
         }),
     };
-    let transpose_op = Operation {
-        name: "transpose".into(),
-        kind: Operator::StdTranspose(StdTransposeOp {
-            ty: Ty::Float32TensorTy,
-        }),
-        inputs: vec!["y".into()],
-        placement: Placement::Host,
-    };
-    let operations = vec![x_op, y_op, mul_op, dot_op, mean_op, transpose_op];
+    let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
     let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();

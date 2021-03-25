@@ -625,7 +625,15 @@ fn test_standard_shape_ops() {
             name: "alice".into(),
         }),
     };
-    let operations = vec![x_op, shape_op, expand_dims_op];
+    let transpose_op = Operation {
+        name: "transpose".into(),
+        kind: Operator::StdTranspose(StdTransposeOp {
+            ty: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into()],
+        placement: Placement::Host,
+    };
+    let operations = vec![x_op, shape_op, expand_dims_op, transpose_op];
     let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();
