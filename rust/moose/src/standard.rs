@@ -1,6 +1,8 @@
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use num_traits::FromPrimitive;
+use ndarray_linalg::solve::Inverse;
+use ndarray_linalg::types::Scalar;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub};
 
@@ -118,6 +120,20 @@ where
                     .unwrap();
                 StandardTensor::<T>(out)
             }
+        }
+    }
+}
+
+impl<T> StandardTensor<T> where T: Scalar {
+    pub fn inv(self) -> Self {        
+        match self.0.ndim() {
+            2 => {
+                let two_dim = self.0.into_dimensionality::<Ix2>().unwrap();
+                StandardTensor::<T>(&two_dim.inv().unwrap())
+            }
+            other_rank => panic!(
+                "Inverse only defined for rank 2 matrices, not rank {:?}", other_rank,
+            )
         }
     }
 }
