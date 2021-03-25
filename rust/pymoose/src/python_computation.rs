@@ -287,6 +287,16 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
         .ok_or_else(|| anyhow::anyhow!("No key found in placement dictionary"))
 }
 
+fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
+    let out: anyhow::Result<Value> = match constant_value {
+        PyValue::std_ShapeValue { ref value } => Ok(Value::from(moose::standard::Shape(
+            value.iter().map(|i| *i as usize).collect(),
+        ))),
+        _ => unimplemented!(),
+    };
+    out
+}
+
 impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
     fn try_from(python_computation: PyComputation) -> anyhow::Result<Computation> {
@@ -395,13 +405,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ConstantOperation(op) => Ok(Operation {
                         kind: Constant(ConstantOp {
-                            value: match op.value {
-                                PyValue::std_ShapeValue { ref value } => moose::standard::Shape(
-                                    value.iter().map(|i| *i as usize).collect(),
-                                )
-                                .into(),
-                                _ => unimplemented!(),
-                            },
+                            value: map_constant_value(&op.value)?,
                         }),
                         name: op.name.clone(),
                         inputs: Vec::new(),
