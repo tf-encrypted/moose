@@ -65,11 +65,12 @@ struct PySampleKeyOperation {
     name: String,
     placement_name: String,
 }
+type Inputs = HashMap<String, String>;
 
 #[derive(Deserialize, Debug)]
 struct PyDeriveSeedOperation {
     name: String,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
     #[serde(with = "serde_bytes")]
     nonce: Vec<u8>,
@@ -78,35 +79,35 @@ struct PyDeriveSeedOperation {
 #[derive(Deserialize, Debug)]
 struct PyRingAddOperation {
     name: String,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct PyRingSubOperation {
     name: String,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct PyRingMulOperation {
     name: String,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct PyRingDotOperation {
     name: String,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
 struct PyRingShapeOperation {
     name: String,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -114,8 +115,7 @@ struct PyRingShapeOperation {
 struct PyRingSampleOperation {
     name: String,
     max_value: Option<u64>,
-
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -123,7 +123,7 @@ struct PyRingSampleOperation {
 struct PyFillTensorOperation {
     name: String,
     value: u64,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -131,7 +131,7 @@ struct PyFillTensorOperation {
 struct PyRingShlOperation {
     name: String,
     amount: u64,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -139,7 +139,7 @@ struct PyRingShlOperation {
 struct PyRingShrOperation {
     name: String,
     amount: u64,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -189,7 +189,7 @@ struct PySendOperation {
     sender: String,
     receiver: String,
     rendezvous_key: String,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -206,7 +206,7 @@ struct PyReceiveOperation {
 struct PyRingEncodeOperation {
     name: String,
     scaling_factor: u64,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -214,7 +214,7 @@ struct PyRingEncodeOperation {
 struct PyRingDecodeOperation {
     name: String,
     scaling_factor: u64,
-    inputs: HashMap<String, String>,
+    inputs: Inputs,
     placement_name: String,
 }
 

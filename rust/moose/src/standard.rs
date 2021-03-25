@@ -131,8 +131,7 @@ where
 
 impl<T> From<Vec<T>> for StandardTensor<T> {
     fn from(v: Vec<T>) -> StandardTensor<T> {
-        let ix = IxDyn(&[v.len()]);
-        StandardTensor(Array::from_shape_vec(ix, v).unwrap())
+        StandardTensor(Array::from(v).into_dyn())
     }
 }
 
