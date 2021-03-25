@@ -1,7 +1,6 @@
 use maplit::hashmap;
+use moose::computation::*;
 use moose::execution;
-use moose::execution::*;
-use moose::standard::Float64Tensor;
 use pyo3::{prelude::*, types::PyModule};
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -250,24 +249,20 @@ impl TryFrom<&PyPlacement> for Placement {
     type Error = anyhow::Error;
     fn try_from(placement: &PyPlacement) -> anyhow::Result<Placement> {
         match placement {
-            PyPlacement::host_HostPlacement(plc) => {
-                Ok(execution::Placement::Host(execution::HostPlacement {
-                    name: plc.name.clone(),
-                }))
-            }
+            PyPlacement::host_HostPlacement(plc) => Ok(Placement::Host(HostPlacement {
+                name: plc.name.clone(),
+            })),
             PyPlacement::rep_ReplicatedPlacement(plc) => {
                 if plc.player_names.len() != 3 {
                     return Err(anyhow::anyhow!("Placement doesn't have 3 players"));
                 }
-                Ok(execution::Placement::Replicated(
-                    execution::ReplicatedPlacement {
-                        players: [
-                            plc.player_names[0].clone(),
-                            plc.player_names[1].clone(),
-                            plc.player_names[2].clone(),
-                        ],
-                    },
-                ))
+                Ok(Placement::Replicated(ReplicatedPlacement {
+                    players: [
+                        plc.player_names[0].clone(),
+                        plc.player_names[1].clone(),
+                        plc.player_names[2].clone(),
+                    ],
+                }))
             }
         }
     }
@@ -287,106 +282,103 @@ fn map_inputs(
         })
         .collect::<anyhow::Result<Vec<_>>>()
 }
-fn map_placement(
-    plc: &HashMap<String, execution::Placement>,
-    name: &str,
-) -> anyhow::Result<execution::Placement> {
+fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result<Placement> {
     plc.get(name)
         .cloned()
         .ok_or(anyhow::anyhow!("No key found in placement dictionary"))
 }
 
-impl TryFrom<PyComputation> for execution::Computation {
+impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
-    fn try_from(python_computation: PyComputation) -> anyhow::Result<execution::Computation> {
-        let placements: HashMap<String, execution::Placement> = python_computation
+    fn try_from(python_computation: PyComputation) -> anyhow::Result<Computation> {
+        let placements: HashMap<String, Placement> = python_computation
             .placements
             .iter()
             .map(|(placement_name, python_placement)| {
                 Ok((placement_name.clone(), python_placement.try_into()?))
             })
             .collect::<anyhow::Result<HashMap<_, _>>>()?;
-        let operations: Vec<execution::Operation> = python_computation
+        let operations: Vec<Operation> = python_computation
             .operations
             .values()
             .map(|op| {
-                use execution::Operator::*;
+                use moose::computation::Operator::*;
                 use PyOperation::*;
                 match op {
-                    prim_SampleKeyOperation(op) => Ok(execution::Operation {
+                    prim_SampleKeyOperation(op) => Ok(Operation {
                         kind: PrimGenPrfKey(PrimGenPrfKeyOp {}),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    prim_DeriveSeedOperation(op) => Ok(execution::Operation {
+                    prim_DeriveSeedOperation(op) => Ok(Operation {
                         kind: PrimDeriveSeed(PrimDeriveSeedOp {
-                            nonce: Nonce(op.nonce.clone()),
+                            nonce: moose::prim::Nonce(op.nonce.clone()),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingAddOperation(op) => Ok(execution::Operation {
+                    ring_RingAddOperation(op) => Ok(Operation {
                         kind: RingAdd(RingAddOp {
-                            lhs: execution::Ty::Ring64TensorTy,
-                            rhs: execution::Ty::Ring64TensorTy,
+                            lhs: Ty::Ring64TensorTy,
+                            rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingSubOperation(op) => Ok(execution::Operation {
+                    ring_RingSubOperation(op) => Ok(Operation {
                         kind: RingSub(RingSubOp {
-                            lhs: execution::Ty::Ring64TensorTy,
-                            rhs: execution::Ty::Ring64TensorTy,
+                            lhs: Ty::Ring64TensorTy,
+                            rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingMulOperation(op) => Ok(execution::Operation {
+                    ring_RingMulOperation(op) => Ok(Operation {
                         kind: RingMul(RingMulOp {
-                            lhs: execution::Ty::Ring64TensorTy,
-                            rhs: execution::Ty::Ring64TensorTy,
+                            lhs: Ty::Ring64TensorTy,
+                            rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingDotOperation(op) => Ok(execution::Operation {
+                    ring_RingDotOperation(op) => Ok(Operation {
                         kind: RingDot(RingDotOp {
-                            lhs: execution::Ty::Ring64TensorTy,
-                            rhs: execution::Ty::Ring64TensorTy,
+                            lhs: Ty::Ring64TensorTy,
+                            rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingShapeOperation(op) => Ok(execution::Operation {
+                    ring_RingShapeOperation(op) => Ok(Operation {
                         kind: RingShape(RingShapeOp {
-                            ty: execution::Ty::Ring64TensorTy,
+                            ty: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingSampleOperation(op) => Ok(execution::Operation {
+                    ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSample(RingSampleOp {
-                            output: execution::Ty::Ring64TensorTy,
+                            output: Ty::Ring64TensorTy,
                             max_value: op.max_value,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_FillTensorOperation(op) => Ok(execution::Operation {
+                    ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFill(RingFillOp { value: op.value }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingShlOperation(op) => Ok(execution::Operation {
+                    ring_RingShlOperation(op) => Ok(Operation {
                         kind: RingShl(RingShlOp {
                             amount: op.amount as usize,
                         }),
@@ -394,7 +386,7 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingShrOperation(op) => Ok(execution::Operation {
+                    ring_RingShrOperation(op) => Ok(Operation {
                         kind: RingShr(RingShrOp {
                             amount: op.amount as usize,
                         }),
@@ -402,12 +394,13 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_ConstantOperation(op) => Ok(execution::Operation {
+                    std_ConstantOperation(op) => Ok(Operation {
                         kind: Constant(ConstantOp {
                             value: match op.value {
-                                PyValue::std_ShapeValue { ref value } => {
-                                    Shape(value.iter().map(|i| *i as usize).collect()).into()
-                                }
+                                PyValue::std_ShapeValue { ref value } => moose::standard::Shape(
+                                    value.iter().map(|i| *i as usize).collect(),
+                                )
+                                .into(),
                                 PyValue::std_StringValue { ref value } => unimplemented!(),
                             },
                         }),
@@ -415,13 +408,13 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_SendOperation(op) => Ok(execution::Operation {
-                        kind: Send(execution::SendOp {
+                    std_SendOperation(op) => Ok(Operation {
+                        kind: Send(SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
-                            sender: execution::HostPlacement {
+                            sender: HostPlacement {
                                 name: op.sender.clone(),
                             },
-                            receiver: execution::HostPlacement {
+                            receiver: HostPlacement {
                                 name: op.receiver.clone(),
                             },
                         }),
@@ -429,30 +422,30 @@ impl TryFrom<PyComputation> for execution::Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_ReceiveOperation(op) => Ok(execution::Operation {
-                        kind: Receive(execution::ReceiveOp {
+                    std_ReceiveOperation(op) => Ok(Operation {
+                        kind: Receive(ReceiveOp {
                             rendezvous_key: op.rendezvous_key.clone(),
-                            sender: execution::HostPlacement {
+                            sender: HostPlacement {
                                 name: op.sender.clone(),
                             },
-                            receiver: execution::HostPlacement {
+                            receiver: HostPlacement {
                                 name: op.receiver.clone(),
                             },
                         }),
                         name: op.name.clone(),
-                        inputs: Vec::new(), //  TODO(Dragos): is this OK?
+                        inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    fixed_RingEncodeOperation(op) => Ok(execution::Operation {
-                        kind: FixedpointRingEncode(execution::FixedpointRingEncodeOp {
+                    fixed_RingEncodeOperation(op) => Ok(Operation {
+                        kind: FixedpointRingEncode(FixedpointRingEncodeOp {
                             scaling_factor: op.scaling_factor,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    fixed_RingDecodeOperation(op) => Ok(execution::Operation {
-                        kind: FixedpointRingDecode(execution::FixedpointRingDecodeOp {
+                    fixed_RingDecodeOperation(op) => Ok(Operation {
+                        kind: FixedpointRingDecode(FixedpointRingDecodeOp {
                             scaling_factor: op.scaling_factor,
                         }),
                         name: op.name.clone(),
@@ -465,7 +458,7 @@ impl TryFrom<PyComputation> for execution::Computation {
                 }
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
-        Ok(execution::Computation { operations })
+        Ok(Computation { operations })
     }
 }
 
@@ -516,6 +509,6 @@ def f():
     let rust_comp: Computation = comp.try_into().unwrap();
 
     let env = hashmap![];
-    let exec = EagerExecutor::new();
+    let exec = execution::EagerExecutor::new();
     exec.run_computation(&rust_comp, 12345, env).ok();
 }

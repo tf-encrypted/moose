@@ -10,8 +10,8 @@ import numpy as np
 
 from moose.computation import dtypes
 from moose.computation.base import Operation
-from moose.computation.base import ValueType
 from moose.computation.base import Value
+from moose.computation.base import ValueType
 
 
 @dataclass
@@ -79,19 +79,23 @@ class ConcatenateOperation(StandardOperation):
     axis: Optional[int]
     output_type: ValueType
 
+
 @dataclass
 class StandardValue(Value):
     @classmethod
     def dialect(cls):
         return "std"
 
+
 @dataclass
 class ShapeValue(StandardValue):
     value: tuple
 
+
 @dataclass
 class StringValue(StandardValue):
     value: str
+
 
 @dataclass
 class ConstantOperation(StandardOperation):

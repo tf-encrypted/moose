@@ -1,6 +1,7 @@
 from dataclasses import fields
 
 import msgpack
+import numpy as np
 
 from moose.computation import bit as bit_dialect
 from moose.computation import dtypes
@@ -121,7 +122,7 @@ SUPPORTED_TYPES = [
 
 TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
 
-import numpy as np
+
 def _encode(val):
     if isinstance(val, Computation):
         return {
@@ -138,8 +139,12 @@ def _encode(val):
     elif isinstance(val, dtypes.DType):
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
-        assert val.dtype is np.dtype('float64')
-        return {"__type__": "std_Float64Tensor", "items": val.tolist(), "shape": val.shape()}
+        assert val.dtype is np.dtype("float64")
+        return {
+            "__type__": "std_Float64Tensor",
+            "items": val.tolist(),
+            "shape": val.shape(),
+        }
 
     raise NotImplementedError(f"{type(val)}")
 

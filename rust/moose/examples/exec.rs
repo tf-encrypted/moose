@@ -1,12 +1,17 @@
 use maplit::hashmap;
-use moose::execution::*;
+use moose::computation::*;
+use moose::execution::EagerExecutor;
+use moose::prim::Nonce;
+use moose::standard::Shape;
 
 fn main() {
     let key_op = Operation {
         name: "key".into(),
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
         inputs: vec![],
-        placement: Placement::Host(HostPlacement {name: "alice".into()}),
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let x_seed_op = Operation {
@@ -15,7 +20,9 @@ fn main() {
             nonce: Nonce(vec![1, 2, 3]),
         }),
         inputs: vec!["key".into()],
-        placement: Placement::Host(HostPlacement {name: "alice".into()}),
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let x_shape_op = Operation {
@@ -24,7 +31,9 @@ fn main() {
             value: Value::Shape(Shape(vec![2, 3])),
         }),
         inputs: vec![],
-        placement: Placement::Host(HostPlacement {name: "alice".into()}),
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let x_op = Operation {
@@ -34,7 +43,9 @@ fn main() {
             max_value: None,
         }),
         inputs: vec!["x_shape".into(), "x_seed".into()],
-        placement: Placement::Host(HostPlacement {name: "alice".into()}),
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let mut operations = vec![key_op, x_seed_op, x_shape_op, x_op];
@@ -46,7 +57,9 @@ fn main() {
                 rhs: Ty::Ring64TensorTy,
             }),
             inputs: vec!["x".into(), "x".into()],
-            placement: Placement::Host(HostPlacement {name: "alice".into()}),
+            placement: Placement::Host(HostPlacement {
+                name: "alice".into(),
+            }),
         });
     }
 
@@ -54,7 +67,7 @@ fn main() {
     let args = hashmap![];
     let sid = 12345;
 
-    // let executor = EagerExecutor;
-    let executor = AsyncExecutor::new();
+    let executor = EagerExecutor::new();
+    // let executor = AsyncExecutor::new();
     let _ = executor.run_computation(&comp, sid, args);
 }
