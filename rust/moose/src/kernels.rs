@@ -453,8 +453,8 @@ impl Compile<Kernel> for ConstantOp {
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
-        Ok(SyncKernel::Unary(Box::new(move |ctx, sid, v| {
-            ctx.networking.send(&v, &rdv, &sid);
+        Ok(SyncKernel::Unary(Box::new(move |sess, v| {
+            sess.networking.send(&v, &rdv, &sess.sid);
             Ok(Value::Unit)
         })))
     }
@@ -464,13 +464,12 @@ impl Compile<AsyncKernel> for SendOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
         let rdv = Arc::new(self.rendezvous_key.clone());
-        Ok(AsyncKernel::Unary(Box::new(move |ctx, sess, v, sender| {
-            let ctx = Arc::clone(ctx);
+        Ok(AsyncKernel::Unary(Box::new(move |sess, v, sender| {
             let sess = Arc::clone(sess);
             let rdv = Arc::clone(&rdv);
-            ctx.runtime.spawn(async move {
+            tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                ctx.networking.send(&v, &rdv, &sess.sid).await;
+                sess.networking.send(&v, &rdv, &sess.sid).await;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
@@ -480,8 +479,8 @@ impl Compile<AsyncKernel> for SendOp {
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
-        Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
-            ctx.networking.receive(&rdv, sid)
+        Ok(SyncKernel::Nullary(Box::new(move |sess| {
+            sess.networking.receive(&rdv, &sess.sid)
         })))
     }
 }
@@ -490,12 +489,11 @@ impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
         let rdv = Arc::new(self.rendezvous_key.clone());
-        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sess, sender| {
-            let ctx = Arc::clone(ctx);
+        Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
             let rdv = Arc::clone(&rdv);
             tokio::spawn(async move {
-                let v: Value = ctx.networking.receive(&rdv, &sess.sid).await?;
+                let v: Value = sess.networking.receive(&rdv, &sess.sid).await?;
                 sender.send(v).map_err(map_send_error)
             })
         })))
@@ -504,32 +502,28 @@ impl Compile<AsyncKernel> for ReceiveOp {
 
 impl Compile<SyncKernel> for InputOp {
     fn compile(&self) -> Result<SyncKernel> {
-        Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
-            unimplemented!()
-        })))
+        Ok(SyncKernel::Nullary(Box::new(move |sess| unimplemented!())))
     }
 }
 
 impl Compile<AsyncKernel> for InputOp {
     fn compile(&self) -> Result<AsyncKernel> {
-        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sess, sender| {
-            unimplemented!()
-        })))
+        Ok(AsyncKernel::Nullary(Box::new(
+            move |sess, sender| unimplemented!(),
+        )))
     }
 }
 
 impl Compile<SyncKernel> for OutputOp {
     fn compile(&self) -> Result<SyncKernel> {
-        Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
-            unimplemented!()
-        })))
+        Ok(SyncKernel::Nullary(Box::new(move |sess| unimplemented!())))
     }
 }
 
 impl Compile<AsyncKernel> for OutputOp {
     fn compile(&self) -> Result<AsyncKernel> {
-        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sess, sender| {
-            unimplemented!()
-        })))
+        Ok(AsyncKernel::Nullary(Box::new(
+            move |sess, sender| unimplemented!(),
+        )))
     }
 }

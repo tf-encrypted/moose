@@ -136,18 +136,16 @@ pub enum Kernel {
     VariadicFunction(fn(Vec<Value>) -> Result<Value>),
 }
 
-type NullarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId) -> Result<Value> + Send + Sync>;
+type NullarySyncKernel = Box<dyn Fn(&SyncSession) -> Result<Value> + Send + Sync>;
 
-type UnarySyncKernel = Box<dyn Fn(&SyncContext, &SessionId, Value) -> Result<Value> + Send + Sync>;
+type UnarySyncKernel = Box<dyn Fn(&SyncSession, Value) -> Result<Value> + Send + Sync>;
 
-type BinarySyncKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, Value, Value) -> Result<Value> + Send + Sync>;
+type BinarySyncKernel = Box<dyn Fn(&SyncSession, Value, Value) -> Result<Value> + Send + Sync>;
 
 type TernarySyncKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, Value, Value, Value) -> Result<Value> + Send + Sync>;
+    Box<dyn Fn(&SyncSession, Value, Value, Value) -> Result<Value> + Send + Sync>;
 
-type VariadicSyncKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, Vec<Value>) -> Result<Value> + Send + Sync>;
+type VariadicSyncKernel = Box<dyn Fn(&SyncSession, Vec<Value>) -> Result<Value> + Send + Sync>;
 
 pub enum SyncKernel {
     Nullary(NullarySyncKernel),
@@ -157,30 +155,19 @@ pub enum SyncKernel {
     Variadic(VariadicSyncKernel),
 }
 
-type NullaryAsyncKernel =
-    Box<dyn Fn(&Arc<AsyncContext>, &Arc<AsyncSession>, AsyncSender) -> AsyncTask + Send + Sync>;
+type NullaryAsyncKernel = Box<dyn Fn(&Arc<AsyncSession>, AsyncSender) -> AsyncTask + Send + Sync>;
 
-type UnaryAsyncKernel = Box<
-    dyn Fn(&Arc<AsyncContext>, &Arc<AsyncSession>, AsyncReceiver, AsyncSender) -> AsyncTask
-        + Send
-        + Sync,
->;
+type UnaryAsyncKernel =
+    Box<dyn Fn(&Arc<AsyncSession>, AsyncReceiver, AsyncSender) -> AsyncTask + Send + Sync>;
 
 type BinaryAsyncKernel = Box<
-    dyn Fn(
-            &Arc<AsyncContext>,
-            &Arc<AsyncSession>,
-            AsyncReceiver,
-            AsyncReceiver,
-            AsyncSender,
-        ) -> AsyncTask
+    dyn Fn(&Arc<AsyncSession>, AsyncReceiver, AsyncReceiver, AsyncSender) -> AsyncTask
         + Send
         + Sync,
 >;
 
 type TernaryAsyncKernel = Box<
     dyn Fn(
-            &Arc<AsyncContext>,
             &Arc<AsyncSession>,
             AsyncReceiver,
             AsyncReceiver,
@@ -191,11 +178,8 @@ type TernaryAsyncKernel = Box<
         + Sync,
 >;
 
-type VariadicAsyncKernel = Box<
-    dyn Fn(&Arc<AsyncContext>, &Arc<AsyncSession>, Vec<AsyncReceiver>, AsyncSender) -> AsyncTask
-        + Send
-        + Sync,
->;
+type VariadicAsyncKernel =
+    Box<dyn Fn(&Arc<AsyncSession>, Vec<AsyncReceiver>, AsyncSender) -> AsyncTask + Send + Sync>;
 
 pub enum AsyncKernel {
     Nullary(NullaryAsyncKernel),
@@ -224,29 +208,31 @@ impl<O: Compile<Kernel>> Compile<SyncKernel> for O {
     fn compile(&self) -> Result<SyncKernel> {
         let kernel: Kernel = self.compile()?;
         match kernel {
-            Kernel::NullaryClosure(k) => Ok(SyncKernel::Nullary(Box::new(move |_, _| k()))),
-            Kernel::UnaryClosure(k) => Ok(SyncKernel::Unary(Box::new(move |_, _, x0| k(x0)))),
+            Kernel::NullaryClosure(k) => Ok(SyncKernel::Nullary(Box::new(move |_sess| k()))),
+            Kernel::UnaryClosure(k) => Ok(SyncKernel::Unary(Box::new(move |_sess, x0| k(x0)))),
             Kernel::BinaryClosure(k) => {
-                Ok(SyncKernel::Binary(Box::new(move |_, _, x0, x1| k(x0, x1))))
+                Ok(SyncKernel::Binary(Box::new(move |_sess, x0, x1| k(x0, x1))))
             }
             Kernel::TernaryClosure(k) => {
-                Ok(SyncKernel::Ternary(Box::new(move |_, _, x0, x1, x2| {
+                Ok(SyncKernel::Ternary(Box::new(move |_sess, x0, x1, x2| {
                     k(x0, x1, x2)
                 })))
             }
-            Kernel::VariadicClosure(k) => Ok(SyncKernel::Variadic(Box::new(move |_, _, xs| k(xs)))),
-            Kernel::NullaryFunction(k) => Ok(SyncKernel::Nullary(Box::new(move |_, _| k()))),
-            Kernel::UnaryFunction(k) => Ok(SyncKernel::Unary(Box::new(move |_, _, x0| k(x0)))),
+            Kernel::VariadicClosure(k) => {
+                Ok(SyncKernel::Variadic(Box::new(move |_sess, xs| k(xs))))
+            }
+            Kernel::NullaryFunction(k) => Ok(SyncKernel::Nullary(Box::new(move |_sess| k()))),
+            Kernel::UnaryFunction(k) => Ok(SyncKernel::Unary(Box::new(move |_sess, x0| k(x0)))),
             Kernel::BinaryFunction(k) => {
-                Ok(SyncKernel::Binary(Box::new(move |_, _, x0, x1| k(x0, x1))))
+                Ok(SyncKernel::Binary(Box::new(move |_sess, x0, x1| k(x0, x1))))
             }
             Kernel::TernaryFunction(k) => {
-                Ok(SyncKernel::Ternary(Box::new(move |_, _, x0, x1, x2| {
+                Ok(SyncKernel::Ternary(Box::new(move |_sess, x0, x1, x2| {
                     k(x0, x1, x2)
                 })))
             }
             Kernel::VariadicFunction(k) => {
-                Ok(SyncKernel::Variadic(Box::new(move |_, _, xs| k(xs))))
+                Ok(SyncKernel::Variadic(Box::new(move |_sess, xs| k(xs))))
             }
         }
     }
@@ -266,18 +252,18 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
         let kernel: Kernel = self.compile()?;
         match kernel {
             Kernel::NullaryClosure(k) => {
-                Ok(AsyncKernel::Nullary(Box::new(move |ctx, _, sender| {
+                Ok(AsyncKernel::Nullary(Box::new(move |_sess, sender| {
                     let k = Arc::clone(&k);
-                    ctx.runtime.spawn(async move {
+                    tokio::spawn(async move {
                         let y: Value = k()?;
                         sender.send(y).map_err(map_send_error)
                     })
                 })))
             }
             Kernel::UnaryClosure(k) => {
-                Ok(AsyncKernel::Unary(Box::new(move |ctx, _, x0, sender| {
+                Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
                     let k = Arc::clone(&k);
-                    ctx.runtime.spawn(async move {
+                    tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let y: Value = k(x0)?;
                         sender.send(y).map_err(map_send_error)
@@ -285,9 +271,9 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                 })))
             }
             Kernel::BinaryClosure(k) => Ok(AsyncKernel::Binary(Box::new(
-                move |ctx, _, x0, x1, sender| {
+                move |_sess, x0, x1, sender| {
                     let k = Arc::clone(&k);
-                    ctx.runtime.spawn(async move {
+                    tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let y: Value = k(x0, x1)?;
@@ -296,9 +282,9 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                 },
             ))),
             Kernel::TernaryClosure(k) => Ok(AsyncKernel::Ternary(Box::new(
-                move |ctx, _, x0, x1, x2, sender| {
+                move |_sess, x0, x1, x2, sender| {
                     let k = Arc::clone(&k);
-                    ctx.runtime.spawn(async move {
+                    tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let x2: Value = x2.await.map_err(map_receive_error)?;
@@ -307,29 +293,29 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                     })
                 },
             ))),
-            Kernel::VariadicClosure(k) => Ok(AsyncKernel::Variadic(Box::new(
-                move |ctx, _, xs, sender| {
+            Kernel::VariadicClosure(k) => {
+                Ok(AsyncKernel::Variadic(Box::new(move |_sess, xs, sender| {
                     let k = Arc::clone(&k);
-                    ctx.runtime.spawn(async move {
+                    tokio::spawn(async move {
                         use futures::future::try_join_all;
                         let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
                         let y: Value = k(xs)?;
                         sender.send(y).map_err(map_send_error)
                     })
-                },
-            ))),
+                })))
+            }
 
             Kernel::NullaryFunction(k) => {
-                Ok(AsyncKernel::Nullary(Box::new(move |ctx, _, sender| {
-                    ctx.runtime.spawn(async move {
+                Ok(AsyncKernel::Nullary(Box::new(move |_sess, sender| {
+                    tokio::spawn(async move {
                         let y = k()?;
                         sender.send(y).map_err(map_send_error)
                     })
                 })))
             }
             Kernel::UnaryFunction(k) => {
-                Ok(AsyncKernel::Unary(Box::new(move |ctx, _, x0, sender| {
-                    ctx.runtime.spawn(async move {
+                Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
+                    tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let y: Value = k(x0)?;
                         sender.send(y).map_err(map_send_error)
@@ -337,8 +323,8 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                 })))
             }
             Kernel::BinaryFunction(k) => Ok(AsyncKernel::Binary(Box::new(
-                move |ctx, _, x0, x1, sender| {
-                    ctx.runtime.spawn(async move {
+                move |_sess, x0, x1, sender| {
+                    tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let y: Value = k(x0, x1)?;
@@ -347,8 +333,8 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                 },
             ))),
             Kernel::TernaryFunction(k) => Ok(AsyncKernel::Ternary(Box::new(
-                move |ctx, _, x0, x1, x2, sender| {
-                    ctx.runtime.spawn(async move {
+                move |_sess, x0, x1, x2, sender| {
+                    tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let x2: Value = x2.await.map_err(map_receive_error)?;
@@ -357,21 +343,22 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                     })
                 },
             ))),
-            Kernel::VariadicFunction(k) => Ok(AsyncKernel::Variadic(Box::new(
-                move |ctx, _, xs, sender| {
-                    ctx.runtime.spawn(async move {
+            Kernel::VariadicFunction(k) => {
+                Ok(AsyncKernel::Variadic(Box::new(move |_sess, xs, sender| {
+                    tokio::spawn(async move {
                         use futures::future::try_join_all;
                         let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
                         let y: Value = k(xs)?;
                         sender.send(y).map_err(map_send_error)
                     })
-                },
-            ))),
+                })))
+            }
         }
     }
 }
 
-pub struct SyncContext {
+pub struct SyncSession {
+    pub sid: SessionId,
     pub networking: Box<dyn Send + Sync + SyncNetworking>,
 }
 
@@ -427,7 +414,7 @@ impl AsyncNetworking for DummyAsyncNetworking {
 }
 
 type SyncOperationKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, &Environment<Value>) -> Result<Value> + Send + Sync>;
+    Box<dyn Fn(&SyncSession, &Environment<Value>) -> Result<Value> + Send + Sync>;
 
 pub struct CompiledSyncOperation {
     name: String,
@@ -435,23 +422,13 @@ pub struct CompiledSyncOperation {
 }
 
 impl CompiledSyncOperation {
-    pub fn apply(
-        &self,
-        ctx: &SyncContext,
-        sid: &SessionId,
-        args: &Environment<Value>,
-    ) -> Result<Value> {
-        (self.kernel)(ctx, sid, args)
+    pub fn apply(&self, sess: &SyncSession, args: &Environment<Value>) -> Result<Value> {
+        (self.kernel)(sess, args)
     }
 }
 
 type AsyncOperationKernel = Box<
-    dyn Fn(
-            &Arc<AsyncContext>,
-            &Arc<AsyncSession>,
-            &Environment<AsyncReceiver>,
-            AsyncSender,
-        ) -> Result<AsyncTask>
+    dyn Fn(&Arc<AsyncSession>, &Environment<AsyncReceiver>, AsyncSender) -> Result<AsyncTask>
         + Send
         + Sync,
 >;
@@ -464,12 +441,11 @@ pub struct CompiledAsyncOperation {
 impl CompiledAsyncOperation {
     pub fn apply(
         &self,
-        ctx: &Arc<AsyncContext>,
         sess: &Arc<AsyncSession>,
         env: &Environment<AsyncReceiver>,
         sender: AsyncSender,
     ) -> Result<AsyncTask> {
-        (self.kernel)(ctx, sess, env, sender)
+        (self.kernel)(sess, env, sender)
     }
 }
 
@@ -494,7 +470,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                 check_arity(&self.name, &self.inputs, 0)?;
                 Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, _| k(ctx, sid)),
+                    kernel: Box::new(move |sess, _| k(sess)),
                 })
             }
             SyncKernel::Unary(k) => {
@@ -502,13 +478,13 @@ impl Compile<CompiledSyncOperation> for Operation {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env| {
+                    kernel: Box::new(move |sess, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env
                             .get(&x0_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        k(ctx, sid, x0)
+                        k(sess, x0)
                     }),
                 })
             }
@@ -518,7 +494,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env| {
+                    kernel: Box::new(move |sess, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env
                             .get(&x0_name)
@@ -528,7 +504,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                             .get(&x1_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        k(ctx, sid, x0, x1)
+                        k(sess, x0, x1)
                     }),
                 })
             }
@@ -539,7 +515,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env| {
+                    kernel: Box::new(move |sess, env| {
                         // TODO(Morten) avoid cloning
                         let x0 = env
                             .get(&x0_name)
@@ -553,7 +529,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                             .get(&x2_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        k(ctx, sid, x0, x1, x2)
+                        k(sess, x0, x1, x2)
                     }),
                 })
             }
@@ -561,12 +537,12 @@ impl Compile<CompiledSyncOperation> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledSyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env| {
+                    kernel: Box::new(move |sess, env| {
                         let xs = inputs
                             .iter()
                             .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment)) // TODO(Morten avoid cloning
                             .collect::<Result<Vec<_>>>()?;
-                        k(ctx, sid, xs)
+                        k(sess, xs)
                     }),
                 })
             }
@@ -582,7 +558,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 check_arity(&self.name, &self.inputs, 0)?;
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, _, sender| Ok(k(ctx, sid, sender))),
+                    kernel: Box::new(move |sess, _, sender| Ok(k(sess, sender))),
                 })
             }
             AsyncKernel::Unary(k) => {
@@ -590,12 +566,12 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sess, env, sender| {
+                    kernel: Box::new(move |sess, env, sender| {
                         let x0 = env
                             .get(&x0_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        Ok(k(ctx, sess, x0, sender))
+                        Ok(k(sess, x0, sender))
                     }),
                 })
             }
@@ -605,7 +581,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sess, env, sender| {
+                    kernel: Box::new(move |sess, env, sender| {
                         let x0 = env
                             .get(&x0_name)
                             .ok_or(Error::MalformedEnvironment)?
@@ -614,7 +590,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                             .get(&x1_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        Ok(k(ctx, sess, x0, x1, sender))
+                        Ok(k(sess, x0, x1, sender))
                     }),
                 })
             }
@@ -625,7 +601,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sess, env, sender| {
+                    kernel: Box::new(move |sess, env, sender| {
                         let x0 = env
                             .get(&x0_name)
                             .ok_or(Error::MalformedEnvironment)?
@@ -638,7 +614,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                             .get(&x2_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        Ok(k(ctx, sess, x0, x1, x2, sender))
+                        Ok(k(sess, x0, x1, x2, sender))
                     }),
                 })
             }
@@ -646,12 +622,12 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sess, env, sender| {
+                    kernel: Box::new(move |sess, env, sender| {
                         let xs = inputs
                             .iter()
                             .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment))
                             .collect::<Result<Vec<_>>>()?;
-                        Ok(k(ctx, sess, xs, sender))
+                        Ok(k(sess, xs, sender))
                     }),
                 })
             }
@@ -660,14 +636,9 @@ impl Compile<CompiledAsyncOperation> for Operation {
 }
 
 impl Operation {
-    pub fn apply(
-        &self,
-        ctx: &SyncContext,
-        sid: &SessionId,
-        args: &Environment<Value>,
-    ) -> Result<Value> {
+    pub fn apply(&self, sess: &SyncSession, args: &Environment<Value>) -> Result<Value> {
         let compiled: CompiledSyncOperation = self.compile()?;
-        compiled.apply(ctx, sid, args)
+        compiled.apply(sess, args)
     }
 }
 
@@ -767,7 +738,7 @@ type AsyncComputationKernel = Box<
         &Arc<AsyncContext>,
         SessionId,
         Environment<AsyncReceiver>,
-    ) -> Result<(Arc<AsyncSession>, Environment<AsyncReceiver>)>,
+    ) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)>,
 >;
 
 pub struct CompiledAsyncComputation(AsyncComputationKernel);
@@ -788,9 +759,12 @@ where
         }
 
         Ok(CompiledAsyncComputation(Box::new(
-            move |ctx: &Arc<AsyncContext>,
-                  sid: SessionId,
-                  _args: Environment<AsyncReceiver>| {
+            move |ctx: &Arc<AsyncContext>, sid: SessionId, _args: Environment<AsyncReceiver>| {
+                let session = Arc::new(AsyncSession {
+                    sid: sid,
+                    networking: Arc::clone(&ctx.networking),
+                });
+
                 // TODO(Morten) args should be passed into the op.apply's
                 let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
                     compiled_ops
@@ -802,18 +776,16 @@ where
                             (sender, (op.name.clone(), shared_receiver))
                         })
                         .unzip();
-                let mut session = Arc::new(AsyncSession {
-                    sid: sid,
-                    tasks: vec![],
-                });
+
                 let tasks: Vec<AsyncTask> = senders
                     .into_iter() // into_par_iter seems to hurt performance here
                     .zip(&compiled_ops)
-                    .map(|(sender, op)| op.apply(ctx, &session, &receivers, sender))
+                    .map(|(sender, op)| op.apply(&session, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
+
                 let outputs = receivers; // TODO filter to Output nodes
-                session.tasks = tasks;
-                Ok((session, outputs))
+                let join_handle = AsyncSessionJoinHandle { tasks };
+                Ok((join_handle, outputs))
             },
         )))
     }
@@ -825,7 +797,7 @@ impl CompiledAsyncComputation {
         ctx: &Arc<AsyncContext>,
         sid: SessionId,
         args: Environment<AsyncReceiver>,
-    ) -> Result<(Arc<AsyncSession>, Environment<AsyncReceiver>)> {
+    ) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)> {
         (self.0)(ctx, sid, args)
     }
 }
@@ -869,12 +841,12 @@ impl Default for EagerExecutor {
 
 pub struct AsyncContext {
     pub runtime: tokio::runtime::Runtime,
-    pub networking: Box<dyn Send + Sync + AsyncNetworking>,
+    pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
 }
 
 impl AsyncContext {
-    pub fn join_session(&self, sess: Arc<AsyncSession>) -> Result<()> {
-        for task in sess.tasks {
+    pub fn join_session(&self, handle: AsyncSessionJoinHandle) -> Result<()> {
+        for task in handle.tasks {
             let res = self.runtime.block_on(task);
             if res.is_err() {
                 unimplemented!() // TODO
@@ -886,6 +858,10 @@ impl AsyncContext {
 
 pub struct AsyncSession {
     pub sid: SessionId,
+    pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
+}
+
+pub struct AsyncSessionJoinHandle {
     tasks: Vec<AsyncTask>,
 }
 
@@ -897,7 +873,7 @@ impl AsyncExecutor {
     pub fn new() -> AsyncExecutor {
         let ctx = Arc::new(AsyncContext {
             runtime: tokio::runtime::Runtime::new().expect("Failed to build tokio runtime"),
-            networking: Box::new(DummyAsyncNetworking),
+            networking: Arc::new(DummyAsyncNetworking),
         });
         AsyncExecutor { ctx }
     }
