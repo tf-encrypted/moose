@@ -79,6 +79,10 @@ where
             StandardTensor::<T>(out)
         }
     }
+
+    pub fn t(self) -> Self {
+        StandardTensor::<T>(self.0.reversed_axes())
+    }
 }
 
 impl<T> StandardTensor<T>
@@ -168,6 +172,24 @@ mod tests {
             z,
             StandardTensor::<f32>::from(
                 array![[-5.0, 6.0], [-9.0, 10.0]]
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn transpose() {
+        let x = StandardTensor::<f32>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let y = x.t();
+        assert_eq!(
+            y,
+            StandardTensor::<f32>::from(
+                array![[1.0, 3.0], [2.0, 4.0]]
                     .into_dimensionality::<IxDyn>()
                     .unwrap()
             )

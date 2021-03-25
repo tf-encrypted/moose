@@ -112,6 +112,7 @@ pub enum Operator {
     StdReshape(StdReshapeOp),
     StdSum(StdSumOp),
     StdOnes(StdOnesOp),
+    StdTranspose(StdTransposeOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -196,6 +197,11 @@ pub struct StdReshapeOp {
 pub struct StdSumOp {
     pub ty: Ty,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdTransposeOp {
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
