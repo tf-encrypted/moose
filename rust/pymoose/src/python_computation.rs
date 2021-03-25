@@ -1,4 +1,4 @@
-use moose::computation::*;
+use moose::{computation::*, standard::Float64Tensor};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -43,13 +43,9 @@ struct PyUnknownOperation {
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
 enum PyValueType {
-    // prim_PRFKeyType,
-    // prim_SeedType,
-    // ShapeType(String),
     std_ShapeType,
     std_StringType,
-    // std_UnitType,
-    // ring_RingTensorType(String),
+    std_TensorType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -58,6 +54,7 @@ enum PyValueType {
 enum PyValue {
     std_ShapeValue { value: Vec<u8> },
     std_StringValue { value: String },
+    std_Float64Tensor { items: Vec<f64>, shape: Vec<u8> },
 }
 
 #[derive(Deserialize, Debug)]
@@ -292,6 +289,15 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
         PyValue::std_ShapeValue { ref value } => Ok(Value::from(moose::standard::Shape(
             value.iter().map(|i| *i as usize).collect(),
         ))),
+        &PyValue::std_Float64Tensor {
+            ref items,
+            ref shape,
+        } => {
+            let ushape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
+            let float_items = Float64Tensor::from(items.clone());
+            let x = float_items.0.into_shape(ushape).unwrap();
+            Ok(Value::from(Float64Tensor::from(x)))
+        }
         _ => unimplemented!(),
     };
     out
@@ -476,12 +482,15 @@ fn test_deserialize_python_simple_computation() {
     let comp_graph_py = PyModule::from_code(
         py,
         r#"
+
+import numpy as np
 from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.utils import serialize_computation
-
+from moose.computation.standard import TensorType
+from moose.computation import dtypes
 def f():
     comp = Computation(operations={}, placements={})
     alice = comp.add_placement(HostPlacement(name="alice"))
@@ -502,6 +511,17 @@ def f():
             inputs={"shape": "x_shape"},
         )
     )
+    x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+    comp.add_operation(
+        standard_dialect.ConstantOperation(
+            name="alice_input",
+            value=x,
+            placement_name=alice.name,
+            inputs={},
+            output_type=TensorType(dtype=dtypes.float64),
+        )
+    )
+
     return serialize_computation(comp)
 
 "#,

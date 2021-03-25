@@ -139,11 +139,10 @@ def _encode(val):
     elif isinstance(val, dtypes.DType):
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
-        assert val.dtype is np.dtype("float64")
         return {
             "__type__": "std_Float64Tensor",
-            "items": val.tolist(),
-            "shape": val.shape(),
+            "items": val.flatten().tolist(),
+            "shape": list(val.shape),
         }
 
     raise NotImplementedError(f"{type(val)}")
