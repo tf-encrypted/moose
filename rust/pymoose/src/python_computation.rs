@@ -42,6 +42,7 @@ struct PyUnknownOperation {
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
+#[allow(clippy::enum_variant_names)]
 enum PyValueType {
     std_ShapeType,
     std_StringType,
