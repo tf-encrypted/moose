@@ -215,22 +215,22 @@ impl Compile<Kernel> for StdMeanOp {
         let axis = self.axis.map(|x| x as usize);
         match self.ty {
             Ty::Float32TensorTy => {
-                closure_kernel!(Float32Tensor, |x| Float32Tensor::mean(x, axis))
+                closure_kernel!(Float32Tensor, |x| x.mean(axis))
             }
             Ty::Float64TensorTy => {
-                closure_kernel!(Float64Tensor, |x| Float64Tensor::mean(x, axis))
+                closure_kernel!(Float64Tensor, |x| x.mean(axis))
             }
             Ty::Int32TensorTy => {
-                closure_kernel!(Int32Tensor, |x| Int32Tensor::mean(x, axis))
+                closure_kernel!(Int32Tensor, |x| x.mean(axis))
             }
             Ty::Int64TensorTy => {
-                closure_kernel!(Int64Tensor, |x| Int64Tensor::mean(x, axis))
+                closure_kernel!(Int64Tensor, |x| x.mean(axis))
             }
             Ty::Uint32TensorTy => {
-                closure_kernel!(Uint32Tensor, |x| Uint32Tensor::mean(x, axis))
+                closure_kernel!(Uint32Tensor, |x| x.mean(axis))
             }
             Ty::Uint64TensorTy => {
-                closure_kernel!(Uint64Tensor, |x| Uint64Tensor::mean(x, axis))
+                closure_kernel!(Uint64Tensor, |x| x.mean(axis))
             }
             _ => Err(Error::UnimplementedOperator),
         }
@@ -295,22 +295,22 @@ impl Compile<Kernel> for StdSumOp {
         let axis = self.axis.map(|a| a as usize);
         match self.ty {
             Ty::Float32TensorTy => {
-                closure_kernel!(Float32Tensor, |x| Float32Tensor::sum(x, axis))
+                closure_kernel!(Float32Tensor, |x| x.sum(axis))
             }
             Ty::Float64TensorTy => {
-                closure_kernel!(Float64Tensor, |x| Float64Tensor::sum(x, axis))
+                closure_kernel!(Float64Tensor, |x| x.sum(axis))
             }
             Ty::Int32TensorTy => {
-                closure_kernel!(Int32Tensor, |x| Int32Tensor::sum(x, axis))
+                closure_kernel!(Int32Tensor, |x| x.sum(axis))
             }
             Ty::Int64TensorTy => {
-                closure_kernel!(Int64Tensor, |x| Int64Tensor::sum(x, axis))
+                closure_kernel!(Int64Tensor, |x| x.sum(axis))
             }
             Ty::Uint32TensorTy => {
-                closure_kernel!(Uint32Tensor, |x| Uint32Tensor::sum(x, axis))
+                closure_kernel!(Uint32Tensor, |x| x.sum(axis))
             }
             Ty::Uint64TensorTy => {
-                closure_kernel!(Uint64Tensor, |x| Uint64Tensor::sum(x, axis))
+                closure_kernel!(Uint64Tensor, |x| x.sum(axis))
             }
             _ => Err(Error::UnimplementedOperator),
         }
@@ -384,7 +384,7 @@ impl Compile<Kernel> for RingSumOp {
     fn compile(&self) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
         match self.ty {
-            Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x: Ring64Tensor| x.sum(axis)),
+            Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x| x.sum(axis)),
             _ => Err(Error::UnimplementedOperator),
         }
     }
