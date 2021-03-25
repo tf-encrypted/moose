@@ -280,6 +280,7 @@ fn map_inputs(
         })
         .collect::<anyhow::Result<Vec<_>>>()
 }
+
 fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result<Placement> {
     plc.get(name)
         .cloned()
