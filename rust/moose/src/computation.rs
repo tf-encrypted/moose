@@ -141,6 +141,7 @@ pub enum Operator {
     StdDot(StdDotOp),
     StdMean(StdMeanOp),
     StdReshape(StdReshapeOp),
+    StdShape(StdShapeOp),
     StdSum(StdSumOp),
     StdOnes(StdOnesOp),
     RingAdd(RingAddOp),
@@ -233,6 +234,11 @@ pub struct StdOnesOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdReshapeOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdShapeOp {
     pub ty: Ty,
 }
 

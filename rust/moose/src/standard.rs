@@ -69,6 +69,10 @@ where
         StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
     }
 
+    pub fn shape(&self) -> Shape {
+        Shape(self.0.shape().into())
+    }
+
     pub fn sum(self, axis: Option<usize>) -> Self {
         if let Some(i) = axis {
             StandardTensor::<T>(self.0.sum_axis(Axis(i)))
