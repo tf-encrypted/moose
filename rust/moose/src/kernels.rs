@@ -552,3 +552,54 @@ impl Compile<AsyncKernel> for OutputOp {
         })))
     }
 }
+
+#[test]
+fn test_standard_shape_ops() {
+    use crate::execution::EagerExecutor;
+    use crate::standard::Float32Tensor;
+    use maplit::hashmap;
+    use ndarray::prelude::*;
+
+    let env = hashmap![];
+    let x = Float32Tensor::from(
+        array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
+    let x_op = Operation {
+        name: "x".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Float32Tensor(x),
+        }),
+        inputs: vec![],
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
+    };
+    let shape_op = Operation {
+        name: "shape".into(),
+        kind: Operator::StdShape(StdShapeOp {
+            ty: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into()],
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
+    };
+    let expand_dims_op = Operation {
+        name: "expand_dims".into(),
+        kind: Operator::StdExpandDims(StdExpandDimsOp {
+            ty: Ty::Float32TensorTy,
+            axis: 2,
+        }),
+        inputs: vec!["x".into()],
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
+    };
+    let operations = vec![x_op, shape_op, expand_dims_op];
+    let comp = Computation { operations }.toposort().unwrap();
+
+    let exec = EagerExecutor::new();
+    exec.run_computation(&comp, 12345, env).ok();
+}
