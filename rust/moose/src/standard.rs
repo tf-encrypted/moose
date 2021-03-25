@@ -21,6 +21,13 @@ pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
 
+impl Shape {
+    pub fn expand(mut self, axis: usize) -> Self {
+        self.0.insert(axis, 1);
+        self
+    }
+}
+
 impl<T> StandardTensor<T>
 where
     T: LinalgScalar,
@@ -67,6 +74,11 @@ where
 
     pub fn reshape(self, newshape: Shape) -> Self {
         StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
+    }
+
+    pub fn expand_dims(self, axis: usize) -> Self {
+        let newshape = self.shape().expand(axis);
+        self.reshape(newshape)
     }
 
     pub fn shape(&self) -> Shape {

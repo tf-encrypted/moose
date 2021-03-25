@@ -26,6 +26,7 @@ impl Compile<SyncKernel> for Operator {
             StdDot(op) => op.compile(),
             StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
+            StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
@@ -64,6 +65,7 @@ impl Compile<AsyncKernel> for Operator {
             StdDot(op) => op.compile(),
             StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
+            StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
@@ -171,6 +173,33 @@ impl Compile<Kernel> for StdOnesOp {
                 function_kernel!(Shape, |shape| Uint64Tensor::ones(shape))
             }
 
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdExpandDimsOp {
+    fn compile(&self) -> Result<Kernel> {
+        let axis = self.axis as usize;
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(Float32Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Float64TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Int32TensorTy => {
+                closure_kernel!(Int32Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Int64TensorTy => {
+                closure_kernel!(Int64Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Uint32TensorTy => {
+                closure_kernel!(Uint32Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Uint64TensorTy => {
+                closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis))
+            }
             _ => Err(Error::UnimplementedOperator),
         }
     }
