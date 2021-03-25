@@ -102,6 +102,10 @@ convert!(Uint64Tensor);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
+    Send(SendOp),
+    Receive(ReceiveOp),
+    Input(InputOp),
+    Output(OutputOp),
     Constant(ConstantOp),
     StdAdd(StdAddOp),
     StdSub(StdSubOp),
@@ -123,8 +127,6 @@ pub enum Operator {
     RingShr(RingShrOp),
     PrimDeriveSeed(PrimDeriveSeedOp),
     PrimGenPrfKey(PrimGenPrfKeyOp),
-    Send(SendOp),
-    Receive(ReceiveOp),
     FixedpointRingEncode(FixedpointRingEncodeOp),
     FixedpointRingDecode(FixedpointRingDecodeOp),
     FixedpointRingMean(FixedpointRingMeanOp),
@@ -138,6 +140,16 @@ pub struct SendOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReceiveOp {
     pub rendezvous_key: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct InputOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OutputOp {
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

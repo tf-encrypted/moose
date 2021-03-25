@@ -14,6 +14,10 @@ impl Compile<SyncKernel> for Operator {
     fn compile(&self) -> Result<SyncKernel> {
         use Operator::*;
         match self {
+            Send(op) => op.compile(),
+            Receive(op) => op.compile(),
+            Input(op) => op.compile(),
+            Output(op) => op.compile(),
             Constant(op) => op.compile(),
             StdAdd(op) => op.compile(),
             StdSub(op) => op.compile(),
@@ -35,8 +39,6 @@ impl Compile<SyncKernel> for Operator {
             RingShr(op) => op.compile(),
             PrimDeriveSeed(op) => op.compile(),
             PrimGenPrfKey(op) => op.compile(),
-            Send(op) => op.compile(),
-            Receive(op) => op.compile(),
             FixedpointRingEncode(op) => op.compile(),
             FixedpointRingDecode(op) => op.compile(),
             FixedpointRingMean(op) => op.compile(),
@@ -48,6 +50,10 @@ impl Compile<AsyncKernel> for Operator {
     fn compile(&self) -> Result<AsyncKernel> {
         use Operator::*;
         match self {
+            Send(op) => op.compile(),
+            Receive(op) => op.compile(),
+            Input(op) => op.compile(),
+            Output(op) => op.compile(),
             Constant(op) => op.compile(),
             StdAdd(op) => op.compile(),
             StdSub(op) => op.compile(),
@@ -69,8 +75,6 @@ impl Compile<AsyncKernel> for Operator {
             RingShr(op) => op.compile(),
             PrimDeriveSeed(op) => op.compile(),
             PrimGenPrfKey(op) => op.compile(),
-            Send(op) => op.compile(),
-            Receive(op) => op.compile(),
             FixedpointRingEncode(op) => op.compile(),
             FixedpointRingDecode(op) => op.compile(),
             FixedpointRingMean(op) => op.compile(),
@@ -460,13 +464,13 @@ impl Compile<AsyncKernel> for SendOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
         let rdv = Arc::new(self.rendezvous_key.clone());
-        Ok(AsyncKernel::Unary(Box::new(move |ctx, sid, v, sender| {
+        Ok(AsyncKernel::Unary(Box::new(move |ctx, sess, v, sender| {
             let ctx = Arc::clone(ctx);
-            let sid = Arc::clone(sid);
+            let sess = Arc::clone(sess);
             let rdv = Arc::clone(&rdv);
-            tokio::spawn(async move {
+            ctx.runtime.spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                ctx.networking.send(&v, &rdv, &sid).await;
+                ctx.networking.send(&v, &rdv, &sess.sid).await;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
@@ -486,14 +490,46 @@ impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
         let rdv = Arc::new(self.rendezvous_key.clone());
-        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sid, sender| {
+        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sess, sender| {
             let ctx = Arc::clone(ctx);
-            let sid = Arc::clone(sid);
+            let sess = Arc::clone(sess);
             let rdv = Arc::clone(&rdv);
             tokio::spawn(async move {
-                let v: Value = ctx.networking.receive(&rdv, &sid).await?;
+                let v: Value = ctx.networking.receive(&rdv, &sess.sid).await?;
                 sender.send(v).map_err(map_send_error)
             })
+        })))
+    }
+}
+
+impl Compile<SyncKernel> for InputOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
+            unimplemented!()
+        })))
+    }
+}
+
+impl Compile<AsyncKernel> for InputOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sess, sender| {
+            unimplemented!()
+        })))
+    }
+}
+
+impl Compile<SyncKernel> for OutputOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
+            unimplemented!()
+        })))
+    }
+}
+
+impl Compile<AsyncKernel> for OutputOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sess, sender| {
+            unimplemented!()
         })))
     }
 }

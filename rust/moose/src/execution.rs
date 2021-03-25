@@ -158,10 +158,10 @@ pub enum SyncKernel {
 }
 
 type NullaryAsyncKernel =
-    Box<dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncSender) -> AsyncTask + Send + Sync>;
+    Box<dyn Fn(&Arc<AsyncContext>, &Arc<AsyncSession>, AsyncSender) -> AsyncTask + Send + Sync>;
 
 type UnaryAsyncKernel = Box<
-    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, AsyncReceiver, AsyncSender) -> AsyncTask
+    dyn Fn(&Arc<AsyncContext>, &Arc<AsyncSession>, AsyncReceiver, AsyncSender) -> AsyncTask
         + Send
         + Sync,
 >;
@@ -169,7 +169,7 @@ type UnaryAsyncKernel = Box<
 type BinaryAsyncKernel = Box<
     dyn Fn(
             &Arc<AsyncContext>,
-            &Arc<SessionId>,
+            &Arc<AsyncSession>,
             AsyncReceiver,
             AsyncReceiver,
             AsyncSender,
@@ -181,7 +181,7 @@ type BinaryAsyncKernel = Box<
 type TernaryAsyncKernel = Box<
     dyn Fn(
             &Arc<AsyncContext>,
-            &Arc<SessionId>,
+            &Arc<AsyncSession>,
             AsyncReceiver,
             AsyncReceiver,
             AsyncReceiver,
@@ -192,7 +192,7 @@ type TernaryAsyncKernel = Box<
 >;
 
 type VariadicAsyncKernel = Box<
-    dyn Fn(&Arc<AsyncContext>, &Arc<SessionId>, Vec<AsyncReceiver>, AsyncSender) -> AsyncTask
+    dyn Fn(&Arc<AsyncContext>, &Arc<AsyncSession>, Vec<AsyncReceiver>, AsyncSender) -> AsyncTask
         + Send
         + Sync,
 >;
@@ -448,7 +448,7 @@ impl CompiledSyncOperation {
 type AsyncOperationKernel = Box<
     dyn Fn(
             &Arc<AsyncContext>,
-            &Arc<SessionId>,
+            &Arc<AsyncSession>,
             &Environment<AsyncReceiver>,
             AsyncSender,
         ) -> Result<AsyncTask>
@@ -465,11 +465,11 @@ impl CompiledAsyncOperation {
     pub fn apply(
         &self,
         ctx: &Arc<AsyncContext>,
-        sid: &Arc<SessionId>,
+        sess: &Arc<AsyncSession>,
         env: &Environment<AsyncReceiver>,
         sender: AsyncSender,
     ) -> Result<AsyncTask> {
-        (self.kernel)(ctx, sid, env, sender)
+        (self.kernel)(ctx, sess, env, sender)
     }
 }
 
@@ -590,12 +590,12 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let x0_name = self.inputs[0].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env, sender| {
+                    kernel: Box::new(move |ctx, sess, env, sender| {
                         let x0 = env
                             .get(&x0_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        Ok(k(ctx, sid, x0, sender))
+                        Ok(k(ctx, sess, x0, sender))
                     }),
                 })
             }
@@ -605,7 +605,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let x1_name = self.inputs[1].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env, sender| {
+                    kernel: Box::new(move |ctx, sess, env, sender| {
                         let x0 = env
                             .get(&x0_name)
                             .ok_or(Error::MalformedEnvironment)?
@@ -614,7 +614,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                             .get(&x1_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        Ok(k(ctx, sid, x0, x1, sender))
+                        Ok(k(ctx, sess, x0, x1, sender))
                     }),
                 })
             }
@@ -625,7 +625,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let x2_name = self.inputs[2].clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env, sender| {
+                    kernel: Box::new(move |ctx, sess, env, sender| {
                         let x0 = env
                             .get(&x0_name)
                             .ok_or(Error::MalformedEnvironment)?
@@ -638,7 +638,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                             .get(&x2_name)
                             .ok_or(Error::MalformedEnvironment)?
                             .clone();
-                        Ok(k(ctx, sid, x0, x1, x2, sender))
+                        Ok(k(ctx, sess, x0, x1, x2, sender))
                     }),
                 })
             }
@@ -646,12 +646,12 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 let inputs = self.inputs.clone();
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
-                    kernel: Box::new(move |ctx, sid, env, sender| {
+                    kernel: Box::new(move |ctx, sess, env, sender| {
                         let xs = inputs
                             .iter()
                             .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment))
                             .collect::<Result<Vec<_>>>()?;
-                        Ok(k(ctx, sid, xs, sender))
+                        Ok(k(ctx, sess, xs, sender))
                     }),
                 })
             }
@@ -765,9 +765,9 @@ impl CompiledSyncComputation {
 type AsyncComputationKernel = Box<
     dyn Fn(
         &Arc<AsyncContext>,
-        &Arc<SessionId>,
+        SessionId,
         Environment<AsyncReceiver>,
-    ) -> Result<(AsyncSession, Environment<AsyncReceiver>)>,
+    ) -> Result<(Arc<AsyncSession>, Environment<AsyncReceiver>)>,
 >;
 
 pub struct CompiledAsyncComputation(AsyncComputationKernel);
@@ -789,7 +789,7 @@ where
 
         Ok(CompiledAsyncComputation(Box::new(
             move |ctx: &Arc<AsyncContext>,
-                  sid: &Arc<SessionId>,
+                  sid: SessionId,
                   _args: Environment<AsyncReceiver>| {
                 // TODO(Morten) args should be passed into the op.apply's
                 let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
@@ -802,13 +802,18 @@ where
                             (sender, (op.name.clone(), shared_receiver))
                         })
                         .unzip();
+                let mut session = Arc::new(AsyncSession {
+                    sid: sid,
+                    tasks: vec![],
+                });
                 let tasks: Vec<AsyncTask> = senders
                     .into_iter() // into_par_iter seems to hurt performance here
                     .zip(&compiled_ops)
-                    .map(|(sender, op)| op.apply(ctx, sid, &receivers, sender))
+                    .map(|(sender, op)| op.apply(ctx, &session, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
                 let outputs = receivers; // TODO filter to Output nodes
-                Ok((AsyncSession { tasks }, outputs))
+                session.tasks = tasks;
+                Ok((session, outputs))
             },
         )))
     }
@@ -818,9 +823,9 @@ impl CompiledAsyncComputation {
     pub fn apply(
         &self,
         ctx: &Arc<AsyncContext>,
-        sid: &Arc<SessionId>,
+        sid: SessionId,
         args: Environment<AsyncReceiver>,
-    ) -> Result<(AsyncSession, Environment<AsyncReceiver>)> {
+    ) -> Result<(Arc<AsyncSession>, Environment<AsyncReceiver>)> {
         (self.0)(ctx, sid, args)
     }
 }
@@ -868,7 +873,7 @@ pub struct AsyncContext {
 }
 
 impl AsyncContext {
-    pub fn join_session(&self, sess: AsyncSession) -> Result<()> {
+    pub fn join_session(&self, sess: Arc<AsyncSession>) -> Result<()> {
         for task in sess.tasks {
             let res = self.runtime.block_on(task);
             if res.is_err() {
@@ -880,6 +885,7 @@ impl AsyncContext {
 }
 
 pub struct AsyncSession {
+    pub sid: SessionId,
     tasks: Vec<AsyncTask>,
 }
 
@@ -903,8 +909,7 @@ impl AsyncExecutor {
         args: Environment<AsyncReceiver>,
     ) -> Result<()> {
         let compiled_comp: CompiledAsyncComputation = comp.compile()?;
-        let sid = Arc::new(sid);
-        let (sess, _vals) = match compiled_comp.apply(&self.ctx, &sid, args) {
+        let (sess, _vals) = match compiled_comp.apply(&self.ctx, sid, args) {
             Ok(res) => res,
             Err(_e) => {
                 return Err(Error::Unexpected); // TODO
