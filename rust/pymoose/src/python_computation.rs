@@ -1,7 +1,4 @@
-use maplit::hashmap;
 use moose::computation::*;
-use moose::execution;
-use pyo3::{prelude::*, types::PyModule};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -10,6 +7,7 @@ use std::convert::TryInto;
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
+#[allow(clippy::enum_variant_names)]
 enum PyOperation {
     prim_SampleKeyOperation(PySampleKeyOperation),
     prim_DeriveSeedOperation(PyDeriveSeedOperation),
@@ -278,14 +276,14 @@ fn map_inputs(
             inputs
                 .get(*item)
                 .cloned()
-                .ok_or(anyhow::anyhow!("No value found in input vector"))
+                .ok_or_else(|| anyhow::anyhow!("No value found in input vector"))
         })
         .collect::<anyhow::Result<Vec<_>>>()
 }
 fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result<Placement> {
     plc.get(name)
         .cloned()
-        .ok_or(anyhow::anyhow!("No key found in placement dictionary"))
+        .ok_or_else(|| anyhow::anyhow!("No key found in placement dictionary"))
 }
 
 impl TryFrom<PyComputation> for Computation {
@@ -401,7 +399,7 @@ impl TryFrom<PyComputation> for Computation {
                                     value.iter().map(|i| *i as usize).collect(),
                                 )
                                 .into(),
-                                PyValue::std_StringValue { ref value } => unimplemented!(),
+                                _ => unimplemented!(),
                             },
                         }),
                         name: op.name.clone(),
@@ -464,6 +462,10 @@ impl TryFrom<PyComputation> for Computation {
 
 #[test]
 fn test_deserialize_python_simple_computation() {
+    use maplit::hashmap;
+    use moose::execution;
+    use pyo3::{prelude::*, types::PyModule};
+
     let gil = Python::acquire_gil();
     let py = gil.python();
     let comp_graph_py = PyModule::from_code(
