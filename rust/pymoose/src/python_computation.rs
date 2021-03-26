@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use ndarray::prelude::*;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
@@ -286,7 +287,7 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 }
 
 fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
-    let out: anyhow::Result<Value> = match constant_value {
+    match constant_value {
         PyValue::std_ShapeValue { ref value } => Ok(Value::from(moose::standard::Shape(
             value.iter().map(|i| *i as usize).collect(),
         ))),
@@ -294,14 +295,12 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
             ref items,
             ref shape,
         } => {
-            let ushape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-            let float_items = Float64Tensor::from(items.clone());
-            let x = float_items.0.into_shape(ushape).unwrap();
-            Ok(Value::from(Float64Tensor::from(x)))
+            let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
+            let tensor= ArrayD::from_shape_vec(shape, items.clone())?;
+            Ok(Float64Tensor::from(tensor).into())
         }
         _ => unimplemented!(),
-    };
-    out
+    }
 }
 
 impl TryFrom<PyComputation> for Computation {
