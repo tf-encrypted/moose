@@ -376,13 +376,15 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
 pub struct SyncSession {
     pub sid: SessionId,
     pub args: Environment<Value>,
-    pub networking: Rc<dyn SyncNetworking>,
+    pub networking: SyncNetworkingImpl,
 }
 
 pub trait SyncNetworking {
     fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
     fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value>;
 }
+
+pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
 
 #[async_trait]
 pub trait AsyncNetworking {
@@ -693,20 +695,26 @@ impl Computation {
 
     pub fn apply(
         &self,
-        sess: &SyncSession,
+        sid: SessionId,
         args: Environment<Value>,
+        networking: &SyncNetworkingImpl,
     ) -> Result<Environment<Value>> {
-        let mut env = args;
-        env.reserve(self.operations.len());
+        let sess = SyncSession {
+            sid,
+            args,
+            networking: Rc::clone(networking),
+        };
+        let mut env = Environment::<Value>::with_capacity(self.operations.len());
         for op in self.operations.iter() {
-            let value = op.apply(sess, &env)?;
+            let value = op.apply(&sess, &env)?;
             env.insert(op.name.clone(), value);
         }
         Ok(env)
     }
 }
 
-type SyncComputationKernel = Box<dyn Fn(&SyncSession) -> Result<Environment<Value>>>;
+type SyncComputationKernel =
+    Box<dyn Fn(SessionId, SyncArgs, &SyncNetworkingImpl) -> Result<Environment<Value>>>;
 
 pub struct CompiledSyncComputation(SyncComputationKernel);
 
@@ -732,12 +740,19 @@ where
             .collect();
 
         Ok(CompiledSyncComputation(Box::new(
-            move |sess: &SyncSession| {
+            move |sid: SessionId, args: SyncArgs, networking: &SyncNetworkingImpl| {
+                let sess = SyncSession {
+                    sid,
+                    args,
+                    networking: Rc::clone(networking),
+                };
+
                 let mut env = Environment::with_capacity(compiled_ops.len());
                 for compiled_op in compiled_ops.iter() {
-                    let value = compiled_op.apply(sess, &env)?;
+                    let value = compiled_op.apply(&sess, &env)?;
                     env.insert(compiled_op.name.clone(), value);
                 }
+
                 let outputs: HashMap<String, Value> = output_names
                     .iter()
                     .map(|op_name| (op_name.clone(), env.get(op_name).cloned().unwrap()))
@@ -748,13 +763,20 @@ where
     }
 }
 
+pub type SyncArgs = HashMap<String, Value>;
+
 impl CompiledSyncComputation {
-    pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
-        (self.0)(sess)
+    pub fn apply(
+        &self,
+        sid: SessionId,
+        args: SyncArgs,
+        networking: &SyncNetworkingImpl,
+    ) -> Result<Environment<Value>> {
+        (self.0)(sid, args, networking)
     }
 }
 
-type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
+pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
 type AsyncComputationKernel = Box<
     dyn Fn(
@@ -803,7 +825,7 @@ where
                         })
                         .unzip();
 
-                let session = Arc::new(AsyncSession {
+                let sess = Arc::new(AsyncSession {
                     sid,
                     args,
                     networking: Arc::clone(networking),
@@ -812,7 +834,7 @@ where
                 let tasks: Vec<AsyncTask> = senders
                     .into_iter() // into_par_iter seems to hurt performance here
                     .zip(&compiled_ops)
-                    .map(|(sender, op)| op.apply(&session, &receivers, sender))
+                    .map(|(sender, op)| op.apply(&sess, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
 
                 let join_handle = AsyncSessionJoinHandle { tasks };
@@ -865,14 +887,7 @@ impl EagerExecutor {
         args: Environment<Value>,
     ) -> Result<Environment<Value>> {
         let compiled_comp: CompiledSyncComputation = comp.compile()?;
-
-        let sess = SyncSession {
-            sid,
-            args,
-            networking: Rc::clone(&self.networking),
-        };
-
-        compiled_comp.apply(&sess)
+        compiled_comp.apply(sid, args, &self.networking)
     }
 }
 

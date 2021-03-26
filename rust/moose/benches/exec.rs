@@ -1,7 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use moose::computation::Computation;
 use rayon::prelude::*;
-use std::collections::HashMap;
 
 /// Benchmark iter vs par_iter for channel creation
 /// Conclusion is that this never seems worth it.
@@ -559,6 +558,7 @@ fn compile(c: &mut Criterion) {
 fn execute(c: &mut Criterion) {
     use maplit::hashmap;
     use moose::execution::*;
+    use std::rc::Rc;
     use std::sync::Arc;
 
     let mut group = c.benchmark_group("execute");
@@ -566,14 +566,13 @@ fn execute(c: &mut Criterion) {
         let comp = gen_sample_graph(*size);
 
         group.bench_function(BenchmarkId::new("sync_direct", size), |b| {
-            let ctx = SyncContext {
-                networking: Box::new(DummySyncNetworking),
-            };
+            let networking = Rc::new(DummySyncNetworking) as SyncNetworkingImpl;
 
             b.iter(|| {
                 let sid = 12345;
-                let env = hashmap!();
-                let res = comp.apply(&ctx, &sid, env).unwrap();
+                let args = hashmap!();
+
+                let res = comp.apply(sid, args, &networking).unwrap();
                 black_box(res);
             });
         });
@@ -581,14 +580,13 @@ fn execute(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("sync_compiled", size), |b| {
             let comp_compiled: CompiledSyncComputation = comp.compile().unwrap();
 
-            let ctx = SyncContext {
-                networking: Box::new(DummySyncNetworking),
-            };
+            let networking = Rc::new(DummySyncNetworking) as SyncNetworkingImpl;
 
             b.iter(|| {
                 let sid = 12345;
-                let env = HashMap::new();
-                let res = comp_compiled.apply(&ctx, &sid, env).unwrap();
+                let args = hashmap!();
+
+                let res = comp_compiled.apply(sid, args, &networking).unwrap();
                 black_box(res);
             });
         });
@@ -596,17 +594,16 @@ fn execute(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("async_compiled", size), |b| {
             let comp_compiled: CompiledAsyncComputation = comp.compile().unwrap();
 
-            let ctx = Arc::new(AsyncContext {
-                runtime: tokio::runtime::Runtime::new().unwrap(),
-                networking: Box::new(DummyAsyncNetworking),
-            });
+            let networking = Arc::new(DummyAsyncNetworking) as AsyncNetworkingImpl;
 
             b.iter(|| {
-                let sid = Arc::new(12345);
-                let env = HashMap::new();
-                let (sess, res) = comp_compiled.apply(&ctx, &sid, env).unwrap();
-                ctx.join_session(sess).unwrap();
-                black_box(res);
+                let sid = 12345;
+                let args = hashmap!();
+
+                let (join_handle, outputs): (_, _) =
+                    comp_compiled.apply(sid, args, &networking).unwrap();
+                join_handle.join().unwrap();
+                black_box(outputs);
             });
         });
     }
