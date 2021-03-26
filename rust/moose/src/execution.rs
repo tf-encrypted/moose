@@ -676,14 +676,13 @@ impl Computation {
 
     pub fn apply(
         &self,
-        ctx: &SyncContext,
-        sid: &SessionId,
+        sess: &SyncSession,
         args: Environment<Value>,
     ) -> Result<Environment<Value>> {
         let mut env = args;
         env.reserve(self.operations.len());
         for op in self.operations.iter() {
-            let value = op.apply(ctx, sid, &env)?;
+            let value = op.apply(sess, &env)?;
             env.insert(op.name.clone(), value);
         }
         Ok(env)
@@ -691,7 +690,7 @@ impl Computation {
 }
 
 type SyncComputationKernel =
-    Box<dyn Fn(&SyncContext, &SessionId, Environment<Value>) -> Result<Environment<Value>>>;
+    Box<dyn Fn(&SyncSession, Environment<Value>) -> Result<Environment<Value>>>;
 
 pub struct CompiledSyncComputation(SyncComputationKernel);
 
@@ -709,11 +708,11 @@ where
         // TODO(Morten) we want to sort topologically here, outside the closure
         // TODO(Morten) do we want to insert instructions for when values can be dropped from the environment?
         Ok(CompiledSyncComputation(Box::new(
-            move |ctx: &SyncContext, sid: &SessionId, args: Environment<Value>| {
+            move |sess: &SyncSession, args: Environment<Value>| {
                 let mut env = args;
                 env.reserve(compiled_ops.len());
                 for compiled_op in compiled_ops.iter() {
-                    let value = compiled_op.apply(ctx, sid, &env)?;
+                    let value = compiled_op.apply(sess, &env)?;
                     env.insert(compiled_op.name.clone(), value);
                 }
                 Ok(env)
@@ -826,10 +825,10 @@ impl EagerExecutor {
         comp: &Computation,
         sid: SessionId,
         args: Environment<Value>,
-    ) -> Result<()> {
+    ) -> Result<Environment<Value>> {
         let compiled_comp: CompiledSyncComputation = comp.compile()?;
-        let _env = compiled_comp.apply(&self.ctx, &sid, args)?;
-        Ok(())
+        let res = compiled_comp.apply(&self.ctx, sid, args)?;
+        Ok(res)
     }
 }
 
