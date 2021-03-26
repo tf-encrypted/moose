@@ -566,13 +566,14 @@ fn execute(c: &mut Criterion) {
         let comp = gen_sample_graph(*size);
 
         group.bench_function(BenchmarkId::new("sync_direct", size), |b| {
-            let networking = Rc::new(DummySyncNetworking) as SyncNetworkingImpl;
+            let sess = SyncSession {
+                sid: 12345,
+                args: hashmap!(),
+                networking: Rc::new(DummySyncNetworking),
+            };
 
             b.iter(|| {
-                let sid = 12345;
-                let args = hashmap!();
-
-                let res = comp.apply(sid, args, &networking).unwrap();
+                let res = comp.apply(&sess).unwrap();
                 black_box(res);
             });
         });
@@ -580,28 +581,29 @@ fn execute(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("sync_compiled", size), |b| {
             let comp_compiled: CompiledSyncComputation = comp.compile().unwrap();
 
-            let networking = Rc::new(DummySyncNetworking) as SyncNetworkingImpl;
+            let sess = SyncSession {
+                sid: 12345,
+                args: hashmap!(),
+                networking: Rc::new(DummySyncNetworking),
+            };
 
             b.iter(|| {
-                let sid = 12345;
-                let args = hashmap!();
-
-                let res = comp_compiled.apply(sid, args, &networking).unwrap();
-                black_box(res);
+                let outputs = comp_compiled.apply(&sess).unwrap();
+                black_box(outputs);
             });
         });
 
         group.bench_function(BenchmarkId::new("async_compiled", size), |b| {
             let comp_compiled: CompiledAsyncComputation = comp.compile().unwrap();
 
-            let networking = Arc::new(DummyAsyncNetworking) as AsyncNetworkingImpl;
+            let sess = Arc::new(AsyncSession {
+                sid: 12345,
+                args: hashmap!(),
+                networking: Arc::new(DummyAsyncNetworking),
+            });
 
             b.iter(|| {
-                let sid = 12345;
-                let args = hashmap!();
-
-                let (join_handle, outputs): (_, _) =
-                    comp_compiled.apply(sid, args, &networking).unwrap();
+                let (join_handle, outputs): (_, _) = comp_compiled.apply(&sess).unwrap();
                 join_handle.join().unwrap();
                 black_box(outputs);
             });

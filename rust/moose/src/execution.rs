@@ -693,28 +693,17 @@ impl Computation {
         Ok(Computation { operations })
     }
 
-    pub fn apply(
-        &self,
-        sid: SessionId,
-        args: Environment<Value>,
-        networking: &SyncNetworkingImpl,
-    ) -> Result<Environment<Value>> {
-        let sess = SyncSession {
-            sid,
-            args,
-            networking: Rc::clone(networking),
-        };
+    pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
         let mut env = Environment::<Value>::with_capacity(self.operations.len());
         for op in self.operations.iter() {
-            let value = op.apply(&sess, &env)?;
+            let value = op.apply(sess, &env)?;
             env.insert(op.name.clone(), value);
         }
         Ok(env)
     }
 }
 
-type SyncComputationKernel =
-    Box<dyn Fn(SessionId, SyncArgs, &SyncNetworkingImpl) -> Result<Environment<Value>>>;
+type SyncComputationKernel = Box<dyn Fn(&SyncSession) -> Result<Environment<Value>>>;
 
 pub struct CompiledSyncComputation(SyncComputationKernel);
 
@@ -740,16 +729,10 @@ where
             .collect();
 
         Ok(CompiledSyncComputation(Box::new(
-            move |sid: SessionId, args: SyncArgs, networking: &SyncNetworkingImpl| {
-                let sess = SyncSession {
-                    sid,
-                    args,
-                    networking: Rc::clone(networking),
-                };
-
+            move |sess: &SyncSession| {
                 let mut env = Environment::with_capacity(compiled_ops.len());
                 for compiled_op in compiled_ops.iter() {
-                    let value = compiled_op.apply(&sess, &env)?;
+                    let value = compiled_op.apply(sess, &env)?;
                     env.insert(compiled_op.name.clone(), value);
                 }
 
@@ -766,25 +749,15 @@ where
 pub type SyncArgs = HashMap<String, Value>;
 
 impl CompiledSyncComputation {
-    pub fn apply(
-        &self,
-        sid: SessionId,
-        args: SyncArgs,
-        networking: &SyncNetworkingImpl,
-    ) -> Result<Environment<Value>> {
-        (self.0)(sid, args, networking)
+    pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
+        (self.0)(sess)
     }
 }
 
 pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
-type AsyncComputationKernel = Box<
-    dyn Fn(
-        SessionId,
-        AsyncArgs,
-        &AsyncNetworkingImpl,
-    ) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)>,
->;
+type AsyncComputationKernel =
+    Box<dyn Fn(&Arc<AsyncSession>) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)>>;
 
 pub struct CompiledAsyncComputation(AsyncComputationKernel);
 
@@ -813,7 +786,7 @@ where
         }
 
         Ok(CompiledAsyncComputation(Box::new(
-            move |sid: SessionId, args: AsyncArgs, networking: &AsyncNetworkingImpl| {
+            move |sess: &Arc<AsyncSession>| {
                 let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
                     compiled_ops
                         .iter() // par_iter doesn't seem to improve performance here
@@ -825,16 +798,10 @@ where
                         })
                         .unzip();
 
-                let sess = Arc::new(AsyncSession {
-                    sid,
-                    args,
-                    networking: Arc::clone(networking),
-                });
-
                 let tasks: Vec<AsyncTask> = senders
                     .into_iter() // into_par_iter seems to hurt performance here
                     .zip(&compiled_ops)
-                    .map(|(sender, op)| op.apply(&sess, &receivers, sender))
+                    .map(|(sender, op)| op.apply(sess, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
 
                 let join_handle = AsyncSessionJoinHandle { tasks };
@@ -855,11 +822,9 @@ where
 impl CompiledAsyncComputation {
     pub fn apply(
         &self,
-        sid: SessionId,
-        args: AsyncArgs,
-        networking: &AsyncNetworkingImpl,
+        sess: &Arc<AsyncSession>,
     ) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)> {
-        (self.0)(sid, args, networking)
+        (self.0)(sess)
     }
 }
 
@@ -887,7 +852,14 @@ impl EagerExecutor {
         args: Environment<Value>,
     ) -> Result<Environment<Value>> {
         let compiled_comp: CompiledSyncComputation = comp.compile()?;
-        compiled_comp.apply(sid, args, &self.networking)
+
+        let sess = SyncSession {
+            sid,
+            args,
+            networking: Rc::clone(&self.networking),
+        };
+
+        compiled_comp.apply(&sess)
     }
 }
 
@@ -941,11 +913,15 @@ impl AsyncExecutor {
     ) -> Result<HashMap<String, AsyncReceiver>> {
         let compiled_comp: CompiledAsyncComputation = comp.compile()?;
 
+        let sess = Arc::new(AsyncSession {
+            sid,
+            args,
+            networking: Arc::clone(&self.networking),
+        });
+
         // TODO don't return unexpected error
         let (join_handle, outputs): (AsyncSessionJoinHandle, HashMap<_, AsyncReceiver>) =
-            compiled_comp
-                .apply(sid, args, &self.networking)
-                .map_err(|_| Error::Unexpected)?;
+            compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)?;
 
         join_handle.join()?;
         Ok(outputs)
@@ -964,7 +940,6 @@ fn test_standard_prod_ops() {
     use maplit::hashmap;
     use ndarray::prelude::*;
 
-    let env = hashmap![];
     let x = Float32Tensor::from(
         array![[1.0, 2.0], [3.0, 4.0]]
             .into_dimensionality::<IxDyn>()
@@ -1022,7 +997,9 @@ fn test_standard_prod_ops() {
     let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();
-    exec.run_computation(&comp, 12345, env).ok();
+    let sid = 12345;
+    let args = hashmap![];
+    exec.run_computation(&comp, sid, args).ok();
 }
 
 #[test]
@@ -1030,8 +1007,6 @@ fn test_eager_executor() {
     use crate::prim::Nonce;
     use crate::standard::Shape;
     use maplit::hashmap;
-
-    let env = hashmap![];
 
     let key_op = Operation {
         name: "key".into(),
@@ -1085,6 +1060,8 @@ fn test_eager_executor() {
     let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();
-    let outputs = exec.run_computation(&comp, 12345, env).unwrap();
+    let sid = 12345;
+    let args = hashmap![];
+    let outputs = exec.run_computation(&comp, sid, args).unwrap();
     assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
 }
