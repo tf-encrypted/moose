@@ -1,4 +1,4 @@
-use moose::{computation::*, standard::Float64Tensor};
+use moose::{computation::*, standard::Float32Tensor, standard::Float64Tensor};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -42,14 +42,15 @@ enum PyValueType {
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
+#[allow(clippy::enum_variant_names)]
 enum PyValue {
     std_ShapeValue { value: Vec<u8> },
     std_StringValue { value: String },
-    std_Float64Tensor(PyNdarray),
+    std_TensorValue { value: PyNdarray },
 }
 
 #[derive(Deserialize, Debug)]
-#[serde(tag = "__dtype__")]
+#[serde(tag = "dtype")]
 #[allow(non_camel_case_types)]
 enum PyNdarray {
     float32 { items: Vec<f32>, shape: Vec<u8> },
@@ -264,26 +265,31 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 
 fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
     match constant_value {
-        PyValue::std_ShapeValue { ref value } => {
+        PyValue::std_ShapeValue { value } => {
             Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
         }
-        &PyValue::std_Float64Tensor(PyNdarray::float32 {
-            ref items,
-            ref shape,
-        }) => {
-            let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-            let tensor = ArrayD::from_shape_vec(shape, items.iter().map(|i| *i as f64).collect())?;
-            Ok(Float64Tensor::from(tensor).into())
+        PyValue::std_StringValue { value } => {
+            let _ = value;
+            unimplemented!()
         }
-        &PyValue::std_Float64Tensor(PyNdarray::float64 {
-            ref items,
-            ref shape,
-        }) => {
-            let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-            let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
-            Ok(Float64Tensor::from(tensor).into())
-        }
-        _ => unimplemented!(),
+        PyValue::std_TensorValue { value } => match value {
+            PyNdarray::float32 {
+                ref items,
+                ref shape,
+            } => {
+                let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
+                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                Ok(Float32Tensor::from(tensor).into())
+            }
+            PyNdarray::float64 {
+                ref items,
+                ref shape,
+            } => {
+                let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
+                let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
+                Ok(Float64Tensor::from(tensor).into())
+            }
+        },
     }
 }
 
@@ -501,11 +507,12 @@ def f():
             inputs={"shape": "x_shape"},
         )
     )
+
     x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_x",
-            value=x,
+            value=standard_dialect.TensorValue(value=x),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -516,7 +523,7 @@ def f():
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_y",
-            value=y,
+            value=standard_dialect.TensorValue(value=y),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),

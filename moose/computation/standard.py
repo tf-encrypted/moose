@@ -98,6 +98,11 @@ class StringValue(StandardValue):
 
 
 @dataclass
+class TensorValue(StandardValue):
+    value: np.ndarray
+
+
+@dataclass
 class ConstantOperation(StandardOperation):
     value: Value
     output_type: ValueType
