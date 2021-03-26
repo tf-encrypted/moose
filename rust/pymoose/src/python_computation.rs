@@ -1,9 +1,9 @@
 use moose::{computation::*, standard::Float64Tensor};
+use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use ndarray::prelude::*;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
@@ -296,7 +296,7 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
             ref shape,
         } => {
             let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
-            let tensor= ArrayD::from_shape_vec(shape, items.clone())?;
+            let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
             Ok(Float64Tensor::from(tensor).into())
         }
         _ => unimplemented!(),

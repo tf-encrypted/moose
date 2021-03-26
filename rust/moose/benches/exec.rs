@@ -76,7 +76,9 @@ fn par_compile(c: &mut Criterion) {
         name: "y".into(),
         kind: operator,
         inputs: vec!["x".into(), "x".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let mut group = c.benchmark_group("par_compile");
@@ -471,7 +473,9 @@ fn gen_sample_graph(size: usize) -> Computation {
             name: format!("y{}", i),
             kind: operator.clone(),
             inputs: vec!["x".into(), "x".into()],
-            placement: Placement::Host,
+            placement: Placement::Host(HostPlacement {
+                name: "alice".into(),
+            }),
         })
         .collect();
 
@@ -486,7 +490,9 @@ fn gen_sample_graph(size: usize) -> Computation {
             value: Value::Ring64Tensor(Ring64Tensor::from(raw_tensor)),
         }),
         inputs: vec![],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     });
 
     Computation { operations }.toposort().unwrap()
@@ -519,7 +525,9 @@ fn compile(c: &mut Criterion) {
         name: "z".into(),
         kind: operator,
         inputs: vec!["x".into(), "y".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     c.bench_function("compile_operation/sync", |b| {

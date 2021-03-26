@@ -1002,7 +1002,9 @@ fn test_standard_prod_ops() {
             axis: Some(0),
         }),
         inputs: vec!["dot".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
     let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
     let comp = Computation { operations }.toposort().unwrap();
