@@ -1,3 +1,5 @@
+use num_traits::Float;
+
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
@@ -502,28 +504,62 @@ impl Compile<AsyncKernel> for ReceiveOp {
 
 impl Compile<SyncKernel> for InputOp {
     fn compile(&self) -> Result<SyncKernel> {
-        Ok(SyncKernel::Nullary(Box::new(move |sess| unimplemented!())))
+        let expected_ty = self.ty.clone();
+        let arg_name = self.arg_name.clone();
+        Ok(SyncKernel::Nullary(Box::new(move |sess| {
+            let arg = sess
+                .args
+                .get(&arg_name)
+                .cloned()
+                .ok_or_else(|| Error::MalformedEnvironment)?;
+            if arg.ty() != expected_ty {
+                Ok(arg)
+            } else {
+                Err(Error::TypeMismatch)
+            }
+        })))
     }
 }
 
 impl Compile<AsyncKernel> for InputOp {
     fn compile(&self) -> Result<AsyncKernel> {
-        Ok(AsyncKernel::Nullary(Box::new(
-            move |sess, sender| unimplemented!(),
-        )))
+        use std::sync::Arc;
+        let expected_ty = Arc::new(self.ty.clone());
+        let arg_name = Arc::new(self.arg_name.clone());
+        Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
+            let sess = Arc::clone(sess);
+            let expected_ty = Arc::clone(&expected_ty);
+            let arg_name = Arc::clone(&arg_name);
+            tokio::spawn(async move {
+                let async_arg = sess
+                    .args
+                    .get(arg_name.as_ref())
+                    .cloned()
+                    .ok_or_else(|| Error::MalformedEnvironment)?;
+                let arg: Value = async_arg.await.map_err(map_receive_error)?;
+                if arg.ty() == *expected_ty {
+                    sender.send(arg).map_err(map_send_error)
+                } else {
+                    Err(Error::TypeMismatch)
+                }
+            })
+        })))
     }
 }
 
 impl Compile<SyncKernel> for OutputOp {
     fn compile(&self) -> Result<SyncKernel> {
-        Ok(SyncKernel::Nullary(Box::new(move |sess| unimplemented!())))
+        Ok(SyncKernel::Unary(Box::new(move |_sess, x0| Ok(x0))))
     }
 }
 
 impl Compile<AsyncKernel> for OutputOp {
     fn compile(&self) -> Result<AsyncKernel> {
-        Ok(AsyncKernel::Nullary(Box::new(
-            move |sess, sender| unimplemented!(),
-        )))
+        Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
+            tokio::spawn(async move {
+                let val = x0.await.map_err(map_receive_error)?;
+                sender.send(val).map_err(map_send_error)
+            })
+        })))
     }
 }

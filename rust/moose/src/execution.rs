@@ -10,6 +10,7 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 use tracing::debug;
@@ -359,7 +360,8 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
 
 pub struct SyncSession {
     pub sid: SessionId,
-    pub networking: Box<dyn Send + Sync + SyncNetworking>,
+    pub args: Environment<Value>,
+    pub networking: Rc<dyn SyncNetworking>,
 }
 
 pub trait SyncNetworking {
@@ -422,8 +424,8 @@ pub struct CompiledSyncOperation {
 }
 
 impl CompiledSyncOperation {
-    pub fn apply(&self, sess: &SyncSession, args: &Environment<Value>) -> Result<Value> {
-        (self.kernel)(sess, args)
+    pub fn apply(&self, sess: &SyncSession, env: &Environment<Value>) -> Result<Value> {
+        (self.kernel)(sess, env)
     }
 }
 
@@ -636,9 +638,9 @@ impl Compile<CompiledAsyncOperation> for Operation {
 }
 
 impl Operation {
-    pub fn apply(&self, sess: &SyncSession, args: &Environment<Value>) -> Result<Value> {
+    pub fn apply(&self, sess: &SyncSession, env: &Environment<Value>) -> Result<Value> {
         let compiled: CompiledSyncOperation = self.compile()?;
-        compiled.apply(sess, args)
+        compiled.apply(sess, env)
     }
 }
 
@@ -689,8 +691,7 @@ impl Computation {
     }
 }
 
-type SyncComputationKernel =
-    Box<dyn Fn(&SyncSession, Environment<Value>) -> Result<Environment<Value>>>;
+type SyncComputationKernel = Box<dyn Fn(&SyncSession) -> Result<Environment<Value>>>;
 
 pub struct CompiledSyncComputation(SyncComputationKernel);
 
@@ -705,38 +706,46 @@ where
             .par_iter() // par_iter seems to make sense here, see benches
             .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
-        // TODO(Morten) we want to sort topologically here, outside the closure
-        // TODO(Morten) do we want to insert instructions for when values can be dropped from the environment?
+
+        let output_names: Vec<String> = self
+            .operations
+            .iter() // guessing that par_iter won't help here
+            .filter_map(|op| match op.kind {
+                Operator::Output(_) => Some(op.name.clone()),
+                _ => None,
+            })
+            .collect();
+
         Ok(CompiledSyncComputation(Box::new(
-            move |sess: &SyncSession, args: Environment<Value>| {
-                let mut env = args;
-                env.reserve(compiled_ops.len());
+            move |sess: &SyncSession| {
+                let mut env = Environment::with_capacity(compiled_ops.len());
                 for compiled_op in compiled_ops.iter() {
                     let value = compiled_op.apply(sess, &env)?;
                     env.insert(compiled_op.name.clone(), value);
                 }
-                Ok(env)
+                let outputs: HashMap<String, Value> = output_names
+                    .iter()
+                    .map(|op_name| (op_name.clone(), env.get(op_name).cloned().unwrap()))
+                    .collect();
+                Ok(outputs)
             },
         )))
     }
 }
 
 impl CompiledSyncComputation {
-    pub fn apply(
-        &self,
-        ctx: &SyncContext,
-        sid: &SessionId,
-        args: Environment<Value>,
-    ) -> Result<Environment<Value>> {
-        (self.0)(ctx, sid, args)
+    pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
+        (self.0)(sess)
     }
 }
 
+type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
+
 type AsyncComputationKernel = Box<
     dyn Fn(
-        &Arc<AsyncContext>,
         SessionId,
-        Environment<AsyncReceiver>,
+        AsyncArgs,
+        &AsyncNetworkingImpl,
     ) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)>,
 >;
 
@@ -753,18 +762,21 @@ where
             .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
 
+        let output_names: Vec<String> = self
+            .operations
+            .iter() // guessing that par_iter won't help here
+            .filter_map(|op| match op.kind {
+                Operator::Output(_) => Some(op.name.clone()),
+                _ => None,
+            })
+            .collect();
+
         fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
             r.map_err(|_| ())
         }
 
         Ok(CompiledAsyncComputation(Box::new(
-            move |ctx: &Arc<AsyncContext>, sid: SessionId, _args: Environment<AsyncReceiver>| {
-                let session = Arc::new(AsyncSession {
-                    sid: sid,
-                    networking: Arc::clone(&ctx.networking),
-                });
-
-                // TODO(Morten) args should be passed into the op.apply's
+            move |sid: SessionId, args: AsyncArgs, networking: &AsyncNetworkingImpl| {
                 let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
                     compiled_ops
                         .iter() // par_iter doesn't seem to improve performance here
@@ -776,14 +788,27 @@ where
                         })
                         .unzip();
 
+                let session = Arc::new(AsyncSession {
+                    sid,
+                    args,
+                    networking: Arc::clone(networking),
+                });
+
                 let tasks: Vec<AsyncTask> = senders
                     .into_iter() // into_par_iter seems to hurt performance here
                     .zip(&compiled_ops)
                     .map(|(sender, op)| op.apply(&session, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
 
-                let outputs = receivers; // TODO filter to Output nodes
                 let join_handle = AsyncSessionJoinHandle { tasks };
+                let outputs: HashMap<String, AsyncReceiver> = output_names
+                    .iter()
+                    .map(|op_name| {
+                        let val = receivers.get(op_name).cloned().unwrap(); // safe to unwrap per construction
+                        (op_name.clone(), val)
+                    })
+                    .collect();
+
                 Ok((join_handle, outputs))
             },
         )))
@@ -793,11 +818,11 @@ where
 impl CompiledAsyncComputation {
     pub fn apply(
         &self,
-        ctx: &Arc<AsyncContext>,
         sid: SessionId,
-        args: Environment<AsyncReceiver>,
+        args: AsyncArgs,
+        networking: &AsyncNetworkingImpl,
     ) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)> {
-        (self.0)(ctx, sid, args)
+        (self.0)(sid, args, networking)
     }
 }
 
@@ -809,15 +834,13 @@ pub type Environment<V> = HashMap<String, V>;
 /// in case data dependencies are not respected. This executor is intended for debug
 /// and development only due to its unforgiving but highly predictable behaviour.
 pub struct EagerExecutor {
-    ctx: SyncContext,
+    networking: Rc<dyn SyncNetworking>,
 }
 
 impl EagerExecutor {
     pub fn new() -> EagerExecutor {
-        let ctx = SyncContext {
-            networking: Box::new(DummySyncNetworking),
-        };
-        EagerExecutor { ctx }
+        let networking = Rc::new(DummySyncNetworking);
+        EagerExecutor { networking }
     }
 
     pub fn run_computation(
@@ -827,8 +850,14 @@ impl EagerExecutor {
         args: Environment<Value>,
     ) -> Result<Environment<Value>> {
         let compiled_comp: CompiledSyncComputation = comp.compile()?;
-        let res = compiled_comp.apply(&self.ctx, sid, args)?;
-        Ok(res)
+
+        let sess = SyncSession {
+            sid,
+            args,
+            networking: Rc::clone(&self.networking),
+        };
+
+        compiled_comp.apply(&sess)
     }
 }
 
@@ -838,15 +867,24 @@ impl Default for EagerExecutor {
     }
 }
 
-pub struct AsyncContext {
-    pub runtime: tokio::runtime::Runtime,
+/// A session is essentially the activation frame of the graph function call.
+pub struct AsyncSession {
+    pub sid: SessionId,
+    pub args: AsyncArgs,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
 }
 
-impl AsyncContext {
-    pub fn join_session(&self, handle: AsyncSessionJoinHandle) -> Result<()> {
-        for task in handle.tasks {
-            let res = self.runtime.block_on(task);
+pub type AsyncArgs = Environment<AsyncReceiver>;
+
+pub struct AsyncSessionJoinHandle {
+    tasks: Vec<AsyncTask>,
+}
+
+impl AsyncSessionJoinHandle {
+    pub fn join(self) -> Result<()> {
+        let runtime_handle = tokio::runtime::Handle::current();
+        for task in self.tasks {
+            let res = runtime_handle.block_on(task);
             if res.is_err() {
                 unimplemented!() // TODO
             }
@@ -855,43 +893,32 @@ impl AsyncContext {
     }
 }
 
-pub struct AsyncSession {
-    pub sid: SessionId,
-    pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-}
-
-pub struct AsyncSessionJoinHandle {
-    tasks: Vec<AsyncTask>,
-}
-
 pub struct AsyncExecutor {
-    ctx: Arc<AsyncContext>,
+    pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
 }
 
 impl AsyncExecutor {
     pub fn new() -> AsyncExecutor {
-        let ctx = Arc::new(AsyncContext {
-            runtime: tokio::runtime::Runtime::new().expect("Failed to build tokio runtime"),
-            networking: Arc::new(DummyAsyncNetworking),
-        });
-        AsyncExecutor { ctx }
+        let networking = Arc::new(DummyAsyncNetworking);
+        AsyncExecutor { networking }
     }
 
     pub fn run_computation(
         &self,
         comp: &Computation,
         sid: SessionId,
-        args: Environment<AsyncReceiver>,
-    ) -> Result<()> {
+        args: AsyncArgs,
+    ) -> Result<HashMap<String, AsyncReceiver>> {
         let compiled_comp: CompiledAsyncComputation = comp.compile()?;
-        let (sess, _vals) = match compiled_comp.apply(&self.ctx, sid, args) {
-            Ok(res) => res,
-            Err(_e) => {
-                return Err(Error::Unexpected); // TODO
-            }
-        };
-        self.ctx.join_session(sess)?;
-        Ok(()) // TODO(Morten) return vals
+
+        // TODO don't return unexpected error
+        let (join_handle, outputs): (AsyncSessionJoinHandle, HashMap<_, AsyncReceiver>) =
+            compiled_comp
+                .apply(sid, args, &self.networking)
+                .map_err(|_| Error::Unexpected)?;
+
+        join_handle.join()?;
+        Ok(outputs)
     }
 }
 
