@@ -20,9 +20,7 @@ maplit = "~1.0"
 numpy = "~0.12"
 ndarray = "~0.13.1"
 moose = { path = "../moose" }
+pyo3="~0.12"
 rmp-serde = "~0.15"
 serde = { version="~1.0", features=["derive"] }
 serde_bytes="~0.11"
-
-[dependencies.pyo3]
-version = "~0.12"

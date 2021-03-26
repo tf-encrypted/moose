@@ -141,6 +141,7 @@ def _encode(val):
     elif isinstance(val, np.ndarray):
         return {
             "__type__": "std_Float64Tensor",
+            "__dtype__": str(val.dtype),
             "items": val.flatten().tolist(),
             "shape": list(val.shape),
         }

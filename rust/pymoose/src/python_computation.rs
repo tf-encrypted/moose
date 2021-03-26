@@ -45,7 +45,15 @@ enum PyValueType {
 enum PyValue {
     std_ShapeValue { value: Vec<u8> },
     std_StringValue { value: String },
-    std_Float64Tensor { items: Vec<f64>, shape: Vec<u8> },
+    std_Float64Tensor(PyNdarray),
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(tag = "__dtype__")]
+#[allow(non_camel_case_types)]
+enum PyNdarray {
+    float32 { items: Vec<f32>, shape: Vec<u8> },
+    float64 { items: Vec<f64>, shape: Vec<u8> },
 }
 
 #[derive(Deserialize, Debug)]
@@ -259,10 +267,18 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
         PyValue::std_ShapeValue { ref value } => {
             Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
         }
-        &PyValue::std_Float64Tensor {
+        &PyValue::std_Float64Tensor(PyNdarray::float32 {
             ref items,
             ref shape,
-        } => {
+        }) => {
+            let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
+            let tensor = ArrayD::from_shape_vec(shape, items.iter().map(|i| *i as f64).collect())?;
+            Ok(Float64Tensor::from(tensor).into())
+        }
+        &PyValue::std_Float64Tensor(PyNdarray::float64 {
+            ref items,
+            ref shape,
+        }) => {
             let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
             let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
             Ok(Float64Tensor::from(tensor).into())
