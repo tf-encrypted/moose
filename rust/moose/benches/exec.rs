@@ -112,58 +112,58 @@ fn prim_arc(c: &mut Criterion) {
     struct Session(u64);
 
     c.bench_function("prim_arc_direct", |b| {
-        fn foo(s: &Session) -> u64 {
+        fn f(_s: &Session) -> u64 {
             3
         }
 
         let s = Session(5);
         b.iter(|| {
-            black_box(foo(&s));
+            black_box(f(&s));
         })
     });
 
     c.bench_function("prim_arc_none", |b| {
-        fn foo() -> u64 {
+        fn f() -> u64 {
             3
         }
 
-        let a = Arc::new(Session(5));
+        let _a = Arc::new(Session(5));
         b.iter(|| {
-            black_box(foo());
+            black_box(f());
         })
     });
 
     c.bench_function("prim_arc_clone", |b| {
-        fn foo(x: Arc<Session>) -> u64 {
+        fn f(_x: Arc<Session>) -> u64 {
             3
         }
 
         let a = Arc::new(Session(5));
         b.iter(|| {
-            black_box(foo(a.clone()));
+            black_box(f(a.clone()));
         })
     });
 
     c.bench_function("prim_arc_ref", |b| {
-        fn foo(x: &Arc<Session>) -> u64 {
+        fn f(_x: &Arc<Session>) -> u64 {
             3
         }
 
         let a = Arc::new(Session(5));
         b.iter(|| {
-            black_box(foo(&a));
+            black_box(f(&a));
         })
     });
 
     c.bench_function("prim_arc_ref_clone", |b| {
-        fn foo(x: &Arc<Session>) -> u64 {
-            let x = x.clone();
+        fn f(x: &Arc<Session>) -> u64 {
+            let _x = x.clone();
             3
         }
 
         let a = Arc::new(Session(5));
         b.iter(|| {
-            black_box(foo(&a));
+            black_box(f(&a));
         })
     });
 }
@@ -177,56 +177,56 @@ fn prim_closure(c: &mut Criterion) {
     use std::sync::Arc;
 
     c.bench_function("prim_closure_symbol", |b| {
-        fn foo() -> u64 {
+        fn f() -> u64 {
             3
         }
 
         b.iter(|| {
-            black_box(foo());
+            black_box(f());
         })
     });
 
     c.bench_function("prim_closure_fn", |b| {
-        let foo = || 3;
+        let f = || 3;
 
         b.iter(|| {
-            black_box(foo());
+            black_box(f());
         })
     });
 
     c.bench_function("prim_closure_ArcFnUntyped", |b| {
         let x = 3;
-        let foo: Arc<_> = Arc::new(move || x);
+        let f: Arc<_> = Arc::new(move || x);
 
         b.iter(|| {
-            black_box(foo());
+            black_box(f());
         })
     });
 
     c.bench_function("prim_closure_BoxFnUntyped", |b| {
         let x = 3;
-        let foo: Box<_> = Box::new(move || x);
+        let f: Box<_> = Box::new(move || x);
 
         b.iter(|| {
-            black_box(foo());
+            black_box(f());
         })
     });
 
     c.bench_function("prim_closure_ArcFnTyped", |b| {
         let x = 3;
-        let foo: Arc<dyn Fn() -> u64> = Arc::new(move || x);
+        let f: Arc<dyn Fn() -> u64> = Arc::new(move || x);
 
         b.iter(|| {
-            black_box(foo());
+            black_box(f());
         })
     });
 
     c.bench_function("prim_closure_BoxFnTyped", |b| {
         let x = 3;
-        let foo: Box<dyn Fn() -> u64> = Box::new(move || x);
+        let f: Box<dyn Fn() -> u64> = Box::new(move || x);
 
         b.iter(|| {
-            black_box(foo());
+            black_box(f());
         })
     });
 
@@ -247,11 +247,10 @@ fn prim_closure(c: &mut Criterion) {
     }
 
     c.bench_function("prim_closure_enum_symbol", |b| {
-        fn foo() -> u64 {
+        fn f() -> u64 {
             3
         }
-
-        let k = Kernel::Function(foo);
+        let k = Kernel::Function(f);
 
         b.iter(|| {
             black_box(k.apply());
@@ -259,9 +258,8 @@ fn prim_closure(c: &mut Criterion) {
     });
 
     c.bench_function("prim_closure_enum_fn", |b| {
-        let foo = || 3;
-
-        let k = Kernel::Function(foo);
+        let f = || 3;
+        let k = Kernel::Function(f);
 
         b.iter(|| {
             black_box(k.apply());
@@ -270,9 +268,8 @@ fn prim_closure(c: &mut Criterion) {
 
     c.bench_function("prim_closure_enum_ArcFnUntyped", |b| {
         let x = 3;
-        let foo: Arc<_> = Arc::new(move || x);
-
-        let k = Kernel::ArcClosure(foo);
+        let f: Arc<_> = Arc::new(move || x);
+        let k = Kernel::ArcClosure(f);
 
         b.iter(|| {
             black_box(k.apply());
@@ -281,9 +278,8 @@ fn prim_closure(c: &mut Criterion) {
 
     c.bench_function("prim_closure_enum_BoxFnUntyped", |b| {
         let x = 3;
-        let foo: Box<_> = Box::new(move || x);
-
-        let k = Kernel::BoxClosure(foo);
+        let f: Box<_> = Box::new(move || x);
+        let k = Kernel::BoxClosure(f);
 
         b.iter(|| {
             black_box(k.apply());
@@ -292,9 +288,8 @@ fn prim_closure(c: &mut Criterion) {
 
     c.bench_function("prim_closure_enum_ArcFnTyped", |b| {
         let x = 3;
-        let foo: Arc<dyn Fn() -> u64> = Arc::new(move || x);
-
-        let k = Kernel::ArcClosure(foo);
+        let f: Arc<dyn Fn() -> u64> = Arc::new(move || x);
+        let k = Kernel::ArcClosure(f);
 
         b.iter(|| {
             black_box(k.apply());
@@ -303,9 +298,8 @@ fn prim_closure(c: &mut Criterion) {
 
     c.bench_function("prim_closure_enum_BoxFnTyped", |b| {
         let x = 3;
-        let foo: Box<dyn Fn() -> u64> = Box::new(move || x);
-
-        let k = Kernel::BoxClosure(foo);
+        let f: Box<dyn Fn() -> u64> = Box::new(move || x);
+        let k = Kernel::BoxClosure(f);
 
         b.iter(|| {
             black_box(k.apply());
@@ -319,20 +313,20 @@ fn prim_closure(c: &mut Criterion) {
 /// for capturing closures.
 fn prim_capture(c: &mut Criterion) {
     trait Compile<F: Fn(u64) -> u64> {
-        fn foo(&self) -> F;
+        fn compile(&self) -> F;
     }
 
     c.bench_function("prim_capture_symbol_outer", |b| {
         struct K;
 
         impl Compile<fn(u64) -> u64> for K {
-            fn foo(&self) -> fn(u64) -> u64 {
+            fn compile(&self) -> fn(u64) -> u64 {
                 |x| x + 3
             }
         }
 
         let k = K;
-        let f = k.foo();
+        let f = k.compile();
 
         b.iter(|| {
             black_box(f(5));
@@ -343,7 +337,7 @@ fn prim_capture(c: &mut Criterion) {
         struct K;
 
         impl Compile<fn(u64) -> u64> for K {
-            fn foo(&self) -> fn(u64) -> u64 {
+            fn compile(&self) -> fn(u64) -> u64 {
                 |x| x + 3
             }
         }
@@ -351,7 +345,7 @@ fn prim_capture(c: &mut Criterion) {
         let k = K;
 
         b.iter(|| {
-            let f = k.foo();
+            let f = k.compile();
             black_box(f(5));
         })
     });
@@ -360,13 +354,13 @@ fn prim_capture(c: &mut Criterion) {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
-            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+            fn compile(&self) -> Box<dyn Fn(u64) -> u64> {
                 Box::new(|x| x + 3)
             }
         }
 
         let k = K;
-        let f = k.foo();
+        let f = k.compile();
 
         b.iter(|| {
             black_box(f(5));
@@ -377,7 +371,7 @@ fn prim_capture(c: &mut Criterion) {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
-            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+            fn compile(&self) -> Box<dyn Fn(u64) -> u64> {
                 Box::new(|x| x + 3)
             }
         }
@@ -385,7 +379,7 @@ fn prim_capture(c: &mut Criterion) {
         let k = K;
 
         b.iter(|| {
-            let f = k.foo();
+            let f = k.compile();
             black_box(f(5));
         })
     });
@@ -394,13 +388,13 @@ fn prim_capture(c: &mut Criterion) {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
-            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+            fn compile(&self) -> Box<dyn Fn(u64) -> u64> {
                 Box::new(move |x| x + 3)
             }
         }
 
         let k = K;
-        let f = k.foo();
+        let f = k.compile();
 
         b.iter(|| {
             black_box(f(5));
@@ -411,7 +405,7 @@ fn prim_capture(c: &mut Criterion) {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
-            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+            fn compile(&self) -> Box<dyn Fn(u64) -> u64> {
                 Box::new(move |x| x + 3)
             }
         }
@@ -419,7 +413,7 @@ fn prim_capture(c: &mut Criterion) {
         let k = K;
 
         b.iter(|| {
-            let f = k.foo();
+            let f = k.compile();
             black_box(f(5));
         })
     });
@@ -428,14 +422,14 @@ fn prim_capture(c: &mut Criterion) {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
-            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+            fn compile(&self) -> Box<dyn Fn(u64) -> u64> {
                 let c = 3;
                 Box::new(move |x| x + c)
             }
         }
 
         let k = K;
-        let f = k.foo();
+        let f = k.compile();
 
         b.iter(|| {
             black_box(f(5));
@@ -446,7 +440,7 @@ fn prim_capture(c: &mut Criterion) {
         struct K;
 
         impl Compile<Box<dyn Fn(u64) -> u64>> for K {
-            fn foo(&self) -> Box<dyn Fn(u64) -> u64> {
+            fn compile(&self) -> Box<dyn Fn(u64) -> u64> {
                 let c = 3;
                 Box::new(move |x| x + c)
             }
@@ -455,7 +449,7 @@ fn prim_capture(c: &mut Criterion) {
         let k = K;
 
         b.iter(|| {
-            let f = k.foo();
+            let f = k.compile();
             black_box(f(5));
         })
     });
@@ -523,7 +517,7 @@ fn compile(c: &mut Criterion) {
 
     let operation = Operation {
         name: "z".into(),
-        kind: operator.clone(),
+        kind: operator,
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host,
     };
