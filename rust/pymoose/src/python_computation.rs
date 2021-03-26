@@ -22,6 +22,7 @@ enum PyOperation {
     ring_RingShlOperation(PyRingShlOperation),
     ring_RingShrOperation(PyRingShrOperation),
     std_ConstantOperation(PyConstantOperation),
+    std_AddOperation(PyAddOperation),
     std_SendOperation(PySendOperation),
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
@@ -135,6 +136,7 @@ struct PyRingShrOperation {
 #[derive(Deserialize, Debug)]
 struct PyConstantOperation {
     name: String,
+    inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
     value: PyValue,
@@ -143,18 +145,9 @@ struct PyConstantOperation {
 #[derive(Deserialize, Debug)]
 struct PyAddOperation {
     name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PySerializeOperation {
-    name: String,
-    value_type: PyValueType,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyDeserializeOperation {
-    name: String,
-    value_type: PyValueType,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -278,6 +271,7 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
     }
 }
 
+#[allow(unreachable_patterns)]
 impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
     fn try_from(python_computation: PyComputation) -> anyhow::Result<Computation> {
@@ -392,6 +386,15 @@ impl TryFrom<PyComputation> for Computation {
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_AddOperation(op) => Ok(Operation {
+                        kind: StdAdd(StdAddOp {
+                            lhs: Ty::Float64TensorTy,
+                            rhs: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_SendOperation(op) => Ok(Operation {
                         kind: Send(SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
@@ -436,9 +439,10 @@ impl TryFrom<PyComputation> for Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    _ => Err(anyhow::anyhow!(
-                        "Python to Rust op conversion not implemented"
-                    )),
+                    _ => Err(anyhow::anyhow!(format!(
+                        "Python to Rust op conversion not implemented for '{:?}'",
+                        op
+                    ))),
                 }
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
@@ -489,7 +493,7 @@ def f():
     x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
     comp.add_operation(
         standard_dialect.ConstantOperation(
-            name="alice_input",
+            name="alice_input_x",
             value=x,
             placement_name=alice.name,
             inputs={},
@@ -497,6 +501,24 @@ def f():
         )
     )
 
+    y = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+    comp.add_operation(
+        standard_dialect.ConstantOperation(
+            name="alice_input_y",
+            value=y,
+            placement_name=alice.name,
+            inputs={},
+            output_type=TensorType(dtype=dtypes.float64),
+        )
+    )
+    comp.add_operation(
+        standard_dialect.AddOperation(
+                name="add",
+                inputs={"lhs": "alice_input_x", "rhs": "alice_input_y"},
+                placement_name=alice.name,
+                output_type=TensorType(dtype=dtypes.float64),
+        )
+    )
     return serialize_computation(comp)
 
 "#,
