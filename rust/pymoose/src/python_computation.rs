@@ -271,7 +271,6 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
     }
 }
 
-#[allow(unreachable_patterns)]
 impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
     fn try_from(python_computation: PyComputation) -> anyhow::Result<Computation> {
@@ -439,10 +438,6 @@ impl TryFrom<PyComputation> for Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    _ => Err(anyhow::anyhow!(format!(
-                        "Python to Rust op conversion not implemented for '{:?}'",
-                        op
-                    ))),
                 }
             })
             .collect::<anyhow::Result<Vec<_>>>()?;
