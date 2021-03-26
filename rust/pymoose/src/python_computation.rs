@@ -21,23 +21,11 @@ enum PyOperation {
     ring_FillTensorOperation(PyFillTensorOperation),
     ring_RingShlOperation(PyRingShlOperation),
     ring_RingShrOperation(PyRingShrOperation),
-    std_AddOperation(PyAddOperation),
     std_ConstantOperation(PyConstantOperation),
-    std_LoadOperation(PyLoadOperation),
-    std_SaveOperation(PySaveOperation),
-    std_OutputOperation(PyOutputOperation),
-    std_SerializeOperation(PySerializeOperation),
-    std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
     fixed_RingDecodeOperation(PyRingDecodeOperation),
-}
-
-#[derive(Deserialize, Debug)]
-struct PyUnknownOperation {
-    name: String,
-    placement_name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -62,8 +50,10 @@ enum PyValue {
 #[derive(Deserialize, Debug)]
 struct PySampleKeyOperation {
     name: String,
+    inputs: Inputs,
     placement_name: String,
 }
+
 type Inputs = HashMap<String, String>;
 
 #[derive(Deserialize, Debug)]
@@ -151,22 +141,7 @@ struct PyConstantOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct PyLoadOperation {
-    name: String,
-}
-
-#[derive(Deserialize, Debug)]
 struct PyAddOperation {
-    name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PySaveOperation {
-    name: String,
-}
-
-#[derive(Deserialize, Debug)]
-struct PyOutputOperation {
     name: String,
 }
 
@@ -288,9 +263,9 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 
 fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
     match constant_value {
-        PyValue::std_ShapeValue { ref value } => Ok(Value::from(moose::standard::Shape(
-            value.iter().map(|i| *i as usize).collect(),
-        ))),
+        PyValue::std_ShapeValue { ref value } => {
+            Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
+        }
         &PyValue::std_Float64Tensor {
             ref items,
             ref shape,
@@ -462,7 +437,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     _ => Err(anyhow::anyhow!(
-                        "Python to Rust op conversion not implemented",
+                        "Python to Rust op conversion not implemented"
                     )),
                 }
             })
