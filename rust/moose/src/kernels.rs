@@ -531,14 +531,14 @@ impl Compile<AsyncKernel> for ReceiveOp {
 
 impl Compile<SyncKernel> for InputOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let expected_ty = self.ty.clone();
+        let expected_ty = self.ty;
         let arg_name = self.arg_name.clone();
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
             let arg = sess
                 .args
                 .get(&arg_name)
                 .cloned()
-                .ok_or_else(|| Error::MalformedEnvironment)?;
+                .ok_or(Error::MalformedEnvironment)?;
             if arg.ty() != expected_ty {
                 Ok(arg)
             } else {
@@ -551,20 +551,19 @@ impl Compile<SyncKernel> for InputOp {
 impl Compile<AsyncKernel> for InputOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
-        let expected_ty = Arc::new(self.ty.clone());
+        let expected_ty = self.ty;
         let arg_name = Arc::new(self.arg_name.clone());
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
-            let expected_ty = Arc::clone(&expected_ty);
             let arg_name = Arc::clone(&arg_name);
             tokio::spawn(async move {
                 let async_arg = sess
                     .args
                     .get(arg_name.as_ref())
                     .cloned()
-                    .ok_or_else(|| Error::MalformedEnvironment)?;
+                    .ok_or(Error::MalformedEnvironment)?;
                 let arg: Value = async_arg.await.map_err(map_receive_error)?;
-                if arg.ty() == *expected_ty {
+                if arg.ty() == expected_ty {
                     sender.send(arg).map_err(map_send_error)
                 } else {
                     Err(Error::TypeMismatch)
