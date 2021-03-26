@@ -1,5 +1,6 @@
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
+use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub};
 
@@ -76,6 +77,27 @@ where
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
             StandardTensor::<T>(out)
+        }
+    }
+}
+
+impl<T> StandardTensor<T>
+where
+    T: LinalgScalar + FromPrimitive,
+{
+    pub fn mean(self, axis: Option<usize>) -> Self {
+        match axis {
+            Some(i) => {
+                let reduced = self.0.mean_axis(Axis(i)).unwrap();
+                StandardTensor::<T>(reduced)
+            }
+            None => {
+                let mean = self.0.mean().unwrap();
+                let out = Array::from_elem([], mean)
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
+                StandardTensor::<T>(out)
+            }
         }
     }
 }
