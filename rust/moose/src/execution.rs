@@ -1058,6 +1058,15 @@ fn test_eager_executor() {
         placement: Placement::Host,
     };
 
+    let output_op = Operation {
+        name: "z".into(),
+        kind: Operator::Output(OutputOp {
+            ty: Ty::Ring64TensorTy,
+        }),
+        inputs: vec!["x10".into()],
+        placement: Placement::Host,
+    };
+
     let sample_ops: Vec<_> = (0..100)
         .map(|i| Operation {
             name: format!("x{}", i),
@@ -1071,10 +1080,11 @@ fn test_eager_executor() {
         .collect();
 
     let mut operations = sample_ops;
-    operations.extend(vec![key_op, seed_op, shape_op]);
+    operations.extend(vec![key_op, seed_op, shape_op, output_op]);
 
     let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();
-    exec.run_computation(&comp, 12345, env).ok();
+    let outputs = exec.run_computation(&comp, 12345, env).unwrap();
+    assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
 }
