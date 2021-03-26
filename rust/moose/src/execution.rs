@@ -79,9 +79,14 @@ macro_rules! closure_kernel {
         use std::convert::TryFrom;
         use std::sync::Arc;
 
+        #[inline(always)]
+        fn g<F: Fn($t0) -> Y, Y>(f: F) -> F {
+            f
+        }
+
         Ok(Kernel::UnaryClosure(Arc::new(move |x0| {
             let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
-            let y = $f(x0);
+            let y = g($f)(x0);
             Ok(Value::from(y))
         })))
     }};
@@ -89,10 +94,15 @@ macro_rules! closure_kernel {
         use std::convert::TryFrom;
         use std::sync::Arc;
 
+        #[inline(always)]
+        fn g<F: Fn($t0, $t1) -> Y, Y>(f: F) -> F {
+            f
+        }
+
         Ok(Kernel::BinaryClosure(Arc::new(move |x0, x1| {
             let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
             let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
-            let y = $f(x0, x1);
+            let y = g($f)(x0, x1);
             Ok(Value::from(y))
         })))
     }};
@@ -100,11 +110,16 @@ macro_rules! closure_kernel {
         use std::convert::TryFrom;
         use std::sync::Arc;
 
+        #[inline(always)]
+        fn g<F: Fn($t0, $t1, $t2) -> Y, Y>(f: F) -> F {
+            f
+        }
+
         Ok(Kernel::TernaryClosure(Arc::new(move |x0, x1, x2| {
             let x0 = <$t0 as TryFrom<Value>>::try_from(x0)?;
             let x1 = <$t1 as TryFrom<Value>>::try_from(x1)?;
             let x2 = <$t2 as TryFrom<Value>>::try_from(x2)?;
-            let y = $f(x0, x1, x2);
+            let y = g($f)(x0, x1, x2);
             Ok(Value::from(y))
         })))
     }};
@@ -979,7 +994,16 @@ fn test_standard_prod_ops() {
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host,
     };
-    let operations = vec![x_op, y_op, mul_op, dot_op];
+    let mean_op = Operation {
+        name: "mean".into(),
+        kind: Operator::StdMean(StdMeanOp {
+            ty: Ty::Float32TensorTy,
+            axis: Some(0),
+        }),
+        inputs: vec!["dot".into()],
+        placement: Placement::Host,
+    };
+    let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
     let comp = Computation { operations }.toposort().unwrap();
 
     let exec = EagerExecutor::new();
