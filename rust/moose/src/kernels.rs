@@ -1,5 +1,3 @@
-use num_traits::Float;
-
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
