@@ -14,6 +14,10 @@ impl Compile<SyncKernel> for Operator {
     fn compile(&self) -> Result<SyncKernel> {
         use Operator::*;
         match self {
+            Send(op) => op.compile(),
+            Receive(op) => op.compile(),
+            Input(op) => op.compile(),
+            Output(op) => op.compile(),
             Constant(op) => op.compile(),
             StdAdd(op) => op.compile(),
             StdSub(op) => op.compile(),
@@ -36,8 +40,6 @@ impl Compile<SyncKernel> for Operator {
             RingShr(op) => op.compile(),
             PrimDeriveSeed(op) => op.compile(),
             PrimGenPrfKey(op) => op.compile(),
-            Send(op) => op.compile(),
-            Receive(op) => op.compile(),
             FixedpointRingEncode(op) => op.compile(),
             FixedpointRingDecode(op) => op.compile(),
             FixedpointRingMean(op) => op.compile(),
@@ -49,6 +51,10 @@ impl Compile<AsyncKernel> for Operator {
     fn compile(&self) -> Result<AsyncKernel> {
         use Operator::*;
         match self {
+            Send(op) => op.compile(),
+            Receive(op) => op.compile(),
+            Input(op) => op.compile(),
+            Output(op) => op.compile(),
             Constant(op) => op.compile(),
             StdAdd(op) => op.compile(),
             StdSub(op) => op.compile(),
@@ -71,8 +77,6 @@ impl Compile<AsyncKernel> for Operator {
             RingShr(op) => op.compile(),
             PrimDeriveSeed(op) => op.compile(),
             PrimGenPrfKey(op) => op.compile(),
-            Send(op) => op.compile(),
-            Receive(op) => op.compile(),
             FixedpointRingEncode(op) => op.compile(),
             FixedpointRingDecode(op) => op.compile(),
             FixedpointRingMean(op) => op.compile(),
@@ -478,8 +482,8 @@ impl Compile<Kernel> for ConstantOp {
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
-        Ok(SyncKernel::Unary(Box::new(move |ctx, sid, v| {
-            ctx.networking.send(&v, &rdv, &sid);
+        Ok(SyncKernel::Unary(Box::new(move |sess, v| {
+            sess.networking.send(&v, &rdv, &sess.sid);
             Ok(Value::Unit)
         })))
     }
@@ -489,13 +493,12 @@ impl Compile<AsyncKernel> for SendOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
         let rdv = Arc::new(self.rendezvous_key.clone());
-        Ok(AsyncKernel::Unary(Box::new(move |ctx, sid, v, sender| {
-            let ctx = Arc::clone(ctx);
-            let sid = Arc::clone(sid);
+        Ok(AsyncKernel::Unary(Box::new(move |sess, v, sender| {
+            let sess = Arc::clone(sess);
             let rdv = Arc::clone(&rdv);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                ctx.networking.send(&v, &rdv, &sid).await;
+                sess.networking.send(&v, &rdv, &sess.sid).await;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
@@ -505,8 +508,8 @@ impl Compile<AsyncKernel> for SendOp {
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
-        Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
-            ctx.networking.receive(&rdv, sid)
+        Ok(SyncKernel::Nullary(Box::new(move |sess| {
+            sess.networking.receive(&rdv, &sess.sid)
         })))
     }
 }
@@ -515,13 +518,73 @@ impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
         let rdv = Arc::new(self.rendezvous_key.clone());
-        Ok(AsyncKernel::Nullary(Box::new(move |ctx, sid, sender| {
-            let ctx = Arc::clone(ctx);
-            let sid = Arc::clone(sid);
+        Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
+            let sess = Arc::clone(sess);
             let rdv = Arc::clone(&rdv);
             tokio::spawn(async move {
-                let v: Value = ctx.networking.receive(&rdv, &sid).await?;
+                let v: Value = sess.networking.receive(&rdv, &sess.sid).await?;
                 sender.send(v).map_err(map_send_error)
+            })
+        })))
+    }
+}
+
+impl Compile<SyncKernel> for InputOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        let expected_ty = self.ty;
+        let arg_name = self.arg_name.clone();
+        Ok(SyncKernel::Nullary(Box::new(move |sess| {
+            let arg = sess
+                .args
+                .get(&arg_name)
+                .cloned()
+                .ok_or(Error::MalformedEnvironment)?;
+            if arg.ty() != expected_ty {
+                Ok(arg)
+            } else {
+                Err(Error::TypeMismatch)
+            }
+        })))
+    }
+}
+
+impl Compile<AsyncKernel> for InputOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        use std::sync::Arc;
+        let expected_ty = self.ty;
+        let arg_name = Arc::new(self.arg_name.clone());
+        Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
+            let sess = Arc::clone(sess);
+            let arg_name = Arc::clone(&arg_name);
+            tokio::spawn(async move {
+                let async_arg = sess
+                    .args
+                    .get(arg_name.as_ref())
+                    .cloned()
+                    .ok_or(Error::MalformedEnvironment)?;
+                let arg: Value = async_arg.await.map_err(map_receive_error)?;
+                if arg.ty() == expected_ty {
+                    sender.send(arg).map_err(map_send_error)
+                } else {
+                    Err(Error::TypeMismatch)
+                }
+            })
+        })))
+    }
+}
+
+impl Compile<SyncKernel> for OutputOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        Ok(SyncKernel::Unary(Box::new(move |_sess, x0| Ok(x0))))
+    }
+}
+
+impl Compile<AsyncKernel> for OutputOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
+            tokio::spawn(async move {
+                let val = x0.await.map_err(map_receive_error)?;
+                sender.send(val).map_err(map_send_error)
             })
         })))
     }
