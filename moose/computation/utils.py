@@ -117,6 +117,7 @@ SUPPORTED_TYPES = [
     std_dialect.ReceiveOperation,
     std_dialect.ShapeValue,
     std_dialect.StringValue,
+    std_dialect.TensorValue,
 ]
 
 
@@ -140,8 +141,7 @@ def _encode(val):
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
         return {
-            "__type__": "std_Float64Tensor",
-            "__dtype__": str(val.dtype),
+            "dtype": str(val.dtype),
             "items": val.flatten().tolist(),
             "shape": list(val.shape),
         }
