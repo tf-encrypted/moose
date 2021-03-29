@@ -163,11 +163,15 @@ pub enum Operator {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SendOp {
     pub rendezvous_key: String,
+    pub sender: HostPlacement,
+    pub receiver: HostPlacement,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReceiveOp {
     pub rendezvous_key: String,
+    pub sender: HostPlacement,
+    pub receiver: HostPlacement,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -289,7 +293,7 @@ pub struct RingFillOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingSampleOp {
     pub output: Ty,
-    pub max_value: Option<usize>,
+    pub max_value: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -320,7 +324,18 @@ pub struct FixedpointRingMeanOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Placement {
-    Host,
+    Host(HostPlacement),
+    Replicated(ReplicatedPlacement),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HostPlacement {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReplicatedPlacement {
+    pub players: [String; 3],
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

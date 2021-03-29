@@ -951,7 +951,9 @@ fn test_standard_prod_ops() {
             value: Value::Float32Tensor(x),
         }),
         inputs: vec![],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
     let y = Float32Tensor::from(
         array![[1.0, 2.0], [3.0, 4.0]]
@@ -964,7 +966,9 @@ fn test_standard_prod_ops() {
             value: Value::Float32Tensor(y),
         }),
         inputs: vec![],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
     let mul_op = Operation {
         name: "mul".into(),
@@ -973,7 +977,9 @@ fn test_standard_prod_ops() {
             rhs: Ty::Float32TensorTy,
         }),
         inputs: vec!["x".into(), "y".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
     let dot_op = Operation {
         name: "dot".into(),
@@ -982,7 +988,9 @@ fn test_standard_prod_ops() {
             rhs: Ty::Float32TensorTy,
         }),
         inputs: vec!["x".into(), "y".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
     let mean_op = Operation {
         name: "mean".into(),
@@ -991,7 +999,9 @@ fn test_standard_prod_ops() {
             axis: Some(0),
         }),
         inputs: vec!["dot".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
     let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
     let comp = Computation { operations }.toposort().unwrap();
@@ -1012,7 +1022,9 @@ fn test_eager_executor() {
         name: "key".into(),
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
         inputs: vec![],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let seed_op = Operation {
@@ -1021,7 +1033,9 @@ fn test_eager_executor() {
             nonce: Nonce(vec![1, 2, 3]),
         }),
         inputs: vec!["key".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let shape_op = Operation {
@@ -1030,7 +1044,9 @@ fn test_eager_executor() {
             value: Value::Shape(Shape(vec![2, 3])),
         }),
         inputs: vec![],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let output_op = Operation {
@@ -1039,7 +1055,9 @@ fn test_eager_executor() {
             ty: Ty::Ring64TensorTy,
         }),
         inputs: vec!["x10".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let sample_ops: Vec<_> = (0..100)
@@ -1050,7 +1068,9 @@ fn test_eager_executor() {
                 max_value: None,
             }),
             inputs: vec!["shape".into(), "seed".into()],
-            placement: Placement::Host,
+            placement: Placement::Host(HostPlacement {
+                name: "alice".into(),
+            }),
         })
         .collect();
 

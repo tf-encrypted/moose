@@ -9,7 +9,9 @@ fn main() {
         name: "key".into(),
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
         inputs: vec![],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let x_seed_op = Operation {
@@ -18,7 +20,9 @@ fn main() {
             nonce: Nonce(vec![1, 2, 3]),
         }),
         inputs: vec!["key".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let x_shape_op = Operation {
@@ -27,7 +31,9 @@ fn main() {
             value: Value::Shape(Shape(vec![2, 3])),
         }),
         inputs: vec![],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let x_op = Operation {
@@ -37,7 +43,9 @@ fn main() {
             max_value: None,
         }),
         inputs: vec!["x_shape".into(), "x_seed".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let mut operations = vec![key_op, x_seed_op, x_shape_op, x_op];
@@ -49,7 +57,9 @@ fn main() {
                 rhs: Ty::Ring64TensorTy,
             }),
             inputs: vec!["x".into(), "x".into()],
-            placement: Placement::Host,
+            placement: Placement::Host(HostPlacement {
+                name: "alice".into(),
+            }),
         });
     }
 

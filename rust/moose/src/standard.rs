@@ -151,6 +151,12 @@ where
     }
 }
 
+impl<T> From<Vec<T>> for StandardTensor<T> {
+    fn from(v: Vec<T>) -> StandardTensor<T> {
+        StandardTensor(Array::from(v).into_dyn())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
