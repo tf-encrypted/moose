@@ -21,6 +21,13 @@ pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
 
+impl Shape {
+    pub fn expand(mut self, axis: usize) -> Self {
+        self.0.insert(axis, 1);
+        self
+    }
+}
+
 impl<T> StandardTensor<T>
 where
     T: LinalgScalar,
@@ -69,6 +76,15 @@ where
         StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
     }
 
+    pub fn expand_dims(self, axis: usize) -> Self {
+        let newshape = self.shape().expand(axis);
+        self.reshape(newshape)
+    }
+
+    pub fn shape(&self) -> Shape {
+        Shape(self.0.shape().into())
+    }
+
     pub fn sum(self, axis: Option<usize>) -> Self {
         if let Some(i) = axis {
             StandardTensor::<T>(self.0.sum_axis(Axis(i)))
@@ -78,6 +94,10 @@ where
                 .unwrap();
             StandardTensor::<T>(out)
         }
+    }
+
+    pub fn transpose(self) -> Self {
+        StandardTensor::<T>(self.0.reversed_axes())
     }
 }
 
@@ -174,6 +194,24 @@ mod tests {
             z,
             StandardTensor::<f32>::from(
                 array![[-5.0, 6.0], [-9.0, 10.0]]
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_transpose() {
+        let x = StandardTensor::<f32>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let y = x.transpose();
+        assert_eq!(
+            y,
+            StandardTensor::<f32>::from(
+                array![[1.0, 3.0], [2.0, 4.0]]
                     .into_dimensionality::<IxDyn>()
                     .unwrap()
             )

@@ -26,8 +26,11 @@ impl Compile<SyncKernel> for Operator {
             StdDot(op) => op.compile(),
             StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
+            StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
+            StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
+            StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
             RingSub(op) => op.compile(),
             RingMul(op) => op.compile(),
@@ -63,8 +66,11 @@ impl Compile<AsyncKernel> for Operator {
             StdDot(op) => op.compile(),
             StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
+            StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
+            StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
+            StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
             RingSub(op) => op.compile(),
             RingMul(op) => op.compile(),
@@ -174,6 +180,33 @@ impl Compile<Kernel> for StdOnesOp {
     }
 }
 
+impl Compile<Kernel> for StdExpandDimsOp {
+    fn compile(&self) -> Result<Kernel> {
+        let axis = self.axis as usize;
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(Float32Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Float64TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Int32TensorTy => {
+                closure_kernel!(Int32Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Int64TensorTy => {
+                closure_kernel!(Int64Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Uint32TensorTy => {
+                closure_kernel!(Uint32Tensor, |x| x.expand_dims(axis))
+            }
+            Ty::Uint64TensorTy => {
+                closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
 impl Compile<Kernel> for StdReshapeOp {
     fn compile(&self) -> Result<Kernel> {
         match self.ty {
@@ -194,6 +227,32 @@ impl Compile<Kernel> for StdReshapeOp {
             }
             Ty::Uint64TensorTy => {
                 function_kernel!(Uint64Tensor, Shape, |x, newshape| x.reshape(newshape))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdShapeOp {
+    fn compile(&self) -> Result<Kernel> {
+        match self.ty {
+            Ty::Float32TensorTy => {
+                function_kernel!(Float32Tensor, |x| x.shape())
+            }
+            Ty::Float64TensorTy => {
+                function_kernel!(Float64Tensor, |x| x.shape())
+            }
+            Ty::Int32TensorTy => {
+                function_kernel!(Int32Tensor, |x| x.shape())
+            }
+            Ty::Int64TensorTy => {
+                function_kernel!(Int64Tensor, |x| x.shape())
+            }
+            Ty::Uint32TensorTy => {
+                function_kernel!(Uint32Tensor, |x| x.shape())
+            }
+            Ty::Uint64TensorTy => {
+                function_kernel!(Uint64Tensor, |x| x.shape())
             }
             _ => Err(Error::UnimplementedOperator),
         }
@@ -221,6 +280,32 @@ impl Compile<Kernel> for StdSumOp {
             }
             Ty::Uint64TensorTy => {
                 closure_kernel!(Uint64Tensor, |x| x.sum(axis))
+            }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdTransposeOp {
+    fn compile(&self) -> Result<Kernel> {
+        match self.ty {
+            Ty::Float32TensorTy => {
+                function_kernel!(Float32Tensor, |x| x.transpose())
+            }
+            Ty::Float64TensorTy => {
+                function_kernel!(Float64Tensor, |x| x.transpose())
+            }
+            Ty::Int32TensorTy => {
+                function_kernel!(Int32Tensor, |x| x.transpose())
+            }
+            Ty::Int64TensorTy => {
+                function_kernel!(Int64Tensor, |x| x.transpose())
+            }
+            Ty::Uint32TensorTy => {
+                function_kernel!(Uint32Tensor, |x| x.transpose())
+            }
+            Ty::Uint64TensorTy => {
+                function_kernel!(Uint64Tensor, |x| x.transpose())
             }
             _ => Err(Error::UnimplementedOperator),
         }
@@ -494,4 +579,65 @@ impl Compile<AsyncKernel> for OutputOp {
             })
         })))
     }
+}
+
+#[test]
+fn test_standard_shape_ops() {
+    use crate::execution::EagerExecutor;
+    use crate::standard::Float32Tensor;
+    use maplit::hashmap;
+    use ndarray::prelude::*;
+
+    let env = hashmap![];
+    let x = Float32Tensor::from(
+        array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
+    let x_op = Operation {
+        name: "x".into(),
+        kind: Operator::Constant(ConstantOp {
+            value: Value::Float32Tensor(x),
+        }),
+        inputs: vec![],
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
+    };
+    let shape_op = Operation {
+        name: "shape".into(),
+        kind: Operator::StdShape(StdShapeOp {
+            ty: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into()],
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
+    };
+    let expand_dims_op = Operation {
+        name: "expand_dims".into(),
+        kind: Operator::StdExpandDims(StdExpandDimsOp {
+            ty: Ty::Float32TensorTy,
+            axis: 2,
+        }),
+        inputs: vec!["x".into()],
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
+    };
+    let transpose_op = Operation {
+        name: "transpose".into(),
+        kind: Operator::StdTranspose(StdTransposeOp {
+            ty: Ty::Float32TensorTy,
+        }),
+        inputs: vec!["x".into()],
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
+    };
+    let operations = vec![x_op, shape_op, expand_dims_op, transpose_op];
+    let comp = Computation { operations }.toposort().unwrap();
+
+    let exec = EagerExecutor::new();
+    exec.run_computation(&comp, 12345, env).ok();
 }
