@@ -28,7 +28,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          components: rustfmt, clippy
+          components: rustfmt, clippy, audit
 
       - uses: actions/cache@v2
         id: cache-deps
@@ -66,3 +66,7 @@ jobs:
         run: |
           . venv/bin/activate
           make test-ci
+
+      - name: Audit the runtime.
+        run: |
+          cargo audit
