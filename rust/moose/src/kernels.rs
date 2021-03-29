@@ -290,22 +290,22 @@ impl Compile<Kernel> for StdTransposeOp {
     fn compile(&self) -> Result<Kernel> {
         match self.ty {
             Ty::Float32TensorTy => {
-                function_kernel!(Float32Tensor, |x| x.t())
+                function_kernel!(Float32Tensor, |x| x.transpose())
             }
             Ty::Float64TensorTy => {
-                function_kernel!(Float64Tensor, |x| x.t())
+                function_kernel!(Float64Tensor, |x| x.transpose())
             }
             Ty::Int32TensorTy => {
-                function_kernel!(Int32Tensor, |x| x.t())
+                function_kernel!(Int32Tensor, |x| x.transpose())
             }
             Ty::Int64TensorTy => {
-                function_kernel!(Int64Tensor, |x| x.t())
+                function_kernel!(Int64Tensor, |x| x.transpose())
             }
             Ty::Uint32TensorTy => {
-                function_kernel!(Uint32Tensor, |x| x.t())
+                function_kernel!(Uint32Tensor, |x| x.transpose())
             }
             Ty::Uint64TensorTy => {
-                function_kernel!(Uint64Tensor, |x| x.t())
+                function_kernel!(Uint64Tensor, |x| x.transpose())
             }
             _ => Err(Error::UnimplementedOperator),
         }
@@ -631,7 +631,9 @@ fn test_standard_shape_ops() {
             ty: Ty::Float32TensorTy,
         }),
         inputs: vec!["x".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
     let operations = vec![x_op, shape_op, expand_dims_op, transpose_op];
     let comp = Computation { operations }.toposort().unwrap();

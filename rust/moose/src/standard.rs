@@ -96,7 +96,7 @@ where
         }
     }
 
-    pub fn t(self) -> Self {
+    pub fn transpose(self) -> Self {
         StandardTensor::<T>(self.0.reversed_axes())
     }
 }
@@ -201,13 +201,13 @@ mod tests {
     }
 
     #[test]
-    fn transpose() {
+    fn test_transpose() {
         let x = StandardTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let y = x.t();
+        let y = x.transpose();
         assert_eq!(
             y,
             StandardTensor::<f32>::from(
