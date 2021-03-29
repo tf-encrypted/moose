@@ -84,135 +84,41 @@ impl Compile<AsyncKernel> for Operator {
     }
 }
 
-impl Compile<Kernel> for StdAddOp {
-    fn compile(&self) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x + y)
+macro_rules! std_binary_kernel {
+    ($op:ty, $k:expr) => {
+        impl Compile<Kernel> for $op {
+            fn compile(&self) -> Result<Kernel> {
+                match (self.lhs, self.rhs) {
+                    (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                        function_kernel!(Float32Tensor, Float32Tensor, $k)
+                    }
+                    (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                        function_kernel!(Float64Tensor, Float64Tensor, $k)
+                    }
+                    (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                        function_kernel!(Int32Tensor, Int32Tensor, $k)
+                    }
+                    (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                        function_kernel!(Int64Tensor, Int64Tensor, $k)
+                    }
+                    (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                        function_kernel!(Uint32Tensor, Uint32Tensor, $k)
+                    }
+                    (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                        function_kernel!(Uint64Tensor, Uint64Tensor, $k)
+                    }
+                    _ => Err(Error::UnimplementedOperator),
+                }
             }
-            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x + y)
-            }
-            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x + y)
-            }
-            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x + y)
-            }
-            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x + y)
-            }
-            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x + y)
-            }
-            _ => Err(Error::UnimplementedOperator),
         }
-    }
+    };
 }
 
-impl Compile<Kernel> for StdSubOp {
-    fn compile(&self) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x - y)
-            }
-            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x - y)
-            }
-            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x - y)
-            }
-            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x - y)
-            }
-            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x - y)
-            }
-            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x - y)
-            }
-            _ => Err(Error::UnimplementedOperator),
-        }
-    }
-}
-
-impl Compile<Kernel> for StdMulOp {
-    fn compile(&self) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x * y)
-            }
-            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x * y)
-            }
-            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x * y)
-            }
-            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x * y)
-            }
-            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x * y)
-            }
-            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x * y)
-            }
-            _ => Err(Error::UnimplementedOperator),
-        }
-    }
-}
-
-impl Compile<Kernel> for StdDivOp {
-    fn compile(&self) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x / y)
-            }
-            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x / y)
-            }
-            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x / y)
-            }
-            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x / y)
-            }
-            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x / y)
-            }
-            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x / y)
-            }
-            _ => Err(Error::UnimplementedOperator),
-        }
-    }
-}
-
-impl Compile<Kernel> for StdDotOp {
-    fn compile(&self) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
-                function_kernel!(Float32Tensor, Float32Tensor, |x, y| x.dot(y))
-            }
-            (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
-                function_kernel!(Float64Tensor, Float64Tensor, |x, y| x.dot(y))
-            }
-            (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
-                function_kernel!(Int32Tensor, Int32Tensor, |x, y| x.dot(y))
-            }
-            (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
-                function_kernel!(Int64Tensor, Int64Tensor, |x, y| x.dot(y))
-            }
-            (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
-                function_kernel!(Uint32Tensor, Uint32Tensor, |x, y| x.dot(y))
-            }
-            (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
-                function_kernel!(Uint64Tensor, Uint64Tensor, |x, y| x.dot(y))
-            }
-            _ => Err(Error::UnimplementedOperator),
-        }
-    }
-}
+std_binary_kernel!(StdAddOp, |x, y| x + y);
+std_binary_kernel!(StdSubOp, |x, y| x - y);
+std_binary_kernel!(StdMulOp, |x, y| x * y);
+std_binary_kernel!(StdDivOp, |x, y| x / y);
+std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
 
 impl Compile<Kernel> for StdMeanOp {
     fn compile(&self) -> Result<Kernel> {
