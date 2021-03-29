@@ -59,6 +59,10 @@ jobs:
           . venv/bin/activate
           make pylib
 
+      - name: Clean
+        run: |
+          cd rust && cargo clean
+
       - name: Lint check the runtime package.
         run: |
           . venv/bin/activate
