@@ -477,9 +477,10 @@ impl Compile<Kernel> for ConstantOp {
 
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let rdv = self.rendezvous_key.clone();
+        let op = self.clone();
         Ok(SyncKernel::Unary(Box::new(move |ctx, sid, v| {
-            ctx.networking.send(&v, &rdv, &sid);
+            ctx.networking
+                .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sid);
             Ok(Value::Unit)
         })))
     }
@@ -495,7 +496,9 @@ impl Compile<AsyncKernel> for SendOp {
             let op = Arc::clone(&op);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                ctx.networking.send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sid).await;
+                ctx.networking
+                    .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sid)
+                    .await;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
@@ -504,9 +507,10 @@ impl Compile<AsyncKernel> for SendOp {
 
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let rdv = self.rendezvous_key.clone();
+        let op = self.clone();
         Ok(SyncKernel::Nullary(Box::new(move |ctx, sid| {
-            ctx.networking.receive(&rdv, sid)
+            ctx.networking
+                .receive(&op.sender, &op.receiver, &op.rendezvous_key, sid)
         })))
     }
 }
@@ -520,7 +524,10 @@ impl Compile<AsyncKernel> for ReceiveOp {
             let sid = Arc::clone(sid);
             let op = Arc::clone(&op);
             tokio::spawn(async move {
-                let v: Value = ctx.networking.receive(&rdv, &sid).await?;
+                let v: Value = ctx
+                    .networking
+                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sid)
+                    .await?;
                 sender.send(v).map_err(map_send_error)
             })
         })))
