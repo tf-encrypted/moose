@@ -28,7 +28,7 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-          components: rustfmt, clippy, audit
+          components: rustfmt, clippy
 
       - uses: actions/cache@v2
         id: cache-deps
@@ -68,5 +68,4 @@ jobs:
           make test-ci
 
       - name: Audit the runtime.
-        run: |
-          cargo audit
+        uses: actions-rs/audit-check@v1
