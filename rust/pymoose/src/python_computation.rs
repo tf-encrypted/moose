@@ -2,7 +2,7 @@ use maplit::hashmap;
 use moose::execution;
 use moose::{computation::*, standard::Float32Tensor, standard::Float64Tensor};
 use ndarray::prelude::*;
-use pyo3::{prelude::*};
+use pyo3::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
