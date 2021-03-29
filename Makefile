@@ -24,7 +24,7 @@ fmt:
 lint:
 	flake8 .
 	cd rust && cargo fmt --all -- --check
-	cd rust && cargo clippy -- -D warnings
+	cd rust && cargo clippy --all-targets -- -D warnings
 
 test:
 	pytest .

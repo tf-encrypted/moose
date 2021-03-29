@@ -3,65 +3,53 @@ use ndarray::LinalgScalar;
 use num_traits::Zero;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::convert::TryInto;
 use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
-use crate::prng::{AesRng, RngSeed};
-
 use crate::bit::BitTensor;
+use crate::prim::Seed;
+use crate::prng::AesRng;
+use crate::standard::Shape;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ConcreteRingTensor<T>(pub ArrayD<Wrapping<T>>);
 pub type Ring64Tensor = ConcreteRingTensor<u64>;
 pub type Ring128Tensor = ConcreteRingTensor<u128>;
 
-pub trait Sample {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self;
-    fn sample_bits(shape: &[usize], key: &[u8]) -> Self;
-}
-
-impl Sample for Ring64Tensor {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Ring64Tensor {
-        let seed: RngSeed = key.try_into().unwrap();
-        let mut rng = AesRng::from_seed(seed);
-        let length = shape.iter().product();
-        let values: Vec<_> = (0..length).map(|_| Wrapping(rng.next_u64())).collect();
-        let ix = IxDyn(shape);
+impl Ring64Tensor {
+    pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Ring64Tensor {
+        let mut rng = AesRng::from_seed(seed.0);
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let ix = IxDyn(shape.0.as_ref());
         Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
-        let seed: RngSeed = key.try_into().unwrap();
-        let mut rng = AesRng::from_seed(seed);
-        let length = shape.iter().product();
-        let values: Vec<_> = (0..length)
-            .map(|_| Wrapping(rng.get_bit() as u64))
-            .collect();
-        let ix = IxDyn(shape);
+    pub fn sample_bits(shape: &Shape, seed: &Seed) -> Self {
+        let mut rng = AesRng::from_seed(seed.0);
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let ix = IxDyn(shape.0.as_ref());
         Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 }
 
-impl Sample for ConcreteRingTensor<u128> {
-    fn sample_uniform(shape: &[usize], key: &[u8]) -> Self {
-        let seed: RngSeed = key.try_into().unwrap();
-        let mut rng = AesRng::from_seed(seed);
-        let length = shape.iter().product();
-        let values: Vec<_> = (0..length)
+impl Ring128Tensor {
+    pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Self {
+        let mut rng = AesRng::from_seed(seed.0);
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size)
             .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
             .collect();
-        let ix = IxDyn(shape);
+        let ix = IxDyn(shape.0.as_ref());
         Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    fn sample_bits(shape: &[usize], key: &[u8]) -> Self {
-        let seed: RngSeed = key.try_into().unwrap();
-        let mut rng = AesRng::from_seed(seed);
-        let length = shape.iter().product();
-        let values: Vec<_> = (0..length)
-            .map(|_| Wrapping(rng.get_bit() as u128))
-            .collect();
-        let ix = IxDyn(shape);
+
+    pub fn sample_bits(shape: &Shape, seed: &Seed) -> Self {
+        let mut rng = AesRng::from_seed(seed.0);
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
+        let ix = IxDyn(shape.0.as_ref());
         Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 }
@@ -73,6 +61,7 @@ impl ConcreteRingTensor<u64> {
         BitTensor::from(lsb)
     }
 }
+
 impl ConcreteRingTensor<u128> {
     pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
         let temp = &self.0 >> bit_idx;
@@ -85,8 +74,14 @@ impl<T> ConcreteRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
-    pub fn fill(shape: &[usize], el: T) -> ConcreteRingTensor<T> {
-        ConcreteRingTensor(ArrayD::from_elem(shape, Wrapping(el)))
+    pub fn fill(shape: &Shape, el: T) -> ConcreteRingTensor<T> {
+        ConcreteRingTensor(ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)))
+    }
+}
+
+impl<T> ConcreteRingTensor<T> {
+    pub fn shape(&self) -> Shape {
+        Shape(self.0.shape().into())
     }
 }
 
@@ -217,17 +212,11 @@ where
     }
 }
 
-pub trait Dot<Rhs> {
-    type Output;
-    fn dot(self, rhs: Rhs) -> Self::Output;
-}
-
-impl<T> Dot<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+impl<T> ConcreteRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
 {
-    type Output = ConcreteRingTensor<T>;
-    fn dot(self, rhs: ConcreteRingTensor<T>) -> Self::Output {
+    pub fn dot(self, rhs: ConcreteRingTensor<T>) -> ConcreteRingTensor<T> {
         match self.0.ndim() {
             1 => match rhs.0.ndim() {
                 1 => {
@@ -344,8 +333,9 @@ mod tests {
 
     #[test]
     fn ring_sample() {
-        let key = [0u8; 16];
-        let r = Ring64Tensor::sample_uniform(&[5], &key);
+        let shape = Shape(vec![5]);
+        let seed = Seed([0u8; 16]);
+        let r = Ring64Tensor::sample_uniform(&shape, &seed);
         assert_eq!(
             r,
             Ring64Tensor::from(vec![
@@ -357,13 +347,13 @@ mod tests {
             ])
         );
 
-        let r_bits = Ring64Tensor::sample_bits(&[5], &key);
+        let r_bits = Ring64Tensor::sample_bits(&shape, &seed);
         assert_eq!(r_bits, Ring64Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 
     #[test]
     fn ring_fill() {
-        let r = Ring64Tensor::fill(&[2], 1);
+        let r = Ring64Tensor::fill(&Shape(vec![2]), 1);
         assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
     }
 
@@ -394,19 +384,19 @@ mod tests {
 
     #[test]
     fn bit_extract() {
-        let shape = 5;
+        let shape = Shape(vec![5]);
         let value = 7;
 
-        let r0 = Ring64Tensor::fill(&[shape], value).bit_extract(0);
-        assert_eq!(BitTensor::fill(&[shape], 1), r0,);
+        let r0 = Ring64Tensor::fill(&shape, value).bit_extract(0);
+        assert_eq!(BitTensor::fill(&shape, 1), r0,);
 
-        let r1 = Ring64Tensor::fill(&[shape], value).bit_extract(1);
-        assert_eq!(BitTensor::fill(&[shape], 1), r1,);
+        let r1 = Ring64Tensor::fill(&shape, value).bit_extract(1);
+        assert_eq!(BitTensor::fill(&shape, 1), r1,);
 
-        let r2 = Ring64Tensor::fill(&[shape], value).bit_extract(2);
-        assert_eq!(BitTensor::fill(&[shape], 1), r2,);
+        let r2 = Ring64Tensor::fill(&shape, value).bit_extract(2);
+        assert_eq!(BitTensor::fill(&shape, 1), r2,);
 
-        let r3 = Ring64Tensor::fill(&[shape], value).bit_extract(3);
-        assert_eq!(BitTensor::fill(&[shape], 0), r3,)
+        let r3 = Ring64Tensor::fill(&shape, value).bit_extract(3);
+        assert_eq!(BitTensor::fill(&shape, 0), r3,)
     }
 }
