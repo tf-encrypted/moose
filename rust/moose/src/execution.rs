@@ -1055,7 +1055,9 @@ fn test_eager_executor() {
             ty: Ty::Ring64TensorTy,
         }),
         inputs: vec!["x10".into()],
-        placement: Placement::Host,
+        placement: Placement::Host(HostPlacement {
+            name: "alice".into(),
+        }),
     };
 
     let sample_ops: Vec<_> = (0..100)
