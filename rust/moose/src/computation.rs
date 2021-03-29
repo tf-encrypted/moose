@@ -33,7 +33,7 @@ pub enum Ty {
     Uint64TensorTy,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
     Ring64Tensor(Ring64Tensor),

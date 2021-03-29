@@ -4,7 +4,7 @@ use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Shape(pub Vec<usize>);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

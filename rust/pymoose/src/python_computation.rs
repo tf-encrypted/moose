@@ -1,5 +1,8 @@
+use maplit::hashmap;
+use moose::execution;
 use moose::{computation::*, standard::Float32Tensor, standard::Float64Tensor};
 use ndarray::prelude::*;
+use pyo3::{prelude::*};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -24,6 +27,7 @@ enum PyOperation {
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
     std_SendOperation(PySendOperation),
+    std_OutputOperation(PyOutputOperation),
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
     fixed_RingDecodeOperation(PyRingDecodeOperation),
@@ -175,6 +179,13 @@ struct PyReceiveOperation {
     sender: String,
     receiver: String,
     rendezvous_key: String,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyOutputOperation {
+    name: String,
+    inputs: Inputs,
     placement_name: String,
 }
 
@@ -444,6 +455,14 @@ impl TryFrom<PyComputation> for Computation {
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_OutputOperation(op) => Ok(Operation {
+                        kind: Output(OutputOp {
+                            ty: Ty::Ring64TensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingEncode(FixedpointRingEncodeOp {
                             scaling_factor: op.scaling_factor,
@@ -467,12 +486,21 @@ impl TryFrom<PyComputation> for Computation {
     }
 }
 
+#[allow(dead_code)]
+fn create_rust_executor_from_python(py_any: &PyAny) -> HashMap<String, Value> {
+    let buf: Vec<u8> = py_any.extract().unwrap();
+    let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
+
+    let rust_comp: Computation = comp.try_into().unwrap();
+    let sorted_ops = rust_comp.toposort().unwrap();
+
+    let exec = execution::EagerExecutor::new();
+    let env = hashmap![];
+    exec.run_computation(&sorted_ops, 12345, env).unwrap()
+}
+
 #[test]
 fn test_deserialize_python_simple_computation() {
-    use maplit::hashmap;
-    use moose::execution;
-    use pyo3::{prelude::*, types::PyModule};
-
     let gil = Python::acquire_gil();
     let py = gil.python();
     let comp_graph_py = PyModule::from_code(
@@ -487,28 +515,11 @@ from moose.computation.host import HostPlacement
 from moose.computation.utils import serialize_computation
 from moose.computation.standard import TensorType
 from moose.computation import dtypes
-def f():
+def f(arg1, arg2):
     comp = Computation(operations={}, placements={})
     alice = comp.add_placement(HostPlacement(name="alice"))
-    comp.add_operation(
-        standard_dialect.ConstantOperation(
-            name="x_shape",
-            placement_name=alice.name,
-            inputs={},
-            value=standard_dialect.ShapeValue(value = (2, 2)),
-            output_type=standard_dialect.ShapeType(),
-        )
-    )
-    comp.add_operation(
-        ring_dialect.FillTensorOperation(
-            name="x",
-            placement_name=alice.name,
-            value=1,
-            inputs={"shape": "x_shape"},
-        )
-    )
 
-    x = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+    x = np.array(arg1, dtype=np.float64)
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_x",
@@ -519,7 +530,7 @@ def f():
         )
     )
 
-    y = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
+    y = np.array(arg2, dtype=np.float64)
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_y",
@@ -537,6 +548,14 @@ def f():
                 output_type=TensorType(dtype=dtypes.float64),
         )
     )
+    comp.add_operation(
+        standard_dialect.OutputOperation(
+                name="result",
+                inputs={"value": "add"},
+                placement_name=alice.name,
+        )
+    )
+
     return serialize_computation(comp)
 
 "#,
@@ -544,13 +563,16 @@ def f():
         "comp_graph",
     )
     .unwrap();
-    let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call0().unwrap();
-    let buf: Vec<u8> = py_any.extract().unwrap();
 
-    let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
-    let rust_comp: Computation = comp.try_into().unwrap();
+    let x = vec![[1.0, 2.0], [3.0, 4.0]];
+    let y = vec![[1.0, 2.0], [3.0, 0.0]];
+    let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call1((x, y)).unwrap();
+    let rhs = Float64Tensor::from(
+        array![[2.0, 4.0], [6.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
 
-    let env = hashmap![];
-    let exec = execution::EagerExecutor::new();
-    exec.run_computation(&rust_comp, 12345, env).ok();
+    let outputs = create_rust_executor_from_python(py_any);
+    assert_eq!(outputs["result"], Value::Float64Tensor(rhs));
 }
