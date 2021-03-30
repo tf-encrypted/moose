@@ -489,7 +489,7 @@ impl Compile<AsyncKernel> for SendOp {
             let rdv = Arc::clone(&rdv);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                sess.networking.send(&v, &rdv, &sess.sid).await;
+                sess.networking.send(&v, &rdv, &sess.sid).await?;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))

@@ -2,7 +2,9 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
-use async_trait::async_trait;
+use crate::networking::{
+    AsyncNetworking, LocalAsyncNetworking, LocalSyncNetworking, SyncNetworking,
+};
 use futures::future::{Map, Shared};
 use futures::prelude::*;
 use petgraph::algo::toposort;
@@ -12,9 +14,7 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::sync::RwLock;
 use tokio::sync::oneshot;
-use tracing::{error, debug};
 
 #[macro_export]
 macro_rules! function_kernel {
@@ -256,7 +256,7 @@ impl<O: Compile<Kernel>> Compile<SyncKernel> for O {
 }
 
 pub fn map_send_error<T>(_: T) -> Error {
-    debug!("Failed to send result on channel, receiver was dropped");
+    tracing::debug!("Failed to send result on channel, receiver was dropped");
     Error::Unexpected
 }
 
@@ -380,72 +380,7 @@ pub struct SyncSession {
     pub networking: SyncNetworkingImpl,
 }
 
-pub trait SyncNetworking {
-    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<()>;
-    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value>;
-}
-
 pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
-
-#[async_trait]
-pub trait AsyncNetworking {
-    async fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
-    async fn receive(
-        &self,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value>;
-}
-
-#[derive(Default)]
-pub struct DummySyncNetworking {
-    store: RwLock<HashMap<String, Value>>,
-}
-
-impl SyncNetworking for DummySyncNetworking {
-    fn send(&self, val: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<()> {
-        println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-        let key = format!("{}/{}", session_id, rendezvous_key);
-        let mut store = self.store.write().map_err(|_| Error::Unexpected)?;
-        // TODO fail if value present
-        store.insert(key, val.clone());
-        Ok(())
-    }
-
-    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value> {
-        println!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
-        let key = format!("{}/{}", session_id, rendezvous_key);
-        let store = self.store.read().map_err(|_| {
-            Error::Unexpected
-        })?;
-        store.get(&key).cloned().ok_or_else(|| {
-            println!("Key not found in store");
-            Error::Unexpected
-        })
-    }
-}
-
-pub struct DummyAsyncNetworking;
-
-#[async_trait]
-impl AsyncNetworking for DummyAsyncNetworking {
-    async fn send(&self, _v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) {
-        println!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-    }
-
-    async fn receive(
-        &self,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value> {
-        println!(
-            "Async receiving; rdv:'{}', sid:{}",
-            rendezvous_key, session_id
-        );
-        use crate::standard::Shape;
-        Ok(Value::Shape(Shape(vec![0])))
-    }
-}
 
 type SyncOperationKernel =
     Box<dyn Fn(&SyncSession, &Environment<Value>) -> Result<Value> + Send + Sync>;
@@ -856,7 +791,7 @@ pub struct EagerExecutor {
 
 impl EagerExecutor {
     pub fn new() -> EagerExecutor {
-        let networking = Rc::new(DummySyncNetworking::default());
+        let networking = Rc::new(LocalSyncNetworking::default());
         EagerExecutor { networking }
     }
 
@@ -916,7 +851,7 @@ pub struct AsyncExecutor {
 
 impl AsyncExecutor {
     pub fn new() -> AsyncExecutor {
-        let networking = Arc::new(DummyAsyncNetworking);
+        let networking = Arc::new(LocalAsyncNetworking::default());
         AsyncExecutor { networking }
     }
 

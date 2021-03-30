@@ -37,7 +37,7 @@ smallvec = "~1.4"
 sodiumoxide = "~0.2"
 thiserror = "~1.0"
 tokio = { version="~1.4", features=["full"] }
-tracing = "~0.1"
+tracing = { version="~0.1", features=["log"] }
 vec-utils = "~0.3"
 
 [dev-dependencies]
