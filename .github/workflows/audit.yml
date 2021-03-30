@@ -1,6 +1,7 @@
 name: Security audit
+
 on:
-  push:
+  pull_request:
     paths:
       - '**/Cargo.toml'
       - '**/Cargo.lock'
