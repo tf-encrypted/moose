@@ -630,9 +630,10 @@ impl Computation {
                     let key = op.rendezvous_key.clone();
 
                     if send_nodes.contains_key(&key) {
-                        Error::MalformedComputation(
-                            "Already had a send node with same rdv key".into(),
-                        );
+                        Error::MalformedComputation(format!(
+                            "Already had a send node with same rdv key at key {}",
+                            key
+                        ));
                     }
 
                     send_nodes.insert(key.clone(), vertex);
@@ -641,9 +642,10 @@ impl Computation {
                 Operator::Receive(ref op) => {
                     let key = op.rendezvous_key.clone();
                     if recv_nodes.contains_key(&key) {
-                        Error::MalformedComputation(
-                            "Already had a recv node with same rdv key".into(),
-                        );
+                        Error::MalformedComputation(format!(
+                            "Already had a recv node with same rdv key at key {}",
+                            key
+                        ));
                     }
                     recv_nodes.insert(key.clone(), vertex);
                     rdv_keys.insert(key.clone());
@@ -661,10 +663,10 @@ impl Computation {
         }
         for key in rdv_keys.iter() {
             if send_nodes.contains_key(key) == false {
-                Error::MalformedComputation(format!("No send node with rdv key {}", key).into());
+                Error::MalformedComputation(format!("No send node with rdv key {}", key));
             }
             if recv_nodes.contains_key(key) == false {
-                Error::MalformedComputation(format!("No recv node with rdv key {}", key).into());
+                Error::MalformedComputation(format!("No recv node with rdv key {}", key));
             }
             // add edge send->recv (send must be evaluated before recv)
             graph.add_edge(send_nodes[key], recv_nodes[key], ());
