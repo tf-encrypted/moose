@@ -665,10 +665,10 @@ impl Computation {
         }
 
         for key in rdv_keys.into_iter() {
-            if send_nodes.contains_key(key) == false {
+            if !send_nodes.contains_key(key) {
                 Error::MalformedComputation(format!("No send node with rdv key {}", key));
             }
-            if recv_nodes.contains_key(key) == false {
+            if !recv_nodes.contains_key(key) {
                 Error::MalformedComputation(format!("No recv node with rdv key {}", key));
             }
             // add edge send->recv (send must be evaluated before recv)
