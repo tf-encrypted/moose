@@ -474,7 +474,7 @@ impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
-            sess.networking.send(&v, &rdv, &sess.sid);
+            sess.networking.send(&v, &rdv, &sess.sid)?;
             Ok(Value::Unit)
         })))
     }
@@ -489,7 +489,7 @@ impl Compile<AsyncKernel> for SendOp {
             let rdv = Arc::clone(&rdv);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                sess.networking.send(&v, &rdv, &sess.sid).await;
+                sess.networking.send(&v, &rdv, &sess.sid).await?;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
