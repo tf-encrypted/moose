@@ -615,57 +615,60 @@ impl Computation {
     pub fn toposort(&self) -> Result<Computation> {
         let mut graph = Graph::<String, ()>::new();
 
-        let mut vertex_map: HashMap<String, NodeIndex> = HashMap::new();
+        let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
         let mut inv_map: HashMap<NodeIndex, usize> = HashMap::new();
 
-        let mut send_nodes: HashMap<String, NodeIndex> = HashMap::new();
-        let mut recv_nodes: HashMap<String, NodeIndex> = HashMap::new();
+        let mut send_nodes: HashMap<&str, NodeIndex> = HashMap::new();
+        let mut recv_nodes: HashMap<&str, NodeIndex> = HashMap::new();
 
-        let mut rdv_keys: HashSet<String> = HashSet::new();
+        let mut rdv_keys: HashSet<&str> = HashSet::new();
 
         for (i, op) in self.operations.iter().enumerate() {
             let vertex = graph.add_node(op.name.clone());
             match op.kind {
                 Operator::Send(ref op) => {
-                    let key = op.rendezvous_key.clone();
+                    let key = op.rendezvous_key.as_ref();
 
-                    if send_nodes.contains_key(&key) {
+                    if send_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
                             "Already had a send node with same rdv key at key {}",
                             key
                         ));
                     }
 
-                    send_nodes.insert(key.clone(), vertex);
-                    rdv_keys.insert(key.clone());
+                    send_nodes.insert(key, vertex);
+                    rdv_keys.insert(key);
                 }
                 Operator::Receive(ref op) => {
-                    let key = op.rendezvous_key.clone();
-                    if recv_nodes.contains_key(&key) {
+                    let key = op.rendezvous_key.as_ref();
+
+                    if recv_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
                             "Already had a recv node with same rdv key at key {}",
                             key
                         ));
                     }
-                    recv_nodes.insert(key.clone(), vertex);
-                    rdv_keys.insert(key.clone());
+
+                    recv_nodes.insert(key, vertex);
+                    rdv_keys.insert(key);
                 }
                 _ => {}
             }
-            vertex_map.insert(op.name.clone(), vertex);
+            vertex_map.insert(&op.name, vertex);
             inv_map.insert(vertex, i);
         }
 
         for op in self.operations.iter() {
             for ins in op.inputs.iter() {
-                graph.add_edge(vertex_map[ins], vertex_map[&op.name], ());
+                graph.add_edge(vertex_map[&ins.as_ref()], vertex_map[&op.name.as_ref()], ());
             }
         }
-        for key in rdv_keys.iter() {
-            if send_nodes.contains_key(key) == false {
+
+        for key in rdv_keys.into_iter() {
+            if !send_nodes.contains_key(key) {
                 Error::MalformedComputation(format!("No send node with rdv key {}", key));
             }
-            if recv_nodes.contains_key(key) == false {
+            if !recv_nodes.contains_key(key) {
                 Error::MalformedComputation(format!("No recv node with rdv key {}", key));
             }
             // add edge send->recv (send must be evaluated before recv)
