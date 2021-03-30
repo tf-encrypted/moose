@@ -474,7 +474,7 @@ impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
-            sess.networking.send(&v, &rdv, &sess.sid);
+            sess.networking.send(&v, &rdv, &sess.sid)?;
             Ok(Value::Unit)
         })))
     }

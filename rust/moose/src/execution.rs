@@ -12,8 +12,9 @@ use rayon::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::sync::RwLock;
 use tokio::sync::oneshot;
-use tracing::debug;
+use tracing::{error, debug};
 
 #[macro_export]
 macro_rules! function_kernel {
@@ -380,7 +381,7 @@ pub struct SyncSession {
 }
 
 pub trait SyncNetworking {
-    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId);
+    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<()>;
     fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value>;
 }
 
@@ -396,17 +397,30 @@ pub trait AsyncNetworking {
     ) -> Result<Value>;
 }
 
-pub struct DummySyncNetworking;
+#[derive(Default)]
+pub struct DummySyncNetworking {
+    store: RwLock<HashMap<String, Value>>,
+}
 
 impl SyncNetworking for DummySyncNetworking {
-    fn send(&self, _v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) {
+    fn send(&self, val: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<()> {
         println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
+        let key = format!("{}/{}", session_id, rendezvous_key);
+        let mut store = self.store.write().map_err(|_| Error::Unexpected)?;
+        store.insert(key, val.clone());
+        Ok(())
     }
 
     fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value> {
         println!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
-        use crate::standard::Shape;
-        Ok(Value::Shape(Shape(vec![0])))
+        let key = format!("{}/{}", session_id, rendezvous_key);
+        let store = self.store.read().map_err(|_| {
+            Error::Unexpected
+        })?;
+        store.get(&key).cloned().ok_or_else(|| {
+            println!("Key not found in store");
+            Error::Unexpected
+        })
     }
 }
 
@@ -841,7 +855,7 @@ pub struct EagerExecutor {
 
 impl EagerExecutor {
     pub fn new() -> EagerExecutor {
-        let networking = Rc::new(DummySyncNetworking);
+        let networking = Rc::new(DummySyncNetworking::default());
         EagerExecutor { networking }
     }
 
