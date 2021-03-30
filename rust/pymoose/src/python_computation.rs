@@ -711,11 +711,27 @@ def f(arg1, arg2):
             "comp_graph.py",
             "comp_graph",
         )
+        .map_err(|e| {
+            e.print(py);
+            e
+        })
         .unwrap();
 
         let x = vec![[1.0, 2.0], [3.0, 4.0]];
         let y = vec![[1.0, 2.0], [3.0, 0.0]];
-        let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call1((x, y)).unwrap();
+        let py_any = comp_graph_py
+            .getattr("f")
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap()
+            .call1((x, y))
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap();
         let rhs = Float64Tensor::from(
             array![[2.0, 4.0], [6.0, 4.0]]
                 .into_dimensionality::<IxDyn>()

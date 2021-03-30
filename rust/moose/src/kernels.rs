@@ -507,7 +507,6 @@ impl Compile<SyncKernel> for ReceiveOp {
             if val.ty() == expected_ty {
                 Ok(val)
             } else {
-                println!("rdv={:?}, {:?}, {:?}", rdv, val.ty(), expected_ty);
                 Err(Error::TypeMismatch)
             }
         })))
