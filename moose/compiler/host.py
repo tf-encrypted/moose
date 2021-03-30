@@ -58,6 +58,7 @@ class NetworkingPass:
                 name=context.get_fresh_name("serialize"),
                 inputs={"value": source_operation.name},
                 value_type=source_operation.output_type,
+                output_type=source_operation.output_type,
             )
             self.serialize_cache[serialize_cache_key] = serialize_operation
             extra_ops += [serialize_operation]
@@ -78,6 +79,7 @@ class NetworkingPass:
             sender=source_operation.placement_name,
             receiver=destination_placement_name,
             rendezvous_key=rendezvous_key,
+            output_type=source_operation.output_type,
         )
         deserialize_operation = DeserializeOperation(
             placement_name=destination_placement_name,

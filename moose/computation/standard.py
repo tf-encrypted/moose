@@ -242,7 +242,7 @@ class ReceiveOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
-    output_type: ValueType = BytesType()
+    output_type: ValueType
 
 
 @dataclass

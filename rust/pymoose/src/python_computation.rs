@@ -26,6 +26,8 @@ enum PyOperation {
     ring_RingShrOperation(PyRingShrOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
+    std_SerializeOperation(PySerializeOperation),
+    std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
     std_OutputOperation(PyOutputOperation),
     std_ReceiveOperation(PyReceiveOperation),
@@ -38,9 +40,12 @@ enum PyOperation {
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyValueType {
+    prim_PRFKeyType,
+    std_BytesType,
     std_ShapeType,
     std_StringType,
     std_TensorType,
+    ring_RingTensorType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -164,6 +169,25 @@ struct PyAddOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PySerializeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    value_type: PyValueType,
+}
+
+
+#[derive(Deserialize, Debug)]
+struct PyDeserializeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+
+
+#[derive(Deserialize, Debug)]
 struct PySendOperation {
     name: String,
     sender: String,
@@ -180,6 +204,7 @@ struct PyReceiveOperation {
     receiver: String,
     rendezvous_key: String,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -220,6 +245,7 @@ struct PyHostPlacement {
 
 #[derive(Deserialize, Debug)]
 struct PyReplicatedPlacement {
+    name: String,
     player_names: Vec<String>,
 }
 
@@ -301,6 +327,16 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
                 Ok(Float64Tensor::from(tensor).into())
             }
         },
+    }
+}
+fn map_type(py_type: &PyValueType) -> Ty {
+    match py_type {
+        PyValueType::prim_PRFKeyType=> Ty::PrfKeyTy,
+        PyValueType::std_ShapeType => Ty::ShapeTy,
+        PyValueType::std_StringType => Ty::StringTy,
+        PyValueType::std_TensorType => Ty::Float64TensorTy,
+        PyValueType::std_BytesType => unimplemented!(),
+        PyValueType::ring_RingTensorType => Ty::Ring64TensorTy,
     }
 }
 
@@ -450,9 +486,27 @@ impl TryFrom<PyComputation> for Computation {
                             receiver: HostPlacement {
                                 name: op.receiver.clone(),
                             },
+                            ty: map_type(&op.output_type),
                         }),
                         name: op.name.clone(),
                         inputs: Vec::new(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_SerializeOperation(op) => Ok(Operation {
+                        kind: Identity(IdentityOp {
+                            ty: map_type(&op.value_type),
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+
+                    }),
+                    std_DeserializeOperation(op) => Ok(Operation {
+                        kind: Identity(IdentityOp {
+                            ty: map_type(&op.output_type),
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OutputOperation(op) => Ok(Operation {
@@ -575,4 +629,98 @@ def f(arg1, arg2):
 
     let outputs = create_rust_executor_from_python(py_any);
     assert_eq!(outputs["result"], Value::Float64Tensor(rhs));
+}
+
+#[test]
+fn test_deserialize_replicated_mul() {
+    let gil = Python::acquire_gil();
+    let py = gil.python();
+    let comp_graph_py = PyModule::from_code(
+        py,
+        r#"
+import numpy as np
+
+from moose.compiler.compiler import Compiler
+from moose.computation import dtypes
+from moose.computation import ring as ring_dialect
+from moose.computation import standard as standard_dialect
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
+from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.standard import TensorType
+from moose.computation.utils import serialize_computation
+
+alice = HostPlacement(name="alice")
+bob = HostPlacement(name="bob")
+carole = HostPlacement(name="carole")
+rep = ReplicatedPlacement(name="rep", player_names=["alice", "bob", "carole"])
+
+
+def f(arg1, arg2):
+    comp = Computation(operations={}, placements={})
+    comp.add_placement(alice)
+    comp.add_placement(bob)
+    comp.add_placement(carole)
+    comp.add_placement(rep)
+
+    x = np.array(arg1, dtype=np.float64)
+    y = np.array(arg2, dtype=np.float64)
+
+    comp.add_operation(
+        standard_dialect.ConstantOperation(
+            name="alice_input",
+            value=standard_dialect.TensorValue(value=x),
+            placement_name=alice.name,
+            inputs={},
+            output_type=TensorType(dtype=dtypes.float64),
+        )
+    )
+
+    comp.add_operation(
+        standard_dialect.ConstantOperation(
+            name="bob_input",
+            value=standard_dialect.TensorValue(value=y),
+            placement_name=bob.name,
+            inputs={},
+            output_type=TensorType(dtype=dtypes.float64),
+        )
+    )
+
+    comp.add_operation(
+        standard_dialect.AddOperation(
+            name="rep_add",
+            placement_name=rep.name,
+            inputs={"lhs": "alice_input", "rhs": "bob_input"},
+            output_type=TensorType(dtype=dtypes.float64),
+        )
+    )
+
+    comp.add_operation(
+        standard_dialect.OutputOperation(
+            name="output", placement_name=carole.name, inputs={"value": "rep_add"},
+        )
+    )
+
+    compiler = Compiler()
+    comp = compiler.run_passes(comp, render=True)
+
+    return serialize_computation(comp)
+
+"#,
+        "comp_graph.py",
+        "comp_graph",
+    )
+    .unwrap();
+
+    let x = vec![[1.0, 2.0], [3.0, 4.0]];
+    let y = vec![[1.0, 2.0], [3.0, 0.0]];
+    let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call1((x, y)).unwrap();
+    let rhs = Float64Tensor::from(
+        array![[2.0, 4.0], [6.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+    );
+
+    let outputs = create_rust_executor_from_python(py_any);
+    // assert_eq!(outputs["result"], Value::Float64Tensor(rhs));
 }

@@ -15,6 +15,7 @@ pub type SessionId = u128;
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub enum Ty {
     UnitTy,
+    StringTy,
     Ring64TensorTy,
     Ring128TensorTy,
     ShapeTy,
@@ -129,6 +130,7 @@ convert!(Uint64Tensor);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
+    Identity(IdentityOp),
     Send(SendOp),
     Receive(ReceiveOp),
     Input(InputOp),
@@ -168,10 +170,16 @@ pub struct SendOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IdentityOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReceiveOp {
     pub rendezvous_key: String,
     pub sender: HostPlacement,
     pub receiver: HostPlacement,
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
