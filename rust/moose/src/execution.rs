@@ -407,6 +407,7 @@ impl SyncNetworking for DummySyncNetworking {
         println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
         let key = format!("{}/{}", session_id, rendezvous_key);
         let mut store = self.store.write().map_err(|_| Error::Unexpected)?;
+        // TODO fail if value present
         store.insert(key, val.clone());
         Ok(())
     }
