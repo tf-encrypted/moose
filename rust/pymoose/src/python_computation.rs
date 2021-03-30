@@ -1,8 +1,5 @@
-use maplit::hashmap;
-use moose::execution;
 use moose::{computation::*, standard::Float32Tensor, standard::Float64Tensor};
 use ndarray::prelude::*;
-use pyo3::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -327,6 +324,7 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
         },
     }
 }
+
 fn map_type(py_type: &PyValueType) -> Ty {
     match py_type {
         PyValueType::prim_PRFKeyType => Ty::PrfKeyTy,
@@ -537,26 +535,32 @@ impl TryFrom<PyComputation> for Computation {
     }
 }
 
-#[allow(dead_code)]
-fn create_rust_executor_from_python(py_any: &PyAny) -> HashMap<String, Value> {
-    let buf: Vec<u8> = py_any.extract().unwrap();
-    let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use maplit::hashmap;
+    use moose::execution;
+    use pyo3::prelude::*;
 
-    let rust_comp: Computation = comp.try_into().unwrap();
-    let sorted_ops = rust_comp.toposort().unwrap();
+    fn create_rust_executor_from_python(py_any: &PyAny) -> HashMap<String, Value> {
+        let buf: Vec<u8> = py_any.extract().unwrap();
+        let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
-    let exec = execution::EagerExecutor::new();
-    let env = hashmap![];
-    exec.run_computation(&sorted_ops, 12345, env).unwrap()
-}
+        let rust_comp: Computation = comp.try_into().unwrap();
+        let sorted_ops = rust_comp.toposort().unwrap();
 
-#[test]
-fn test_deserialize_python_simple_computation() {
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let comp_graph_py = PyModule::from_code(
-        py,
-        r#"
+        let exec = execution::EagerExecutor::new();
+        let env = hashmap![];
+        exec.run_computation(&sorted_ops, 12345, env).unwrap()
+    }
+
+    #[test]
+    fn test_deserialize_python_simple_computation() {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        let comp_graph_py = PyModule::from_code(
+            py,
+            r#"
 
 import numpy as np
 from moose.computation import ring as ring_dialect
@@ -610,31 +614,31 @@ def f(arg1, arg2):
     return serialize_computation(comp)
 
 "#,
-        "comp_graph.py",
-        "comp_graph",
-    )
-    .unwrap();
+            "comp_graph.py",
+            "comp_graph",
+        )
+        .unwrap();
 
-    let x = vec![[1.0, 2.0], [3.0, 4.0]];
-    let y = vec![[1.0, 2.0], [3.0, 0.0]];
-    let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call1((x, y)).unwrap();
-    let rhs = Float64Tensor::from(
-        array![[2.0, 4.0], [6.0, 4.0]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    );
+        let x = vec![[1.0, 2.0], [3.0, 4.0]];
+        let y = vec![[1.0, 2.0], [3.0, 0.0]];
+        let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call1((x, y)).unwrap();
+        let rhs = Float64Tensor::from(
+            array![[2.0, 4.0], [6.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
 
-    let outputs = create_rust_executor_from_python(py_any);
-    assert_eq!(outputs["result"], Value::Float64Tensor(rhs));
-}
+        let outputs = create_rust_executor_from_python(py_any);
+        assert_eq!(outputs["result"], Value::Float64Tensor(rhs));
+    }
 
-#[test]
-fn test_deserialize_replicated_mul() {
-    let gil = Python::acquire_gil();
-    let py = gil.python();
-    let comp_graph_py = PyModule::from_code(
-        py,
-        r#"
+    #[test]
+    fn test_deserialize_replicated_mul() {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+        let comp_graph_py = PyModule::from_code(
+            py,
+            r#"
 import numpy as np
 
 from moose.compiler.compiler import Compiler
@@ -704,20 +708,21 @@ def f(arg1, arg2):
     return serialize_computation(comp)
 
 "#,
-        "comp_graph.py",
-        "comp_graph",
-    )
-    .unwrap();
+            "comp_graph.py",
+            "comp_graph",
+        )
+        .unwrap();
 
-    let x = vec![[1.0, 2.0], [3.0, 4.0]];
-    let y = vec![[1.0, 2.0], [3.0, 0.0]];
-    let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call1((x, y)).unwrap();
-    let rhs = Float64Tensor::from(
-        array![[2.0, 4.0], [6.0, 4.0]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    );
+        let x = vec![[1.0, 2.0], [3.0, 4.0]];
+        let y = vec![[1.0, 2.0], [3.0, 0.0]];
+        let py_any: &PyAny = comp_graph_py.getattr("f").unwrap().call1((x, y)).unwrap();
+        let rhs = Float64Tensor::from(
+            array![[2.0, 4.0], [6.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
 
-    let outputs = create_rust_executor_from_python(py_any);
-    assert_eq!(outputs["output"], Value::Float64Tensor(rhs));
+        let outputs = create_rust_executor_from_python(py_any);
+        assert_eq!(outputs["output"], Value::Float64Tensor(rhs));
+    }
 }
