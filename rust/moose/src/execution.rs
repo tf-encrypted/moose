@@ -9,12 +9,12 @@ use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::sync::RwLock;
 use tokio::sync::oneshot;
-use tracing::{error, debug};
+use tracing::{debug, error};
 
 #[macro_export]
 macro_rules! function_kernel {
@@ -381,7 +381,8 @@ pub struct SyncSession {
 }
 
 pub trait SyncNetworking {
-    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<()>;
+    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId)
+        -> Result<()>;
     fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value>;
 }
 
@@ -403,7 +404,12 @@ pub struct DummySyncNetworking {
 }
 
 impl SyncNetworking for DummySyncNetworking {
-    fn send(&self, val: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<()> {
+    fn send(
+        &self,
+        val: &Value,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<()> {
         println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
         let key = format!("{}/{}", session_id, rendezvous_key);
         let mut store = self.store.write().map_err(|_| Error::Unexpected)?;
@@ -415,9 +421,7 @@ impl SyncNetworking for DummySyncNetworking {
     fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value> {
         println!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
         let key = format!("{}/{}", session_id, rendezvous_key);
-        let store = self.store.read().map_err(|_| {
-            Error::Unexpected
-        })?;
+        let store = self.store.read().map_err(|_| Error::Unexpected)?;
         store.get(&key).cloned().ok_or_else(|| {
             println!("Key not found in store");
             Error::Unexpected
@@ -683,9 +687,38 @@ impl Computation {
         let mut vertex_map: HashMap<String, NodeIndex> = HashMap::new();
         let mut inv_map: HashMap<NodeIndex, usize> = HashMap::new();
 
+        let mut send_nodes: HashMap<String, NodeIndex> = HashMap::new();
+        let mut recv_nodes: HashMap<String, NodeIndex> = HashMap::new();
+
+        let mut rdv_keys: HashSet<String> = HashSet::new();
+
         for (i, op) in self.operations.iter().enumerate() {
             let vertex = graph.add_node(op.name.clone());
+            match op.kind {
+                Operator::Send(ref op) => {
+                    let key = op.rendezvous_key.clone();
 
+                    if send_nodes.contains_key(&key) {
+                        Error::MalformedComputation(
+                            "Already had a send node with same rdv key".into(),
+                        );
+                    }
+
+                    send_nodes.insert(key.clone(), vertex);
+                    rdv_keys.insert(key.clone());
+                }
+                Operator::Receive(ref op) => {
+                    let key = op.rendezvous_key.clone();
+                    if recv_nodes.contains_key(&key) {
+                        Error::MalformedComputation(
+                            "Already had a recv node with same rdv key".into(),
+                        );
+                    }
+                    recv_nodes.insert(key.clone(), vertex);
+                    rdv_keys.insert(key.clone());
+                }
+                _ => {}
+            }
             vertex_map.insert(op.name.clone(), vertex);
             inv_map.insert(vertex, i);
         }
@@ -694,6 +727,16 @@ impl Computation {
             for ins in op.inputs.iter() {
                 graph.add_edge(vertex_map[ins], vertex_map[&op.name], ());
             }
+        }
+        for key in rdv_keys.iter() {
+            if send_nodes.contains_key(key) == false {
+                Error::MalformedComputation(format!("No send node with rdv key {}", key).into());
+            }
+            if recv_nodes.contains_key(key) == false {
+                Error::MalformedComputation(format!("No recv node with rdv key {}", key).into());
+            }
+            // add edge send->recv (send must be evaluated before recv)
+            graph.add_edge(send_nodes[key], recv_nodes[key], ());
         }
 
         let toposort = toposort(&graph, None).map_err(|_| {

@@ -539,13 +539,11 @@ impl Compile<AsyncKernel> for ReceiveOp {
                     Err(Error::TypeMismatch)
                 }
             })
-
         })))
     }
 }
 
 impl Compile<SyncKernel> for IdentityOp {
-
     fn compile(&self) -> Result<SyncKernel> {
         let expected_ty = self.ty;
         Ok(SyncKernel::Unary(Box::new(move |_sess, val| {
@@ -570,12 +568,9 @@ impl Compile<AsyncKernel> for IdentityOp {
                     Err(Error::TypeMismatch)
                 }
             })
-
         })))
     }
 }
-
-
 
 impl Compile<SyncKernel> for InputOp {
     fn compile(&self) -> Result<SyncKernel> {

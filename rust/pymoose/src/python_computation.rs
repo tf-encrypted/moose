@@ -176,7 +176,6 @@ struct PySerializeOperation {
     value_type: PyValueType,
 }
 
-
 #[derive(Deserialize, Debug)]
 struct PyDeserializeOperation {
     name: String,
@@ -184,8 +183,6 @@ struct PyDeserializeOperation {
     placement_name: String,
     output_type: PyValueType,
 }
-
-
 
 #[derive(Deserialize, Debug)]
 struct PySendOperation {
@@ -331,7 +328,7 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
 }
 fn map_type(py_type: &PyValueType) -> Ty {
     match py_type {
-        PyValueType::prim_PRFKeyType=> Ty::PrfKeyTy,
+        PyValueType::prim_PRFKeyType => Ty::PrfKeyTy,
         PyValueType::std_ShapeType => Ty::ShapeTy,
         PyValueType::std_StringType => Ty::StringTy,
         PyValueType::std_TensorType => Ty::Float64TensorTy,
@@ -499,7 +496,6 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
-
                     }),
                     std_DeserializeOperation(op) => Ok(Operation {
                         kind: Identity(IdentityOp {
@@ -722,5 +718,5 @@ def f(arg1, arg2):
     );
 
     let outputs = create_rust_executor_from_python(py_any);
-    // assert_eq!(outputs["result"], Value::Float64Tensor(rhs));
+    assert_eq!(outputs["output"], Value::Float64Tensor(rhs));
 }
