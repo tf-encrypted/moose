@@ -66,6 +66,3 @@ jobs:
         run: |
           . venv/bin/activate
           make test-ci
-
-      - name: Audit the runtime.
-        uses: actions-rs/audit-check@v1
