@@ -2,6 +2,8 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use moose::computation::Computation;
 use rayon::prelude::*;
 
+use moose::networking::DummyNetworking;
+
 /// Benchmark iter vs par_iter for channel creation
 /// Conclusion is that this never seems worth it.
 fn par_channel(c: &mut Criterion) {
@@ -577,7 +579,7 @@ fn execute(c: &mut Criterion) {
             let sess = SyncSession {
                 sid: 12345,
                 args: hashmap!(),
-                networking: Rc::new(DummySyncNetworking),
+                networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
             };
 
             b.iter(|| {
@@ -592,7 +594,7 @@ fn execute(c: &mut Criterion) {
             let sess = SyncSession {
                 sid: 12345,
                 args: hashmap!(),
-                networking: Rc::new(DummySyncNetworking),
+                networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
             };
 
             b.iter(|| {
@@ -607,7 +609,7 @@ fn execute(c: &mut Criterion) {
             let sess = Arc::new(AsyncSession {
                 sid: 12345,
                 args: hashmap!(),
-                networking: Arc::new(DummyAsyncNetworking),
+                networking: Arc::new(DummyNetworking(moose::computation::Value::Unit)),
             });
 
             b.iter(|| {

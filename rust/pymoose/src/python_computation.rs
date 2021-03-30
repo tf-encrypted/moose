@@ -39,6 +39,7 @@ enum PyOperation {
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
+#[allow(clippy::upper_case_acronyms)]
 enum PyValueType {
     prim_PRFKeyType,
     std_BytesType,
