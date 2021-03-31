@@ -7,7 +7,6 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
-from moose.computation.standard import UnitType
 from moose.computation.standard import UnknownType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
