@@ -703,7 +703,7 @@ def f(arg1, arg2):
     )
 
     compiler = Compiler()
-    comp = compiler.run_passes(comp, render=True)
+    comp = compiler.run_passes(comp)
 
     return serialize_computation(comp)
 
