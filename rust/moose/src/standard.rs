@@ -37,6 +37,21 @@ impl<T> StandardTensor<T>
 where
     T: LinalgScalar,
 {
+    pub fn atleast_2d(self) -> StandardTensor<T> {
+        match self.0.ndim() {
+            0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap()),
+            1 => {
+                let length = self.0.len();
+                StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, length])).unwrap())
+            }
+            2 => StandardTensor::<T>(self.0),
+            otherwise => panic!(
+                "Tensor input for `atleast_2d` must have rank <= 2, found rank {:?}.",
+                otherwise
+            ),
+        }
+    }
+
     pub fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
         match (self.0.ndim(), other.0.ndim()) {
             (1, 1) => {
@@ -277,5 +292,40 @@ mod tests {
                     .unwrap()
             )
         );
+    }
+
+    #[test]
+    fn test_atleast_2d() {
+        let a = StandardTensor::<f32>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let a_exp = a.clone();
+        let b = StandardTensor::<f32>::from(
+            array![1.0, 2.0, 3.0, 4.0]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let b_exp = StandardTensor::<f32>::from(
+            array![[1.0, 2.0, 3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let c = StandardTensor::<f32>::from(
+            Array::from_elem([], 1.0)
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let c_exp = StandardTensor::<f32>::from(array![[1.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap()
+        );
+        let ax = a.atleast_2d();
+        let bx = b.atleast_2d();
+        let cx = c.atleast_2d();
+        assert_eq!(ax, a_exp);
+        assert_eq!(bx, b_exp);
+        assert_eq!(cx, c_exp);
     }
 }
