@@ -558,7 +558,7 @@ mod tests {
     }
 
     #[test]
-    fn test_deserialize_python_simple_computation() {
+    fn test_deserialize_host_op() {
         let gil = Python::acquire_gil();
         let py = gil.python();
         let comp_graph_py = PyModule::from_code(
@@ -655,7 +655,7 @@ def f(arg1, arg2):
     }
 
     #[test]
-    fn test_deserialize_replicated_mul() {
+    fn test_deserialize_replicated_op() {
         let gil = Python::acquire_gil();
         let py = gil.python();
         let comp_graph_py = PyModule::from_code(

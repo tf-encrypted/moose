@@ -219,13 +219,11 @@ class SaveOperation(StandardOperation):
 
 @dataclass
 class SerializeOperation(StandardOperation):
-    value_type: str
     output_type: ValueType = BytesType()
 
 
 @dataclass
 class DeserializeOperation(StandardOperation):
-    value_type: str
     output_type: ValueType
 
 
