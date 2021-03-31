@@ -10,6 +10,7 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
 
 
 class HostEncodingPassTest(parameterized.TestCase):
@@ -35,7 +36,10 @@ class HostEncodingPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", placement_name="alice", inputs={"value": "x_cast"},
+                name="output_0",
+                placement_name="alice",
+                inputs={"value": "x_cast"},
+                output_type=UnitType(),
             )
         )
 
@@ -69,6 +73,7 @@ class HostEncodingPassTest(parameterized.TestCase):
                 name="output_0",
                 placement_name="alice",
                 inputs={"value": "fixed_encode_0"},
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations
@@ -97,7 +102,10 @@ class HostEncodingPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", placement_name="alice", inputs={"value": "x_cast"},
+                name="output_0",
+                placement_name="alice",
+                inputs={"value": "x_cast"},
+                output_type=UnitType(),
             )
         )
 
@@ -129,6 +137,7 @@ class HostEncodingPassTest(parameterized.TestCase):
                 name="output_0",
                 placement_name="alice",
                 inputs={"value": "fixed_decode_0"},
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations

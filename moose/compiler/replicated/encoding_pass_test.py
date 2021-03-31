@@ -12,6 +12,7 @@ from moose.computation.fixedpoint import EncodedTensorType
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
 
 
 class ReplicatedTest(parameterized.TestCase):
@@ -63,22 +64,34 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "add"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "add"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_1", inputs={"value": "add"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "add"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_2", inputs={"value": "mul"}, placement_name="dave"
+                name="output_2",
+                inputs={"value": "mul"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_3", inputs={"value": "mul"}, placement_name="eric"
+                name="output_3",
+                inputs={"value": "mul"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 
@@ -183,12 +196,18 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "decode_0"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "decode_0"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_1", inputs={"value": "decode_0"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "decode_0"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
@@ -202,12 +221,18 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_2", inputs={"value": "decode_1"}, placement_name="dave"
+                name="output_2",
+                inputs={"value": "decode_1"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_3", inputs={"value": "decode_1"}, placement_name="eric"
+                name="output_3",
+                inputs={"value": "decode_1"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 
@@ -263,22 +288,34 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "add_0"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "add_0"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_1", inputs={"value": "add_0"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "add_0"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_2", inputs={"value": "add_1"}, placement_name="dave"
+                name="output_2",
+                inputs={"value": "add_1"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_3", inputs={"value": "add_1"}, placement_name="eric"
+                name="output_3",
+                inputs={"value": "add_1"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 
@@ -383,12 +420,18 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "decode_0"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "decode_0"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_1", inputs={"value": "decode_0"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "decode_0"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
@@ -402,12 +445,18 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_2", inputs={"value": "decode_1"}, placement_name="dave"
+                name="output_2",
+                inputs={"value": "decode_1"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_3", inputs={"value": "decode_1"}, placement_name="eric"
+                name="output_3",
+                inputs={"value": "decode_1"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 

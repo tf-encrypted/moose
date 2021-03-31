@@ -71,7 +71,7 @@ class InputOperation(StandardOperation):
 
 @dataclass
 class OutputOperation(StandardOperation):
-    output_type: ValueType = UnitType()
+    output_type: ValueType
 
 
 @dataclass

@@ -7,6 +7,7 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
 from moose.computation.standard import UnknownType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
@@ -362,6 +363,7 @@ class EdslTest(parameterized.TestCase):
                     placement_name="player0",
                     name="output_0",
                     inputs={"value": "add_0"},
+                    output_type=UnitType(),
                 ),
             },
             placements={"player0": HostPlacement(name="player0")},
