@@ -243,6 +243,11 @@ pub struct StdOnesOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdAtLeast2DOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdExpandDimsOp {
     pub ty: Ty,
     pub axis: u32,

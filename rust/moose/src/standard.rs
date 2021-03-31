@@ -44,7 +44,7 @@ where
                 let length = self.0.len();
                 StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, length])).unwrap())
             }
-            2 => StandardTensor::<T>(self.0),
+            2 => self,
             otherwise => panic!(
                 "Tensor input for `atleast_2d` must have rank <= 2, found rank {:?}.",
                 otherwise
@@ -317,10 +317,8 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let c_exp = StandardTensor::<f32>::from(array![[1.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap()
-        );
+        let c_exp =
+            StandardTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
         let ax = a.atleast_2d();
         let bx = b.atleast_2d();
         let cx = c.atleast_2d();

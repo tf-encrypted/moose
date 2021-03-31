@@ -92,6 +92,36 @@ impl Compile<AsyncKernel> for Operator {
     }
 }
 
+macro_rules! std_unary_kernel {
+    ($op:ty, $k:expr) => {
+        impl Compile<Kernel> for $op {
+            fn compile(&self) -> Result<Kernel> {
+                match self.ty {
+                    Ty::Float32TensorTy => {
+                        function_kernel!(Float32Tensor, $k)
+                    }
+                    Ty::Float64TensorTy => {
+                        function_kernel!(Float64Tensor, $k)
+                    }
+                    Ty::Int32TensorTy => {
+                        function_kernel!(Int32Tensor, $k)
+                    }
+                    Ty::Int64TensorTy => {
+                        function_kernel!(Int64Tensor, $k)
+                    }
+                    Ty::Uint32TensorTy => {
+                        function_kernel!(Uint32Tensor, $k)
+                    }
+                    Ty::Uint64TensorTy => {
+                        function_kernel!(Uint64Tensor, $k)
+                    }
+                    _ => Err(Error::UnimplementedOperator),
+                }
+            }
+        }
+    };
+}
+
 macro_rules! std_binary_kernel {
     ($op:ty, $k:expr) => {
         impl Compile<Kernel> for $op {
@@ -127,6 +157,9 @@ std_binary_kernel!(StdSubOp, |x, y| x - y);
 std_binary_kernel!(StdMulOp, |x, y| x * y);
 std_binary_kernel!(StdDivOp, |x, y| x / y);
 std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
+std_unary_kernel!(StdAtLeast2DOp, |x| x.atleast_2d());
+std_unary_kernel!(StdShapeOp, |x| x.shape());
+std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for StdMeanOp {
     fn compile(&self) -> Result<Kernel> {
@@ -235,32 +268,6 @@ impl Compile<Kernel> for StdReshapeOp {
     }
 }
 
-impl Compile<Kernel> for StdShapeOp {
-    fn compile(&self) -> Result<Kernel> {
-        match self.ty {
-            Ty::Float32TensorTy => {
-                function_kernel!(Float32Tensor, |x| x.shape())
-            }
-            Ty::Float64TensorTy => {
-                function_kernel!(Float64Tensor, |x| x.shape())
-            }
-            Ty::Int32TensorTy => {
-                function_kernel!(Int32Tensor, |x| x.shape())
-            }
-            Ty::Int64TensorTy => {
-                function_kernel!(Int64Tensor, |x| x.shape())
-            }
-            Ty::Uint32TensorTy => {
-                function_kernel!(Uint32Tensor, |x| x.shape())
-            }
-            Ty::Uint64TensorTy => {
-                function_kernel!(Uint64Tensor, |x| x.shape())
-            }
-            _ => Err(Error::UnimplementedOperator),
-        }
-    }
-}
-
 impl Compile<Kernel> for StdSumOp {
     fn compile(&self) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -282,32 +289,6 @@ impl Compile<Kernel> for StdSumOp {
             }
             Ty::Uint64TensorTy => {
                 closure_kernel!(Uint64Tensor, |x| x.sum(axis))
-            }
-            _ => Err(Error::UnimplementedOperator),
-        }
-    }
-}
-
-impl Compile<Kernel> for StdTransposeOp {
-    fn compile(&self) -> Result<Kernel> {
-        match self.ty {
-            Ty::Float32TensorTy => {
-                function_kernel!(Float32Tensor, |x| x.transpose())
-            }
-            Ty::Float64TensorTy => {
-                function_kernel!(Float64Tensor, |x| x.transpose())
-            }
-            Ty::Int32TensorTy => {
-                function_kernel!(Int32Tensor, |x| x.transpose())
-            }
-            Ty::Int64TensorTy => {
-                function_kernel!(Int64Tensor, |x| x.transpose())
-            }
-            Ty::Uint32TensorTy => {
-                function_kernel!(Uint32Tensor, |x| x.transpose())
-            }
-            Ty::Uint64TensorTy => {
-                function_kernel!(Uint64Tensor, |x| x.transpose())
             }
             _ => Err(Error::UnimplementedOperator),
         }
