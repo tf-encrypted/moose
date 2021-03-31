@@ -172,7 +172,7 @@ struct PySerializeOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
-    value_type: PyValueType,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -493,7 +493,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SerializeOperation(op) => Ok(Operation {
                         kind: Identity(IdentityOp {
-                            ty: map_type(&op.value_type),
+                            ty: map_type(&op.output_type),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])?,
