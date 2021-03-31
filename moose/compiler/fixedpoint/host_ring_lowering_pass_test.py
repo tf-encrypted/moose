@@ -11,6 +11,7 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
 
 
 class HostRingLoweringPassTest(parameterized.TestCase):
@@ -40,7 +41,10 @@ class HostRingLoweringPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "x_encode"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "x_encode"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -71,6 +75,7 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": "ring_encode_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations
@@ -100,7 +105,10 @@ class HostRingLoweringPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "x_decode"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "x_decode"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -132,6 +140,7 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": "ring_decode_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -180,6 +189,7 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": f"fixed_{op_name}_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -218,6 +228,7 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": f"ring_{op_name}_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations
@@ -252,6 +263,7 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": "fixed_sum_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -279,7 +291,10 @@ class HostRingLoweringPassTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "ring_sum_0"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "ring_sum_0"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations
@@ -333,6 +348,7 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": "fixed_trunc_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -376,7 +392,10 @@ class HostRingLoweringPassTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "ring_shr_0"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "ring_shr_0"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations

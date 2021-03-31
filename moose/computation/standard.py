@@ -71,7 +71,7 @@ class InputOperation(StandardOperation):
 
 @dataclass
 class OutputOperation(StandardOperation):
-    output_type: ValueType = UnitType()
+    output_type: ValueType
 
 
 @dataclass
@@ -219,13 +219,11 @@ class SaveOperation(StandardOperation):
 
 @dataclass
 class SerializeOperation(StandardOperation):
-    value_type: str
     output_type: ValueType = BytesType()
 
 
 @dataclass
 class DeserializeOperation(StandardOperation):
-    value_type: str
     output_type: ValueType
 
 
@@ -242,7 +240,7 @@ class ReceiveOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
-    output_type: ValueType = BytesType()
+    output_type: ValueType
 
 
 @dataclass

@@ -17,6 +17,7 @@ from moose.computation.bit import BitXorOperation
 from moose.computation.bit import FillBitTensorOperation
 from moose.computation.bit import PrintBitTensorOperation
 from moose.computation.bit import RingInjectOperation
+from moose.computation.standard import UnitType
 
 
 @dataclass
@@ -48,6 +49,7 @@ def print_bit_tensor(tensor: BitTensor, prefix, suffix, placement_name, chain=No
             name=tensor.context.get_fresh_name("chain_print"),
             inputs={"value": print_op.name},
             placement_name=placement_name,
+            output_type=UnitType(),
         )
     )
     return print_op

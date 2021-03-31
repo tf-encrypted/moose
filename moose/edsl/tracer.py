@@ -36,6 +36,7 @@ from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
+from moose.computation.standard import UnitType
 from moose.computation.standard import UnknownType
 from moose.edsl.base import AbsExpression
 from moose.edsl.base import ApplyFunctionExpression
@@ -105,6 +106,7 @@ class AstTracer:
                     name=self.get_fresh_name("output"),
                     inputs={"value": op.name},
                     placement_name=op.placement_name,
+                    output_type=op.output_type,
                 )
             )
         return self.computation

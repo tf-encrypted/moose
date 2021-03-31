@@ -14,6 +14,7 @@ impl Compile<SyncKernel> for Operator {
     fn compile(&self) -> Result<SyncKernel> {
         use Operator::*;
         match self {
+            Identity(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
             Input(op) => op.compile(),
@@ -54,6 +55,7 @@ impl Compile<AsyncKernel> for Operator {
     fn compile(&self) -> Result<AsyncKernel> {
         use Operator::*;
         match self {
+            Identity(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
             Input(op) => op.compile(),
@@ -499,8 +501,14 @@ impl Compile<AsyncKernel> for SendOp {
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
         let rdv = self.rendezvous_key.clone();
+        let expected_ty = self.ty;
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
-            sess.networking.receive(&rdv, &sess.sid)
+            let val = sess.networking.receive(&rdv, &sess.sid)?;
+            if val.ty() == expected_ty {
+                Ok(val)
+            } else {
+                Err(Error::TypeMismatch)
+            }
         })))
     }
 }
@@ -509,12 +517,46 @@ impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
         let rdv = Arc::new(self.rendezvous_key.clone());
+        let expected_ty = self.ty;
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
             let rdv = Arc::clone(&rdv);
             tokio::spawn(async move {
-                let v: Value = sess.networking.receive(&rdv, &sess.sid).await?;
-                sender.send(v).map_err(map_send_error)
+                let val: Value = sess.networking.receive(&rdv, &sess.sid).await?;
+                if val.ty() == expected_ty {
+                    sender.send(val).map_err(map_send_error)
+                } else {
+                    Err(Error::TypeMismatch)
+                }
+            })
+        })))
+    }
+}
+
+impl Compile<SyncKernel> for IdentityOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        let expected_ty = self.ty;
+        Ok(SyncKernel::Unary(Box::new(move |_sess, val| {
+            if val.ty() == expected_ty {
+                Ok(val)
+            } else {
+                Err(Error::TypeMismatch)
+            }
+        })))
+    }
+}
+
+impl Compile<AsyncKernel> for IdentityOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        let expected_ty = self.ty;
+        Ok(AsyncKernel::Unary(Box::new(move |_sess, val, sender| {
+            tokio::spawn(async move {
+                let val: Value = val.await.map_err(map_receive_error)?;
+                if val.ty() == expected_ty {
+                    sender.send(val).map_err(map_send_error)
+                } else {
+                    Err(Error::TypeMismatch)
+                }
             })
         })))
     }
@@ -530,7 +572,7 @@ impl Compile<SyncKernel> for InputOp {
                 .get(&arg_name)
                 .cloned()
                 .ok_or(Error::MalformedEnvironment)?;
-            if arg.ty() != expected_ty {
+            if arg.ty() == expected_ty {
                 Ok(arg)
             } else {
                 Err(Error::TypeMismatch)

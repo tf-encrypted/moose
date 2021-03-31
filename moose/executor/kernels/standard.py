@@ -256,7 +256,7 @@ class SerializeKernel(Kernel):
         assert isinstance(op, SerializeOperation)
         value = await value
         with get_tracer().start_as_current_span(f"{op.name}"):
-            value_type = op.value_type
+            value_type = op.output_type
             if isinstance(value_type, (TensorType, BitTensorType, RingTensorType)):
                 value_ser = msgpack.packb(value, default=_encode_tensor_info)
                 return output.set_result(value_ser)
