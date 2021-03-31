@@ -43,6 +43,7 @@ enum PyValueType {
     std_ShapeType,
     std_StringType,
     std_TensorType,
+    std_UnitType,
     ring_RingTensorType,
 }
 
@@ -330,6 +331,7 @@ fn map_type(py_type: &PyValueType) -> Ty {
     match py_type {
         PyValueType::prim_PRFKeyType => Ty::PrfKeyTy,
         PyValueType::std_ShapeType => Ty::ShapeTy,
+        PyValueType::std_UnitType => Ty::UnitTy,
         PyValueType::std_StringType => Ty::StringTy,
         PyValueType::std_TensorType => Ty::Float64TensorTy,
         PyValueType::std_BytesType => unimplemented!(),
