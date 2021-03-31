@@ -106,7 +106,7 @@ class AstTracer:
                     name=self.get_fresh_name("output"),
                     inputs={"value": op.name},
                     placement_name=op.placement_name,
-                    output_type=UnitType(),
+                    output_type=op.output_type,
                 )
             )
         return self.computation

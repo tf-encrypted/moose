@@ -363,7 +363,7 @@ class EdslTest(parameterized.TestCase):
                     placement_name="player0",
                     name="output_0",
                     inputs={"value": "add_0"},
-                    output_type=UnitType(),
+                    output_type=TensorType(dtype=dtypes.float64),
                 ),
             },
             placements={"player0": HostPlacement(name="player0")},
