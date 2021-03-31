@@ -1,4 +1,4 @@
-name: Prototype Runtime CI
+name: CI
 
 on:
   push:
