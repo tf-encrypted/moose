@@ -23,6 +23,9 @@ enum PyOperation {
     ring_RingShrOperation(PyRingShrOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
+    std_SubOperation(PySubOperation),
+    std_MulOperation(PyMulOperation),
+    std_DotOperation(PyDotOperation),
     std_SerializeOperation(PySerializeOperation),
     std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
@@ -39,6 +42,7 @@ enum PyOperation {
 #[allow(clippy::upper_case_acronyms)]
 enum PyValueType {
     prim_PRFKeyType,
+    prim_SeedType,
     std_BytesType,
     std_ShapeType,
     std_StringType,
@@ -161,6 +165,30 @@ struct PyConstantOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyAddOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySubOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyMulOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyDotOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -330,6 +358,7 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
 fn map_type(py_type: &PyValueType) -> Ty {
     match py_type {
         PyValueType::prim_PRFKeyType => Ty::PrfKeyTy,
+        PyValueType::prim_SeedType => Ty::SeedTy,
         PyValueType::std_ShapeType => Ty::ShapeTy,
         PyValueType::std_UnitType => Ty::UnitTy,
         PyValueType::std_StringType => Ty::StringTy,
@@ -462,6 +491,33 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_SubOperation(op) => Ok(Operation {
+                        kind: StdSub(StdSubOp {
+                            lhs: Ty::Float64TensorTy,
+                            rhs: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_MulOperation(op) => Ok(Operation {
+                        kind: StdMul(StdMulOp {
+                            lhs: Ty::Float64TensorTy,
+                            rhs: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_DotOperation(op) => Ok(Operation {
+                        kind: StdDot(StdDotOp {
+                            lhs: Ty::Float64TensorTy,
+                            rhs: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_SendOperation(op) => Ok(Operation {
                         kind: Send(SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
@@ -543,6 +599,7 @@ mod tests {
     use super::*;
     use maplit::hashmap;
     use moose::execution;
+    use numpy::ToPyArray;
     use pyo3::prelude::*;
 
     fn create_rust_executor_from_python(py_any: &PyAny) -> HashMap<String, Value> {
@@ -557,14 +614,41 @@ mod tests {
         exec.run_computation(&sorted_ops, 12345, env).unwrap()
     }
 
-    #[test]
-    fn test_deserialize_host_op() {
+    fn run_binary_func(x: &ArrayD<f64>, y: &ArrayD<f64>, py_code: &str) -> Value {
         let gil = Python::acquire_gil();
         let py = gil.python();
-        let comp_graph_py = PyModule::from_code(
-            py,
-            r#"
 
+        let xc = x.to_pyarray(py);
+        let yc = y.to_pyarray(py);
+
+        let comp_graph_py = PyModule::from_code(py, py_code, "comp_graph.py", "comp_graph")
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap();
+
+        let py_any = comp_graph_py
+            .getattr("f")
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap()
+            .call1((xc, yc))
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap();
+
+        let outputs = create_rust_executor_from_python(py_any);
+        outputs["result"].clone()
+    }
+
+    #[test]
+    fn test_deserialize_host_op() {
+        let py_code = r#"
 import numpy as np
 from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
@@ -600,7 +684,7 @@ def f(arg1, arg2):
         )
     )
     comp.add_operation(
-        standard_dialect.AddOperation(
+        standard_dialect.SPECIAL_OP(
                 name="add",
                 inputs={"lhs": "alice_input_x", "rhs": "alice_input_y"},
                 placement_name=alice.name,
@@ -617,50 +701,72 @@ def f(arg1, arg2):
     )
 
     return serialize_computation(comp)
+        "#;
 
-"#,
-            "comp_graph.py",
-            "comp_graph",
-        )
-        .map_err(|e| {
-            e.print(py);
-            e
-        })
-        .unwrap();
-
-        let x = vec![[1.0, 2.0], [3.0, 4.0]];
-        let y = vec![[1.0, 2.0], [3.0, 0.0]];
-        let py_any = comp_graph_py
-            .getattr("f")
-            .map_err(|e| {
-                e.print(py);
-                e
-            })
-            .unwrap()
-            .call1((x, y))
-            .map_err(|e| {
-                e.print(py);
-                e
-            })
+        let mul_code = py_code.replace("SPECIAL_OP", "MulOperation");
+        let x1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
             .unwrap();
 
-        let rhs = Float64Tensor::from(
-            array![[2.0, 4.0], [6.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
+        let result = run_binary_func(&x1, &y1, &mul_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x1) * Float64Tensor::from(y1))
         );
 
-        let outputs = create_rust_executor_from_python(py_any);
-        assert_eq!(outputs["result"], Value::Float64Tensor(rhs));
+        let x2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let add_code = py_code.replace("SPECIAL_OP", "AddOperation");
+        let result = run_binary_func(&x2, &y2, &add_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x2) + Float64Tensor::from(y2))
+        );
+
+        let x3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let sub_code = py_code.replace("SPECIAL_OP", "SubOperation");
+        let result = run_binary_func(&x3, &y3, &sub_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x3) - Float64Tensor::from(y3))
+        );
+
+        let x4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let dot_code = py_code.replace("SPECIAL_OP", "DotOperation");
+        let result = run_binary_func(&x4, &y4, &dot_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
+        );
     }
 
     #[test]
     fn test_deserialize_replicated_op() {
-        let gil = Python::acquire_gil();
-        let py = gil.python();
-        let comp_graph_py = PyModule::from_code(
-            py,
-            r#"
+        let py_code = r#"
 import numpy as np
 
 from moose.compiler.compiler import Compiler
@@ -712,7 +818,7 @@ def f(arg1, arg2):
     )
 
     comp.add_operation(
-        standard_dialect.AddOperation(
+        standard_dialect.SPECIAL_OP(
             name="rep_add",
             placement_name=rep.name,
             inputs={"lhs": "alice_input", "rhs": "bob_input"},
@@ -722,7 +828,7 @@ def f(arg1, arg2):
 
     comp.add_operation(
         standard_dialect.OutputOperation(
-            name="output", placement_name=carole.name, inputs={"value": "rep_add"},
+            name="result", placement_name=carole.name, inputs={"value": "rep_add"},
             output_type=RingTensorType(),
         )
     )
@@ -732,38 +838,65 @@ def f(arg1, arg2):
 
     return serialize_computation(comp)
 
-"#,
-            "comp_graph.py",
-            "comp_graph",
-        )
-        .map_err(|e| {
-            e.print(py);
-            e
-        })
-        .unwrap();
-
-        let x = vec![[1.0, 2.0], [3.0, 4.0]];
-        let y = vec![[1.0, 2.0], [3.0, 0.0]];
-        let py_any = comp_graph_py
-            .getattr("f")
-            .map_err(|e| {
-                e.print(py);
-                e
-            })
-            .unwrap()
-            .call1((x, y))
-            .map_err(|e| {
-                e.print(py);
-                e
-            })
+"#;
+        let mul_code = py_code.replace("SPECIAL_OP", "MulOperation");
+        let x1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
             .unwrap();
-        let rhs = Float64Tensor::from(
-            array![[2.0, 4.0], [6.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
+        let y1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let result = run_binary_func(&x1, &y1, &mul_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x1) * Float64Tensor::from(y1))
         );
 
-        let outputs = create_rust_executor_from_python(py_any);
-        assert_eq!(outputs["output"], Value::Float64Tensor(rhs));
+        let x2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let add_code = py_code.replace("SPECIAL_OP", "AddOperation");
+        let result = run_binary_func(&x2, &y2, &add_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x2) + Float64Tensor::from(y2))
+        );
+
+        let x3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let sub_code = py_code.replace("SPECIAL_OP", "SubOperation");
+        let result = run_binary_func(&x3, &y3, &sub_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x3) - Float64Tensor::from(y3))
+        );
+
+        let x4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let dot_code = py_code.replace("SPECIAL_OP", "DotOperation");
+        let result = run_binary_func(&x4, &y4, &dot_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
+        );
     }
 }
