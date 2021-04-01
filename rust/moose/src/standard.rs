@@ -171,6 +171,12 @@ where
     }
 }
 
+impl<T> From<Vec<T>> for StandardTensor<T> {
+    fn from(v: Vec<T>) -> StandardTensor<T> {
+        StandardTensor(Array::from(v).into_dyn())
+    }
+}
+
 impl<T> From<Array1<T>> for StandardTensor<T> {
     fn from(v: Array1<T>) -> StandardTensor<T> {
         StandardTensor(v.into_dyn())
