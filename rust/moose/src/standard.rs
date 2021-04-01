@@ -177,6 +177,12 @@ impl<T> From<Vec<T>> for StandardTensor<T> {
     }
 }
 
+impl<T> From<Vec<[T; 2]>> for StandardTensor<T> {
+    fn from(v: Vec<[T; 2]>) -> StandardTensor<T> {
+        StandardTensor(Array::from(v).into_dyn())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
