@@ -25,6 +25,7 @@ enum PyOperation {
     std_AddOperation(PyAddOperation),
     std_SubOperation(PySubOperation),
     std_MulOperation(PyMulOperation),
+    std_DotOperation(PyDotOperation),
     std_SerializeOperation(PySerializeOperation),
     std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
@@ -180,6 +181,14 @@ struct PySubOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyMulOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyDotOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -500,6 +509,15 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_DotOperation(op) => Ok(Operation {
+                        kind: StdDot(StdDotOp {
+                            lhs: Ty::Float64TensorTy,
+                            rhs: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_SendOperation(op) => Ok(Operation {
                         kind: Send(SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
@@ -598,7 +616,7 @@ mod tests {
         exec.run_computation(&sorted_ops, 12345, env).unwrap()
     }
 
-    fn run_binary_func(x: ArrayD<f64>, y: ArrayD<f64>, py_code: &str) -> Value {
+    fn run_binary_func(x: &ArrayD<f64>, y: &ArrayD<f64>, py_code: &str) -> Value {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
@@ -688,48 +706,63 @@ def f(arg1, arg2):
         "#;
 
         let mul_code = py_code.replace("SPECIAL_OP", "MulOperation");
-        let x1 = array![[1.0, 2.0], [3.0, 4.0]];
-        let y1 = array![[1.0, 2.0], [3.0, 4.0]];
+        let x1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
 
-        let result = run_binary_func(
-            x1.clone().into_dimensionality::<IxDyn>().unwrap(),
-            y1.clone().into_dimensionality::<IxDyn>().unwrap(),
-            &mul_code,
-        );
+        let result = run_binary_func(&x1, &y1, &mul_code);
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x1.clone()) * Float64Tensor::from(y1.clone()))
+            Value::Float64Tensor(Float64Tensor::from(x1) * Float64Tensor::from(y1))
         );
 
-        let x2 = array![[1.0, 2.0], [3.0, 4.0]];
-        let y2 = array![[1.0, 2.0], [3.0, 4.0]];
+        let x2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
 
         let add_code = py_code.replace("SPECIAL_OP", "AddOperation");
-        let result = run_binary_func(
-            x2.clone().into_dimensionality::<IxDyn>().unwrap(),
-            y2.clone().into_dimensionality::<IxDyn>().unwrap(),
-            &add_code,
-        );
+        let result = run_binary_func(&x2, &y2, &add_code);
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x2.clone()) + Float64Tensor::from(y2.clone()))
+            Value::Float64Tensor(Float64Tensor::from(x2) + Float64Tensor::from(y2))
         );
 
-        let x3 = array![[1.0, 2.0], [3.0, 4.0]];
-        let y3 = array![[1.0, 2.0], [3.0, 4.0]];
+        let x3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
 
         let sub_code = py_code.replace("SPECIAL_OP", "SubOperation");
-        let result = run_binary_func(
-            x3.clone().into_dimensionality::<IxDyn>().unwrap(),
-            y3.clone().into_dimensionality::<IxDyn>().unwrap(),
-            &sub_code,
-        );
+        let result = run_binary_func(&x3, &y3, &sub_code);
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x3.clone()) - Float64Tensor::from(y3.clone()))
+            Value::Float64Tensor(Float64Tensor::from(x3) - Float64Tensor::from(y3))
+        );
+
+        let x4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let dot_code = py_code.replace("SPECIAL_OP", "DotOperation");
+        let result = run_binary_func(&x4, &y4, &dot_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
         );
     }
 
@@ -809,48 +842,63 @@ def f(arg1, arg2):
 
 "#;
         let mul_code = py_code.replace("SPECIAL_OP", "MulOperation");
-        let x1 = array![[1.0, 2.0], [3.0, 4.0]];
-        let y1 = array![[1.0, 2.0], [3.0, 4.0]];
+        let x1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y1 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
 
-        let result = run_binary_func(
-            x1.clone().into_dimensionality::<IxDyn>().unwrap(),
-            y1.clone().into_dimensionality::<IxDyn>().unwrap(),
-            &mul_code,
-        );
+        let result = run_binary_func(&x1, &y1, &mul_code);
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x1.clone()) * Float64Tensor::from(y1.clone()))
+            Value::Float64Tensor(Float64Tensor::from(x1) * Float64Tensor::from(y1))
         );
 
-        let x2 = array![[1.0, 2.0], [3.0, 4.0]];
-        let y2 = array![[1.0, 2.0], [3.0, 4.0]];
+        let x2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y2 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
 
         let add_code = py_code.replace("SPECIAL_OP", "AddOperation");
-        let result = run_binary_func(
-            x2.clone().into_dimensionality::<IxDyn>().unwrap(),
-            y2.clone().into_dimensionality::<IxDyn>().unwrap(),
-            &add_code,
-        );
+        let result = run_binary_func(&x2, &y2, &add_code);
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x2.clone()) + Float64Tensor::from(y2.clone()))
+            Value::Float64Tensor(Float64Tensor::from(x2) + Float64Tensor::from(y2))
         );
 
-        let x3 = array![[1.0, 2.0], [3.0, 4.0]];
-        let y3 = array![[1.0, 2.0], [3.0, 4.0]];
+        let x3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y3 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
 
         let sub_code = py_code.replace("SPECIAL_OP", "SubOperation");
-        let result = run_binary_func(
-            x3.clone().into_dimensionality::<IxDyn>().unwrap(),
-            y3.clone().into_dimensionality::<IxDyn>().unwrap(),
-            &sub_code,
-        );
+        let result = run_binary_func(&x3, &y3, &sub_code);
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x3.clone()) - Float64Tensor::from(y3.clone()))
+            Value::Float64Tensor(Float64Tensor::from(x3) - Float64Tensor::from(y3))
+        );
+
+        let x4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let y4 = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let dot_code = py_code.replace("SPECIAL_OP", "DotOperation");
+        let result = run_binary_func(&x4, &y4, &dot_code);
+
+        assert_eq!(
+            result,
+            Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
         );
     }
 }

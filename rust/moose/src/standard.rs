@@ -173,16 +173,15 @@ where
 
 impl<T> From<Array1<T>> for StandardTensor<T> {
     fn from(v: Array1<T>) -> StandardTensor<T> {
-        StandardTensor(Array::from(v).into_dyn())
+        StandardTensor(v.into_dyn())
     }
 }
 
 impl<T> From<Array2<T>> for StandardTensor<T> {
     fn from(v: Array2<T>) -> StandardTensor<T> {
-        StandardTensor(Array::from(v).into_dyn())
+        StandardTensor(v.into_dyn())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
