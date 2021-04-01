@@ -596,8 +596,6 @@ impl TryFrom<PyComputation> for Computation {
 
 #[cfg(test)]
 mod tests {
-    use std::vec;
-
     use super::*;
     use maplit::hashmap;
     use moose::execution;
