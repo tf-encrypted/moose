@@ -277,7 +277,5 @@ mod tests {
                     .unwrap()
             )
         );
-    }
-
-    
+    }  
 }
