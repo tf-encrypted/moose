@@ -22,6 +22,9 @@ pub enum Error {
 
     #[error("Compilation error: {0}")]
     Compilation(String),
+
+    #[error("Networking error: {0}")]
+    Networking(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
