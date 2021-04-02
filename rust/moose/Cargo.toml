@@ -25,8 +25,8 @@ futures = "~0.3"
 itertools = "~0.9"
 log = "~0.4"
 maplit = "~1.0"
-ndarray = { version="~0.13.1", features=["serde"] }
-ndarray-linalg = "~0.13.1"
+ndarray = { version="~0.14", features=["serde"] }
+ndarray-linalg = { version = "0.13", features = ["openblas-static"] }
 num-traits = "~0.2"
 petgraph = "~0.5"
 rand = "~0.7"

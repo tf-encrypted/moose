@@ -1,8 +1,11 @@
+extern crate ndarray;
+extern crate ndarray_linalg;
+
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
+use ndarray_linalg::types::{Lapack, Scalar};
+use ndarray_linalg::*;
 use num_traits::FromPrimitive;
-use ndarray_linalg::solve::Inverse;
-use ndarray_linalg::types::{Scalar, Lapack};
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub};
 
@@ -124,16 +127,26 @@ where
     }
 }
 
-impl<T> StandardTensor<T> where T: Scalar + Lapack {
-    pub fn inv(self) -> Self {        
+impl<T> StandardTensor<T>
+where
+    T: Scalar + Lapack,
+{
+    pub fn inv(self) -> Self {
         match self.0.ndim() {
             2 => {
                 let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
-                StandardTensor::<T>(two_dim.inv().unwrap())
+                StandardTensor::<T>::from(
+                    two_dim
+                        .inv()
+                        .unwrap()
+                        .into_dimensionality::<IxDyn>()
+                        .unwrap(),
+                )
             }
             other_rank => panic!(
-                "Inverse only defined for rank 2 matrices, not rank {:?}", other_rank,
-            )
+                "Inverse only defined for rank 2 matrices, not rank {:?}",
+                other_rank,
+            ),
         }
     }
 }
