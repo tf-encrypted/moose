@@ -3,7 +3,7 @@ use crate::prim::{Nonce, PrfKey, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, Shape,
-    Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -37,6 +37,7 @@ pub enum Ty {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
+    String(std::string::String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Shape(Shape),
@@ -61,6 +62,7 @@ impl Value {
         use Value::*;
         match self {
             Unit => UnitTy,
+            String(_) => StringTy,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
             Shape(_) => ShapeTy,
@@ -131,6 +133,7 @@ convert!(Uint64Tensor);
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
     Identity(IdentityOp),
+    Save(SaveOp),
     Send(SendOp),
     Receive(ReceiveOp),
     Input(InputOp),
@@ -193,6 +196,12 @@ pub struct InputOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OutputOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SaveOp {
+    pub key: String,
     pub ty: Ty,
 }
 

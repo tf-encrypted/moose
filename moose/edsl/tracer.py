@@ -1,6 +1,6 @@
 import inspect
 from collections import defaultdict
-
+import numpy as np
 from moose.compiler.compiler import Compiler
 from moose.computation import dtypes
 from moose.computation.base import Computation
@@ -37,6 +37,8 @@ from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
 from moose.computation.standard import UnknownType
+from moose.computation.standard import TensorValue
+from moose.computation.standard import StandardValue
 from moose.edsl.base import AbsExpression
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
@@ -198,6 +200,9 @@ class AstTracer:
         placement = self.visit_placement_expression(constant_expression.placement)
         value = constant_expression.value
         dtype = constant_expression.dtype
+
+        assert isinstance(value, StandardValue)
+
         if dtype is None:
             output_type = UnknownType()
         else:

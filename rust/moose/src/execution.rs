@@ -11,7 +11,7 @@ use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, hash::Hash};
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -157,6 +157,8 @@ type NullarySyncKernel = Box<dyn Fn(&SyncSession) -> Result<Value> + Send + Sync
 
 type UnarySyncKernel = Box<dyn Fn(&SyncSession, Value) -> Result<Value> + Send + Sync>;
 
+type UnarySyncModKernel = Box<dyn Fn(&mut SyncSession, Value) -> Result<Value> + Send + Sync>;
+
 type BinarySyncKernel = Box<dyn Fn(&SyncSession, Value, Value) -> Result<Value> + Send + Sync>;
 
 type TernarySyncKernel =
@@ -167,6 +169,7 @@ type VariadicSyncKernel = Box<dyn Fn(&SyncSession, Vec<Value>) -> Result<Value> 
 pub enum SyncKernel {
     Nullary(NullarySyncKernel),
     Unary(UnarySyncKernel),
+    UnaryMod(UnarySyncModKernel),
     Binary(BinarySyncKernel),
     Ternary(TernarySyncKernel),
     Variadic(VariadicSyncKernel),
@@ -378,6 +381,7 @@ pub struct SyncSession {
     pub sid: SessionId,
     pub args: Environment<Value>,
     pub networking: SyncNetworkingImpl,
+    pub storage: Environment<Value>,
 }
 
 pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
@@ -457,6 +461,22 @@ impl Compile<CompiledSyncOperation> for Operation {
                     }),
                 })
             }
+            SyncKernel::UnaryMod(k) => {
+                check_arity(&self.name, &self.inputs, 1)?;
+                let x0_name = self.inputs[0].clone();
+                Ok(CompiledSyncOperation {
+                    name: self.name.clone(),
+                    kernel: Box::new(move |sess, env| {
+                        // TODO(Morten) avoid cloning
+                        let x0 = env
+                            .get(&x0_name)
+                            .ok_or(Error::MalformedEnvironment)?
+                            .clone();
+                        k(sess, x0)
+                    }),
+                })
+            }
+
             SyncKernel::Binary(k) => {
                 check_arity(&self.name, &self.inputs, 2)?;
                 let x0_name = self.inputs[0].clone();
@@ -831,12 +851,14 @@ pub type Environment<V> = HashMap<String, V>;
 /// and development only due to its unforgiving but highly predictable behaviour.
 pub struct EagerExecutor {
     networking: Rc<dyn SyncNetworking>,
+    storage: Environment<Value>
 }
 
 impl EagerExecutor {
     pub fn new() -> EagerExecutor {
         let networking = Rc::new(LocalSyncNetworking::default());
-        EagerExecutor { networking }
+        let storage: Environment<Value> = HashMap::new();
+        EagerExecutor { networking, storage }
     }
 
     pub fn run_computation(
@@ -851,6 +873,7 @@ impl EagerExecutor {
             sid,
             args,
             networking: Rc::clone(&self.networking),
+            storage:self.storage.clone(),
         };
 
         compiled_comp.apply(&sess)
@@ -868,6 +891,7 @@ pub struct AsyncSession {
     pub sid: SessionId,
     pub args: AsyncArgs,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    pub storage: AsyncArgs,
 }
 
 pub type AsyncArgs = Environment<AsyncReceiver>;
@@ -891,12 +915,14 @@ impl AsyncSessionJoinHandle {
 
 pub struct AsyncExecutor {
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    pub storage: AsyncArgs,
 }
 
 impl AsyncExecutor {
     pub fn new() -> AsyncExecutor {
         let networking = Arc::new(LocalAsyncNetworking::default());
-        AsyncExecutor { networking }
+        let storage: AsyncArgs = HashMap::new();
+        AsyncExecutor { networking, storage }
     }
 
     pub fn run_computation(
@@ -911,6 +937,7 @@ impl AsyncExecutor {
             sid,
             args,
             networking: Arc::clone(&self.networking),
+            storage: HashMap::new(),
         });
 
         // TODO don't return unexpected error

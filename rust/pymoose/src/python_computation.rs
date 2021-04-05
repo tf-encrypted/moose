@@ -331,8 +331,7 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
             Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
         }
         PyValue::std_StringValue { value } => {
-            let _ = value;
-            unimplemented!()
+            Ok(Value::String(String::from(value)))
         }
         PyValue::std_TensorValue { value } => match value {
             PyNdarray::float32 {
@@ -609,6 +608,11 @@ mod tests {
         let rust_comp: Computation = comp.try_into().unwrap();
         let sorted_ops = rust_comp.toposort().unwrap();
 
+        println!("Sorted ops: ");
+        for op in sorted_ops.operations.iter() {
+            println!("{:?}", op);
+        }
+
         let exec = execution::EagerExecutor::new();
         let env = hashmap![];
         exec.run_computation(&sorted_ops, 12345, env).unwrap()
@@ -636,6 +640,35 @@ mod tests {
             })
             .unwrap()
             .call1((xc, yc))
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap();
+
+        let outputs = create_rust_executor_from_python(py_any);
+        outputs["result"].clone()
+    }
+
+    fn run_call0_func(py_code: &str) -> Value {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        let comp_graph_py = PyModule::from_code(py, py_code, "comp_graph.py", "comp_graph")
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap();
+
+        let py_any = comp_graph_py
+            .getattr("f")
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap()
+            .call0()
             .map_err(|e| {
                 e.print(py);
                 e
@@ -898,5 +931,132 @@ def f(arg1, arg2):
             result,
             Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
         );
+    }
+    #[test]
+    fn test_simple() {
+        let py_code = r#"
+import numpy as np
+from moose.computation import ring as ring_dialect
+from moose.computation import standard as standard_dialect
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
+from moose.computation.utils import serialize_computation
+from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
+from moose.computation import dtypes
+
+def f():
+    comp = Computation(operations={}, placements={})
+    alice = comp.add_placement(HostPlacement(name="alice"))
+
+    comp.add_operation(
+        standard_dialect.ConstantOperation(
+            name="constant_0",
+            inputs={},
+            placement_name="alice",
+            value=standard_dialect.StringValue(value="w_uri"),
+            output_type=TensorType(dtype=dtypes.string),
+        )
+    )
+
+    return serialize_computation(comp)
+
+    "#;
+
+        let result = run_call0_func(&py_code);
+    }
+    #[test]
+    fn test_deserialize_linear_regression() {
+        let py_code = r#"
+import numpy as np
+
+from moose import edsl
+from moose.computation.utils import serialize_computation
+from moose.computation import standard as standard_dialect
+
+
+def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
+    rng = np.random.default_rng()
+    x_data = rng.normal(size=(n_instances, n_features))
+    y_data = np.dot(x_data, np.ones(n_features) * coeff) + shift
+    return x_data, y_data
+
+
+def mse(y_pred, y_true):
+    return edsl.mean(edsl.square(edsl.sub(y_pred, y_true)), axis=0)
+
+
+def ss_res(y_pred, y_true):
+    squared_residuals = edsl.square(edsl.sub(y_true, y_pred))
+    return edsl.sum(squared_residuals, axis=0)
+
+
+def ss_tot(y_true):
+    y_mean = edsl.mean(y_true)
+    squared_deviations = edsl.square(edsl.sub(y_true, y_mean))
+    return edsl.sum(squared_deviations, axis=0)
+
+
+def r_squared(ss_res, ss_tot):
+    residuals_ratio = edsl.div(ss_res, ss_tot)
+    return edsl.sub(edsl.constant(1.0, dtype=edsl.float32), residuals_ratio)
+
+
+def f():
+    x_owner = edsl.host_placement(name="x-owner")
+    y_owner = edsl.host_placement(name="y-owner")
+    model_owner = edsl.host_placement(name="model-owner")
+#    replicated_plc = edsl.replicated_placement(
+#        players=[x_owner, y_owner, model_owner], name="replicated-plc"
+#    )
+
+    x_uri, y_uri = generate_data(seed=42, n_instances=10, n_features=1)
+
+    @edsl.computation
+    def my_comp():
+
+        with x_owner:
+            X = edsl.constant(standard_dialect.TensorValue(value=x_uri), dtype=edsl.float32)
+            X = edsl.atleast_2d(X)
+
+#            bias_shape = edsl.slice(edsl.shape(X), begin=0, end=1)
+#            bias = edsl.ones(bias_shape, dtype=edsl.float32)
+#            reshaped_bias = edsl.expand_dims(bias, 1)
+#            X_b = edsl.concatenate([reshaped_bias, X], axis=1)
+#            A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
+#            B = edsl.dot(A, edsl.transpose(X_b))
+
+#        with y_owner:
+#            y_true = edsl.atleast_2d(edsl.constant(y_uri, dtype=edsl.float32))
+#            totals_ss = ss_tot(y_true)
+
+        # with replicated_plc:
+        #     w = edsl.dot(B, y_true)
+        #     y_pred = edsl.dot(X_b, w)
+        #     mse_result = mse(y_pred, y_true)
+        #     residuals_ss = ss_res(y_pred, y_true)
+
+        # with model_owner:
+        #     rsquared_result = r_squared(residuals_ss, totals_ss)
+
+#        with model_owner:
+#            res = (
+#                edsl.save("w_uri", X),
+#                # edsl.save("mse_uri", mse_result),
+#                # edsl.save("rsquared_uri", rsquared_result),
+#            )
+
+        return X
+
+    concrete_comp = edsl.trace(my_comp)
+    print(concrete_comp)
+    return serialize_computation(concrete_comp)
+
+
+f()
+
+"#;
+
+        let result = run_call0_func(&py_code);
     }
 }

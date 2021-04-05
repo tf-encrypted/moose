@@ -1,4 +1,4 @@
-use crate::computation::*;
+use crate::{computation::*, execution::SyncSession};
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_error, AsyncKernel, Compile, Kernel, SyncKernel,
@@ -15,6 +15,7 @@ impl Compile<SyncKernel> for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.compile(),
+            Save(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
             Input(op) => op.compile(),
@@ -56,6 +57,7 @@ impl Compile<AsyncKernel> for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.compile(),
+            Save(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
             Input(op) => op.compile(),
@@ -622,6 +624,32 @@ impl Compile<AsyncKernel> for OutputOp {
         })))
     }
 }
+
+impl Compile<SyncKernel> for SaveOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        let expected_ty = self.ty;
+        let key= self.key.clone();
+        Ok(SyncKernel::UnaryMod(Box::new(move |sess: &mut SyncSession, x0: Value| {
+            sess.storage.insert(key, x0.clone());
+            Ok(Value::Unit)
+        })))
+    }
+}
+
+impl Compile<AsyncKernel> for SaveOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        use std::sync::Arc;
+        // let key= Arc::new(self.key.clone());
+        Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
+            tokio::spawn(async move {
+                let val = x0.await.map_err(map_receive_error)?;
+                sender.send(val).map_err(map_send_error)
+            })
+        })))
+    }
+}
+
+
 
 #[test]
 fn test_standard_shape_ops() {

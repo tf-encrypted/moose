@@ -13,6 +13,7 @@ from moose.computation import dtypes
 from moose.computation.standard import StringType
 from moose.computation.standard import TensorType
 from moose.computation.standard import UnknownType
+from moose.computation.standard import StringValue
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
@@ -306,6 +307,7 @@ def constant(value, dtype=None, placement=None):
                 f"user-supplied dtype argument `{dtype}`."
             )
         dtype = dtype or dtypes.string
+        value = StringValue(value=value)
 
     return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
 
