@@ -147,6 +147,7 @@ pub enum Operator {
     StdShape(StdShapeOp),
     StdSum(StdSumOp),
     StdOnes(StdOnesOp),
+    StdConcatenate(StdConcatenateOp),
     StdTranspose(StdTransposeOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
@@ -240,6 +241,12 @@ pub struct StdMeanOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdOnesOp {
     pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdConcatenateOp {
+    pub ty: Ty,
+    pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
