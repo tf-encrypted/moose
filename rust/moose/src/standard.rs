@@ -31,6 +31,11 @@ impl Shape {
         self.0.insert(axis, 1);
         self
     }
+
+    pub fn slice(self, begin: usize, end: usize) -> Self {
+        let slc: Vec<_> = self.0[begin..end].into();
+        Shape(slc)
+    }
 }
 
 impl<T> StandardTensor<T>
@@ -259,6 +264,13 @@ mod tests {
                     .unwrap()
             )
         );
+    }
+
+    #[test]
+    fn test_shape_slice() {
+        let x_shape = Shape(vec![1, 2, 3]);
+        let x_slice = x_shape.slice(1, 2);
+        assert_eq!(x_slice, Shape(vec![2, 3]))
     }
 
     #[test]
