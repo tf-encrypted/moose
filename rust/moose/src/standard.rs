@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn test_shape_slice() {
         let x_shape = Shape(vec![1, 2, 3]);
-        let x_slice = x_shape.slice(1, 2);
+        let x_slice = x_shape.slice(1, 3);
         assert_eq!(x_slice, Shape(vec![2, 3]))
     }
 
