@@ -505,8 +505,9 @@ impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
         let op = self.clone();
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
-            let v: Value = sess.networking
-                .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
+            let v: Value =
+                sess.networking
+                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
             if v.ty() == op.expected_ty {
                 Ok(v)
             } else {
