@@ -529,7 +529,7 @@ impl Compile<AsyncKernel> for ReceiveOp {
                     .networking
                     .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)
                     .await?;
-                if v.ty() == op.expected_ty {
+                if v.ty() == op.ty {
                     sender.send(v).map_err(map_send_error)
                 } else {
                     Err(Error::TypeMismatch)
