@@ -4,9 +4,21 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 pub trait SyncNetworking {
-    fn send(&self, v: &Value, rendezvous_key: &RendezvousKey, session_id: &SessionId)
-        -> Result<()>;
-    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value>;
+    fn send(
+        &self,
+        value: &Value,
+        sender: &HostPlacement,
+        receiver: &HostPlacement,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<()>;
+    fn receive(
+        &self,
+        sender: &HostPlacement,
+        receiver: &HostPlacement,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<Value>;
 }
 
 #[async_trait]
@@ -33,6 +45,8 @@ impl SyncNetworking for LocalSyncNetworking {
     fn send(
         &self,
         val: &Value,
+        sender: &HostPlacement,
+        receiver: &HostPlacement,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
@@ -49,7 +63,13 @@ impl SyncNetworking for LocalSyncNetworking {
         Ok(())
     }
 
-    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value> {
+    fn receive(
+        &self,
+        sender: &HostPlacement,
+        receiver: &HostPlacement,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<Value> {
         let key = format!("{}/{}", session_id, rendezvous_key);
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
@@ -114,7 +134,9 @@ pub struct DummyNetworking(pub Value);
 impl SyncNetworking for DummyNetworking {
     fn send(
         &self,
-        _val: &Value,
+        _value: &Value,
+        sender: &HostPlacement,
+        receiver: &HostPlacement,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
@@ -122,7 +144,13 @@ impl SyncNetworking for DummyNetworking {
         Ok(())
     }
 
-    fn receive(&self, rendezvous_key: &RendezvousKey, session_id: &SessionId) -> Result<Value> {
+    fn receive(
+        &self,
+        sender: &HostPlacement,
+        receiver: &HostPlacement,
+        rendezvous_key: &RendezvousKey,
+        session_id: &SessionId,
+    ) -> Result<Value> {
         tracing::debug!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
         Ok(self.0.clone())
     }

@@ -508,7 +508,7 @@ impl Compile<SyncKernel> for ReceiveOp {
             let v: Value =
                 sess.networking
                     .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
-            if v.ty() == op.expected_ty {
+            if v.ty() == op.ty {
                 Ok(v)
             } else {
                 Err(Error::TypeMismatch)
