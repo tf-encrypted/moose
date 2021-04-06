@@ -184,6 +184,18 @@ impl Compile<Kernel> for StdOnesOp {
     }
 }
 
+impl Compile<Kernel> for StdConcatenateOp {
+    fn compile(&self) -> Result<Kernel> {
+        let axis = self.axis as usize;
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(Vec::<Float32Tensor>, |xs| standard::concatenate(axis, &xs[..]))
+            },
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
 impl Compile<Kernel> for StdExpandDimsOp {
     fn compile(&self) -> Result<Kernel> {
         let axis = self.axis as usize;
