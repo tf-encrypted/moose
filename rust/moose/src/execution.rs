@@ -136,7 +136,7 @@ macro_rules! closure_kernel {
         Ok(Kernel::VariadicClosure(Arc::new(move |xs| {
             let xs = xs
                 .into_iter()
-                .map(|xi| <$t as TryFrom<Value>>::try_from(xi))
+                .map(<$t as TryFrom<Value>>::try_from)
                 .collect::<Result<Vec<_>>>()?;
             let y = g($f)(xs);
             Ok(Value::from(y))

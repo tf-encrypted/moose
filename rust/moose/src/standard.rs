@@ -219,8 +219,9 @@ impl<T> From<Array2<T>> for StandardTensor<T> {
 }
 
 pub fn concatenate<T>(axis: usize, arrays: &[StandardTensor<T>]) -> StandardTensor<T>
-where T: LinalgScalar
- {
+where
+    T: LinalgScalar,
+{
     let ax = Axis(axis);
     let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
 
@@ -304,9 +305,9 @@ mod tests {
         let expected = StandardTensor::<f32>::from(
             array![[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]]]
                 .into_dimensionality::<IxDyn>()
-                .unwrap()
+                .unwrap(),
         );
-        let conc = concatenate(0,&vec![a, b][..]);
+        let conc = concatenate(0, &vec![a, b][..]);
         assert_eq!(conc, expected)
     }
 }

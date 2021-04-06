@@ -1,5 +1,4 @@
 use crate::computation::*;
-use crate::standard;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_error, AsyncKernel, Compile, Kernel, SyncKernel,
@@ -7,7 +6,8 @@ use crate::execution::{
 use crate::prim::{PrfKey, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
-    Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
+    concatenate, Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor,
+    Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
 
@@ -190,22 +190,18 @@ impl Compile<Kernel> for StdConcatenateOp {
         let axis = self.axis as usize;
         match self.ty {
             Ty::Float32TensorTy => {
-                closure_kernel!(vec[Float32Tensor], |xs| standard::concatenate(axis, &xs[..]))
+                closure_kernel!(vec[Float32Tensor], |xs| concatenate(axis, &xs[..]))
             }
             Ty::Float64TensorTy => {
-                closure_kernel!(vec[Float64Tensor], |xs| standard::concatenate(axis, &xs[..]))
+                closure_kernel!(vec[Float64Tensor], |xs| concatenate(axis, &xs[..]))
             }
-            Ty::Int32TensorTy => {
-                closure_kernel!(vec[Int32Tensor], |xs| standard::concatenate(axis, &xs[..]))
-            }
-            Ty::Int64TensorTy => {
-                closure_kernel!(vec[Int64Tensor], |xs| standard::concatenate(axis, &xs[..]))
-            }
+            Ty::Int32TensorTy => closure_kernel!(vec[Int32Tensor], |xs| concatenate(axis, &xs[..])),
+            Ty::Int64TensorTy => closure_kernel!(vec[Int64Tensor], |xs| concatenate(axis, &xs[..])),
             Ty::Uint32TensorTy => {
-                closure_kernel!(vec[Uint32Tensor], |xs| standard::concatenate(axis, &xs[..]))
+                closure_kernel!(vec[Uint32Tensor], |xs| concatenate(axis, &xs[..]))
             }
             Ty::Uint64TensorTy => {
-                closure_kernel!(vec[Uint64Tensor], |xs| standard::concatenate(axis, &xs[..]))
+                closure_kernel!(vec[Uint64Tensor], |xs| concatenate(axis, &xs[..]))
             }
             _ => Err(Error::UnimplementedOperator),
         }
