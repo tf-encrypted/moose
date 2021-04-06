@@ -29,6 +29,7 @@ impl Compile<SyncKernel> for Operator {
             StdOnes(op) => op.compile(),
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
+            StdAtLeast2D(op) => op.compile(),
             StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
@@ -70,6 +71,7 @@ impl Compile<AsyncKernel> for Operator {
             StdOnes(op) => op.compile(),
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
+            StdAtLeast2D(op) => op.compile(),
             StdShape(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
@@ -157,7 +159,6 @@ std_binary_kernel!(StdSubOp, |x, y| x - y);
 std_binary_kernel!(StdMulOp, |x, y| x * y);
 std_binary_kernel!(StdDivOp, |x, y| x / y);
 std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
-std_unary_kernel!(StdAtLeast2DOp, |x| x.atleast_2d());
 std_unary_kernel!(StdShapeOp, |x| x.shape());
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
@@ -263,6 +264,33 @@ impl Compile<Kernel> for StdReshapeOp {
             Ty::Uint64TensorTy => {
                 function_kernel!(Uint64Tensor, Shape, |x, newshape| x.reshape(newshape))
             }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdAtLeast2DOp {
+    fn compile(&self) -> Result<Kernel> {
+        let tcv = self.to_column_vector;
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+            },
+            Ty::Float64TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+            },
+            Ty::Int32TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+            },
+            Ty::Int64TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+            },
+            Ty::Uint32TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+            },
+            Ty::Uint64TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+            },
             _ => Err(Error::UnimplementedOperator),
         }
     }

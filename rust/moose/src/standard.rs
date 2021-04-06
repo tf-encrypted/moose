@@ -37,12 +37,13 @@ impl<T> StandardTensor<T>
 where
     T: LinalgScalar,
 {
-    pub fn atleast_2d(self) -> StandardTensor<T> {
+    pub fn atleast_2d(self, to_column_vector: bool) -> StandardTensor<T> {
         match self.0.ndim() {
             0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap()),
             1 => {
                 let length = self.0.len();
-                StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, length])).unwrap())
+                let newshape = if to_column_vector {IxDyn(&[length, 1])} else {IxDyn(&[1, length])};
+                StandardTensor::<T>(self.0.into_shape(newshape).unwrap())
             }
             2 => self,
             otherwise => panic!(
@@ -313,17 +314,29 @@ mod tests {
                 .unwrap(),
         );
         let c = StandardTensor::<f32>::from(
+            array![1.0, 2.0, 3.0, 4.0]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let c_exp = StandardTensor::<f32>::from(
+            array![[1.0], [2.0], [3.0], [4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let d = StandardTensor::<f32>::from(
             Array::from_elem([], 1.0)
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let c_exp =
+        let d_exp =
             StandardTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
-        let ax = a.atleast_2d();
-        let bx = b.atleast_2d();
-        let cx = c.atleast_2d();
+        let ax = a.atleast_2d(true);
+        let bx = b.atleast_2d(false);
+        let cx = c.atleast_2d(true);
+        let dx = d.atleast_2d(true);
         assert_eq!(ax, a_exp);
         assert_eq!(bx, b_exp);
         assert_eq!(cx, c_exp);
+        assert_eq!(dx, d_exp);
     }
 }

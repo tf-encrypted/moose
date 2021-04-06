@@ -144,6 +144,7 @@ pub enum Operator {
     StdMean(StdMeanOp),
     StdExpandDims(StdExpandDimsOp),
     StdReshape(StdReshapeOp),
+    StdAtLeast2D(StdAtLeast2DOp),
     StdShape(StdShapeOp),
     StdSum(StdSumOp),
     StdOnes(StdOnesOp),
@@ -245,6 +246,7 @@ pub struct StdOnesOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdAtLeast2DOp {
     pub ty: Ty,
+    pub to_column_vector: bool
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
