@@ -474,9 +474,10 @@ impl Compile<Kernel> for ConstantOp {
 
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let rdv = self.rendezvous_key.clone();
+        let op = self.clone();
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
-            sess.networking.send(&v, &rdv, &sess.sid)?;
+            sess.networking
+                .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
             Ok(Value::Unit)
         })))
     }
@@ -485,13 +486,15 @@ impl Compile<SyncKernel> for SendOp {
 impl Compile<AsyncKernel> for SendOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
-        let rdv = Arc::new(self.rendezvous_key.clone());
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Unary(Box::new(move |sess, v, sender| {
             let sess = Arc::clone(sess);
-            let rdv = Arc::clone(&rdv);
+            let op = Arc::clone(&op);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                sess.networking.send(&v, &rdv, &sess.sid).await?;
+                sess.networking
+                    .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)
+                    .await?;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
@@ -500,12 +503,13 @@ impl Compile<AsyncKernel> for SendOp {
 
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let rdv = self.rendezvous_key.clone();
-        let expected_ty = self.ty;
+        let op = self.clone();
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
-            let val = sess.networking.receive(&rdv, &sess.sid)?;
-            if val.ty() == expected_ty {
-                Ok(val)
+            let v: Value =
+                sess.networking
+                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
+            if v.ty() == op.ty {
+                Ok(v)
             } else {
                 Err(Error::TypeMismatch)
             }
@@ -516,15 +520,17 @@ impl Compile<SyncKernel> for ReceiveOp {
 impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
-        let rdv = Arc::new(self.rendezvous_key.clone());
-        let expected_ty = self.ty;
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
-            let rdv = Arc::clone(&rdv);
+            let op = Arc::clone(&op);
             tokio::spawn(async move {
-                let val: Value = sess.networking.receive(&rdv, &sess.sid).await?;
-                if val.ty() == expected_ty {
-                    sender.send(val).map_err(map_send_error)
+                let v: Value = sess
+                    .networking
+                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)
+                    .await?;
+                if v.ty() == op.ty {
+                    sender.send(v).map_err(map_send_error)
                 } else {
                     Err(Error::TypeMismatch)
                 }
@@ -536,9 +542,9 @@ impl Compile<AsyncKernel> for ReceiveOp {
 impl Compile<SyncKernel> for IdentityOp {
     fn compile(&self) -> Result<SyncKernel> {
         let expected_ty = self.ty;
-        Ok(SyncKernel::Unary(Box::new(move |_sess, val| {
-            if val.ty() == expected_ty {
-                Ok(val)
+        Ok(SyncKernel::Unary(Box::new(move |_sess, v| {
+            if v.ty() == expected_ty {
+                Ok(v)
             } else {
                 Err(Error::TypeMismatch)
             }
@@ -549,11 +555,11 @@ impl Compile<SyncKernel> for IdentityOp {
 impl Compile<AsyncKernel> for IdentityOp {
     fn compile(&self) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
-        Ok(AsyncKernel::Unary(Box::new(move |_sess, val, sender| {
+        Ok(AsyncKernel::Unary(Box::new(move |_sess, v, sender| {
             tokio::spawn(async move {
-                let val: Value = val.await.map_err(map_receive_error)?;
-                if val.ty() == expected_ty {
-                    sender.send(val).map_err(map_send_error)
+                let v: Value = v.await.map_err(map_receive_error)?;
+                if v.ty() == expected_ty {
+                    sender.send(v).map_err(map_send_error)
                 } else {
                     Err(Error::TypeMismatch)
                 }
