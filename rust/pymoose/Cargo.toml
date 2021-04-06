@@ -17,10 +17,10 @@ crate-type = ["cdylib"]
 [dependencies]
 anyhow = "~1.0"
 maplit = "~1.0"
-numpy = "~0.12"
-ndarray = "~0.13.1"
+numpy = "~0.13"
+ndarray = "~0.14"
 moose = { path = "../moose" }
-pyo3 = "~0.12"
+pyo3 = "~0.13"
 rmp-serde = "~0.15"
 serde = { version="~1.0", features=["derive"] }
 serde_bytes="~0.11"

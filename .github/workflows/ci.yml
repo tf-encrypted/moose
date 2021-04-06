@@ -38,6 +38,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
 
+      - name: Install OpenBLAS.
+        run: |
+          sudo apt install libopenblas-dev
+
       - name: Create virtual environment.
         run: |
           python -m venv venv
