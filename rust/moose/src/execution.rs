@@ -374,106 +374,6 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
     }
 }
 
-<<<<<<< HEAD
-pub struct SyncContext {
-    pub networking: Box<dyn Send + Sync + SyncNetworking>,
-}
-
-pub trait SyncNetworking {
-    fn send(
-        &self,
-        v: &Value,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    );
-    fn receive(
-        &self,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value>;
-}
-
-#[async_trait]
-pub trait AsyncNetworking {
-    async fn send(
-        &self,
-        v: &Value,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    );
-    async fn receive(
-        &self,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value>;
-}
-
-pub struct DummySyncNetworking;
-
-impl SyncNetworking for DummySyncNetworking {
-    fn send(
-        &self,
-        _v: &Value,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) {
-        println!("Sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-    }
-
-    fn receive(
-        &self,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value> {
-        println!("Receiving; rdv:'{}', sid:{}", rendezvous_key, session_id);
-        use crate::standard::Shape;
-        Ok(Value::Shape(Shape(vec![0])))
-    }
-}
-
-pub struct DummyAsyncNetworking;
-
-#[async_trait]
-impl AsyncNetworking for DummyAsyncNetworking {
-    async fn send(
-        &self,
-        _v: &Value,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) {
-        println!("Async sending; rdv:'{}' sid:{}", rendezvous_key, session_id);
-    }
-
-    async fn receive(
-        &self,
-        sender: &str,
-        receiver: &str,
-        rendezvous_key: &RendezvousKey,
-        session_id: &SessionId,
-    ) -> Result<Value> {
-        println!(
-            "Async receiving; rdv:'{}', sid:{}",
-            rendezvous_key, session_id
-        );
-        use crate::standard::Shape;
-        Ok(Value::Shape(Shape(vec![0])))
-    }
-}
-=======
 pub struct SyncSession {
     pub sid: SessionId,
     pub args: Environment<Value>,
@@ -481,7 +381,6 @@ pub struct SyncSession {
 }
 
 pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
->>>>>>> main
 
 type SyncOperationKernel =
     Box<dyn Fn(&SyncSession, &Environment<Value>) -> Result<Value> + Send + Sync>;
