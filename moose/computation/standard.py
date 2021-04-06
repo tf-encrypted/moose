@@ -10,6 +10,7 @@ import numpy as np
 
 from moose.computation import dtypes
 from moose.computation.base import Operation
+from moose.computation.base import Value
 from moose.computation.base import ValueType
 
 
@@ -70,7 +71,7 @@ class InputOperation(StandardOperation):
 
 @dataclass
 class OutputOperation(StandardOperation):
-    output_type: ValueType = UnitType()
+    output_type: ValueType
 
 
 @dataclass
@@ -80,8 +81,30 @@ class ConcatenateOperation(StandardOperation):
 
 
 @dataclass
+class StandardValue(Value):
+    @classmethod
+    def dialect(cls):
+        return "std"
+
+
+@dataclass
+class ShapeValue(StandardValue):
+    value: tuple
+
+
+@dataclass
+class StringValue(StandardValue):
+    value: str
+
+
+@dataclass
+class TensorValue(StandardValue):
+    value: np.ndarray
+
+
+@dataclass
 class ConstantOperation(StandardOperation):
-    value: Any
+    value: Value
     output_type: ValueType
 
 
@@ -196,13 +219,11 @@ class SaveOperation(StandardOperation):
 
 @dataclass
 class SerializeOperation(StandardOperation):
-    value_type: str
     output_type: ValueType = BytesType()
 
 
 @dataclass
 class DeserializeOperation(StandardOperation):
-    value_type: str
     output_type: ValueType
 
 
@@ -219,7 +240,7 @@ class ReceiveOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
-    output_type: ValueType = BytesType()
+    output_type: ValueType
 
 
 @dataclass

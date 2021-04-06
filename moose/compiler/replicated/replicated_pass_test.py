@@ -12,6 +12,7 @@ from moose.computation import standard as std_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.standard import UnitType
 
 
 class ReplicatedTest(parameterized.TestCase):
@@ -65,7 +66,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             std_dialect.OutputOperation(
-                name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "add_dave"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
@@ -78,7 +82,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             std_dialect.OutputOperation(
-                name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "add_eric"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 
@@ -211,7 +218,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             std_dialect.OutputOperation(
-                name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "add_dave"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
@@ -245,7 +255,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             std_dialect.OutputOperation(
-                name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "add_eric"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 

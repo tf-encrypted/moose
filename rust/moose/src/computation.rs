@@ -12,8 +12,10 @@ pub type RendezvousKey = str;
 
 pub type SessionId = u128;
 
-#[derive(Serialize, Deserialize, Copy, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub enum Ty {
+    UnitTy,
+    StringTy,
     Ring64TensorTy,
     Ring128TensorTy,
     ShapeTy,
@@ -32,7 +34,7 @@ pub enum Ty {
     Uint64TensorTy,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
     Ring64Tensor(Ring64Tensor),
@@ -51,6 +53,32 @@ pub enum Value {
     Uint16Tensor(Uint16Tensor),
     Uint32Tensor(Uint32Tensor),
     Uint64Tensor(Uint64Tensor),
+}
+
+impl Value {
+    pub fn ty(&self) -> Ty {
+        use Ty::*;
+        use Value::*;
+        match self {
+            Unit => UnitTy,
+            Ring64Tensor(_) => Ring64TensorTy,
+            Ring128Tensor(_) => Ring128TensorTy,
+            Shape(_) => ShapeTy,
+            Seed(_) => SeedTy,
+            PrfKey(_) => PrfKeyTy,
+            Nonce(_) => NonceTy,
+            Float32Tensor(_) => Float32TensorTy,
+            Float64Tensor(_) => Float64TensorTy,
+            Int8Tensor(_) => Int8TensorTy,
+            Int16Tensor(_) => Int16TensorTy,
+            Int32Tensor(_) => Int32TensorTy,
+            Int64Tensor(_) => Int64TensorTy,
+            Uint8Tensor(_) => Uint8TensorTy,
+            Uint16Tensor(_) => Uint16TensorTy,
+            Uint32Tensor(_) => Uint32TensorTy,
+            Uint64Tensor(_) => Uint64TensorTy,
+        }
+    }
 }
 
 macro_rules! convert {
@@ -102,6 +130,11 @@ convert!(Uint64Tensor);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
+    Identity(IdentityOp),
+    Send(SendOp),
+    Receive(ReceiveOp),
+    Input(InputOp),
+    Output(OutputOp),
     Constant(ConstantOp),
     StdAdd(StdAddOp),
     StdSub(StdSubOp),
@@ -109,9 +142,12 @@ pub enum Operator {
     StdDiv(StdDivOp),
     StdDot(StdDotOp),
     StdMean(StdMeanOp),
+    StdExpandDims(StdExpandDimsOp),
     StdReshape(StdReshapeOp),
+    StdShape(StdShapeOp),
     StdSum(StdSumOp),
     StdOnes(StdOnesOp),
+    StdTranspose(StdTransposeOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -124,8 +160,6 @@ pub enum Operator {
     RingShr(RingShrOp),
     PrimDeriveSeed(PrimDeriveSeedOp),
     PrimGenPrfKey(PrimGenPrfKeyOp),
-    Send(SendOp),
-    Receive(ReceiveOp),
     FixedpointRingEncode(FixedpointRingEncodeOp),
     FixedpointRingDecode(FixedpointRingDecodeOp),
     FixedpointRingMean(FixedpointRingMeanOp),
@@ -136,6 +170,13 @@ pub struct SendOp {
     pub sender: String,
     pub receiver: String,
     pub rendezvous_key: String,
+    pub sender: HostPlacement,
+    pub receiver: HostPlacement,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct IdentityOp {
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -143,6 +184,20 @@ pub struct ReceiveOp {
     pub sender: String,
     pub receiver: String,
     pub rendezvous_key: String,
+    pub sender: HostPlacement,
+    pub receiver: HostPlacement,
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct InputOp {
+    pub arg_name: String,
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct OutputOp {
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -192,7 +247,18 @@ pub struct StdOnesOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdExpandDimsOp {
+    pub ty: Ty,
+    pub axis: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdReshapeOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdShapeOp {
     pub ty: Ty,
 }
 
@@ -200,6 +266,11 @@ pub struct StdReshapeOp {
 pub struct StdSumOp {
     pub ty: Ty,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdTransposeOp {
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -253,7 +324,7 @@ pub struct RingFillOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingSampleOp {
     pub output: Ty,
-    pub max_value: Option<usize>,
+    pub max_value: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -284,7 +355,18 @@ pub struct FixedpointRingMeanOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Placement {
-    Host,
+    Host(HostPlacement),
+    Replicated(ReplicatedPlacement),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct HostPlacement {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ReplicatedPlacement {
+    pub players: [String; 3],
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -16,6 +16,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
 from moose.testing import run_test_computation
 
 # to get 2 random lists of equal size using hypothesis
@@ -148,7 +149,10 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_dialect.OutputOperation(
-                name="output", placement_name=carole.name, inputs={"value": "save"},
+                name="output",
+                placement_name=carole.name,
+                inputs={"value": "save"},
+                output_type=UnitType(),
             )
         )
 
@@ -204,7 +208,10 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_dialect.OutputOperation(
-                name="output", placement_name=carole.name, inputs={"value": "save"},
+                name="output",
+                placement_name=carole.name,
+                inputs={"value": "save"},
+                output_type=UnitType(),
             )
         )
 
@@ -264,7 +271,10 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_dialect.OutputOperation(
-                name="output", placement_name=carole.name, inputs={"value": "save"},
+                name="output",
+                placement_name=carole.name,
+                inputs={"value": "save"},
+                output_type=UnitType(),
             )
         )
 
@@ -333,7 +343,10 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_dialect.OutputOperation(
-                name="output", placement_name=carole.name, inputs={"value": "save"},
+                name="output",
+                placement_name=carole.name,
+                inputs={"value": "save"},
+                output_type=UnitType(),
             )
         )
 
@@ -389,7 +402,10 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_dialect.OutputOperation(
-                name="output", placement_name=carole.name, inputs={"value": "save"},
+                name="output",
+                placement_name=carole.name,
+                inputs={"value": "save"},
+                output_type=UnitType(),
             )
         )
 

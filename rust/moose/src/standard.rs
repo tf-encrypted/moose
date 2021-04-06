@@ -1,10 +1,15 @@
+extern crate ndarray;
+extern crate ndarray_linalg;
+
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
+use ndarray_linalg::types::{Lapack, Scalar};
+use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub};
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Shape(pub Vec<usize>);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -20,6 +25,13 @@ pub type Uint8Tensor = StandardTensor<u8>;
 pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
+
+impl Shape {
+    pub fn expand(mut self, axis: usize) -> Self {
+        self.0.insert(axis, 1);
+        self
+    }
+}
 
 impl<T> StandardTensor<T>
 where
@@ -69,6 +81,15 @@ where
         StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
     }
 
+    pub fn expand_dims(self, axis: usize) -> Self {
+        let newshape = self.shape().expand(axis);
+        self.reshape(newshape)
+    }
+
+    pub fn shape(&self) -> Shape {
+        Shape(self.0.shape().into())
+    }
+
     pub fn sum(self, axis: Option<usize>) -> Self {
         if let Some(i) = axis {
             StandardTensor::<T>(self.0.sum_axis(Axis(i)))
@@ -78,6 +99,10 @@ where
                 .unwrap();
             StandardTensor::<T>(out)
         }
+    }
+
+    pub fn transpose(self) -> Self {
+        StandardTensor::<T>(self.0.reversed_axes())
     }
 }
 
@@ -98,6 +123,30 @@ where
                     .unwrap();
                 StandardTensor::<T>(out)
             }
+        }
+    }
+}
+
+impl<T> StandardTensor<T>
+where
+    T: Scalar + Lapack,
+{
+    pub fn inv(self) -> Self {
+        match self.0.ndim() {
+            2 => {
+                let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
+                StandardTensor::<T>::from(
+                    two_dim
+                        .inv()
+                        .unwrap()
+                        .into_dimensionality::<IxDyn>()
+                        .unwrap(),
+                )
+            }
+            other_rank => panic!(
+                "Inverse only defined for rank 2 matrices, not rank {:?}",
+                other_rank,
+            ),
         }
     }
 }
@@ -151,6 +200,24 @@ where
     }
 }
 
+impl<T> From<Vec<T>> for StandardTensor<T> {
+    fn from(v: Vec<T>) -> StandardTensor<T> {
+        StandardTensor(Array::from(v).into_dyn())
+    }
+}
+
+impl<T> From<Array1<T>> for StandardTensor<T> {
+    fn from(v: Array1<T>) -> StandardTensor<T> {
+        StandardTensor(v.into_dyn())
+    }
+}
+
+impl<T> From<Array2<T>> for StandardTensor<T> {
+    fn from(v: Array2<T>) -> StandardTensor<T> {
+        StandardTensor(v.into_dyn())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,6 +235,44 @@ mod tests {
             z,
             StandardTensor::<f32>::from(
                 array![[-5.0, 6.0], [-9.0, 10.0]]
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_inverse() {
+        let x = StandardTensor::<f32>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+
+        let x_inv = x.inv();
+
+        assert_eq!(
+            x_inv,
+            StandardTensor::<f32>::from(
+                array![[-2.0000002, 1.0000001], [1.5000001, -0.50000006]]
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_transpose() {
+        let x = StandardTensor::<f32>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let y = x.transpose();
+        assert_eq!(
+            y,
+            StandardTensor::<f32>::from(
+                array![[1.0, 3.0], [2.0, 4.0]]
                     .into_dimensionality::<IxDyn>()
                     .unwrap()
             )

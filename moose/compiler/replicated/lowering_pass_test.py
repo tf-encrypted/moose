@@ -12,6 +12,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
 
 
 class ReplicatedTest(parameterized.TestCase):
@@ -64,7 +65,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "add_dave"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
@@ -77,7 +81,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "add_eric"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 
@@ -144,7 +151,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "add_dave"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
@@ -157,7 +167,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "add_eric"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 
@@ -223,7 +236,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "add_dave"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "add_dave"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
         comp.add_operation(
@@ -236,7 +252,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_1", inputs={"value": "add_eric"}, placement_name="eric"
+                name="output_1",
+                inputs={"value": "add_eric"},
+                placement_name="eric",
+                output_type=UnitType(),
             )
         )
 
@@ -287,7 +306,10 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "secure_mean"}, placement_name="dave"
+                name="output_0",
+                inputs={"value": "secure_mean"},
+                placement_name="dave",
+                output_type=UnitType(),
             )
         )
 

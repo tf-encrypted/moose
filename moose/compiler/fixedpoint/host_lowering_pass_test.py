@@ -11,6 +11,7 @@ from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
 
 
 class HostLoweringPassTest(parameterized.TestCase):
@@ -76,7 +77,10 @@ class HostLoweringPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "x_y_bin"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "x_y_bin"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -140,6 +144,7 @@ class HostLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": f"fixed_{op_name}_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations
@@ -199,7 +204,10 @@ class HostLoweringPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "x_y_prod"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "x_y_prod"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -274,6 +282,7 @@ class HostLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": "fixed_trunc_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations
@@ -315,7 +324,10 @@ class HostLoweringPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "x_mean"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "x_mean"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -372,6 +384,7 @@ class HostLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": "fixed_trunc_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
         comp_const = comp.operations.pop("x_input")
@@ -415,7 +428,10 @@ class HostLoweringPassTest(parameterized.TestCase):
         )
         comp.add_operation(
             standard_ops.OutputOperation(
-                name="output_0", inputs={"value": "x_sum"}, placement_name="alice",
+                name="output_0",
+                inputs={"value": "x_sum"},
+                placement_name="alice",
+                output_type=UnitType(),
             )
         )
 
@@ -460,6 +476,7 @@ class HostLoweringPassTest(parameterized.TestCase):
                 name="output_0",
                 inputs={"value": "fixed_sum_0"},
                 placement_name="alice",
+                output_type=UnitType(),
             )
         )
         assert comp.operations == expected_comp.operations

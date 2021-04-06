@@ -17,6 +17,11 @@ class ValueType:
 
 
 @dataclass
+class Value:
+    pass
+
+
+@dataclass
 class Operation:
     name: str
     inputs: Dict[str, str]
