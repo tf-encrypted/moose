@@ -275,22 +275,22 @@ impl Compile<Kernel> for StdAtLeast2DOp {
         match self.ty {
             Ty::Float32TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
-            },
+            }
             Ty::Float64TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
-            },
+            }
             Ty::Int32TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
-            },
+            }
             Ty::Int64TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
-            },
+            }
             Ty::Uint32TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
-            },
+            }
             Ty::Uint64TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
-            },
+            }
             _ => Err(Error::UnimplementedOperator),
         }
     }

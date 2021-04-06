@@ -42,7 +42,11 @@ where
             0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap()),
             1 => {
                 let length = self.0.len();
-                let newshape = if to_column_vector {IxDyn(&[length, 1])} else {IxDyn(&[1, length])};
+                let newshape = if to_column_vector {
+                    IxDyn(&[length, 1])
+                } else {
+                    IxDyn(&[1, length])
+                };
                 StandardTensor::<T>(self.0.into_shape(newshape).unwrap())
             }
             2 => self,
