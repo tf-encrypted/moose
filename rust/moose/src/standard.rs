@@ -254,7 +254,7 @@ mod tests {
         assert_eq!(
             x_inv,
             StandardTensor::<f32>::from(
-                array![[-2.0000002, 1.0000001], [1.5000001, -0.50000006]]
+                array![[-2.0, 1.0], [1.5, -0.5]]
                     .into_dimensionality::<IxDyn>()
                     .unwrap()
             )
