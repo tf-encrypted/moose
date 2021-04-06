@@ -1,4 +1,5 @@
 use crate::computation::*;
+use crate::standard;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_error, AsyncKernel, Compile, Kernel, SyncKernel,
@@ -189,7 +190,7 @@ impl Compile<Kernel> for StdConcatenateOp {
         let axis = self.axis as usize;
         match self.ty {
             Ty::Float32TensorTy => {
-                closure_kernel!(Vec::<Float32Tensor>, |xs| standard::concatenate(axis, &xs[..]))
+                closure_kernel!(vec[Float32Tensor], |xs| standard::concatenate(axis, &xs[..]))
             },
             _ => Err(Error::UnimplementedOperator),
         }
