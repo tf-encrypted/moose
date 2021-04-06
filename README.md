@@ -11,7 +11,9 @@ rustup toolchain install nightly
 rustup default nightly
 ```
 
-Install python development headers for your OS. (eg - `python3-dev` for Ubuntu, or `python38-devel` for OpenSUSE)
+Install python development headers for your OS. (eg - `python3-dev` for Ubuntu, or `python38-devel` for OpenSUSE).
+
+Install OpenBLAS development headers via `libopenblas-dev` for Ubuntu.
 
 To install the library and all of its dependencies, run:
 ```
