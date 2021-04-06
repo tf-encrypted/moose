@@ -145,6 +145,7 @@ pub enum Operator {
     StdExpandDims(StdExpandDimsOp),
     StdReshape(StdReshapeOp),
     StdShape(StdShapeOp),
+    StdSlice(StdSliceOp),
     StdSum(StdSumOp),
     StdOnes(StdOnesOp),
     StdTranspose(StdTransposeOp),
@@ -256,6 +257,13 @@ pub struct StdReshapeOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdShapeOp {
     pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdSliceOp {
+    pub ty: Ty,
+    pub start: u32,
+    pub end: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

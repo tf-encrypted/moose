@@ -30,6 +30,7 @@ impl Compile<SyncKernel> for Operator {
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdShape(op) => op.compile(),
+            StdSlice(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
@@ -71,6 +72,7 @@ impl Compile<AsyncKernel> for Operator {
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdShape(op) => op.compile(),
+            StdSlice(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
@@ -256,6 +258,17 @@ impl Compile<Kernel> for StdShapeOp {
             Ty::Uint64TensorTy => {
                 function_kernel!(Uint64Tensor, |x| x.shape())
             }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdSliceOp {
+    fn compile(&self) -> Result<Kernel> {
+        let start = self.start as usize;
+        let end = self.end as usize;
+        match self.ty {
+            Ty::ShapeTy => closure_kernel!(Shape, |x| x.slice(start, end)),
             _ => Err(Error::UnimplementedOperator),
         }
     }
