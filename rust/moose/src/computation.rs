@@ -113,6 +113,7 @@ macro_rules! convert {
     };
 }
 
+convert!(String);
 convert!(Ring64Tensor);
 convert!(Ring128Tensor);
 convert!(Shape);
@@ -201,7 +202,6 @@ pub struct OutputOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SaveOp {
-    pub key: String,
     pub ty: Ty,
 }
 

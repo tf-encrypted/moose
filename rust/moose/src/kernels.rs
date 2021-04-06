@@ -627,9 +627,10 @@ impl Compile<AsyncKernel> for OutputOp {
 
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let key= self.key.clone();
-        Ok(SyncKernel::Unary(Box::new(move |sess: &SyncSession, x0: Value| {
-            sess.storage.save(key.clone(), x0,&sess.sid)?;
+        use std::convert::TryFrom;
+        Ok(SyncKernel::Binary(Box::new(move |sess: &SyncSession, key: Value, x0: Value| {
+            let key = String::try_from(key)?;
+            sess.storage.save(key, x0)?;
             Ok(Value::Unit)
         })))
     }
@@ -637,12 +638,17 @@ impl Compile<SyncKernel> for SaveOp {
 
 impl Compile<AsyncKernel> for SaveOp {
     fn compile(&self) -> Result<AsyncKernel> {
+        use std::convert::TryFrom;
         use std::sync::Arc;
-        // let key= Arc::new(self.key.clone());
-        Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
+
+        Ok(AsyncKernel::Binary(Box::new(move |sess, k0, x0, sender| {
+            let sess = Arc::clone(sess);
             tokio::spawn(async move {
-                let val = x0.await.map_err(map_receive_error)?;
-                sender.send(val).map_err(map_send_error)
+                let k0: Value = k0.await.map_err(map_receive_error)?;
+                let key = String::try_from(k0)?;
+                let x0 = x0.await.map_err(map_receive_error)?;
+                sess.storage.save(key, x0).await.map_err(map_send_error)?;
+                sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
     }

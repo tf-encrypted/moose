@@ -137,19 +137,10 @@ def _encode(val):
         assert type_name in TYPES_MAP, type_name
         d = {field.name: getattr(val, field.name) for field in fields(val)}
         d["__type__"] = type_name
-        print("d = ", d)
         return d
     elif isinstance(val, dtypes.DType):
-        print({"__type__": "DType", "name": val.name})
         return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
-        print(
-            {
-                "dtype": str(val.dtype),
-                "items": val.flatten().tolist(),
-                "shape": list(val.shape),
-            }
-        )
         return {
             "dtype": str(val.dtype),
             "items": val.flatten().tolist(),

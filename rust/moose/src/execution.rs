@@ -5,13 +5,17 @@ use crate::error::{Error, Result};
 use crate::networking::{
     AsyncNetworking, LocalAsyncNetworking, LocalSyncNetworking, SyncNetworking,
 };
+use crate::storage::{
+    SyncStorage, LocalSyncStorage, AsyncStorage, LocalAsyncStorage,
+};
+
 use futures::future::{Map, Shared};
 use futures::prelude::*;
 use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
-use std::{collections::{HashMap, HashSet}, hash::Hash};
+use std::{collections::{HashMap, HashSet}};
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -825,41 +829,6 @@ impl CompiledAsyncComputation {
 }
 
 pub type Environment<V> = HashMap<String, V>;
-pub trait SyncStorage {
-    fn save(&self, key: String, val: Value, session_id: &SessionId) -> Result<()>;
-    fn load(&self, key: String, session_id: &SessionId) -> Result<Value>;
-}
-#[derive(Default)]
-pub struct LocalSyncStorage {
-    store: std::sync::RwLock<HashMap<String, Value>>,
-}
-
-impl SyncStorage for LocalSyncStorage {
-    fn save(&self, key: String, val: Value, session_id: &SessionId) -> Result<()> {
-        let mut store = self.store.write().map_err(|e| {
-            tracing::error!("failed to get write lock: {:?}", e);
-            Error::Unexpected
-        })?;
-        if store.contains_key(&key) {
-            tracing::error!("value has already been sent");
-            return Err(Error::Unexpected);
-        }
-        store.insert(key, val.clone());
-        Ok(())
-    }
-
-    fn load(&self, key: String, session_id: &SessionId) -> Result<Value> {
-        let store = self.store.read().map_err(|e| {
-            tracing::error!("failed to get read lock: {:?}", e);
-            Error::Unexpected
-        })?;
-        store.get(&key).cloned().ok_or_else(|| {
-            tracing::error!("Key not found in store");
-            Error::Unexpected
-        })
-    }
-}
-
 
 /// In-order single-threaded executor.
 ///
@@ -868,7 +837,7 @@ impl SyncStorage for LocalSyncStorage {
 /// and development only due to its unforgiving but highly predictable behaviour.
 pub struct EagerExecutor {
     networking: Rc<dyn SyncNetworking>,
-    storage: Rc<dyn SyncStorage>,
+    pub storage: Rc<dyn SyncStorage>,
 }
 
 impl EagerExecutor {
@@ -908,7 +877,7 @@ pub struct AsyncSession {
     pub sid: SessionId,
     pub args: AsyncArgs,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    pub storage: AsyncArgs,
+    pub storage: Arc<dyn Send+Sync+AsyncStorage>,
 }
 
 pub type AsyncArgs = Environment<AsyncReceiver>;
@@ -932,13 +901,13 @@ impl AsyncSessionJoinHandle {
 
 pub struct AsyncExecutor {
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    pub storage: AsyncArgs,
+    pub storage: Arc<dyn Send+Sync+AsyncStorage>,
 }
 
 impl AsyncExecutor {
     pub fn new() -> AsyncExecutor {
         let networking = Arc::new(LocalAsyncNetworking::default());
-        let storage: AsyncArgs = HashMap::new();
+        let storage = Arc::new(LocalAsyncStorage::default());
         AsyncExecutor { networking, storage }
     }
 
@@ -954,7 +923,7 @@ impl AsyncExecutor {
             sid,
             args,
             networking: Arc::clone(&self.networking),
-            storage: HashMap::new(),
+            storage: Arc::clone(&self.storage),
         });
 
         // TODO don't return unexpected error
