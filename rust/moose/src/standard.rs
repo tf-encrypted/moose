@@ -33,8 +33,8 @@ impl Shape {
     }
 
     pub fn slice(self, begin: usize, end: usize) -> Self {
-        let slc: Vec<_> = self.0[begin..end].into();
-        Shape(slc)
+        let slc = &self.0[begin..end];
+        Shape(slc.to_vec())
     }
 }
 
