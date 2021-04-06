@@ -40,7 +40,7 @@ jobs:
 
       - name: Install OpenBLAS.
         run: |
-          apt install libopenblas-dev
+          sudo apt install libopenblas-dev
 
       - name: Create virtual environment.
         run: |
