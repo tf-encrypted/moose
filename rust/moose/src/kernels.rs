@@ -191,7 +191,22 @@ impl Compile<Kernel> for StdConcatenateOp {
         match self.ty {
             Ty::Float32TensorTy => {
                 closure_kernel!(vec[Float32Tensor], |xs| standard::concatenate(axis, &xs[..]))
-            },
+            }
+            Ty::Float64TensorTy => {
+                closure_kernel!(vec[Float64Tensor], |xs| standard::concatenate(axis, &xs[..]))
+            }
+            Ty::Int32TensorTy => {
+                closure_kernel!(vec[Int32Tensor], |xs| standard::concatenate(axis, &xs[..]))
+            }
+            Ty::Int64TensorTy => {
+                closure_kernel!(vec[Int64Tensor], |xs| standard::concatenate(axis, &xs[..]))
+            }
+            Ty::Uint32TensorTy => {
+                closure_kernel!(vec[Uint32Tensor], |xs| standard::concatenate(axis, &xs[..]))
+            }
+            Ty::Uint64TensorTy => {
+                closure_kernel!(vec[Uint64Tensor], |xs| standard::concatenate(axis, &xs[..]))
+            }
             _ => Err(Error::UnimplementedOperator),
         }
     }
