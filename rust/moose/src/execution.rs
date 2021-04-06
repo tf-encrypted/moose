@@ -157,8 +157,6 @@ type NullarySyncKernel = Box<dyn Fn(&SyncSession) -> Result<Value> + Send + Sync
 
 type UnarySyncKernel = Box<dyn Fn(&SyncSession, Value) -> Result<Value> + Send + Sync>;
 
-type UnarySyncModKernel = Box<dyn Fn(&mut SyncSession, Value) -> Result<Value> + Send + Sync>;
-
 type BinarySyncKernel = Box<dyn Fn(&SyncSession, Value, Value) -> Result<Value> + Send + Sync>;
 
 type TernarySyncKernel =
@@ -169,7 +167,6 @@ type VariadicSyncKernel = Box<dyn Fn(&SyncSession, Vec<Value>) -> Result<Value> 
 pub enum SyncKernel {
     Nullary(NullarySyncKernel),
     Unary(UnarySyncKernel),
-    UnaryMod(UnarySyncModKernel),
     Binary(BinarySyncKernel),
     Ternary(TernarySyncKernel),
     Variadic(VariadicSyncKernel),
@@ -381,10 +378,11 @@ pub struct SyncSession {
     pub sid: SessionId,
     pub args: Environment<Value>,
     pub networking: SyncNetworkingImpl,
-    pub storage: Environment<Value>,
+    pub storage: SyncStorageImpl,
 }
 
 pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
+pub type SyncStorageImpl = Rc<dyn SyncStorage>;
 
 type SyncOperationKernel =
     Box<dyn Fn(&SyncSession, &Environment<Value>) -> Result<Value> + Send + Sync>;
@@ -461,22 +459,6 @@ impl Compile<CompiledSyncOperation> for Operation {
                     }),
                 })
             }
-            SyncKernel::UnaryMod(k) => {
-                check_arity(&self.name, &self.inputs, 1)?;
-                let x0_name = self.inputs[0].clone();
-                Ok(CompiledSyncOperation {
-                    name: self.name.clone(),
-                    kernel: Box::new(move |sess, env| {
-                        // TODO(Morten) avoid cloning
-                        let x0 = env
-                            .get(&x0_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
-                        k(sess, x0)
-                    }),
-                })
-            }
-
             SyncKernel::Binary(k) => {
                 check_arity(&self.name, &self.inputs, 2)?;
                 let x0_name = self.inputs[0].clone();
@@ -843,6 +825,41 @@ impl CompiledAsyncComputation {
 }
 
 pub type Environment<V> = HashMap<String, V>;
+pub trait SyncStorage {
+    fn save(&self, key: String, val: Value, session_id: &SessionId) -> Result<()>;
+    fn load(&self, key: String, session_id: &SessionId) -> Result<Value>;
+}
+#[derive(Default)]
+pub struct LocalSyncStorage {
+    store: std::sync::RwLock<HashMap<String, Value>>,
+}
+
+impl SyncStorage for LocalSyncStorage {
+    fn save(&self, key: String, val: Value, session_id: &SessionId) -> Result<()> {
+        let mut store = self.store.write().map_err(|e| {
+            tracing::error!("failed to get write lock: {:?}", e);
+            Error::Unexpected
+        })?;
+        if store.contains_key(&key) {
+            tracing::error!("value has already been sent");
+            return Err(Error::Unexpected);
+        }
+        store.insert(key, val.clone());
+        Ok(())
+    }
+
+    fn load(&self, key: String, session_id: &SessionId) -> Result<Value> {
+        let store = self.store.read().map_err(|e| {
+            tracing::error!("failed to get read lock: {:?}", e);
+            Error::Unexpected
+        })?;
+        store.get(&key).cloned().ok_or_else(|| {
+            tracing::error!("Key not found in store");
+            Error::Unexpected
+        })
+    }
+}
+
 
 /// In-order single-threaded executor.
 ///
@@ -851,13 +868,13 @@ pub type Environment<V> = HashMap<String, V>;
 /// and development only due to its unforgiving but highly predictable behaviour.
 pub struct EagerExecutor {
     networking: Rc<dyn SyncNetworking>,
-    storage: Environment<Value>
+    storage: Rc<dyn SyncStorage>,
 }
 
 impl EagerExecutor {
     pub fn new() -> EagerExecutor {
         let networking = Rc::new(LocalSyncNetworking::default());
-        let storage: Environment<Value> = HashMap::new();
+        let storage= Rc::new(LocalSyncStorage::default());
         EagerExecutor { networking, storage }
     }
 
@@ -873,7 +890,7 @@ impl EagerExecutor {
             sid,
             args,
             networking: Rc::clone(&self.networking),
-            storage:self.storage.clone(),
+            storage: Rc::clone(&self.storage),
         };
 
         compiled_comp.apply(&sess)

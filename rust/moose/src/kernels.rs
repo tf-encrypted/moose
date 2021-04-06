@@ -627,10 +627,9 @@ impl Compile<AsyncKernel> for OutputOp {
 
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let expected_ty = self.ty;
         let key= self.key.clone();
-        Ok(SyncKernel::UnaryMod(Box::new(move |sess: &mut SyncSession, x0: Value| {
-            sess.storage.insert(key, x0.clone());
+        Ok(SyncKernel::Unary(Box::new(move |sess: &SyncSession, x0: Value| {
+            sess.storage.save(key.clone(), x0,&sess.sid)?;
             Ok(Value::Unit)
         })))
     }
