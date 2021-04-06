@@ -144,6 +144,7 @@ pub enum Operator {
     StdMean(StdMeanOp),
     StdExpandDims(StdExpandDimsOp),
     StdReshape(StdReshapeOp),
+    StdAtLeast2D(StdAtLeast2DOp),
     StdShape(StdShapeOp),
     StdSlice(StdSliceOp),
     StdSum(StdSumOp),
@@ -241,6 +242,12 @@ pub struct StdMeanOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdOnesOp {
     pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdAtLeast2DOp {
+    pub ty: Ty,
+    pub to_column_vector: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
