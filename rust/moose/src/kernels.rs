@@ -1,3 +1,4 @@
+use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_error, AsyncKernel, Compile, Kernel, SyncKernel,
@@ -8,7 +9,6 @@ use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
-use crate::{computation::*};
 
 impl Compile<SyncKernel> for Operator {
     fn compile(&self) -> Result<SyncKernel> {
@@ -629,17 +629,15 @@ impl Compile<SyncKernel> for SaveOp {
     fn compile(&self) -> Result<SyncKernel> {
         use std::convert::TryFrom;
         let expected_ty = self.ty;
-        Ok(SyncKernel::Binary(Box::new(
-            move |sess, key, val| {
-                let key = String::try_from(key)?;
-                if val.ty() == expected_ty {
-                    sess.storage.save(key, val)?;
-                    Ok(Value::Unit)
-                } else {
-                    Err(Error::TypeMismatch)
-                }
-            },
-        )))
+        Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
+            let key = String::try_from(key)?;
+            if val.ty() == expected_ty {
+                sess.storage.save(key, val)?;
+                Ok(Value::Unit)
+            } else {
+                Err(Error::TypeMismatch)
+            }
+        })))
     }
 }
 
