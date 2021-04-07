@@ -27,6 +27,7 @@ impl Compile<SyncKernel> for Operator {
             StdDot(op) => op.compile(),
             StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
+            StdConcatenate(op) => op.compile(),
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdAtLeast2D(op) => op.compile(),
@@ -70,6 +71,7 @@ impl Compile<AsyncKernel> for Operator {
             StdDot(op) => op.compile(),
             StdMean(op) => op.compile(),
             StdOnes(op) => op.compile(),
+            StdConcatenate(op) => op.compile(),
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
             StdAtLeast2D(op) => op.compile(),
@@ -213,6 +215,30 @@ impl Compile<Kernel> for StdOnesOp {
                 function_kernel!(Shape, |shape| Uint64Tensor::ones(shape))
             }
 
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdConcatenateOp {
+    fn compile(&self) -> Result<Kernel> {
+        use crate::standard::concatenate;
+        let axis = self.axis as usize;
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(vec[Float32Tensor], |xs| concatenate(axis, &xs))
+            }
+            Ty::Float64TensorTy => {
+                closure_kernel!(vec[Float64Tensor], |xs| concatenate(axis, &xs))
+            }
+            Ty::Int32TensorTy => closure_kernel!(vec[Int32Tensor], |xs| concatenate(axis, &xs)),
+            Ty::Int64TensorTy => closure_kernel!(vec[Int64Tensor], |xs| concatenate(axis, &xs)),
+            Ty::Uint32TensorTy => {
+                closure_kernel!(vec[Uint32Tensor], |xs| concatenate(axis, &xs))
+            }
+            Ty::Uint64TensorTy => {
+                closure_kernel!(vec[Uint64Tensor], |xs| concatenate(axis, &xs))
+            }
             _ => Err(Error::UnimplementedOperator),
         }
     }

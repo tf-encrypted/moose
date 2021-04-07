@@ -243,6 +243,17 @@ impl<T> From<Array2<T>> for StandardTensor<T> {
     }
 }
 
+pub fn concatenate<T>(axis: usize, arrays: &[StandardTensor<T>]) -> StandardTensor<T>
+where
+    T: LinalgScalar,
+{
+    let ax = Axis(axis);
+    let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
+
+    let c = ndarray::concatenate(ax, &inner_arrays).unwrap();
+    StandardTensor::<T>(c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -309,6 +320,27 @@ mod tests {
                     .unwrap()
             )
         );
+    }
+
+    #[test]
+    fn test_concatenate() {
+        let a = StandardTensor::<f32>::from(
+            array![[[1.0, 2.0], [3.0, 4.0]]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let b = StandardTensor::<f32>::from(
+            array![[[1.0, 2.0], [3.0, 4.0]]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let expected = StandardTensor::<f32>::from(
+            array![[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let conc = concatenate(0, &vec![a, b]);
+        assert_eq!(conc, expected)
     }
 
     #[test]
