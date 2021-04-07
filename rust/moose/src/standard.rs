@@ -225,7 +225,7 @@ where
     let ax = Axis(axis);
     let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
 
-    let c = ndarray::concatenate(ax, &inner_arrays[..]).unwrap();
+    let c = ndarray::concatenate(ax, &inner_arrays).unwrap();
     StandardTensor::<T>(c)
 }
 
@@ -307,7 +307,7 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let conc = concatenate(0, &vec![a, b][..]);
+        let conc = concatenate(0, &vec![a, b]);
         assert_eq!(conc, expected)
     }
 }
