@@ -30,7 +30,9 @@ impl Compile<SyncKernel> for Operator {
             StdConcatenate(op) => op.compile(),
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
+            StdAtLeast2D(op) => op.compile(),
             StdShape(op) => op.compile(),
+            StdSlice(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
@@ -72,7 +74,9 @@ impl Compile<AsyncKernel> for Operator {
             StdConcatenate(op) => op.compile(),
             StdExpandDims(op) => op.compile(),
             StdReshape(op) => op.compile(),
+            StdAtLeast2D(op) => op.compile(),
             StdShape(op) => op.compile(),
+            StdSlice(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
             RingAdd(op) => op.compile(),
@@ -92,6 +96,36 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointRingMean(op) => op.compile(),
         }
     }
+}
+
+macro_rules! std_unary_kernel {
+    ($op:ty, $k:expr) => {
+        impl Compile<Kernel> for $op {
+            fn compile(&self) -> Result<Kernel> {
+                match self.ty {
+                    Ty::Float32TensorTy => {
+                        function_kernel!(Float32Tensor, $k)
+                    }
+                    Ty::Float64TensorTy => {
+                        function_kernel!(Float64Tensor, $k)
+                    }
+                    Ty::Int32TensorTy => {
+                        function_kernel!(Int32Tensor, $k)
+                    }
+                    Ty::Int64TensorTy => {
+                        function_kernel!(Int64Tensor, $k)
+                    }
+                    Ty::Uint32TensorTy => {
+                        function_kernel!(Uint32Tensor, $k)
+                    }
+                    Ty::Uint64TensorTy => {
+                        function_kernel!(Uint64Tensor, $k)
+                    }
+                    _ => Err(Error::UnimplementedOperator),
+                }
+            }
+        }
+    };
 }
 
 macro_rules! std_binary_kernel {
@@ -129,6 +163,8 @@ std_binary_kernel!(StdSubOp, |x, y| x - y);
 std_binary_kernel!(StdMulOp, |x, y| x * y);
 std_binary_kernel!(StdDivOp, |x, y| x / y);
 std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
+std_unary_kernel!(StdShapeOp, |x| x.shape());
+std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for StdMeanOp {
     fn compile(&self) -> Result<Kernel> {
@@ -261,27 +297,39 @@ impl Compile<Kernel> for StdReshapeOp {
     }
 }
 
-impl Compile<Kernel> for StdShapeOp {
+impl Compile<Kernel> for StdAtLeast2DOp {
     fn compile(&self) -> Result<Kernel> {
+        let tcv = self.to_column_vector;
         match self.ty {
             Ty::Float32TensorTy => {
-                function_kernel!(Float32Tensor, |x| x.shape())
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
             Ty::Float64TensorTy => {
-                function_kernel!(Float64Tensor, |x| x.shape())
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
             Ty::Int32TensorTy => {
-                function_kernel!(Int32Tensor, |x| x.shape())
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
             Ty::Int64TensorTy => {
-                function_kernel!(Int64Tensor, |x| x.shape())
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
             Ty::Uint32TensorTy => {
-                function_kernel!(Uint32Tensor, |x| x.shape())
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
             Ty::Uint64TensorTy => {
-                function_kernel!(Uint64Tensor, |x| x.shape())
+                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
+            _ => Err(Error::UnimplementedOperator),
+        }
+    }
+}
+
+impl Compile<Kernel> for StdSliceOp {
+    fn compile(&self) -> Result<Kernel> {
+        let start = self.start as usize;
+        let end = self.end as usize;
+        match self.ty {
+            Ty::ShapeTy => closure_kernel!(Shape, |x| x.slice(start, end)),
             _ => Err(Error::UnimplementedOperator),
         }
     }
@@ -308,32 +356,6 @@ impl Compile<Kernel> for StdSumOp {
             }
             Ty::Uint64TensorTy => {
                 closure_kernel!(Uint64Tensor, |x| x.sum(axis))
-            }
-            _ => Err(Error::UnimplementedOperator),
-        }
-    }
-}
-
-impl Compile<Kernel> for StdTransposeOp {
-    fn compile(&self) -> Result<Kernel> {
-        match self.ty {
-            Ty::Float32TensorTy => {
-                function_kernel!(Float32Tensor, |x| x.transpose())
-            }
-            Ty::Float64TensorTy => {
-                function_kernel!(Float64Tensor, |x| x.transpose())
-            }
-            Ty::Int32TensorTy => {
-                function_kernel!(Int32Tensor, |x| x.transpose())
-            }
-            Ty::Int64TensorTy => {
-                function_kernel!(Int64Tensor, |x| x.transpose())
-            }
-            Ty::Uint32TensorTy => {
-                function_kernel!(Uint32Tensor, |x| x.transpose())
-            }
-            Ty::Uint64TensorTy => {
-                function_kernel!(Uint64Tensor, |x| x.transpose())
             }
             _ => Err(Error::UnimplementedOperator),
         }
@@ -500,9 +522,10 @@ impl Compile<Kernel> for ConstantOp {
 
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let rdv = self.rendezvous_key.clone();
+        let op = self.clone();
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
-            sess.networking.send(&v, &rdv, &sess.sid)?;
+            sess.networking
+                .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
             Ok(Value::Unit)
         })))
     }
@@ -511,13 +534,15 @@ impl Compile<SyncKernel> for SendOp {
 impl Compile<AsyncKernel> for SendOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
-        let rdv = Arc::new(self.rendezvous_key.clone());
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Unary(Box::new(move |sess, v, sender| {
             let sess = Arc::clone(sess);
-            let rdv = Arc::clone(&rdv);
+            let op = Arc::clone(&op);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                sess.networking.send(&v, &rdv, &sess.sid).await?;
+                sess.networking
+                    .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)
+                    .await?;
                 sender.send(Value::Unit).map_err(map_send_error)
             })
         })))
@@ -526,12 +551,13 @@ impl Compile<AsyncKernel> for SendOp {
 
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<SyncKernel> {
-        let rdv = self.rendezvous_key.clone();
-        let expected_ty = self.ty;
+        let op = self.clone();
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
-            let val = sess.networking.receive(&rdv, &sess.sid)?;
-            if val.ty() == expected_ty {
-                Ok(val)
+            let v: Value =
+                sess.networking
+                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
+            if v.ty() == op.ty {
+                Ok(v)
             } else {
                 Err(Error::TypeMismatch)
             }
@@ -542,15 +568,17 @@ impl Compile<SyncKernel> for ReceiveOp {
 impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::sync::Arc;
-        let rdv = Arc::new(self.rendezvous_key.clone());
-        let expected_ty = self.ty;
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
-            let rdv = Arc::clone(&rdv);
+            let op = Arc::clone(&op);
             tokio::spawn(async move {
-                let val: Value = sess.networking.receive(&rdv, &sess.sid).await?;
-                if val.ty() == expected_ty {
-                    sender.send(val).map_err(map_send_error)
+                let v: Value = sess
+                    .networking
+                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)
+                    .await?;
+                if v.ty() == op.ty {
+                    sender.send(v).map_err(map_send_error)
                 } else {
                     Err(Error::TypeMismatch)
                 }
@@ -562,9 +590,9 @@ impl Compile<AsyncKernel> for ReceiveOp {
 impl Compile<SyncKernel> for IdentityOp {
     fn compile(&self) -> Result<SyncKernel> {
         let expected_ty = self.ty;
-        Ok(SyncKernel::Unary(Box::new(move |_sess, val| {
-            if val.ty() == expected_ty {
-                Ok(val)
+        Ok(SyncKernel::Unary(Box::new(move |_sess, v| {
+            if v.ty() == expected_ty {
+                Ok(v)
             } else {
                 Err(Error::TypeMismatch)
             }
@@ -575,11 +603,11 @@ impl Compile<SyncKernel> for IdentityOp {
 impl Compile<AsyncKernel> for IdentityOp {
     fn compile(&self) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
-        Ok(AsyncKernel::Unary(Box::new(move |_sess, val, sender| {
+        Ok(AsyncKernel::Unary(Box::new(move |_sess, v, sender| {
             tokio::spawn(async move {
-                let val: Value = val.await.map_err(map_receive_error)?;
-                if val.ty() == expected_ty {
-                    sender.send(val).map_err(map_send_error)
+                let v: Value = v.await.map_err(map_receive_error)?;
+                if v.ty() == expected_ty {
+                    sender.send(v).map_err(map_send_error)
                 } else {
                     Err(Error::TypeMismatch)
                 }

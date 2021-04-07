@@ -31,12 +31,37 @@ impl Shape {
         self.0.insert(axis, 1);
         self
     }
+
+    pub fn slice(self, begin: usize, end: usize) -> Self {
+        let slc = &self.0[begin..end];
+        Shape(slc.to_vec())
+    }
 }
 
 impl<T> StandardTensor<T>
 where
     T: LinalgScalar,
 {
+    pub fn atleast_2d(self, to_column_vector: bool) -> StandardTensor<T> {
+        match self.0.ndim() {
+            0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap()),
+            1 => {
+                let length = self.0.len();
+                let newshape = if to_column_vector {
+                    IxDyn(&[length, 1])
+                } else {
+                    IxDyn(&[1, length])
+                };
+                StandardTensor::<T>(self.0.into_shape(newshape).unwrap())
+            }
+            2 => self,
+            otherwise => panic!(
+                "Tensor input for `atleast_2d` must have rank <= 2, found rank {:?}.",
+                otherwise
+            ),
+        }
+    }
+
     pub fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
         match (self.0.ndim(), other.0.ndim()) {
             (1, 1) => {
@@ -273,6 +298,13 @@ mod tests {
     }
 
     #[test]
+    fn test_shape_slice() {
+        let x_shape = Shape(vec![1, 2, 3]);
+        let x_slice = x_shape.slice(1, 3);
+        assert_eq!(x_slice, Shape(vec![2, 3]))
+    }
+
+    #[test]
     fn test_transpose() {
         let x = StandardTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
@@ -309,5 +341,50 @@ mod tests {
         );
         let conc = concatenate(0, &vec![a, b]);
         assert_eq!(conc, expected)
+    }
+
+    #[test]
+    fn test_atleast_2d() {
+        let a = StandardTensor::<f32>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let a_exp = a.clone();
+        let b = StandardTensor::<f32>::from(
+            array![1.0, 2.0, 3.0, 4.0]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let b_exp = StandardTensor::<f32>::from(
+            array![[1.0, 2.0, 3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let c = StandardTensor::<f32>::from(
+            array![1.0, 2.0, 3.0, 4.0]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let c_exp = StandardTensor::<f32>::from(
+            array![[1.0], [2.0], [3.0], [4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let d = StandardTensor::<f32>::from(
+            Array::from_elem([], 1.0)
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let d_exp =
+            StandardTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
+        let ax = a.atleast_2d(true);
+        let bx = b.atleast_2d(false);
+        let cx = c.atleast_2d(true);
+        let dx = d.atleast_2d(true);
+        assert_eq!(ax, a_exp);
+        assert_eq!(bx, b_exp);
+        assert_eq!(cx, c_exp);
+        assert_eq!(dx, d_exp);
     }
 }
