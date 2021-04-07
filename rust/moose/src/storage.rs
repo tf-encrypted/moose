@@ -26,10 +26,6 @@ impl SyncStorage for LocalSyncStorage {
             tracing::error!("failed to get write lock: {:?}", e);
             Error::Unexpected
         })?;
-        if store.contains_key(&key) {
-            tracing::error!("value has already been sent");
-            return Err(Error::Unexpected);
-        }
         store.insert(key, val);
         Ok(())
     }
@@ -56,10 +52,6 @@ impl AsyncStorage for LocalAsyncStorage {
     async fn save(&self, key: String, val: Value) -> Result<()> {
         tracing::debug!("Async storage saving; key:'{}'", key);
         let mut store = self.store.write().await;
-        if store.contains_key(&key) {
-            tracing::error!("value has already been sent");
-            return Err(Error::Unexpected);
-        }
         store.insert(key, val);
         Ok(())
     }

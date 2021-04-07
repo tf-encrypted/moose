@@ -8,7 +8,7 @@ use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
-use crate::{computation::*, execution::SyncSession};
+use crate::{computation::*};
 
 impl Compile<SyncKernel> for Operator {
     fn compile(&self) -> Result<SyncKernel> {
