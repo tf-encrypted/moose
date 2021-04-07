@@ -16,9 +16,9 @@ from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
 from moose.computation.standard import ExpandDimsOperation
-from moose.computation.standard import FloatValue
+from moose.computation.standard import FloatConstant
 from moose.computation.standard import InputOperation
-from moose.computation.standard import IntValue
+from moose.computation.standard import IntConstant
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MeanOperation
@@ -34,11 +34,11 @@ from moose.computation.standard import ShapeOperation
 from moose.computation.standard import ShapeType
 from moose.computation.standard import SliceOperation
 from moose.computation.standard import SqueezeOperation
-from moose.computation.standard import StringValue
+from moose.computation.standard import StringConstant
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
-from moose.computation.standard import TensorValue
 from moose.computation.standard import TransposeOperation
 from moose.executor.kernels.base import Kernel
 from moose.logger import get_logger
@@ -74,7 +74,9 @@ class ConcatenateKernel(Kernel):
 class ConstantKernel(Kernel):
     def execute_synchronous_block(self, op, session):
         assert isinstance(op, ConstantOperation)
-        if isinstance(op.value, (TensorValue, StringValue, IntValue, FloatValue)):
+        if isinstance(
+            op.value, (TensorConstant, StringConstant, IntConstant, FloatConstant)
+        ):
             return op.value.value
         else:
             return op.value

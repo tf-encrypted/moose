@@ -103,22 +103,22 @@ class ShapeValue(StandardValue):
 
 
 @dataclass
-class StringValue(StandardValue):
+class StringConstant(StandardValue):
     value: str
 
 
 @dataclass
-class TensorValue(StandardValue):
+class TensorConstant(StandardValue):
     value: np.ndarray
 
 
 @dataclass
-class IntValue(StandardValue):
+class IntConstant(StandardValue):
     value: int
 
 
 @dataclass
-class FloatValue(StandardValue):
+class FloatConstant(StandardValue):
     value: float
 
 

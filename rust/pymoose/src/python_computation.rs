@@ -58,8 +58,8 @@ enum PyValueType {
 #[allow(clippy::enum_variant_names)]
 enum PyValue {
     std_ShapeValue { value: Vec<u8> },
-    std_StringValue { value: String },
-    std_TensorValue { value: PyNdarray },
+    std_StringConstant { value: String },
+    std_TensorConstant { value: PyNdarray },
 }
 
 #[derive(Deserialize, Debug)]
@@ -339,8 +339,8 @@ fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
         PyValue::std_ShapeValue { value } => {
             Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
         }
-        PyValue::std_StringValue { value } => Ok(Value::String(String::from(value))),
-        PyValue::std_TensorValue { value } => match value {
+        PyValue::std_StringConstant { value } => Ok(Value::String(String::from(value))),
+        PyValue::std_TensorConstant { value } => match value {
             PyNdarray::float32 {
                 ref items,
                 ref shape,
@@ -707,7 +707,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.utils import serialize_computation
 from moose.computation.standard import TensorType
-from moose.computation.standard import TensorValue
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import UnitType
 from moose.computation import dtypes
 def f(arg1, arg2):
@@ -718,7 +718,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_x",
-            value=TensorValue(value = x),
+            value=TensorConstant(value = x),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -729,7 +729,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_y",
-            value=TensorValue(value = y),
+            value=TensorConstant(value = y),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -852,7 +852,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input",
-            value=standard_dialect.TensorValue(value=x),
+            value=standard_dialect.TensorConstant(value=x),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -862,7 +862,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="bob_input",
-            value=standard_dialect.TensorValue(value=y),
+            value=standard_dialect.TensorConstant(value=y),
             placement_name=bob.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -973,7 +973,7 @@ def f():
             name="constant_0",
             inputs={},
             placement_name="alice",
-            value=standard_dialect.StringValue(value="w_uri"),
+            value=standard_dialect.StringConstant(value="w_uri"),
             output_type=TensorType(dtype=dtypes.string),
         )
     )

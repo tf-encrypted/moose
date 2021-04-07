@@ -10,12 +10,12 @@ from typing import Union
 import numpy as np
 
 from moose.computation import dtypes
-from moose.computation.standard import FloatValue
-from moose.computation.standard import IntValue
+from moose.computation.standard import FloatConstant
+from moose.computation.standard import IntConstant
+from moose.computation.standard import StringConstant
 from moose.computation.standard import StringType
-from moose.computation.standard import StringValue
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
-from moose.computation.standard import TensorValue
 from moose.computation.standard import UnknownType
 
 CURRENT_PLACEMENT: List = []
@@ -295,17 +295,17 @@ def constant(value, dtype=None, placement=None):
             return cast(implicit_const, dtype, placement)
         elif dtype is None:
             dtype = moose_dtype
-        value = TensorValue(value=value)
+        value = TensorConstant(value=value)
     elif isinstance(value, float):
         dtype = dtype or dtypes.float64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
-        value = FloatValue(value=value)
+        value = FloatConstant(value=value)
     elif isinstance(value, int):
         dtype = dtype or dtypes.int64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
-        value = IntValue(value=value)
+        value = IntConstant(value=value)
     elif isinstance(value, str):
         if dtype is not None and dtype != dtypes.string:
             raise ValueError(
@@ -313,7 +313,7 @@ def constant(value, dtype=None, placement=None):
                 f"user-supplied dtype argument `{dtype}`."
             )
         dtype = dtype or dtypes.string
-        value = StringValue(value=value)
+        value = StringConstant(value=value)
 
     return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
 

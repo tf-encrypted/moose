@@ -119,10 +119,10 @@ SUPPORTED_TYPES = [
     std_dialect.SendOperation,
     std_dialect.ReceiveOperation,
     std_dialect.ShapeValue,
-    std_dialect.StringValue,
-    std_dialect.TensorValue,
-    std_dialect.IntValue,
-    std_dialect.FloatValue,
+    std_dialect.StringConstant,
+    std_dialect.TensorConstant,
+    std_dialect.IntConstant,
+    std_dialect.FloatConstant,
 ]
 
 

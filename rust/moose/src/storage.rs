@@ -30,7 +30,7 @@ impl SyncStorage for LocalSyncStorage {
             tracing::error!("value has already been sent");
             return Err(Error::Unexpected);
         }
-        store.insert(key, val.clone());
+        store.insert(key, val);
         Ok(())
     }
 
@@ -60,7 +60,7 @@ impl AsyncStorage for LocalAsyncStorage {
             tracing::error!("value has already been sent");
             return Err(Error::Unexpected);
         }
-        store.insert(key, val.clone());
+        store.insert(key, val);
         Ok(())
     }
 
