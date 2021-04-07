@@ -630,7 +630,7 @@ impl Compile<SyncKernel> for SaveOp {
         use std::convert::TryFrom;
         let expected_ty = self.ty;
         Ok(SyncKernel::Binary(Box::new(
-            move |sess: &SyncSession, key: Value, val: Value| {
+            move |sess, key, val| {
                 let key = String::try_from(key)?;
                 if val.ty() == expected_ty {
                     sess.storage.save(key, val)?;
