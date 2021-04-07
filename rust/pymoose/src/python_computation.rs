@@ -579,7 +579,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SaveOperation(op) => Ok(Operation {
                         kind: Save(SaveOp {
-                            ty: map_type(&op.output_type),
+                            ty: Ty::Float64TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])?,

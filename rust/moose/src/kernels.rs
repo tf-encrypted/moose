@@ -628,11 +628,16 @@ impl Compile<AsyncKernel> for OutputOp {
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self) -> Result<SyncKernel> {
         use std::convert::TryFrom;
+        let expected_ty = self.ty;
         Ok(SyncKernel::Binary(Box::new(
-            move |sess: &SyncSession, key: Value, x0: Value| {
+            move |sess: &SyncSession, key: Value, val: Value| {
                 let key = String::try_from(key)?;
-                sess.storage.save(key, x0)?;
-                Ok(Value::Unit)
+                if val.ty() == expected_ty {
+                    sess.storage.save(key, val)?;
+                    Ok(Value::Unit)
+                } else {
+                    Err(Error::TypeMismatch)
+                }
             },
         )))
     }
@@ -642,7 +647,7 @@ impl Compile<AsyncKernel> for SaveOp {
     fn compile(&self) -> Result<AsyncKernel> {
         use std::convert::TryFrom;
         use std::sync::Arc;
-
+        let expected_ty = self.ty;
         Ok(AsyncKernel::Binary(Box::new(
             move |sess, k0, x0, sender| {
                 let sess = Arc::clone(sess);
@@ -650,8 +655,13 @@ impl Compile<AsyncKernel> for SaveOp {
                     let k0: Value = k0.await.map_err(map_receive_error)?;
                     let key = String::try_from(k0)?;
                     let x0 = x0.await.map_err(map_receive_error)?;
-                    sess.storage.save(key, x0).await.map_err(map_send_error)?;
-                    sender.send(Value::Unit).map_err(map_send_error)
+
+                    if x0.ty() == expected_ty {
+                        sess.storage.save(key, x0).await.map_err(map_send_error)?;
+                        sender.send(Value::Unit).map_err(map_send_error)
+                    } else {
+                        Err(Error::TypeMismatch)
+                    }
                 })
             },
         )))
