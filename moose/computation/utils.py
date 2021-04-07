@@ -88,6 +88,8 @@ SUPPORTED_TYPES = [
     std_dialect.BytesType,
     std_dialect.StringType,
     std_dialect.ShapeType,
+    std_dialect.IntType,
+    std_dialect.FloatType,
     std_dialect.InputOperation,
     std_dialect.OutputOperation,
     std_dialect.CastOperation,
@@ -119,6 +121,8 @@ SUPPORTED_TYPES = [
     std_dialect.ShapeValue,
     std_dialect.StringValue,
     std_dialect.TensorValue,
+    std_dialect.IntValue,
+    std_dialect.FloatValue,
 ]
 
 

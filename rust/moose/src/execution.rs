@@ -5,9 +5,7 @@ use crate::error::{Error, Result};
 use crate::networking::{
     AsyncNetworking, LocalAsyncNetworking, LocalSyncNetworking, SyncNetworking,
 };
-use crate::storage::{
-    SyncStorage, LocalSyncStorage, AsyncStorage, LocalAsyncStorage,
-};
+use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
 
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -15,7 +13,7 @@ use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
-use std::{collections::{HashMap, HashSet}};
+use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -843,8 +841,11 @@ pub struct EagerExecutor {
 impl EagerExecutor {
     pub fn new() -> EagerExecutor {
         let networking = Rc::new(LocalSyncNetworking::default());
-        let storage= Rc::new(LocalSyncStorage::default());
-        EagerExecutor { networking, storage }
+        let storage = Rc::new(LocalSyncStorage::default());
+        EagerExecutor {
+            networking,
+            storage,
+        }
     }
 
     pub fn run_computation(
@@ -877,7 +878,7 @@ pub struct AsyncSession {
     pub sid: SessionId,
     pub args: AsyncArgs,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    pub storage: Arc<dyn Send+Sync+AsyncStorage>,
+    pub storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 pub type AsyncArgs = Environment<AsyncReceiver>;
@@ -901,14 +902,17 @@ impl AsyncSessionJoinHandle {
 
 pub struct AsyncExecutor {
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    pub storage: Arc<dyn Send+Sync+AsyncStorage>,
+    pub storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 impl AsyncExecutor {
     pub fn new() -> AsyncExecutor {
         let networking = Arc::new(LocalAsyncNetworking::default());
         let storage = Arc::new(LocalAsyncStorage::default());
-        AsyncExecutor { networking, storage }
+        AsyncExecutor {
+            networking,
+            storage,
+        }
     }
 
     pub fn run_computation(

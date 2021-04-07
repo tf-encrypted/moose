@@ -9,5 +9,5 @@ pub mod prim;
 pub mod prng;
 pub mod ring;
 pub mod standard;
-pub mod utils;
 pub mod storage;
+pub mod utils;

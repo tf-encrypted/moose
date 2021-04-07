@@ -53,6 +53,16 @@ class StringType(StandardType):
 
 
 @dataclass
+class IntType(StandardType):
+    pass
+
+
+@dataclass
+class FloatType(StandardType):
+    pass
+
+
+@dataclass
 class ShapeType(StandardType):
     pass
 
@@ -100,6 +110,16 @@ class StringValue(StandardValue):
 @dataclass
 class TensorValue(StandardValue):
     value: np.ndarray
+
+
+@dataclass
+class IntValue(StandardValue):
+    value: int
+
+
+@dataclass
+class FloatValue(StandardValue):
+    value: float
 
 
 @dataclass

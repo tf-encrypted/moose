@@ -10,10 +10,13 @@ from typing import Union
 import numpy as np
 
 from moose.computation import dtypes
+from moose.computation.standard import FloatValue
+from moose.computation.standard import IntValue
 from moose.computation.standard import StringType
-from moose.computation.standard import TensorType
-from moose.computation.standard import UnknownType
 from moose.computation.standard import StringValue
+from moose.computation.standard import TensorType
+from moose.computation.standard import TensorValue
+from moose.computation.standard import UnknownType
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
@@ -292,14 +295,17 @@ def constant(value, dtype=None, placement=None):
             return cast(implicit_const, dtype, placement)
         elif dtype is None:
             dtype = moose_dtype
+        value = TensorValue(value=value)
     elif isinstance(value, float):
         dtype = dtype or dtypes.float64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
+        value = FloatValue(value=value)
     elif isinstance(value, int):
         dtype = dtype or dtypes.int64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
+        value = IntValue(value=value)
     elif isinstance(value, str):
         if dtype is not None and dtype != dtypes.string:
             raise ValueError(

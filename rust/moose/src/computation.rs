@@ -3,7 +3,7 @@ use crate::prim::{Nonce, PrfKey, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, Shape,
-    Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor
+    Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;

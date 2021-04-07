@@ -1,4 +1,3 @@
-use crate::{computation::*, execution::SyncSession};
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_error, AsyncKernel, Compile, Kernel, SyncKernel,
@@ -9,6 +8,7 @@ use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
+use crate::{computation::*, execution::SyncSession};
 
 impl Compile<SyncKernel> for Operator {
     fn compile(&self) -> Result<SyncKernel> {
@@ -628,11 +628,13 @@ impl Compile<AsyncKernel> for OutputOp {
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self) -> Result<SyncKernel> {
         use std::convert::TryFrom;
-        Ok(SyncKernel::Binary(Box::new(move |sess: &SyncSession, key: Value, x0: Value| {
-            let key = String::try_from(key)?;
-            sess.storage.save(key, x0)?;
-            Ok(Value::Unit)
-        })))
+        Ok(SyncKernel::Binary(Box::new(
+            move |sess: &SyncSession, key: Value, x0: Value| {
+                let key = String::try_from(key)?;
+                sess.storage.save(key, x0)?;
+                Ok(Value::Unit)
+            },
+        )))
     }
 }
 
@@ -641,20 +643,20 @@ impl Compile<AsyncKernel> for SaveOp {
         use std::convert::TryFrom;
         use std::sync::Arc;
 
-        Ok(AsyncKernel::Binary(Box::new(move |sess, k0, x0, sender| {
-            let sess = Arc::clone(sess);
-            tokio::spawn(async move {
-                let k0: Value = k0.await.map_err(map_receive_error)?;
-                let key = String::try_from(k0)?;
-                let x0 = x0.await.map_err(map_receive_error)?;
-                sess.storage.save(key, x0).await.map_err(map_send_error)?;
-                sender.send(Value::Unit).map_err(map_send_error)
-            })
-        })))
+        Ok(AsyncKernel::Binary(Box::new(
+            move |sess, k0, x0, sender| {
+                let sess = Arc::clone(sess);
+                tokio::spawn(async move {
+                    let k0: Value = k0.await.map_err(map_receive_error)?;
+                    let key = String::try_from(k0)?;
+                    let x0 = x0.await.map_err(map_receive_error)?;
+                    sess.storage.save(key, x0).await.map_err(map_send_error)?;
+                    sender.send(Value::Unit).map_err(map_send_error)
+                })
+            },
+        )))
     }
 }
-
-
 
 #[test]
 fn test_standard_shape_ops() {

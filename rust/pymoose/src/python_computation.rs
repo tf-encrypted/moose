@@ -622,9 +622,7 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
-        let sorted_ops = rust_comp.toposort().unwrap();
-
-        sorted_ops
+        rust_comp.toposort().unwrap()
     }
 
     fn run_computation(computation: &Computation) -> HashMap<String, Value> {
@@ -709,6 +707,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.utils import serialize_computation
 from moose.computation.standard import TensorType
+from moose.computation.standard import TensorValue
 from moose.computation.standard import UnitType
 from moose.computation import dtypes
 def f(arg1, arg2):
@@ -719,7 +718,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_x",
-            value=standard_dialect.TensorValue(value=x),
+            value=TensorValue(value = x),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -730,7 +729,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_y",
-            value=standard_dialect.TensorValue(value=y),
+            value=TensorValue(value = y),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -1012,7 +1011,7 @@ def f():
     def my_comp():
 
         with x_owner:
-            X = edsl.constant(standard_dialect.TensorValue(value=x_uri), dtype=edsl.float32)
+            X = edsl.constant(x_uri, dtype=edsl.float64)
 
         with model_owner:
             res = (
@@ -1024,7 +1023,6 @@ def f():
     concrete_comp = edsl.trace(my_comp)
     return serialize_computation(concrete_comp)
 
-f()
 "#;
         let _ = run_call0_func(&py_code);
     }
