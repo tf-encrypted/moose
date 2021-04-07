@@ -835,7 +835,7 @@ pub type Environment<V> = HashMap<String, V>;
 /// and development only due to its unforgiving but highly predictable behaviour.
 pub struct EagerExecutor {
     networking: Rc<dyn SyncNetworking>,
-    pub storage: Rc<dyn SyncStorage>,
+    storage: Rc<dyn SyncStorage>,
 }
 
 impl EagerExecutor {
@@ -901,8 +901,8 @@ impl AsyncSessionJoinHandle {
 }
 
 pub struct AsyncExecutor {
-    pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    pub storage: Arc<dyn Send + Sync + AsyncStorage>,
+    networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 impl AsyncExecutor {
