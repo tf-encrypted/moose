@@ -649,15 +649,14 @@ impl Compile<AsyncKernel> for SaveOp {
         use std::sync::Arc;
         let expected_ty = self.ty;
         Ok(AsyncKernel::Binary(Box::new(
-            move |sess, k0, x0, sender| {
+            move |sess, key, val, sender| {
                 let sess = Arc::clone(sess);
                 tokio::spawn(async move {
-                    let k0: Value = k0.await.map_err(map_receive_error)?;
-                    let key = String::try_from(k0)?;
-                    let x0 = x0.await.map_err(map_receive_error)?;
+                    let key = String::try_from(key.await.map_err(map_receive_error)?)?;
+                    let val = val.await.map_err(map_receive_error)?;
 
-                    if x0.ty() == expected_ty {
-                        sess.storage.save(key, x0).await.map_err(map_send_error)?;
+                    if val.ty() == expected_ty {
+                        sess.storage.save(key, val).await.map_err(map_send_error)?;
                         sender.send(Value::Unit).map_err(map_send_error)
                     } else {
                         Err(Error::TypeMismatch)

@@ -56,7 +56,7 @@ enum PyValueType {
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
-enum PyValue {
+enum PyConstant {
     std_ShapeValue { value: Vec<u8> },
     std_StringConstant { value: String },
     std_TensorConstant { value: PyNdarray },
@@ -161,7 +161,7 @@ struct PyConstantOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-    value: PyValue,
+    value: PyConstant,
 }
 
 #[derive(Deserialize, Debug)]
@@ -334,13 +334,13 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
         .ok_or_else(|| anyhow::anyhow!("No key found in placement dictionary"))
 }
 
-fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
+fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
     match constant_value {
-        PyValue::std_ShapeValue { value } => {
+        PyConstant::std_ShapeValue { value } => {
             Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
         }
-        PyValue::std_StringConstant { value } => Ok(Value::String(String::from(value))),
-        PyValue::std_TensorConstant { value } => match value {
+        PyConstant::std_StringConstant { value } => Ok(Value::String(String::from(value))),
+        PyConstant::std_TensorConstant { value } => match value {
             PyNdarray::float32 {
                 ref items,
                 ref shape,
