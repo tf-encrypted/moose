@@ -11,7 +11,7 @@ from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import AbsOperation
 from moose.computation.standard import AddOperation
 from moose.computation.standard import ApplyFunctionOperation
-from moose.computation.standard import Atleast2DOperation
+from moose.computation.standard import AtLeast2DOperation
 from moose.computation.standard import CastOperation
 from moose.computation.standard import ConcatenateOperation
 from moose.computation.standard import ConstantOperation
@@ -40,7 +40,7 @@ from moose.computation.standard import UnknownType
 from moose.edsl.base import AbsExpression
 from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
-from moose.edsl.base import Atleast2DExpression
+from moose.edsl.base import AtLeast2DExpression
 from moose.edsl.base import BinaryOpExpression
 from moose.edsl.base import CastExpression
 from moose.edsl.base import ConcatenateExpression
@@ -399,13 +399,13 @@ class AstTracer:
             )
         )
 
-    def visit_Atleast2DExpression(self, atleast_2d_expression):
-        assert isinstance(atleast_2d_expression, Atleast2DExpression)
+    def visit_AtLeast2DExpression(self, atleast_2d_expression):
+        assert isinstance(atleast_2d_expression, AtLeast2DExpression)
         (x_expression,) = atleast_2d_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(atleast_2d_expression.placement)
         return self.computation.add_operation(
-            Atleast2DOperation(
+            AtLeast2DOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("atleast_2d"),
                 output_type=x_operation.output_type,

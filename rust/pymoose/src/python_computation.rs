@@ -26,6 +26,11 @@ enum PyOperation {
     std_SubOperation(PySubOperation),
     std_MulOperation(PyMulOperation),
     std_DotOperation(PyDotOperation),
+    std_AtLeast2DOperation(PyAtLeast2DOperation),
+    std_ShapeOperation(PyShapeOperation),
+    std_SliceOperation(PySliceOperation),
+    std_OnesOperation(PyOnesOperation),
+    std_ExpandDimsOperation(PyExpandDimsOperation),
     std_SerializeOperation(PySerializeOperation),
     std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
@@ -49,6 +54,7 @@ enum PyValueType {
     std_StringType,
     std_TensorType,
     std_UnitType,
+    std_UnknownType,
     ring_RingTensorType,
 }
 
@@ -195,6 +201,52 @@ struct PyDotOperation {
     placement_name: String,
     output_type: PyValueType,
 }
+
+#[derive(Deserialize, Debug)]
+struct PyAtLeast2DOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    to_column_vector: bool,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyShapeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySliceOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    begin: u32,
+    end: u32,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyOnesOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    // dtype: Option<PyNdArray>,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyExpandDimsOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    axis: u32,
+}
+
 
 #[derive(Deserialize, Debug)]
 struct PySerializeOperation {
@@ -369,6 +421,7 @@ fn map_type(py_type: &PyValueType) -> Ty {
         PyValueType::std_UnitType => Ty::UnitTy,
         PyValueType::std_StringType => Ty::StringTy,
         PyValueType::std_TensorType => Ty::Float64TensorTy,
+        PyValueType::std_UnknownType => Ty::Float64TensorTy, // TODO(Dragos) fixme
         PyValueType::std_BytesType => unimplemented!(),
         PyValueType::ring_RingTensorType => Ty::Ring64TensorTy,
     }
@@ -521,6 +574,50 @@ impl TryFrom<PyComputation> for Computation {
                             rhs: Ty::Float64TensorTy,
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_AtLeast2DOperation(op) => Ok(Operation {
+                        kind: StdAtLeast2D(StdAtLeast2DOp {
+                            ty: Ty::Float64TensorTy,
+                            to_column_vector: op.to_column_vector,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_ShapeOperation(op) => Ok(Operation {
+                        kind: StdShape(StdShapeOp {
+                            ty: Ty::ShapeTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_SliceOperation(op) => Ok(Operation {
+                        kind: StdSlice(StdSliceOp {
+                            ty: Ty::Float64TensorTy,
+                            start: op.begin,
+                            end: op.end,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_OnesOperation(op) => Ok(Operation {
+                        kind: StdOnes(StdOnesOp {
+                            ty: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["shape"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_ExpandDimsOperation(op) => Ok(Operation {
+                        kind: StdExpandDims(StdExpandDimsOp{
+                            ty: Ty::Float64TensorTy,
+                            axis: op.axis,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -989,8 +1086,8 @@ def f():
 import numpy as np
 
 from moose import edsl
-from moose.computation.utils import serialize_computation
 from moose.computation import standard as standard_dialect
+from moose.computation.utils import serialize_computation
 
 
 def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
@@ -1000,9 +1097,34 @@ def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
     return x_data, y_data
 
 
+def mse(y_pred, y_true):
+    return edsl.mean(edsl.square(edsl.sub(y_pred, y_true)), axis=0)
+
+
+def ss_res(y_pred, y_true):
+    squared_residuals = edsl.square(edsl.sub(y_true, y_pred))
+    return edsl.sum(squared_residuals, axis=0)
+
+
+def ss_tot(y_true):
+    y_mean = edsl.mean(y_true)
+    squared_deviations = edsl.square(edsl.sub(y_true, y_mean))
+    return edsl.sum(squared_deviations, axis=0)
+
+
+def r_squared(ss_res, ss_tot):
+    residuals_ratio = edsl.div(ss_res, ss_tot)
+    return edsl.sub(edsl.constant(1.0, dtype=edsl.float64), residuals_ratio)
+
+
 def f():
     x_owner = edsl.host_placement(name="x-owner")
     model_owner = edsl.host_placement(name="model-owner")
+    y_owner = edsl.host_placement(name="y-owner")
+    replicated_plc = edsl.replicated_placement(
+        players=[x_owner, y_owner, model_owner], name="replicated-plc"
+    )
+
 
     x_uri, y_uri = generate_data(seed=42, n_instances=10, n_features=1)
 
@@ -1010,11 +1132,36 @@ def f():
     def my_comp():
 
         with x_owner:
-            X = edsl.constant(x_uri, dtype=edsl.float64)
+            X = edsl.atleast_2d(
+                edsl.constant(x_uri, dtype=edsl.float64),to_column_vector=True
+            )
+            bias_shape = edsl.slice(edsl.shape(X), begin=0, end=1)
+            bias = edsl.ones(bias_shape, dtype=edsl.float64)
+            reshaped_bias = edsl.expand_dims(bias, 1)
+            X_b = edsl.concatenate([reshaped_bias, X], axis=1)
+            A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
+            B = edsl.dot(A, edsl.transpose(X_b))
+
+        with y_owner:
+            y_true = edsl.atleast_2d(
+                edsl.constant(y_uri, dtype=edsl.float64), to_column_vector=True
+            )
+            totals_ss = ss_tot(y_true)
+
+        with replicated_plc:
+            w = edsl.dot(B, y_true)
+            y_pred = edsl.dot(X_b, w)
+            mse_result = mse(y_pred, y_true)
+            residuals_ss = ss_res(y_pred, y_true)
+
+        with model_owner:
+            rsquared_result = r_squared(residuals_ss, totals_ss)
 
         with model_owner:
             res = (
-                edsl.save("w_uri", X),
+                edsl.save("regression_weights", w),
+                edsl.save("mse_result", mse_result),
+                edsl.save("rsquared_result", rsquared_result),
             )
 
         return res

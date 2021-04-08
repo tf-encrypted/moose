@@ -213,7 +213,7 @@ class EdslTest(parameterized.TestCase):
         concrete_comp = trace(my_comp)
 
         op = concrete_comp.operation("atleast_2d_0")
-        assert op == standard_ops.Atleast2DOperation(
+        assert op == standard_ops.AtLeast2DOperation(
             placement_name="player0",
             name="atleast_2d_0",
             inputs={"x": "constant_0"},

@@ -58,7 +58,7 @@ class AsyncExecutor:
             standard_ops.MeanOperation: standard_kernels.MeanKernel(),
             standard_ops.TransposeOperation: standard_kernels.TransposeKernel(),
             standard_ops.ReshapeOperation: standard_kernels.ReshapeKernel(),
-            standard_ops.Atleast2DOperation: standard_kernels.Atleast2DKernel(),
+            standard_ops.AtLeast2DOperation: standard_kernels.AtLeast2DKernel(),
             standard_ops.ShapeOperation: standard_kernels.ShapeKernel(),
             standard_ops.SliceOperation: standard_kernels.SliceKernel(),
             ring_ops.FillTensorOperation: ring_kernels.RingFillKernel(),
