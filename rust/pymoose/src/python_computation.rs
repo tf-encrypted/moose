@@ -693,7 +693,6 @@ mod tests {
         let exec = EagerExecutor::new();
         let env = hashmap![];
         exec.run_computation(&comp, 12345, env).unwrap();
-        // println!("weight = {:?}", exec.storage.load("w_uri".to_string()).unwrap());
         Value::Unit
     }
 
