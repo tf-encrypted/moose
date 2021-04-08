@@ -30,7 +30,10 @@ enum PyOperation {
     std_ShapeOperation(PyShapeOperation),
     std_SliceOperation(PySliceOperation),
     std_OnesOperation(PyOnesOperation),
+    std_ConcatenateOperation(PyConcatenateOperation),
+    std_TransposeOperation(PyTransposeOperation),
     std_ExpandDimsOperation(PyExpandDimsOperation),
+    std_InverseOperation(PyInverseOperation),
     std_SerializeOperation(PySerializeOperation),
     std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
@@ -66,6 +69,7 @@ enum PyConstant {
     std_ShapeConstant { value: Vec<u8> },
     std_StringConstant { value: String },
     std_TensorConstant { value: PyNdarray },
+    std_FloatConstant { value: f64 },
 }
 
 #[derive(Deserialize, Debug)]
@@ -247,6 +251,30 @@ struct PyExpandDimsOperation {
     axis: u32,
 }
 
+#[derive(Deserialize, Debug)]
+struct PyConcatenateOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    axis: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyTransposeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyInverseOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
 
 #[derive(Deserialize, Debug)]
 struct PySerializeOperation {
@@ -410,6 +438,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
                 Ok(Float64Tensor::from(tensor).into())
             }
         },
+        PyConstant::std_FloatConstant { value } => Ok(Value::Float(*value)),
     }
 }
 
@@ -621,6 +650,32 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_ConcatenateOperation(op) => Ok(Operation {
+                        kind: StdConcatenate(StdConcatenateOp{
+                            ty: Ty::Float64TensorTy,
+                            axis: op.axis,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_TransposeOperation(op) => Ok(Operation {
+                        kind: StdTranspose(StdTransposeOp{
+                            ty: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_InverseOperation(op) => Ok(Operation {
+                        kind: StdTranspose(StdTransposeOp { // TODO(Dragos) FIXME
+                            ty: Ty::Float64TensorTy,
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+
                     std_SendOperation(op) => Ok(Operation {
                         kind: Send(SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
