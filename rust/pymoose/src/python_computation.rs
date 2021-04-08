@@ -57,7 +57,7 @@ enum PyValueType {
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
 enum PyConstant {
-    std_ShapeValue { value: Vec<u8> },
+    std_ShapeConstant { value: Vec<u8> },
     std_StringConstant { value: String },
     std_TensorConstant { value: PyNdarray },
 }
@@ -336,7 +336,7 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 
 fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
     match constant_value {
-        PyConstant::std_ShapeValue { value } => {
+        PyConstant::std_ShapeConstant { value } => {
             Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
         }
         PyConstant::std_StringConstant { value } => Ok(Value::String(String::from(value))),

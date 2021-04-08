@@ -12,6 +12,7 @@ import numpy as np
 from moose.computation import dtypes
 from moose.computation.standard import FloatConstant
 from moose.computation.standard import IntConstant
+from moose.computation.standard import ShapeConstant
 from moose.computation.standard import StringConstant
 from moose.computation.standard import StringType
 from moose.computation.standard import TensorConstant
@@ -456,7 +457,7 @@ def atleast_2d(x, to_column_vector=False, placement=None):
 def reshape(x, shape, placement=None):
     assert isinstance(x, Expression)
     if isinstance(shape, (list, tuple)):
-        shape = constant(shape, placement=placement)
+        shape = constant(ShapeConstant(value=shape), placement=placement)
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     return ReshapeExpression(placement=placement, inputs=[x, shape], dtype=x.dtype)

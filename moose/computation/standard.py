@@ -91,34 +91,39 @@ class ConcatenateOperation(StandardOperation):
 
 
 @dataclass
-class StandardValue(Value):
+class StandardConstant(Value):
     @classmethod
     def dialect(cls):
         return "std"
 
 
 @dataclass
-class ShapeValue(StandardValue):
+class ShapeConstant(StandardConstant):
     value: tuple
 
 
 @dataclass
-class StringConstant(StandardValue):
+class StringConstant(StandardConstant):
     value: str
 
 
 @dataclass
-class TensorConstant(StandardValue):
+class BytesConstant(StandardConstant):
+    value: bytes
+
+
+@dataclass
+class TensorConstant(StandardConstant):
     value: np.ndarray
 
 
 @dataclass
-class IntConstant(StandardValue):
+class IntConstant(StandardConstant):
     value: int
 
 
 @dataclass
-class FloatConstant(StandardValue):
+class FloatConstant(StandardConstant):
     value: float
 
 

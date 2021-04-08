@@ -15,6 +15,8 @@ from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.replicated import ReplicatedPlacement
+from moose.computation.standard import StringConstant
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.computation.standard import UnitType
 from moose.testing import run_test_computation
@@ -92,7 +94,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
-                value=x,
+                value=TensorConstant(value=x),
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
@@ -102,7 +104,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="bob_input",
-                value=y,
+                value=TensorConstant(value=y),
                 placement_name=bob.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
@@ -134,7 +136,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=carole.name,
-                value="result",
+                value=StringConstant(value="result"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -171,7 +173,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
-                value=x,
+                value=TensorConstant(value=x),
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
@@ -193,7 +195,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=carole.name,
-                value="result",
+                value=StringConstant(value="result"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -238,7 +240,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
-                value=x,
+                value=TensorConstant(value=x),
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
@@ -258,7 +260,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=carole.name,
-                value="result",
+                value=StringConstant(value="result"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -297,7 +299,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
-                value=x,
+                value=TensorConstant(value=x),
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
@@ -307,7 +309,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="bob_input",
-                value=y,
+                value=TensorConstant(value=y),
                 placement_name=bob.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
@@ -328,7 +330,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=carole.name,
-                value="result",
+                value=StringConstant(value="result"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -367,7 +369,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
-                value=x,
+                value=TensorConstant(value=x),
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
@@ -387,7 +389,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=carole.name,
-                value="result",
+                value=StringConstant(value="result"),
                 output_type=standard_dialect.StringType(),
             )
         )

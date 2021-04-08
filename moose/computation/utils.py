@@ -118,7 +118,7 @@ SUPPORTED_TYPES = [
     std_dialect.DeserializeOperation,
     std_dialect.SendOperation,
     std_dialect.ReceiveOperation,
-    std_dialect.ShapeValue,
+    std_dialect.ShapeConstant,
     std_dialect.StringConstant,
     std_dialect.TensorConstant,
     std_dialect.IntConstant,
