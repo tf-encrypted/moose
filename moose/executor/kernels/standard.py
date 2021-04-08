@@ -32,6 +32,7 @@ from moose.computation.standard import ShapeOperation
 from moose.computation.standard import ShapeType
 from moose.computation.standard import SliceOperation
 from moose.computation.standard import SqueezeOperation
+from moose.computation.standard import StandardConstant
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
 from moose.computation.standard import TensorType
@@ -70,7 +71,9 @@ class ConcatenateKernel(Kernel):
 class ConstantKernel(Kernel):
     def execute_synchronous_block(self, op, session):
         assert isinstance(op, ConstantOperation)
-        return op.value
+        assert isinstance(op.value, StandardConstant)
+        # hack until we get rid of python runtime
+        return op.value.value
 
 
 class AddKernel(Kernel):

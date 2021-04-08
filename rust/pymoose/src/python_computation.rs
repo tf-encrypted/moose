@@ -30,6 +30,7 @@ enum PyOperation {
     std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
     std_OutputOperation(PyOutputOperation),
+    std_SaveOperation(PySaveOperation),
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
     fixed_RingDecodeOperation(PyRingDecodeOperation),
@@ -55,10 +56,10 @@ enum PyValueType {
 #[serde(tag = "__type__")]
 #[allow(non_camel_case_types)]
 #[allow(clippy::enum_variant_names)]
-enum PyValue {
-    std_ShapeValue { value: Vec<u8> },
-    std_StringValue { value: String },
-    std_TensorValue { value: PyNdarray },
+enum PyConstant {
+    std_ShapeConstant { value: Vec<u8> },
+    std_StringConstant { value: String },
+    std_TensorConstant { value: PyNdarray },
 }
 
 #[derive(Deserialize, Debug)]
@@ -160,7 +161,7 @@ struct PyConstantOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-    value: PyValue,
+    value: PyConstant,
 }
 
 #[derive(Deserialize, Debug)]
@@ -233,6 +234,14 @@ struct PyReceiveOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyOutputOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PySaveOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -325,16 +334,13 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
         .ok_or_else(|| anyhow::anyhow!("No key found in placement dictionary"))
 }
 
-fn map_constant_value(constant_value: &PyValue) -> anyhow::Result<Value> {
+fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
     match constant_value {
-        PyValue::std_ShapeValue { value } => {
+        PyConstant::std_ShapeConstant { value } => {
             Ok(moose::standard::Shape(value.iter().map(|i| *i as usize).collect()).into())
         }
-        PyValue::std_StringValue { value } => {
-            let _ = value;
-            unimplemented!()
-        }
-        PyValue::std_TensorValue { value } => match value {
+        PyConstant::std_StringConstant { value } => Ok(Value::String(String::from(value))),
+        PyConstant::std_TensorConstant { value } => match value {
             PyNdarray::float32 {
                 ref items,
                 ref shape,
@@ -571,6 +577,15 @@ impl TryFrom<PyComputation> for Computation {
                         inputs: map_inputs(&op.inputs, &["value"])?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_SaveOperation(op) => Ok(Operation {
+                        kind: Save(SaveOp {
+                            ty: Ty::Float64TensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["key", "value"])?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+
                     fixed_RingEncodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingEncode(FixedpointRingEncodeOp {
                             scaling_factor: op.scaling_factor,
@@ -598,20 +613,22 @@ impl TryFrom<PyComputation> for Computation {
 mod tests {
     use super::*;
     use maplit::hashmap;
-    use moose::execution;
+    use moose::execution::EagerExecutor;
     use numpy::ToPyArray;
     use pyo3::prelude::*;
 
-    fn create_rust_executor_from_python(py_any: &PyAny) -> HashMap<String, Value> {
+    fn create_computation_graph_from_python(py_any: &PyAny) -> Computation {
         let buf: Vec<u8> = py_any.extract().unwrap();
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
-        let sorted_ops = rust_comp.toposort().unwrap();
+        rust_comp.toposort().unwrap()
+    }
 
-        let exec = execution::EagerExecutor::new();
+    fn run_computation(computation: &Computation) -> HashMap<String, Value> {
+        let exec = EagerExecutor::new();
         let env = hashmap![];
-        exec.run_computation(&sorted_ops, 12345, env).unwrap()
+        exec.run_computation(&computation, 12345, env).unwrap()
     }
 
     fn run_binary_func(x: &ArrayD<f64>, y: &ArrayD<f64>, py_code: &str) -> Value {
@@ -642,8 +659,41 @@ mod tests {
             })
             .unwrap();
 
-        let outputs = create_rust_executor_from_python(py_any);
+        let outputs = run_computation(&create_computation_graph_from_python(py_any));
         outputs["result"].clone()
+    }
+
+    fn run_call0_func(py_code: &str) -> Value {
+        let gil = Python::acquire_gil();
+        let py = gil.python();
+
+        let comp_graph_py = PyModule::from_code(py, py_code, "comp_graph.py", "comp_graph")
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap();
+
+        let py_any = comp_graph_py
+            .getattr("f")
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap()
+            .call0()
+            .map_err(|e| {
+                e.print(py);
+                e
+            })
+            .unwrap();
+
+        let comp = &create_computation_graph_from_python(py_any);
+
+        let exec = EagerExecutor::new();
+        let env = hashmap![];
+        exec.run_computation(&comp, 12345, env).unwrap();
+        Value::Unit
     }
 
     #[test]
@@ -656,6 +706,7 @@ from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.utils import serialize_computation
 from moose.computation.standard import TensorType
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import UnitType
 from moose.computation import dtypes
 def f(arg1, arg2):
@@ -666,7 +717,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_x",
-            value=standard_dialect.TensorValue(value=x),
+            value=TensorConstant(value = x),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -677,7 +728,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input_y",
-            value=standard_dialect.TensorValue(value=y),
+            value=TensorConstant(value = y),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -800,7 +851,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input",
-            value=standard_dialect.TensorValue(value=x),
+            value=standard_dialect.TensorConstant(value=x),
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -810,7 +861,7 @@ def f(arg1, arg2):
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="bob_input",
-            value=standard_dialect.TensorValue(value=y),
+            value=standard_dialect.TensorConstant(value=y),
             placement_name=bob.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
@@ -898,5 +949,80 @@ def f(arg1, arg2):
             result,
             Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
         );
+    }
+    #[test]
+    fn test_constant() {
+        let py_code = r#"
+import numpy as np
+from moose.computation import ring as ring_dialect
+from moose.computation import standard as standard_dialect
+from moose.computation.base import Computation
+from moose.computation.host import HostPlacement
+from moose.computation.utils import serialize_computation
+from moose.computation.standard import TensorType
+from moose.computation.standard import UnitType
+from moose.computation import dtypes
+
+def f():
+    comp = Computation(operations={}, placements={})
+    alice = comp.add_placement(HostPlacement(name="alice"))
+
+    comp.add_operation(
+        standard_dialect.ConstantOperation(
+            name="constant_0",
+            inputs={},
+            placement_name="alice",
+            value=standard_dialect.StringConstant(value="w_uri"),
+            output_type=TensorType(dtype=dtypes.string),
+        )
+    )
+
+    return serialize_computation(comp)
+
+    "#;
+
+        let _ = run_call0_func(&py_code);
+    }
+    #[test]
+    fn test_deserialize_linear_regression() {
+        let py_code = r#"
+import numpy as np
+
+from moose import edsl
+from moose.computation.utils import serialize_computation
+from moose.computation import standard as standard_dialect
+
+
+def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
+    rng = np.random.default_rng()
+    x_data = rng.normal(size=(n_instances, n_features))
+    y_data = np.dot(x_data, np.ones(n_features) * coeff) + shift
+    return x_data, y_data
+
+
+def f():
+    x_owner = edsl.host_placement(name="x-owner")
+    model_owner = edsl.host_placement(name="model-owner")
+
+    x_uri, y_uri = generate_data(seed=42, n_instances=10, n_features=1)
+
+    @edsl.computation
+    def my_comp():
+
+        with x_owner:
+            X = edsl.constant(x_uri, dtype=edsl.float64)
+
+        with model_owner:
+            res = (
+                edsl.save("w_uri", X),
+            )
+
+        return res
+
+    concrete_comp = edsl.trace(my_comp)
+    return serialize_computation(concrete_comp)
+
+"#;
+        let _ = run_call0_func(&py_code);
     }
 }

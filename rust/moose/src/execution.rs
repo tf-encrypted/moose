@@ -5,6 +5,8 @@ use crate::error::{Error, Result};
 use crate::networking::{
     AsyncNetworking, LocalAsyncNetworking, LocalSyncNetworking, SyncNetworking,
 };
+use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
+
 use futures::future::{Map, Shared};
 use futures::prelude::*;
 use petgraph::algo::toposort;
@@ -383,9 +385,11 @@ pub struct SyncSession {
     pub sid: SessionId,
     pub args: Environment<Value>,
     pub networking: SyncNetworkingImpl,
+    pub storage: SyncStorageImpl,
 }
 
 pub type SyncNetworkingImpl = Rc<dyn SyncNetworking>;
+pub type SyncStorageImpl = Rc<dyn SyncStorage>;
 
 type SyncOperationKernel =
     Box<dyn Fn(&SyncSession, &Environment<Value>) -> Result<Value> + Send + Sync>;
@@ -836,12 +840,17 @@ pub type Environment<V> = HashMap<String, V>;
 /// and development only due to its unforgiving but highly predictable behaviour.
 pub struct EagerExecutor {
     networking: Rc<dyn SyncNetworking>,
+    storage: Rc<dyn SyncStorage>,
 }
 
 impl EagerExecutor {
     pub fn new() -> EagerExecutor {
         let networking = Rc::new(LocalSyncNetworking::default());
-        EagerExecutor { networking }
+        let storage = Rc::new(LocalSyncStorage::default());
+        EagerExecutor {
+            networking,
+            storage,
+        }
     }
 
     pub fn run_computation(
@@ -856,6 +865,7 @@ impl EagerExecutor {
             sid,
             args,
             networking: Rc::clone(&self.networking),
+            storage: Rc::clone(&self.storage),
         };
 
         compiled_comp.apply(&sess)
@@ -873,6 +883,7 @@ pub struct AsyncSession {
     pub sid: SessionId,
     pub args: AsyncArgs,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    pub storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 pub type AsyncArgs = Environment<AsyncReceiver>;
@@ -895,13 +906,18 @@ impl AsyncSessionJoinHandle {
 }
 
 pub struct AsyncExecutor {
-    pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    networking: Arc<dyn Send + Sync + AsyncNetworking>,
+    storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 impl AsyncExecutor {
     pub fn new() -> AsyncExecutor {
         let networking = Arc::new(LocalAsyncNetworking::default());
-        AsyncExecutor { networking }
+        let storage = Arc::new(LocalAsyncStorage::default());
+        AsyncExecutor {
+            networking,
+            storage,
+        }
     }
 
     pub fn run_computation(
@@ -916,6 +932,7 @@ impl AsyncExecutor {
             sid,
             args,
             networking: Arc::clone(&self.networking),
+            storage: Arc::clone(&self.storage),
         });
 
         // TODO don't return unexpected error

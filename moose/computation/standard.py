@@ -53,6 +53,16 @@ class StringType(StandardType):
 
 
 @dataclass
+class IntType(StandardType):
+    pass
+
+
+@dataclass
+class FloatType(StandardType):
+    pass
+
+
+@dataclass
 class ShapeType(StandardType):
     pass
 
@@ -81,25 +91,40 @@ class ConcatenateOperation(StandardOperation):
 
 
 @dataclass
-class StandardValue(Value):
+class StandardConstant(Value):
     @classmethod
     def dialect(cls):
         return "std"
 
 
 @dataclass
-class ShapeValue(StandardValue):
+class ShapeConstant(StandardConstant):
     value: tuple
 
 
 @dataclass
-class StringValue(StandardValue):
+class StringConstant(StandardConstant):
     value: str
 
 
 @dataclass
-class TensorValue(StandardValue):
+class BytesConstant(StandardConstant):
+    value: bytes
+
+
+@dataclass
+class TensorConstant(StandardConstant):
     value: np.ndarray
+
+
+@dataclass
+class IntConstant(StandardConstant):
+    value: int
+
+
+@dataclass
+class FloatConstant(StandardConstant):
+    value: float
 
 
 @dataclass

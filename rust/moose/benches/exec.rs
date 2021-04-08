@@ -580,6 +580,7 @@ fn execute(c: &mut Criterion) {
                 sid: 12345,
                 args: hashmap!(),
                 networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
+                storage: Rc::new(moose::storage::LocalSyncStorage::default()),
             };
 
             b.iter(|| {
@@ -595,6 +596,7 @@ fn execute(c: &mut Criterion) {
                 sid: 12345,
                 args: hashmap!(),
                 networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
+                storage: Rc::new(moose::storage::LocalSyncStorage::default()),
             };
 
             b.iter(|| {
@@ -610,6 +612,7 @@ fn execute(c: &mut Criterion) {
                 sid: 12345,
                 args: hashmap!(),
                 networking: Arc::new(DummyNetworking(moose::computation::Value::Unit)),
+                storage: Arc::new(moose::storage::LocalAsyncStorage::default()),
             });
 
             b.iter(|| {

@@ -7,6 +7,9 @@ from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
+from moose.computation.standard import BytesConstant
+from moose.computation.standard import ShapeConstant
+from moose.computation.standard import StringConstant
 from moose.testing import run_test_computation
 
 
@@ -21,7 +24,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
                 name="key",
                 placement_name=alice.name,
                 inputs={},
-                value=key,
+                value=BytesConstant(value=key),
                 output_type=primitives_dialect.PRFKeyType(),
             )
         )
@@ -30,7 +33,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
                 name="save_key",
                 placement_name=alice.name,
                 inputs={},
-                value="seed",
+                value=StringConstant(value="seed"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -62,7 +65,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
                 name="seed",
                 placement_name=alice.name,
                 inputs={},
-                value=seed,
+                value=BytesConstant(value=seed),
                 output_type=primitives_dialect.PRFKeyType(),
             )
         )
@@ -71,7 +74,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
                 name="x_shape",
                 placement_name=alice.name,
                 inputs={},
-                value=(2, 2),
+                value=ShapeConstant(value=(2, 2)),
                 output_type=standard_dialect.ShapeType(),
             )
         )
@@ -87,7 +90,7 @@ class PrimitivesKernelTest(parameterized.TestCase):
                 name="save_key",
                 placement_name=alice.name,
                 inputs={},
-                value="x_sampled",
+                value=StringConstant(value="x_sampled"),
                 output_type=standard_dialect.StringType(),
             )
         )

@@ -15,6 +15,7 @@ impl Compile<SyncKernel> for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.compile(),
+            Save(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
             Input(op) => op.compile(),
@@ -59,6 +60,7 @@ impl Compile<AsyncKernel> for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.compile(),
+            Save(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
             Input(op) => op.compile(),
@@ -674,6 +676,46 @@ impl Compile<AsyncKernel> for OutputOp {
                 sender.send(val).map_err(map_send_error)
             })
         })))
+    }
+}
+
+impl Compile<SyncKernel> for SaveOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        use std::convert::TryFrom;
+        let expected_ty = self.ty;
+        Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
+            let key = String::try_from(key)?;
+            if val.ty() == expected_ty {
+                sess.storage.save(key, val)?;
+                Ok(Value::Unit)
+            } else {
+                Err(Error::TypeMismatch)
+            }
+        })))
+    }
+}
+
+impl Compile<AsyncKernel> for SaveOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        use std::convert::TryFrom;
+        use std::sync::Arc;
+        let expected_ty = self.ty;
+        Ok(AsyncKernel::Binary(Box::new(
+            move |sess, key, val, sender| {
+                let sess = Arc::clone(sess);
+                tokio::spawn(async move {
+                    let key = String::try_from(key.await.map_err(map_receive_error)?)?;
+                    let val = val.await.map_err(map_receive_error)?;
+
+                    if val.ty() == expected_ty {
+                        sess.storage.save(key, val).await.map_err(map_send_error)?;
+                        sender.send(Value::Unit).map_err(map_send_error)
+                    } else {
+                        Err(Error::TypeMismatch)
+                    }
+                })
+            },
+        )))
     }
 }
 

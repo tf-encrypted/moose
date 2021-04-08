@@ -198,6 +198,7 @@ class AstTracer:
         placement = self.visit_placement_expression(constant_expression.placement)
         value = constant_expression.value
         dtype = constant_expression.dtype
+
         if dtype is None:
             output_type = UnknownType()
         else:

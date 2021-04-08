@@ -88,8 +88,11 @@ SUPPORTED_TYPES = [
     std_dialect.BytesType,
     std_dialect.StringType,
     std_dialect.ShapeType,
+    std_dialect.IntType,
+    std_dialect.FloatType,
     std_dialect.InputOperation,
     std_dialect.OutputOperation,
+    std_dialect.CastOperation,
     std_dialect.ConcatenateOperation,
     std_dialect.ConstantOperation,
     std_dialect.AddOperation,
@@ -115,9 +118,11 @@ SUPPORTED_TYPES = [
     std_dialect.DeserializeOperation,
     std_dialect.SendOperation,
     std_dialect.ReceiveOperation,
-    std_dialect.ShapeValue,
-    std_dialect.StringValue,
-    std_dialect.TensorValue,
+    std_dialect.ShapeConstant,
+    std_dialect.StringConstant,
+    std_dialect.TensorConstant,
+    std_dialect.IntConstant,
+    std_dialect.FloatConstant,
 ]
 
 

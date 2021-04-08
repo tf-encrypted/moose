@@ -37,6 +37,7 @@ pub enum Ty {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
+    String(std::string::String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Shape(Shape),
@@ -61,6 +62,7 @@ impl Value {
         use Value::*;
         match self {
             Unit => UnitTy,
+            String(_) => StringTy,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
             Shape(_) => ShapeTy,
@@ -111,6 +113,7 @@ macro_rules! convert {
     };
 }
 
+convert!(String);
 convert!(Ring64Tensor);
 convert!(Ring128Tensor);
 convert!(Shape);
@@ -131,6 +134,7 @@ convert!(Uint64Tensor);
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
     Identity(IdentityOp),
+    Save(SaveOp),
     Send(SendOp),
     Receive(ReceiveOp),
     Input(InputOp),
@@ -196,6 +200,11 @@ pub struct InputOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct OutputOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct SaveOp {
     pub ty: Ty,
 }
 

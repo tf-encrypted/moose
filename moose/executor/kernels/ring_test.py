@@ -8,6 +8,9 @@ from moose.computation import ring as ring_dialect
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
+from moose.computation.standard import ShapeConstant
+from moose.computation.standard import StringConstant
+from moose.computation.standard import TensorConstant
 from moose.testing import run_test_computation
 
 
@@ -53,7 +56,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                value=a,
+                value=TensorConstant(value=a),
                 output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
@@ -62,7 +65,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="y",
                 placement_name=alice.name,
                 inputs={},
-                value=b,
+                value=TensorConstant(value=b),
                 output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
@@ -72,7 +75,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -104,7 +107,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                value=x,
+                value=TensorConstant(value=x),
                 output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
@@ -113,7 +116,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="y",
                 placement_name=alice.name,
                 inputs={},
-                value=y,
+                value=TensorConstant(value=y),
                 output_type=standard_dialect.TensorType(dtype=dtypes.float32),
             )
         )
@@ -129,7 +132,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -154,7 +157,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="x_shape",
                 placement_name=alice.name,
                 inputs={},
-                value=(2, 2),
+                value=ShapeConstant(value=(2, 2)),
                 output_type=standard_dialect.ShapeType(),
             )
         )
@@ -171,7 +174,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="x_filled",
+                value=StringConstant(value="x_filled"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -197,7 +200,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                value=x,
+                value=TensorConstant(value=x),
                 output_type=standard_dialect.TensorType(dtype=dtypes.uint64),
             )
         )
@@ -211,7 +214,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -238,7 +241,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="x",
                 placement_name=alice.name,
                 inputs={},
-                value=x,
+                value=TensorConstant(value=x),
                 output_type=standard_dialect.TensorType(dtype=dtypes.float64),
             )
         )
@@ -255,7 +258,7 @@ class RingKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="x_shifted",
+                value=StringConstant(value="x_shifted"),
                 output_type=standard_dialect.StringType(),
             )
         )

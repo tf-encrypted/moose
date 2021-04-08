@@ -8,7 +8,10 @@ from moose.computation import dtypes
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
+from moose.computation.standard import ShapeConstant
 from moose.computation.standard import ShapeType
+from moose.computation.standard import StringConstant
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
@@ -32,7 +35,7 @@ class StandardKernelTest(parameterized.TestCase):
 
         @edsl.computation
         def my_comp():
-            out = edsl.constant(5, placement=player0)
+            out = edsl.constant(value=5, placement=player0)
             res = edsl.save("result", out, placement=player1)
             return res
 
@@ -73,7 +76,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -105,7 +108,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="constant",
                 placement_name=alice.name,
                 inputs={},
-                value=value,
+                value=TensorConstant(value=value),
                 output_type=standard_dialect.TensorType(from_dtype),
             )
         )
@@ -122,7 +125,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -181,7 +184,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -236,7 +239,7 @@ class StandardKernelTest(parameterized.TestCase):
         alice = comp.add_placement(HostPlacement(name="alice"))
         comp.add_operation(
             standard_dialect.ConstantOperation(
-                value=input_array,
+                value=TensorConstant(value=input_array),
                 name="x",
                 placement_name=alice.name,
                 inputs={},
@@ -257,7 +260,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -282,7 +285,7 @@ class StandardKernelTest(parameterized.TestCase):
         alice = comp.add_placement(HostPlacement(name="alice"))
         comp.add_operation(
             standard_dialect.ConstantOperation(
-                value=x,
+                value=TensorConstant(value=x),
                 name="x",
                 placement_name=alice.name,
                 inputs={},
@@ -303,7 +306,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -328,7 +331,7 @@ class StandardKernelTest(parameterized.TestCase):
 
         comp.add_operation(
             standard_dialect.ConstantOperation(
-                value=x,
+                value=TensorConstant(value=x),
                 name="x",
                 placement_name=alice.name,
                 inputs={},
@@ -348,7 +351,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -391,7 +394,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="shape_op",
                 placement_name=alice.name,
                 inputs={},
-                value=[2, 2],
+                value=ShapeConstant(value=[2, 2]),
                 output_type=ShapeType(),
             )
         )
@@ -409,7 +412,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="y",
+                value=StringConstant(value="y"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -460,7 +463,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -515,7 +518,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )
@@ -565,7 +568,7 @@ class StandardKernelTest(parameterized.TestCase):
                 name="save_key",
                 inputs={},
                 placement_name=alice.name,
-                value="z",
+                value=StringConstant(value="z"),
                 output_type=standard_dialect.StringType(),
             )
         )

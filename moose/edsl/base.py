@@ -10,7 +10,12 @@ from typing import Union
 import numpy as np
 
 from moose.computation import dtypes
+from moose.computation.standard import FloatConstant
+from moose.computation.standard import IntConstant
+from moose.computation.standard import ShapeConstant
+from moose.computation.standard import StringConstant
 from moose.computation.standard import StringType
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.computation.standard import UnknownType
 
@@ -291,14 +296,17 @@ def constant(value, dtype=None, placement=None):
             return cast(implicit_const, dtype, placement)
         elif dtype is None:
             dtype = moose_dtype
+        value = TensorConstant(value=value)
     elif isinstance(value, float):
         dtype = dtype or dtypes.float64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
+        value = FloatConstant(value=value)
     elif isinstance(value, int):
         dtype = dtype or dtypes.int64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
+        value = IntConstant(value=value)
     elif isinstance(value, str):
         if dtype is not None and dtype != dtypes.string:
             raise ValueError(
@@ -306,6 +314,7 @@ def constant(value, dtype=None, placement=None):
                 f"user-supplied dtype argument `{dtype}`."
             )
         dtype = dtype or dtypes.string
+        value = StringConstant(value=value)
 
     return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
 
@@ -448,7 +457,7 @@ def atleast_2d(x, to_column_vector=False, placement=None):
 def reshape(x, shape, placement=None):
     assert isinstance(x, Expression)
     if isinstance(shape, (list, tuple)):
-        shape = constant(shape, placement=placement)
+        shape = constant(ShapeConstant(value=shape), placement=placement)
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
     return ReshapeExpression(placement=placement, inputs=[x, shape], dtype=x.dtype)
