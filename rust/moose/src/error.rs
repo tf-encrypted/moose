@@ -8,8 +8,8 @@ pub enum Error {
     #[error("Input to kernel unavailable")]
     InputUnavailable,
 
-    #[error("Type mismatch")]
-    TypeMismatch,
+    #[error("Type mismatch: {0}")]
+    TypeMismatch(String),
 
     #[error("Operator type instantiation not supported: {0}")]
     TypeMismatchOperator(String),
