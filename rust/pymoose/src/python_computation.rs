@@ -759,28 +759,27 @@ impl TryFrom<PyComputation> for Computation {
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
                     }
-                    std_TransposeOperation(op) => {
-                        // output type should be the same as input type
-                        let ty = map_type(&op.output_type);
-                        Ok(Operation {
-                            kind: StdTranspose(StdTransposeOp { ty }),
-                            inputs: map_inputs(&op.inputs, &["x"])
-                                .with_context(|| format!("Failed at op {:?}", op))?,
-                            name: op.name.clone(),
-                            placement: map_placement(&placements, &op.placement_name)?,
-                        })
-                    }
-                    std_InverseOperation(op) => {
-                        // output type should be the same as input type
-                        let ty = map_type(&op.output_type);
-                        Ok(Operation {
-                            kind: StdInverse(StdInverseOp { ty }),
-                            inputs: map_inputs(&op.inputs, &["x"])
-                                .with_context(|| format!("Failed at op {:?}", op))?,
-                            name: op.name.clone(),
-                            placement: map_placement(&placements, &op.placement_name)?,
-                        })
-                    }
+                    std_TransposeOperation(op) => Ok(Operation {
+                        kind: StdTranspose(StdTransposeOp {
+                            // input type should be the same as output type
+                            ty: map_type(&op.output_type),
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+
+                    std_InverseOperation(op) => Ok(Operation {
+                        kind: StdInverse(StdInverseOp {
+                            // input type should be the same as output type
+                            ty: map_type(&op.output_type),
+                        }),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_MeanOperation(op) => Ok(Operation {
                         kind: StdMean(StdMeanOp {
                             ty: Ty::Float64TensorTy,
