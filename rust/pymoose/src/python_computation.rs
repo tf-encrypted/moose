@@ -616,6 +616,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingMeanOperation(op) => Ok(Operation {
+                        // TODO
                         kind: Identity(IdentityOp {
                             ty: Ty::Ring64TensorTy,
                         }),
@@ -659,8 +660,9 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_AddOperation(op) => Ok(Operation {
                         kind: StdAdd(StdAddOp {
-                            lhs: Ty::Float64TensorTy,
-                            rhs: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            lhs: map_type(&op.output_type),
+                            rhs: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -669,8 +671,9 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SubOperation(op) => Ok(Operation {
                         kind: StdSub(StdSubOp {
-                            lhs: Ty::Float64TensorTy,
-                            rhs: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            lhs: map_type(&op.output_type),
+                            rhs: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -679,8 +682,9 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_MulOperation(op) => Ok(Operation {
                         kind: StdMul(StdMulOp {
-                            lhs: Ty::Float64TensorTy,
-                            rhs: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            lhs: map_type(&op.output_type),
+                            rhs: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -689,8 +693,9 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_DotOperation(op) => Ok(Operation {
                         kind: StdDot(StdDotOp {
-                            lhs: Ty::Float64TensorTy,
-                            rhs: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            lhs: map_type(&op.output_type),
+                            rhs: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -699,7 +704,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_AtLeast2DOperation(op) => Ok(Operation {
                         kind: StdAtLeast2D(StdAtLeast2DOp {
-                            ty: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            ty: map_type(&op.output_type),
                             to_column_vector: op.to_column_vector,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -727,7 +733,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_OnesOperation(op) => Ok(Operation {
                         kind: StdOnes(StdOnesOp {
-                            ty: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            ty: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -736,7 +743,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ExpandDimsOperation(op) => Ok(Operation {
                         kind: StdExpandDims(StdExpandDimsOp {
-                            ty: Ty::Float64TensorTy,
+                            ty: Ty::Float64TensorTy, // TODO
                             axis: op.axis,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -751,7 +758,7 @@ impl TryFrom<PyComputation> for Computation {
                             inputs.into_iter().map(|(_k, v)| v.clone()).collect();
                         Ok(Operation {
                             kind: StdConcatenate(StdConcatenateOp {
-                                ty: Ty::Float64TensorTy,
+                                ty: Ty::Float64TensorTy, // TODO
                                 axis: op.axis,
                             }),
                             inputs: sorted_input_names,
@@ -761,17 +768,19 @@ impl TryFrom<PyComputation> for Computation {
                     }
                     std_TransposeOperation(op) => Ok(Operation {
                         kind: StdTranspose(StdTransposeOp {
-                            ty: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            ty: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+
                     std_InverseOperation(op) => Ok(Operation {
-                        kind: StdTranspose(StdTransposeOp {
-                            // TODO(Dragos) FIXME
-                            ty: Ty::Float64TensorTy,
+                        kind: StdInverse(StdInverseOp {
+                            // we can use output type type to determine input type
+                            ty: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -780,7 +789,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_MeanOperation(op) => Ok(Operation {
                         kind: StdMean(StdMeanOp {
-                            ty: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            ty: map_type(&op.output_type),
                             axis: op.axis,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -790,7 +800,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SumOperation(op) => Ok(Operation {
                         kind: StdSum(StdSumOp {
-                            ty: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            ty: map_type(&op.output_type),
                             axis: op.axis,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -800,8 +811,9 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_DivOperation(op) => Ok(Operation {
                         kind: StdDiv(StdDivOp {
-                            lhs: Ty::Float64TensorTy,
-                            rhs: Ty::Float64TensorTy,
+                            // we can use output type type to determine input type
+                            lhs: map_type(&op.output_type),
+                            rhs: map_type(&op.output_type),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -867,7 +879,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SaveOperation(op) => Ok(Operation {
                         kind: Save(SaveOp {
-                            ty: Ty::Float64TensorTy,
+                            ty: Ty::Float64TensorTy, // TODO
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])

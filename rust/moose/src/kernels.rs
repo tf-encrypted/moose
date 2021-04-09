@@ -36,6 +36,7 @@ impl Compile<SyncKernel> for Operator {
             StdSlice(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
+            StdInverse(op) => op.compile(),
             RingAdd(op) => op.compile(),
             RingSub(op) => op.compile(),
             RingMul(op) => op.compile(),
@@ -81,6 +82,7 @@ impl Compile<AsyncKernel> for Operator {
             StdSlice(op) => op.compile(),
             StdSum(op) => op.compile(),
             StdTranspose(op) => op.compile(),
+            StdInverse(op) => op.compile(),
             RingAdd(op) => op.compile(),
             RingSub(op) => op.compile(),
             RingMul(op) => op.compile(),
@@ -168,6 +170,20 @@ std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
 std_unary_kernel!(StdShapeOp, |x| x.shape());
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
+impl Compile<Kernel> for StdInverseOp {
+    fn compile(&self) -> Result<Kernel> {
+        match self.ty {
+            Ty::Float32TensorTy => {
+                closure_kernel!(Float32Tensor, |x| x.inv())
+            }
+            Ty::Float64TensorTy => {
+                closure_kernel!(Float64Tensor, |x| x.inv())
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
 impl Compile<Kernel> for StdMeanOp {
     fn compile(&self) -> Result<Kernel> {
         let axis = self.axis.map(|x| x as usize);
@@ -216,7 +232,6 @@ impl Compile<Kernel> for StdOnesOp {
             Ty::Uint64TensorTy => {
                 function_kernel!(Shape, |shape| Uint64Tensor::ones(shape))
             }
-
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
