@@ -853,6 +853,14 @@ impl EagerExecutor {
         }
     }
 
+    pub fn new_from_storage(storage: &Rc<dyn SyncStorage>) -> EagerExecutor {
+        let networking = Rc::new(LocalSyncNetworking::default());
+        EagerExecutor {
+            networking,
+            storage: Rc::clone(storage),
+        }
+    }
+
     pub fn run_computation(
         &self,
         comp: &Computation,

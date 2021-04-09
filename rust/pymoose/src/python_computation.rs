@@ -4,6 +4,8 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use moose::storage::{LocalSyncStorage, SyncStorage};
+use std::rc::Rc;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
@@ -75,7 +77,6 @@ enum PyConstant {
     std_ShapeConstant { value: Vec<u8> },
     std_StringConstant { value: String },
     std_TensorConstant { value: PyNdarray },
-    std_FloatConstant { value: f64 },
 }
 
 #[derive(Deserialize, Debug)]
@@ -494,8 +495,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
                 Ok(Float64Tensor::from(tensor).into())
             }
-        },
-        PyConstant::std_FloatConstant { value } => Ok(Value::Float64(*value)),
+        }
     }
 }
 
@@ -1386,6 +1386,17 @@ def f():
     return serialize_computation(concrete_comp)
 
 "#;
-        let _ = run_executor(&graph_from_run_call0_func(&py_code));
+
+        let comp = graph_from_run_call0_func(&py_code);
+        let storage : Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
+        let exec = EagerExecutor::new_from_storage(&storage);
+        let env = hashmap![];
+        exec.run_computation(&comp, 12345, env).unwrap();
+
+        let res = array![[9.9999996, 2.999999]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        assert_eq!(storage.load("regression_weights".to_string()).unwrap(), Value::Float64Tensor(Float64Tensor::from(res)));
     }
 }
