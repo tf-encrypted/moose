@@ -16,7 +16,7 @@ pub type SessionId = u128;
 pub enum Ty {
     UnitTy,
     StringTy,
-    FloatTy,
+    Float64Ty,
     Ring64TensorTy,
     Ring128TensorTy,
     ShapeTy,
@@ -38,7 +38,7 @@ pub enum Ty {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
-    Float(f64),
+    Float64(f64),
     String(std::string::String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
@@ -65,7 +65,7 @@ impl Value {
         match self {
             Unit => UnitTy,
             String(_) => StringTy,
-            Float(_) => FloatTy,
+            Float64(_) => Float64Ty,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
             Shape(_) => ShapeTy,

@@ -495,7 +495,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
                 Ok(Float64Tensor::from(tensor).into())
             }
         },
-        PyConstant::std_FloatConstant { value } => Ok(Value::Float(*value)),
+        PyConstant::std_FloatConstant { value } => Ok(Value::Float64(*value)),
     }
 }
 
