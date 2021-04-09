@@ -708,7 +708,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
-                        kind: StdShape(StdShapeOp { ty: Ty::ShapeTy }),
+                        kind: StdShape(StdShapeOp { ty: Ty::Float64TensorTy  }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -716,7 +716,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SliceOperation(op) => Ok(Operation {
                         kind: StdSlice(StdSliceOp {
-                            ty: Ty::Float64TensorTy,
+                            ty: Ty::ShapeTy,
                             start: op.begin,
                             end: op.end,
                         }),
@@ -1374,6 +1374,6 @@ def f():
     return serialize_computation(concrete_comp)
 
 "#;
-        let _ = graph_from_run_call0_func(&py_code);
+        let _ = run_executor(&graph_from_run_call0_func(&py_code));
     }
 }
