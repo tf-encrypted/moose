@@ -460,7 +460,7 @@ fn map_inputs(
             inputs
                 .get(*item)
                 .cloned()
-                .ok_or_else(|| anyhow::anyhow!("No value found in input vector"))
+                .ok_or_else(|| anyhow::anyhow!("'{:?}' not found in input vector", item))
         })
         .collect::<anyhow::Result<Vec<_>>>()
 }
@@ -527,6 +527,7 @@ impl TryFrom<PyComputation> for Computation {
             .operations
             .values()
             .map(|op| {
+                use anyhow::Context;
                 use moose::computation::Operator::*;
                 use PyOperation::*;
                 match op {
@@ -541,7 +542,8 @@ impl TryFrom<PyComputation> for Computation {
                             nonce: moose::prim::Nonce(op.nonce.clone()),
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["key"])?,
+                        inputs: map_inputs(&op.inputs, &["key"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingAddOperation(op) => Ok(Operation {
@@ -550,7 +552,8 @@ impl TryFrom<PyComputation> for Computation {
                             rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingSubOperation(op) => Ok(Operation {
@@ -559,7 +562,8 @@ impl TryFrom<PyComputation> for Computation {
                             rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingMulOperation(op) => Ok(Operation {
@@ -568,7 +572,8 @@ impl TryFrom<PyComputation> for Computation {
                             rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingDotOperation(op) => Ok(Operation {
@@ -577,7 +582,8 @@ impl TryFrom<PyComputation> for Computation {
                             rhs: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
@@ -585,7 +591,8 @@ impl TryFrom<PyComputation> for Computation {
                             ty: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["tensor"])?,
+                        inputs: map_inputs(&op.inputs, &["tensor"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
@@ -594,7 +601,8 @@ impl TryFrom<PyComputation> for Computation {
                             max_value: op.max_value,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape", "seed"])?,
+                        inputs: map_inputs(&op.inputs, &["shape", "seed"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingSumOperation(op) => Ok(Operation {
@@ -603,7 +611,8 @@ impl TryFrom<PyComputation> for Computation {
                             axis: op.axis,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingMeanOperation(op) => Ok(Operation {
@@ -611,13 +620,15 @@ impl TryFrom<PyComputation> for Computation {
                             ty: Ty::Ring64TensorTy,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFill(RingFillOp { value: op.value }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape"])?,
+                        inputs: map_inputs(&op.inputs, &["shape"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingShlOperation(op) => Ok(Operation {
@@ -625,7 +636,8 @@ impl TryFrom<PyComputation> for Computation {
                             amount: op.amount as usize,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingShrOperation(op) => Ok(Operation {
@@ -633,7 +645,8 @@ impl TryFrom<PyComputation> for Computation {
                             amount: op.amount as usize,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ConstantOperation(op) => Ok(Operation {
@@ -649,7 +662,8 @@ impl TryFrom<PyComputation> for Computation {
                             lhs: Ty::Float64TensorTy,
                             rhs: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -658,7 +672,8 @@ impl TryFrom<PyComputation> for Computation {
                             lhs: Ty::Float64TensorTy,
                             rhs: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -667,7 +682,8 @@ impl TryFrom<PyComputation> for Computation {
                             lhs: Ty::Float64TensorTy,
                             rhs: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -676,7 +692,8 @@ impl TryFrom<PyComputation> for Computation {
                             lhs: Ty::Float64TensorTy,
                             rhs: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -685,13 +702,15 @@ impl TryFrom<PyComputation> for Computation {
                             ty: Ty::Float64TensorTy,
                             to_column_vector: op.to_column_vector,
                         }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: StdShape(StdShapeOp { ty: Ty::ShapeTy }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -701,7 +720,8 @@ impl TryFrom<PyComputation> for Computation {
                             start: op.begin,
                             end: op.end,
                         }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -709,7 +729,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: StdOnes(StdOnesOp {
                             ty: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["shape"])?,
+                        inputs: map_inputs(&op.inputs, &["shape"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -718,24 +739,32 @@ impl TryFrom<PyComputation> for Computation {
                             ty: Ty::Float64TensorTy,
                             axis: op.axis,
                         }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    std_ConcatenateOperation(op) => Ok(Operation {
-                        kind: StdConcatenate(StdConcatenateOp {
-                            ty: Ty::Float64TensorTy,
-                            axis: op.axis,
-                        }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
-                        name: op.name.clone(),
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    std_ConcatenateOperation(op) => {
+                        let mut inputs: Vec<(&String, &String)> = op.inputs.iter().collect();
+                        inputs.sort_by_key(|x| x.0);
+                        let sorted_input_names: Vec<String> =
+                            inputs.into_iter().map(|(_k, v)| v.clone()).collect();
+                        Ok(Operation {
+                            kind: StdConcatenate(StdConcatenateOp {
+                                ty: Ty::Float64TensorTy,
+                                axis: op.axis,
+                            }),
+                            inputs: sorted_input_names,
+                            name: op.name.clone(),
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
                     std_TransposeOperation(op) => Ok(Operation {
                         kind: StdTranspose(StdTransposeOp {
                             ty: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -744,7 +773,8 @@ impl TryFrom<PyComputation> for Computation {
                             // TODO(Dragos) FIXME
                             ty: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -753,7 +783,8 @@ impl TryFrom<PyComputation> for Computation {
                             ty: Ty::Float64TensorTy,
                             axis: op.axis,
                         }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -762,7 +793,8 @@ impl TryFrom<PyComputation> for Computation {
                             ty: Ty::Float64TensorTy,
                             axis: op.axis,
                         }),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -771,7 +803,8 @@ impl TryFrom<PyComputation> for Computation {
                             lhs: Ty::Float64TensorTy,
                             rhs: Ty::Float64TensorTy,
                         }),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])?,
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -786,7 +819,8 @@ impl TryFrom<PyComputation> for Computation {
                             },
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ReceiveOperation(op) => Ok(Operation {
@@ -809,7 +843,8 @@ impl TryFrom<PyComputation> for Computation {
                             ty: map_type(&op.output_type),
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DeserializeOperation(op) => Ok(Operation {
@@ -817,7 +852,8 @@ impl TryFrom<PyComputation> for Computation {
                             ty: map_type(&op.output_type),
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OutputOperation(op) => Ok(Operation {
@@ -825,7 +861,8 @@ impl TryFrom<PyComputation> for Computation {
                             ty: map_type(&op.output_type),
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SaveOperation(op) => Ok(Operation {
@@ -833,7 +870,8 @@ impl TryFrom<PyComputation> for Computation {
                             ty: Ty::Float64TensorTy,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["key", "value"])?,
+                        inputs: map_inputs(&op.inputs, &["key", "value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
@@ -841,7 +879,8 @@ impl TryFrom<PyComputation> for Computation {
                             scaling_factor: op.scaling_factor,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingDecodeOperation(op) => Ok(Operation {
@@ -849,7 +888,8 @@ impl TryFrom<PyComputation> for Computation {
                             scaling_factor: op.scaling_factor,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingMeanOperation(op) => Ok(Operation {
@@ -858,7 +898,8 @@ impl TryFrom<PyComputation> for Computation {
                             scaling_factor: op.precision,
                         }),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["x"])?,
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                 }
@@ -922,7 +963,7 @@ mod tests {
         outputs["result"].clone()
     }
 
-    fn run_call0_func(py_code: &str) -> Value {
+    fn graph_from_run_call0_func(py_code: &str) -> Computation {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
@@ -947,8 +988,9 @@ mod tests {
             })
             .unwrap();
 
-        let comp = &create_computation_graph_from_python(py_any);
-
+        create_computation_graph_from_python(py_any)
+    }
+    fn run_executor(comp: &Computation) -> Value {
         let exec = EagerExecutor::new();
         let env = hashmap![];
         exec.run_computation(&comp, 12345, env).unwrap();
@@ -1240,7 +1282,7 @@ def f():
 
     "#;
 
-        let _ = run_call0_func(&py_code);
+        let _ = run_executor(&graph_from_run_call0_func(&py_code));
     }
     #[test]
     fn test_deserialize_linear_regression() {
@@ -1332,6 +1374,6 @@ def f():
     return serialize_computation(concrete_comp)
 
 "#;
-        let _ = run_call0_func(&py_code);
+        let _ = graph_from_run_call0_func(&py_code);
     }
 }

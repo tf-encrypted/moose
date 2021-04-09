@@ -123,7 +123,7 @@ macro_rules! std_unary_kernel {
                     Ty::Uint64TensorTy => {
                         function_kernel!(Uint64Tensor, $k)
                     }
-                    _ => Err(Error::UnimplementedOperator),
+                    _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
                 }
             }
         }
@@ -153,7 +153,7 @@ macro_rules! std_binary_kernel {
                     (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
                         function_kernel!(Uint64Tensor, Uint64Tensor, $k)
                     }
-                    _ => Err(Error::UnimplementedOperator),
+                    _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
                 }
             }
         }
@@ -190,7 +190,7 @@ impl Compile<Kernel> for StdMeanOp {
             Ty::Uint64TensorTy => {
                 closure_kernel!(Uint64Tensor, |x| x.mean(axis))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -217,7 +217,7 @@ impl Compile<Kernel> for StdOnesOp {
                 function_kernel!(Shape, |shape| Uint64Tensor::ones(shape))
             }
 
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -241,7 +241,7 @@ impl Compile<Kernel> for StdConcatenateOp {
             Ty::Uint64TensorTy => {
                 closure_kernel!(vec[Uint64Tensor], |xs| concatenate(axis, &xs))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -268,7 +268,7 @@ impl Compile<Kernel> for StdExpandDimsOp {
             Ty::Uint64TensorTy => {
                 closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -294,7 +294,7 @@ impl Compile<Kernel> for StdReshapeOp {
             Ty::Uint64TensorTy => {
                 function_kernel!(Uint64Tensor, Shape, |x, newshape| x.reshape(newshape))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -321,7 +321,7 @@ impl Compile<Kernel> for StdAtLeast2DOp {
             Ty::Uint64TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -332,7 +332,7 @@ impl Compile<Kernel> for StdSliceOp {
         let end = self.end as usize;
         match self.ty {
             Ty::ShapeTy => closure_kernel!(Shape, |x| x.slice(start, end)),
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -359,7 +359,7 @@ impl Compile<Kernel> for StdSumOp {
             Ty::Uint64TensorTy => {
                 closure_kernel!(Uint64Tensor, |x| x.sum(axis))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -386,7 +386,7 @@ impl Compile<Kernel> for RingAddOp {
             (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x + y)
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -400,7 +400,7 @@ impl Compile<Kernel> for RingSubOp {
             (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x - y)
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -411,7 +411,7 @@ impl Compile<Kernel> for RingMulOp {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -422,7 +422,7 @@ impl Compile<Kernel> for RingDotOp {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -432,7 +432,7 @@ impl Compile<Kernel> for RingSumOp {
         let axis = self.axis.map(|a| a as usize);
         match self.ty {
             Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x| x.sum(axis)),
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -442,7 +442,7 @@ impl Compile<Kernel> for RingShapeOp {
         match self.ty {
             Ty::Ring64TensorTy => function_kernel!(Ring64Tensor, |x| x.shape()),
             Ty::Ring128TensorTy => function_kernel!(Ring128Tensor, |x| x.shape()),
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
@@ -467,7 +467,7 @@ impl Compile<Kernel> for RingSampleOp {
                     &shape, &seed
                 ))
             }
-            _ => Err(Error::UnimplementedOperator),
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
