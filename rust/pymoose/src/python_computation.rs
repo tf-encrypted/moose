@@ -75,7 +75,6 @@ enum PyConstant {
     std_ShapeConstant { value: Vec<u8> },
     std_StringConstant { value: String },
     std_TensorConstant { value: PyNdarray },
-    std_FloatConstant { value: f64 },
 }
 
 #[derive(Deserialize, Debug)]
@@ -495,7 +494,6 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
                 Ok(Float64Tensor::from(tensor).into())
             }
         },
-        PyConstant::std_FloatConstant { value } => Ok(Value::Float64(*value)),
     }
 }
 
@@ -714,7 +712,9 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
-                        kind: StdShape(StdShapeOp { ty: Ty::ShapeTy }),
+                        kind: StdShape(StdShapeOp {
+                            ty: Ty::Float64TensorTy,
+                        }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -722,7 +722,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SliceOperation(op) => Ok(Operation {
                         kind: StdSlice(StdSliceOp {
-                            ty: Ty::Float64TensorTy, // TODO
+                            ty: Ty::ShapeTy,
                             start: op.begin,
                             end: op.end,
                         }),
@@ -924,10 +924,13 @@ impl TryFrom<PyComputation> for Computation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::AbsDiffEq;
     use maplit::hashmap;
     use moose::execution::EagerExecutor;
+    use moose::storage::{LocalSyncStorage, SyncStorage};
     use numpy::ToPyArray;
     use pyo3::prelude::*;
+    use std::rc::Rc;
 
     fn create_computation_graph_from_python(py_any: &PyAny) -> Computation {
         let buf: Vec<u8> = py_any.extract().unwrap();
@@ -1330,7 +1333,7 @@ def ss_tot(y_true):
 
 def r_squared(ss_res, ss_tot):
     residuals_ratio = edsl.div(ss_res, ss_tot)
-    return edsl.sub(edsl.constant(1.0, dtype=edsl.float64), residuals_ratio)
+    return edsl.sub(edsl.constant(np.array([1], dtype=np.float64), dtype=edsl.float64), residuals_ratio)
 
 
 def f():
@@ -1386,6 +1389,19 @@ def f():
     return serialize_computation(concrete_comp)
 
 "#;
-        let _ = graph_from_run_call0_func(&py_code);
+
+        let comp = graph_from_run_call0_func(&py_code);
+        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
+        let exec = EagerExecutor::new_from_storage(&storage);
+        let env = hashmap![];
+        exec.run_computation(&comp, 12345, env).unwrap();
+
+        let res = array![[9.9999996], [2.999999]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let diff = Float64Tensor::try_from(storage.load("regression_weights".to_string()).unwrap())
+            .unwrap();
+
+        assert!(diff.0.abs_diff_eq(&res, 0.000001));
     }
 }

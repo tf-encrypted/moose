@@ -10,7 +10,6 @@ from typing import Union
 import numpy as np
 
 from moose.computation import dtypes
-from moose.computation.standard import FloatConstant
 from moose.computation.standard import IntConstant
 from moose.computation.standard import ShapeConstant
 from moose.computation.standard import StringConstant
@@ -301,7 +300,7 @@ def constant(value, dtype=None, placement=None):
         dtype = dtype or dtypes.float64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
-        value = FloatConstant(value=value)
+        value = TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
     elif isinstance(value, int):
         dtype = dtype or dtypes.int64
         if not dtype.is_float and not dtype.is_integer:

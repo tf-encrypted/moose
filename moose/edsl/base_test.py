@@ -6,7 +6,7 @@ from moose.computation import host as host_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.computation.standard import FloatConstant
+from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.computation.standard import UnknownType
 from moose.edsl import base as edsl
@@ -280,7 +280,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name="constant_0",
             inputs={},
-            value=FloatConstant(1.0),
+            value=TensorConstant(value=[1.0]),
             output_type=TensorType(dtype=dtypes.float64),
         )
 
@@ -350,7 +350,7 @@ class EdslTest(parameterized.TestCase):
                     placement_name="player0",
                     name="constant_0",
                     inputs={},
-                    value=FloatConstant(1.0),
+                    value=TensorConstant(value=[1.0]),
                     output_type=TensorType(dtype=dtypes.float64),
                 ),
                 "add_0": standard_ops.AddOperation(

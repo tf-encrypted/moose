@@ -576,7 +576,7 @@ impl Compile<SyncKernel> for ReceiveOp {
             if v.ty() == op.ty {
                 Ok(v)
             } else {
-                Err(Error::TypeMismatch)
+                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
             }
         })))
     }
@@ -597,7 +597,7 @@ impl Compile<AsyncKernel> for ReceiveOp {
                 if v.ty() == op.ty {
                     sender.send(v).map_err(map_send_error)
                 } else {
-                    Err(Error::TypeMismatch)
+                    Err(Error::TypeMismatchOperator(format!("{:?}", op)))
                 }
             })
         })))
@@ -607,11 +607,12 @@ impl Compile<AsyncKernel> for ReceiveOp {
 impl Compile<SyncKernel> for IdentityOp {
     fn compile(&self) -> Result<SyncKernel> {
         let expected_ty = self.ty;
+        let op = self.clone();
         Ok(SyncKernel::Unary(Box::new(move |_sess, v| {
             if v.ty() == expected_ty {
                 Ok(v)
             } else {
-                Err(Error::TypeMismatch)
+                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
             }
         })))
     }
@@ -620,13 +621,16 @@ impl Compile<SyncKernel> for IdentityOp {
 impl Compile<AsyncKernel> for IdentityOp {
     fn compile(&self) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
+        use std::sync::Arc;
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Unary(Box::new(move |_sess, v, sender| {
+            let op = Arc::clone(&op);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
                 if v.ty() == expected_ty {
                     sender.send(v).map_err(map_send_error)
                 } else {
-                    Err(Error::TypeMismatch)
+                    Err(Error::TypeMismatchOperator(format!("{:?}", op)))
                 }
             })
         })))
@@ -637,6 +641,7 @@ impl Compile<SyncKernel> for InputOp {
     fn compile(&self) -> Result<SyncKernel> {
         let expected_ty = self.ty;
         let arg_name = self.arg_name.clone();
+        let op = self.clone();
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
             let arg = sess
                 .args
@@ -646,7 +651,7 @@ impl Compile<SyncKernel> for InputOp {
             if arg.ty() == expected_ty {
                 Ok(arg)
             } else {
-                Err(Error::TypeMismatch)
+                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
             }
         })))
     }
@@ -657,9 +662,11 @@ impl Compile<AsyncKernel> for InputOp {
         use std::sync::Arc;
         let expected_ty = self.ty;
         let arg_name = Arc::new(self.arg_name.clone());
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
             let arg_name = Arc::clone(&arg_name);
+            let op = Arc::clone(&op);
             tokio::spawn(async move {
                 let async_arg = sess
                     .args
@@ -670,7 +677,7 @@ impl Compile<AsyncKernel> for InputOp {
                 if arg.ty() == expected_ty {
                     sender.send(arg).map_err(map_send_error)
                 } else {
-                    Err(Error::TypeMismatch)
+                    Err(Error::TypeMismatchOperator(format!("{:?}", op)))
                 }
             })
         })))
@@ -698,13 +705,14 @@ impl Compile<SyncKernel> for SaveOp {
     fn compile(&self) -> Result<SyncKernel> {
         use std::convert::TryFrom;
         let expected_ty = self.ty;
+        let op = self.clone();
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
             if val.ty() == expected_ty {
                 sess.storage.save(key, val)?;
                 Ok(Value::Unit)
             } else {
-                Err(Error::TypeMismatch)
+                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
             }
         })))
     }
@@ -715,9 +723,11 @@ impl Compile<AsyncKernel> for SaveOp {
         use std::convert::TryFrom;
         use std::sync::Arc;
         let expected_ty = self.ty;
+        let op = Arc::new(self.clone());
         Ok(AsyncKernel::Binary(Box::new(
             move |sess, key, val, sender| {
                 let sess = Arc::clone(sess);
+                let op = Arc::clone(&op);
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let val = val.await.map_err(map_receive_error)?;
@@ -726,7 +736,7 @@ impl Compile<AsyncKernel> for SaveOp {
                         sess.storage.save(key, val).await.map_err(map_send_error)?;
                         sender.send(Value::Unit).map_err(map_send_error)
                     } else {
-                        Err(Error::TypeMismatch)
+                        Err(Error::TypeMismatchOperator(format!("{:?}", op)))
                     }
                 })
             },
