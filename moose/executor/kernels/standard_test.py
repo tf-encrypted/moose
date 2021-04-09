@@ -555,7 +555,7 @@ class StandardKernelTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
-            standard_dialect.Atleast2DOperation(
+            standard_dialect.AtLeast2DOperation(
                 name="atleast2d",
                 placement_name=alice.name,
                 inputs={"x": "x"},

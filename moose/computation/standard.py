@@ -215,7 +215,7 @@ class ReshapeOperation(StandardOperation):
 
 
 @dataclass
-class Atleast2DOperation(StandardOperation):
+class AtLeast2DOperation(StandardOperation):
     to_column_vector: bool
     output_type: ValueType
 

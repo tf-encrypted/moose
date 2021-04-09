@@ -11,8 +11,8 @@ pub enum Error {
     #[error("Type mismatch")]
     TypeMismatch,
 
-    #[error("Operator instantiation not supported")]
-    UnimplementedOperator,
+    #[error("Operator instantiation not supported: {0}")]
+    UnimplementedOperator(String),
 
     #[error("Malformed environment")]
     MalformedEnvironment,

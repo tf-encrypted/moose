@@ -109,7 +109,7 @@ SUPPORTED_TYPES = [
     std_dialect.MeanOperation,
     std_dialect.TransposeOperation,
     std_dialect.ReshapeOperation,
-    std_dialect.Atleast2DOperation,
+    std_dialect.AtLeast2DOperation,
     std_dialect.ShapeOperation,
     std_dialect.SliceOperation,
     std_dialect.LoadOperation,
