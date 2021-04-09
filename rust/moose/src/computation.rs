@@ -158,6 +158,7 @@ pub enum Operator {
     StdOnes(StdOnesOp),
     StdConcatenate(StdConcatenateOp),
     StdTranspose(StdTransposeOp),
+    StdInverse(StdInverseOp),
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
     RingMul(RingMulOp),
@@ -300,6 +301,11 @@ pub struct StdSumOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct StdTransposeOp {
+    pub ty: Ty,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct StdInverseOp {
     pub ty: Ty,
 }
 
