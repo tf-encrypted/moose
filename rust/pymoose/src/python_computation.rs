@@ -4,8 +4,6 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::convert::TryInto;
-use moose::storage::{LocalSyncStorage, SyncStorage};
-use std::rc::Rc;
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
@@ -495,7 +493,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
                 Ok(Float64Tensor::from(tensor).into())
             }
-        }
+        },
     }
 }
 
@@ -714,7 +712,9 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
-                        kind: StdShape(StdShapeOp { ty: Ty::Float64TensorTy  }),
+                        kind: StdShape(StdShapeOp {
+                            ty: Ty::Float64TensorTy,
+                        }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -924,10 +924,13 @@ impl TryFrom<PyComputation> for Computation {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use approx::AbsDiffEq;
     use maplit::hashmap;
     use moose::execution::EagerExecutor;
+    use moose::storage::{LocalSyncStorage, SyncStorage};
     use numpy::ToPyArray;
     use pyo3::prelude::*;
+    use std::rc::Rc;
 
     fn create_computation_graph_from_python(py_any: &PyAny) -> Computation {
         let buf: Vec<u8> = py_any.extract().unwrap();
@@ -1388,15 +1391,17 @@ def f():
 "#;
 
         let comp = graph_from_run_call0_func(&py_code);
-        let storage : Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
+        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
         let exec = EagerExecutor::new_from_storage(&storage);
         let env = hashmap![];
         exec.run_computation(&comp, 12345, env).unwrap();
 
-        let res = array![[9.9999996, 2.999999]]
+        let res = array![[9.9999996], [2.999999]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
+        let diff = Float64Tensor::try_from(storage.load("regression_weights".to_string()).unwrap())
+            .unwrap();
 
-        assert_eq!(storage.load("regression_weights".to_string()).unwrap(), Value::Float64Tensor(Float64Tensor::from(res)));
+        assert!(diff.0.abs_diff_eq(&res, 0.000001));
     }
 }

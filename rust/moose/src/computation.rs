@@ -99,7 +99,11 @@ macro_rules! convert {
             fn try_from(v: Value) -> Result<Self> {
                 match v {
                     Value::$raw_type(x) => Ok(x),
-                    _ => Err(Error::TypeMismatch(format!("Expected {}, found {:?}", stringify!($raw_type), v.ty()))),
+                    _ => Err(Error::TypeMismatch(format!(
+                        "Expected {}, found {:?}",
+                        stringify!($raw_type),
+                        v.ty()
+                    ))),
                 }
             }
         }
@@ -109,7 +113,11 @@ macro_rules! convert {
             fn try_from(v: &'v Value) -> Result<Self> {
                 match v {
                     Value::$raw_type(x) => Ok(x),
-                    _ => Err(Error::TypeMismatch(format!("Expected {}, found {:?}", stringify!($raw_type),v.ty()))),
+                    _ => Err(Error::TypeMismatch(format!(
+                        "Expected {}, found {:?}",
+                        stringify!($raw_type),
+                        v.ty()
+                    ))),
                 }
             }
         }
