@@ -10,7 +10,6 @@ from typing import Union
 import numpy as np
 
 from moose.computation import dtypes
-from moose.computation.standard import FloatConstant
 from moose.computation.standard import IntConstant
 from moose.computation.standard import ShapeConstant
 from moose.computation.standard import StringConstant
