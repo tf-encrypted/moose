@@ -854,7 +854,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingMeanOperation(op) => Ok(Operation {
                         kind: FixedpointRingMean(FixedpointRingMeanOp {
-                            axis: Some(op.axis.unwrap() as usize),
+                            axis: op.axis.map(|x| x as usize),
                             scaling_factor: op.precision,
                         }),
                         name: op.name.clone(),
