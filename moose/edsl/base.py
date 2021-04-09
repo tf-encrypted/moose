@@ -301,7 +301,7 @@ def constant(value, dtype=None, placement=None):
         dtype = dtype or dtypes.float64
         if not dtype.is_float and not dtype.is_integer:
             raise TypeError("Passed non-numeric constant with numeric dtype.")
-        value = TensorConstant(np.array([value], dtype=np.float64))
+        value = TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
     elif isinstance(value, int):
         dtype = dtype or dtypes.int64
         if not dtype.is_float and not dtype.is_integer:
