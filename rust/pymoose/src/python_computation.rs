@@ -44,6 +44,7 @@ enum PyOperation {
     std_SendOperation(PySendOperation),
     std_OutputOperation(PyOutputOperation),
     std_SaveOperation(PySaveOperation),
+    std_LoadOperation(PyLoadOperation),
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
     fixed_RingDecodeOperation(PyRingDecodeOperation),
@@ -361,6 +362,14 @@ struct PyReceiveOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyOutputOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyLoadOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -883,6 +892,15 @@ impl TryFrom<PyComputation> for Computation {
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_LoadOperation(op) => Ok(Operation {
+                        kind: Load(LoadOp {
+                            ty: Ty::Float64TensorTy, // TODO
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["key", "query"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),

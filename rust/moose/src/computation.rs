@@ -145,6 +145,7 @@ convert!(Uint64Tensor);
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
     Identity(IdentityOp),
+    Load(LoadOp),
     Save(SaveOp),
     Send(SendOp),
     Receive(ReceiveOp),
@@ -214,7 +215,10 @@ pub struct InputOp {
 pub struct OutputOp {
     pub ty: Ty,
 }
-
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct LoadOp {
+    pub ty: Ty,
+}
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SaveOp {
     pub ty: Ty,
