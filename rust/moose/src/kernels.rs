@@ -751,7 +751,7 @@ impl Compile<SyncKernel> for LoadOp {
         use std::convert::TryFrom;
         let expected_ty = self.ty;
         let op = self.clone();
-        Ok(SyncKernel::Binary(Box::new(move |sess, key, _| {
+        Ok(SyncKernel::Binary(Box::new(move |sess, key, _query| {
             let key = String::try_from(key)?;
             let val = sess.storage.load(key)?;
             if val.ty() == expected_ty {
@@ -770,7 +770,7 @@ impl Compile<AsyncKernel> for LoadOp {
         let expected_ty = self.ty;
         let op = Arc::new(self.clone());
         Ok(AsyncKernel::Binary(Box::new(
-            move |sess, key, _, sender| {
+            move |sess, key, _query, sender| {
                 let sess = Arc::clone(sess);
                 let op = Arc::clone(&op);
                 tokio::spawn(async move {

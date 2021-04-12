@@ -897,7 +897,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_LoadOperation(op) => Ok(Operation {
                         kind: Load(LoadOp {
-                            ty: Ty::Float64TensorTy, // TODO
+                            ty: map_type(&op.output_type),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])

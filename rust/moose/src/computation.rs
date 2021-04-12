@@ -215,10 +215,12 @@ pub struct InputOp {
 pub struct OutputOp {
     pub ty: Ty,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct LoadOp {
     pub ty: Ty,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SaveOp {
     pub ty: Ty,
