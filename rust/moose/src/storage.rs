@@ -23,7 +23,7 @@ pub struct LocalSyncStorage {
 impl LocalSyncStorage {
     pub fn from_hashmap(h: HashMap<String, Value>) -> Self {
         LocalSyncStorage {
-            store: std::sync::RwLock::<HashMap<String, Value>>::new(h),
+            store: std::sync::RwLock::new(h),
         }
     }
 }
@@ -58,7 +58,7 @@ pub struct LocalAsyncStorage {
 impl LocalAsyncStorage {
     pub fn from_hashmap(h: HashMap<String, Value>) -> Self {
         LocalAsyncStorage {
-            store: tokio::sync::RwLock::<HashMap<String, Value>>::new(h),
+            store: tokio::sync::RwLock::new(h),
         }
     }
 }
