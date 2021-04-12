@@ -4,12 +4,7 @@
 
 ### Bootstrapping
 
-**NOTE**: You must be using [rust nightly](https://rust-lang.github.io/rustup/concepts/channels.html) to install the runtime.
-
-```sh
-rustup toolchain install nightly
-rustup default nightly
-```
+**NOTE**: We are using [rust stable](https://rust-lang.github.io/rustup/concepts/channels.html) for the runtime.
 
 Install python development headers for your OS. (eg - `python3-dev` for Ubuntu, or `python38-devel` for OpenSUSE).
 
