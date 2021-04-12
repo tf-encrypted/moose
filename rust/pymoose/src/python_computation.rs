@@ -44,6 +44,7 @@ enum PyOperation {
     std_SendOperation(PySendOperation),
     std_OutputOperation(PyOutputOperation),
     std_SaveOperation(PySaveOperation),
+    std_LoadOperation(PyLoadOperation),
     std_ReceiveOperation(PyReceiveOperation),
     fixed_RingEncodeOperation(PyRingEncodeOperation),
     fixed_RingDecodeOperation(PyRingDecodeOperation),
@@ -361,6 +362,14 @@ struct PyReceiveOperation {
 
 #[derive(Deserialize, Debug)]
 struct PyOutputOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyLoadOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
@@ -886,6 +895,15 @@ impl TryFrom<PyComputation> for Computation {
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_LoadOperation(op) => Ok(Operation {
+                        kind: Load(LoadOp {
+                            ty: map_type(&op.output_type),
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["key", "query"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingEncode(FixedpointRingEncodeOp {
                             scaling_factor: op.scaling_factor,
@@ -930,6 +948,7 @@ mod tests {
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use numpy::ToPyArray;
     use pyo3::prelude::*;
+    use rand::Rng;
     use std::rc::Rc;
 
     fn create_computation_graph_from_python(py_any: &PyAny) -> Computation {
@@ -946,6 +965,21 @@ mod tests {
         exec.run_computation(&computation, 12345, env).unwrap()
     }
 
+    fn generate_python_names() -> (String, String) {
+        const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
+        const STRING_LEN: usize = 30;
+        let mut rng = rand::thread_rng();
+
+        let file_name: String = (0..STRING_LEN)
+            .map(|_| {
+                let idx = rng.gen_range(0..CHARSET.len());
+                CHARSET[idx] as char
+            })
+            .collect();
+        let module_name = file_name.clone();
+
+        (file_name + ".py", module_name)
+    }
     fn run_binary_func(x: &ArrayD<f64>, y: &ArrayD<f64>, py_code: &str) -> Value {
         let gil = Python::acquire_gil();
         let py = gil.python();
@@ -953,7 +987,8 @@ mod tests {
         let xc = x.to_pyarray(py);
         let yc = y.to_pyarray(py);
 
-        let comp_graph_py = PyModule::from_code(py, py_code, "comp_graph.py", "comp_graph")
+        let (file_name, module_name) = generate_python_names();
+        let comp_graph_py = PyModule::from_code(py, py_code, &file_name, &module_name)
             .map_err(|e| {
                 e.print(py);
                 e
@@ -982,7 +1017,8 @@ mod tests {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
-        let comp_graph_py = PyModule::from_code(py, py_code, "comp_graph.py", "comp_graph")
+        let (file_name, module_name) = generate_python_names();
+        let comp_graph_py = PyModule::from_code(py, py_code, &file_name, &module_name)
             .map_err(|e| {
                 e.print(py);
                 e
@@ -1303,17 +1339,9 @@ def f():
     fn test_deserialize_linear_regression() {
         let py_code = r#"
 import numpy as np
-
 from moose import edsl
 from moose.computation import standard as standard_dialect
 from moose.computation.utils import serialize_computation
-
-
-def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
-    rng = np.random.default_rng()
-    x_data = rng.normal(size=(n_instances, n_features))
-    y_data = np.dot(x_data, np.ones(n_features) * coeff) + shift
-    return x_data, y_data
 
 
 def mse(y_pred, y_true):
@@ -1345,14 +1373,12 @@ def f():
     )
 
 
-    x_uri, y_uri = generate_data(seed=42, n_instances=10, n_features=1)
-
     @edsl.computation
     def my_comp():
 
         with x_owner:
             X = edsl.atleast_2d(
-                edsl.constant(x_uri, dtype=edsl.float64),to_column_vector=True
+                edsl.load("x_uri", dtype=edsl.float64),to_column_vector=True
             )
             bias_shape = edsl.slice(edsl.shape(X), begin=0, end=1)
             bias = edsl.ones(bias_shape, dtype=edsl.float64)
@@ -1363,7 +1389,7 @@ def f():
 
         with y_owner:
             y_true = edsl.atleast_2d(
-                edsl.constant(y_uri, dtype=edsl.float64), to_column_vector=True
+                edsl.load("y_uri", dtype=edsl.float64), to_column_vector=True
             )
             totals_ss = ss_tot(y_true)
 
@@ -1391,7 +1417,45 @@ def f():
 "#;
 
         let comp = graph_from_run_call0_func(&py_code);
-        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
+        let x = Value::from(Float64Tensor::from(
+            array![
+                [-0.76943992],
+                [0.32067753],
+                [-0.61509169],
+                [0.11511809],
+                [1.49598442],
+                [0.37012138],
+                [-0.49693762],
+                [0.96914636],
+                [0.19892362],
+                [-0.98655745]
+            ]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+        ));
+
+        let y = Value::from(Float64Tensor::from(
+            array![
+                7.69168025,
+                10.9620326,
+                8.15472493,
+                10.34535427,
+                14.48795325,
+                11.11036415,
+                8.50918715,
+                12.90743909,
+                10.59677087,
+                7.04032766
+            ]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+        ));
+
+        let mut storage_inputs: HashMap<String, Value> = HashMap::new();
+        storage_inputs.insert("x_uri".to_string(), x);
+        storage_inputs.insert("y_uri".to_string(), y);
+
+        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(storage_inputs));
         let exec = EagerExecutor::new_from_storage(&storage);
         let env = hashmap![];
         exec.run_computation(&comp, 12345, env).unwrap();

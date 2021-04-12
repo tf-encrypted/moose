@@ -15,6 +15,7 @@ impl Compile<SyncKernel> for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.compile(),
+            Load(op) => op.compile(),
             Save(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
@@ -61,6 +62,7 @@ impl Compile<AsyncKernel> for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.compile(),
+            Load(op) => op.compile(),
             Save(op) => op.compile(),
             Send(op) => op.compile(),
             Receive(op) => op.compile(),
@@ -735,6 +737,47 @@ impl Compile<AsyncKernel> for SaveOp {
                     if val.ty() == expected_ty {
                         sess.storage.save(key, val).await.map_err(map_send_error)?;
                         sender.send(Value::Unit).map_err(map_send_error)
+                    } else {
+                        Err(Error::TypeMismatchOperator(format!("{:?}", op)))
+                    }
+                })
+            },
+        )))
+    }
+}
+
+impl Compile<SyncKernel> for LoadOp {
+    fn compile(&self) -> Result<SyncKernel> {
+        use std::convert::TryFrom;
+        let expected_ty = self.ty;
+        let op = self.clone();
+        Ok(SyncKernel::Binary(Box::new(move |sess, key, _query| {
+            let key = String::try_from(key)?;
+            let val = sess.storage.load(key)?;
+            if val.ty() == expected_ty {
+                Ok(val)
+            } else {
+                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
+            }
+        })))
+    }
+}
+
+impl Compile<AsyncKernel> for LoadOp {
+    fn compile(&self) -> Result<AsyncKernel> {
+        use std::convert::TryFrom;
+        use std::sync::Arc;
+        let expected_ty = self.ty;
+        let op = Arc::new(self.clone());
+        Ok(AsyncKernel::Binary(Box::new(
+            move |sess, key, _query, sender| {
+                let sess = Arc::clone(sess);
+                let op = Arc::clone(&op);
+                tokio::spawn(async move {
+                    let key = String::try_from(key.await.map_err(map_receive_error)?)?;
+                    let val = sess.storage.load(key).await.map_err(map_send_error)?;
+                    if val.ty() == expected_ty {
+                        sender.send(val).map_err(map_send_error)
                     } else {
                         Err(Error::TypeMismatchOperator(format!("{:?}", op)))
                     }
