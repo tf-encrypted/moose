@@ -20,6 +20,14 @@ pub struct LocalSyncStorage {
     store: std::sync::RwLock<HashMap<String, Value>>,
 }
 
+impl LocalSyncStorage {
+    pub fn from_hashmap(h: HashMap<String, Value>) -> Self {
+        LocalSyncStorage {
+            store: std::sync::RwLock::<HashMap<String, Value>>::new(h),
+        }
+    }
+}
+
 impl SyncStorage for LocalSyncStorage {
     fn save(&self, key: String, val: Value) -> Result<()> {
         let mut store = self.store.write().map_err(|e| {
@@ -45,6 +53,14 @@ impl SyncStorage for LocalSyncStorage {
 #[derive(Default)]
 pub struct LocalAsyncStorage {
     store: tokio::sync::RwLock<HashMap<String, Value>>,
+}
+
+impl LocalAsyncStorage {
+    pub fn from_hashmap(h: HashMap<String, Value>) -> Self {
+        LocalAsyncStorage {
+            store: tokio::sync::RwLock::<HashMap<String, Value>>::new(h),
+        }
+    }
 }
 
 #[async_trait]

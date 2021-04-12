@@ -1321,17 +1321,9 @@ def f():
     fn test_deserialize_linear_regression() {
         let py_code = r#"
 import numpy as np
-
 from moose import edsl
 from moose.computation import standard as standard_dialect
 from moose.computation.utils import serialize_computation
-
-
-def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
-    rng = np.random.default_rng()
-    x_data = rng.normal(size=(n_instances, n_features))
-    y_data = np.dot(x_data, np.ones(n_features) * coeff) + shift
-    return x_data, y_data
 
 
 def mse(y_pred, y_true):
@@ -1363,14 +1355,12 @@ def f():
     )
 
 
-    x_uri, y_uri = generate_data(seed=42, n_instances=10, n_features=1)
-
     @edsl.computation
     def my_comp():
 
         with x_owner:
             X = edsl.atleast_2d(
-                edsl.constant(x_uri, dtype=edsl.float64),to_column_vector=True
+                edsl.load("x_uri", dtype=edsl.float64),to_column_vector=True
             )
             bias_shape = edsl.slice(edsl.shape(X), begin=0, end=1)
             bias = edsl.ones(bias_shape, dtype=edsl.float64)
@@ -1381,7 +1371,7 @@ def f():
 
         with y_owner:
             y_true = edsl.atleast_2d(
-                edsl.constant(y_uri, dtype=edsl.float64), to_column_vector=True
+                edsl.load("y_uri", dtype=edsl.float64), to_column_vector=True
             )
             totals_ss = ss_tot(y_true)
 
@@ -1409,7 +1399,45 @@ def f():
 "#;
 
         let comp = graph_from_run_call0_func(&py_code);
-        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
+        let x = Value::from(Float64Tensor::from(
+            array![
+                [-0.76943992],
+                [0.32067753],
+                [-0.61509169],
+                [0.11511809],
+                [1.49598442],
+                [0.37012138],
+                [-0.49693762],
+                [0.96914636],
+                [0.19892362],
+                [-0.98655745]
+            ]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+        ));
+
+        let y = Value::from(Float64Tensor::from(
+            array![
+                7.69168025,
+                10.9620326,
+                8.15472493,
+                10.34535427,
+                14.48795325,
+                11.11036415,
+                8.50918715,
+                12.90743909,
+                10.59677087,
+                7.04032766
+            ]
+            .into_dimensionality::<IxDyn>()
+            .unwrap(),
+        ));
+
+        let mut storage_inputs: HashMap<String, Value> = HashMap::new();
+        storage_inputs.insert("x_uri".to_string(), x);
+        storage_inputs.insert("y_uri".to_string(), y);
+
+        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(storage_inputs));
         let exec = EagerExecutor::new_from_storage(&storage);
         let env = hashmap![];
         exec.run_computation(&comp, 12345, env).unwrap();
