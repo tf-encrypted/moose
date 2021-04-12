@@ -948,6 +948,7 @@ mod tests {
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use numpy::ToPyArray;
     use pyo3::prelude::*;
+    use rand::Rng;
     use std::rc::Rc;
 
     fn create_computation_graph_from_python(py_any: &PyAny) -> Computation {
@@ -964,6 +965,23 @@ mod tests {
         exec.run_computation(&computation, 12345, env).unwrap()
     }
 
+    fn generate_python_names() -> (String, String) {
+        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
+                            abcdefghijklmnopqrstuvwxyz\
+                            0123456789";
+        const STRING_LEN: usize = 30;
+        let mut rng = rand::thread_rng();
+
+        let file_name: String = (0..STRING_LEN)
+            .map(|_| {
+                let idx = rng.gen_range(0..CHARSET.len());
+                CHARSET[idx] as char
+            })
+            .collect();
+        let module_name = file_name.clone();
+
+        (file_name + ".py", module_name)
+    }
     fn run_binary_func(x: &ArrayD<f64>, y: &ArrayD<f64>, py_code: &str) -> Value {
         let gil = Python::acquire_gil();
         let py = gil.python();
@@ -971,7 +989,8 @@ mod tests {
         let xc = x.to_pyarray(py);
         let yc = y.to_pyarray(py);
 
-        let comp_graph_py = PyModule::from_code(py, py_code, "comp_graph.py", "comp_graph")
+        let (file_name, module_name) = generate_python_names();
+        let comp_graph_py = PyModule::from_code(py, py_code, &file_name, &module_name)
             .map_err(|e| {
                 e.print(py);
                 e
@@ -1000,7 +1019,8 @@ mod tests {
         let gil = Python::acquire_gil();
         let py = gil.python();
 
-        let comp_graph_py = PyModule::from_code(py, py_code, "comp_graph.py", "comp_graph")
+        let (file_name, module_name) = generate_python_names();
+        let comp_graph_py = PyModule::from_code(py, py_code, &file_name, &module_name)
             .map_err(|e| {
                 e.print(py);
                 e
