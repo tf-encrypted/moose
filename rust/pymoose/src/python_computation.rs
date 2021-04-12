@@ -966,9 +966,7 @@ mod tests {
     }
 
     fn generate_python_names() -> (String, String) {
-        const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ\
-                            abcdefghijklmnopqrstuvwxyz\
-                            0123456789";
+        const CHARSET: &[u8] = b"abcdefghijklmnopqrstuvwxyz";
         const STRING_LEN: usize = 30;
         let mut rng = rand::thread_rng();
 
