@@ -26,7 +26,6 @@ _NUMPY_DTYPES_MAP = {
     np.int64: dtypes.int64,
     np.float32: dtypes.float32,
     np.float64: dtypes.float64,
-    np.str: dtypes.string,
 }
 
 

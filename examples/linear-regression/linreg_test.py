@@ -5,6 +5,7 @@ import unittest
 import numpy as np
 
 from moose import edsl
+from moose.computation.standard import StringType
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.memory import Networking
@@ -50,11 +51,11 @@ class LinearRegressionExample(unittest.TestCase):
 
         @edsl.computation
         def my_comp(
-            x_uri: edsl.Argument(placement=x_owner, dtype=edsl.string),
-            y_uri: edsl.Argument(placement=y_owner, dtype=edsl.string),
-            w_uri: edsl.Argument(placement=model_owner, dtype=edsl.string),
-            mse_uri: edsl.Argument(placement=model_owner, dtype=edsl.string),
-            rsquared_uri: edsl.Argument(placement=model_owner, dtype=edsl.string),
+            x_uri: edsl.Argument(placement=x_owner, vtype=StringType()),
+            y_uri: edsl.Argument(placement=y_owner, vtype=StringType()),
+            w_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
+            mse_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
+            rsquared_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
         ):
 
             with x_owner:
