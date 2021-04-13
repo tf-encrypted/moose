@@ -143,7 +143,7 @@ def _encode(val):
         d["__type__"] = type_name
         return d
     elif isinstance(val, dtypes.DType):
-        return {"__type__": "DType", "name": val.name}
+        return val.name
     elif isinstance(val, np.ndarray):
         return {
             "dtype": str(val.dtype),
