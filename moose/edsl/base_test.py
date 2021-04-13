@@ -51,8 +51,8 @@ class EdslTest(parameterized.TestCase):
         @edsl.computation
         def my_comp():
             x0 = op(
-                edsl.constant(1.0, placement=player0),
-                edsl.constant(1.0, placement=player0),
+                edsl.constant(1.0, dtype=dtypes.float64, placement=player0),
+                edsl.constant(1.0, dtype=dtypes.float64, placement=player0),
                 placement=player0,
             )
             return x0
@@ -271,7 +271,7 @@ class EdslTest(parameterized.TestCase):
 
         @edsl.computation
         def my_comp():
-            x0 = edsl.constant(1.0, placement=player0)
+            x0 = edsl.constant(1.0, dtype=dtypes.float64, placement=player0)
             return x0
 
         concrete_comp = trace(my_comp)
@@ -332,7 +332,7 @@ class EdslTest(parameterized.TestCase):
 
         @edsl.computation
         def my_comp(x: edsl.Argument(placement=player0, dtype=dtypes.float64)):
-            y = edsl.constant(1.0, placement=player0)
+            y = edsl.constant(1.0, dtype=dtypes.float64, placement=player0)
             z = edsl.add(x, y, placement=player0)
             return z
 
@@ -395,12 +395,10 @@ class EdslTest(parameterized.TestCase):
         )
 
     @parameterized.parameters(
-        (1, None, dtypes.int64),
         (1, dtypes.int64, dtypes.int64),
         (1, dtypes.int32, dtypes.int32),
         (1.0, dtypes.float32, dtypes.float32),
         (1.0, dtypes.float64, dtypes.float64),
-        (1.0, None, dtypes.float64),
         (np.array([1.0]), None, dtypes.float64),
         (np.array([1.0], dtype=np.float32), dtypes.float32, dtypes.float32),
         (np.array([1.0]), dtypes.float64, dtypes.float64),

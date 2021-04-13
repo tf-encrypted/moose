@@ -2,7 +2,6 @@ import inspect
 from collections import defaultdict
 
 from moose.compiler.compiler import Compiler
-from moose.computation import dtypes
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.host import RunProgramOperation
@@ -28,13 +27,10 @@ from moose.computation.standard import OutputOperation
 from moose.computation.standard import ReshapeOperation
 from moose.computation.standard import SaveOperation
 from moose.computation.standard import ShapeOperation
-from moose.computation.standard import ShapeType
 from moose.computation.standard import SliceOperation
 from moose.computation.standard import SqueezeOperation
-from moose.computation.standard import StringType
 from moose.computation.standard import SubOperation
 from moose.computation.standard import SumOperation
-from moose.computation.standard import TensorType
 from moose.computation.standard import TransposeOperation
 from moose.computation.standard import UnknownType
 from moose.edsl.base import AbsExpression
@@ -70,7 +66,7 @@ def trace(abstract_computation, compiler_passes=None, render=False):
     symbolic_args = [
         ArgumentExpression(
             arg_name=arg_name,
-            dtype=parameter.annotation.dtype,
+            vtype=parameter.annotation.vtype,
             placement=parameter.annotation.placement,
             inputs=[],
         )
@@ -161,11 +157,11 @@ class AstTracer:
     def visit_ArgumentExpression(self, argument_expression):
         assert isinstance(argument_expression, ArgumentExpression)
         placement = self.visit_placement_expression(argument_expression.placement)
-        arg_dtype = argument_expression.dtype
-        if arg_dtype is None:
+        arg_vtype = argument_expression.vtype
+        if arg_vtype is None:
             output_type = UnknownType()
         else:
-            output_type = TensorType(dtype=arg_dtype)
+            output_type = arg_vtype
         return self.computation.add_operation(
             InputOperation(
                 placement_name=placement.name,
@@ -182,12 +178,11 @@ class AstTracer:
             for i, expr in enumerate(concatenate_expression.inputs)
         }
         placement = self.visit_placement_expression(concatenate_expression.placement)
-        output_type = TensorType(dtype=concatenate_expression.dtype)
         return self.computation.add_operation(
             ConcatenateOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("concatenate"),
-                output_type=output_type,
+                output_type=concatenate_expression.vtype,
                 axis=concatenate_expression.axis,
                 inputs=arrays,
             )
@@ -197,12 +192,12 @@ class AstTracer:
         assert isinstance(constant_expression, ConstantExpression)
         placement = self.visit_placement_expression(constant_expression.placement)
         value = constant_expression.value
-        dtype = constant_expression.dtype
+        vtype = constant_expression.vtype
 
-        if dtype is None:
+        if vtype is None:
             output_type = UnknownType()
         else:
-            output_type = TensorType(dtype)
+            output_type = vtype
         return self.computation.add_operation(
             ConstantOperation(
                 placement_name=placement.name,
@@ -232,13 +227,12 @@ class AstTracer:
             lhs_operation,
             rhs_operation,
         )
-        output_type = TensorType(expression.dtype)
         return self.computation.add_operation(
             op_type(
                 placement_name=placement.name,
                 name=self.get_fresh_name(f"{op_name}"),
                 inputs={"lhs": lhs_operation.name, "rhs": rhs_operation.name},
-                output_type=output_type,
+                output_type=expression.vtype,
             )
         )
 
@@ -247,12 +241,11 @@ class AstTracer:
         (x_expression,) = inverse_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(inverse_expression.placement)
-        output_type = TensorType(dtype=inverse_expression.dtype)
         return self.computation.add_operation(
             InverseOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("inverse"),
-                output_type=output_type,
+                output_type=inverse_expression.vtype,
                 inputs={"x": x_operation.name},
             )
         )
@@ -262,12 +255,11 @@ class AstTracer:
         (x_expression,) = abs_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(abs_expression.placement)
-        output_type = TensorType(dtype=abs_expression.dtype)
         return self.computation.add_operation(
             AbsOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("abs"),
-                output_type=output_type,
+                output_type=abs_expression.vtype,
                 inputs={"x": x_operation.name},
             )
         )
@@ -277,12 +269,11 @@ class AstTracer:
         (x_expression,) = cast_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(cast_expression.placement)
-        output_type = TensorType(dtype=cast_expression.dtype)
         return self.computation.add_operation(
             CastOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("cast"),
-                output_type=output_type,
+                output_type=cast_expression.vtype,
                 inputs={"x": x_operation.name},
             )
         )
@@ -292,12 +283,11 @@ class AstTracer:
         (x_expression,) = expand_dims_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(expand_dims_expression.placement)
-        output_type = TensorType(dtype=expand_dims_expression.dtype)
         return self.computation.add_operation(
             ExpandDimsOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("expand_dims"),
-                output_type=output_type,
+                output_type=expand_dims_expression.vtype,
                 axis=expand_dims_expression.axis,
                 inputs={"x": x_operation.name},
             )
@@ -308,12 +298,11 @@ class AstTracer:
         (x_expression,) = squeeze_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(squeeze_expression.placement)
-        output_type = TensorType(dtype=squeeze_expression.dtype)
         return self.computation.add_operation(
             SqueezeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("squeeze"),
-                output_type=output_type,
+                output_type=squeeze_expression.vtype,
                 axis=squeeze_expression.axis,
                 inputs={"x": x_operation.name},
             )
@@ -325,12 +314,11 @@ class AstTracer:
         shape_operation = self.visit(shape_expression)
         placement = self.visit_placement_expression(ones_expression.placement)
         dtype = ones_expression.dtype
-        output_type = TensorType(dtype=dtype)
         return self.computation.add_operation(
             OnesOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("ones"),
-                output_type=output_type,
+                output_type=ones_expression.vtype,
                 dtype=dtype,
                 inputs={"shape": shape_operation.name},
             )
@@ -341,12 +329,11 @@ class AstTracer:
         (x_expression,) = sum_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(sum_expression.placement)
-        output_type = TensorType(dtype=sum_expression.dtype)
         return self.computation.add_operation(
             SumOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("sum"),
-                output_type=output_type,
+                output_type=sum_expression.vtype,
                 axis=sum_expression.axis,
                 inputs={"x": x_operation.name},
             )
@@ -357,12 +344,11 @@ class AstTracer:
         (x_expression,) = mean_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(mean_expression.placement)
-        output_type = TensorType(dtype=mean_expression.dtype)
         return self.computation.add_operation(
             MeanOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("mean"),
-                output_type=output_type,
+                output_type=mean_expression.vtype,
                 axis=mean_expression.axis,
                 inputs={"x": x_operation.name},
             )
@@ -373,12 +359,11 @@ class AstTracer:
         (x_expression,) = transpose_expression.inputs
         x_operation = self.visit(x_expression)
         placement = self.visit_placement_expression(transpose_expression.placement)
-        output_type = TensorType(dtype=transpose_expression.dtype)
         return self.computation.add_operation(
             TransposeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("transpose"),
-                output_type=output_type,
+                output_type=transpose_expression.vtype,
                 axes=transpose_expression.axes,
                 inputs={"x": x_operation.name},
             )
@@ -394,7 +379,7 @@ class AstTracer:
             ReshapeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("reshape"),
-                output_type=x_operation.output_type,
+                output_type=reshape_expression.vtype,
                 inputs={"x": x_operation.name, "shape": shape_operation.name},
             )
         )
@@ -408,7 +393,7 @@ class AstTracer:
             AtLeast2DOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("atleast_2d"),
-                output_type=x_operation.output_type,
+                output_type=atleast_2d_expression.vtype,
                 to_column_vector=atleast_2d_expression.to_column_vector,
                 inputs={"x": x_operation.name},
             )
@@ -423,7 +408,7 @@ class AstTracer:
             SliceOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("slice"),
-                output_type=UnknownType(),
+                output_type=slice_expression.vtype,
                 begin=slice_expression.begin,
                 end=slice_expression.end,
                 inputs={"x": x_operation.name},
@@ -439,7 +424,7 @@ class AstTracer:
             ShapeOperation(
                 placement_name=placement.name,
                 name=self.get_fresh_name("shape"),
-                output_type=ShapeType(),
+                output_type=shape_expression.vtype,
                 inputs={"x": x_operation.name},
             )
         )
@@ -450,10 +435,7 @@ class AstTracer:
         key_operation = self.visit(key_expression)
         query_operation = self.visit(query_expression)
         placement = self.visit_placement_expression(load_expression.placement)
-        if load_expression.dtype is None:
-            output_type = UnknownType()
-        else:
-            output_type = TensorType(load_expression.dtype)
+        output_type = load_expression.vtype or UnknownType()
         return self.computation.add_operation(
             LoadOperation(
                 placement_name=placement.name,
@@ -483,12 +465,7 @@ class AstTracer:
             f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
         }
         placement = self.visit_placement_expression(expression.placement)
-        if expression.dtype is None:
-            output_type = UnknownType()
-        elif expression.dtype == dtypes.string:
-            output_type = StringType()
-        else:
-            output_type = TensorType(expression.dtype)
+        output_type = expression.vtype or UnknownType()
         return self.computation.add_operation(
             ApplyFunctionOperation(
                 fn=expression.fn,
@@ -506,12 +483,6 @@ class AstTracer:
             f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
         }
         placement = self.visit_placement_expression(expression.placement)
-        if expression.dtype is None:
-            output_type = UnknownType()
-        elif expression.dtype == dtypes.string:
-            output_type = StringType()
-        else:
-            output_type = TensorType(expression.dtype)
         return self.computation.add_operation(
             RunProgramOperation(
                 placement_name=placement.name,
@@ -519,6 +490,6 @@ class AstTracer:
                 path=expression.path,
                 args=expression.args,
                 inputs=inputs,
-                output_type=output_type,
+                output_type=expression.vtype,
             )
         )

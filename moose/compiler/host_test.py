@@ -5,9 +5,9 @@ from moose.computation import dtypes
 from moose.computation import fixedpoint as fixedpoint_ops
 from moose.computation import ring as ring_ops
 from moose.computation import standard as standard_ops
+from moose.computation.standard import IntType
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SendOperation
-from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 
@@ -82,7 +82,7 @@ class HostTest(parameterized.TestCase):
             sender="player0",
             receiver="player1",
             rendezvous_key="rendezvous_key_0",
-            output_type=TensorType(dtype=dtypes.int64),
+            output_type=IntType(),
         )
 
     def test_pass_networking(self):

@@ -10,13 +10,18 @@ from typing import Union
 import numpy as np
 
 from moose.computation import dtypes
+from moose.computation.standard import FloatConstant
+from moose.computation.standard import FloatType
 from moose.computation.standard import IntConstant
+from moose.computation.standard import IntType
 from moose.computation.standard import ShapeConstant
+from moose.computation.standard import ShapeType
 from moose.computation.standard import StringConstant
 from moose.computation.standard import StringType
 from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.computation.standard import UnknownType
+from moose.computation.standard import ValueType
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {
@@ -81,17 +86,23 @@ def get_current_placement():
     return CURRENT_PLACEMENT[-1]
 
 
-@dataclass
+@dataclass(init=False)
 class Argument:
     placement: PlacementExpression
-    dtype: Optional[dtypes.DType]
+    dtype: Optional[dtypes.DType] = None
+    vtype: Optional[ValueType] = None
+
+    def __init__(self, placement, dtype=None, vtype=None):
+        self.placement = placement
+        self.dtype = dtype
+        self.vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
 
 
 @dataclass
 class Expression:
     placement: PlacementExpression
     inputs: List
-    dtype: Optional[dtypes.DType]
+    vtype: Optional[ValueType]
 
     def __hash__(self):
         return id(self)
@@ -147,6 +158,8 @@ class SqueezeExpression(Expression):
 
 @dataclass
 class OnesExpression(Expression):
+    dtype: dtypes.DType
+
     def __hash__(self):
         return id(self)
 
@@ -197,8 +210,6 @@ class AtLeast2DExpression(Expression):
 
 @dataclass
 class LoadExpression(Expression):
-    dtype: Optional
-
     def __hash__(self):
         return id(self)
 
@@ -231,7 +242,6 @@ class SaveExpression(Expression):
 class ApplyFunctionExpression(Expression):
     fn: Callable
     output_placements: Optional[List[PlacementExpression]]
-    output_type: Optional
 
     def __hash__(self):
         return id(self)
@@ -241,7 +251,6 @@ class ApplyFunctionExpression(Expression):
 class RunProgramExpression(Expression):
     path: str
     args: List[str]
-    output_type: Optional
 
     def __hash__(self):
         return id(self)
@@ -264,66 +273,72 @@ class SliceExpression(Expression):
 
 def concatenate(arrays, axis=0, placement=None):
     placement = placement or get_current_placement()
-    expected_dtype = arrays[0].dtype
+    input_vtype = arrays[0].vtype
+    if isinstance(input_vtype, TensorType):
+        expected_vtype = input_vtype
+        expected_dtype = input_vtype.dtype
+    else:
+        raise ValueError(f"Inputs must be have vtype TensorType, found {input_vtype}.")
+
     for array in arrays:
-        if array.dtype != expected_dtype:
+        if array.vtype != expected_vtype:
+            raise ValueError(
+                f"Inputs must be have vtype TensorType, found {array.vtype}."
+            )
+        if array.vtype.dtype != expected_dtype:
             raise ValueError(
                 f"Values passed to concatenate must be same dtype: found {array.dtype} "
                 f"and {expected_dtype} in value of `arrays` argument."
             )
     return ConcatenateExpression(
-        placement=placement, inputs=arrays, axis=axis, dtype=expected_dtype
+        placement=placement, inputs=arrays, axis=axis, vtype=input_vtype
     )
 
 
-def constant(value, dtype=None, placement=None):
+def constant(value, dtype=None, vtype=None, placement=None):
     placement = placement or get_current_placement()
+    vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
+
     if isinstance(value, np.ndarray):
         moose_dtype = _NUMPY_DTYPES_MAP.get(value.dtype.type, None)
         if moose_dtype is None:
             raise NotImplementedError(
-                f"Arrays of dtype `{value.dtype}` not supported as graph constants."
+                f"Tensors of dtype `{value.dtype}` not supported as graph constants."
             )
-        if dtype is not None and moose_dtype != dtype:
+        if vtype is not None and moose_dtype != vtype.dtype:
             if not isinstance(dtype, dtypes.DType):
                 raise TypeError(
                     "`dtype` argument to `constant` must be of type DType, "
                     f"found {type(dtype)}."
                 )
-            implicit_const = constant(value, moose_dtype, placement)
+            implicit_const = constant(value, dtype=moose_dtype, placement=placement)
             return cast(implicit_const, dtype, placement)
-        elif dtype is None:
-            dtype = moose_dtype
+        elif vtype is None:
+            vtype = TensorType(moose_dtype)
         value = TensorConstant(value=value)
     elif isinstance(value, float):
-        dtype = dtype or dtypes.float64
-        if not dtype.is_float and not dtype.is_integer:
-            raise TypeError("Passed non-numeric constant with numeric dtype.")
-        value = TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
+        value, vtype = _interpret_numeric_value(value, vtype, FloatType())
     elif isinstance(value, int):
-        dtype = dtype or dtypes.int64
-        if not dtype.is_float and not dtype.is_integer:
-            raise TypeError("Passed non-numeric constant with numeric dtype.")
-        value = IntConstant(value=value)
+        value, vtype = _interpret_numeric_value(value, vtype, IntType())
     elif isinstance(value, str):
-        if dtype is not None and dtype != dtypes.string:
+        vtype = vtype or StringType()
+        if not isinstance(vtype, StringType):
             raise ValueError(
-                "Constant vaule of type `str` does not match "
-                f"user-supplied dtype argument `{dtype}`."
+                "Constant value of type `str` does not match "
+                f"user-supplied vtype argument `{vtype}`."
             )
-        dtype = dtype or dtypes.string
         value = StringConstant(value=value)
 
-    return ConstantExpression(placement=placement, inputs=[], value=value, dtype=dtype)
+    return ConstantExpression(placement=placement, inputs=[], value=value, vtype=vtype)
 
 
 def add(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "add")
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "add")
     return BinaryOpExpression(
-        op_name="add", placement=placement, inputs=[lhs, rhs], dtype=dtype
+        op_name="add", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 
@@ -331,9 +346,9 @@ def sub(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "sub")
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "sub")
     return BinaryOpExpression(
-        op_name="sub", placement=placement, inputs=[lhs, rhs], dtype=dtype
+        op_name="sub", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 
@@ -341,9 +356,9 @@ def mul(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "mul")
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "mul")
     return BinaryOpExpression(
-        op_name="mul", placement=placement, inputs=[lhs, rhs], dtype=dtype
+        op_name="mul", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 
@@ -351,9 +366,9 @@ def dot(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "dot")
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "dot")
     return BinaryOpExpression(
-        op_name="dot", placement=placement, inputs=[lhs, rhs], dtype=dtype
+        op_name="dot", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 
@@ -361,42 +376,47 @@ def div(lhs, rhs, placement=None):
     assert isinstance(lhs, Expression)
     assert isinstance(rhs, Expression)
     placement = placement or get_current_placement()
-    dtype = _assimilate_arg_dtypes(lhs.dtype, rhs.dtype, "div")
+    vtype = _assimilate_arg_vtypes(lhs.vtype, rhs.vtype, "div")
     return BinaryOpExpression(
-        op_name="div", placement=placement, inputs=[lhs, rhs], dtype=dtype
+        op_name="div", placement=placement, inputs=[lhs, rhs], vtype=vtype
     )
 
 
 def inverse(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    dtype = x.dtype
-    if dtype not in [dtypes.float32, dtypes.float64]:
+    vtype = x.vtype
+    if not isinstance(vtype, TensorType):
         raise ValueError(
-            "moose.inverse operation only supports arguments of "
-            "type `float32` or `float64`."
+            "`inverse` operation only supports arguments of type TensorType."
         )
-    return InverseExpression(placement=placement, inputs=[x], dtype=x.dtype)
+    if vtype.dtype not in [dtypes.float32, dtypes.float64]:
+        raise ValueError(
+            "`inverse` operation only supports arguments of dtype `float32` or "
+            "`float64`."
+        )
+    return InverseExpression(placement=placement, inputs=[x], vtype=vtype)
 
 
 def expand_dims(x, axis, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return ExpandDimsExpression(
-        placement=placement, inputs=[x], axis=axis, dtype=x.dtype
+        placement=placement, inputs=[x], axis=axis, vtype=x.vtype
     )
 
 
 def squeeze(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return SqueezeExpression(placement=placement, inputs=[x], axis=axis, dtype=x.dtype)
+    return SqueezeExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def ones(shape, dtype, placement=None):
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
-    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype)
+    vtype = TensorType(dtype)
+    return OnesExpression(placement=placement, inputs=[shape], dtype=dtype, vtype=vtype)
 
 
 def square(x, placement=None):
@@ -408,19 +428,19 @@ def square(x, placement=None):
 def sum(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return SumExpression(placement=placement, inputs=[x], axis=axis, dtype=x.dtype)
+    return SumExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def mean(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return MeanExpression(placement=placement, inputs=[x], axis=axis, dtype=x.dtype)
+    return MeanExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
 
 
 def shape(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return ShapeExpression(placement=placement, inputs=[x], dtype=None)
+    return ShapeExpression(placement=placement, inputs=[x], vtype=ShapeType())
 
 
 def slice(x, begin, end, placement=None):
@@ -429,7 +449,7 @@ def slice(x, begin, end, placement=None):
     assert isinstance(end, int)
     placement = placement or get_current_placement()
     return SliceExpression(
-        placement=placement, inputs=[x], begin=begin, end=end, dtype=x.dtype
+        placement=placement, inputs=[x], begin=begin, end=end, vtype=x.vtype
     )
 
 
@@ -437,7 +457,7 @@ def transpose(x, axes=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return TransposeExpression(
-        placement=placement, inputs=[x], axes=axes, dtype=x.dtype
+        placement=placement, inputs=[x], axes=axes, vtype=x.vtype
     )
 
 
@@ -448,7 +468,7 @@ def atleast_2d(x, to_column_vector=False, placement=None):
         placement=placement,
         inputs=[x],
         to_column_vector=to_column_vector,
-        dtype=x.dtype,
+        vtype=x.vtype,
     )
 
 
@@ -458,21 +478,26 @@ def reshape(x, shape, placement=None):
         shape = constant(ShapeConstant(value=shape), placement=placement)
     assert isinstance(shape, Expression)
     placement = placement or get_current_placement()
-    return ReshapeExpression(placement=placement, inputs=[x, shape], dtype=x.dtype)
+    return ReshapeExpression(placement=placement, inputs=[x, shape], vtype=x.vtype)
 
 
 def abs(x, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
-    return AbsExpression(placement=placement, inputs=[x], dtype=x.dtype)
+    return AbsExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def cast(x, dtype, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
 
+    if not isinstance(x.vtype, TensorType):
+        raise ValueError(
+            f"Argument to `cast` operation must be tensor, found {x.vtype}."
+        )
+
     # Check dtype args are well-defined
-    if x.dtype is None:
+    if x.vtype.dtype is None:
         raise ValueError(
             "Argument to `cast` function must have well-defined dtype; "
             "found value with dtype=None."
@@ -493,80 +518,79 @@ def cast(x, dtype, placement=None):
             f"of type DType, found type {type(dtype)}."
         )
 
-    if x.dtype == moose_dtype:
+    if x.vtype.dtype == moose_dtype:
         # This is a no-op
         return x
 
-    return CastExpression(placement=placement, inputs=[x], dtype=moose_dtype)
+    return CastExpression(
+        placement=placement, inputs=[x], vtype=TensorType(moose_dtype)
+    )
 
 
-def load(key, query="", dtype=None, placement=None):
+def load(key, query="", dtype=None, vtype=None, placement=None):
     placement = placement or get_current_placement()
+    vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
     if isinstance(key, str):
-        key = constant(key, placement=placement, dtype=dtypes.string)
-    elif isinstance(key, Argument) and key.dtype not in [dtypes.string, None]:
+        key = constant(key, placement=placement, vtype=StringType())
+    elif isinstance(key, Argument) and key.vtype not in [StringType(), None]:
         raise ValueError(
-            f"Function 'edsl.load' encountered `key` argument of dtype {key.dtype}; "
-            "expected dtype 'string'."
+            f"Function 'edsl.load' encountered `key` argument of vtype {key.vtype}; "
+            "expected `StringType`."
         )
     elif not isinstance(key, Expression):
         raise ValueError(
             f"Function 'edsl.load' encountered `key` argument of type {type(key)}; "
-            "expected one of string, ConstantExpression, or ArgumentExpression."
+            "expected one of: string, ConstantExpression, or Argument."
         )
 
     if isinstance(query, str):
-        query = constant(query, placement=placement, dtype=dtypes.string)
-    elif isinstance(query, Argument) and query.dtype not in [dtypes.string, None]:
+        query = constant(query, placement=placement, vtype=StringType())
+    elif isinstance(query, Argument) and query.vtype not in [StringType(), None]:
         raise ValueError(
             f"Function 'edsl.load' encountered `query` argument of "
-            f"dtype {query.dtype}; expected dtype 'string'."
+            f"vtype {query.vtype}; expected 'StringType'."
         )
     elif not isinstance(query, Expression):
         raise ValueError(
             f"Function 'edsl.load' encountered `query` argument of type {type(query)}; "
-            "expected one of string, ConstantExpression, or ArgumentExpression."
+            "expected one of: string, ConstantExpression, or Argument."
         )
 
-    return LoadExpression(placement=placement, inputs=[key, query], dtype=dtype)
+    return LoadExpression(placement=placement, inputs=[key, query], vtype=vtype)
 
 
 def save(key, value, placement=None):
     assert isinstance(value, Expression)
     placement = placement or get_current_placement()
     if isinstance(key, str):
-        key = constant(key, placement=placement, dtype=dtypes.string)
-    elif isinstance(key, Argument) and key.dtype not in [dtypes.string, None]:
+        key = constant(key, placement=placement, vtype=StringType())
+    elif isinstance(key, Argument) and key.vtype not in [StringType(), None]:
         raise ValueError(
-            f"Function 'edsl.save' encountered `key` argument of dtype {key.dtype}; "
-            "expected dtype 'string'."
+            f"Function 'edsl.save' encountered `key` argument of type {key.vtype}; "
+            "expected 'StringType'."
         )
     elif not isinstance(key, Expression):
         raise ValueError(
             f"Function 'edsl.save' encountered `key` argument of type {type(key)}; "
-            "expected one of string, ConstantExpression, or ArgumentExpression."
+            "expected one of: string, ConstantExpression, or ArgumentExpression."
         )
-    return SaveExpression(placement=placement, inputs=[key, value], dtype=None)
+    return SaveExpression(placement=placement, inputs=[key, value], vtype=None)
 
 
-def run_program(path, args, *inputs, output_type=None, placement=None):
+def run_program(path, args, *inputs, dtype=None, vtype=None, placement=None):
     assert isinstance(path, str)
     assert isinstance(args, (list, tuple))
     placement = placement or get_current_placement()
-    dtype = _infer_dtype_from_output_type(output_type)
+    vtype = vtype or UnknownType()
     return RunProgramExpression(
-        path=path,
-        args=args,
-        placement=placement,
-        inputs=inputs,
-        output_type=output_type,
-        dtype=dtype,
+        path=path, args=args, placement=placement, inputs=inputs, vtype=vtype,
     )
 
 
-def function(fn=None, output_type=None):
+def function(fn=None, dtype=None, vtype=None):
+    vtype = _maybe_lift_dtype_to_tensor_vtype(dtype, vtype)
     if fn is None:
-        return partial(function, output_type=output_type)
+        return partial(function, vtype=vtype)
 
     @wraps(fn)
     def wrapper(*inputs, placement=None, output_placements=None, **kwargs):
@@ -574,14 +598,12 @@ def function(fn=None, output_type=None):
         if not isinstance(placement, MpspdzPlacementExpression):
             # TODO(jason) what to do about `placement` or `output_placements` kwargs?
             return fn(*inputs, **kwargs)
-        dtype = _infer_dtype_from_output_type(output_type)
         return ApplyFunctionExpression(
             fn=fn,
             placement=placement,
             inputs=inputs,
             output_placements=output_placements,
-            output_type=output_type,
-            dtype=dtype,
+            vtype=vtype or UnknownType(),
         )
 
     return wrapper
@@ -596,25 +618,60 @@ class AbstractComputation:
         self.func = func
 
 
-def _infer_dtype_from_output_type(output_type):
-    if isinstance(output_type, StringType):
-        dtype = dtypes.string
-    elif output_type is None or isinstance(output_type, UnknownType):
-        dtype = None
-    elif isinstance(output_type, TensorType):
-        dtype = output_type.dtype
-    else:
+def _check_tensor_type_arg_consistency(dtype, vtype):
+    if isinstance(vtype, TensorType) and vtype.dtype != dtype:
         raise ValueError(
-            f"Improper `output_type` argument of type {type(output_type)}."
-            " Must be one of UnknownType, StringType, or TensorType."
+            f"Inconsistent type information for tensor: dtype {dtype} is "
+            f"inconsistent with tensor type {vtype}."
         )
-    return dtype
 
 
-def _assimilate_arg_dtypes(lhs_dtype, rhs_dtype, fn_name):
+def _maybe_lift_dtype_to_tensor_vtype(dtype, vtype):
+    if dtype is None and vtype is None:
+        return
+    elif vtype is None and dtype is not None:
+        return TensorType(dtype)
+    elif vtype is not None and dtype is not None:
+        _check_tensor_type_arg_consistency(dtype, vtype)
+        return vtype
+    else:  # vtype but no dtype
+        return vtype
+
+
+def _interpret_numeric_value(value, vtype, fallback_vtype):
+    if vtype is None:
+        vtype = fallback_vtype
+    if isinstance(vtype, TensorType):
+        dtype = vtype.dtype
+        if not dtype.is_float and not dtype.is_integer:
+            raise TypeError("Cannot intepret constant as dtype {dtype}.")
+        value = TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
+    elif isinstance(vtype, FloatType):
+        value = FloatConstant(value)
+    elif isinstance(vtype, IntType):
+        value = IntConstant(value)
+    else:
+        raise TypeError("Cannot intepret numeric constant as non-numeric type {vtype}.")
+    return value, vtype
+
+
+def _assimilate_arg_vtypes(lhs_vtype, rhs_vtype, fn_name):
+    if isinstance(lhs_vtype, TensorType) and isinstance(rhs_vtype, TensorType):
+        return _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name)
+    if lhs_vtype != rhs_vtype:
+        raise ValueError(
+            f"Function `{fn_name}` expected arguments of similar type: "
+            f"found mismatched types `{lhs_vtype}` and `{rhs_vtype}`."
+        )
+    return lhs_vtype
+
+
+def _assimilate_arg_dtypes(lhs_vtype, rhs_vtype, fn_name):
+    lhs_dtype = lhs_vtype.dtype
+    rhs_dtype = rhs_vtype.dtype
     if lhs_dtype != rhs_dtype:
         raise ValueError(
             f"Function `{fn_name}` expected arguments of similar dtype: "
             f"found mismatched dtypes `{lhs_dtype}` and `{rhs_dtype}`."
         )
-    return lhs_dtype
+    return lhs_vtype
