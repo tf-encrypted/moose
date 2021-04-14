@@ -639,6 +639,7 @@ def _maybe_lift_dtype_to_tensor_vtype(dtype, vtype):
 
 
 def _interpret_numeric_value(value, vtype, fallback_vtype):
+    assert isinstance(value, (int, float))
     if vtype is None:
         vtype = fallback_vtype
     if isinstance(vtype, TensorType):
