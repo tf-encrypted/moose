@@ -168,16 +168,6 @@ float64 = _ConcreteDType(
     is_float=True,
     is_signed=True,
 )
-string = _ConcreteDType(
-    "string",
-    "str",
-    numpy_dtype=np.str,
-    is_native=True,
-    is_fixedpoint=False,
-    is_integer=False,
-    is_float=False,
-    is_signed=False,
-)
 
 
 def fixed(integ, frac):

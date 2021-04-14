@@ -16,7 +16,9 @@ from moose.computation.standard import DeserializeOperation
 from moose.computation.standard import DivOperation
 from moose.computation.standard import DotOperation
 from moose.computation.standard import ExpandDimsOperation
+from moose.computation.standard import FloatType
 from moose.computation.standard import InputOperation
+from moose.computation.standard import IntType
 from moose.computation.standard import InverseOperation
 from moose.computation.standard import LoadOperation
 from moose.computation.standard import MeanOperation
@@ -268,6 +270,9 @@ class SerializeKernel(Kernel):
                 return output.set_result(value_ser)
             elif isinstance(value_type, (PRFKeyType, SeedType)):
                 return output.set_result(value)
+            elif isinstance(value_type, (FloatType, IntType)):
+                value_ser = msgpack.packb(value)
+                return output.set_result(value_ser)
             else:
                 raise ValueError(f"Can't serialize value of type: {value_type}")
 
@@ -285,6 +290,9 @@ class DeserializeKernel(Kernel):
                 value = json.loads(value.decode())
                 return output.set_result(value)
             elif isinstance(output_type, (PRFKeyType, SeedType)):
+                return output.set_result(value)
+            elif isinstance(output_type, (FloatType, IntType)):
+                value = msgpack.unpackb(value)
                 return output.set_result(value)
             else:
                 raise ValueError(f"Can't deserialize value of type: {output_type}")

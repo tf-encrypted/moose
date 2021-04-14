@@ -3,7 +3,6 @@ from moose.computation.dtypes import float32
 from moose.computation.dtypes import float64
 from moose.computation.dtypes import int32
 from moose.computation.dtypes import int64
-from moose.computation.dtypes import string
 from moose.edsl.base import Argument
 from moose.edsl.base import abs
 from moose.edsl.base import add
@@ -69,7 +68,6 @@ __all__ = [
     shape,
     square,
     squeeze,
-    string,
     sub,
     sum,
     transpose,

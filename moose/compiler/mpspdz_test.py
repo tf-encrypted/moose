@@ -16,7 +16,7 @@ class MpspdzTest(parameterized.TestCase):
         carole = edsl.host_placement(name="carole")
         mpspdz = edsl.mpspdz_placement("mpspdz", players=[alice, bob, carole])
 
-        @edsl.function(output_type=TensorType(dtypes.int64))
+        @edsl.function(vtype=TensorType(dtypes.int64))
         def my_function(x, y, z):
             return x * y + z
 
