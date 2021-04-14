@@ -7,6 +7,7 @@ pub mod kernels;
 pub mod networking;
 pub mod prim;
 pub mod prng;
+pub mod python_computation;
 pub mod ring;
 pub mod standard;
 pub mod storage;
