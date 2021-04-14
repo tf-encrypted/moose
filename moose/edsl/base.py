@@ -645,14 +645,16 @@ def _interpret_numeric_value(value, vtype, fallback_vtype):
     if isinstance(vtype, TensorType):
         dtype = vtype.dtype
         if not dtype.is_float and not dtype.is_integer:
-            raise TypeError("Cannot intepret constant as dtype {dtype}.")
+            raise TypeError("Cannot interpret constant as dtype {dtype}.")
         value = TensorConstant(np.array([value], dtype=dtype.numpy_dtype))
     elif isinstance(vtype, FloatType):
         value = FloatConstant(value)
     elif isinstance(vtype, IntType):
         value = IntConstant(value)
     else:
-        raise TypeError("Cannot intepret numeric constant as non-numeric type {vtype}.")
+        raise TypeError(
+            "Cannot interpret numeric constant as non-numeric type {vtype}."
+        )
     return value, vtype
 
 
