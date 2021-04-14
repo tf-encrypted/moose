@@ -450,6 +450,13 @@ pub struct PyComputation {
     placements: HashMap<String, PyPlacement>,
 }
 
+impl PyComputation {
+    pub fn from_read(computation: &Vec<u8>) -> anyhow::Result<Self> {
+        let py_comp: PyComputation = rmp_serde::from_read_ref(&computation)?;
+        Ok(py_comp)
+    }
+}
+
 impl TryFrom<&PyPlacement> for Placement {
     type Error = anyhow::Error;
     fn try_from(placement: &PyPlacement) -> anyhow::Result<Placement> {
