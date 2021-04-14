@@ -652,7 +652,9 @@ def _interpret_numeric_value(value, vtype, fallback_vtype):
     elif isinstance(vtype, IntType):
         value = IntConstant(value)
     else:
-        raise TypeError("Cannot interpret numeric constant as non-numeric type {vtype}.")
+        raise TypeError(
+            "Cannot interpret numeric constant as non-numeric type {vtype}."
+        )
     return value, vtype
 
 
