@@ -1311,8 +1311,6 @@ from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
 from moose.computation.utils import serialize_computation
-from moose.computation.standard import TensorType
-from moose.computation.standard import UnitType
 from moose.computation import dtypes
 
 def f():
@@ -1325,7 +1323,7 @@ def f():
             inputs={},
             placement_name="alice",
             value=standard_dialect.StringConstant(value="w_uri"),
-            output_type=TensorType(dtype=dtypes.string),
+            output_type=standard_dialect.StringType(),
         )
     )
 

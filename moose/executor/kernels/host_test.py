@@ -30,7 +30,7 @@ class HostKernelTest(parameterized.TestCase):
                 c0,
                 c1,
                 placement=player1,
-                output_type=TensorType(dtype=dtypes.int64),
+                vtype=TensorType(dtype=dtypes.int64),
             )
             res = edsl.save("result", out, placement=player2)
             return res
