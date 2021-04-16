@@ -760,7 +760,7 @@ impl CompiledSyncComputation {
 pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
 type AsyncComputationKernel =
-    Box<dyn Fn(&Arc<AsyncSession>) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)>>;
+    Box<dyn Fn(&Arc<AsyncSession>) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>>;
 
 pub struct CompiledAsyncComputation(AsyncComputationKernel);
 
@@ -807,7 +807,7 @@ where
                     .map(|(sender, op)| op.apply(sess, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
 
-                let join_handle = AsyncSessionJoinHandle { tasks };
+                let session_handle = AsyncSessionHandle { tasks };
                 let outputs: HashMap<String, AsyncReceiver> = output_names
                     .iter()
                     .map(|op_name| {
@@ -816,7 +816,7 @@ where
                     })
                     .collect();
 
-                Ok((join_handle, outputs))
+                Ok((session_handle, outputs))
             },
         )))
     }
@@ -826,7 +826,7 @@ impl CompiledAsyncComputation {
     pub fn apply(
         &self,
         sess: &Arc<AsyncSession>,
-    ) -> Result<(AsyncSessionJoinHandle, Environment<AsyncReceiver>)> {
+    ) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)> {
         (self.0)(sess)
     }
 }
@@ -896,20 +896,55 @@ pub struct AsyncSession {
 
 pub type AsyncArgs = Environment<AsyncReceiver>;
 
-pub struct AsyncSessionJoinHandle {
-    pub tasks: Vec<AsyncTask>,
+pub struct AsyncSessionHandle {
+    tasks: Vec<AsyncTask>,
 }
 
-impl AsyncSessionJoinHandle {
-    pub fn join(self) -> Result<()> {
+impl AsyncSessionHandle {
+    fn process_task_result(res: std::result::Result<std::result::Result<(), Error>, tokio::task::JoinError>) -> Option<anyhow::Error> {
+        match res {
+            Ok(Ok(_)) => None,
+            Ok(Err(e)) => Some(anyhow::Error::from(e)),
+            Err(e) if e.is_cancelled() => None,
+            Err(e) => Some(anyhow::Error::from(e)),
+        }
+    }
+
+    pub fn block_on(self) -> Vec<anyhow::Error> {
         let runtime_handle = tokio::runtime::Handle::current();
+
+        let mut errors = Vec::new();
         for task in self.tasks {
             let res = runtime_handle.block_on(task);
-            if res.is_err() {
-                unimplemented!() // TODO
+            if let Some(e) = AsyncSessionHandle::process_task_result(res) {
+                errors.push(e);
             }
         }
-        Ok(())
+        errors
+    }
+
+    pub async fn join(&mut self) -> Vec<anyhow::Error> {
+        let mut errors = Vec::new();
+        for task in &mut self.tasks {
+            let res = task.await;
+            if let Some(e) = AsyncSessionHandle::process_task_result(res) {
+                errors.push(e);
+            }
+        }
+        errors
+    }
+
+    // TODO(Morten)
+    // async fn join(self) -> Result<()> {
+    //     use futures::StreamExt;
+    //     let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
+    //     let res = tasks.collect::<Vec<_>>().await;
+    // }
+
+    pub fn abort(&self) {
+        for task in &self.tasks {
+            task.abort()
+        }
     }
 }
 
@@ -944,10 +979,13 @@ impl AsyncExecutor {
         });
 
         // TODO don't return unexpected error
-        let (join_handle, outputs): (AsyncSessionJoinHandle, HashMap<_, AsyncReceiver>) =
+        let (session_handle, outputs): (AsyncSessionHandle, HashMap<_, AsyncReceiver>) =
             compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)?;
 
-        join_handle.join()?;
+        if !session_handle.block_on().is_empty() {
+            // TODO
+            return Err(Error::Unexpected);
+        }
         Ok(outputs)
     }
 }
