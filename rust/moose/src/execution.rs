@@ -897,7 +897,7 @@ pub struct AsyncSession {
 pub type AsyncArgs = Environment<AsyncReceiver>;
 
 pub struct AsyncSessionJoinHandle {
-    tasks: Vec<AsyncTask>,
+    pub tasks: Vec<AsyncTask>,
 }
 
 impl AsyncSessionJoinHandle {

@@ -16,6 +16,7 @@ pub type SessionId = u128;
 pub enum Ty {
     UnitTy,
     StringTy,
+    Float32Ty,
     Float64Ty,
     Ring64TensorTy,
     Ring128TensorTy,
@@ -38,6 +39,7 @@ pub enum Ty {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
+    Float32(f32),
     Float64(f64),
     String(String),
     Ring64Tensor(Ring64Tensor),
@@ -65,6 +67,7 @@ impl Value {
         match self {
             Unit => UnitTy,
             String(_) => StringTy,
+            Float32(_) => Float32Ty,
             Float64(_) => Float64Ty,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
@@ -420,12 +423,6 @@ impl From<HostPlacement> for Placement {
     }
 }
 
-impl From<&HostPlacement> for Placement {
-    fn from(plc: &HostPlacement) -> Self {
-        Placement::Host(plc.clone())
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReplicatedPlacement {
     pub players: [String; 3],
@@ -434,12 +431,6 @@ pub struct ReplicatedPlacement {
 impl From<ReplicatedPlacement> for Placement {
     fn from(plc: ReplicatedPlacement) -> Self {
         Placement::Replicated(plc)
-    }
-}
-
-impl From<&ReplicatedPlacement> for Placement {
-    fn from(plc: &ReplicatedPlacement) -> Self {
-        Placement::Replicated(plc.clone())
     }
 }
 
