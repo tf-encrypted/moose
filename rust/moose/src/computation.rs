@@ -39,7 +39,7 @@ pub enum Ty {
 pub enum Value {
     Unit,
     Float64(f64),
-    String(std::string::String),
+    String(String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Shape(Shape),
@@ -86,7 +86,7 @@ impl Value {
     }
 }
 
-macro_rules! convert {
+macro_rules! value {
     ($raw_type:ident) => {
         impl From<$raw_type> for Value {
             fn from(x: $raw_type) -> Self {
@@ -124,23 +124,23 @@ macro_rules! convert {
     };
 }
 
-convert!(String);
-convert!(Ring64Tensor);
-convert!(Ring128Tensor);
-convert!(Shape);
-convert!(Seed);
-convert!(PrfKey);
-convert!(Nonce);
-convert!(Float32Tensor);
-convert!(Float64Tensor);
-convert!(Int8Tensor);
-convert!(Int16Tensor);
-convert!(Int32Tensor);
-convert!(Int64Tensor);
-convert!(Uint8Tensor);
-convert!(Uint16Tensor);
-convert!(Uint32Tensor);
-convert!(Uint64Tensor);
+value!(String);
+value!(Ring64Tensor);
+value!(Ring128Tensor);
+value!(Shape);
+value!(Seed);
+value!(PrfKey);
+value!(Nonce);
+value!(Float32Tensor);
+value!(Float64Tensor);
+value!(Int8Tensor);
+value!(Int16Tensor);
+value!(Int32Tensor);
+value!(Int64Tensor);
+value!(Uint8Tensor);
+value!(Uint16Tensor);
+value!(Uint32Tensor);
+value!(Uint64Tensor);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
@@ -420,6 +420,12 @@ impl From<HostPlacement> for Placement {
     }
 }
 
+impl From<&HostPlacement> for Placement {
+    fn from(plc: &HostPlacement) -> Self {
+        Placement::Host(plc.clone())
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReplicatedPlacement {
     pub players: [String; 3],
@@ -428,6 +434,12 @@ pub struct ReplicatedPlacement {
 impl From<ReplicatedPlacement> for Placement {
     fn from(plc: ReplicatedPlacement) -> Self {
         Placement::Replicated(plc)
+    }
+}
+
+impl From<&ReplicatedPlacement> for Placement {
+    fn from(plc: &ReplicatedPlacement) -> Self {
+        Placement::Replicated(plc.clone())
     }
 }
 
