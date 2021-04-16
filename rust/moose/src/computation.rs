@@ -414,9 +414,21 @@ pub struct HostPlacement {
     pub name: String,
 }
 
+impl From<HostPlacement> for Placement {
+    fn from(plc: HostPlacement) -> Self {
+        Placement::Host(plc)
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReplicatedPlacement {
     pub players: [String; 3],
+}
+
+impl From<ReplicatedPlacement> for Placement {
+    fn from(plc: ReplicatedPlacement) -> Self {
+        Placement::Replicated(plc)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
