@@ -201,10 +201,10 @@ mod tests {
         let net = LocalSyncNetworking::default();
 
         let alice = HostPlacement {
-            name: "alice".to_string(),
+            owner: Role("alice".to_string()),
         };
         let bob = HostPlacement {
-            name: "bob".to_string(),
+            owner: Role("bob".to_string()),
         };
 
         net.send(&Value::Unit, &alice, &bob, "rdv", &12345).unwrap();
@@ -222,10 +222,10 @@ mod tests {
         let net1 = Arc::clone(&net);
         let task1 = tokio::spawn(async move {
             let alice = HostPlacement {
-                name: "alice".to_string(),
+                owner: Role("alice".to_string()),
             };
             let bob = HostPlacement {
-                name: "bob".to_string(),
+                owner: Role("bob".to_string()),
             };
             net1.receive(&alice, &bob, "rdv", &12345).await
         });
@@ -233,10 +233,10 @@ mod tests {
         let net2 = Arc::clone(&net);
         let task2 = tokio::spawn(async move {
             let alice = HostPlacement {
-                name: "alice".to_string(),
+                owner: Role("alice".to_string()),
             };
             let bob = HostPlacement {
-                name: "bob".to_string(),
+                owner: Role("bob".to_string()),
             };
             net2.receive(&alice, &bob, "rdv", &67890).await
         });
@@ -244,10 +244,10 @@ mod tests {
         let net3 = Arc::clone(&net);
         let task3 = tokio::spawn(async move {
             let alice = HostPlacement {
-                name: "alice".to_string(),
+                owner: Role("alice".to_string()),
             };
             let bob = HostPlacement {
-                name: "bob".to_string(),
+                owner: Role("bob".to_string()),
             };
             net3.send(&Value::Unit, &alice, &bob, "rdv", &12345).await
         });
@@ -255,10 +255,10 @@ mod tests {
         let net4 = Arc::clone(&net);
         let task4 = tokio::spawn(async move {
             let alice = HostPlacement {
-                name: "alice".to_string(),
+                owner: Role("alice".to_string()),
             };
             let bob = HostPlacement {
-                name: "bob".to_string(),
+                owner: Role("bob".to_string()),
             };
             net4.send(&Value::Unit, &alice, &bob, "rdv", &67890).await
         });

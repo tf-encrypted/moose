@@ -412,9 +412,12 @@ pub enum Placement {
     Replicated(ReplicatedPlacement),
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct Role(pub String);
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HostPlacement {
-    pub name: String,
+    pub owner: Role,
 }
 
 impl From<HostPlacement> for Placement {
@@ -425,7 +428,7 @@ impl From<HostPlacement> for Placement {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReplicatedPlacement {
-    pub players: [String; 3],
+    pub owners: [Role; 3],
 }
 
 impl From<ReplicatedPlacement> for Placement {

@@ -462,17 +462,17 @@ impl TryFrom<&PyPlacement> for Placement {
     fn try_from(placement: &PyPlacement) -> anyhow::Result<Placement> {
         match placement {
             PyPlacement::host_HostPlacement(plc) => Ok(Placement::Host(HostPlacement {
-                name: plc.name.clone(),
+                owner: Role(plc.name.clone()),
             })),
             PyPlacement::rep_ReplicatedPlacement(plc) => {
                 if plc.player_names.len() != 3 {
                     return Err(anyhow::anyhow!("Placement doesn't have 3 players"));
                 }
                 Ok(Placement::Replicated(ReplicatedPlacement {
-                    players: [
-                        plc.player_names[0].clone(),
-                        plc.player_names[1].clone(),
-                        plc.player_names[2].clone(),
+                    owners: [
+                        Role(plc.player_names[0].clone()),
+                        Role(plc.player_names[1].clone()),
+                        Role(plc.player_names[2].clone()),
                     ],
                 }))
             }
@@ -863,10 +863,10 @@ impl TryFrom<PyComputation> for Computation {
                         kind: Send(SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
                             sender: HostPlacement {
-                                name: op.sender.clone(),
+                                owner: Role(op.sender.clone()),
                             },
                             receiver: HostPlacement {
-                                name: op.receiver.clone(),
+                                owner: Role(op.receiver.clone()),
                             },
                         }),
                         name: op.name.clone(),
@@ -878,10 +878,10 @@ impl TryFrom<PyComputation> for Computation {
                         kind: Receive(ReceiveOp {
                             rendezvous_key: op.rendezvous_key.clone(),
                             sender: HostPlacement {
-                                name: op.sender.clone(),
+                                owner: Role(op.sender.clone()),
                             },
                             receiver: HostPlacement {
-                                name: op.receiver.clone(),
+                                owner: Role(op.receiver.clone()),
                             },
                             ty: map_type(&op.output_type),
                         }),

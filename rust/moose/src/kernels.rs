@@ -807,7 +807,7 @@ fn test_standard_shape_ops() {
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let shape_op = Operation {
@@ -817,7 +817,7 @@ fn test_standard_shape_ops() {
         }),
         inputs: vec!["x".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let expand_dims_op = Operation {
@@ -828,7 +828,7 @@ fn test_standard_shape_ops() {
         }),
         inputs: vec!["x".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let transpose_op = Operation {
@@ -838,7 +838,7 @@ fn test_standard_shape_ops() {
         }),
         inputs: vec!["x".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let operations = vec![x_op, shape_op, expand_dims_op, transpose_op];

@@ -710,11 +710,26 @@ type SyncComputationKernel = Box<dyn Fn(&SyncSession) -> Result<Environment<Valu
 
 pub struct CompiledSyncComputation(SyncComputationKernel);
 
-impl Compile<CompiledSyncComputation> for Computation
-where
-    Operation: Compile<CompiledSyncOperation>,
-{
-    fn compile(&self) -> Result<CompiledSyncComputation> {
+pub type SyncArgs = HashMap<String, Value>;
+
+impl CompiledSyncComputation {
+    pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
+        (self.0)(sess)
+    }
+}
+
+pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
+
+type AsyncComputationKernel =
+    Box<dyn Fn(&Arc<AsyncSession>) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>>;
+
+pub type Identity = String;
+
+pub struct CompiledAsyncComputation(AsyncComputationKernel);
+
+
+impl Computation {
+    pub fn compile_sync(&self) -> Result<CompiledSyncComputation> {
         // TODO(Morten) type check computation
         let compiled_ops: Vec<CompiledSyncOperation> = self
             .operations
@@ -749,30 +764,39 @@ where
     }
 }
 
-pub type SyncArgs = HashMap<String, Value>;
+impl Computation {
+    pub fn compile_async(&self, role_assignment: &HashMap<Role, Identity>, own_identity: &Identity) -> Result<CompiledAsyncComputation> {
+        // using a Vec instead of eg HashSet here since we can expect it to be very small
+        let own_roles: Vec<&Role> = role_assignment.iter()
+            .filter_map(|(role, identity)| {
+                if identity == own_identity {
+                    Some(role)
+                } else {
+                    None
+                }
+            })
+            .collect();
 
-impl CompiledSyncComputation {
-    pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
-        (self.0)(sess)
-    }
-}
+        // TODO(Morten) is this deterministic?
+        let comp = self.toposort()?;
 
-pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
-
-type AsyncComputationKernel =
-    Box<dyn Fn(&Arc<AsyncSession>) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>>;
-
-pub struct CompiledAsyncComputation(AsyncComputationKernel);
-
-impl Compile<CompiledAsyncComputation> for Computation
-where
-    Operation: Compile<CompiledAsyncOperation>,
-{
-    fn compile(&self) -> Result<CompiledAsyncComputation> {
-        let compiled_ops: Vec<CompiledAsyncOperation> = self
+        let compiled_ops: Vec<CompiledAsyncOperation> = comp
             .operations
             .par_iter() // par_iter seems to make sense here, see benches
-            .map(|op| op.compile())
+            .filter_map(|op| {
+                // TODO(Morten) move this filtering into Operation::compile?
+                let include_op = match &op.placement {
+                    Placement::Host(plc) => {
+                        own_roles.iter().any(|owner| *owner == &plc.owner)
+                    }
+                    _ => unimplemented!(),
+                };
+                if include_op {
+                    Some(op.compile())
+                } else {
+                    None
+                }
+            })
             .collect::<Result<Vec<_>>>()?;
 
         let output_names: Vec<String> = self
@@ -784,6 +808,7 @@ where
             })
             .collect();
 
+        // TODO(Morten) make second attempt at inlining
         fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
             r.map_err(|_| ())
         }
@@ -867,7 +892,7 @@ impl EagerExecutor {
         sid: SessionId,
         args: Environment<Value>,
     ) -> Result<Environment<Value>> {
-        let compiled_comp: CompiledSyncComputation = comp.compile()?;
+        let compiled_comp: CompiledSyncComputation = comp.compile_sync()?;
 
         let sess = SyncSession {
             sid,
@@ -888,6 +913,9 @@ impl Default for EagerExecutor {
 
 /// A session is essentially the activation frame of the graph function call.
 pub struct AsyncSession {
+    pub computation: Computation,
+    pub role_assignment: HashMap<Role, Identity>,
+    pub own_identity: Identity,
     pub sid: SessionId,
     pub args: AsyncArgs,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
@@ -963,21 +991,13 @@ impl AsyncExecutor {
         }
     }
 
-    pub fn run_computation(
+    pub fn launch_session(
         &self,
-        comp: &Computation,
-        sid: SessionId,
-        args: AsyncArgs,
+        sess: AsyncSession,
     ) -> Result<HashMap<String, AsyncReceiver>> {
-        let compiled_comp: CompiledAsyncComputation = comp.compile()?;
+        let compiled_comp: CompiledAsyncComputation = sess.computation.compile_async(&sess.role_assignment, &sess.own_identity)?;
 
-        let sess = Arc::new(AsyncSession {
-            sid,
-            args,
-            networking: Arc::clone(&self.networking),
-            storage: Arc::clone(&self.storage),
-        });
-
+        let sess = Arc::new(sess);
         // TODO don't return unexpected error
         let (session_handle, outputs): (AsyncSessionHandle, HashMap<_, AsyncReceiver>) =
             compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)?;
@@ -988,6 +1008,34 @@ impl AsyncExecutor {
         }
         Ok(outputs)
     }
+
+    // pub fn run_computation(
+    //     &self,
+    //     computation: &Computation,
+    //     role_assignment: &HashMap<Role, Identity>,
+    //     own_identity: &Identity,
+    //     sid: SessionId,
+    //     args: AsyncArgs,
+    // ) -> Result<HashMap<String, AsyncReceiver>> {
+    //     let compiled_comp: CompiledAsyncComputation = comp.compile_async(role_assignment, own_identity)?;
+
+    //     let sess = Arc::new(AsyncSession {
+    //         sid,
+    //         args,
+    //         networking: Arc::clone(&self.networking),
+    //         storage: Arc::clone(&self.storage),
+    //     });
+
+    //     // TODO don't return unexpected error
+    //     let (session_handle, outputs): (AsyncSessionHandle, HashMap<_, AsyncReceiver>) =
+    //         compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)?;
+
+    //     if !session_handle.block_on().is_empty() {
+    //         // TODO
+    //         return Err(Error::Unexpected);
+    //     }
+    //     Ok(outputs)
+    // }
 }
 
 impl Default for AsyncExecutor {
@@ -1014,7 +1062,7 @@ fn test_standard_prod_ops() {
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let y = Float32Tensor::from(
@@ -1029,7 +1077,7 @@ fn test_standard_prod_ops() {
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let mul_op = Operation {
@@ -1040,7 +1088,7 @@ fn test_standard_prod_ops() {
         }),
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let dot_op = Operation {
@@ -1051,7 +1099,7 @@ fn test_standard_prod_ops() {
         }),
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let mean_op = Operation {
@@ -1062,7 +1110,7 @@ fn test_standard_prod_ops() {
         }),
         inputs: vec!["dot".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
     let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
@@ -1085,7 +1133,7 @@ fn test_eager_executor() {
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -1096,7 +1144,7 @@ fn test_eager_executor() {
         }),
         inputs: vec!["key".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -1107,7 +1155,7 @@ fn test_eager_executor() {
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -1118,7 +1166,7 @@ fn test_eager_executor() {
         }),
         inputs: vec!["x10".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -1131,7 +1179,7 @@ fn test_eager_executor() {
             }),
             inputs: vec!["shape".into(), "seed".into()],
             placement: Placement::Host(HostPlacement {
-                name: "alice".into(),
+                owner: Role("alice".into()),
             }),
         })
         .collect();
