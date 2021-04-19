@@ -78,7 +78,7 @@ fn par_compile(c: &mut Criterion) {
         kind: operator,
         inputs: vec!["x".into(), "x".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -475,7 +475,7 @@ fn gen_sample_graph(size: usize) -> Computation {
             kind: operator.clone(),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {
-                name: "alice".into(),
+                owner: Role("alice".into()),
             }),
         })
         .collect();
@@ -492,7 +492,7 @@ fn gen_sample_graph(size: usize) -> Computation {
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     });
 
@@ -527,7 +527,7 @@ fn compile(c: &mut Criterion) {
         kind: operator,
         inputs: vec!["x".into(), "y".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -551,14 +551,14 @@ fn compile(c: &mut Criterion) {
 
         group.bench_function(BenchmarkId::new("sync", size), |b| {
             b.iter(|| {
-                let compiled: CompiledSyncComputation = comp.compile().unwrap();
+                let compiled: CompiledSyncComputation = comp.compile_sync().unwrap();
                 black_box(compiled);
             });
         });
 
         group.bench_function(BenchmarkId::new("async", size), |b| {
             b.iter(|| {
-                let compiled: CompiledAsyncComputation = comp.compile().unwrap();
+                let compiled: CompiledAsyncComputation = comp.compile_async().unwrap();
                 black_box(compiled);
             });
         });
@@ -590,7 +590,7 @@ fn execute(c: &mut Criterion) {
         });
 
         group.bench_function(BenchmarkId::new("sync_compiled", size), |b| {
-            let comp_compiled: CompiledSyncComputation = comp.compile().unwrap();
+            let comp_compiled: CompiledSyncComputation = comp.compile_sync().unwrap();
 
             let sess = SyncSession {
                 sid: 12345,
@@ -606,7 +606,7 @@ fn execute(c: &mut Criterion) {
         });
 
         group.bench_function(BenchmarkId::new("async_compiled", size), |b| {
-            let comp_compiled: CompiledAsyncComputation = comp.compile().unwrap();
+            let comp_compiled: CompiledAsyncComputation = comp.compile_async().unwrap();
 
             let sess = Arc::new(AsyncSession {
                 sid: 12345,

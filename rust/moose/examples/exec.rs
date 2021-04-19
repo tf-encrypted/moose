@@ -10,7 +10,7 @@ fn main() {
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -21,7 +21,7 @@ fn main() {
         }),
         inputs: vec!["key".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -32,7 +32,7 @@ fn main() {
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -44,7 +44,7 @@ fn main() {
         }),
         inputs: vec!["x_shape".into(), "x_seed".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role("alice".into()),
         }),
     };
 
@@ -58,7 +58,7 @@ fn main() {
             }),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {
-                name: "alice".into(),
+                owner: Role("alice".into()),
             }),
         });
     }
