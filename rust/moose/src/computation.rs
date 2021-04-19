@@ -412,7 +412,8 @@ pub enum Placement {
     Replicated(ReplicatedPlacement),
 }
 
-pub type Role = String;
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+pub struct Role(pub String);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HostPlacement {
