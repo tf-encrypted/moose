@@ -412,7 +412,7 @@ pub enum Placement {
     Replicated(ReplicatedPlacement),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Role(pub String);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
