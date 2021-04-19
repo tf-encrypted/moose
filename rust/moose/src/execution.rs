@@ -994,19 +994,10 @@ impl AsyncExecutor {
     pub fn launch_session(
         &self,
         sess: AsyncSession,
-    ) -> Result<HashMap<String, AsyncReceiver>> {
+    ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
         let compiled_comp: CompiledAsyncComputation = sess.computation.compile_async(&sess.role_assignment, &sess.own_identity)?;
-
         let sess = Arc::new(sess);
-        // TODO don't return unexpected error
-        let (session_handle, outputs): (AsyncSessionHandle, HashMap<_, AsyncReceiver>) =
-            compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)?;
-
-        if !session_handle.block_on().is_empty() {
-            // TODO
-            return Err(Error::Unexpected);
-        }
-        Ok(outputs)
+        compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)
     }
 
     // pub fn run_computation(
