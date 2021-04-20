@@ -735,7 +735,7 @@ impl Compile<AsyncKernel> for SaveOp {
                     let val = val.await.map_err(map_receive_error)?;
 
                     if val.ty() == expected_ty {
-                        sess.storage.save(key, val).await.map_err(map_send_error)?;
+                        sess.storage.save(&key, val).await.map_err(map_send_error)?;
                         sender.send(Value::Unit).map_err(map_send_error)
                     } else {
                         Err(Error::TypeMismatchOperator(format!("{:?}", op)))
@@ -775,7 +775,7 @@ impl Compile<AsyncKernel> for LoadOp {
                 let op = Arc::clone(&op);
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
-                    let val = sess.storage.load(key).await.map_err(map_send_error)?;
+                    let val = sess.storage.load(&key).await.map_err(map_send_error)?;
                     if val.ty() == expected_ty {
                         sender.send(val).map_err(map_send_error)
                     } else {

@@ -10,9 +10,9 @@ pub trait SyncStorage {
 
 #[async_trait]
 pub trait AsyncStorage {
-    async fn save(&self, key: String, val: Value) -> Result<()>;
+    async fn save(&self, key: &String, val: Value) -> Result<()>;
 
-    async fn load(&self, key: String) -> Result<Value>;
+    async fn load(&self, key: &String) -> Result<Value>;
 }
 
 #[derive(Default)]
@@ -65,19 +65,19 @@ impl LocalAsyncStorage {
 
 #[async_trait]
 impl AsyncStorage for LocalAsyncStorage {
-    async fn save(&self, key: String, val: Value) -> Result<()> {
+    async fn save(&self, key: &String, val: Value) -> Result<()> {
         tracing::debug!("Async storage saving; key:'{}'", key);
         let mut store = self.store.write().await;
-        store.insert(key, val);
+        store.insert(key.to_string(), val);
         Ok(())
     }
 
-    async fn load(&self, key: String) -> Result<Value> {
+    async fn load(&self, key: &String) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
         loop {
             {
                 let store = self.store.read().await;
-                if let Some(val) = store.get(&key).cloned() {
+                if let Some(val) = store.get(key).cloned() {
                     return Ok(val);
                 }
             }
