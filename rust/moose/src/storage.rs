@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 pub trait SyncStorage {
-    fn save(&self, key: &String, val: Value) -> Result<()>;
+    fn save(&self, key: &String, val: &Value) -> Result<()>;
     fn load(&self, key: &String) -> Result<Value>;
 }
 
@@ -29,12 +29,12 @@ impl LocalSyncStorage {
 }
 
 impl SyncStorage for LocalSyncStorage {
-    fn save(&self, key: &String, val: Value) -> Result<()> {
+    fn save(&self, key: &String, val: &Value) -> Result<()> {
         let mut store = self.store.write().map_err(|e| {
             tracing::error!("failed to get write lock: {:?}", e);
             Error::Unexpected
         })?;
-        store.insert(key.to_string(), val);
+        store.insert(key.to_string(), val.clone());
         Ok(())
     }
 
