@@ -11,7 +11,6 @@ pub trait SyncStorage {
 #[async_trait]
 pub trait AsyncStorage {
     async fn save(&self, key: &str, val: &Value) -> Result<()>;
-
     async fn load(&self, key: &str) -> Result<Value>;
 }
 
