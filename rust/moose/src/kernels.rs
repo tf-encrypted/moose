@@ -711,7 +711,7 @@ impl Compile<SyncKernel> for SaveOp {
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
             if val.ty() == expected_ty {
-                sess.storage.save(key, val)?;
+                sess.storage.save(&key, val)?;
                 Ok(Value::Unit)
             } else {
                 Err(Error::TypeMismatchOperator(format!("{:?}", op)))
@@ -753,7 +753,7 @@ impl Compile<SyncKernel> for LoadOp {
         let op = self.clone();
         Ok(SyncKernel::Binary(Box::new(move |sess, key, _query| {
             let key = String::try_from(key)?;
-            let val = sess.storage.load(key)?;
+            let val = sess.storage.load(&key)?;
             if val.ty() == expected_ty {
                 Ok(val)
             } else {
