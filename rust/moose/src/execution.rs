@@ -780,27 +780,27 @@ impl Computation {
         // TODO(Morten) is this deterministic?
         let comp = self.toposort()?;
 
-        let compiled_ops: Vec<CompiledAsyncOperation> = comp
+        let own_operations = comp
             .operations
-            .par_iter() // par_iter seems to make sense here, see benches
-            .filter_map(|op| {
-                // TODO(Morten) move this filtering into Operation::compile?
-                let include_op = match &op.placement {
+            .iter() // guessing that par_iter won't help here
+            .filter(|op| {
+                match &op.placement {
                     Placement::Host(plc) => {
                         own_roles.iter().any(|owner| *owner == &plc.owner)
                     }
-                    _ => unimplemented!(),
-                };
-                if include_op {
-                    Some(op.compile())
-                } else {
-                    None
+                    Placement::Replicated(plc) => {
+                        own_roles.iter().any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner))
+                    }
                 }
             })
+            .collect::<Vec<_>>();
+
+        let own_kernels: Vec<CompiledAsyncOperation> = own_operations
+            .par_iter() // par_iter seems to make sense here, see benches
+            .map(|op| op.compile())
             .collect::<Result<Vec<_>>>()?;
 
-        let output_names: Vec<String> = self
-            .operations
+        let own_output_names: Vec<String> = own_operations
             .iter() // guessing that par_iter won't help here
             .filter_map(|op| match op.kind {
                 Operator::Output(_) => Some(op.name.clone()),
@@ -815,8 +815,9 @@ impl Computation {
 
         Ok(CompiledAsyncComputation(Box::new(
             move |sess: &Arc<AsyncSession>| {
+                // create channels to be used between tasks
                 let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
-                    compiled_ops
+                    own_kernels
                         .iter() // par_iter doesn't seem to improve performance here
                         .map(|op| {
                             let (sender, receiver) = oneshot::channel();
@@ -826,14 +827,16 @@ impl Computation {
                         })
                         .unzip();
 
+                // spawn tasks
                 let tasks: Vec<AsyncTask> = senders
                     .into_iter() // into_par_iter seems to hurt performance here
-                    .zip(&compiled_ops)
+                    .zip(&own_kernels)
                     .map(|(sender, op)| op.apply(sess, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
-
                 let session_handle = AsyncSessionHandle { tasks };
-                let outputs: HashMap<String, AsyncReceiver> = output_names
+
+                // collect output futures
+                let outputs: HashMap<String, AsyncReceiver> = own_output_names
                     .iter()
                     .map(|op_name| {
                         let val = receivers.get(op_name).cloned().unwrap(); // safe to unwrap per construction
