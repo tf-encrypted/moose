@@ -1,5 +1,6 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
+use crate::execution::Identity;
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -7,15 +8,13 @@ pub trait SyncNetworking {
     fn send(
         &self,
         value: &Value,
-        sender: &HostPlacement,
-        receiver: &HostPlacement,
+        receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()>;
     fn receive(
         &self,
-        sender: &HostPlacement,
-        receiver: &HostPlacement,
+        sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value>;
@@ -26,15 +25,13 @@ pub trait AsyncNetworking {
     async fn send(
         &self,
         value: &Value,
-        sender: &HostPlacement,
-        receiver: &HostPlacement,
+        receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()>;
     async fn receive(
         &self,
-        sender: &HostPlacement,
-        receiver: &HostPlacement,
+        sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value>;
@@ -49,8 +46,7 @@ impl SyncNetworking for LocalSyncNetworking {
     fn send(
         &self,
         val: &Value,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
@@ -69,8 +65,7 @@ impl SyncNetworking for LocalSyncNetworking {
 
     fn receive(
         &self,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value> {
@@ -96,8 +91,7 @@ impl AsyncNetworking for LocalAsyncNetworking {
     async fn send(
         &self,
         val: &Value,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
@@ -114,8 +108,7 @@ impl AsyncNetworking for LocalAsyncNetworking {
 
     async fn receive(
         &self,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value> {
@@ -143,8 +136,7 @@ impl SyncNetworking for DummyNetworking {
     fn send(
         &self,
         _value: &Value,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
@@ -154,8 +146,7 @@ impl SyncNetworking for DummyNetworking {
 
     fn receive(
         &self,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value> {
@@ -169,8 +160,7 @@ impl AsyncNetworking for DummyNetworking {
     async fn send(
         &self,
         _value: &Value,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _receiver: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<()> {
@@ -180,8 +170,7 @@ impl AsyncNetworking for DummyNetworking {
 
     async fn receive(
         &self,
-        _sender: &HostPlacement,
-        _receiver: &HostPlacement,
+        _sender: &Identity,
         rendezvous_key: &RendezvousKey,
         session_id: &SessionId,
     ) -> Result<Value> {
@@ -194,23 +183,19 @@ impl AsyncNetworking for DummyNetworking {
 mod tests {
     use super::*;
 
-    use crate::computation::HostPlacement;
-
     #[test]
     fn sync_networking() {
         let net = LocalSyncNetworking::default();
 
-        let alice = HostPlacement {
-            owner: Role("alice".to_string()),
-        };
-        let bob = HostPlacement {
-            owner: Role("bob".to_string()),
-        };
+        let alice = "alice".into();
+        let bob = "bob".into();
 
-        net.send(&Value::Unit, &alice, &bob, "rdv", &12345).unwrap();
-        net.send(&Value::Unit, &alice, &bob, "rdv", &67890).unwrap();
-        net.receive(&alice, &bob, "rdv", &12345).unwrap();
-        net.receive(&alice, &bob, "rdv", &67890).unwrap();
+        net.send(&Value::Unit, &bob, "rdv", &"12345".to_string())
+            .unwrap();
+        net.send(&Value::Unit, &bob, "rdv", &"67890".to_string())
+            .unwrap();
+        net.receive(&alice, "rdv", &"12345".to_string()).unwrap();
+        net.receive(&alice, "rdv", &"67890".to_string()).unwrap();
     }
 
     #[tokio::test]
@@ -221,46 +206,28 @@ mod tests {
 
         let net1 = Arc::clone(&net);
         let task1 = tokio::spawn(async move {
-            let alice = HostPlacement {
-                owner: Role("alice".to_string()),
-            };
-            let bob = HostPlacement {
-                owner: Role("bob".to_string()),
-            };
-            net1.receive(&alice, &bob, "rdv", &12345).await
+            let alice = "alice".into();
+            net1.receive(&alice, "rdv", &"12345".to_string()).await
         });
 
         let net2 = Arc::clone(&net);
         let task2 = tokio::spawn(async move {
-            let alice = HostPlacement {
-                owner: Role("alice".to_string()),
-            };
-            let bob = HostPlacement {
-                owner: Role("bob".to_string()),
-            };
-            net2.receive(&alice, &bob, "rdv", &67890).await
+            let alice = "alice".into();
+            net2.receive(&alice, "rdv", &"67890".to_string()).await
         });
 
         let net3 = Arc::clone(&net);
         let task3 = tokio::spawn(async move {
-            let alice = HostPlacement {
-                owner: Role("alice".to_string()),
-            };
-            let bob = HostPlacement {
-                owner: Role("bob".to_string()),
-            };
-            net3.send(&Value::Unit, &alice, &bob, "rdv", &12345).await
+            let bob = "bob".into();
+            net3.send(&Value::Unit, &bob, "rdv", &"12345".to_string())
+                .await
         });
 
         let net4 = Arc::clone(&net);
         let task4 = tokio::spawn(async move {
-            let alice = HostPlacement {
-                owner: Role("alice".to_string()),
-            };
-            let bob = HostPlacement {
-                owner: Role("bob".to_string()),
-            };
-            net4.send(&Value::Unit, &alice, &bob, "rdv", &67890).await
+            let bob = "bob".into();
+            net4.send(&Value::Unit, &bob, "rdv", &"67890".to_string())
+                .await
         });
 
         let _ = tokio::try_join!(task1, task2, task3, task4).unwrap();

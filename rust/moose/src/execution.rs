@@ -2,10 +2,8 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::networking::{
-    AsyncNetworking, LocalAsyncNetworking, LocalSyncNetworking, SyncNetworking,
-};
-use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
+use crate::networking::{AsyncNetworking, LocalSyncNetworking, SyncNetworking};
+use crate::storage::{AsyncStorage, LocalSyncStorage, SyncStorage};
 
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -225,12 +223,12 @@ pub type AsyncReceiver = Shared<
 pub type AsyncTask = tokio::task::JoinHandle<Result<()>>;
 
 pub trait Compile<C> {
-    fn compile(&self) -> Result<C>;
+    fn compile(&self, ctx: &CompilationContext) -> Result<C>;
 }
 
 impl<O: Compile<Kernel>> Compile<SyncKernel> for O {
-    fn compile(&self) -> Result<SyncKernel> {
-        let kernel: Kernel = self.compile()?;
+    fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
+        let kernel: Kernel = self.compile(ctx)?;
         match kernel {
             Kernel::NullaryClosure(k) => Ok(SyncKernel::Nullary(Box::new(move |_sess| k()))),
             Kernel::UnaryClosure(k) => Ok(SyncKernel::Unary(Box::new(move |_sess, x0| k(x0)))),
@@ -262,25 +260,35 @@ impl<O: Compile<Kernel>> Compile<SyncKernel> for O {
     }
 }
 
-pub fn map_send_error<T>(_: T) -> Error {
-    tracing::debug!("Failed to send result on channel, receiver was dropped");
-    Error::Unexpected
+pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Result<(), Error> {
+    match res {
+        Ok(_) => Ok(()),
+        Err(val) => {
+            if val.ty() == Ty::UnitTy {
+                // ignoring unit value is okay
+                Ok(())
+            } else {
+                Err(Error::ResultUnused)
+            }
+        }
+    }
 }
 
 pub fn map_receive_error<T>(_: T) -> Error {
-    Error::InputUnavailable
+    tracing::debug!("Failed to receive on channel, sender was dropped");
+    Error::OperandUnavailable
 }
 
 impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
-    fn compile(&self) -> Result<AsyncKernel> {
-        let kernel: Kernel = self.compile()?;
+    fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
+        let kernel: Kernel = self.compile(ctx)?;
         match kernel {
             Kernel::NullaryClosure(k) => {
                 Ok(AsyncKernel::Nullary(Box::new(move |_sess, sender| {
                     let k = Arc::clone(&k);
                     tokio::spawn(async move {
                         let y: Value = k()?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 })))
             }
@@ -290,7 +298,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                     tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let y: Value = k(x0)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 })))
             }
@@ -301,7 +309,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let y: Value = k(x0, x1)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 },
             ))),
@@ -313,7 +321,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let x2: Value = x2.await.map_err(map_receive_error)?;
                         let y: Value = k(x0, x1, x2)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 },
             ))),
@@ -324,7 +332,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                         use futures::future::try_join_all;
                         let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
                         let y: Value = k(xs)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 })))
             }
@@ -333,7 +341,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                 Ok(AsyncKernel::Nullary(Box::new(move |_sess, sender| {
                     tokio::spawn(async move {
                         let y = k()?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 })))
             }
@@ -342,7 +350,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                     tokio::spawn(async move {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let y: Value = k(x0)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 })))
             }
@@ -352,7 +360,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                         let x0: Value = x0.await.map_err(map_receive_error)?;
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let y: Value = k(x0, x1)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 },
             ))),
@@ -363,7 +371,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                         let x1: Value = x1.await.map_err(map_receive_error)?;
                         let x2: Value = x2.await.map_err(map_receive_error)?;
                         let y: Value = k(x0, x1, x2)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 },
             ))),
@@ -373,7 +381,7 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
                         use futures::future::try_join_all;
                         let xs: Vec<Value> = try_join_all(xs).await.map_err(map_receive_error)?;
                         let y: Value = k(xs)?;
-                        sender.send(y).map_err(map_send_error)
+                        map_send_result(sender.send(y))
                     })
                 })))
             }
@@ -381,9 +389,16 @@ impl<O: Compile<Kernel>> Compile<AsyncKernel> for O {
     }
 }
 
+pub struct CompilationContext<'s> {
+    pub role_assignment: &'s HashMap<Role, Identity>,
+    pub own_identity: &'s Identity,
+}
+
+pub type SyncArgs = HashMap<String, Value>;
+
 pub struct SyncSession {
     pub sid: SessionId,
-    pub args: Environment<Value>,
+    pub arguments: SyncArgs,
     pub networking: SyncNetworkingImpl,
     pub storage: SyncStorageImpl,
 }
@@ -440,9 +455,16 @@ fn check_arity<T>(operation_name: &str, inputs: &[T], arity: usize) -> Result<()
     }
 }
 
+fn find_env<T: Clone>(env: &HashMap<String, T>, name: &str) -> Result<T> {
+    // TODO(Morten) avoid cloning
+    env.get(name)
+        .cloned()
+        .ok_or(Error::MalformedEnvironment(name.to_string()))
+}
+
 impl Compile<CompiledSyncOperation> for Operation {
-    fn compile(&self) -> Result<CompiledSyncOperation> {
-        let operator_kernel = Compile::<SyncKernel>::compile(&self.kind)?;
+    fn compile(&self, ctx: &CompilationContext) -> Result<CompiledSyncOperation> {
+        let operator_kernel = Compile::<SyncKernel>::compile(&self.kind, ctx)?;
         match operator_kernel {
             SyncKernel::Nullary(k) => {
                 check_arity(&self.name, &self.inputs, 0)?;
@@ -457,11 +479,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                 Ok(CompiledSyncOperation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env| {
-                        // TODO(Morten) avoid cloning
-                        let x0 = env
-                            .get(&x0_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
+                        let x0 = find_env(env, &x0_name)?;
                         k(sess, x0)
                     }),
                 })
@@ -474,14 +492,8 @@ impl Compile<CompiledSyncOperation> for Operation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env| {
                         // TODO(Morten) avoid cloning
-                        let x0 = env
-                            .get(&x0_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
-                        let x1 = env
-                            .get(&x1_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
                         k(sess, x0, x1)
                     }),
                 })
@@ -495,18 +507,9 @@ impl Compile<CompiledSyncOperation> for Operation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env| {
                         // TODO(Morten) avoid cloning
-                        let x0 = env
-                            .get(&x0_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
-                        let x1 = env
-                            .get(&x1_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
-                        let x2 = env
-                            .get(&x2_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        let x2 = find_env(env, &x2_name)?;
                         k(sess, x0, x1, x2)
                     }),
                 })
@@ -518,7 +521,7 @@ impl Compile<CompiledSyncOperation> for Operation {
                     kernel: Box::new(move |sess, env| {
                         let xs = inputs
                             .iter()
-                            .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment)) // TODO(Morten avoid cloning
+                            .map(|input| find_env(env, input)) // TODO(Morten avoid cloning
                             .collect::<Result<Vec<_>>>()?;
                         k(sess, xs)
                     }),
@@ -529,8 +532,8 @@ impl Compile<CompiledSyncOperation> for Operation {
 }
 
 impl Compile<CompiledAsyncOperation> for Operation {
-    fn compile(&self) -> Result<CompiledAsyncOperation> {
-        let operator_kernel = Compile::<AsyncKernel>::compile(&self.kind)?;
+    fn compile(&self, ctx: &CompilationContext) -> Result<CompiledAsyncOperation> {
+        let operator_kernel = Compile::<AsyncKernel>::compile(&self.kind, ctx)?;
         match operator_kernel {
             AsyncKernel::Nullary(k) => {
                 check_arity(&self.name, &self.inputs, 0)?;
@@ -545,10 +548,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env, sender| {
-                        let x0 = env
-                            .get(&x0_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
+                        let x0 = find_env(env, &x0_name)?;
                         Ok(k(sess, x0, sender))
                     }),
                 })
@@ -560,14 +560,8 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env, sender| {
-                        let x0 = env
-                            .get(&x0_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
-                        let x1 = env
-                            .get(&x1_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
                         Ok(k(sess, x0, x1, sender))
                     }),
                 })
@@ -580,18 +574,9 @@ impl Compile<CompiledAsyncOperation> for Operation {
                 Ok(CompiledAsyncOperation {
                     name: self.name.clone(),
                     kernel: Box::new(move |sess, env, sender| {
-                        let x0 = env
-                            .get(&x0_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
-                        let x1 = env
-                            .get(&x1_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
-                        let x2 = env
-                            .get(&x2_name)
-                            .ok_or(Error::MalformedEnvironment)?
-                            .clone();
+                        let x0 = find_env(env, &x0_name)?;
+                        let x1 = find_env(env, &x1_name)?;
+                        let x2 = find_env(env, &x2_name)?;
                         Ok(k(sess, x0, x1, x2, sender))
                     }),
                 })
@@ -603,7 +588,7 @@ impl Compile<CompiledAsyncOperation> for Operation {
                     kernel: Box::new(move |sess, env, sender| {
                         let xs = inputs
                             .iter()
-                            .map(|input| env.get(input).cloned().ok_or(Error::MalformedEnvironment))
+                            .map(|input| find_env(env, input))
                             .collect::<Result<Vec<_>>>()?;
                         Ok(k(sess, xs, sender))
                     }),
@@ -614,8 +599,13 @@ impl Compile<CompiledAsyncOperation> for Operation {
 }
 
 impl Operation {
-    pub fn apply(&self, sess: &SyncSession, env: &Environment<Value>) -> Result<Value> {
-        let compiled: CompiledSyncOperation = self.compile()?;
+    pub fn apply(
+        &self,
+        ctx: &CompilationContext,
+        sess: &SyncSession,
+        env: &Environment<Value>,
+    ) -> Result<Value> {
+        let compiled: CompiledSyncOperation = self.compile(ctx)?;
         compiled.apply(sess, env)
     }
 }
@@ -696,10 +686,14 @@ impl Computation {
         Ok(Computation { operations })
     }
 
-    pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
+    pub fn apply(
+        &self,
+        ctx: &CompilationContext,
+        sess: &SyncSession,
+    ) -> Result<Environment<Value>> {
         let mut env = Environment::<Value>::with_capacity(self.operations.len());
         for op in self.operations.iter() {
-            let value = op.apply(sess, &env)?;
+            let value = op.apply(ctx, sess, &env)?;
             env.insert(op.name.clone(), value);
         }
         Ok(env)
@@ -709,8 +703,6 @@ impl Computation {
 type SyncComputationKernel = Box<dyn Fn(&SyncSession) -> Result<Environment<Value>>>;
 
 pub struct CompiledSyncComputation(SyncComputationKernel);
-
-pub type SyncArgs = HashMap<String, Value>;
 
 impl CompiledSyncComputation {
     pub fn apply(&self, sess: &SyncSession) -> Result<Environment<Value>> {
@@ -723,18 +715,30 @@ pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 type AsyncComputationKernel =
     Box<dyn Fn(&Arc<AsyncSession>) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>>;
 
-pub type Identity = String;
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Identity(pub String);
+
+impl From<&str> for Identity {
+    fn from(s: &str) -> Self {
+        Identity(s.to_string())
+    }
+}
+
+impl From<String> for Identity {
+    fn from(s: String) -> Self {
+        Identity(s.clone())
+    }
+}
 
 pub struct CompiledAsyncComputation(AsyncComputationKernel);
 
-
 impl Computation {
-    pub fn compile_sync(&self) -> Result<CompiledSyncComputation> {
+    pub fn compile_sync(&self, ctx: &CompilationContext) -> Result<CompiledSyncComputation> {
         // TODO(Morten) type check computation
         let compiled_ops: Vec<CompiledSyncOperation> = self
             .operations
             .par_iter() // par_iter seems to make sense here, see benches
-            .map(|op| op.compile())
+            .map(|op| op.compile(&ctx))
             .collect::<Result<Vec<_>>>()?;
 
         let output_names: Vec<String> = self
@@ -762,14 +766,16 @@ impl Computation {
             },
         )))
     }
-}
 
-impl Computation {
-    pub fn compile_async(&self, role_assignment: &HashMap<Role, Identity>, own_identity: &Identity) -> Result<CompiledAsyncComputation> {
+    pub fn compile_async(&self, ctx: &CompilationContext) -> Result<CompiledAsyncComputation> {
+        // TODO(Morten) check that the role assignment is safe
+
         // using a Vec instead of eg HashSet here since we can expect it to be very small
-        let own_roles: Vec<&Role> = role_assignment.iter()
+        let own_roles: Vec<&Role> = ctx
+            .role_assignment
+            .iter()
             .filter_map(|(role, identity)| {
-                if identity == own_identity {
+                if identity == ctx.own_identity {
                     Some(role)
                 } else {
                     None
@@ -783,21 +789,17 @@ impl Computation {
         let own_operations = comp
             .operations
             .iter() // guessing that par_iter won't help here
-            .filter(|op| {
-                match &op.placement {
-                    Placement::Host(plc) => {
-                        own_roles.iter().any(|owner| *owner == &plc.owner)
-                    }
-                    Placement::Replicated(plc) => {
-                        own_roles.iter().any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner))
-                    }
-                }
+            .filter(|op| match &op.placement {
+                Placement::Host(plc) => own_roles.iter().any(|owner| *owner == &plc.owner),
+                Placement::Replicated(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
             })
             .collect::<Vec<_>>();
 
         let own_kernels: Vec<CompiledAsyncOperation> = own_operations
             .par_iter() // par_iter seems to make sense here, see benches
-            .map(|op| op.compile())
+            .map(|op| op.compile(&ctx))
             .collect::<Result<Vec<_>>>()?;
 
         let own_output_names: Vec<String> = own_operations
@@ -866,73 +868,136 @@ pub type Environment<V> = HashMap<String, V>;
 /// This executor evaluates the operations of computations in-order, raising an error
 /// in case data dependencies are not respected. This executor is intended for debug
 /// and development only due to its unforgiving but highly predictable behaviour.
-pub struct EagerExecutor {
-    networking: Rc<dyn SyncNetworking>,
-    storage: Rc<dyn SyncStorage>,
-}
+pub struct EagerExecutor {}
 
 impl EagerExecutor {
-    pub fn new() -> EagerExecutor {
-        let networking = Rc::new(LocalSyncNetworking::default());
-        let storage = Rc::new(LocalSyncStorage::default());
-        EagerExecutor {
-            networking,
-            storage,
-        }
-    }
-
-    pub fn new_from_storage(storage: &Rc<dyn SyncStorage>) -> EagerExecutor {
-        let networking = Rc::new(LocalSyncNetworking::default());
-        EagerExecutor {
-            networking,
-            storage: Rc::clone(storage),
-        }
-    }
-
     pub fn run_computation(
         &self,
-        comp: &Computation,
-        sid: SessionId,
-        args: Environment<Value>,
+        computation: &Computation,
+        role_assignment: &RoleAssignment,
+        own_identity: &Identity,
+        arguments: SyncArgs,
+        session_id: SessionId,
+        networking: Rc<dyn SyncNetworking>,
+        storage: Rc<dyn SyncStorage>,
     ) -> Result<Environment<Value>> {
-        let compiled_comp: CompiledSyncComputation = comp.compile_sync()?;
+        let ctx = CompilationContext {
+            role_assignment,
+            own_identity,
+        };
+
+        let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
 
         let sess = SyncSession {
-            sid,
-            args,
-            networking: Rc::clone(&self.networking),
-            storage: Rc::clone(&self.storage),
+            sid: session_id.clone(),
+            arguments,
+            networking,
+            storage,
         };
 
         compiled_comp.apply(&sess)
     }
 }
 
-impl Default for EagerExecutor {
+pub struct TestExecutor {
+    networking: Rc<dyn SyncNetworking>,
+    storage: Rc<dyn SyncStorage>,
+}
+
+impl Default for TestExecutor {
     fn default() -> Self {
-        Self::new()
+        TestExecutor {
+            networking: Rc::new(LocalSyncNetworking::default()),
+            storage: Rc::new(LocalSyncStorage::default()),
+        }
+    }
+}
+
+impl TestExecutor {
+    pub fn from_storage(storage: &Rc<dyn SyncStorage>) -> TestExecutor {
+        TestExecutor {
+            networking: Rc::new(LocalSyncNetworking::default()),
+            storage: Rc::clone(storage),
+        }
+    }
+
+    pub fn from_networking(networking: &Rc<dyn SyncNetworking>) -> TestExecutor {
+        TestExecutor {
+            networking: Rc::clone(networking),
+            storage: Rc::new(LocalSyncStorage::default()),
+        }
+    }
+
+    pub fn from_networking_storage(
+        networking: &Rc<dyn SyncNetworking>,
+        storage: &Rc<dyn SyncStorage>,
+    ) -> TestExecutor {
+        TestExecutor {
+            networking: Rc::clone(networking),
+            storage: Rc::clone(storage),
+        }
+    }
+
+    pub fn run_computation(
+        &self,
+        computation: &Computation,
+        arguments: SyncArgs,
+    ) -> Result<HashMap<String, Value>> {
+        let own_identity = Identity::from("tester");
+
+        let all_roles = computation
+            .operations
+            .iter()
+            .flat_map(|op| -> Box<dyn Iterator<Item = &Role>> {
+                match &op.placement {
+                    // TODO(Morten) box seems too complicated..?
+                    Placement::Host(plc) => Box::new(std::iter::once(&plc.owner)),
+                    Placement::Replicated(plc) => Box::new(plc.owners.iter()),
+                }
+            })
+            .collect::<HashSet<_>>();
+
+        let role_assignment = all_roles
+            .into_iter()
+            .map(|role| (role.clone(), own_identity.clone()))
+            .collect();
+
+        // TODO sample random string
+        let session_id = SessionId::from("abcdef");
+
+        let eager_exec = EagerExecutor {};
+        eager_exec.run_computation(
+            computation,
+            &role_assignment,
+            &own_identity,
+            arguments,
+            session_id,
+            Rc::clone(&self.networking),
+            Rc::clone(&self.storage),
+        )
     }
 }
 
 /// A session is essentially the activation frame of the graph function call.
 pub struct AsyncSession {
-    pub computation: Computation,
-    pub role_assignment: HashMap<Role, Identity>,
-    pub own_identity: Identity,
     pub sid: SessionId,
-    pub args: AsyncArgs,
+    pub arguments: AsyncArgs,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
     pub storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
-pub type AsyncArgs = Environment<AsyncReceiver>;
+pub type RoleAssignment = HashMap<Role, Identity>;
+
+pub type AsyncArgs = HashMap<String, AsyncReceiver>;
 
 pub struct AsyncSessionHandle {
     tasks: Vec<AsyncTask>,
 }
 
 impl AsyncSessionHandle {
-    fn process_task_result(res: std::result::Result<std::result::Result<(), Error>, tokio::task::JoinError>) -> Option<anyhow::Error> {
+    fn process_task_result(
+        res: std::result::Result<std::result::Result<(), Error>, tokio::task::JoinError>,
+    ) -> Option<anyhow::Error> {
         match res {
             Ok(Ok(_)) => None,
             Ok(Err(e)) => Some(anyhow::Error::from(e)),
@@ -980,212 +1045,185 @@ impl AsyncSessionHandle {
 }
 
 pub struct AsyncExecutor {
-    networking: Arc<dyn Send + Sync + AsyncNetworking>,
-    storage: Arc<dyn Send + Sync + AsyncStorage>,
+    // TODO(Morten) keep cache of compiled computations
 }
 
 impl AsyncExecutor {
-    pub fn new() -> AsyncExecutor {
-        let networking = Arc::new(LocalAsyncNetworking::default());
-        let storage = Arc::new(LocalAsyncStorage::default());
-        AsyncExecutor {
+    pub fn run_computation(
+        &self,
+        computation: &Computation,
+        role_assignment: &RoleAssignment,
+        own_identity: &Identity,
+        arguments: AsyncArgs,
+        session_id: SessionId,
+        networking: Arc<dyn Send + Sync + AsyncNetworking>,
+        storage: Arc<dyn Send + Sync + AsyncStorage>,
+    ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
+        let ctx = CompilationContext {
+            role_assignment,
+            own_identity,
+        };
+
+        let compiled_comp: CompiledAsyncComputation = computation.compile_async(&ctx)?;
+
+        let sess = Arc::new(AsyncSession {
+            sid: session_id,
+            arguments,
             networking,
             storage,
-        }
-    }
+        });
 
-    pub fn launch_session(
-        &self,
-        sess: AsyncSession,
-    ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
-        let compiled_comp: CompiledAsyncComputation = sess.computation.compile_async(&sess.role_assignment, &sess.own_identity)?;
-        let sess = Arc::new(sess);
-        compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)
-    }
-
-    // pub fn run_computation(
-    //     &self,
-    //     computation: &Computation,
-    //     role_assignment: &HashMap<Role, Identity>,
-    //     own_identity: &Identity,
-    //     sid: SessionId,
-    //     args: AsyncArgs,
-    // ) -> Result<HashMap<String, AsyncReceiver>> {
-    //     let compiled_comp: CompiledAsyncComputation = comp.compile_async(role_assignment, own_identity)?;
-
-    //     let sess = Arc::new(AsyncSession {
-    //         sid,
-    //         args,
-    //         networking: Arc::clone(&self.networking),
-    //         storage: Arc::clone(&self.storage),
-    //     });
-
-    //     // TODO don't return unexpected error
-    //     let (session_handle, outputs): (AsyncSessionHandle, HashMap<_, AsyncReceiver>) =
-    //         compiled_comp.apply(&sess).map_err(|_| Error::Unexpected)?;
-
-    //     if !session_handle.block_on().is_empty() {
-    //         // TODO
-    //         return Err(Error::Unexpected);
-    //     }
-    //     Ok(outputs)
-    // }
-}
-
-impl Default for AsyncExecutor {
-    fn default() -> Self {
-        AsyncExecutor::new()
+        compiled_comp.apply(&sess)
     }
 }
 
-#[test]
-fn test_standard_prod_ops() {
-    use crate::standard::Float32Tensor;
-    use maplit::hashmap;
-    use ndarray::prelude::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    let x = Float32Tensor::from(
-        array![[1.0, 2.0], [3.0, 4.0]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    );
-    let x_op = Operation {
-        name: "x".into(),
-        kind: Operator::Constant(ConstantOp {
-            value: Value::Float32Tensor(x),
-        }),
-        inputs: vec![],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-    let y = Float32Tensor::from(
-        array![[1.0, 2.0], [3.0, 4.0]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    );
-    let y_op = Operation {
-        name: "y".into(),
-        kind: Operator::Constant(ConstantOp {
-            value: Value::Float32Tensor(y),
-        }),
-        inputs: vec![],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-    let mul_op = Operation {
-        name: "mul".into(),
-        kind: Operator::StdMul(StdMulOp {
-            lhs: Ty::Float32TensorTy,
-            rhs: Ty::Float32TensorTy,
-        }),
-        inputs: vec!["x".into(), "y".into()],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-    let dot_op = Operation {
-        name: "dot".into(),
-        kind: Operator::StdDot(StdDotOp {
-            lhs: Ty::Float32TensorTy,
-            rhs: Ty::Float32TensorTy,
-        }),
-        inputs: vec!["x".into(), "y".into()],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-    let mean_op = Operation {
-        name: "mean".into(),
-        kind: Operator::StdMean(StdMeanOp {
-            ty: Ty::Float32TensorTy,
-            axis: Some(0),
-        }),
-        inputs: vec!["dot".into()],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-    let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
-    let comp = Computation { operations }.toposort().unwrap();
+    #[test]
+    fn test_standard_prod_ops() {
+        use crate::standard::Float32Tensor;
+        use ndarray::prelude::*;
 
-    let exec = EagerExecutor::new();
-    let sid = 12345;
-    let args = hashmap![];
-    exec.run_computation(&comp, sid, args).ok();
-}
-
-#[test]
-fn test_eager_executor() {
-    use crate::prim::Nonce;
-    use crate::standard::Shape;
-    use maplit::hashmap;
-
-    let key_op = Operation {
-        name: "key".into(),
-        kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
-        inputs: vec![],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-
-    let seed_op = Operation {
-        name: "seed".into(),
-        kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp {
-            nonce: Nonce(vec![1, 2, 3]),
-        }),
-        inputs: vec!["key".into()],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-
-    let shape_op = Operation {
-        name: "shape".into(),
-        kind: Operator::Constant(ConstantOp {
-            value: Value::Shape(Shape(vec![2, 3])),
-        }),
-        inputs: vec![],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-
-    let output_op = Operation {
-        name: "z".into(),
-        kind: Operator::Output(OutputOp {
-            ty: Ty::Ring64TensorTy,
-        }),
-        inputs: vec!["x10".into()],
-        placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
-        }),
-    };
-
-    let sample_ops: Vec<_> = (0..100)
-        .map(|i| Operation {
-            name: format!("x{}", i),
-            kind: Operator::RingSample(RingSampleOp {
-                output: Ty::Ring64TensorTy,
-                max_value: None,
+        let x = Float32Tensor::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let x_op = Operation {
+            name: "x".into(),
+            kind: Operator::Constant(ConstantOp {
+                value: Value::Float32Tensor(x),
             }),
-            inputs: vec!["shape".into(), "seed".into()],
+            inputs: vec![],
             placement: Placement::Host(HostPlacement {
-                owner: Role("alice".into()),
+                owner: Role::from("alice"),
             }),
-        })
-        .collect();
+        };
+        let y = Float32Tensor::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let y_op = Operation {
+            name: "y".into(),
+            kind: Operator::Constant(ConstantOp {
+                value: Value::Float32Tensor(y),
+            }),
+            inputs: vec![],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let mul_op = Operation {
+            name: "mul".into(),
+            kind: Operator::StdMul(StdMulOp {
+                lhs: Ty::Float32TensorTy,
+                rhs: Ty::Float32TensorTy,
+            }),
+            inputs: vec!["x".into(), "y".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let dot_op = Operation {
+            name: "dot".into(),
+            kind: Operator::StdDot(StdDotOp {
+                lhs: Ty::Float32TensorTy,
+                rhs: Ty::Float32TensorTy,
+            }),
+            inputs: vec!["x".into(), "y".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let mean_op = Operation {
+            name: "mean".into(),
+            kind: Operator::StdMean(StdMeanOp {
+                ty: Ty::Float32TensorTy,
+                axis: Some(0),
+            }),
+            inputs: vec!["dot".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
+        let comp = Computation { operations }.toposort().unwrap();
 
-    let mut operations = sample_ops;
-    operations.extend(vec![key_op, seed_op, shape_op, output_op]);
+        let exec = TestExecutor::default();
+        let _outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+    }
 
-    let comp = Computation { operations }.toposort().unwrap();
+    #[test]
+    fn test_eager_executor() {
+        use crate::prim::Nonce;
+        use crate::standard::Shape;
 
-    let exec = EagerExecutor::new();
-    let sid = 12345;
-    let args = hashmap![];
-    let outputs = exec.run_computation(&comp, sid, args).unwrap();
-    assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+        let key_op = Operation {
+            name: "key".into(),
+            kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
+            inputs: vec![],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+
+        let seed_op = Operation {
+            name: "seed".into(),
+            kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp {
+                nonce: Nonce(vec![1, 2, 3]),
+            }),
+            inputs: vec!["key".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+
+        let shape_op = Operation {
+            name: "shape".into(),
+            kind: Operator::Constant(ConstantOp {
+                value: Value::Shape(Shape(vec![2, 3])),
+            }),
+            inputs: vec![],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+
+        let output_op = Operation {
+            name: "z".into(),
+            kind: Operator::Output(OutputOp {
+                ty: Ty::Ring64TensorTy,
+            }),
+            inputs: vec!["x10".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+
+        let sample_ops: Vec<_> = (0..100)
+            .map(|i| Operation {
+                name: format!("x{}", i),
+                kind: Operator::RingSample(RingSampleOp {
+                    output: Ty::Ring64TensorTy,
+                    max_value: None,
+                }),
+                inputs: vec!["shape".into(), "seed".into()],
+                placement: Placement::Host(HostPlacement {
+                    owner: Role::from("alice"),
+                }),
+            })
+            .collect();
+
+        let mut operations = sample_ops;
+        operations.extend(vec![key_op, seed_op, shape_op, output_op]);
+
+        let comp = Computation { operations }.toposort().unwrap();
+
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+    }
 }

@@ -78,7 +78,7 @@ fn par_compile(c: &mut Criterion) {
         kind: operator,
         inputs: vec!["x".into(), "x".into()],
         placement: Placement::Host(HostPlacement {
-            owner: Role("alice".into()),
+            owner: Role::from("alice"),
         }),
     };
 

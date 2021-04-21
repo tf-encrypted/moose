@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod tests {
     use approx::AbsDiffEq;
-    use maplit::hashmap;
-    use moose::execution::EagerExecutor;
+    use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use moose::{computation::*, python_computation::PyComputation, standard::Float64Tensor};
     use ndarray::prelude::*;
@@ -20,12 +19,6 @@ mod tests {
 
         let rust_comp: Computation = comp.try_into().unwrap();
         rust_comp.toposort().unwrap()
-    }
-
-    fn run_computation(computation: &Computation) -> HashMap<String, Value> {
-        let exec = EagerExecutor::new();
-        let env = hashmap![];
-        exec.run_computation(&computation, 12345, env).unwrap()
     }
 
     fn generate_python_names() -> (String, String) {
@@ -72,7 +65,13 @@ mod tests {
             })
             .unwrap();
 
-        let outputs = run_computation(&create_computation_graph_from_python(py_any));
+        let exec = TestExecutor::default();
+        let outputs = exec
+            .run_computation(
+                &create_computation_graph_from_python(py_any),
+                SyncArgs::new(),
+            )
+            .unwrap();
         outputs["result"].clone()
     }
 
@@ -103,12 +102,6 @@ mod tests {
             .unwrap();
 
         create_computation_graph_from_python(py_any)
-    }
-    fn run_executor(comp: &Computation) -> Value {
-        let exec = EagerExecutor::new();
-        let env = hashmap![];
-        exec.run_computation(&comp, 12345, env).unwrap();
-        Value::Unit
     }
 
     #[test]
@@ -394,7 +387,8 @@ def f():
 
     "#;
 
-        let _ = run_executor(&graph_from_run_call0_func(&py_code));
+        let exec = TestExecutor::default();
+        let _ = exec.run_computation(&graph_from_run_call0_func(&py_code), SyncArgs::new());
     }
     #[test]
     fn test_deserialize_linear_regression() {
@@ -517,9 +511,8 @@ def f():
         storage_inputs.insert("y_uri".to_string(), y);
 
         let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(storage_inputs));
-        let exec = EagerExecutor::new_from_storage(&storage);
-        let env = hashmap![];
-        exec.run_computation(&comp, 12345, env).unwrap();
+        let exec = TestExecutor::from_storage(&storage);
+        exec.run_computation(&comp, SyncArgs::new()).unwrap();
 
         let res = array![[9.9999996], [2.999999]]
             .into_dimensionality::<IxDyn>()
