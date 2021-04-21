@@ -524,8 +524,7 @@ def f():
         let res = array![[9.9999996], [2.999999]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let diff = Float64Tensor::try_from(storage.load("regression_weights").unwrap())
-            .unwrap();
+        let diff = Float64Tensor::try_from(storage.load("regression_weights").unwrap()).unwrap();
 
         assert!(diff.0.abs_diff_eq(&res, 0.000001));
     }
