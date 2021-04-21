@@ -711,7 +711,7 @@ impl Compile<SyncKernel> for SaveOp {
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
             if val.ty() == expected_ty {
-                sess.storage.save(key, val)?;
+                sess.storage.save(&key, &val)?;
                 Ok(Value::Unit)
             } else {
                 Err(Error::TypeMismatchOperator(format!("{:?}", op)))
@@ -735,7 +735,10 @@ impl Compile<AsyncKernel> for SaveOp {
                     let val = val.await.map_err(map_receive_error)?;
 
                     if val.ty() == expected_ty {
-                        sess.storage.save(key, val).await.map_err(map_send_error)?;
+                        sess.storage
+                            .save(&key, &val)
+                            .await
+                            .map_err(map_send_error)?;
                         sender.send(Value::Unit).map_err(map_send_error)
                     } else {
                         Err(Error::TypeMismatchOperator(format!("{:?}", op)))
@@ -753,7 +756,7 @@ impl Compile<SyncKernel> for LoadOp {
         let op = self.clone();
         Ok(SyncKernel::Binary(Box::new(move |sess, key, _query| {
             let key = String::try_from(key)?;
-            let val = sess.storage.load(key)?;
+            let val = sess.storage.load(&key)?;
             if val.ty() == expected_ty {
                 Ok(val)
             } else {
@@ -775,7 +778,7 @@ impl Compile<AsyncKernel> for LoadOp {
                 let op = Arc::clone(&op);
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
-                    let val = sess.storage.load(key).await.map_err(map_send_error)?;
+                    let val = sess.storage.load(&key).await.map_err(map_send_error)?;
                     if val.ty() == expected_ty {
                         sender.send(val).map_err(map_send_error)
                     } else {
