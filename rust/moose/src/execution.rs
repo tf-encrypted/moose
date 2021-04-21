@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use crate::networking::{AsyncNetworking, LocalSyncNetworking, SyncNetworking};
 use crate::storage::{AsyncStorage, LocalSyncStorage, SyncStorage};
 
+use derive_more::Display;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
 use petgraph::algo::toposort;
@@ -459,7 +460,7 @@ fn find_env<T: Clone>(env: &HashMap<String, T>, name: &str) -> Result<T> {
     // TODO(Morten) avoid cloning
     env.get(name)
         .cloned()
-        .ok_or(Error::MalformedEnvironment(name.to_string()))
+        .ok_or_else(|| Error::MalformedEnvironment(name.to_string()))
 }
 
 impl Compile<CompiledSyncOperation> for Operation {
@@ -712,10 +713,16 @@ impl CompiledSyncComputation {
 
 pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
-type AsyncComputationKernel =
-    Box<dyn Fn(&Arc<AsyncSession>) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>>;
+type AsyncComputationKernel = Box<
+    dyn Fn(
+        SessionId,
+        HashMap<String, Value>,
+        Arc<dyn Send + Sync + AsyncNetworking>,
+        Arc<dyn Send + Sync + AsyncStorage>,
+    ) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>,
+>;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]
 pub struct Identity(pub String);
 
 impl From<&str> for Identity {
@@ -724,9 +731,15 @@ impl From<&str> for Identity {
     }
 }
 
+impl From<&String> for Identity {
+    fn from(s: &String) -> Self {
+        Identity(s.clone())
+    }
+}
+
 impl From<String> for Identity {
     fn from(s: String) -> Self {
-        Identity(s.clone())
+        Identity(s)
     }
 }
 
@@ -816,7 +829,22 @@ impl Computation {
         }
 
         Ok(CompiledAsyncComputation(Box::new(
-            move |sess: &Arc<AsyncSession>| {
+            move |session_id, arguments, networking, storage| {
+                // create channels for arguments
+                let arguments = arguments
+                    .into_iter()
+                    .map(|(arg_name, arg_val)| {
+                        let (sender, receiver) = oneshot::channel();
+                        let shared_receiver: AsyncReceiver =
+                            receiver.map(remove_err as fn(_) -> _).shared();
+                        tokio::spawn(async {
+                            let val: Value = arg_val;
+                            map_send_result(sender.send(val))
+                        });
+                        (arg_name, shared_receiver)
+                    })
+                    .collect::<HashMap<String, AsyncReceiver>>();
+
                 // create channels to be used between tasks
                 let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
                     own_kernels
@@ -829,11 +857,18 @@ impl Computation {
                         })
                         .unzip();
 
+                let sess = Arc::new(AsyncSession {
+                    sid: session_id,
+                    arguments,
+                    networking,
+                    storage,
+                });
+
                 // spawn tasks
                 let tasks: Vec<AsyncTask> = senders
                     .into_iter() // into_par_iter seems to hurt performance here
                     .zip(&own_kernels)
-                    .map(|(sender, op)| op.apply(sess, &receivers, sender))
+                    .map(|(sender, op)| op.apply(&sess, &receivers, sender))
                     .collect::<Result<Vec<_>>>()?;
                 let session_handle = AsyncSessionHandle { tasks };
 
@@ -855,9 +890,12 @@ impl Computation {
 impl CompiledAsyncComputation {
     pub fn apply(
         &self,
-        sess: &Arc<AsyncSession>,
+        session_id: SessionId,
+        arguments: HashMap<String, Value>,
+        networking: Arc<dyn Send + Sync + AsyncNetworking>,
+        storage: Arc<dyn Send + Sync + AsyncStorage>,
     ) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)> {
-        (self.0)(sess)
+        (self.0)(session_id, arguments, networking, storage)
     }
 }
 
@@ -889,7 +927,7 @@ impl EagerExecutor {
         let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
 
         let sess = SyncSession {
-            sid: session_id.clone(),
+            sid: session_id,
             arguments,
             networking,
             storage,
@@ -981,14 +1019,12 @@ impl TestExecutor {
 /// A session is essentially the activation frame of the graph function call.
 pub struct AsyncSession {
     pub sid: SessionId,
-    pub arguments: AsyncArgs,
+    pub arguments: HashMap<String, AsyncReceiver>,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
     pub storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
 
 pub type RoleAssignment = HashMap<Role, Identity>;
-
-pub type AsyncArgs = HashMap<String, AsyncReceiver>;
 
 pub struct AsyncSessionHandle {
     tasks: Vec<AsyncTask>,
@@ -1048,14 +1084,20 @@ pub struct AsyncExecutor {
     // TODO(Morten) keep cache of compiled computations
 }
 
+impl Default for AsyncExecutor {
+    fn default() -> Self {
+        AsyncExecutor {}
+    }
+}
+
 impl AsyncExecutor {
     pub fn run_computation(
         &self,
         computation: &Computation,
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
-        arguments: AsyncArgs,
         session_id: SessionId,
+        arguments: HashMap<String, Value>,
         networking: Arc<dyn Send + Sync + AsyncNetworking>,
         storage: Arc<dyn Send + Sync + AsyncStorage>,
     ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
@@ -1064,16 +1106,9 @@ impl AsyncExecutor {
             own_identity,
         };
 
-        let compiled_comp: CompiledAsyncComputation = computation.compile_async(&ctx)?;
+        let compiled_comp = computation.compile_async(&ctx)?;
 
-        let sess = Arc::new(AsyncSession {
-            sid: session_id,
-            arguments,
-            networking,
-            storage,
-        });
-
-        compiled_comp.apply(&sess)
+        compiled_comp.apply(session_id, arguments, networking, storage)
     }
 }
 

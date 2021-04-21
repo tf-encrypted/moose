@@ -2,8 +2,6 @@ use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criteri
 use moose::computation::Computation;
 use rayon::prelude::*;
 
-use moose::networking::DummyNetworking;
-
 /// Benchmark iter vs par_iter for channel creation
 /// Conclusion is that this never seems worth it.
 fn par_channel(c: &mut Criterion) {
@@ -81,6 +79,10 @@ fn par_compile(c: &mut Criterion) {
             owner: Role::from("alice"),
         }),
     };
+    let ctx = CompilationContext {
+        role_assignment: &std::collections::HashMap::new(),
+        own_identity: &Identity::from("bench"),
+    };
 
     let mut group = c.benchmark_group("par_compile");
     for size in [10_000, 100_000, 250_000, 500_000, 1_000_000].iter() {
@@ -88,7 +90,7 @@ fn par_compile(c: &mut Criterion) {
             b.iter(|| {
                 let compiled: Vec<_> = (0..*size)
                     .into_par_iter()
-                    .map(|_| Compile::<CompiledAsyncOperation>::compile(&operation))
+                    .map(|_| Compile::<CompiledAsyncOperation>::compile(&operation, &ctx))
                     .collect();
                 black_box(compiled);
             })
@@ -97,7 +99,7 @@ fn par_compile(c: &mut Criterion) {
         group.bench_function(BenchmarkId::new("seq", size), |b| {
             b.iter(|| {
                 let compiled: Vec<_> = (0..*size)
-                    .map(|_| Compile::<CompiledAsyncOperation>::compile(&operation))
+                    .map(|_| Compile::<CompiledAsyncOperation>::compile(&operation, &ctx))
                     .collect();
                 black_box(compiled);
             })
@@ -507,17 +509,21 @@ fn compile(c: &mut Criterion) {
         lhs: Ty::Ring64TensorTy,
         rhs: Ty::Ring64TensorTy,
     });
+    let ctx = CompilationContext {
+        role_assignment: &std::collections::HashMap::new(),
+        own_identity: &Identity::from("bench"),
+    };
 
     c.bench_function("compile_operator/sync", |b| {
         b.iter(|| {
-            let kernel: SyncKernel = operator.compile().unwrap();
+            let kernel: SyncKernel = operator.compile(&ctx).unwrap();
             black_box(kernel);
         })
     });
 
     c.bench_function("compile_operator/async", |b| {
         b.iter(|| {
-            let kernel: AsyncKernel = operator.compile().unwrap();
+            let kernel: AsyncKernel = operator.compile(&ctx).unwrap();
             black_box(kernel);
         })
     });
@@ -533,14 +539,14 @@ fn compile(c: &mut Criterion) {
 
     c.bench_function("compile_operation/sync", |b| {
         b.iter(|| {
-            let compiled: CompiledSyncOperation = operation.compile().unwrap();
+            let compiled: CompiledSyncOperation = operation.compile(&ctx).unwrap();
             black_box(compiled);
         })
     });
 
     c.bench_function("compile_operation/async", |b| {
         b.iter(|| {
-            let compiled: CompiledAsyncOperation = operation.compile().unwrap();
+            let compiled: CompiledAsyncOperation = operation.compile(&ctx).unwrap();
             black_box(compiled);
         })
     });
@@ -551,14 +557,14 @@ fn compile(c: &mut Criterion) {
 
         group.bench_function(BenchmarkId::new("sync", size), |b| {
             b.iter(|| {
-                let compiled: CompiledSyncComputation = comp.compile_sync().unwrap();
+                let compiled: CompiledSyncComputation = comp.compile_sync(&ctx).unwrap();
                 black_box(compiled);
             });
         });
 
         group.bench_function(BenchmarkId::new("async", size), |b| {
             b.iter(|| {
-                let compiled: CompiledAsyncComputation = comp.compile_async().unwrap();
+                let compiled: CompiledAsyncComputation = comp.compile_async(&ctx).unwrap();
                 black_box(compiled);
             });
         });
@@ -568,8 +574,16 @@ fn compile(c: &mut Criterion) {
 fn execute(c: &mut Criterion) {
     use maplit::hashmap;
     use moose::execution::*;
+    use moose::networking::*;
+    use moose::storage::*;
+    use moose::computation::SessionId;
     use std::rc::Rc;
     use std::sync::Arc;
+
+    let ctx = CompilationContext {
+        role_assignment: &std::collections::HashMap::new(),
+        own_identity: &Identity::from("bench"),
+    };
 
     let mut group = c.benchmark_group("execute");
     for size in [10_000, 100_000, 250_000, 500_000].iter() {
@@ -577,24 +591,24 @@ fn execute(c: &mut Criterion) {
 
         group.bench_function(BenchmarkId::new("sync_direct", size), |b| {
             let sess = SyncSession {
-                sid: 12345,
-                args: hashmap!(),
+                sid: SessionId::from("12345"),
+                arguments: hashmap!(),
                 networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
                 storage: Rc::new(moose::storage::LocalSyncStorage::default()),
             };
 
             b.iter(|| {
-                let res = comp.apply(&sess).unwrap();
+                let res = comp.apply(&ctx, &sess).unwrap();
                 black_box(res);
             });
         });
 
         group.bench_function(BenchmarkId::new("sync_compiled", size), |b| {
-            let comp_compiled: CompiledSyncComputation = comp.compile_sync().unwrap();
+            let comp_compiled: CompiledSyncComputation = comp.compile_sync(&ctx).unwrap();
 
             let sess = SyncSession {
-                sid: 12345,
-                args: hashmap!(),
+                sid: SessionId::from("12345"),
+                arguments: hashmap!(),
                 networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
                 storage: Rc::new(moose::storage::LocalSyncStorage::default()),
             };
@@ -606,18 +620,21 @@ fn execute(c: &mut Criterion) {
         });
 
         group.bench_function(BenchmarkId::new("async_compiled", size), |b| {
-            let comp_compiled: CompiledAsyncComputation = comp.compile_async().unwrap();
+            let comp_compiled: CompiledAsyncComputation = comp.compile_async(&ctx).unwrap();
 
-            let sess = Arc::new(AsyncSession {
-                sid: 12345,
-                args: hashmap!(),
-                networking: Arc::new(DummyNetworking(moose::computation::Value::Unit)),
-                storage: Arc::new(moose::storage::LocalAsyncStorage::default()),
-            });
+            let session_id = SessionId::from("12345");
+            let arguments = hashmap!{};
+            let networking: Arc<dyn AsyncNetworking + Sync + Send> = Arc::new(DummyNetworking(moose::computation::Value::Unit));
+            let storage: Arc<dyn AsyncStorage + Sync + Send> = Arc::new(moose::storage::LocalAsyncStorage::default());
 
             b.iter(|| {
-                let (join_handle, outputs): (_, _) = comp_compiled.apply(&sess).unwrap();
-                join_handle.join().unwrap();
+                let (join_handle, outputs): (_, _) = comp_compiled.apply(
+                    session_id.clone(),
+                    arguments.clone(),
+                    Arc::clone(&networking),
+                    Arc::clone(&storage),
+                ).unwrap();
+                join_handle.block_on();
                 black_box(outputs);
             });
         });
