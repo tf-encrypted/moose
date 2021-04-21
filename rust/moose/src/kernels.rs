@@ -735,7 +735,10 @@ impl Compile<AsyncKernel> for SaveOp {
                     let val = val.await.map_err(map_receive_error)?;
 
                     if val.ty() == expected_ty {
-                        sess.storage.save(&key, &val).await.map_err(map_send_error)?;
+                        sess.storage
+                            .save(&key, &val)
+                            .await
+                            .map_err(map_send_error)?;
                         sender.send(Value::Unit).map_err(map_send_error)
                     } else {
                         Err(Error::TypeMismatchOperator(format!("{:?}", op)))
