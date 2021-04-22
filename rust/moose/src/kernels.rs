@@ -756,7 +756,7 @@ impl Compile<SyncKernel> for LoadOp {
         let op = self.clone();
         Ok(SyncKernel::Binary(Box::new(move |sess, key, _query| {
             let key = String::try_from(key)?;
-            let val = sess.storage.load(&key, None)?;
+            let val = sess.storage.load(&key, Some(op.ty))?;
             if val.ty() == expected_ty {
                 Ok(val)
             } else {
@@ -780,7 +780,7 @@ impl Compile<AsyncKernel> for LoadOp {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let val = sess
                         .storage
-                        .load(&key, None)
+                        .load(&key, Some(op.ty))
                         .await
                         .map_err(map_send_error)?;
                     if val.ty() == expected_ty {
