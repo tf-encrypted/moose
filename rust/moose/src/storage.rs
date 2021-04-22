@@ -5,13 +5,13 @@ use std::collections::HashMap;
 
 pub trait SyncStorage {
     fn save(&self, key: &str, val: &Value) -> Result<()>;
-    fn load(&self, key: &str) -> Result<Value>;
+    fn load(&self, key: &str, type_hint: Option<Ty>) -> Result<Value>;
 }
 
 #[async_trait]
 pub trait AsyncStorage {
     async fn save(&self, key: &str, val: &Value) -> Result<()>;
-    async fn load(&self, key: &str) -> Result<Value>;
+    async fn load(&self, key: &str, type_hint: Option<Ty>) -> Result<Value>;
 }
 
 #[derive(Default)]
@@ -37,7 +37,7 @@ impl SyncStorage for LocalSyncStorage {
         Ok(())
     }
 
-    fn load(&self, key: &str) -> Result<Value> {
+    fn load(&self, key: &str, _type_hint: Option<Ty>) -> Result<Value> {
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
             Error::Unexpected
@@ -71,7 +71,7 @@ impl AsyncStorage for LocalAsyncStorage {
         Ok(())
     }
 
-    async fn load(&self, key: &str) -> Result<Value> {
+    async fn load(&self, key: &str, _type_hint: Option<Ty>) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
         loop {
             {
