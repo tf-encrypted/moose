@@ -28,6 +28,9 @@ pub enum Error {
 
     #[error("Networking error: {0}")]
     Networking(String),
+
+    #[error("Storage error: {0}")]
+    Storage(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
