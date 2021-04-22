@@ -778,7 +778,11 @@ impl Compile<AsyncKernel> for LoadOp {
                 let op = Arc::clone(&op);
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
-                    let val = sess.storage.load(&key, None).await.map_err(map_send_error)?;
+                    let val = sess
+                        .storage
+                        .load(&key, None)
+                        .await
+                        .map_err(map_send_error)?;
                     if val.ty() == expected_ty {
                         sender.send(val).map_err(map_send_error)
                     } else {
