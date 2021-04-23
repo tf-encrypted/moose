@@ -713,14 +713,8 @@ impl CompiledSyncComputation {
 
 pub type AsyncNetworkingImpl = Arc<dyn AsyncNetworking + Send + Sync>;
 
-type AsyncComputationKernel = Box<
-    dyn Fn(
-        SessionId,
-        HashMap<String, Value>,
-        Arc<dyn Send + Sync + AsyncNetworking>,
-        Arc<dyn Send + Sync + AsyncStorage>,
-    ) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>,
->;
+type AsyncComputationKernel =
+    Box<dyn Fn(AsyncSession) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)>>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Display)]
 pub struct Identity(pub String);
@@ -828,74 +822,49 @@ impl Computation {
             r.map_err(|_| ())
         }
 
-        Ok(CompiledAsyncComputation(Box::new(
-            move |session_id, arguments, networking, storage| {
-                // create channels for arguments
-                let arguments = arguments
-                    .into_iter()
-                    .map(|(arg_name, arg_val)| {
+        Ok(CompiledAsyncComputation(Box::new(move |sess| {
+            let sess = Arc::new(sess);
+
+            // create channels to be used between tasks
+            let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
+                own_kernels
+                    .iter() // par_iter doesn't seem to improve performance here
+                    .map(|op| {
                         let (sender, receiver) = oneshot::channel();
                         let shared_receiver: AsyncReceiver =
                             receiver.map(remove_err as fn(_) -> _).shared();
-                        tokio::spawn(async {
-                            let val: Value = arg_val;
-                            map_send_result(sender.send(val))
-                        });
-                        (arg_name, shared_receiver)
+                        (sender, (op.name.clone(), shared_receiver))
                     })
-                    .collect::<HashMap<String, AsyncReceiver>>();
+                    .unzip();
 
-                // create channels to be used between tasks
-                let (senders, receivers): (Vec<AsyncSender>, HashMap<String, AsyncReceiver>) =
-                    own_kernels
-                        .iter() // par_iter doesn't seem to improve performance here
-                        .map(|op| {
-                            let (sender, receiver) = oneshot::channel();
-                            let shared_receiver: AsyncReceiver =
-                                receiver.map(remove_err as fn(_) -> _).shared();
-                            (sender, (op.name.clone(), shared_receiver))
-                        })
-                        .unzip();
+            // spawn tasks
+            let tasks: Vec<AsyncTask> = senders
+                .into_iter() // into_par_iter seems to hurt performance here
+                .zip(&own_kernels)
+                .map(|(sender, op)| op.apply(&sess, &receivers, sender))
+                .collect::<Result<Vec<_>>>()?;
+            let session_handle = AsyncSessionHandle { tasks };
 
-                let sess = Arc::new(AsyncSession {
-                    sid: session_id,
-                    arguments,
-                    networking,
-                    storage,
-                });
+            // collect output futures
+            let outputs: HashMap<String, AsyncReceiver> = own_output_names
+                .iter()
+                .map(|op_name| {
+                    let val = receivers.get(op_name).cloned().unwrap(); // safe to unwrap per construction
+                    (op_name.clone(), val)
+                })
+                .collect();
 
-                // spawn tasks
-                let tasks: Vec<AsyncTask> = senders
-                    .into_iter() // into_par_iter seems to hurt performance here
-                    .zip(&own_kernels)
-                    .map(|(sender, op)| op.apply(&sess, &receivers, sender))
-                    .collect::<Result<Vec<_>>>()?;
-                let session_handle = AsyncSessionHandle { tasks };
-
-                // collect output futures
-                let outputs: HashMap<String, AsyncReceiver> = own_output_names
-                    .iter()
-                    .map(|op_name| {
-                        let val = receivers.get(op_name).cloned().unwrap(); // safe to unwrap per construction
-                        (op_name.clone(), val)
-                    })
-                    .collect();
-
-                Ok((session_handle, outputs))
-            },
-        )))
+            Ok((session_handle, outputs))
+        })))
     }
 }
 
 impl CompiledAsyncComputation {
     pub fn apply(
         &self,
-        session_id: SessionId,
-        arguments: HashMap<String, Value>,
-        networking: Arc<dyn Send + Sync + AsyncNetworking>,
-        storage: Arc<dyn Send + Sync + AsyncStorage>,
+        session: AsyncSession,
     ) -> Result<(AsyncSessionHandle, Environment<AsyncReceiver>)> {
-        (self.0)(session_id, arguments, networking, storage)
+        (self.0)(session)
     }
 }
 
@@ -914,26 +883,14 @@ impl EagerExecutor {
         computation: &Computation,
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
-        arguments: SyncArgs,
-        session_id: SessionId,
-        networking: Rc<dyn SyncNetworking>,
-        storage: Rc<dyn SyncStorage>,
+        session: SyncSession,
     ) -> Result<Environment<Value>> {
         let ctx = CompilationContext {
             role_assignment,
             own_identity,
         };
-
         let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
-
-        let sess = SyncSession {
-            sid: session_id,
-            arguments,
-            networking,
-            storage,
-        };
-
-        compiled_comp.apply(&sess)
+        compiled_comp.apply(&session)
     }
 }
 
@@ -1000,26 +957,23 @@ impl TestExecutor {
             .map(|role| (role.clone(), own_identity.clone()))
             .collect();
 
-        // TODO sample random string
-        let session_id = SessionId::from("abcdef");
+        let session = SyncSession {
+            arguments,
+            sid: SessionId::from("abcdef"), // TODO sample random string
+            networking: Rc::clone(&self.networking),
+            storage: Rc::clone(&self.storage),
+        };
 
         let eager_exec = EagerExecutor {};
-        eager_exec.run_computation(
-            computation,
-            &role_assignment,
-            &own_identity,
-            arguments,
-            session_id,
-            Rc::clone(&self.networking),
-            Rc::clone(&self.storage),
-        )
+        eager_exec.run_computation(computation, &role_assignment, &own_identity, session)
     }
 }
 
 /// A session is essentially the activation frame of the graph function call.
+#[derive(Clone)]
 pub struct AsyncSession {
     pub sid: SessionId,
-    pub arguments: HashMap<String, AsyncReceiver>,
+    pub arguments: HashMap<String, Value>,
     pub networking: Arc<dyn Send + Sync + AsyncNetworking>,
     pub storage: Arc<dyn Send + Sync + AsyncStorage>,
 }
@@ -1096,10 +1050,7 @@ impl AsyncExecutor {
         computation: &Computation,
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
-        session_id: SessionId,
-        arguments: HashMap<String, Value>,
-        networking: Arc<dyn Send + Sync + AsyncNetworking>,
-        storage: Arc<dyn Send + Sync + AsyncStorage>,
+        session: AsyncSession,
     ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
         let ctx = CompilationContext {
             role_assignment,
@@ -1108,7 +1059,7 @@ impl AsyncExecutor {
 
         let compiled_comp = computation.compile_async(&ctx)?;
 
-        compiled_comp.apply(session_id, arguments, networking, storage)
+        compiled_comp.apply(session)
     }
 }
 

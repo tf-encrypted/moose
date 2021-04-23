@@ -555,14 +555,16 @@ impl Compile<Kernel> for ConstantOp {
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         let rendezvous_key = self.rendezvous_key.clone();
-        let receiver_id =
-            ctx.role_assignment
-                .get(&self.receiver)
-                .cloned()
-                .ok_or(Error::Compilation(format!(
+        let receiver_id = ctx
+            .role_assignment
+            .get(&self.receiver)
+            .cloned()
+            .ok_or_else(|| {
+                Error::Compilation(format!(
                     "missing identity assignment for '{}'",
                     &self.receiver
-                )))?;
+                ))
+            })?;
 
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
             sess.networking
@@ -575,12 +577,17 @@ impl Compile<SyncKernel> for SendOp {
 impl Compile<AsyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
         let rendezvous_key = Arc::new(self.rendezvous_key.clone());
-        let receiver_id = Arc::new(ctx.role_assignment.get(&self.receiver).cloned().ok_or(
-            Error::Compilation(format!(
-                "missing identity assignment for '{}'",
-                &self.receiver
-            )),
-        )?);
+        let receiver_id = Arc::new(
+            ctx.role_assignment
+                .get(&self.receiver)
+                .cloned()
+                .ok_or_else(|| {
+                    Error::Compilation(format!(
+                        "missing identity assignment for '{}'",
+                        &self.receiver
+                    ))
+                })?,
+        );
 
         Ok(AsyncKernel::Unary(Box::new(move |sess, v, sender| {
             let sess = Arc::clone(sess);
@@ -602,14 +609,16 @@ impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.ty;
         let rendezvous_key = self.rendezvous_key.clone();
-        let sender_id =
-            ctx.role_assignment
-                .get(&self.sender)
-                .cloned()
-                .ok_or(Error::Compilation(format!(
+        let sender_id = ctx
+            .role_assignment
+            .get(&self.sender)
+            .cloned()
+            .ok_or_else(|| {
+                Error::Compilation(format!(
                     "missing identity assignment for '{}'",
                     &self.sender
-                )))?;
+                ))
+            })?;
 
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
             let v: Value = sess
@@ -625,11 +634,13 @@ impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
         let rendezvous_key = Arc::new(self.rendezvous_key.clone());
-        let sender_id = Arc::new(ctx.role_assignment.get(&self.sender).cloned().ok_or(
-            Error::Compilation(format!(
-                "missing identity assignment for '{}'",
-                &self.sender
-            )),
+        let sender_id = Arc::new(ctx.role_assignment.get(&self.sender).cloned().ok_or_else(
+            || {
+                Error::Compilation(format!(
+                    "missing identity assignment for '{}'",
+                    &self.sender
+                ))
+            },
         )?);
 
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
@@ -684,7 +695,7 @@ impl Compile<SyncKernel> for InputOp {
                 .arguments
                 .get(&arg_name)
                 .cloned()
-                .ok_or(Error::MissingArgument(arg_name.clone()))?;
+                .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
             check_type(&arg, expected_ty)?;
             Ok(arg)
         })))
@@ -701,12 +712,11 @@ impl Compile<AsyncKernel> for InputOp {
             let arg_name = Arc::clone(&arg_name);
 
             tokio::spawn(async move {
-                let async_arg = sess
+                let arg = sess
                     .arguments
                     .get(arg_name.as_ref())
                     .cloned()
-                    .ok_or(Error::MissingArgument(arg_name.as_ref().clone()))?;
-                let arg: Value = async_arg.await.map_err(map_receive_error)?;
+                    .ok_or_else(|| Error::MissingArgument(arg_name.as_ref().clone()))?;
                 check_type(&arg, expected_ty)?;
                 map_send_result(sender.send(arg))
             })

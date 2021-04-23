@@ -11,7 +11,14 @@ use std::convert::TryFrom;
 
 pub type RendezvousKey = str;
 
-pub type SessionId = String;
+#[derive(Clone, Debug, Display)]
+pub struct SessionId(String);
+
+impl<S: Into<String>> From<S> for SessionId {
+    fn from(s: S) -> SessionId {
+        SessionId(s.into())
+    }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
 pub enum Ty {

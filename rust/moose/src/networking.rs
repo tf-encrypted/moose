@@ -190,12 +190,14 @@ mod tests {
         let alice = "alice".into();
         let bob = "bob".into();
 
-        net.send(&Value::Unit, &bob, "rdv", &"12345".to_string())
+        net.send(&Value::Unit, &bob, "rdv", &SessionId::from("12345"))
             .unwrap();
-        net.send(&Value::Unit, &bob, "rdv", &"67890".to_string())
+        net.send(&Value::Unit, &bob, "rdv", &SessionId::from("67890"))
             .unwrap();
-        net.receive(&alice, "rdv", &"12345".to_string()).unwrap();
-        net.receive(&alice, "rdv", &"67890".to_string()).unwrap();
+        net.receive(&alice, "rdv", &SessionId::from("12345"))
+            .unwrap();
+        net.receive(&alice, "rdv", &SessionId::from("67890"))
+            .unwrap();
     }
 
     #[tokio::test]
@@ -207,26 +209,26 @@ mod tests {
         let net1 = Arc::clone(&net);
         let task1 = tokio::spawn(async move {
             let alice = "alice".into();
-            net1.receive(&alice, "rdv", &"12345".to_string()).await
+            net1.receive(&alice, "rdv", &SessionId::from("12345")).await
         });
 
         let net2 = Arc::clone(&net);
         let task2 = tokio::spawn(async move {
             let alice = "alice".into();
-            net2.receive(&alice, "rdv", &"67890".to_string()).await
+            net2.receive(&alice, "rdv", &SessionId::from("67890")).await
         });
 
         let net3 = Arc::clone(&net);
         let task3 = tokio::spawn(async move {
             let bob = "bob".into();
-            net3.send(&Value::Unit, &bob, "rdv", &"12345".to_string())
+            net3.send(&Value::Unit, &bob, "rdv", &SessionId::from("12345"))
                 .await
         });
 
         let net4 = Arc::clone(&net);
         let task4 = tokio::spawn(async move {
             let bob = "bob".into();
-            net4.send(&Value::Unit, &bob, "rdv", &"67890".to_string())
+            net4.send(&Value::Unit, &bob, "rdv", &SessionId::from("67890"))
                 .await
         });
 
