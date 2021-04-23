@@ -44,6 +44,7 @@ enum PyOperation {
     std_SerializeOperation(PySerializeOperation),
     std_DeserializeOperation(PyDeserializeOperation),
     std_SendOperation(PySendOperation),
+    std_InputOperation(PyInputOperation),
     std_OutputOperation(PyOutputOperation),
     std_SaveOperation(PySaveOperation),
     std_LoadOperation(PyLoadOperation),
@@ -371,6 +372,14 @@ struct PyReceiveOperation {
     sender: String,
     receiver: String,
     rendezvous_key: String,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyInputOperation {
+    name: String,
+    inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
 }
@@ -905,6 +914,15 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_InputOperation(op) => Ok(Operation {
+                        kind: Input(InputOp {
+                            arg_name: op.name.clone(),
+                            ty: map_type(&op.output_type),
+                        }),
+                        name: op.name.clone(),
+                        inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OutputOperation(op) => Ok(Operation {
