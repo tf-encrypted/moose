@@ -931,10 +931,13 @@ def replicated_binary_adder(
     return z
 
 
-def replicated_ring_msb(x: ReplicatedBitTensor, setup: ReplicatedSetup, placement_name):
+def replicated_ring_msb(
+    x: ReplicatedRingTensor, setup: ReplicatedSetup, placement_name
+):
     computation = x.computation
     replicated_placement = computation.placement(placement_name)
     assert isinstance(replicated_placement, ReplicatedPlacement)
+    assert isinstance(x, ReplicatedRingTensor)
 
     x_shares = [x.shares0, x.shares1, x.shares2]
     # shares are assembled in the following way:
