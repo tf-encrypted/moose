@@ -573,10 +573,10 @@ fn compile(c: &mut Criterion) {
 
 fn execute(c: &mut Criterion) {
     use maplit::hashmap;
+    use moose::computation::SessionId;
     use moose::execution::*;
     use moose::networking::*;
     use moose::storage::*;
-    use moose::computation::SessionId;
     use std::rc::Rc;
     use std::sync::Arc;
 
@@ -623,17 +623,21 @@ fn execute(c: &mut Criterion) {
             let comp_compiled: CompiledAsyncComputation = comp.compile_async(&ctx).unwrap();
 
             let session_id = SessionId::from("12345");
-            let arguments = hashmap!{};
-            let networking: Arc<dyn AsyncNetworking + Sync + Send> = Arc::new(DummyNetworking(moose::computation::Value::Unit));
-            let storage: Arc<dyn AsyncStorage + Sync + Send> = Arc::new(moose::storage::LocalAsyncStorage::default());
+            let arguments = hashmap! {};
+            let networking: Arc<dyn AsyncNetworking + Sync + Send> =
+                Arc::new(DummyNetworking(moose::computation::Value::Unit));
+            let storage: Arc<dyn AsyncStorage + Sync + Send> =
+                Arc::new(moose::storage::LocalAsyncStorage::default());
 
             b.iter(|| {
-                let (join_handle, outputs): (_, _) = comp_compiled.apply(
-                    session_id.clone(),
-                    arguments.clone(),
-                    Arc::clone(&networking),
-                    Arc::clone(&storage),
-                ).unwrap();
+                let (join_handle, outputs) = comp_compiled
+                    .apply(
+                        session_id.clone(),
+                        arguments.clone(),
+                        Arc::clone(&networking),
+                        Arc::clone(&storage),
+                    )
+                    .unwrap();
                 join_handle.block_on();
                 black_box(outputs);
             });
