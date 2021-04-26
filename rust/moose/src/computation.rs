@@ -5,17 +5,26 @@ use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, Shape,
     Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
+use derive_more::Display;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 pub type RendezvousKey = str;
 
-pub type SessionId = u128;
+#[derive(Clone, Debug, Display)]
+pub struct SessionId(String);
 
-#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
+impl<S: Into<String>> From<S> for SessionId {
+    fn from(s: S) -> SessionId {
+        SessionId(s.into())
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
 pub enum Ty {
     UnitTy,
     StringTy,
+    Float32Ty,
     Float64Ty,
     Ring64TensorTy,
     Ring128TensorTy,
@@ -38,8 +47,9 @@ pub enum Ty {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
+    Float32(f32),
     Float64(f64),
-    String(std::string::String),
+    String(String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Shape(Shape),
@@ -65,6 +75,7 @@ impl Value {
         match self {
             Unit => UnitTy,
             String(_) => StringTy,
+            Float32(_) => Float32Ty,
             Float64(_) => Float64Ty,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
@@ -86,7 +97,7 @@ impl Value {
     }
 }
 
-macro_rules! convert {
+macro_rules! value {
     ($raw_type:ident) => {
         impl From<$raw_type> for Value {
             fn from(x: $raw_type) -> Self {
@@ -99,11 +110,10 @@ macro_rules! convert {
             fn try_from(v: Value) -> Result<Self> {
                 match v {
                     Value::$raw_type(x) => Ok(x),
-                    _ => Err(Error::TypeMismatch(format!(
-                        "Expected {}, found {:?}",
-                        stringify!($raw_type),
-                        v.ty()
-                    ))),
+                    _ => Err(Error::TypeMismatch {
+                        expected: stringify!($raw_type).to_string(),
+                        found: v.ty(),
+                    }),
                 }
             }
         }
@@ -113,34 +123,33 @@ macro_rules! convert {
             fn try_from(v: &'v Value) -> Result<Self> {
                 match v {
                     Value::$raw_type(x) => Ok(x),
-                    _ => Err(Error::TypeMismatch(format!(
-                        "Expected {}, found {:?}",
-                        stringify!($raw_type),
-                        v.ty()
-                    ))),
+                    _ => Err(Error::TypeMismatch {
+                        expected: stringify!($raw_type).to_string(),
+                        found: v.ty(),
+                    }),
                 }
             }
         }
     };
 }
 
-convert!(String);
-convert!(Ring64Tensor);
-convert!(Ring128Tensor);
-convert!(Shape);
-convert!(Seed);
-convert!(PrfKey);
-convert!(Nonce);
-convert!(Float32Tensor);
-convert!(Float64Tensor);
-convert!(Int8Tensor);
-convert!(Int16Tensor);
-convert!(Int32Tensor);
-convert!(Int64Tensor);
-convert!(Uint8Tensor);
-convert!(Uint16Tensor);
-convert!(Uint32Tensor);
-convert!(Uint64Tensor);
+value!(String);
+value!(Ring64Tensor);
+value!(Ring128Tensor);
+value!(Shape);
+value!(Seed);
+value!(PrfKey);
+value!(Nonce);
+value!(Float32Tensor);
+value!(Float64Tensor);
+value!(Int8Tensor);
+value!(Int16Tensor);
+value!(Int32Tensor);
+value!(Int64Tensor);
+value!(Uint8Tensor);
+value!(Uint16Tensor);
+value!(Uint32Tensor);
+value!(Uint64Tensor);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Operator {
@@ -188,8 +197,7 @@ pub enum Operator {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct SendOp {
     pub rendezvous_key: String,
-    pub sender: HostPlacement,
-    pub receiver: HostPlacement,
+    pub receiver: Role,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -200,8 +208,7 @@ pub struct IdentityOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReceiveOp {
     pub rendezvous_key: String,
-    pub sender: HostPlacement,
-    pub receiver: HostPlacement,
+    pub sender: Role,
     pub ty: Ty,
 }
 
@@ -409,14 +416,47 @@ pub enum Placement {
     Replicated(ReplicatedPlacement),
 }
 
+#[derive(Serialize, Deserialize, Display, Clone, Debug, Hash, Eq, PartialEq)]
+pub struct Role(pub String);
+
+impl From<String> for Role {
+    fn from(s: String) -> Self {
+        Role(s)
+    }
+}
+
+impl From<&String> for Role {
+    fn from(s: &String) -> Self {
+        Role(s.clone())
+    }
+}
+
+impl From<&str> for Role {
+    fn from(s: &str) -> Self {
+        Role(s.to_string())
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct HostPlacement {
-    pub name: String,
+    pub owner: Role,
+}
+
+impl From<HostPlacement> for Placement {
+    fn from(plc: HostPlacement) -> Self {
+        Placement::Host(plc)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ReplicatedPlacement {
-    pub players: [String; 3],
+    pub owners: [Role; 3],
+}
+
+impl From<ReplicatedPlacement> for Placement {
+    fn from(plc: ReplicatedPlacement) -> Self {
+        Placement::Replicated(plc)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

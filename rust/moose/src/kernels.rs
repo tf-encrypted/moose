@@ -1,7 +1,8 @@
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
-    map_receive_error, map_send_error, AsyncKernel, Compile, Kernel, SyncKernel,
+    map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
+    SyncKernel,
 };
 use crate::prim::{PrfKey, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -9,97 +10,110 @@ use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
+use std::convert::TryFrom;
+use std::sync::Arc;
+
+fn check_type(v: &Value, expected: Ty) -> Result<()> {
+    if v.ty() == expected {
+        Ok(())
+    } else {
+        Err(Error::TypeMismatch {
+            expected: format!("{:?}", expected),
+            found: v.ty(),
+        })
+    }
+}
 
 impl Compile<SyncKernel> for Operator {
-    fn compile(&self) -> Result<SyncKernel> {
+    fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         use Operator::*;
         match self {
-            Identity(op) => op.compile(),
-            Load(op) => op.compile(),
-            Save(op) => op.compile(),
-            Send(op) => op.compile(),
-            Receive(op) => op.compile(),
-            Input(op) => op.compile(),
-            Output(op) => op.compile(),
-            Constant(op) => op.compile(),
-            StdAdd(op) => op.compile(),
-            StdSub(op) => op.compile(),
-            StdMul(op) => op.compile(),
-            StdDiv(op) => op.compile(),
-            StdDot(op) => op.compile(),
-            StdMean(op) => op.compile(),
-            StdOnes(op) => op.compile(),
-            StdConcatenate(op) => op.compile(),
-            StdExpandDims(op) => op.compile(),
-            StdReshape(op) => op.compile(),
-            StdAtLeast2D(op) => op.compile(),
-            StdShape(op) => op.compile(),
-            StdSlice(op) => op.compile(),
-            StdSum(op) => op.compile(),
-            StdTranspose(op) => op.compile(),
-            StdInverse(op) => op.compile(),
-            RingAdd(op) => op.compile(),
-            RingSub(op) => op.compile(),
-            RingMul(op) => op.compile(),
-            RingDot(op) => op.compile(),
-            RingSum(op) => op.compile(),
-            RingShape(op) => op.compile(),
-            RingSample(op) => op.compile(),
-            RingFill(op) => op.compile(),
-            RingShl(op) => op.compile(),
-            RingShr(op) => op.compile(),
-            PrimDeriveSeed(op) => op.compile(),
-            PrimGenPrfKey(op) => op.compile(),
-            FixedpointRingEncode(op) => op.compile(),
-            FixedpointRingDecode(op) => op.compile(),
-            FixedpointRingMean(op) => op.compile(),
+            Identity(op) => op.compile(ctx),
+            Load(op) => op.compile(ctx),
+            Save(op) => op.compile(ctx),
+            Send(op) => op.compile(ctx),
+            Receive(op) => op.compile(ctx),
+            Input(op) => op.compile(ctx),
+            Output(op) => op.compile(ctx),
+            Constant(op) => op.compile(ctx),
+            StdAdd(op) => op.compile(ctx),
+            StdSub(op) => op.compile(ctx),
+            StdMul(op) => op.compile(ctx),
+            StdDiv(op) => op.compile(ctx),
+            StdDot(op) => op.compile(ctx),
+            StdMean(op) => op.compile(ctx),
+            StdOnes(op) => op.compile(ctx),
+            StdConcatenate(op) => op.compile(ctx),
+            StdExpandDims(op) => op.compile(ctx),
+            StdReshape(op) => op.compile(ctx),
+            StdAtLeast2D(op) => op.compile(ctx),
+            StdShape(op) => op.compile(ctx),
+            StdSlice(op) => op.compile(ctx),
+            StdSum(op) => op.compile(ctx),
+            StdTranspose(op) => op.compile(ctx),
+            StdInverse(op) => op.compile(ctx),
+            RingAdd(op) => op.compile(ctx),
+            RingSub(op) => op.compile(ctx),
+            RingMul(op) => op.compile(ctx),
+            RingDot(op) => op.compile(ctx),
+            RingSum(op) => op.compile(ctx),
+            RingShape(op) => op.compile(ctx),
+            RingSample(op) => op.compile(ctx),
+            RingFill(op) => op.compile(ctx),
+            RingShl(op) => op.compile(ctx),
+            RingShr(op) => op.compile(ctx),
+            PrimDeriveSeed(op) => op.compile(ctx),
+            PrimGenPrfKey(op) => op.compile(ctx),
+            FixedpointRingEncode(op) => op.compile(ctx),
+            FixedpointRingDecode(op) => op.compile(ctx),
+            FixedpointRingMean(op) => op.compile(ctx),
         }
     }
 }
 
 impl Compile<AsyncKernel> for Operator {
-    fn compile(&self) -> Result<AsyncKernel> {
+    fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
         use Operator::*;
         match self {
-            Identity(op) => op.compile(),
-            Load(op) => op.compile(),
-            Save(op) => op.compile(),
-            Send(op) => op.compile(),
-            Receive(op) => op.compile(),
-            Input(op) => op.compile(),
-            Output(op) => op.compile(),
-            Constant(op) => op.compile(),
-            StdAdd(op) => op.compile(),
-            StdSub(op) => op.compile(),
-            StdMul(op) => op.compile(),
-            StdDiv(op) => op.compile(),
-            StdDot(op) => op.compile(),
-            StdMean(op) => op.compile(),
-            StdOnes(op) => op.compile(),
-            StdConcatenate(op) => op.compile(),
-            StdExpandDims(op) => op.compile(),
-            StdReshape(op) => op.compile(),
-            StdAtLeast2D(op) => op.compile(),
-            StdShape(op) => op.compile(),
-            StdSlice(op) => op.compile(),
-            StdSum(op) => op.compile(),
-            StdTranspose(op) => op.compile(),
-            StdInverse(op) => op.compile(),
-            RingAdd(op) => op.compile(),
-            RingSub(op) => op.compile(),
-            RingMul(op) => op.compile(),
-            RingDot(op) => op.compile(),
-            RingSum(op) => op.compile(),
-            RingShape(op) => op.compile(),
-            RingSample(op) => op.compile(),
-            RingFill(op) => op.compile(),
-            RingShl(op) => op.compile(),
-            RingShr(op) => op.compile(),
-            PrimDeriveSeed(op) => op.compile(),
-            PrimGenPrfKey(op) => op.compile(),
-            FixedpointRingEncode(op) => op.compile(),
-            FixedpointRingDecode(op) => op.compile(),
-            FixedpointRingMean(op) => op.compile(),
+            Identity(op) => op.compile(ctx),
+            Load(op) => op.compile(ctx),
+            Save(op) => op.compile(ctx),
+            Send(op) => op.compile(ctx),
+            Receive(op) => op.compile(ctx),
+            Input(op) => op.compile(ctx),
+            Output(op) => op.compile(ctx),
+            Constant(op) => op.compile(ctx),
+            StdAdd(op) => op.compile(ctx),
+            StdSub(op) => op.compile(ctx),
+            StdMul(op) => op.compile(ctx),
+            StdDiv(op) => op.compile(ctx),
+            StdDot(op) => op.compile(ctx),
+            StdMean(op) => op.compile(ctx),
+            StdOnes(op) => op.compile(ctx),
+            StdConcatenate(op) => op.compile(ctx),
+            StdExpandDims(op) => op.compile(ctx),
+            StdReshape(op) => op.compile(ctx),
+            StdAtLeast2D(op) => op.compile(ctx),
+            StdShape(op) => op.compile(ctx),
+            StdSlice(op) => op.compile(ctx),
+            StdSum(op) => op.compile(ctx),
+            StdTranspose(op) => op.compile(ctx),
+            StdInverse(op) => op.compile(ctx),
+            RingAdd(op) => op.compile(ctx),
+            RingSub(op) => op.compile(ctx),
+            RingMul(op) => op.compile(ctx),
+            RingDot(op) => op.compile(ctx),
+            RingSum(op) => op.compile(ctx),
+            RingShape(op) => op.compile(ctx),
+            RingSample(op) => op.compile(ctx),
+            RingFill(op) => op.compile(ctx),
+            RingShl(op) => op.compile(ctx),
+            RingShr(op) => op.compile(ctx),
+            PrimDeriveSeed(op) => op.compile(ctx),
+            PrimGenPrfKey(op) => op.compile(ctx),
+            FixedpointRingEncode(op) => op.compile(ctx),
+            FixedpointRingDecode(op) => op.compile(ctx),
+            FixedpointRingMean(op) => op.compile(ctx),
         }
     }
 }
@@ -107,7 +121,7 @@ impl Compile<AsyncKernel> for Operator {
 macro_rules! std_unary_kernel {
     ($op:ty, $k:expr) => {
         impl Compile<Kernel> for $op {
-            fn compile(&self) -> Result<Kernel> {
+            fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
                 match self.ty {
                     Ty::Float32TensorTy => {
                         function_kernel!(Float32Tensor, $k)
@@ -137,7 +151,7 @@ macro_rules! std_unary_kernel {
 macro_rules! std_binary_kernel {
     ($op:ty, $k:expr) => {
         impl Compile<Kernel> for $op {
-            fn compile(&self) -> Result<Kernel> {
+            fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
                 match (self.lhs, self.rhs) {
                     (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
                         function_kernel!(Float32Tensor, Float32Tensor, $k)
@@ -173,7 +187,7 @@ std_unary_kernel!(StdShapeOp, |x| x.shape());
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for StdInverseOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.ty {
             Ty::Float32TensorTy => {
                 closure_kernel!(Float32Tensor, |x| x.inv())
@@ -187,7 +201,7 @@ impl Compile<Kernel> for StdInverseOp {
 }
 
 impl Compile<Kernel> for StdMeanOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|x| x as usize);
         match self.ty {
             Ty::Float32TensorTy => {
@@ -214,7 +228,7 @@ impl Compile<Kernel> for StdMeanOp {
 }
 
 impl Compile<Kernel> for StdOnesOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.ty {
             Ty::Float32TensorTy => {
                 function_kernel!(Shape, |shape| Float32Tensor::ones(shape))
@@ -240,7 +254,7 @@ impl Compile<Kernel> for StdOnesOp {
 }
 
 impl Compile<Kernel> for StdConcatenateOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::standard::concatenate;
         let axis = self.axis as usize;
         match self.ty {
@@ -264,7 +278,7 @@ impl Compile<Kernel> for StdConcatenateOp {
 }
 
 impl Compile<Kernel> for StdExpandDimsOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis as usize;
         match self.ty {
             Ty::Float32TensorTy => {
@@ -291,7 +305,7 @@ impl Compile<Kernel> for StdExpandDimsOp {
 }
 
 impl Compile<Kernel> for StdReshapeOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.ty {
             Ty::Float32TensorTy => {
                 function_kernel!(Float32Tensor, Shape, |x, newshape| x.reshape(newshape))
@@ -317,7 +331,7 @@ impl Compile<Kernel> for StdReshapeOp {
 }
 
 impl Compile<Kernel> for StdAtLeast2DOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let tcv = self.to_column_vector;
         match self.ty {
             Ty::Float32TensorTy => {
@@ -344,7 +358,7 @@ impl Compile<Kernel> for StdAtLeast2DOp {
 }
 
 impl Compile<Kernel> for StdSliceOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let start = self.start as usize;
         let end = self.end as usize;
         match self.ty {
@@ -355,7 +369,7 @@ impl Compile<Kernel> for StdSliceOp {
 }
 
 impl Compile<Kernel> for StdSumOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
         match self.ty {
             Ty::Float32TensorTy => {
@@ -382,20 +396,20 @@ impl Compile<Kernel> for StdSumOp {
 }
 
 impl Compile<Kernel> for PrimDeriveSeedOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let nonce = self.nonce.clone();
         closure_kernel!(PrfKey, |key| Seed::from_prf(&key, &nonce))
     }
 }
 
 impl Compile<Kernel> for PrimGenPrfKeyOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(PrfKey::generate)
     }
 }
 
 impl Compile<Kernel> for RingAddOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x + y)
@@ -409,7 +423,7 @@ impl Compile<Kernel> for RingAddOp {
 }
 
 impl Compile<Kernel> for RingSubOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x - y)
@@ -423,7 +437,7 @@ impl Compile<Kernel> for RingSubOp {
 }
 
 impl Compile<Kernel> for RingMulOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
@@ -434,7 +448,7 @@ impl Compile<Kernel> for RingMulOp {
 }
 
 impl Compile<Kernel> for RingDotOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (self.lhs, self.rhs) {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
@@ -445,7 +459,7 @@ impl Compile<Kernel> for RingDotOp {
 }
 
 impl Compile<Kernel> for RingSumOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
         match self.ty {
             Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x| x.sum(axis)),
@@ -455,7 +469,7 @@ impl Compile<Kernel> for RingSumOp {
 }
 
 impl Compile<Kernel> for RingShapeOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.ty {
             Ty::Ring64TensorTy => function_kernel!(Ring64Tensor, |x| x.shape()),
             Ty::Ring128TensorTy => function_kernel!(Ring128Tensor, |x| x.shape()),
@@ -465,14 +479,14 @@ impl Compile<Kernel> for RingShapeOp {
 }
 
 impl Compile<Kernel> for RingFillOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let value = self.value;
         closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape, value))
     }
 }
 
 impl Compile<Kernel> for RingSampleOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (self.output, self.max_value) {
             (Ty::Ring64TensorTy, None) => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
@@ -490,21 +504,21 @@ impl Compile<Kernel> for RingSampleOp {
 }
 
 impl Compile<Kernel> for RingShlOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
         closure_kernel!(Ring64Tensor, |x| x << amount)
     }
 }
 
 impl Compile<Kernel> for RingShrOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
         closure_kernel!(Ring64Tensor, |x| x >> amount)
     }
 }
 
 impl Compile<Kernel> for FixedpointRingEncodeOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         let scaling_factor = self.scaling_factor;
         closure_kernel!(Float64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
@@ -512,7 +526,7 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
 }
 
 impl Compile<Kernel> for FixedpointRingDecodeOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         let scaling_factor = self.scaling_factor;
         closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
@@ -520,7 +534,7 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
 }
 
 impl Compile<Kernel> for FixedpointRingMeanOp {
-    fn compile(&self) -> Result<Kernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis;
         let scaling_factor = self.scaling_factor;
         closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(
@@ -532,217 +546,228 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
 }
 
 impl Compile<Kernel> for ConstantOp {
-    fn compile(&self) -> Result<Kernel> {
-        use std::sync::Arc;
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let value = self.value.clone();
         Ok(Kernel::NullaryClosure(Arc::new(move || Ok(value.clone()))))
     }
 }
 
 impl Compile<SyncKernel> for SendOp {
-    fn compile(&self) -> Result<SyncKernel> {
-        let op = self.clone();
+    fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
+        let rendezvous_key = self.rendezvous_key.clone();
+        let receiver_id = ctx
+            .role_assignment
+            .get(&self.receiver)
+            .cloned()
+            .ok_or_else(|| {
+                Error::Compilation(format!(
+                    "missing identity assignment for '{}'",
+                    &self.receiver
+                ))
+            })?;
+
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
             sess.networking
-                .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
+                .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
             Ok(Value::Unit)
         })))
     }
 }
 
 impl Compile<AsyncKernel> for SendOp {
-    fn compile(&self) -> Result<AsyncKernel> {
-        use std::sync::Arc;
-        let op = Arc::new(self.clone());
+    fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
+        let rendezvous_key = Arc::new(self.rendezvous_key.clone());
+        let receiver_id = Arc::new(
+            ctx.role_assignment
+                .get(&self.receiver)
+                .cloned()
+                .ok_or_else(|| {
+                    Error::Compilation(format!(
+                        "missing identity assignment for '{}'",
+                        &self.receiver
+                    ))
+                })?,
+        );
+
         Ok(AsyncKernel::Unary(Box::new(move |sess, v, sender| {
             let sess = Arc::clone(sess);
-            let op = Arc::clone(&op);
+            let rendezvous_key = Arc::clone(&rendezvous_key);
+            let receiver_id = Arc::clone(&receiver_id);
+
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
                 sess.networking
-                    .send(&v, &op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)
+                    .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
-                sender.send(Value::Unit).map_err(map_send_error)
+                map_send_result(sender.send(Value::Unit))
             })
         })))
     }
 }
 
 impl Compile<SyncKernel> for ReceiveOp {
-    fn compile(&self) -> Result<SyncKernel> {
-        let op = self.clone();
+    fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
+        let expected_ty = self.ty;
+        let rendezvous_key = self.rendezvous_key.clone();
+        let sender_id = ctx
+            .role_assignment
+            .get(&self.sender)
+            .cloned()
+            .ok_or_else(|| {
+                Error::Compilation(format!(
+                    "missing identity assignment for '{}'",
+                    &self.sender
+                ))
+            })?;
+
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
-            let v: Value =
-                sess.networking
-                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)?;
-            if v.ty() == op.ty {
-                Ok(v)
-            } else {
-                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-            }
+            let v: Value = sess
+                .networking
+                .receive(&sender_id, &rendezvous_key, &sess.sid)?;
+            check_type(&v, expected_ty)?;
+            Ok(v)
         })))
     }
 }
 
 impl Compile<AsyncKernel> for ReceiveOp {
-    fn compile(&self) -> Result<AsyncKernel> {
-        use std::sync::Arc;
-        let op = Arc::new(self.clone());
+    fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
+        let expected_ty = self.ty;
+        let rendezvous_key = Arc::new(self.rendezvous_key.clone());
+        let sender_id = Arc::new(ctx.role_assignment.get(&self.sender).cloned().ok_or_else(
+            || {
+                Error::Compilation(format!(
+                    "missing identity assignment for '{}'",
+                    &self.sender
+                ))
+            },
+        )?);
+
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
-            let op = Arc::clone(&op);
+            let rendezvous_key = Arc::clone(&rendezvous_key);
+            let sender_id = Arc::clone(&sender_id);
+
             tokio::spawn(async move {
                 let v: Value = sess
                     .networking
-                    .receive(&op.sender, &op.receiver, &op.rendezvous_key, &sess.sid)
+                    .receive(&sender_id, &rendezvous_key, &sess.sid)
                     .await?;
-                if v.ty() == op.ty {
-                    sender.send(v).map_err(map_send_error)
-                } else {
-                    Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-                }
+                check_type(&v, expected_ty)?;
+                map_send_result(sender.send(v))
             })
         })))
     }
 }
 
 impl Compile<SyncKernel> for IdentityOp {
-    fn compile(&self) -> Result<SyncKernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.ty;
-        let op = self.clone();
+
         Ok(SyncKernel::Unary(Box::new(move |_sess, v| {
-            if v.ty() == expected_ty {
-                Ok(v)
-            } else {
-                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-            }
+            check_type(&v, expected_ty)?;
+            Ok(v)
         })))
     }
 }
 
 impl Compile<AsyncKernel> for IdentityOp {
-    fn compile(&self) -> Result<AsyncKernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
-        use std::sync::Arc;
-        let op = Arc::new(self.clone());
+
         Ok(AsyncKernel::Unary(Box::new(move |_sess, v, sender| {
-            let op = Arc::clone(&op);
             tokio::spawn(async move {
                 let v: Value = v.await.map_err(map_receive_error)?;
-                if v.ty() == expected_ty {
-                    sender.send(v).map_err(map_send_error)
-                } else {
-                    Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-                }
+                check_type(&v, expected_ty)?;
+                map_send_result(sender.send(v))
             })
         })))
     }
 }
 
 impl Compile<SyncKernel> for InputOp {
-    fn compile(&self) -> Result<SyncKernel> {
-        let expected_ty = self.ty;
+    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let arg_name = self.arg_name.clone();
-        let op = self.clone();
+        let expected_ty = self.ty;
+
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
             let arg = sess
-                .args
+                .arguments
                 .get(&arg_name)
                 .cloned()
-                .ok_or(Error::MalformedEnvironment)?;
-            if arg.ty() == expected_ty {
-                Ok(arg)
-            } else {
-                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-            }
+                .ok_or_else(|| Error::MissingArgument(arg_name.clone()))?;
+            check_type(&arg, expected_ty)?;
+            Ok(arg)
         })))
     }
 }
 
 impl Compile<AsyncKernel> for InputOp {
-    fn compile(&self) -> Result<AsyncKernel> {
-        use std::sync::Arc;
+    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
         let arg_name = Arc::new(self.arg_name.clone());
-        let op = Arc::new(self.clone());
+
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
             let sess = Arc::clone(sess);
             let arg_name = Arc::clone(&arg_name);
-            let op = Arc::clone(&op);
+
             tokio::spawn(async move {
-                let async_arg = sess
-                    .args
+                let arg = sess
+                    .arguments
                     .get(arg_name.as_ref())
                     .cloned()
-                    .ok_or(Error::MalformedEnvironment)?;
-                let arg: Value = async_arg.await.map_err(map_receive_error)?;
-                if arg.ty() == expected_ty {
-                    sender.send(arg).map_err(map_send_error)
-                } else {
-                    Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-                }
+                    .ok_or_else(|| Error::MissingArgument(arg_name.as_ref().clone()))?;
+                check_type(&arg, expected_ty)?;
+                map_send_result(sender.send(arg))
             })
         })))
     }
 }
 
 impl Compile<SyncKernel> for OutputOp {
-    fn compile(&self) -> Result<SyncKernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         Ok(SyncKernel::Unary(Box::new(move |_sess, x0| Ok(x0))))
     }
 }
 
 impl Compile<AsyncKernel> for OutputOp {
-    fn compile(&self) -> Result<AsyncKernel> {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         Ok(AsyncKernel::Unary(Box::new(move |_sess, x0, sender| {
             tokio::spawn(async move {
                 let val = x0.await.map_err(map_receive_error)?;
-                sender.send(val).map_err(map_send_error)
+                map_send_result(sender.send(val))
             })
         })))
     }
 }
 
 impl Compile<SyncKernel> for SaveOp {
-    fn compile(&self) -> Result<SyncKernel> {
-        use std::convert::TryFrom;
+    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.ty;
-        let op = self.clone();
+
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
-            if val.ty() == expected_ty {
-                sess.storage.save(&key, &val)?;
-                Ok(Value::Unit)
-            } else {
-                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-            }
+            check_type(&val, expected_ty)?;
+            sess.storage.save(&key, &val)?;
+            Ok(Value::Unit)
         })))
     }
 }
 
 impl Compile<AsyncKernel> for SaveOp {
-    fn compile(&self) -> Result<AsyncKernel> {
-        use std::convert::TryFrom;
-        use std::sync::Arc;
+    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
-        let op = Arc::new(self.clone());
+
         Ok(AsyncKernel::Binary(Box::new(
             move |sess, key, val, sender| {
                 let sess = Arc::clone(sess);
-                let op = Arc::clone(&op);
+
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let val = val.await.map_err(map_receive_error)?;
-
-                    if val.ty() == expected_ty {
-                        sess.storage
-                            .save(&key, &val)
-                            .await
-                            .map_err(map_send_error)?;
-                        sender.send(Value::Unit).map_err(map_send_error)
-                    } else {
-                        Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-                    }
+                    check_type(&val, expected_ty)?;
+                    sess.storage.save(&key, &val).await?;
+                    map_send_result(sender.send(Value::Unit))
                 })
             },
         )))
@@ -750,107 +775,97 @@ impl Compile<AsyncKernel> for SaveOp {
 }
 
 impl Compile<SyncKernel> for LoadOp {
-    fn compile(&self) -> Result<SyncKernel> {
-        use std::convert::TryFrom;
+    fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.ty;
-        let op = self.clone();
+
         Ok(SyncKernel::Binary(Box::new(move |sess, key, _query| {
             let key = String::try_from(key)?;
-            let val = sess.storage.load(&key, Some(op.ty))?;
-            if val.ty() == expected_ty {
-                Ok(val)
-            } else {
-                Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-            }
+            let val = sess.storage.load(&key, Some(expected_ty))?;
+            check_type(&val, expected_ty)?;
+            Ok(val)
         })))
     }
 }
 
 impl Compile<AsyncKernel> for LoadOp {
-    fn compile(&self) -> Result<AsyncKernel> {
-        use std::convert::TryFrom;
-        use std::sync::Arc;
+    fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.ty;
-        let op = Arc::new(self.clone());
+
         Ok(AsyncKernel::Binary(Box::new(
             move |sess, key, _query, sender| {
                 let sess = Arc::clone(sess);
-                let op = Arc::clone(&op);
+
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
-                    let val = sess
-                        .storage
-                        .load(&key, Some(op.ty))
-                        .await
-                        .map_err(map_send_error)?;
-                    if val.ty() == expected_ty {
-                        sender.send(val).map_err(map_send_error)
-                    } else {
-                        Err(Error::TypeMismatchOperator(format!("{:?}", op)))
-                    }
+                    let val = sess.storage.load(&key, Some(expected_ty)).await?;
+                    check_type(&val, expected_ty)?;
+                    map_send_result(sender.send(val))
                 })
             },
         )))
     }
 }
 
-#[test]
-fn test_standard_shape_ops() {
-    use crate::execution::EagerExecutor;
-    use crate::standard::Float32Tensor;
-    use maplit::hashmap;
-    use ndarray::prelude::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::execution::*;
 
-    let env = hashmap![];
-    let x = Float32Tensor::from(
-        array![[1.0, 2.0], [3.0, 4.0]]
-            .into_dimensionality::<IxDyn>()
-            .unwrap(),
-    );
-    let x_op = Operation {
-        name: "x".into(),
-        kind: Operator::Constant(ConstantOp {
-            value: Value::Float32Tensor(x),
-        }),
-        inputs: vec![],
-        placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
-        }),
-    };
-    let shape_op = Operation {
-        name: "shape".into(),
-        kind: Operator::StdShape(StdShapeOp {
-            ty: Ty::Float32TensorTy,
-        }),
-        inputs: vec!["x".into()],
-        placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
-        }),
-    };
-    let expand_dims_op = Operation {
-        name: "expand_dims".into(),
-        kind: Operator::StdExpandDims(StdExpandDimsOp {
-            ty: Ty::Float32TensorTy,
-            axis: 2,
-        }),
-        inputs: vec!["x".into()],
-        placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
-        }),
-    };
-    let transpose_op = Operation {
-        name: "transpose".into(),
-        kind: Operator::StdTranspose(StdTransposeOp {
-            ty: Ty::Float32TensorTy,
-        }),
-        inputs: vec!["x".into()],
-        placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
-        }),
-    };
-    let operations = vec![x_op, shape_op, expand_dims_op, transpose_op];
-    let comp = Computation { operations }.toposort().unwrap();
+    #[test]
+    fn test_standard_shape_ops() {
+        use crate::standard::Float32Tensor;
+        use ndarray::prelude::*;
 
-    let exec = EagerExecutor::new();
-    exec.run_computation(&comp, 12345, env).ok();
+        let x = Float32Tensor::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let x_op = Operation {
+            name: "x".into(),
+            kind: Operator::Constant(ConstantOp {
+                value: Value::Float32Tensor(x),
+            }),
+            inputs: vec![],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let shape_op = Operation {
+            name: "shape".into(),
+            kind: Operator::StdShape(StdShapeOp {
+                ty: Ty::Float32TensorTy,
+            }),
+            inputs: vec!["x".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let expand_dims_op = Operation {
+            name: "expand_dims".into(),
+            kind: Operator::StdExpandDims(StdExpandDimsOp {
+                ty: Ty::Float32TensorTy,
+                axis: 2,
+            }),
+            inputs: vec!["x".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let transpose_op = Operation {
+            name: "transpose".into(),
+            kind: Operator::StdTranspose(StdTransposeOp {
+                ty: Ty::Float32TensorTy,
+            }),
+            inputs: vec!["x".into()],
+            placement: Placement::Host(HostPlacement {
+                owner: Role::from("alice"),
+            }),
+        };
+        let operations = vec![x_op, shape_op, expand_dims_op, transpose_op];
+        let comp = Computation { operations }.toposort().unwrap();
+
+        let exec = TestExecutor::default();
+        let _outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+    }
 }

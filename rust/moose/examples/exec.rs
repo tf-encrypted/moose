@@ -1,6 +1,5 @@
-use maplit::hashmap;
 use moose::computation::*;
-use moose::execution::EagerExecutor;
+use moose::execution::*;
 use moose::prim::Nonce;
 use moose::standard::Shape;
 
@@ -10,7 +9,7 @@ fn main() {
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role::from("alice"),
         }),
     };
 
@@ -21,7 +20,7 @@ fn main() {
         }),
         inputs: vec!["key".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role::from("alice"),
         }),
     };
 
@@ -32,7 +31,7 @@ fn main() {
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role::from("alice"),
         }),
     };
 
@@ -44,7 +43,7 @@ fn main() {
         }),
         inputs: vec!["x_shape".into(), "x_seed".into()],
         placement: Placement::Host(HostPlacement {
-            name: "alice".into(),
+            owner: Role::from("alice"),
         }),
     };
 
@@ -58,16 +57,14 @@ fn main() {
             }),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {
-                name: "alice".into(),
+                owner: Role::from("alice"),
             }),
         });
     }
 
     let comp = Computation { operations };
-    let args = hashmap![];
-    let sid = 12345;
 
-    let executor = EagerExecutor::new();
-    // let executor = AsyncExecutor::new();
-    let _ = executor.run_computation(&comp, sid, args);
+    let exec = TestExecutor::default();
+    let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+    println!("Outputs: {:?}", outputs);
 }

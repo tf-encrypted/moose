@@ -471,17 +471,17 @@ impl TryFrom<&PyPlacement> for Placement {
     fn try_from(placement: &PyPlacement) -> anyhow::Result<Placement> {
         match placement {
             PyPlacement::host_HostPlacement(plc) => Ok(Placement::Host(HostPlacement {
-                name: plc.name.clone(),
+                owner: Role::from(&plc.name),
             })),
             PyPlacement::rep_ReplicatedPlacement(plc) => {
                 if plc.player_names.len() != 3 {
                     return Err(anyhow::anyhow!("Placement doesn't have 3 players"));
                 }
                 Ok(Placement::Replicated(ReplicatedPlacement {
-                    players: [
-                        plc.player_names[0].clone(),
-                        plc.player_names[1].clone(),
-                        plc.player_names[2].clone(),
+                    owners: [
+                        Role::from(&plc.player_names[0]),
+                        Role::from(&plc.player_names[1]),
+                        Role::from(&plc.player_names[2]),
                     ],
                 }))
             }
@@ -871,12 +871,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_SendOperation(op) => Ok(Operation {
                         kind: Send(SendOp {
                             rendezvous_key: op.rendezvous_key.clone(),
-                            sender: HostPlacement {
-                                name: op.sender.clone(),
-                            },
-                            receiver: HostPlacement {
-                                name: op.receiver.clone(),
-                            },
+                            receiver: Role::from(&op.receiver),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -886,12 +881,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_ReceiveOperation(op) => Ok(Operation {
                         kind: Receive(ReceiveOp {
                             rendezvous_key: op.rendezvous_key.clone(),
-                            sender: HostPlacement {
-                                name: op.sender.clone(),
-                            },
-                            receiver: HostPlacement {
-                                name: op.receiver.clone(),
-                            },
+                            sender: Role::from(&op.sender),
                             ty: map_type(&op.output_type),
                         }),
                         name: op.name.clone(),

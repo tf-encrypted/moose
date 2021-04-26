@@ -1,3 +1,4 @@
+use crate::computation::Ty;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Deserialize, Serialize, thiserror::Error)]
@@ -5,20 +6,23 @@ pub enum Error {
     #[error("Unexpected error")]
     Unexpected,
 
-    #[error("Input to kernel unavailable")]
-    InputUnavailable,
+    #[error("Kernel operand was unavailable")]
+    OperandUnavailable,
 
-    #[error("Type mismatch: {0}")]
-    TypeMismatch(String),
+    #[error("Kernel result is unused")]
+    ResultUnused,
 
-    #[error("Operator type instantiation not supported: {0}")]
-    TypeMismatchOperator(String),
+    #[error("Type mismatch, expected {expected} but found {found}")]
+    TypeMismatch { expected: String, found: Ty },
 
     #[error("Operator instantiation not supported: {0}")]
     UnimplementedOperator(String),
 
-    #[error("Malformed environment")]
-    MalformedEnvironment,
+    #[error("Missing argument '{0}'")]
+    MissingArgument(String),
+
+    #[error("Malformed computation: operand '{0}' not found")]
+    MalformedEnvironment(String),
 
     #[error("Malformed computation")]
     MalformedComputation(String),
