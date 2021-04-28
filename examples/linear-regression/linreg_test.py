@@ -3,9 +3,12 @@ import logging
 import unittest
 
 import numpy as np
+from absl.testing import parameterized
 
 from moose import edsl
 from moose.computation.standard import StringType
+from moose.computation.utils import deserialize_computation
+from moose.computation.utils import serialize_computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.memory import Networking
@@ -40,8 +43,8 @@ def r_squared(ss_res, ss_tot):
     return edsl.sub(edsl.constant(1.0, dtype=edsl.float32), residuals_ratio)
 
 
-class LinearRegressionExample(unittest.TestCase):
-    def test_linear_regression_example(self):
+class LinearRegressionExample(parameterized.TestCase):
+    def _build_linear_regression_example(self, compiler_passes=None):
         x_owner = edsl.host_placement(name="x-owner")
         y_owner = edsl.host_placement(name="y-owner")
         model_owner = edsl.host_placement(name="model-owner")
@@ -101,7 +104,12 @@ class LinearRegressionExample(unittest.TestCase):
 
             return res
 
-        concrete_comp = edsl.trace(my_comp)
+        concrete_comp = edsl.trace(my_comp, compiler_passes=compiler_passes)
+        return (my_comp, concrete_comp), (x_owner, y_owner, model_owner, replicated_plc)
+
+    def test_linear_regression_eval(self):
+        (_, concrete_comp), placements = self._build_linear_regression_example()
+        x_owner, y_owner, model_owner, replicated_plc = placements
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         networking = Networking()
@@ -134,6 +142,16 @@ class LinearRegressionExample(unittest.TestCase):
         )
 
         print("Done: \n", model_owner_storage.store["regression_weights"])
+
+    @parameterized.parameters(True, False)
+    def test_linear_regression_serde(self, compiled):
+        passes_arg = None if compiled else []
+        (_, traced_comp), placements = self._build_linear_regression_example(
+            compiler_passes=passes_arg
+        )
+        serialized = serialize_computation(traced_comp)
+        deserialized = deserialize_computation(serialized)
+        assert traced_comp == deserialized
 
 
 if __name__ == "__main__":

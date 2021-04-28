@@ -1,8 +1,9 @@
+from absl.testing import absltest
 from absl.testing import parameterized
 
+from moose import edsl
 from moose.computation.utils import deserialize_computation
 from moose.computation.utils import serialize_computation
-from moose.edsl import base as edsl
 from moose.edsl.tracer import trace
 
 
@@ -15,8 +16,8 @@ class SerdeTest(parameterized.TestCase):
 
         @edsl.computation
         def my_comp():
-            x = edsl.constant(1, placement=alice)
-            y = edsl.constant(2, placement=bob)
+            x = edsl.constant(1, dtype=edsl.float32, placement=alice)
+            y = edsl.constant(2, dtype=edsl.float32, placement=bob)
             z = edsl.add(x, y, placement=replicated)
             v = edsl.add(z, z, placement=carole)
             return v
@@ -26,3 +27,7 @@ class SerdeTest(parameterized.TestCase):
         deserialized = deserialize_computation(serialized)
 
         assert deserialized == original
+
+
+if __name__ == "__main__":
+    absltest.main()
