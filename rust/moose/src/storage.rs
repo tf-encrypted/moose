@@ -42,10 +42,10 @@ impl SyncStorage for LocalSyncStorage {
             tracing::error!("failed to get read lock: {:?}", e);
             Error::Unexpected
         })?;
-        store.get(key).cloned().ok_or_else(|| {
-            tracing::error!("Key not found in store");
-            Error::Unexpected
-        })
+        store
+            .get(key)
+            .cloned()
+            .ok_or_else(|| Error::Storage("key not found in store".into()))
     }
 }
 
@@ -73,14 +73,10 @@ impl AsyncStorage for LocalAsyncStorage {
 
     async fn load(&self, key: &str, _type_hint: Option<Ty>) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
-        loop {
-            {
-                let store = self.store.read().await;
-                if let Some(val) = store.get(key).cloned() {
-                    return Ok(val);
-                }
-            }
-            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-        }
+        let store = self.store.read().await;
+        store
+            .get(key)
+            .cloned()
+            .ok_or_else(|| Error::Storage("key not found in store".into()))
     }
 }

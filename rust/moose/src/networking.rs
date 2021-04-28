@@ -117,8 +117,10 @@ impl AsyncNetworking for LocalAsyncNetworking {
             rendezvous_key,
             session_id
         );
+        let key = format!("{}/{}", session_id, rendezvous_key);
+        // note that we are using a loop since the store doesn't immediately
+        // allow us to block until a value is present
         loop {
-            let key = format!("{}/{}", session_id, rendezvous_key);
             {
                 let store = self.store.read().await;
                 if let Some(val) = store.get(&key).cloned() {
