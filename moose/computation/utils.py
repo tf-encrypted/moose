@@ -143,9 +143,10 @@ def _encode(val):
         d["__type__"] = type_name
         return d
     elif isinstance(val, dtypes.DType):
-        return val.name
+        return {"__type__": "DType", "name": val.name}
     elif isinstance(val, np.ndarray):
         return {
+            "__type__": "ndarray",
             "dtype": str(val.dtype),
             "items": val.flatten().tolist(),
             "shape": list(val.shape),
@@ -167,8 +168,12 @@ def _decode(obj):
                 dtypes.uint64.name: dtypes.uint64,
                 dtypes.float32.name: dtypes.float32,
                 dtypes.float64.name: dtypes.float64,
-                dtypes.string.name: dtypes.string,
             }[obj["name"]]
+        elif obj["__type__"] == "ndarray":
+            dtype = obj["dtype"]
+            shape = obj["shape"]
+            contents = obj["items"]
+            return np.array(contents, dtype=dtype).reshape(shape)
         else:
             ty = TYPES_MAP[obj["__type__"]]
             del obj["__type__"]
