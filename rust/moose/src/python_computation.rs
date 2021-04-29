@@ -661,7 +661,9 @@ impl TryFrom<PyComputation> for Computation {
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-                    ring_RingMeanOperation(op) => Err(anyhow::anyhow!("unsupported operation: {:?}", op)),
+                    ring_RingMeanOperation(op) => {
+                        Err(anyhow::anyhow!("unsupported operation: {:?}", op))
+                    }
                     ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFill(RingFillOp { value: op.value }),
                         name: op.name.clone(),
