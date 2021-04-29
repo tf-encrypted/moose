@@ -65,16 +65,10 @@ enum PyValueType {
     std_BytesType,
     std_ShapeType,
     std_StringType,
-    std_TensorType(PyTensorDType),
+    std_TensorType { dtype: PyDType },
     std_UnitType,
     std_UnknownType,
     ring_RingTensorType,
-}
-
-#[derive(Deserialize, Debug)]
-#[serde(tag = "dtype")]
-struct PyTensorDType {
-    dtype: PyDType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -550,7 +544,7 @@ fn map_type(py_type: &PyValueType) -> Ty {
         PyValueType::std_ShapeType => Ty::ShapeTy,
         PyValueType::std_UnitType => Ty::UnitTy,
         PyValueType::std_StringType => Ty::StringTy,
-        PyValueType::std_TensorType(py_tensor_dtype) => match py_tensor_dtype.dtype {
+        PyValueType::std_TensorType { dtype } => match dtype {
             PyDType::float32 => Ty::Float32TensorTy,
             PyDType::float64 => Ty::Float64TensorTy,
             PyDType::int32 => Ty::Int32TensorTy,
