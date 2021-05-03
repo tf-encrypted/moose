@@ -778,8 +778,9 @@ impl Compile<SyncKernel> for LoadOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.ty;
 
-        Ok(SyncKernel::Binary(Box::new(move |sess, key, _query| {
+        Ok(SyncKernel::Binary(Box::new(move |sess, key, query| {
             let key = String::try_from(key)?;
+            let _query = String::try_from(query)?;
             let val = sess.storage.load(&key, Some(expected_ty))?;
             check_type(&val, expected_ty)?;
             Ok(val)
@@ -792,11 +793,12 @@ impl Compile<AsyncKernel> for LoadOp {
         let expected_ty = self.ty;
 
         Ok(AsyncKernel::Binary(Box::new(
-            move |sess, key, _query, sender| {
+            move |sess, key, query, sender| {
                 let sess = Arc::clone(sess);
 
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
+                    let _query = String::try_from(query.await.map_err(map_receive_error)?)?;
                     let val = sess.storage.load(&key, Some(expected_ty)).await?;
                     check_type(&val, expected_ty)?;
                     map_send_result(sender.send(val))
