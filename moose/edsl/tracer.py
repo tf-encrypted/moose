@@ -58,10 +58,9 @@ from moose.edsl.base import SliceExpression
 from moose.edsl.base import SqueezeExpression
 from moose.edsl.base import SumExpression
 from moose.edsl.base import TransposeExpression
-from moose.logger import get_logger
 
 
-def trace(abstract_computation, compiler_passes=None, render=False):
+def trace(abstract_computation):
     func_signature = inspect.signature(abstract_computation.func)
     symbolic_args = [
         ArgumentExpression(
@@ -75,12 +74,13 @@ def trace(abstract_computation, compiler_passes=None, render=False):
     expression = abstract_computation.func(*symbolic_args)
     tracer = AstTracer()
     logical_comp = tracer.trace(expression)
+    return logical_comp
 
+
+def trace_and_compile(abstract_computation, compiler_passes=None, render=False):
+    logical_computation = trace(abstract_computation)
     compiler = Compiler(passes=compiler_passes)
-    physical_comp = compiler.run_passes(logical_comp, render=render)
-
-    for op in physical_comp.operations.values():
-        get_logger().debug(f"Computation: {op}")
+    physical_comp = compiler.compile(logical_computation, render=render)
     return physical_comp
 
 
