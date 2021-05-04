@@ -11,4 +11,5 @@ pub mod python_computation;
 pub mod ring;
 pub mod standard;
 pub mod storage;
+pub mod text_computation;
 pub mod utils;

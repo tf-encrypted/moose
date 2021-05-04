@@ -1142,6 +1142,22 @@ mod tests {
         let _outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
     }
 
+    use std::convert::TryInto;
+
+    #[test]
+    fn test_textual_represenation() -> std::result::Result<(), anyhow::Error> {
+        let comp: Computation = "
+            placement alice = Host('alice'),
+            placement bob = Host('bob'),
+            placement carole = Host('carole'),
+            let x = Constant([1.0]) @alice,
+            let y = Constant([1.0]) @bob,
+            let z = StdAdd(x, y) @carole"
+            .try_into()?;
+        assert_eq!(format!("{:?}", comp), "blah");
+        Ok(())
+    }
+
     #[test]
     fn test_eager_executor() {
         use crate::prim::Nonce;

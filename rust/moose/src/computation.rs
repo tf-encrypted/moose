@@ -467,6 +467,7 @@ pub struct Operation {
     pub placement: Placement,
 }
 
+#[derive(Debug)]
 pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
