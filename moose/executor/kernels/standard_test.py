@@ -14,7 +14,7 @@ from moose.computation.standard import StringConstant
 from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
-from moose.edsl.tracer import trace
+from moose.edsl.tracer import trace_and_compile
 from moose.executor.executor import AsyncExecutor
 from moose.testing import run_test_computation
 
@@ -39,7 +39,9 @@ class StandardKernelTest(parameterized.TestCase):
             res = edsl.save("result", out, placement=player1)
             return res
 
-        comp_result = run_test_computation(trace(my_comp), [player0, player1])
+        comp_result = run_test_computation(
+            trace_and_compile(my_comp), [player0, player1]
+        )
         self.assertEqual(comp_result[player1]["result"], 5)
 
     def test_input(self):
@@ -226,7 +228,9 @@ class StandardKernelTest(parameterized.TestCase):
             res = edsl.save("result", out, placement=player1)
             return res
 
-        comp_result = run_test_computation(trace(my_comp), [player0, player1])
+        comp_result = run_test_computation(
+            trace_and_compile(my_comp), [player0, player1]
+        )
         self.assertEqual(comp_result[player1]["result"], expected_result)
 
     @parameterized.parameters(
