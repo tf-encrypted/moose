@@ -104,9 +104,7 @@ class LinearRegressionExample(parameterized.TestCase):
 
             return res
 
-        concrete_comp = edsl.trace_and_compile(
-            my_comp, compiler_passes=compiler_passes
-        )
+        concrete_comp = edsl.trace_and_compile(my_comp, compiler_passes=compiler_passes)
         return (my_comp, concrete_comp), (x_owner, y_owner, model_owner, replicated_plc)
 
     def test_linear_regression_eval(self):
