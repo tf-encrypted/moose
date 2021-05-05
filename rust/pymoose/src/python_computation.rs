@@ -466,7 +466,7 @@ def f():
 
         return res
 
-    concrete_comp = edsl.tracer.trace_and_compile(my_comp)
+    concrete_comp = edsl.trace_and_compile(my_comp)
     return serialize_computation(concrete_comp)
 
 "#;

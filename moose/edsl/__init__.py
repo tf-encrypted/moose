@@ -34,6 +34,7 @@ from moose.edsl.base import sub
 from moose.edsl.base import sum
 from moose.edsl.base import transpose
 from moose.edsl.tracer import trace
+from moose.edsl.tracer import trace_and_compile
 
 __all__ = [
     abs,
@@ -72,4 +73,5 @@ __all__ = [
     sum,
     transpose,
     trace,
+    trace_and_compile,
 ]
