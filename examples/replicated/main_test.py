@@ -44,7 +44,7 @@ class ReplicatedExample(unittest.TestCase):
 
             return (res_dave, abs_dave, res_eric)
 
-        concrete_comp = edsl.trace(my_comp)
+        concrete_comp = edsl.tracer.trace_and_compile(my_comp)
 
         runtime = Runtime()
         runtime.evaluate_computation(

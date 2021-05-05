@@ -66,7 +66,7 @@ def my_comp():
     return res
 
 
-concrete_comp = edsl.trace(my_comp)
+concrete_comp = edsl.tracer.trace_and_compile(my_comp)
 
 if __name__ == "__main__":
     if args.runtime == "test":

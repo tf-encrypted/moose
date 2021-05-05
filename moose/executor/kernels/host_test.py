@@ -6,7 +6,7 @@ from absl.testing import parameterized
 from moose.computation import dtypes
 from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
-from moose.edsl.tracer import trace
+from moose.edsl.tracer import trace_and_compile
 from moose.testing import run_test_computation
 
 
@@ -35,7 +35,9 @@ class HostKernelTest(parameterized.TestCase):
             res = edsl.save("result", out, placement=player2)
             return res
 
-        comp_result = run_test_computation(trace(my_comp), [player0, player1, player2])
+        comp_result = run_test_computation(
+            trace_and_compile(my_comp), [player0, player1, player2]
+        )
         self.assertEqual(comp_result[player2]["result"], 6)
 
 

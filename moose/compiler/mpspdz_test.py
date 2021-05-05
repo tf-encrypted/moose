@@ -6,7 +6,7 @@ from moose.computation.mpspdz import MpspdzLoadOutputOperation
 from moose.computation.mpspdz import MpspdzSaveInputOperation
 from moose.computation.standard import TensorType
 from moose.edsl import base as edsl
-from moose.edsl.tracer import trace
+from moose.edsl.tracer import trace_and_compile
 
 
 class MpspdzTest(parameterized.TestCase):
@@ -29,7 +29,7 @@ class MpspdzTest(parameterized.TestCase):
             w = edsl.mul(v, v, placement=carole)
             return w
 
-        concrete_comp = trace(my_comp)
+        concrete_comp = trace_and_compile(my_comp)
 
         save_ops = concrete_comp.find_operations_of_type(MpspdzSaveInputOperation)
         assert len(save_ops) == 2
