@@ -1146,15 +1146,9 @@ mod tests {
 
     #[test]
     fn test_textual_represenation() -> std::result::Result<(), anyhow::Error> {
-        let comp: Computation = "
-            placement alice = Host('alice'),
-            placement bob = Host('bob'),
-            placement carole = Host('carole'),
-            let x = Constant([1.0]) @alice,
-            let y = Constant([1.0]) @bob,
-            let z = StdAdd(x, y) @carole"
+        let comp: Computation = "let x = Constant([1.0]) @alice"
             .try_into()?;
-        assert_eq!(format!("{:?}", comp), "blah");
+        assert_eq!(format!("{:?}", comp), "Computation { operations: [Operation { name: \"x\", kind: Constant(ConstantOp { value: String(\"[1.0]\") }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }] }");
         Ok(())
     }
 

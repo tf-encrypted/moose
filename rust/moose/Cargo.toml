@@ -42,6 +42,7 @@ thiserror = "~1.0"
 tokio = { version="~1.4", features=["full"] }
 tracing = { version="~0.1", features=["log"] }
 vec-utils = "~0.3"
+nom = { version="~6.1", features=["regexp"] }
 
 [dev-dependencies]
 criterion = "~0.3"
