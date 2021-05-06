@@ -1,20 +1,42 @@
 use crate::computation::*;
 use std::convert::TryFrom;
-use nom::character::complete::{space0, space1, alphanumeric1};
+use nom::{
+    character::complete::{space0, space1, alphanumeric1, line_ending},
+    sequence::{delimited}
+};
 
 impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
 
     fn try_from(source: &str) -> anyhow::Result<Computation> {
-        match parse_assignment(source) {
+        match parse_computation(source) {
             Err(e) => Err(anyhow::anyhow!("Failed to parse {} due to {}", source, e)),
 
-            // TODO: Temporary line, only supporting one operation
-            Ok((_, operation)) => Ok(Computation { operations: vec![operation] })
+            Ok((_, computation)) => Ok(computation)
         }
         
     }
 }
+
+// Adapted from nom::recepies
+fn ws<'a, F: 'a, O, E: nom::error::ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> nom::IResult<&'a str, O, E>
+  where
+  F: Fn(&'a str) -> nom::IResult<&'a str, O, E>,
+{
+  delimited(
+    space0,
+    inner,
+    space0
+  )
+}
+  
+
+named!(parse_computation<&str,Computation>,
+    do_parse!(
+        operations: separated_list0!(many1!(line_ending), parse_assignment) >>
+        (Computation { operations} )
+    )
+);
 
 named!(parse_assignment<&str,Operation>,
     do_parse!(
@@ -28,11 +50,12 @@ named!(parse_assignment<&str,Operation>,
         operator: parse_operator >>
         space1 >>
         placement: parse_placement >>
+        space0 >>
         (Operation {
             name: identifier.into(),
-            kind: operator,
-            inputs: vec![],
-            placement: placement,
+            kind: operator.0,
+            inputs: operator.1,
+            placement,
         })
     )
 );
@@ -47,28 +70,35 @@ named!(parse_placement<&str,Placement>,
     )
 );
 
-named!(parse_operator<&str,Operator>,
+named!(parse_operator<&str,(Operator, Vec<String>)>,
     alt!(
-        preceded!(tag!("Identity"), identity) |
-        preceded!(tag!("Constant"), constant)
+        preceded!(tag!("Constant"), constant) |
+        preceded!(tag!("StdAdd"), stdadd)
         // TODO: rest of the definitions
     )
 );
 
-named!(identity<&str,Operator>,
-    do_parse!(
-        tag!("TODO: Fill this in") >>
-        (Operator::Identity(IdentityOp{ty: Ty::Float32TensorTy}))
-    )
-);
-
-named!(constant<&str,Operator>,
+named!(constant<&str,(Operator, Vec<String>)>,
     do_parse!(
         space0 >>
         tag!("(") >>
         x: take_until!(")") >>
         tag!(")") >>
-        (Operator::Constant(ConstantOp{value: Value::String(x.to_string())}))
+        (Operator::Constant(ConstantOp{value: Value::String(x.to_string())}), vec![])
+    )
+);
+
+named!(stdadd<&str,(Operator, Vec<String>)>,
+    do_parse!(
+        space0 >>
+        args: delimited!(
+            tag!("("),
+            separated_list0!(tag!(","), map!(ws(alphanumeric1), |s| s.to_string())),
+            tag!(")")) >>
+        (Operator::StdAdd(StdAddOp{
+            lhs: Ty::Float32TensorTy,
+            rhs: Ty::Float32TensorTy,
+            }), args)
     )
 );
 
@@ -86,4 +116,13 @@ mod tests {
             assert_eq!(format!("{:?}", op), "Operation { name: \"x\", kind: Constant(ConstantOp { value: String(\"[1.0]\") }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }");
         }
     }
+
+    #[test]
+    fn test_sample_computation() {
+        let parsed = parse_computation("let x = Constant([1.0]) @alice
+            let y = Constant([1.0]) @bob
+            let z = StdAdd(x, y) @carole");
+        println!("{:?}", parsed);
+    }
+
 }
