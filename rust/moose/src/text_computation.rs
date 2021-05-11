@@ -96,6 +96,13 @@ named!(parse_operator<&str,(Operator, Vec<String>)>,
     )
 );
 
+named!(argument_list<&str, Vec<String>>,
+    delimited!(
+        tag!("("),
+        separated_list0!(tag!(","), map!(ws(alphanumeric1), |s| s.to_string())),
+        tag!(")"))
+);
+
 named!(constant<&str,(Operator, Vec<String>)>,
     do_parse!(
         space0 >>
@@ -109,11 +116,7 @@ named!(constant<&str,(Operator, Vec<String>)>,
 
 named!(stdadd<&str,(Operator, Vec<String>)>,
     do_parse!(
-        space0 >>
-        args: delimited!(
-            tag!("("),
-            separated_list0!(tag!(","), map!(ws(alphanumeric1), |s| s.to_string())),
-            tag!(")")) >>
+        args: argument_list >>
         types: call!(parse_type_definition, 2) >>
         (Operator::StdAdd(StdAddOp{
             lhs: types.0[0],
