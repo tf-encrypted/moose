@@ -176,7 +176,10 @@ class LinearRegressionExample(parameterized.TestCase):
         return (my_comp, concrete_comp), (x_owner, y_owner, model_owner, replicated_plc)
 
     def test_linear_regression_eval(self):
-        (_, concrete_comp), placements = self._build_linear_regression_with_mse_example()
+        (
+            (_, concrete_comp),
+            placements,
+        ) = self._build_linear_regression_with_mse_example()
         x_owner, y_owner, model_owner, replicated_plc = placements
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
