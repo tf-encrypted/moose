@@ -261,11 +261,7 @@ class ReplicatedLoweringPass:
 
     def interpret_input_op(self, op):
         assert isinstance(op, fixed_dialect.RingEncodeOperation)
-        return RingTensor(
-            op=op,
-            computation=self.computation,
-            context=self.context,
-        )
+        return RingTensor(op=op, computation=self.computation, context=self.context,)
 
 
 def replicated_encode(x: StandardTensor, precision) -> RingTensor:
