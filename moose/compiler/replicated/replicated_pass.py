@@ -186,58 +186,27 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
             )
         )
 
-    def process_EncodeOperation(self, op, processed_inputs):
-        assert isinstance(op, fixed_dialect.EncodeOperation)
-        encode_op = self.computation.add_operation(
-            fixed_dialect.EncodeOperation(
-                name=self.context.get_fresh_name("encode"),
-                inputs={
-                    input_key: input_op.name
-                    for input_key, input_op in processed_inputs.items()
-                },
-                placement_name=op.placement_name,
-                precision=op.precision,
-                output_type=op.output_type,
-            )
-        )
+    def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
+        src_op = self.computation.operation(src_op_name)
+        dst_op = self.computation.operation(dst_op_name)
         share_op = self.computation.add_operation(
             rep_dialect.ShareOperation(
                 name=self.context.get_fresh_name("share"),
                 inputs={
-                    "value": encode_op.name,
-                    "setup": self.get_setup_op(encode_op.placement_name).name,
+                    "value": src_op_name,
+                    "setup": self.get_setup_op(dst_op.placement_name).name,
                 },
-                placement_name=encode_op.placement_name,
+                placement_name=dst_op.placement_name,
                 output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=encode_op.output_type.dtype
+                    dtype=src_op.output_type.dtype
                 ),
             )
         )
         return share_op
 
-    def process_DecodeOperation(self, op, processed_inputs):
-        assert isinstance(op, fixed_dialect.DecodeOperation)
-        decode_op = self.computation.add_operation(
-            fixed_dialect.DecodeOperation(
-                name=self.context.get_fresh_name("decode"),
-                inputs={
-                    input_key: input_op.name
-                    for input_key, input_op in processed_inputs.items()
-                },
-                placement_name=op.placement_name,
-                precision=op.precision,
-                output_type=op.output_type,
-            )
-        )
-        return decode_op
-
-    def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
-        return self.computation.operation(src_op_name)
-
     def process_outgoing_edge(self, src_op, input_key, dst_op_name):
-        assert isinstance(src_op, fixed_dialect.DecodeOperation)
         dst_op = self.computation.operation(dst_op_name)
-        src_input_op = self.computation.operation(src_op.inputs["value"])
+        assert isinstance(dst_op, fixed_dialect.DecodeOperation)
 
         cache_key = (src_op.name, dst_op.placement_name)
         if cache_key not in self.outgoing_edge_cache:
@@ -245,25 +214,16 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
                 rep_dialect.RevealOperation(
                     name=self.context.get_fresh_name("reveal"),
                     inputs={
-                        "value": src_input_op.name,
+                        "value": src_op.name,
                         "setup": self.get_setup_op(src_op.placement_name).name,
                     },
                     placement_name=src_op.placement_name,
                     recipient_name=dst_op.placement_name,
                     output_type=fixed_dialect.EncodedTensorType(
-                        dtype=src_input_op.output_type.dtype,
-                        precision=src_op.precision,
+                        dtype=src_op.output_type.dtype,
+                        precision=src_op.output_type.dtype.fractional_precision,
                     ),
                 )
             )
-            decode_op = self.computation.add_operation(
-                fixed_dialect.DecodeOperation(
-                    name=self.context.get_fresh_name("decode"),
-                    inputs={"value": reveal_op.name},
-                    placement_name=src_op.placement_name,
-                    precision=src_op.precision,
-                    output_type=src_op.output_type,
-                )
-            )
-            self.outgoing_edge_cache[cache_key] = decode_op
+            self.outgoing_edge_cache[cache_key] = reveal_op
         return self.outgoing_edge_cache[cache_key].name
