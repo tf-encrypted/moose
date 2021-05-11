@@ -216,27 +216,11 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)
         dst_op = self.computation.operation(dst_op_name)
-        assert isinstance(src_op, std_dialect.StandardOperation)
+        assert isinstance(src_op, fixedpoint_dialect.EncodeOperation)
 
         cache_key = (src_op.name, dst_op.placement_name)
         if cache_key not in self.incoming_edge_cache:
-            dtype = {
-                dtypes.float64: dtypes.fixed(8, 27),
-                dtypes.float32: dtypes.fixed(8, 27),
-                dtypes.int64: dtypes.fixed(60, 0),
-            }[src_op.output_type.dtype]
-            self.incoming_edge_cache[cache_key] = self.computation.add_operation(
-                fixedpoint_dialect.EncodeOperation(
-                    name=self.context.get_fresh_name("encode"),
-                    placement_name=dst_op.placement_name,
-                    inputs={"value": src_op.name},
-                    output_type=fixedpoint_dialect.EncodedTensorType(
-                        dtype=dtype, precision=dtype.fractional_precision
-                    ),
-                    precision=dtype.fractional_precision,
-                )
-            )
-
+            self.incoming_edge_cache[cache_key] = src_op
         return self.incoming_edge_cache[cache_key]
 
     def process_outgoing_edge(self, src_op, input_key, dst_op_name):
@@ -244,19 +228,6 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
 
         cache_key = (src_op.name,)
         if cache_key not in self.outgoing_edge_cache:
-            assert src_op.output_type.dtype.is_fixedpoint
-            if src_op.output_type.precision > 0:
-                dtype = dtypes.float64
-            else:
-                dtype = dtypes.int64
-            self.outgoing_edge_cache[cache_key] = self.computation.add_operation(
-                fixedpoint_dialect.DecodeOperation(
-                    name=self.context.get_fresh_name("decode"),
-                    placement_name=src_op.placement_name,
-                    inputs={"value": src_op.name},
-                    output_type=std_dialect.TensorType(dtype=dtype),
-                    precision=src_op.output_type.precision,
-                )
-            )
+            self.outgoing_edge_cache[cache_key] = src_op
 
         return self.outgoing_edge_cache[cache_key].name
