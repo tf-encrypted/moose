@@ -43,6 +43,14 @@ def r_squared(ss_res, ss_tot):
     return edsl.sub(edsl.constant(1.0, dtype=edsl.float32), residuals_ratio)
 
 
+def into_fixed(x):
+    return edsl.cast(x, dtype=edsl.fixed(8, 27))
+
+
+def from_fixed(x):
+    return edsl.cast(x, dtype=edsl.float32)
+
+
 class LinearRegressionExample(parameterized.TestCase):
     def _build_linear_regression_example(self, compiler_passes=None):
         x_owner = edsl.host_placement(name="x-owner")
@@ -79,12 +87,15 @@ class LinearRegressionExample(parameterized.TestCase):
                 X_b = edsl.concatenate([reshaped_bias, X], axis=1)
                 A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
                 B = edsl.dot(A, edsl.transpose(X_b))
+                X_b = into_fixed(X_b)
+                B = into_fixed(B)
 
             with y_owner:
                 y_true = edsl.atleast_2d(
                     edsl.load(y_uri, dtype=edsl.float32), to_column_vector=True
                 )
                 totals_ss = ss_tot(y_true)
+                y_true = into_fixed(y_true)
 
             with replicated_plc:
                 w = edsl.dot(B, y_true)
@@ -93,9 +104,12 @@ class LinearRegressionExample(parameterized.TestCase):
                 residuals_ss = ss_res(y_pred, y_true)
 
             with model_owner:
+                residuals_ss = from_fixed(residuals_ss)
                 rsquared_result = r_squared(residuals_ss, totals_ss)
 
             with model_owner:
+                w = from_fixed(w)
+                mse_result = from_fixed(mse_result)
                 res = (
                     edsl.save(w_uri, w),
                     edsl.save(mse_uri, mse_result),

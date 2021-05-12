@@ -3,10 +3,12 @@ import unittest
 from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
+from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation import dtypes
+from moose.computation import fixedpoint as fixedpoint_ops
 from moose.computation import standard as standard_ops
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
@@ -28,6 +30,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_placement(HostPlacement(name="dave"))
         comp.add_placement(HostPlacement(name="eric"))
+        fp_dtype = dtypes.fixed(8, 27)
 
         comp.add_operation(
             standard_ops.ConstantOperation(
@@ -36,6 +39,17 @@ class ReplicatedTest(parameterized.TestCase):
                 value=1,
                 placement_name="alice",
                 output_type=TensorType(dtype=dtypes.float32),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="alice_encode",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
             )
         )
         comp.add_operation(
@@ -48,17 +62,37 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="bob_encode",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.AddOperation(
                 name="add",
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                inputs={"lhs": "alice_encode", "rhs": "bob_encode"},
                 placement_name="rep",
+                output_type=TensorType(dtype=fp_dtype),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_add_decode",
+                inputs={"value": "add"},
+                placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float32),
+                precision=fp_dtype.fractional_precision,
             )
         )
         comp.add_operation(
             standard_ops.AddOperation(
                 name="add_dave",
-                inputs={"lhs": "add", "rhs": "add"},
+                inputs={"lhs": "dave_add_decode", "rhs": "dave_add_decode"},
                 placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float32),
             )
@@ -72,9 +106,18 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_add_decode",
+                inputs={"value": "add"},
+                placement_name="eric",
+                output_type=TensorType(dtype=dtypes.float32),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.AddOperation(
                 name="add_eric",
-                inputs={"lhs": "add", "rhs": "add"},
+                inputs={"lhs": "eric_add_decode", "rhs": "eric_add_decode"},
                 placement_name="eric",
                 output_type=TensorType(dtype=dtypes.float32),
             )
@@ -92,6 +135,7 @@ class ReplicatedTest(parameterized.TestCase):
             passes=[
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
+                HostRingLoweringPass(),
                 ReplicatedLoweringPass(),
             ]
         )
@@ -114,6 +158,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_placement(HostPlacement(name="dave"))
         comp.add_placement(HostPlacement(name="eric"))
+        fp_dtype = dtypes.fixed(8, 27)
 
         comp.add_operation(
             standard_ops.ConstantOperation(
@@ -134,17 +179,48 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="alice_encode",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="bob_encode",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.MulOperation(
                 name="secure_mul",
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                inputs={"lhs": "alice_encode", "rhs": "bob_encode"},
                 placement_name="rep",
+                output_type=TensorType(dtype=fp_dtype),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_decode",
+                inputs={"value": "secure_mul"},
+                placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float32),
+                precision=fp_dtype.fractional_precision,
             )
         )
         comp.add_operation(
             standard_ops.AddOperation(
                 name="add_dave",
-                inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
+                inputs={"lhs": "dave_decode", "rhs": "dave_decode"},
                 placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float32),
             )
@@ -158,9 +234,18 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_decode",
+                inputs={"value": "secure_mul"},
+                placement_name="eric",
+                output_type=TensorType(dtype=dtypes.float32),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.AddOperation(
                 name="add_eric",
-                inputs={"lhs": "secure_mul", "rhs": "secure_mul"},
+                inputs={"lhs": "eric_decode", "rhs": "eric_decode"},
                 placement_name="eric",
                 output_type=TensorType(dtype=dtypes.float32),
             )
@@ -178,6 +263,7 @@ class ReplicatedTest(parameterized.TestCase):
             passes=[
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
+                HostRingLoweringPass(),
                 ReplicatedLoweringPass(),
             ]
         )
@@ -199,6 +285,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_placement(HostPlacement(name="dave"))
         comp.add_placement(HostPlacement(name="eric"))
+        fp_dtype = dtypes.fixed(8, 27)
 
         comp.add_operation(
             standard_ops.ConstantOperation(
@@ -219,17 +306,48 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="alice_encode",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="bob_encode",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.DotOperation(
                 name="secure_dot",
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                inputs={"lhs": "alice_encode", "rhs": "bob_encode"},
                 placement_name="rep",
+                output_type=TensorType(dtype=fp_dtype),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_decode",
+                inputs={"value": "secure_dot"},
+                placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float32),
+                precision=fp_dtype.fractional_precision,
             )
         )
         comp.add_operation(
             standard_ops.AddOperation(
                 name="add_dave",
-                inputs={"lhs": "secure_dot", "rhs": "secure_dot"},
+                inputs={"lhs": "dave_decode", "rhs": "dave_decode"},
                 placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float32),
             )
@@ -243,9 +361,18 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_decode",
+                inputs={"value": "secure_dot"},
+                placement_name="eric",
+                output_type=TensorType(dtype=dtypes.float32),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.AddOperation(
                 name="add_eric",
-                inputs={"lhs": "secure_dot", "rhs": "secure_dot"},
+                inputs={"lhs": "eric_decode", "rhs": "eric_decode"},
                 placement_name="eric",
                 output_type=TensorType(dtype=dtypes.float32),
             )
@@ -263,6 +390,7 @@ class ReplicatedTest(parameterized.TestCase):
             passes=[
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
+                HostRingLoweringPass(),
                 ReplicatedLoweringPass(),
             ]
         )
@@ -285,6 +413,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_placement(HostPlacement(name="dave"))
         comp.add_placement(HostPlacement(name="eric"))
+        fp_dtype = dtypes.fixed(8, 27)
 
         comp.add_operation(
             standard_ops.ConstantOperation(
@@ -296,18 +425,38 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="alice_encode",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.MeanOperation(
                 name="secure_mean",
-                inputs={"x": "alice_input"},
+                inputs={"x": "alice_encode"},
                 axis=None,
                 placement_name="rep",
+                output_type=TensorType(dtype=fp_dtype),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_decode",
+                inputs={"value": "secure_mean"},
+                placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float32),
+                precision=fp_dtype.fractional_precision,
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_0",
-                inputs={"value": "secure_mean"},
+                inputs={"value": "dave_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -317,6 +466,7 @@ class ReplicatedTest(parameterized.TestCase):
             passes=[
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
+                HostRingLoweringPass(),
                 ReplicatedLoweringPass(),
             ]
         )
