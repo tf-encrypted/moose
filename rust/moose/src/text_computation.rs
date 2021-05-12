@@ -6,7 +6,7 @@ use nom::{
     multi::{many1, separated_list0},
     error::{make_error, ErrorKind, ParseError},
     branch::{alt},
-    combinator::{all_consuming, opt, map},
+    combinator::{all_consuming, opt, map, verify},
     Err::Error,
     IResult,
     sequence::{delimited, preceded, tuple}
@@ -145,11 +145,11 @@ fn constant<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str,
 
 fn stdadd<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, types) = parse_type_definition(input, 2)?;
+    let (input, (args_types, _result_type)) = parse_type_definition(input, 2)?;
     Ok((input,
         (Operator::StdAdd(StdAddOp{
-            lhs: types.0[0],
-            rhs: types.0[1],
+            lhs: args_types[0],
+            rhs: args_types[1],
         }),
         args)
     ))
@@ -158,18 +158,14 @@ fn stdadd<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (
 // : (Float32Tensor, Float32Tensor) -> Float32Tensor
 fn parse_type_definition<'a, E: 'a + ParseError<&'a str>>(input: &'a str, arg_count: usize) -> IResult<&'a str, (Vec<Ty>, Ty), E> {
     let (input, _) = ws(tag(":"))(input)?;
-    let (input, args_types) = delimited(
+    let (input, args_types) = verify(delimited(
         tag("("),
         separated_list0(tag(","), ws(parse_type)),
-        tag(")"))(input)?;
+        tag(")")), |v: &Vec<Ty>| v.len() >= arg_count)(input)?;
     let (input, _) = ws(tag("->"))(input)?;
     let (input, result_type) = ws(parse_type)(input)?;
 
-    if args_types.len() < arg_count {
-        Err(Error(make_error(input, ErrorKind::Tag))) // TODO: Custom error message
-    } else {
-        Ok((input, (args_types, result_type)))
-    }
+    Ok((input, (args_types, result_type)))
 }
 
 fn parse_type_definition0<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (Vec<Ty>, Ty), E> {
