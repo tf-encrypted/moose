@@ -95,6 +95,8 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 output_type=mul_output_type,
             )
         )
+        if mul_output_type.precision == 0:
+            return mul_op
 
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
             dtype=mul_output_type.dtype, precision=mul_output_type.precision // 2,
@@ -133,6 +135,9 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 output_type=dot_output_type,
             )
         )
+        if dot_output_type.precision == 0:
+            return dot_op
+
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
             dtype=dot_output_type.dtype, precision=dot_output_type.precision // 2,
         )
@@ -182,6 +187,9 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 output_type=mean_output_type,
             )
         )
+        if mean_output_type.precision == 0:
+            return mean_op
+
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
             dtype=mean_output_type.dtype, precision=mean_output_type.precision // 2,
         )
