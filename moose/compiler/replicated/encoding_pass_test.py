@@ -534,18 +534,6 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         expected_comp.add_operation(
-            fixedpoint_ops.TruncPrOperation(
-                name="trunc_pr_0",
-                inputs={"value": "fixed_mul_0"},
-                precision=0,
-                placement_name="rep",
-                output_type=EncodedTensorType(
-                    dtype=expected_encoded_dtype,
-                    precision=expected_encoded_dtype.fractional_precision,
-                ),
-            )
-        )
-        expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
                 name="dave_add_decode",
                 inputs={"value": "fixed_add_0"},
@@ -582,7 +570,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
                 name="dave_mul_decode",
-                inputs={"value": "trunc_pr_0"},
+                inputs={"value": "fixed_mul_0"},
                 placement_name="dave",
                 output_type=TensorType(dtype=dtypes.int64),
                 precision=0,
@@ -591,7 +579,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
                 name="eric_mul_decode",
-                inputs={"value": "trunc_pr_0"},
+                inputs={"value": "fixed_mul_0"},
                 placement_name="eric",
                 output_type=TensorType(dtype=dtypes.int64),
                 precision=0,

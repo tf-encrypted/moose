@@ -3,12 +3,11 @@ import unittest
 from absl.testing import parameterized
 
 from moose.compiler.compiler import Compiler
-from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
-from moose.computation import fixedpoint as fixedpoint_ops
 from moose.computation import dtypes
 from moose.computation import fixedpoint as fixed_dialect
+from moose.computation import fixedpoint as fixedpoint_ops
 from moose.computation import replicated as rep_dialect
 from moose.computation import standard as std_dialect
 from moose.computation.base import Computation
@@ -193,7 +192,6 @@ class ReplicatedTest(parameterized.TestCase):
                 precision=fp_dtype.fractional_precision,
             )
         )
-
 
         expected_comp.add_operation(
             rep_dialect.SetupOperation(
