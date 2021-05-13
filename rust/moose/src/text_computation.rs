@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use nom::{
     character::complete::{space0, alphanumeric0, alphanumeric1, line_ending, multispace1, char, one_of, digit1},
     bytes::complete::{escaped, tag, take_until, take_while_m_n, is_not},
-    multi::{fold_many0, many0, many1, separated_list0},
+    multi::{fold_many0, fill, many0, many1, separated_list0},
     number::complete::{double, float},
     error::{make_error, ErrorKind, ParseError, FromExternalError},
     branch::{alt},
@@ -147,8 +147,8 @@ fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a st
 
 fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Value, E> {
     alt((
-        map(tuple((parse_hex_16, type_literal("Seed"))), |(v, _)| Value::Seed(Seed(v))),
-        map(tuple((parse_hex_16, type_literal("PrfKey"))), |(v, _)| Value::PrfKey(PrfKey(v))),
+        map(tuple((parse_hex, type_literal("Seed"))), |(v, _)| Value::Seed(Seed(v))),
+        map(tuple((parse_hex, type_literal("PrfKey"))), |(v, _)| Value::PrfKey(PrfKey(v))),
         map(tuple((float, type_literal("Float32"))), |(x, _)| Value::Float32(x)),
         map(tuple((double, opt(type_literal("Float64")))), |(x, _)| Value::Float64(x)),
         map(tuple((string, opt(type_literal("String")))), |(s, _)| Value::String(s)),
@@ -191,16 +191,23 @@ fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str>>(input: &'a s
     map_res(digit1, |s: &str| s.parse::<O>())(input).map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
-fn parse_hex_16<'a, E>(input: &'a str) -> IResult<&'a str, [u8; 16], E>
+fn parse_hex_u8<'a, E>(input: &'a str) -> IResult<&'a str, u8, E>
 where
   E: ParseError<&'a str>,
 {
-    let parse_hex = take_while_m_n(1, 2, |c: char| c.is_ascii_hexdigit());
-    nom::multi::many_m_n(16, 16, map_res(parse_hex, move |hex| u8::from_str_radix(hex, 16)))(input)
-        .map(|(rest, vec)| (rest, vec.try_into().unwrap()) ) // The size should be enforced by the line above, so a plain `unwrap` is ok here.
+    let parse_hex = take_while_m_n(2, 2, |c: char| c.is_ascii_hexdigit());
+    map_res(parse_hex, move |hex| u8::from_str_radix(hex, 16))(input)
         .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
+fn parse_hex<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
+where
+  E: ParseError<&'a str>,
+{
+    let mut buf: [u8; N] = [0; N];
+    let (rest, ()) = fill(parse_hex_u8, &mut buf)(input)?;
+    Ok((rest, buf))
+}
 
 // From nom::recepies
 fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
