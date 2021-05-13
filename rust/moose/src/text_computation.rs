@@ -1,21 +1,19 @@
 use crate::computation::*;
 use std::convert::TryFrom;
 use nom::{
-    character::complete::{space0, alphanumeric0, alphanumeric1, line_ending, multispace1, char, one_of, digit1},
-    bytes::complete::{escaped, tag, take_until, take_while_m_n, is_not},
-    multi::{fold_many0, fill, many0, many1, separated_list0},
+    character::complete::{alphanumeric1, char, digit1, line_ending, multispace1, space0},
+    bytes::complete::{tag, take_while_m_n, is_not},
+    multi::{fold_many0, fill, many1, separated_list0},
     number::complete::{double, float},
-    error::{make_error, ErrorKind, ParseError, FromExternalError},
+    error::{make_error, ErrorKind, ParseError},
     branch::{alt},
-    combinator::{all_consuming, cut, opt, map, not, verify, map_opt, map_res, value},
-    Err::{Error, Failure},
+    combinator::{all_consuming, cut, map, map_opt, map_res, opt, value, verify},
+    Err::{Error},
     IResult,
-    sequence::{delimited, preceded, terminated, tuple}
+    sequence::{delimited, preceded, tuple}
 };
-use crate::standard::{Shape,};
+use crate::standard::{Shape};
 use crate::prim::{Nonce, PrfKey, Seed};
-use std::convert::TryInto;
-
 
 impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
@@ -30,13 +28,16 @@ impl TryFrom<&str> for Computation {
 }
 
 
-
+/// Parse the computation line by line
 fn parse_computation<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Computation, E> {
     all_consuming(map(separated_list0(many1(line_ending), parse_assignment),
         |operations| Computation { operations}
     ))(input)
 }
 
+/// Parse an individual assignment in the form of
+/// 
+/// `Identifier = Operation : TypeDefinition @Placement`
 fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Operation, E> {
     let (input, identifier) = ws(alphanumeric1)(input)?;
     let (input, _) = tag("=")(input)?;
@@ -52,6 +53,8 @@ fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<
     ))
 }
 
+/// Parse placement
+/// TODO: Support all placements
 fn parse_placement<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Placement, E> {
     map(
         tuple((tag("@"), alphanumeric1)),
@@ -62,6 +65,7 @@ fn parse_placement<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&
     )(input)
 }
 
+/// Parse operator - maps names to structs.
 fn parse_operator<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (Operator, Vec<String>), E> {
     alt((
         preceded(tag("Constant"), cut(constant)),
@@ -70,21 +74,23 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'
     ))(input)
 }
 
+/// Parses the Constant
 fn constant<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, x) = delimited(
         tag("("),
         ws(value_literal),
         tag(")"))(input)?;
-    let (input, _optional_types) = opt(type_definition0)(input)?;
+    let (input, _optional_types) = opt(type_definition(0))(input)?;
 
     Ok((input,
         (Operator::Constant(ConstantOp{value: x}), vec![])
     ))
 }
 
+/// Parses StdAdd
 fn stdadd<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, (args_types, _result_type)) = type_definition(input, 2)?;
+    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
     Ok((input,
         (Operator::StdAdd(StdAddOp{
             lhs: args_types[0],
@@ -94,6 +100,9 @@ fn stdadd<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (
     ))
 }
 
+/// Parses list of arguments in the form of
+/// 
+/// `(name, name, name)`
 fn argument_list<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Vec<String>, E> {
     delimited(
         tag("("),
@@ -101,23 +110,26 @@ fn argument_list<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a
         tag(")"))(input)
 }
 
-// : (Float32Tensor, Float32Tensor) -> Float32Tensor
-fn type_definition<'a, E: 'a + ParseError<&'a str>>(input: &'a str, arg_count: usize) -> IResult<&'a str, (Vec<Ty>, Ty), E> {
-    let (input, _) = ws(tag(":"))(input)?;
-    let (input, args_types) = verify(delimited(
-        tag("("),
-        separated_list0(tag(","), ws(parse_type)),
-        tag(")")), |v: &Vec<Ty>| v.len() >= arg_count)(input)?;
-    let (input, _) = ws(tag("->"))(input)?;
-    let (input, result_type) = ws(parse_type)(input)?;
+/// Parses operator's type definition in the form of
+/// 
+/// `: (Float32Tensor, Float32Tensor) -> Float32Tensor`
+/// 
+/// * `arg_count` - the number of required arguments
+fn type_definition<'a, E: 'a + ParseError<&'a str>>(arg_count: usize) -> impl FnMut(&'a str) -> IResult<&'a str, (Vec<Ty>, Ty), E> {
+    move |input: &'a str| {
+        let (input, _) = ws(tag(":"))(input)?;
+        let (input, args_types) = verify(delimited(
+            tag("("),
+            separated_list0(tag(","), ws(parse_type)),
+            tag(")")), |v: &Vec<Ty>| v.len() >= arg_count)(input)?;
+        let (input, _) = ws(tag("->"))(input)?;
+        let (input, result_type) = ws(parse_type)(input)?;
 
-    Ok((input, (args_types, result_type)))
+        Ok((input, (args_types, result_type)))
+    }
 }
 
-fn type_definition0<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, (Vec<Ty>, Ty), E> {
-    type_definition(input, 0)
-}
-
+/// Parse individual type's literal
 fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
@@ -145,6 +157,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a st
     }
 }
 
+/// Parse literal value.
 fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Value, E> {
     alt((
         map(tuple((parse_hex, type_literal("Seed"))), |(v, _)| Value::Seed(Seed(v))),
@@ -169,6 +182,7 @@ fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a
     ))(input)
 }
 
+/// Expects the specified type literal to be present.
 fn type_literal<'a, E: 'a + ParseError<&'a str>>(expected_type: &'a str) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str, E> {
     move |input: &'a str| {
         let (input, _) = ws(tag(":"))(input)?;
@@ -176,6 +190,7 @@ fn type_literal<'a, E: 'a + ParseError<&'a str>>(expected_type: &'a str) -> impl
     }
 }
 
+/// Parses the vector of items, using the supplied innter parser.
 fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, E>
   where
   F: Fn(&'a str) -> IResult<&'a str, O, E>,
@@ -187,10 +202,14 @@ fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str>>(inner: F) -> impl FnMut(&'a
     )
 }
 
+/// Parse integer (or anything implementing FromStr from decimal digits)
 fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, O, E> {
     map_res(digit1, |s: &str| s.parse::<O>())(input).map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
+/// Parse a single byte, writte as two hex character.
+/// 
+/// Leading '0' is mandatory for bytes 0x00 - 0x0F.
 fn parse_hex_u8<'a, E>(input: &'a str) -> IResult<&'a str, u8, E>
 where
   E: ParseError<&'a str>,
@@ -200,6 +219,7 @@ where
         .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
+/// Parse a hux dump, without any separators. Errors out if there is not enough data to fill an array of length N.
 fn parse_hex<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
 where
   E: ParseError<&'a str>,
@@ -209,7 +229,8 @@ where
     Ok((rest, buf))
 }
 
-// From nom::recepies
+/// From nom::recepies
+/// Wraps the innner parser in optional spaces.
 fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
   where
   F: Fn(&'a str) -> IResult<&'a str, O, E>,
@@ -221,10 +242,8 @@ fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> 
   )
 }
 
-// From nom examples (MIT licesnse, so it is ok)
-/// Parse an escaped character: \n, \t, \r, etc.
-/// Does not support unicode escaping as in \u{00AC} 
-
+/// Parse an escaped character: \n, \t, \r, \u{00AC}, etc.
+/// From nom examples (MIT licesnse, so it is ok)
 fn parse_hex_u32<'a, E>(input: &'a str) -> IResult<&'a str, u32, E>
 where
   E: ParseError<&'a str>,
@@ -238,6 +257,8 @@ where
         .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
+/// Parses a single unicode character.
+/// From nom examples (MIT licesnse, so it is ok)
 fn parse_unicode<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
   E: ParseError<&'a str>,
@@ -245,7 +266,8 @@ where
   map_opt(parse_hex_u32, |value| std::char::from_u32(value))(input)
 }
 
-
+/// Parses any supported escaped character
+/// From nom examples (MIT licesnse, so it is ok)
 fn parse_escaped_char<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
   E: ParseError<&'a str>,
@@ -268,6 +290,7 @@ where
 
 /// Parse a backslash, followed by any amount of whitespace. This is used later
 /// to discard any escaped whitespace.
+/// From nom examples (MIT licesnse, so it is ok)
 fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(
   input: &'a str,
 ) -> IResult<&'a str, &'a str, E> {
@@ -275,6 +298,7 @@ fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(
 }
 
 /// Parse a non-empty block of text that doesn't include \ or "
+/// From nom examples (MIT licesnse, so it is ok)
 fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
   let not_quote_slash = is_not("\"\\");
   verify(not_quote_slash, |s: &str| !s.is_empty())(input)
@@ -283,6 +307,7 @@ fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str,
 /// A string fragment contains a fragment of a string being parsed: either
 /// a non-empty Literal (a series of non-escaped characters), a single
 /// parsed escaped character, or a block of escaped whitespace.
+/// From nom examples (MIT licesnse, so it is ok)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StringFragment<'a> {
   Literal(&'a str),
@@ -292,6 +317,7 @@ enum StringFragment<'a> {
 
 /// Combine parse_literal, parse_escaped_whitespace, and parse_escaped_char
 /// into a StringFragment.
+/// From nom examples (MIT licesnse, so it is ok)
 fn parse_fragment<'a, E>(input: &'a str) -> IResult<&'a str, StringFragment<'a>, E>
 where
   E: ParseError<&'a str>,
@@ -305,6 +331,7 @@ where
 
 /// Parse a string. Use a loop of parse_fragment and push all of the fragments
 /// into an output string.
+/// From nom examples (MIT licesnse, so it is ok)
 fn string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
   E: ParseError<&'a str>,
@@ -328,6 +355,7 @@ where
 mod tests {
     use super::*;
     use nom::error::{convert_error, VerboseError};
+    use nom::Err::{Failure};
 
     #[test]
     fn test_value_literal() -> Result<(), anyhow::Error> {
@@ -359,42 +387,39 @@ mod tests {
     }
 
     #[test]
-    fn test_type_parsing() {
-        let parsed_type = parse_type::<(&str, ErrorKind)>("Unit");
-        let parsed = type_definition::<(&str, ErrorKind)>(": (Float32Tensor, Float32Tensor) -> Float32Tensor", 0);
-        println!("{:?} # {:?}", parsed_type, parsed);
+    fn test_type_parsing() -> Result<(), anyhow::Error> {
+        let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("Unit")?;
+        assert_eq!(parsed_type, Ty::UnitTy);
+        let (_, parsed) = type_definition::<(&str, ErrorKind)>(0)(": (Float32Tensor, Float64Tensor) -> Uint16Tensor")?;
+        assert_eq!(parsed, (vec!(Ty::Float32TensorTy, Ty::Float64TensorTy), Ty::Uint16TensorTy));
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
         if let Err(Error(e)) = parsed {
             println!("Error! {}", convert_error("blah", e));
         }
+        Ok(())
     }
 
     #[test]
-    fn test_constant() {
-        let parsed = parse_assignment::<(&str, ErrorKind)>("x = Constant(\"[1.0]\"): () -> Float32Tensor @alice");
-        println!("{:?}", parsed);
-        if let Ok((_, op)) = parsed {
-            assert_eq!(op.name, "x");
-            // TODO: a very temporary assert
-            assert_eq!(format!("{:?}", op), "Operation { name: \"x\", kind: Constant(ConstantOp { value: String(\"[1.0]\") }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }");
-        }
+    fn test_constant() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>("x = Constant([1.0] : Float32Tensor): () -> Float32Tensor @alice")?;
+        assert_eq!(op.name, "x");
+        assert_eq!(format!("{:?}", op), "Operation { name: \"x\", kind: Constant(ConstantOp { value: Float32Tensor(StandardTensor([1.0], shape=[1], strides=[1], layout=CFcf (0xf), dynamic ndim=1)) }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }");
+        Ok(())
     }
 
     #[test]
-    fn test_stdadd() {
-        let parsed = parse_assignment::<(&str, ErrorKind)>("z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @carole");
-        println!("{:?}", parsed);
-        if let Ok((_, op)) = parsed {
-            assert_eq!(op.name, "z");
-        }
+    fn test_stdadd() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>("z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @carole")?;
+        assert_eq!(op.name, "z");
+        Ok(())
     }
 
     #[test]
     fn test_stdadd_err() {
         let data = "z = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @carole";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
-        if let Err(Error(e)) = parsed {
+        if let Err(Failure(e)) = parsed {
             println!("Error! {}", convert_error(data, e));
         }
     }
@@ -402,12 +427,13 @@ mod tests {
 
     #[test]
     fn test_sample_computation() {
-        let parsed = parse_computation::<(&str, ErrorKind)>("x = Constant([1.0]) @alice
-            y = Constant([1.0]): () -> Float32Tensor @bob
+        let parsed = parse_computation::<(&str, ErrorKind)>("x = Constant([1.0]: Float32Tensor) @alice
+            y = Constant([1.0]: Float32Tensor): () -> Float32Tensor @bob
             z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @carole");
         if let Ok((_, comp)) = parsed {
             println!("Computation {:#?}", comp);
         }
+        // TODO: Asserts
     }
 
     #[test]
@@ -420,6 +446,7 @@ mod tests {
         if let Err(Failure(e)) = parsed {
             println!("Error!\n{}", convert_error(data, e));
         }
+        // TODO: Asserts
     }
 
 }
