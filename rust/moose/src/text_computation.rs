@@ -12,6 +12,10 @@ use nom::{
     IResult,
     sequence::{delimited, preceded, terminated, tuple}
 };
+use crate::standard::{Shape,};
+use crate::prim::{Nonce, PrfKey, Seed};
+use std::convert::TryInto;
+
 
 impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
@@ -143,11 +147,25 @@ fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a st
 
 fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Value, E> {
     alt((
+        map(tuple((parse_hex_16, type_literal("Seed"))), |(v, _)| Value::Seed(Seed(v))),
+        map(tuple((parse_hex_16, type_literal("PrfKey"))), |(v, _)| Value::PrfKey(PrfKey(v))),
         map(tuple((float, type_literal("Float32"))), |(x, _)| Value::Float32(x)),
         map(tuple((double, opt(type_literal("Float64")))), |(x, _)| Value::Float64(x)),
         map(tuple((string, opt(type_literal("String")))), |(s, _)| Value::String(s)),
         map(tuple((vector(parse_int), type_literal("Ring64Tensor"))), |(v, _)| Value::Ring64Tensor(v.into())),
         map(tuple((vector(parse_int), type_literal("Ring128Tensor"))), |(v, _)| Value::Ring128Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Shape"))), |(v, _): (Vec<usize>, &str)| Value::Shape(Shape(v))),
+        map(tuple((vector(parse_int), type_literal("Nonce"))), |(v, _)| Value::Nonce(Nonce(v))),
+        map(tuple((vector(parse_int), type_literal("Int8Tensor"))), |(v, _)| Value::Int8Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Int16Tensor"))), |(v, _)| Value::Int16Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Int32Tensor"))), |(v, _)| Value::Int32Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Int64Tensor"))), |(v, _)| Value::Int64Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Uint8Tensor"))), |(v, _)| Value::Uint8Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Uint16Tensor"))), |(v, _)| Value::Uint16Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Uint32Tensor"))), |(v, _)| Value::Uint32Tensor(v.into())),
+        map(tuple((vector(parse_int), type_literal("Uint64Tensor"))), |(v, _)| Value::Uint64Tensor(v.into())),
+        map(tuple((vector(float), type_literal("Float32Tensor"))), |(v, _)| Value::Float32Tensor(v.into())),
+        map(tuple((vector(double), type_literal("Float64Tensor"))), |(v, _)| Value::Float64Tensor(v.into())),
     ))(input)
 }
 
@@ -172,6 +190,17 @@ fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str>>(inner: F) -> impl FnMut(&'a
 fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, O, E> {
     map_res(digit1, |s: &str| s.parse::<O>())(input).map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
+
+fn parse_hex_16<'a, E>(input: &'a str) -> IResult<&'a str, [u8; 16], E>
+where
+  E: ParseError<&'a str>,
+{
+    let parse_hex = take_while_m_n(1, 2, |c: char| c.is_ascii_hexdigit());
+    nom::multi::many_m_n(16, 16, map_res(parse_hex, move |hex| u8::from_str_radix(hex, 16)))(input)
+        .map(|(rest, vec)| (rest, vec.try_into().unwrap()) ) // The size should be enforced by the line above, so a plain `unwrap` is ok here.
+        .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
+}
+
 
 // From nom::recepies
 fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(inner: F) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -313,6 +342,12 @@ mod tests {
         assert_eq!(parsed_ring64_tensor, Value::Ring64Tensor(vec![1, 2, 3].into()));
         let (_, parsed_ring128_tensor) = value_literal::<(&str, ErrorKind)>("[1,2,3] : Ring128Tensor")?;
         assert_eq!(parsed_ring128_tensor, Value::Ring128Tensor(vec![1, 2, 3].into()));
+        let (_, parsed_shape) = value_literal::<(&str, ErrorKind)>("[1,2,3] : Shape")?;
+        assert_eq!(parsed_shape, Value::Shape(Shape(vec![1, 2, 3])));
+        let (_, parsed_u8_tensor) = value_literal::<(&str, ErrorKind)>("[1,2,3] : Uint8Tensor")?;
+        assert_eq!(parsed_u8_tensor, Value::Uint8Tensor(vec![1, 2, 3].into()));
+        let (_, parsed_seed) = value_literal::<(&str, ErrorKind)>("529c2fc9bf573d077f45f42b19cfb8d4 : Seed")?;
+        assert_eq!(parsed_seed, Value::Seed(Seed([0x52, 0x9c, 0x2f, 0xc9, 0xbf, 0x57, 0x3d, 0x07, 0x7f, 0x45, 0xf4, 0x2b, 0x19, 0xcf, 0xb8, 0xd4])));
         Ok(())
     }
 
