@@ -23,8 +23,20 @@ def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
     return x_data, y_data
 
 
+def into_fixed(x):
+    return edsl.cast(x, dtype=edsl.fixed(8, 27))
+
+
+def from_fixed(x):
+    return edsl.cast(x, dtype=edsl.float32)
+
+
 def mse(y_pred, y_true):
     return edsl.mean(edsl.square(edsl.sub(y_pred, y_true)), axis=0)
+
+
+def mape(y_pred, y_true, y_true_inv):
+    return edsl.abs(edsl.mul(edsl.sub(y_pred, y_true), y_true_inv))
 
 
 def ss_res(y_pred, y_true):
@@ -43,16 +55,8 @@ def r_squared(ss_res, ss_tot):
     return edsl.sub(edsl.constant(1.0, dtype=edsl.float32), residuals_ratio)
 
 
-def into_fixed(x):
-    return edsl.cast(x, dtype=edsl.fixed(8, 27))
-
-
-def from_fixed(x):
-    return edsl.cast(x, dtype=edsl.float32)
-
-
 class LinearRegressionExample(parameterized.TestCase):
-    def _build_linear_regression_example(self, compiler_passes=None):
+    def _build_linear_regression_example(self, metric_name="mse", compiler_passes=None):
         x_owner = edsl.host_placement(name="x-owner")
         y_owner = edsl.host_placement(name="y-owner")
         model_owner = edsl.host_placement(name="model-owner")
@@ -65,10 +69,9 @@ class LinearRegressionExample(parameterized.TestCase):
             x_uri: edsl.Argument(placement=x_owner, vtype=StringType()),
             y_uri: edsl.Argument(placement=y_owner, vtype=StringType()),
             w_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
-            mse_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
+            metric_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
             rsquared_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
         ):
-
             with x_owner:
                 X = edsl.atleast_2d(
                     edsl.load(x_uri, dtype=edsl.float32), to_column_vector=True
@@ -94,13 +97,20 @@ class LinearRegressionExample(parameterized.TestCase):
                 y_true = edsl.atleast_2d(
                     edsl.load(y_uri, dtype=edsl.float32), to_column_vector=True
                 )
+                if metric_name == "mape":
+                    y_true_inv = into_fixed(
+                        edsl.div(edsl.constant(1.0, dtype=edsl.float32), y_true)
+                    )
                 totals_ss = ss_tot(y_true)
                 y_true = into_fixed(y_true)
 
             with replicated_plc:
                 w = edsl.dot(B, y_true)
                 y_pred = edsl.dot(X_b, w)
-                mse_result = mse(y_pred, y_true)
+                if metric_name == "mape":
+                    metric_result = mape(y_pred, y_true, y_true_inv)
+                else:
+                    metric_result = mse(y_pred, y_true)
                 residuals_ss = ss_res(y_pred, y_true)
 
             with model_owner:
@@ -109,10 +119,10 @@ class LinearRegressionExample(parameterized.TestCase):
 
             with model_owner:
                 w = from_fixed(w)
-                mse_result = from_fixed(mse_result)
+                metric_result = from_fixed(metric_result)
                 res = (
                     edsl.save(w_uri, w),
-                    edsl.save(mse_uri, mse_result),
+                    edsl.save(metric_uri, metric_result),
                     edsl.save(rsquared_uri, rsquared_result),
                 )
 
@@ -121,8 +131,11 @@ class LinearRegressionExample(parameterized.TestCase):
         concrete_comp = edsl.trace_and_compile(my_comp, compiler_passes=compiler_passes)
         return (my_comp, concrete_comp), (x_owner, y_owner, model_owner, replicated_plc)
 
-    def test_linear_regression_eval(self):
-        (_, concrete_comp), placements = self._build_linear_regression_example()
+    @parameterized.parameters(["mse", "mape"])
+    def test_linear_regression_eval(self, metric_name):
+        ((_, concrete_comp), placements,) = self._build_linear_regression_example(
+            metric_name
+        )
         x_owner, y_owner, model_owner, replicated_plc = placements
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
@@ -150,7 +163,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 "x_uri": "x_data",
                 "y_uri": "y_data",
                 "w_uri": "regression_weights",
-                "mse_uri": "mse_result",
+                "metric_uri": "metric_result",
                 "rsquared_uri": "rsquared_result",
             },
         )
