@@ -1151,7 +1151,7 @@ mod tests {
         mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @alice
         dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @alice
         mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @alice"#
-        .try_into()?;
+            .try_into()?;
         let exec = TestExecutor::default();
         let _outputs = exec.run_computation(&comp, SyncArgs::new())?;
         Ok(())
