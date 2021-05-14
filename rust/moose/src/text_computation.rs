@@ -75,10 +75,27 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     alt((
+        preceded(tag("Output"), cut(output)),
         preceded(tag("Constant"), cut(constant)),
         preceded(tag("StdAdd"), cut(stdadd)),
+        preceded(tag("RingSample"), cut(ring_sample)),
+        preceded(tag("PrimDeriveSeed"), cut(prim_derive_seed)),
+        preceded(tag("PrimGenPrfKey"), cut(prim_gen_prf_key)),
         // TODO: rest of the definitions
     ))(input)
+}
+
+/// Parses the Output
+fn output<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+
+    Ok((
+        input,
+        (Operator::Output(OutputOp { ty: args_types[0] }), args),
+    ))
 }
 
 /// Parses the Constant
@@ -109,6 +126,44 @@ fn stdadd<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
+/// Parses RingSample
+fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
+    let (input, (_args_types, result_type)) = type_definition(2)(input)?;
+    Ok((
+        input,
+        (
+            Operator::RingSample(RingSampleOp {
+                output: result_type,
+                max_value: opt_max_value,
+            }),
+            args,
+        ),
+    ))
+}
+/// Parses PrimGenPrfKey
+fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    Ok((input, (Operator::PrimGenPrfKey(PrimGenPrfKeyOp), args)))
+}
+
+/// Parses PrimDeriveSeed
+fn prim_derive_seed<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = ws(argument_list)(input)?;
+    let (input, nonce) = attributes_single("nonce", map(vector(parse_int), Nonce))(input)?;
+    Ok((
+        input,
+        (Operator::PrimDeriveSeed(PrimDeriveSeedOp { nonce }), args),
+    ))
+}
+
 /// Parses list of arguments in the form of
 ///
 /// `(name, name, name)`
@@ -120,6 +175,21 @@ fn argument_list<'a, E: 'a + ParseError<&'a str>>(
         separated_list0(tag(","), map(ws(alphanumeric1), |s| s.to_string())),
         tag(")"),
     )(input)
+}
+
+/// Parses list of attributes. Currently only supporting one attribute
+fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str>>(
+    name: &'a str,
+    inner: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
+where
+    F: FnMut(&'a str) -> IResult<&'a str, O, E>,
+{
+    delimited(
+        tuple((ws(tag("{")), ws(tag(name)), ws(tag("=")))),
+        inner,
+        ws(tag("}")),
+    )
 }
 
 /// Parses operator's type definition in the form of
@@ -513,6 +583,40 @@ mod tests {
         if let Err(Failure(e)) = parsed {
             println!("Error! {}", convert_error(data, e));
         }
+    }
+
+    #[test]
+    fn test_primgenprfkey() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimGenPrfKey() @alice")?;
+        assert_eq!(op.name, "key");
+        Ok(())
+    }
+
+    #[test]
+    fn test_seed() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @alice",
+        )?;
+        assert_eq!(op.name, "seed");
+        Ok(())
+    }
+
+    #[test]
+    fn test_output() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "z = Output(x10): (Ring64Tensor) -> Unit @alice",
+        )?;
+        assert_eq!(op.name, "z");
+        Ok(())
+    }
+
+    #[test]
+    fn test_ring_sample() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "x10 = RingSample(shape, seed){max_value = 1}: (Shape, Seed) -> Ring64Tensor @alice",
+        )?;
+        assert_eq!(op.name, "x10");
+        Ok(())
     }
 
     #[test]

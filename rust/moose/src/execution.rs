@@ -1146,8 +1146,7 @@ mod tests {
 
     #[test]
     fn test_textual_represenation() -> std::result::Result<(), anyhow::Error> {
-        let comp: Computation = "x = Constant([1.0] : Float32Tensor) @alice".try_into()?;
-        assert_eq!(format!("{:?}", comp), "Computation { operations: [Operation { name: \"x\", kind: Constant(ConstantOp { value: Float32Tensor(StandardTensor([1.0], shape=[1], strides=[1], layout=CFcf (0xf), dynamic ndim=1)) }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }] }");
+        let comp: Computation = r#"x = Constant([1.0] : Float32Tensor) @alice"#.try_into()?;
         Ok(())
     }
 
@@ -1216,6 +1215,20 @@ mod tests {
         operations.extend(vec![key_op, seed_op, shape_op, output_op]);
 
         let comp = Computation { operations }.toposort().unwrap();
+
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+    }
+
+    #[test]
+    fn test_eager_executor_text() {
+        let definition = r#"key = PrimGenPrfKey() @alice
+        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @alice
+        shape = Constant([2, 3] : Shape) @alice
+        x10 = RingSample(shape, seed): (Shape, Seed) -> Ring64Tensor @alice
+        z = Output(x10): (Ring64Tensor) -> Unit @alice"#;
+        let comp: Computation = definition.try_into().unwrap();
 
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
