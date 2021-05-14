@@ -1146,8 +1146,8 @@ mod tests {
 
     #[test]
     fn test_textual_represenation() -> std::result::Result<(), anyhow::Error> {
-        let comp: Computation = "let x = Constant([1.0]) @alice".try_into()?;
-        assert_eq!(format!("{:?}", comp), "Computation { operations: [Operation { name: \"x\", kind: Constant(ConstantOp { value: String(\"[1.0]\") }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }] }");
+        let comp: Computation = "x = Constant([1.0] : Float32Tensor) @alice".try_into()?;
+        assert_eq!(format!("{:?}", comp), "Computation { operations: [Operation { name: \"x\", kind: Constant(ConstantOp { value: Float32Tensor(StandardTensor([1.0], shape=[1], strides=[1], layout=CFcf (0xf), dynamic ndim=1)) }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }] }");
         Ok(())
     }
 
