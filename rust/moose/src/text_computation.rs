@@ -331,7 +331,7 @@ fn parse_unicode<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
     E: ParseError<&'a str>,
 {
-    map_opt(parse_hex_u32, |value| std::char::from_u32(value))(input)
+    map_opt(parse_hex_u32, std::char::from_u32)(input)
 }
 
 /// Parses any supported escaped character
