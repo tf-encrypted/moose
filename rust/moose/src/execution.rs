@@ -1146,14 +1146,13 @@ mod tests {
 
     #[test]
     fn test_standard_prod_ops_text() -> std::result::Result<(), anyhow::Error> {
-        let comp: Computation = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @alice
-        y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @alice
-        mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @alice
-        dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @alice
-        mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @alice"#
-            .try_into()?;
+        let source = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
+        y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
+        mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
+        dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
+        mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @Host(alice)"#;
         let exec = TestExecutor::default();
-        let _outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let _outputs = exec.run_computation(&source.try_into()?, SyncArgs::new())?;
         Ok(())
     }
 
@@ -1230,11 +1229,11 @@ mod tests {
 
     #[test]
     fn test_eager_executor_text() {
-        let definition = r#"key = PrimGenPrfKey() @alice
-        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @alice
-        shape = Constant([2, 3] : Shape) @alice
-        x10 = RingSample(shape, seed): (Shape, Seed) -> Ring64Tensor @alice
-        z = Output(x10): (Ring64Tensor) -> Unit @alice"#;
+        let definition = r#"key = PrimGenPrfKey() @Host(alice)
+        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
+        shape = Constant([2, 3] : Shape) @Host(alice)
+        x10 = RingSample(shape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)
+        z = Output(x10): (Ring64Tensor) -> Unit @Host(alice)"#;
         let comp: Computation = definition.try_into().unwrap();
 
         let exec = TestExecutor::default();

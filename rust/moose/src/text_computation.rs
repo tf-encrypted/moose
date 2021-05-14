@@ -62,15 +62,44 @@ fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parse placement
-/// TODO: Support all placements
 fn parse_placement<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Placement, E> {
-    map(tuple((tag("@"), alphanumeric1)), |(_, name)| {
-        Placement::Host(HostPlacement {
-            owner: Role::from(name),
-        })
-    })(input)
+    alt((
+        preceded(
+            tag("@Host"),
+            cut(map(
+                delimited(ws(tag("(")), alphanumeric1, ws(tag(")"))),
+                |name| {
+                    Placement::Host(HostPlacement {
+                        owner: Role::from(name),
+                    })
+                },
+            )),
+        ),
+        preceded(
+            tag("@Replicated"),
+            cut(map(
+                delimited(
+                    ws(tag("(")),
+                    verify(
+                        separated_list0(tag(","), ws(alphanumeric1)),
+                        |v: &Vec<&str>| v.len() == 3,
+                    ),
+                    ws(tag(")")),
+                ),
+                |names| {
+                    Placement::Replicated(ReplicatedPlacement {
+                        owners: [
+                            Role::from(names[0]),
+                            Role::from(names[1]),
+                            Role::from(names[2]),
+                        ],
+                    })
+                },
+            )),
+        ),
+    ))(input)
 }
 
 /// Parse operator - maps names to structs.
@@ -691,12 +720,12 @@ mod tests {
     #[test]
     fn test_constant() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x = Constant([1.0] : Float32Tensor): () -> Float32Tensor @alice",
+            "x = Constant([1.0] : Float32Tensor): () -> Float32Tensor @Host(alice)",
         )?;
         assert_eq!(op.name, "x");
         assert_eq!(format!("{:?}", op), "Operation { name: \"x\", kind: Constant(ConstantOp { value: Float32Tensor(StandardTensor([1.0], shape=[1], strides=[1], layout=CFcf (0xf), dynamic ndim=1)) }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }");
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor): () -> Float32Tensor @alice",
+            "x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor): () -> Float32Tensor @Replicated(alice, bob, charlie)",
         )?;
         println!("{:#?}", op);
         Ok(())
@@ -705,7 +734,7 @@ mod tests {
     #[test]
     fn test_stdadd() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @carole",
+            "z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         Ok(())
@@ -713,7 +742,7 @@ mod tests {
 
     #[test]
     fn test_stdadd_err() {
-        let data = "z = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @carole";
+        let data = "z = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
         if let Err(Failure(e)) = parsed {
             println!("Error! {}", convert_error(data, e));
@@ -722,7 +751,7 @@ mod tests {
 
     #[test]
     fn test_primgenprfkey() -> Result<(), anyhow::Error> {
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimGenPrfKey() @alice")?;
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimGenPrfKey() @Host(alice)")?;
         assert_eq!(op.name, "key");
         Ok(())
     }
@@ -730,7 +759,7 @@ mod tests {
     #[test]
     fn test_seed() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @alice",
+            "seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
         Ok(())
@@ -739,7 +768,7 @@ mod tests {
     #[test]
     fn test_output() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = Output(x10): (Ring64Tensor) -> Unit @alice",
+            "z = Output(x10): (Ring64Tensor) -> Unit @Host(alice)",
         )?;
         assert_eq!(op.name, "z");
         Ok(())
@@ -748,7 +777,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSample(shape, seed){max_value = 1}: (Shape, Seed) -> Ring64Tensor @alice",
+            "x10 = RingSample(shape, seed){max_value = 1}: (Shape, Seed) -> Ring64Tensor @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -757,9 +786,9 @@ mod tests {
     #[test]
     fn test_sample_computation() {
         let parsed = parse_computation::<(&str, ErrorKind)>(
-            "x = Constant([1.0]: Float32Tensor) @alice
+            "x = Constant([1.0]: Float32Tensor) @Host(alice)
             y = Constant([1.0]: Float32Tensor): () -> Float32Tensor @bob
-            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @carole",
+            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
         );
         if let Ok((_, comp)) = parsed {
             println!("Computation {:#?}", comp);
@@ -769,9 +798,9 @@ mod tests {
 
     #[test]
     fn test_sample_computation_err() {
-        let data = "a = Constant(\"a\") @alice
-            err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @carole
-            b = Constant(\"b\") @alice";
+        let data = "a = Constant(\"a\") @Host(alice)
+            err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)
+            b = Constant(\"b\") @Host(alice)";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_computation(data);
         println!("{:?}", parsed);
         if let Err(Failure(e)) = parsed {
