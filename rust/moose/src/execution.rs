@@ -1146,7 +1146,14 @@ mod tests {
 
     #[test]
     fn test_textual_represenation() -> std::result::Result<(), anyhow::Error> {
-        let comp: Computation = r#"x = Constant([1.0] : Float32Tensor) @alice"#.try_into()?;
+        let comp: Computation = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @alice
+        y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @alice
+        mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @alice
+        dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @alice
+        mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @alice"#
+        .try_into()?;
+        let exec = TestExecutor::default();
+        let _outputs = exec.run_computation(&comp, SyncArgs::new())?;
         Ok(())
     }
 

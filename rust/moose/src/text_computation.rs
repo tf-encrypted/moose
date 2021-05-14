@@ -78,6 +78,9 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
         preceded(tag("Output"), cut(output)),
         preceded(tag("Constant"), cut(constant)),
         preceded(tag("StdAdd"), cut(stdadd)),
+        preceded(tag("StdMul"), cut(stdmul)),
+        preceded(tag("StdDot"), cut(stddot)),
+        preceded(tag("StdMean"), cut(stdmean)),
         preceded(tag("RingSample"), cut(ring_sample)),
         preceded(tag("PrimDeriveSeed"), cut(prim_derive_seed)),
         preceded(tag("PrimGenPrfKey"), cut(prim_gen_prf_key)),
@@ -120,6 +123,61 @@ fn stdadd<'a, E: 'a + ParseError<&'a str>>(
             Operator::StdAdd(StdAddOp {
                 lhs: args_types[0],
                 rhs: args_types[1],
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses StdMul
+fn stdmul<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
+    Ok((
+        input,
+        (
+            Operator::StdMul(StdMulOp {
+                lhs: args_types[0],
+                rhs: args_types[1],
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses StdDot
+fn stddot<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
+    Ok((
+        input,
+        (
+            Operator::StdDot(StdDotOp {
+                lhs: args_types[0],
+                rhs: args_types[1],
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses StdMean
+fn stdmean<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, opt_axis) = opt(attributes_single("axis", parse_int))(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+    Ok((
+        input,
+        (
+            Operator::StdMean(StdMeanOp {
+                ty: args_types[0],
+                axis: opt_axis,
             }),
             args,
         ),
@@ -279,46 +337,92 @@ fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a
             tuple((vector(parse_int), type_literal("Nonce"))),
             |(v, _)| Value::Nonce(Nonce(v)),
         ),
-        map(
-            tuple((vector(parse_int), type_literal("Int8Tensor"))),
-            |(v, _)| Value::Int8Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Int16Tensor"))),
-            |(v, _)| Value::Int16Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Int32Tensor"))),
-            |(v, _)| Value::Int32Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Int64Tensor"))),
-            |(v, _)| Value::Int64Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Uint8Tensor"))),
-            |(v, _)| Value::Uint8Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Uint16Tensor"))),
-            |(v, _)| Value::Uint16Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Uint32Tensor"))),
-            |(v, _)| Value::Uint32Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Uint64Tensor"))),
-            |(v, _)| Value::Uint64Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(float), type_literal("Float32Tensor"))),
-            |(v, _)| Value::Float32Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(double), type_literal("Float64Tensor"))),
-            |(v, _)| Value::Float64Tensor(v.into()),
-        ),
+        // 1D arrars
+        alt((
+            map(
+                tuple((vector(parse_int), type_literal("Int8Tensor"))),
+                |(v, _)| Value::Int8Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Int16Tensor"))),
+                |(v, _)| Value::Int16Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Int32Tensor"))),
+                |(v, _)| Value::Int32Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Int64Tensor"))),
+                |(v, _)| Value::Int64Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Uint8Tensor"))),
+                |(v, _)| Value::Uint8Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Uint16Tensor"))),
+                |(v, _)| Value::Uint16Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Uint32Tensor"))),
+                |(v, _)| Value::Uint32Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Uint64Tensor"))),
+                |(v, _)| Value::Uint64Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(float), type_literal("Float32Tensor"))),
+                |(v, _)| Value::Float32Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(double), type_literal("Float64Tensor"))),
+                |(v, _)| Value::Float64Tensor(v.into()),
+            ),
+        )),
+        // 2D arrars
+        alt((
+            map(
+                tuple((vector2(parse_int), type_literal("Int8Tensor"))),
+                |(v, _)| Value::Int8Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Int16Tensor"))),
+                |(v, _)| Value::Int16Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Int32Tensor"))),
+                |(v, _)| Value::Int32Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Int64Tensor"))),
+                |(v, _)| Value::Int64Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Uint8Tensor"))),
+                |(v, _)| Value::Uint8Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Uint16Tensor"))),
+                |(v, _)| Value::Uint16Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Uint32Tensor"))),
+                |(v, _)| Value::Uint32Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Uint64Tensor"))),
+                |(v, _)| Value::Uint64Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(float), type_literal("Float32Tensor"))),
+                |(v, _)| Value::Float32Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(double), type_literal("Float64Tensor"))),
+                |(v, _)| Value::Float64Tensor(v.into()),
+            ),
+        )),
     ))(input)
 }
 
@@ -337,9 +441,35 @@ fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, E>
 where
-    F: Fn(&'a str) -> IResult<&'a str, O, E>,
+    F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
     delimited(tag("["), separated_list0(ws(tag(",")), inner), tag("]"))
+}
+
+fn vector2<'a, F: 'a, O: 'a, E: 'a>(
+    inner: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, ndarray::Array2<O>, E>
+where
+    F: FnMut(&'a str) -> IResult<&'a str, O, E> + Copy,
+    O: Clone,
+    E: ParseError<&'a str>,
+{
+    move |input: &'a str| {
+        let (input, vec2) = vector(vector(inner))(input)?;
+        let mut data = Vec::new();
+
+        let ncols = vec2.first().map_or(0, |row| row.len());
+        let mut nrows = 0;
+
+        for row in &vec2 {
+            data.extend_from_slice(&row);
+            nrows += 1;
+        }
+
+        ndarray::Array2::from_shape_vec((nrows, ncols), data)
+            .map(|a| (input, a))
+            .map_err(|_: ndarray::ShapeError| Error(make_error(input, ErrorKind::MapRes)))
+    }
 }
 
 /// Parse integer (or anything implementing FromStr from decimal digits)
@@ -564,6 +694,10 @@ mod tests {
         )?;
         assert_eq!(op.name, "x");
         assert_eq!(format!("{:?}", op), "Operation { name: \"x\", kind: Constant(ConstantOp { value: Float32Tensor(StandardTensor([1.0], shape=[1], strides=[1], layout=CFcf (0xf), dynamic ndim=1)) }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }");
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor): () -> Float32Tensor @alice",
+        )?;
+        println!("{:#?}", op);
         Ok(())
     }
 
