@@ -1145,7 +1145,7 @@ mod tests {
     use std::convert::TryInto;
 
     #[test]
-    fn test_textual_represenation() -> std::result::Result<(), anyhow::Error> {
+    fn test_standard_prod_ops_text() -> std::result::Result<(), anyhow::Error> {
         let comp: Computation = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @alice
         y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @alice
         mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @alice
