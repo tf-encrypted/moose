@@ -6,11 +6,11 @@ use nom::{
     bytes::complete::{is_not, tag, take_while_m_n},
     character::complete::{alphanumeric1, char, digit1, line_ending, multispace1, space0},
     combinator::{all_consuming, cut, map, map_opt, map_res, opt, value, verify},
-    error::{make_error, ErrorKind, ParseError},
+    error::{convert_error, make_error, ErrorKind, ParseError, VerboseError},
     multi::{fill, fold_many0, many1, separated_list0},
     number::complete::{double, float},
     sequence::{delimited, preceded, tuple},
-    Err::Error,
+    Err::{Error, Failure},
     IResult,
 };
 use std::convert::TryFrom;
@@ -19,9 +19,12 @@ impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
 
     fn try_from(source: &str) -> anyhow::Result<Computation> {
-        match parse_computation::<(&str, ErrorKind)>(source) {
+        match parse_computation::<VerboseError<&str>>(source) {
+            Err(Failure(e)) => Err(anyhow::anyhow!(
+                "Failed to parse computation\n{}",
+                convert_error(source, e)
+            )),
             Err(e) => Err(anyhow::anyhow!("Failed to parse {} due to {}", source, e)),
-
             Ok((_, computation)) => Ok(computation),
         }
     }
@@ -618,8 +621,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nom::error::{convert_error, VerboseError};
-    use nom::Err::Failure;
 
     #[test]
     fn test_value_literal() -> Result<(), anyhow::Error> {
