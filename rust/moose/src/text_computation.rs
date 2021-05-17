@@ -2,7 +2,7 @@ use crate::computation::*;
 use crate::prim::{Nonce, PrfKey, Seed};
 use crate::standard::Shape;
 use nom::{
-    branch::alt,
+    branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
     character::complete::{alphanumeric1, char, digit1, line_ending, multispace1, space0},
     combinator::{all_consuming, cut, map, map_opt, map_res, opt, value, verify},
@@ -133,6 +133,27 @@ macro_rules! std_binary {
     };
 }
 
+/// Constructs a parser for a simple binary operation.
+macro_rules! operation_on_axis {
+    ($typ:expr, $sub:ident) => {
+        |input: &'a str| {
+            let (input, args) = argument_list(input)?;
+            let (input, opt_axis) = opt(attributes_single("axis", parse_int))(input)?;
+            let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+            Ok((
+                input,
+                (
+                    Operator::StdSum(StdSumOp {
+                        ty: args_types[0],
+                        axis: opt_axis,
+                    }),
+                    args,
+                ),
+            ))
+        }
+    };
+}
+
 /// Parse operator - maps names to structs.
 fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
@@ -145,6 +166,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
         preceded(tag("Load"), cut(std_unary!(Operator::Load, LoadOp))),
         preceded(tag("Save"), cut(std_unary!(Operator::Save, SaveOp))),
         preceded(tag("Send"), cut(send_operator)),
+        preceded(tag("Receive"), cut(receive_operator)),
+        preceded(tag("Input"), cut(input_operator)),
         preceded(tag("Output"), cut(std_unary!(Operator::Output, OutputOp))),
         preceded(tag("Constant"), cut(constant)),
         preceded(tag("StdAdd"), cut(std_binary!(Operator::StdAdd, StdAddOp))),
@@ -153,17 +176,31 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
         preceded(tag("StdDiv"), cut(std_binary!(Operator::StdDiv, StdDivOp))),
         preceded(tag("StdDot"), cut(std_binary!(Operator::StdDot, StdDotOp))),
         preceded(
-            tag("StdOnes"),
-            cut(std_unary!(Operator::StdOnes, StdOnesOp)),
+            tag("StdMean"),
+            cut(operation_on_axis!(Operator::StdMean, StdMeanOp)),
         ),
+        preceded(tag("StdExpandDims"), cut(stdexpanddims)),
         preceded(
             tag("StdReshape"),
             cut(std_unary!(Operator::StdReshape, StdReshapeOp)),
         ),
+        preceded(tag("StdAtLeast2D"), cut(stdatleast2d)),
         preceded(
             tag("StdShape"),
             cut(std_unary!(Operator::StdShape, StdShapeOp)),
         ),
+        preceded(tag("StdSlice"), cut(stdslice)),
+    ));
+    let part2 = alt((
+        preceded(
+            tag("StdSum"),
+            cut(operation_on_axis!(Operator::StdSum, StdSumOp)),
+        ),
+        preceded(
+            tag("StdOnes"),
+            cut(std_unary!(Operator::StdOnes, StdOnesOp)),
+        ),
+        preceded(tag("StdConcatenate"), cut(stdconcatenate)),
         preceded(
             tag("StdTranspose"),
             cut(std_unary!(Operator::StdTranspose, StdTransposeOp)),
@@ -172,8 +209,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
             tag("StdInverse"),
             cut(std_unary!(Operator::StdInverse, StdInverseOp)),
         ),
-    ));
-    let part2 = alt((
         preceded(
             tag("RingAdd"),
             cut(std_binary!(Operator::RingAdd, RingAddOp)),
@@ -191,18 +226,24 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
             cut(std_binary!(Operator::RingDot, RingDotOp)),
         ),
         preceded(
+            tag("RingSum"),
+            cut(operation_on_axis!(Operator::RingSum, RingSumOp)),
+        ),
+        preceded(
             tag("RingShape"),
             cut(std_unary!(Operator::RingShape, RingShapeOp)),
         ),
-        preceded(tag("StdMean"), cut(stdmean)),
         preceded(tag("RingSample"), cut(ring_sample)),
+        preceded(tag("RingFill"), cut(ring_fill)),
+        preceded(tag("RingShl"), cut(ring_shl)),
+        preceded(tag("RingShr"), cut(ring_shr)),
         preceded(tag("PrimDeriveSeed"), cut(prim_derive_seed)),
         preceded(tag("PrimGenPrfKey"), cut(prim_gen_prf_key)),
+        preceded(tag("FixedpointRingEncode"), cut(fixed_point_ring_encode)),
+        preceded(tag("FixedpointRingDecode"), cut(fixed_point_ring_decode)),
+        preceded(tag("FixedpointRingMean"), cut(fixed_point_ring_mean)),
     ));
-    alt((
-        part1, part2,
-        // TODO: rest of the definitions
-    ))(input)
+    alt((part1, part2))(input)
 }
 
 /// Parses the Constant
@@ -213,25 +254,6 @@ fn constant<'a, E: 'a + ParseError<&'a str>>(
     let (input, _optional_types) = opt(type_definition(0))(input)?;
 
     Ok((input, (Operator::Constant(ConstantOp { value: x }), vec![])))
-}
-
-/// Parses StdMean
-fn stdmean<'a, E: 'a + ParseError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
-    let (input, opt_axis) = opt(attributes_single("axis", parse_int))(input)?;
-    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
-    Ok((
-        input,
-        (
-            Operator::StdMean(StdMeanOp {
-                ty: args_types[0],
-                axis: opt_axis,
-            }),
-            args,
-        ),
-    ))
 }
 
 /// Parses Send operator
@@ -254,13 +276,130 @@ fn send_operator<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
+/// Parses Receive operator
+fn receive_operator<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (rendezvous_key, sender)) =
+        attributes_pair("rendezvous_key", string, "sender", string)(input)?;
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
+    Ok((
+        input,
+        (
+            Operator::Receive(ReceiveOp {
+                rendezvous_key,
+                sender: Role::from(sender),
+                ty: result_type,
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses Input operator
+fn input_operator<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, arg_name) = attributes_single("arg_name", string)(input)?;
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
+    Ok((
+        input,
+        (
+            Operator::Input(InputOp {
+                arg_name,
+                ty: result_type,
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses StdExpandDims
+fn stdexpanddims<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, axis) = attributes_single("axis", parse_int)(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+    Ok((
+        input,
+        (
+            Operator::StdExpandDims(StdExpandDimsOp {
+                ty: args_types[0],
+                axis,
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses StdAtLeast2D
+fn stdatleast2d<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, to_column_vector) = attributes_single("to_column_vector", parse_bool)(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+    Ok((
+        input,
+        (
+            Operator::StdAtLeast2D(StdAtLeast2DOp {
+                ty: args_types[0],
+                to_column_vector,
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses StdSlice
+fn stdslice<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (start, end)) = attributes_pair("start", parse_int, "end", parse_int)(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+    Ok((
+        input,
+        (
+            Operator::StdSlice(StdSliceOp {
+                ty: args_types[0],
+                start,
+                end,
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses StdConcatenate
+fn stdconcatenate<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, axis) = attributes_single("axis", parse_int)(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+    Ok((
+        input,
+        (
+            Operator::StdConcatenate(StdConcatenateOp {
+                ty: args_types[0],
+                axis,
+            }),
+            args,
+        ),
+    ))
+}
+
 /// Parses RingSample
 fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
     let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
-    let (input, (_args_types, result_type)) = type_definition(2)(input)?;
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
         (
@@ -271,6 +410,36 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
             args,
         ),
     ))
+}
+
+/// Parses RingFill
+fn ring_fill<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, value) = attributes_single("value", parse_int)(input)?;
+    let (input, _) = opt(type_definition(0))(input)?;
+    Ok((input, (Operator::RingFill(RingFillOp { value }), args)))
+}
+
+/// Parses RingShl
+fn ring_shl<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, amount) = attributes_single("amount", parse_int)(input)?;
+    let (input, _) = opt(type_definition(0))(input)?;
+    Ok((input, (Operator::RingShl(RingShlOp { amount }), args)))
+}
+
+/// Parses RingShr
+fn ring_shr<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, amount) = attributes_single("amount", parse_int)(input)?;
+    let (input, _) = opt(type_definition(0))(input)?;
+    Ok((input, (Operator::RingShr(RingShrOp { amount }), args)))
 }
 
 /// Parses PrimGenPrfKey
@@ -290,6 +459,71 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str>>(
     Ok((
         input,
         (Operator::PrimDeriveSeed(PrimDeriveSeedOp { nonce }), args),
+    ))
+}
+
+/// Parses FixedpointRingEncode
+fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, scaling_factor) = attributes_single("scaling_factor", parse_int)(input)?;
+    let (input, _) = opt(type_definition(0))(input)?;
+    Ok((
+        input,
+        (
+            Operator::FixedpointRingEncode(FixedpointRingEncodeOp { scaling_factor }),
+            args,
+        ),
+    ))
+}
+
+/// Parses FixedpointRingDecode
+fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, scaling_factor) = attributes_single("scaling_factor", parse_int)(input)?;
+    let (input, _) = opt(type_definition(0))(input)?;
+    Ok((
+        input,
+        (
+            Operator::FixedpointRingDecode(FixedpointRingDecodeOp { scaling_factor }),
+            args,
+        ),
+    ))
+}
+
+/// Parses FixedpointRingMean
+fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (scaling_factor, axis)) = delimited(
+        ws(tag("{")),
+        permutation((
+            map(
+                tuple((ws(tag("scaling_factor")), ws(tag("=")), parse_int)),
+                |(_, _, v)| v,
+            ),
+            opt(map(
+                tuple((ws(tag("axis")), ws(tag("=")), parse_int)),
+                |(_, _, v)| v,
+            )),
+        )),
+        ws(tag("}")),
+    )(input)?;
+
+    let (input, _) = opt(type_definition(0))(input)?;
+    Ok((
+        input,
+        (
+            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+                axis,
+                scaling_factor,
+            }),
+            args,
+        ),
     ))
 }
 
@@ -334,7 +568,7 @@ where
 {
     delimited(
         ws(tag("{")),
-        nom::branch::permutation((
+        permutation((
             map(tuple((ws(tag(name1)), ws(tag("=")), inner1)), |(_, _, v)| v),
             map(tuple((ws(tag(name2)), ws(tag("=")), inner2)), |(_, _, v)| v),
         )),
@@ -707,6 +941,11 @@ where
     delimited(char('"'), build_string, char('"'))(input)
 }
 
+/// Very simple boolean parser
+fn parse_bool<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, bool, E> {
+    alt((value(true, tag("true")), value(false, tag("false"))))(input)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -842,6 +1081,16 @@ mod tests {
     }
 
     #[test]
+    fn test_receive() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "receive = Receive() {rendezvous_key = \"abc\" sender = \"bob\"} : () -> Float32Tensor @Host(alice)",
+        )?;
+        assert_eq!(op.name, "receive");
+        println!("{:#?}", op);
+        Ok(())
+    }
+
+    #[test]
     fn test_output() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "z = Output(x10): (Ring64Tensor) -> Unit @Host(alice)",
@@ -860,6 +1109,55 @@ mod tests {
     }
 
     #[test]
+    fn test_fixedpoint_ring_mean() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "op = FixedpointRingMean() {scaling_factor = 10 axis = 0} : () -> Float32Tensor @Host(alice)",
+        )?;
+        println!("{:#?}", op);
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "op = FixedpointRingMean() {axis = 0 scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
+        )?;
+        println!("{:#?}", op);
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "op = FixedpointRingMean() {scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
+        )?;
+        println!("{:#?}", op);
+        Ok(())
+    }
+
+    #[test]
+    fn test_various() -> Result<(), anyhow::Error> {
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = Input() {arg_name = \"prompt\"}: () -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = StdExpandDims() {axis = 0}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = StdAtLeast2D() {to_column_vector = false}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = StdSlice() {start = 1 end = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = RingSum() {axis = 0}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = RingFill() {value = 42}: () -> Ring64Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>("z = RingShl() {amount = 2} @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = RingShr() {amount = 2} @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = FixedpointRingDecode() {scaling_factor = 2} @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = FixedpointRingEncode() {scaling_factor = 2} @Host(alice)",
+        )?;
+
+        Ok(())
+    }
+
+    #[test]
     fn test_sample_computation() {
         let parsed = parse_computation::<(&str, ErrorKind)>(
             "x = Constant([1.0]: Float32Tensor) @Host(alice)
@@ -869,7 +1167,6 @@ mod tests {
         if let Ok((_, comp)) = parsed {
             println!("Computation {:#?}", comp);
         }
-        // TODO: Asserts
     }
 
     #[test]
@@ -882,6 +1179,5 @@ mod tests {
         if let Err(Failure(e)) = parsed {
             println!("Error!\n{}", convert_error(data, e));
         }
-        // TODO: Asserts
     }
 }
