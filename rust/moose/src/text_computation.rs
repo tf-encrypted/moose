@@ -102,6 +102,26 @@ fn parse_placement<'a, E: 'a + ParseError<&'a str>>(
     ))(input)
 }
 
+/// Constructs a parser for a simple binary operation.
+macro_rules! std_binary {
+    ($typ:expr, $sub:ident) => {
+        |input: &'a str| {
+            let (input, args) = argument_list(input)?;
+            let (input, (args_types, _result_type)) = type_definition(2)(input)?;
+            Ok((
+                input,
+                (
+                    $typ($sub {
+                        lhs: args_types[0],
+                        rhs: args_types[1],
+                    }),
+                    args,
+                ),
+            ))
+        }
+    };
+}
+
 /// Parse operator - maps names to structs.
 fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
@@ -109,9 +129,27 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
     alt((
         preceded(tag("Output"), cut(output)),
         preceded(tag("Constant"), cut(constant)),
-        preceded(tag("StdAdd"), cut(stdadd)),
-        preceded(tag("StdMul"), cut(stdmul)),
-        preceded(tag("StdDot"), cut(stddot)),
+        preceded(tag("StdAdd"), cut(std_binary!(Operator::StdAdd, StdAddOp))),
+        preceded(tag("StdSub"), cut(std_binary!(Operator::StdSub, StdSubOp))),
+        preceded(tag("StdMul"), cut(std_binary!(Operator::StdMul, StdMulOp))),
+        preceded(tag("StdDiv"), cut(std_binary!(Operator::StdDiv, StdDivOp))),
+        preceded(tag("StdDot"), cut(std_binary!(Operator::StdDot, StdDotOp))),
+        preceded(
+            tag("RingAdd"),
+            cut(std_binary!(Operator::RingAdd, RingAddOp)),
+        ),
+        preceded(
+            tag("RingSub"),
+            cut(std_binary!(Operator::RingSub, RingSubOp)),
+        ),
+        preceded(
+            tag("RingMul"),
+            cut(std_binary!(Operator::RingMul, RingMulOp)),
+        ),
+        preceded(
+            tag("RingDot"),
+            cut(std_binary!(Operator::RingDot, RingDotOp)),
+        ),
         preceded(tag("StdMean"), cut(stdmean)),
         preceded(tag("RingSample"), cut(ring_sample)),
         preceded(tag("PrimDeriveSeed"), cut(prim_derive_seed)),
@@ -141,60 +179,6 @@ fn constant<'a, E: 'a + ParseError<&'a str>>(
     let (input, _optional_types) = opt(type_definition(0))(input)?;
 
     Ok((input, (Operator::Constant(ConstantOp { value: x }), vec![])))
-}
-
-/// Parses StdAdd
-fn stdadd<'a, E: 'a + ParseError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
-    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
-    Ok((
-        input,
-        (
-            Operator::StdAdd(StdAddOp {
-                lhs: args_types[0],
-                rhs: args_types[1],
-            }),
-            args,
-        ),
-    ))
-}
-
-/// Parses StdMul
-fn stdmul<'a, E: 'a + ParseError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
-    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
-    Ok((
-        input,
-        (
-            Operator::StdMul(StdMulOp {
-                lhs: args_types[0],
-                rhs: args_types[1],
-            }),
-            args,
-        ),
-    ))
-}
-
-/// Parses StdDot
-fn stddot<'a, E: 'a + ParseError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
-    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
-    Ok((
-        input,
-        (
-            Operator::StdDot(StdDotOp {
-                lhs: args_types[0],
-                rhs: args_types[1],
-            }),
-            args,
-        ),
-    ))
 }
 
 /// Parses StdMean
@@ -732,11 +716,17 @@ mod tests {
     }
 
     #[test]
-    fn test_stdadd() -> Result<(), anyhow::Error> {
+    fn test_stdbinary() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
+        println!("{:#?}", op);
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "z = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
+        )?;
+        assert_eq!(op.name, "z");
+        println!("{:#?}", op);
         Ok(())
     }
 
