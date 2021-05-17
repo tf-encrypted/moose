@@ -128,7 +128,7 @@ SUPPORTED_TYPES = [
 
 
 TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
-FIXED_DTYPE_REGEX = re.compile("fixed([0-9]*)_([0-9]*)")
+FIXED_DTYPE_REGEX = re.compile("fixed([0-9]+)_([0-9]+)")
 
 
 def _encode(val):
