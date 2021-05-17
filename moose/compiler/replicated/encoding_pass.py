@@ -215,7 +215,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
 
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)
-        assert isinstance(src_op, fixedpoint_dialect.EncodeOperation)
+        assert isinstance(src_op, fixedpoint_dialect.FixedpointOperation)
         return src_op
 
     def process_outgoing_edge(self, src_op, input_key, dst_op_name):

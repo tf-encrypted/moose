@@ -206,7 +206,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
 
     def process_outgoing_edge(self, src_op, input_key, dst_op_name):
         dst_op = self.computation.operation(dst_op_name)
-        assert isinstance(dst_op, fixed_dialect.DecodeOperation)
+        assert isinstance(dst_op, fixed_dialect.FixedpointOperation)
 
         cache_key = (src_op.name, dst_op.placement_name)
         if cache_key not in self.outgoing_edge_cache:
