@@ -102,6 +102,17 @@ fn parse_placement<'a, E: 'a + ParseError<&'a str>>(
     ))(input)
 }
 
+/// Constructs a parser for a simple unary operation.
+macro_rules! std_unary {
+    ($typ:expr, $sub:ident) => {
+        |input: &'a str| {
+            let (input, args) = argument_list(input)?;
+            let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+            Ok((input, ($typ($sub { ty: args_types[0] }), args)))
+        }
+    };
+}
+
 /// Constructs a parser for a simple binary operation.
 macro_rules! std_binary {
     ($typ:expr, $sub:ident) => {
@@ -126,14 +137,43 @@ macro_rules! std_binary {
 fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    alt((
-        preceded(tag("Output"), cut(output)),
+    let part1 = alt((
+        preceded(
+            tag("Identity"),
+            cut(std_unary!(Operator::Identity, IdentityOp)),
+        ),
+        preceded(tag("Load"), cut(std_unary!(Operator::Load, LoadOp))),
+        preceded(tag("Save"), cut(std_unary!(Operator::Save, SaveOp))),
+        preceded(tag("Send"), cut(send_operator)),
+        preceded(tag("Output"), cut(std_unary!(Operator::Output, OutputOp))),
         preceded(tag("Constant"), cut(constant)),
         preceded(tag("StdAdd"), cut(std_binary!(Operator::StdAdd, StdAddOp))),
         preceded(tag("StdSub"), cut(std_binary!(Operator::StdSub, StdSubOp))),
         preceded(tag("StdMul"), cut(std_binary!(Operator::StdMul, StdMulOp))),
         preceded(tag("StdDiv"), cut(std_binary!(Operator::StdDiv, StdDivOp))),
         preceded(tag("StdDot"), cut(std_binary!(Operator::StdDot, StdDotOp))),
+        preceded(
+            tag("StdOnes"),
+            cut(std_unary!(Operator::StdOnes, StdOnesOp)),
+        ),
+        preceded(
+            tag("StdReshape"),
+            cut(std_unary!(Operator::StdReshape, StdReshapeOp)),
+        ),
+        preceded(
+            tag("StdShape"),
+            cut(std_unary!(Operator::StdShape, StdShapeOp)),
+        ),
+        preceded(
+            tag("StdTranspose"),
+            cut(std_unary!(Operator::StdTranspose, StdTransposeOp)),
+        ),
+        preceded(
+            tag("StdInverse"),
+            cut(std_unary!(Operator::StdInverse, StdInverseOp)),
+        ),
+    ));
+    let part2 = alt((
         preceded(
             tag("RingAdd"),
             cut(std_binary!(Operator::RingAdd, RingAddOp)),
@@ -150,25 +190,19 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
             tag("RingDot"),
             cut(std_binary!(Operator::RingDot, RingDotOp)),
         ),
+        preceded(
+            tag("RingShape"),
+            cut(std_unary!(Operator::RingShape, RingShapeOp)),
+        ),
         preceded(tag("StdMean"), cut(stdmean)),
         preceded(tag("RingSample"), cut(ring_sample)),
         preceded(tag("PrimDeriveSeed"), cut(prim_derive_seed)),
         preceded(tag("PrimGenPrfKey"), cut(prim_gen_prf_key)),
+    ));
+    alt((
+        part1, part2,
         // TODO: rest of the definitions
     ))(input)
-}
-
-/// Parses the Output
-fn output<'a, E: 'a + ParseError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
-    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
-
-    Ok((
-        input,
-        (Operator::Output(OutputOp { ty: args_types[0] }), args),
-    ))
 }
 
 /// Parses the Constant
@@ -200,6 +234,26 @@ fn stdmean<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
+/// Parses Send operator
+fn send_operator<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (rendezvous_key, receiver)) =
+        attributes_pair("rendezvous_key", string, "receiver", string)(input)?;
+    let (input, _opt_type) = opt(type_definition(0))(input)?;
+    Ok((
+        input,
+        (
+            Operator::Send(SendOp {
+                rendezvous_key,
+                receiver: Role::from(receiver),
+            }),
+            args,
+        ),
+    ))
+}
+
 /// Parses RingSample
 fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
@@ -218,6 +272,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
         ),
     ))
 }
+
 /// Parses PrimGenPrfKey
 fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
@@ -262,6 +317,27 @@ where
     delimited(
         tuple((ws(tag("{")), ws(tag(name)), ws(tag("=")))),
         inner,
+        ws(tag("}")),
+    )
+}
+
+/// Parses list of attributes. Parses two attributes.
+fn attributes_pair<'a, O1, O2, F1: 'a, F2: 'a, E: 'a + ParseError<&'a str>>(
+    name1: &'a str,
+    inner1: F1,
+    name2: &'a str,
+    inner2: F2,
+) -> impl FnMut(&'a str) -> IResult<&'a str, (O1, O2), E>
+where
+    F1: FnMut(&'a str) -> IResult<&'a str, O1, E>,
+    F2: FnMut(&'a str) -> IResult<&'a str, O2, E>,
+{
+    delimited(
+        ws(tag("{")),
+        nom::branch::permutation((
+            map(tuple((ws(tag(name1)), ws(tag("=")), inner1)), |(_, _, v)| v),
+            map(tuple((ws(tag(name2)), ws(tag("=")), inner2)), |(_, _, v)| v),
+        )),
         ws(tag("}")),
     )
 }
@@ -752,6 +828,16 @@ mod tests {
             "seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
+        Ok(())
+    }
+
+    #[test]
+    fn test_send() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "send = Send() {rendezvous_key = \"abc\" receiver = \"bob\"} @Host(alice)",
+        )?;
+        assert_eq!(op.name, "send");
+        println!("{:#?}", op);
         Ok(())
     }
 
