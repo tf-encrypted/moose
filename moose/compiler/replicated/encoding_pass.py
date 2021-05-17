@@ -10,13 +10,6 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
 
     def __init__(self):
         super().__init__()
-        self.incoming_edge_cache = None
-        self.outgoing_edge_cache = None
-
-    def run(self, computation, context):
-        self.incoming_edge_cache = dict()
-        self.outgoing_edge_cache = dict()
-        return super().run(computation, context)
 
     def collect_subgraph(self):
         op_names_to_process = set()
@@ -222,19 +215,9 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
 
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)
-        dst_op = self.computation.operation(dst_op_name)
         assert isinstance(src_op, fixedpoint_dialect.EncodeOperation)
-
-        cache_key = (src_op.name, dst_op.placement_name)
-        if cache_key not in self.incoming_edge_cache:
-            self.incoming_edge_cache[cache_key] = src_op
-        return self.incoming_edge_cache[cache_key]
+        return src_op
 
     def process_outgoing_edge(self, src_op, input_key, dst_op_name):
         assert isinstance(src_op, fixedpoint_dialect.FixedpointOperation), type(src_op)
-
-        cache_key = (src_op.name,)
-        if cache_key not in self.outgoing_edge_cache:
-            self.outgoing_edge_cache[cache_key] = src_op
-
-        return self.outgoing_edge_cache[cache_key].name
+        return src_op.name
