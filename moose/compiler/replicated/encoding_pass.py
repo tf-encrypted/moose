@@ -88,7 +88,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 output_type=mul_output_type,
             )
         )
-        if mul_output_type.precision == 0:
+        if lhs_output_type.precision == 0 or rhs_output_type.precision == 0:
             return mul_op
 
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
@@ -128,7 +128,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 output_type=dot_output_type,
             )
         )
-        if dot_output_type.precision == 0:
+        if lhs_output_type.precision == 0 or rhs_output_type.precision == 0:
             return dot_op
 
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(
