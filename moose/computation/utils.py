@@ -1,3 +1,4 @@
+import re
 from dataclasses import fields
 
 import msgpack
@@ -17,17 +18,6 @@ from moose.computation.base import Placement
 from moose.computation.base import Value
 from moose.computation.base import ValueType
 from moose.logger import get_logger
-
-
-def serialize_computation(computation):
-    return msgpack.packb(computation, default=_encode)
-
-
-def deserialize_computation(bytes_stream):
-    computation = msgpack.unpackb(bytes_stream, object_hook=_decode)
-    get_logger().debug(computation)
-    return computation
-
 
 SUPPORTED_TYPES = [
     bit_dialect.BitTensorType,
@@ -124,9 +114,18 @@ SUPPORTED_TYPES = [
     std_dialect.IntConstant,
     std_dialect.FloatConstant,
 ]
-
-
 TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
+FIXED_DTYPE_REGEX = re.compile("fixed([0-9]+)_([0-9]+)")
+
+
+def serialize_computation(computation):
+    return msgpack.packb(computation, default=_encode)
+
+
+def deserialize_computation(bytes_stream):
+    computation = msgpack.unpackb(bytes_stream, object_hook=_decode)
+    get_logger().debug(computation)
+    return computation
 
 
 def _encode(val):
@@ -161,6 +160,12 @@ def _decode(obj):
             del obj["__type__"]
             return Computation(**obj)
         elif obj["__type__"] == "DType":
+            dtype_name = obj["name"]
+            fixed_match = FIXED_DTYPE_REGEX.match(dtype_name)
+            if fixed_match is not None:
+                return dtypes.fixed(
+                    int(fixed_match.group(1)), int(fixed_match.group(2))
+                )
             return {
                 dtypes.int32.name: dtypes.int32,
                 dtypes.int64.name: dtypes.int64,
@@ -168,7 +173,7 @@ def _decode(obj):
                 dtypes.uint64.name: dtypes.uint64,
                 dtypes.float32.name: dtypes.float32,
                 dtypes.float64.name: dtypes.float64,
-            }[obj["name"]]
+            }[dtype_name]
         elif obj["__type__"] == "ndarray":
             dtype = obj["dtype"]
             shape = obj["shape"]

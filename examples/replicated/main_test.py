@@ -24,9 +24,11 @@ class ReplicatedExample(unittest.TestCase):
 
             with alice:
                 x = edsl.constant(np.array([1, 2], dtype=np.float64))
+                x = edsl.cast(x, dtype=edsl.fixed(8, 27))
 
             with bob:
                 y = edsl.constant(np.array([1, 1], dtype=np.float64))
+                y = edsl.cast(y, dtype=edsl.fixed(8, 27))
 
             with rep:
                 z1 = edsl.mul(x, y)
@@ -34,11 +36,14 @@ class ReplicatedExample(unittest.TestCase):
                 c = edsl.abs(z2)
 
             with dave:
+                z1 = edsl.cast(z1, dtype=edsl.float64)
+                c = edsl.cast(c, dtype=edsl.float64)
                 v = edsl.add(z1, z1)
                 res_dave = edsl.save("res", v)
                 abs_dave = edsl.save("abs", c)
 
             with eric:
+                z2 = edsl.cast(z2, dtype=edsl.float64)
                 w = edsl.add(z2, z2)
                 res_eric = edsl.save("res", w)
 

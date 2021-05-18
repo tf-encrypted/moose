@@ -15,6 +15,8 @@ from moose.networking.memory import Networking
 from moose.storage.memory import MemoryDataStore
 from moose.testing import TestRuntime as Runtime
 
+FIXED = edsl.fixed(8, 27)
+
 
 def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
     rng = np.random.default_rng()
@@ -82,16 +84,20 @@ class LinearRegressionExample(parameterized.TestCase):
                 X_b = edsl.concatenate([reshaped_bias, X], axis=1)
                 A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
                 B = edsl.dot(A, edsl.transpose(X_b))
+                X_b = edsl.cast(X_b, dtype=FIXED)
+                B = edsl.cast(B, dtype=FIXED)
 
             with y_owner:
                 y_true = edsl.atleast_2d(
                     edsl.load(y_uri, dtype=edsl.float32), to_column_vector=True
                 )
                 if metric_name == "mape":
-                    y_true_inv = edsl.div(
-                        edsl.constant(1.0, dtype=edsl.float32), y_true
+                    y_true_inv = edsl.cast(
+                        edsl.div(edsl.constant(1.0, dtype=edsl.float32), y_true),
+                        dtype=FIXED,
                     )
                 totals_ss = ss_tot(y_true)
+                y_true = edsl.cast(y_true, dtype=FIXED)
 
             with replicated_plc:
                 w = edsl.dot(B, y_true)
@@ -103,7 +109,12 @@ class LinearRegressionExample(parameterized.TestCase):
                 residuals_ss = ss_res(y_pred, y_true)
 
             with model_owner:
+                residuals_ss = edsl.cast(residuals_ss, dtype=edsl.float32)
                 rsquared_result = r_squared(residuals_ss, totals_ss)
+
+            with model_owner:
+                w = edsl.cast(w, dtype=edsl.float32)
+                metric_result = edsl.cast(metric_result, dtype=edsl.float32)
                 res = (
                     edsl.save(w_uri, w),
                     edsl.save(metric_uri, metric_result),
@@ -115,7 +126,7 @@ class LinearRegressionExample(parameterized.TestCase):
         concrete_comp = edsl.trace_and_compile(my_comp, compiler_passes=compiler_passes)
         return (my_comp, concrete_comp), (x_owner, y_owner, model_owner, replicated_plc)
 
-    @parameterized.parameters("mse", "mape")
+    @parameterized.parameters(["mse", "mape"])
     def test_linear_regression_eval(self, metric_name):
         ((_, concrete_comp), placements,) = self._build_linear_regression_example(
             metric_name
