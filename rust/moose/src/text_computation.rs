@@ -1011,7 +1011,12 @@ mod tests {
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
         if let Err(Error(e)) = parsed {
-            println!("Error! {}", convert_error("blah", e));
+            assert_eq!(
+                convert_error("blah", e),
+                "0: at line 1, in Tag:\nblah\n^\n\n"
+            );
+        } else {
+            panic!("Type parsing should have given an error on an invalid type, but did not");
         }
         Ok(())
     }
@@ -1022,11 +1027,29 @@ mod tests {
             "x = Constant([1.0] : Float32Tensor): () -> Float32Tensor @Host(alice)",
         )?;
         assert_eq!(op.name, "x");
-        assert_eq!(format!("{:?}", op), "Operation { name: \"x\", kind: Constant(ConstantOp { value: Float32Tensor(StandardTensor([1.0], shape=[1], strides=[1], layout=CFcf (0xf), dynamic ndim=1)) }), inputs: [], placement: Host(HostPlacement { owner: Role(\"alice\") }) }");
+        assert_eq!(
+            op.kind,
+            Operator::Constant(ConstantOp {
+                value: Value::Float32Tensor(vec![1.0].into())
+            })
+        );
+
+        // 2D tensor
+        use ndarray::prelude::*;
+        let x = crate::standard::Float32Tensor::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor): () -> Float32Tensor @Replicated(alice, bob, charlie)",
         )?;
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::Constant(ConstantOp {
+                value: Value::Float32Tensor(x)
+            })
+        );
         Ok(())
     }
 
@@ -1036,12 +1059,24 @@ mod tests {
             "z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::StdAdd(StdAddOp {
+                lhs: Ty::Float32TensorTy,
+                rhs: Ty::Float32TensorTy
+            })
+        );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "z = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::StdMul(StdMulOp {
+                lhs: Ty::Float32TensorTy,
+                rhs: Ty::Float32TensorTy
+            })
+        );
         Ok(())
     }
 
@@ -1050,7 +1085,9 @@ mod tests {
         let data = "z = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
         if let Err(Failure(e)) = parsed {
-            println!("Error! {}", convert_error(data, e));
+            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)\n                  ^\n\n");
+        } else {
+            panic!("Type parsing should have given an error on an invalid type, but did not");
         }
     }
 
@@ -1067,6 +1104,12 @@ mod tests {
             "seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
+        assert_eq!(
+            op.kind,
+            Operator::PrimDeriveSeed(PrimDeriveSeedOp {
+                nonce: Nonce(vec![1, 2, 3])
+            })
+        );
         Ok(())
     }
 
@@ -1076,7 +1119,13 @@ mod tests {
             "send = Send() {rendezvous_key = \"abc\" receiver = \"bob\"} @Host(alice)",
         )?;
         assert_eq!(op.name, "send");
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::Send(SendOp {
+                rendezvous_key: "abc".into(),
+                receiver: Role::from("bob")
+            })
+        );
         Ok(())
     }
 
@@ -1086,7 +1135,14 @@ mod tests {
             "receive = Receive() {rendezvous_key = \"abc\" sender = \"bob\"} : () -> Float32Tensor @Host(alice)",
         )?;
         assert_eq!(op.name, "receive");
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::Receive(ReceiveOp {
+                rendezvous_key: "abc".into(),
+                sender: Role::from("bob"),
+                ty: Ty::Float32TensorTy,
+            })
+        );
         Ok(())
     }
 
@@ -1113,20 +1169,42 @@ mod tests {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "op = FixedpointRingMean() {scaling_factor = 10 axis = 0} : () -> Float32Tensor @Host(alice)",
         )?;
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+                scaling_factor: 10,
+                axis: Some(0),
+            })
+        );
+
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {axis = 0 scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
+            "op = FixedpointRingMean() {axis = 1 scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
         )?;
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+                scaling_factor: 10,
+                axis: Some(1),
+            })
+        );
+
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
             "op = FixedpointRingMean() {scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
         )?;
-        println!("{:#?}", op);
+        assert_eq!(
+            op.kind,
+            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+                scaling_factor: 10,
+                axis: None,
+            })
+        );
         Ok(())
     }
 
     #[test]
     fn test_various() -> Result<(), anyhow::Error> {
+        // The following tests are verifying that each valid line is parsed successfuly.
+        // It does not assert on the result.
         parse_assignment::<(&str, ErrorKind)>(
             "z = Input() {arg_name = \"prompt\"}: () -> Float32Tensor @Host(alice)",
         )?;
@@ -1158,15 +1236,41 @@ mod tests {
     }
 
     #[test]
-    fn test_sample_computation() {
-        let parsed = parse_computation::<(&str, ErrorKind)>(
+    fn test_sample_computation() -> Result<(), anyhow::Error> {
+        let (_, comp) = parse_computation::<(&str, ErrorKind)>(
             "x = Constant([1.0]: Float32Tensor) @Host(alice)
-            y = Constant([1.0]: Float32Tensor): () -> Float32Tensor @bob
+            y = Constant([2.0]: Float32Tensor): () -> Float32Tensor @Host(bob)
             z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
+        )?;
+        assert_eq!(comp.operations.len(), 3);
+        assert_eq!(
+            comp.operations[0].kind,
+            Operator::Constant(ConstantOp {
+                value: Value::Float32Tensor(vec![1.0].into())
+            })
         );
-        if let Ok((_, comp)) = parsed {
-            println!("Computation {:#?}", comp);
-        }
+        assert_eq!(
+            comp.operations[1].kind,
+            Operator::Constant(ConstantOp {
+                value: Value::Float32Tensor(vec![2.0].into())
+            })
+        );
+        assert_eq!(comp.operations[2].name, "z");
+        assert_eq!(
+            comp.operations[2].kind,
+            Operator::StdAdd(StdAddOp {
+                lhs: Ty::Float32TensorTy,
+                rhs: Ty::Float32TensorTy
+            })
+        );
+        assert_eq!(comp.operations[2].inputs, vec!("x", "y"));
+        assert_eq!(
+            comp.operations[2].placement,
+            Placement::Host(HostPlacement {
+                owner: Role::from("carole"),
+            })
+        );
+        Ok(())
     }
 
     #[test]
@@ -1175,9 +1279,19 @@ mod tests {
             err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)
             b = Constant(\"b\") @Host(alice)";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_computation(data);
-        println!("{:?}", parsed);
         if let Err(Failure(e)) = parsed {
-            println!("Error!\n{}", convert_error(data, e));
+            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)\n                                ^\n\n");
         }
+    }
+
+    #[test]
+    fn test_computation_try_into() -> Result<(), anyhow::Error> {
+        use std::convert::TryInto;
+        let comp: Computation = "x = Constant([1.0]: Float32Tensor) @Host(alice)
+            y = Constant([2.0]: Float32Tensor): () -> Float32Tensor @Host(bob)
+            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)"
+            .try_into()?;
+        assert_eq!(comp.operations.len(), 3);
+        Ok(())
     }
 }
