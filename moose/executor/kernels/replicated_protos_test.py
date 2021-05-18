@@ -11,6 +11,7 @@ from hypothesis.extra import numpy as hnp
 
 from moose.compiler.compiler import Compiler
 from moose.computation import dtypes
+from moose.computation import fixedpoint as fixedpoint_ops
 from moose.computation import standard as standard_dialect
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
@@ -91,6 +92,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         z = numpy_lmbd(x, y)
 
+        fp_dtype = dtypes.fixed(8, 27)
+
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
@@ -98,6 +101,18 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
             )
         )
 
@@ -110,13 +125,26 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 output_type=TensorType(dtype=dtypes.float64),
             )
         )
+
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_bob",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
         op_name = "rep_op"
 
         comp.add_operation(
             replicated_std_op(
                 name="rep_op",
                 placement_name=rep.name,
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 output_type=TensorType(dtype=dtypes.float64),
             )
         )
@@ -125,7 +153,7 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 replicated_std_op(
                     name="rep_op_2",
                     placement_name=rep.name,
-                    inputs={"lhs": "alice_input", "rhs": "rep_op"},
+                    inputs={"lhs": "encode_alice", "rhs": "rep_op"},
                     output_type=TensorType(dtype=dtypes.float64),
                 )
             )
@@ -142,9 +170,19 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="decode_carole",
+                inputs={"value": op_name},
+                placement_name=carole.name,
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"key": "save_key", "value": op_name},
+                inputs={"key": "save_key", "value": "decode_carole"},
                 placement_name=carole.name,
             )
         )
@@ -170,6 +208,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         x = np.array([[1, 2], [3, 4]], dtype=np.float64)
         z = np.sum(x, axis=axis)
 
+        fp_dtype = dtypes.fixed(8, 27)
+
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
@@ -181,11 +221,23 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SumOperation(
                 name="rep_op",
                 placement_name=rep.name,
                 axis=axis,
-                inputs={"x": "alice_input"},
+                inputs={"x": "encode_alice"},
                 output_type=TensorType(dtype=dtypes.float64),
             )
         )
@@ -201,9 +253,19 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="decode_carole",
+                inputs={"value": "rep_op"},
+                placement_name=carole.name,
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"key": "save_key", "value": "rep_op"},
+                inputs={"key": "save_key", "value": "decode_carole"},
                 placement_name=carole.name,
             )
         )
@@ -237,6 +299,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         x = np.array([[1, 2], [3, 4]], dtype=np.float64)
         z = np_op(x, axis=axis)
 
+        fp_dtype = dtypes.fixed(8, 27)
+
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
@@ -247,11 +311,23 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             std_op(
                 name=op_name,
                 placement_name=rep.name,
                 axis=axis,
-                inputs={"x": "alice_input"},
+                inputs={"x": "encode_alice"},
                 output_type=TensorType(dtype=dtypes.float64),
             )
         )
@@ -265,9 +341,19 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="decode_carole",
+                inputs={"value": op_name},
+                placement_name=carole.name,
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"key": "save_key", "value": op_name},
+                inputs={"key": "save_key", "value": "decode_carole"},
                 placement_name=carole.name,
             )
         )
@@ -296,6 +382,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         z = x @ y
 
+        fp_dtype = dtypes.fixed(8, 27)
+
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
@@ -303,6 +391,18 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
                 placement_name=alice.name,
                 inputs={},
                 output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
             )
         )
 
@@ -317,10 +417,22 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_bob",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.DotOperation(
                 name="dot_op",
                 placement_name=rep.name,
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 output_type=TensorType(dtype=dtypes.float64),
             )
         )
@@ -336,9 +448,19 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="decode_carole",
+                inputs={"value": "dot_op"},
+                placement_name=carole.name,
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"key": "save_key", "value": "dot_op"},
+                inputs={"key": "save_key", "value": "decode_carole"},
                 placement_name=carole.name,
             )
         )
@@ -366,6 +488,8 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
 
         x = np.array([a], dtype=np.float64)
 
+        fp_dtype = dtypes.fixed(8, 27)
+
         comp.add_operation(
             standard_dialect.ConstantOperation(
                 name="alice_input",
@@ -377,10 +501,22 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.AbsOperation(
                 name="abs_op",
                 placement_name=rep.name,
-                inputs={"x": "alice_input"},
+                inputs={"x": "encode_alice"},
                 output_type=TensorType(dtype=dtypes.float64),
             )
         )
@@ -395,9 +531,19 @@ class ReplicatedProtocolsTest(parameterized.TestCase):
         )
 
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="decode_result",
+                inputs={"value": "abs_op"},
+                placement_name=carole.name,
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
             standard_dialect.SaveOperation(
                 name="save",
-                inputs={"key": "save_key", "value": "abs_op"},
+                inputs={"key": "save_key", "value": "decode_result"},
                 placement_name=carole.name,
             )
         )

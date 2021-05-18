@@ -239,6 +239,8 @@ from moose.computation.standard import TensorType
 from moose.computation.standard import UnitType
 from moose.computation.utils import serialize_computation
 from moose.computation.ring import RingTensorType
+from moose.computation import dtypes
+from moose.computation import fixedpoint as fixedpoint_ops
 
 alice = HostPlacement(name="alice")
 bob = HostPlacement(name="bob")
@@ -256,6 +258,9 @@ def f(arg1, arg2):
     x = np.array(arg1, dtype=np.float64)
     y = np.array(arg2, dtype=np.float64)
 
+    fp_dtype = dtypes.fixed(8, 27)
+
+
     comp.add_operation(
         standard_dialect.ConstantOperation(
             name="alice_input",
@@ -263,6 +268,18 @@ def f(arg1, arg2):
             placement_name=alice.name,
             inputs={},
             output_type=TensorType(dtype=dtypes.float64),
+        )
+    )
+
+    comp.add_operation(
+        fixedpoint_ops.EncodeOperation(
+            name="encode_alice",
+            inputs={"value": "alice_input"},
+            placement_name="alice",
+            output_type=fixedpoint_ops.EncodedTensorType(
+                dtype=fp_dtype, precision=fp_dtype.fractional_precision
+            ),
+            precision=fp_dtype.fractional_precision,
         )
     )
 
@@ -277,17 +294,39 @@ def f(arg1, arg2):
     )
 
     comp.add_operation(
+        fixedpoint_ops.EncodeOperation(
+            name="encode_bob",
+            inputs={"value": "bob_input"},
+            placement_name="bob",
+            output_type=fixedpoint_ops.EncodedTensorType(
+                dtype=fp_dtype, precision=fp_dtype.fractional_precision
+            ),
+            precision=fp_dtype.fractional_precision,
+        )
+    )
+
+    comp.add_operation(
         standard_dialect.SPECIAL_OP(
             name="rep_add",
             placement_name=rep.name,
-            inputs={"lhs": "alice_input", "rhs": "bob_input"},
+            inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
             output_type=TensorType(dtype=dtypes.float64),
         )
     )
 
     comp.add_operation(
+        fixedpoint_ops.DecodeOperation(
+            name="decode_carole",
+            inputs={"value": "rep_add"},
+            placement_name=carole.name,
+            output_type=TensorType(dtype=dtypes.float64),
+            precision=fp_dtype.fractional_precision,
+        )
+    )
+
+    comp.add_operation(
         standard_dialect.OutputOperation(
-            name="result", placement_name=carole.name, inputs={"value": "rep_add"},
+            name="result", placement_name=carole.name, inputs={"value": "decode_carole"},
             output_type=RingTensorType(),
         )
     )
@@ -418,6 +457,13 @@ def r_squared(ss_res, ss_tot):
     residuals_ratio = edsl.div(ss_res, ss_tot)
     return edsl.sub(edsl.constant(np.array([1], dtype=np.float64), dtype=edsl.float64), residuals_ratio)
 
+def into_fixed(x):
+    return edsl.cast(x, dtype=edsl.fixed(8, 27))
+
+
+def from_fixed(x):
+    return edsl.cast(x, dtype=edsl.float64)
+
 
 def f():
     x_owner = edsl.host_placement(name="x-owner")
@@ -441,12 +487,17 @@ def f():
             X_b = edsl.concatenate([reshaped_bias, X], axis=1)
             A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
             B = edsl.dot(A, edsl.transpose(X_b))
+            X_b = into_fixed(X_b)
+            B = into_fixed(B)
+
 
         with y_owner:
             y_true = edsl.atleast_2d(
                 edsl.load("y_uri", dtype=edsl.float64), to_column_vector=True
             )
             totals_ss = ss_tot(y_true)
+            y_true = into_fixed(y_true)
+
 
         with replicated_plc:
             w = edsl.dot(B, y_true)
@@ -455,9 +506,12 @@ def f():
             residuals_ss = ss_res(y_pred, y_true)
 
         with model_owner:
+            residuals_ss = from_fixed(residuals_ss)
             rsquared_result = r_squared(residuals_ss, totals_ss)
 
         with model_owner:
+            w = from_fixed(w)
+            mse_result = from_fixed(mse_result)
             res = (
                 edsl.save("regression_weights", w),
                 edsl.save("mse_result", mse_result),
@@ -466,7 +520,7 @@ def f():
 
         return res
 
-    concrete_comp = edsl.trace(my_comp)
+    concrete_comp = edsl.trace_and_compile(my_comp)
     return serialize_computation(concrete_comp)
 
 "#;

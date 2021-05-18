@@ -9,7 +9,7 @@ from moose.computation.standard import IntType
 from moose.computation.standard import ReceiveOperation
 from moose.computation.standard import SendOperation
 from moose.edsl import base as edsl
-from moose.edsl.tracer import trace
+from moose.edsl.tracer import trace_and_compile
 
 
 class HostTest(parameterized.TestCase):
@@ -25,7 +25,7 @@ class HostTest(parameterized.TestCase):
             z = edsl.cast(y, dtype=dtypes.float64, placement=alice)
             return z
 
-        concrete_comp = trace(my_comp)
+        concrete_comp = trace_and_compile(my_comp)
         fp_comp = concrete_comp.find_operations_of_type(
             fixedpoint_ops.FixedpointOperation
         )
@@ -63,7 +63,7 @@ class HostTest(parameterized.TestCase):
 
             return x2
 
-        concrete_comp = trace(my_comp)
+        concrete_comp = trace_and_compile(my_comp)
 
         send_op = concrete_comp.operation("send_0")
         assert send_op == SendOperation(
@@ -101,7 +101,7 @@ class HostTest(parameterized.TestCase):
             d = edsl.add(a, c3, placement=dave)
             return d
 
-        concrete_comp = trace(my_comp)
+        concrete_comp = trace_and_compile(my_comp)
 
         send_ops = concrete_comp.find_operations_of_type(SendOperation)
         assert len(send_ops) == 4, [f"{op.sender} -> {op.receiver}" for op in send_ops]

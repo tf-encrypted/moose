@@ -4,7 +4,7 @@ from absl.testing import parameterized
 from moose import edsl
 from moose.computation.utils import deserialize_computation
 from moose.computation.utils import serialize_computation
-from moose.edsl.tracer import trace
+from moose.edsl.tracer import trace_and_compile
 
 
 class SerdeTest(parameterized.TestCase):
@@ -22,7 +22,7 @@ class SerdeTest(parameterized.TestCase):
             v = edsl.add(z, z, placement=carole)
             return v
 
-        original = trace(my_comp, compiler_passes=[])
+        original = trace_and_compile(my_comp, compiler_passes=[])
         serialized = serialize_computation(original)
         deserialized = deserialize_computation(serialized)
 

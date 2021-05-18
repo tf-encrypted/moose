@@ -27,6 +27,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_placement(HostPlacement(name="dave"))
         comp.add_placement(HostPlacement(name="eric"))
+        fp_dtype = dtypes.fixed(8, 27)
 
         comp.add_operation(
             standard_ops.ConstantOperation(
@@ -35,6 +36,17 @@ class ReplicatedTest(parameterized.TestCase):
                 value=1,
                 placement_name="alice",
                 output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision,
+                ),
+                precision=fp_dtype.fractional_precision,
             )
         )
         comp.add_operation(
@@ -47,25 +59,72 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_bob",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision,
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.AddOperation(
                 name="add",
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
-                output_type=TensorType(dtype=dtypes.float64),
+                output_type=TensorType(dtype=fp_dtype),
             )
         )
         comp.add_operation(
             standard_ops.MulOperation(
                 name="mul",
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
+                output_type=TensorType(dtype=fp_dtype),
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_add_decode",
+                inputs={"value": "add"},
+                placement_name="dave",
                 output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_mul_decode",
+                inputs={"value": "mul"},
+                placement_name="dave",
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_add_decode",
+                inputs={"value": "add"},
+                placement_name="eric",
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_mul_decode",
+                inputs={"value": "mul"},
+                placement_name="eric",
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
             )
         )
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_0",
-                inputs={"value": "add"},
+                inputs={"value": "dave_add_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -73,7 +132,7 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_1",
-                inputs={"value": "add"},
+                inputs={"value": "eric_add_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )
@@ -81,7 +140,7 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_2",
-                inputs={"value": "mul"},
+                inputs={"value": "dave_mul_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -89,7 +148,7 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_3",
-                inputs={"value": "mul"},
+                inputs={"value": "eric_mul_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )
@@ -129,9 +188,9 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             fixedpoint_ops.EncodeOperation(
-                name="encode_0",
+                name="encode_alice",
                 inputs={"value": "alice_input"},
-                placement_name="rep",
+                placement_name="alice",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
                     precision=expected_encoded_dtype.fractional_precision,
@@ -141,9 +200,9 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             fixedpoint_ops.EncodeOperation(
-                name="encode_1",
+                name="encode_bob",
                 inputs={"value": "bob_input"},
-                placement_name="rep",
+                placement_name="bob",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
                     precision=expected_encoded_dtype.fractional_precision,
@@ -154,7 +213,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.AddOperation(
                 name="fixed_add_0",
-                inputs={"lhs": "encode_0", "rhs": "encode_1"},
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
@@ -165,7 +224,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.MulOperation(
                 name="fixed_mul_0",
-                inputs={"lhs": "encode_0", "rhs": "encode_1"},
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
@@ -187,9 +246,18 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
-                name="decode_0",
+                name="dave_add_decode",
                 inputs={"value": "fixed_add_0"},
-                placement_name="rep",
+                placement_name="dave",
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=expected_encoded_dtype.fractional_precision,
+            )
+        )
+        expected_comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_add_decode",
+                inputs={"value": "fixed_add_0"},
+                placement_name="eric",
                 output_type=TensorType(dtype=dtypes.float64),
                 precision=expected_encoded_dtype.fractional_precision,
             )
@@ -197,7 +265,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_0",
-                inputs={"value": "decode_0"},
+                inputs={"value": "dave_add_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -205,16 +273,25 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_1",
-                inputs={"value": "decode_0"},
+                inputs={"value": "eric_add_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
-                name="decode_1",
+                name="dave_mul_decode",
                 inputs={"value": "trunc_pr_0"},
-                placement_name="rep",
+                placement_name="dave",
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=expected_encoded_dtype.fractional_precision,
+            )
+        )
+        expected_comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_mul_decode",
+                inputs={"value": "trunc_pr_0"},
+                placement_name="eric",
                 output_type=TensorType(dtype=dtypes.float64),
                 precision=expected_encoded_dtype.fractional_precision,
             )
@@ -222,7 +299,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_2",
-                inputs={"value": "decode_1"},
+                inputs={"value": "dave_mul_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -230,7 +307,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_3",
-                inputs={"value": "decode_1"},
+                inputs={"value": "eric_mul_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )
@@ -251,6 +328,7 @@ class ReplicatedTest(parameterized.TestCase):
         )
         comp.add_placement(HostPlacement(name="dave"))
         comp.add_placement(HostPlacement(name="eric"))
+        fp_dtype = dtypes.fixed(60, 0)
 
         comp.add_operation(
             standard_ops.ConstantOperation(
@@ -271,25 +349,83 @@ class ReplicatedTest(parameterized.TestCase):
             )
         )
         comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision,
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_bob",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision,
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.AddOperation(
-                name="add_0",
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                name="add",
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
                 output_type=TensorType(dtype=dtypes.int64),
             )
         )
         comp.add_operation(
             standard_ops.MulOperation(
-                name="add_1",
-                inputs={"lhs": "alice_input", "rhs": "bob_input"},
+                name="mul",
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
                 output_type=TensorType(dtype=dtypes.int64),
             )
         )
         comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_add_decode",
+                inputs={"value": "add"},
+                placement_name="dave",
+                output_type=TensorType(dtype=dtypes.int64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="dave_mul_decode",
+                inputs={"value": "mul"},
+                placement_name="dave",
+                output_type=TensorType(dtype=dtypes.int64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_add_decode",
+                inputs={"value": "add"},
+                placement_name="eric",
+                output_type=TensorType(dtype=dtypes.int64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_mul_decode",
+                inputs={"value": "mul"},
+                placement_name="eric",
+                output_type=TensorType(dtype=dtypes.int64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+        comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_0",
-                inputs={"value": "add_0"},
+                inputs={"value": "dave_add_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -297,7 +433,7 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_1",
-                inputs={"value": "add_0"},
+                inputs={"value": "eric_add_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )
@@ -305,7 +441,7 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_2",
-                inputs={"value": "add_1"},
+                inputs={"value": "dave_mul_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -313,7 +449,7 @@ class ReplicatedTest(parameterized.TestCase):
         comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_3",
-                inputs={"value": "add_1"},
+                inputs={"value": "eric_mul_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )
@@ -353,9 +489,9 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             fixedpoint_ops.EncodeOperation(
-                name="encode_0",
+                name="encode_alice",
                 inputs={"value": "alice_input"},
-                placement_name="rep",
+                placement_name="alice",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
                     precision=expected_encoded_dtype.fractional_precision,
@@ -365,9 +501,9 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             fixedpoint_ops.EncodeOperation(
-                name="encode_1",
+                name="encode_bob",
                 inputs={"value": "bob_input"},
-                placement_name="rep",
+                placement_name="bob",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
                     precision=expected_encoded_dtype.fractional_precision,
@@ -378,7 +514,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.AddOperation(
                 name="fixed_add_0",
-                inputs={"lhs": "encode_0", "rhs": "encode_1"},
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
@@ -389,19 +525,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             fixedpoint_ops.MulOperation(
                 name="fixed_mul_0",
-                inputs={"lhs": "encode_0", "rhs": "encode_1"},
-                placement_name="rep",
-                output_type=EncodedTensorType(
-                    dtype=expected_encoded_dtype,
-                    precision=expected_encoded_dtype.fractional_precision,
-                ),
-            )
-        )
-        expected_comp.add_operation(
-            fixedpoint_ops.TruncPrOperation(
-                name="trunc_pr_0",
-                inputs={"value": "fixed_mul_0"},
-                precision=0,
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
                 placement_name="rep",
                 output_type=EncodedTensorType(
                     dtype=expected_encoded_dtype,
@@ -411,9 +535,18 @@ class ReplicatedTest(parameterized.TestCase):
         )
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
-                name="decode_0",
+                name="dave_add_decode",
                 inputs={"value": "fixed_add_0"},
-                placement_name="rep",
+                placement_name="dave",
+                output_type=TensorType(dtype=dtypes.int64),
+                precision=expected_encoded_dtype.fractional_precision,
+            )
+        )
+        expected_comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_add_decode",
+                inputs={"value": "fixed_add_0"},
+                placement_name="eric",
                 output_type=TensorType(dtype=dtypes.int64),
                 precision=expected_encoded_dtype.fractional_precision,
             )
@@ -421,7 +554,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_0",
-                inputs={"value": "decode_0"},
+                inputs={"value": "dave_add_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -429,16 +562,25 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_1",
-                inputs={"value": "decode_0"},
+                inputs={"value": "eric_add_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )
         )
         expected_comp.add_operation(
             fixedpoint_ops.DecodeOperation(
-                name="decode_1",
-                inputs={"value": "trunc_pr_0"},
-                placement_name="rep",
+                name="dave_mul_decode",
+                inputs={"value": "fixed_mul_0"},
+                placement_name="dave",
+                output_type=TensorType(dtype=dtypes.int64),
+                precision=0,
+            )
+        )
+        expected_comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="eric_mul_decode",
+                inputs={"value": "fixed_mul_0"},
+                placement_name="eric",
                 output_type=TensorType(dtype=dtypes.int64),
                 precision=0,
             )
@@ -446,7 +588,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_2",
-                inputs={"value": "decode_1"},
+                inputs={"value": "dave_mul_decode"},
                 placement_name="dave",
                 output_type=UnitType(),
             )
@@ -454,7 +596,7 @@ class ReplicatedTest(parameterized.TestCase):
         expected_comp.add_operation(
             standard_ops.OutputOperation(
                 name="output_3",
-                inputs={"value": "decode_1"},
+                inputs={"value": "eric_mul_decode"},
                 placement_name="eric",
                 output_type=UnitType(),
             )

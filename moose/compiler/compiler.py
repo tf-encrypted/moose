@@ -11,6 +11,7 @@ from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation.base import Computation
+from moose.logger import get_logger
 
 
 class Compiler:
@@ -22,9 +23,9 @@ class Compiler:
                 MpspdzApplyFunctionPass(),
                 HostEncodingPass(),
                 HostLoweringPass(),
-                HostRingLoweringPass(),
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
+                HostRingLoweringPass(),
                 ReplicatedLoweringPass(),
                 PruningPass(),
                 NetworkingPass(),
@@ -58,6 +59,20 @@ class Compiler:
                     ),
                     render_edge_types=render_edge_types,
                 )
+        return computation
+
+    def compile(
+        self,
+        computation: Computation,
+        render=False,
+        render_edge_types=True,
+        render_prefix="pass",
+    ) -> Computation:
+        computation = self.run_passes(
+            computation, render, render_edge_types, render_prefix,
+        )
+        for op in computation.operations.values():
+            get_logger().debug(f"Computation: {op}")
         return computation
 
     def get_fresh_name(self, prefix):
