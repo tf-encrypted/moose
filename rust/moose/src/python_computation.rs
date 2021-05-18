@@ -224,6 +224,7 @@ struct PyBitExtractOperation {
     bit_idx: u64,
     inputs: Inputs,
     placement_name: String,
+    ring_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -744,6 +745,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitExtractOperation(op) => Ok(Operation {
                         kind: BitExtract(BitExtractOp {
+                            ring_type: map_type(&op.ring_type)?,
                             bit_idx: op.bit_idx as usize,
                         }),
                         name: op.name.clone(),
@@ -769,8 +771,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
                         kind: BitXor(BitXorOp {
-                            lhs: Ty::BitTensorTy,
-                            rhs: Ty::BitTensorTy,
+                            ty: Ty::BitTensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -779,8 +780,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
                         kind: BitAnd(BitAndOp {
-                            lhs: Ty::BitTensorTy,
-                            rhs: Ty::BitTensorTy,
+                            ty: Ty::BitTensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])

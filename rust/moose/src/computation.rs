@@ -404,19 +404,24 @@ pub struct RingShlOp {
 pub struct RingShrOp {
     pub amount: usize,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingInjectOp {
     pub output: Ty,
     pub bit_idx: usize,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BitExtractOp {
+    pub ring_type: Ty,
     pub bit_idx: usize,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BitSampleOp {
     pub output: Ty,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BitFillOp {
     pub value: u8,
@@ -424,14 +429,12 @@ pub struct BitFillOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BitXorOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BitAndOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

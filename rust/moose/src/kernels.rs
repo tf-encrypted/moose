@@ -548,7 +548,15 @@ impl Compile<Kernel> for RingInjectOp {
 impl Compile<Kernel> for BitExtractOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
-        closure_kernel!(Ring64Tensor, |x| x.bit_extract(bit_idx))
+        match self.ring_type {
+            Ty::Ring64TensorTy => {
+                closure_kernel!(Ring64Tensor, |x| x.bit_extract(bit_idx))
+            }
+            Ty::Ring128TensorTy => {
+                closure_kernel!(Ring128Tensor, |x| x.bit_extract(bit_idx))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 

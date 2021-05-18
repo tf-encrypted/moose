@@ -49,6 +49,7 @@ class BitSampleOperation(BitOperation):
 class BitExtractOperation(BitOperation):
     bit_idx: int
     output_type: ValueType = BitTensorType()
+    ring_type: ValueType = RingTensorType()
 
 
 @dataclass
