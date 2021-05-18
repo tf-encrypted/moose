@@ -189,20 +189,23 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
     def process_incoming_edge(self, src_op_name, input_key, dst_op_name):
         src_op = self.computation.operation(src_op_name)
         dst_op = self.computation.operation(dst_op_name)
-        share_op = self.computation.add_operation(
-            rep_dialect.ShareOperation(
-                name=self.context.get_fresh_name("share"),
-                inputs={
-                    "value": src_op_name,
-                    "setup": self.get_setup_op(dst_op.placement_name).name,
-                },
-                placement_name=dst_op.placement_name,
-                output_type=rep_dialect.ReplicatedRingTensorType(
-                    dtype=src_op.output_type.dtype
-                ),
+        cache_key = (src_op.name, dst_op.placement_name)
+        if cache_key not in self.incoming_edge_cache:
+            share_op = self.computation.add_operation(
+                rep_dialect.ShareOperation(
+                    name=self.context.get_fresh_name("share"),
+                    inputs={
+                        "value": src_op_name,
+                        "setup": self.get_setup_op(dst_op.placement_name).name,
+                    },
+                    placement_name=dst_op.placement_name,
+                    output_type=rep_dialect.ReplicatedRingTensorType(
+                        dtype=src_op.output_type.dtype
+                    ),
+                )
             )
-        )
-        return share_op
+            self.incoming_edge_cache[cache_key] = share_op
+        return self.incoming_edge_cache[cache_key]
 
     def process_outgoing_edge(self, src_op, input_key, dst_op_name):
         dst_op = self.computation.operation(dst_op_name)
