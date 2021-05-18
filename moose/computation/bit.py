@@ -58,7 +58,7 @@ class RingInjectOperation(BitOperation):
 
 
 @dataclass
-class FillBitTensorOperation(BitOperation):
+class BitFillTensorOperation(BitOperation):
     value: int
     output_type: ValueType = BitTensorType()
 

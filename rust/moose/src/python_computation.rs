@@ -25,6 +25,12 @@ enum PyOperation {
     ring_FillTensorOperation(PyFillTensorOperation),
     ring_RingShlOperation(PyRingShlOperation),
     ring_RingShrOperation(PyRingShrOperation),
+    bit_BitExtractOperation(PyBitExtractOperation),
+    bit_BitSampleOperation(PyBitSampleOperation),
+    bit_BitFillTensorOperation(PyBitFillOperation),
+    bit_BitXorOperation(PyBitXorOperation),
+    bit_BitAndOperation(PyBitAndOperation),
+    bit_RingInjectOperation(PyRingInjectOperation),
     std_ConstantOperation(PyConstantOperation),
     std_AddOperation(PyAddOperation),
     std_SubOperation(PySubOperation),
@@ -69,6 +75,7 @@ enum PyValueType {
     std_UnitType,
     std_UnknownType,
     ring_RingTensorType,
+    bit_BitTensorType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -188,6 +195,14 @@ struct PyFillTensorOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyBitFillOperation {
+    name: String,
+    value: u8,
+    inputs: Inputs,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyRingShlOperation {
     name: String,
     amount: u64,
@@ -201,6 +216,43 @@ struct PyRingShrOperation {
     amount: u64,
     inputs: Inputs,
     placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyBitExtractOperation {
+    name: String,
+    bit_idx: u64,
+    inputs: Inputs,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyBitSampleOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyBitXorOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+}
+#[derive(Deserialize, Debug)]
+struct PyBitAndOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyRingInjectOperation {
+    name: String,
+    inputs: Inputs,
+    bit_idx: u64,
+    placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -556,6 +608,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_UnknownType => Err(anyhow::anyhow!("unimplemented type 'unknown'")),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
         PyValueType::ring_RingTensorType => Ok(Ty::Ring64TensorTy),
+        &PyValueType::bit_BitTensorType => Ok(Ty::BitTensorTy),
     }
 }
 
@@ -686,6 +739,61 @@ impl TryFrom<PyComputation> for Computation {
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    bit_BitExtractOperation(op) => Ok(Operation {
+                        kind: BitExtract(BitExtractOp {
+                            bit_idx: op.bit_idx as usize,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["tensor"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    bit_BitSampleOperation(op) => Ok(Operation {
+                        kind: BitSample(BitSampleOp {
+                            output: Ty::BitTensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["shape", "seed"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    bit_BitFillTensorOperation(op) => Ok(Operation {
+                        kind: BitFill(BitFillOp { value: op.value }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["shape"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    bit_BitXorOperation(op) => Ok(Operation {
+                        kind: BitXor(BitXorOp {
+                            lhs: Ty::BitTensorTy,
+                            rhs: Ty::BitTensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    bit_BitAndOperation(op) => Ok(Operation {
+                        kind: BitAnd(BitAndOp {
+                            lhs: Ty::BitTensorTy,
+                            rhs: Ty::BitTensorTy,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    bit_RingInjectOperation(op) => Ok(Operation {
+                        kind: RingInject(RingInjectOp {
+                            output: map_type(&op.output_type)?,
+                            bit_idx: op.bit_idx as usize,
+                        }),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["tensor"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),

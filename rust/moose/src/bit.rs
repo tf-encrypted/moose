@@ -3,9 +3,10 @@ use crate::prng::AesRng;
 use crate::standard::Shape;
 use ndarray::prelude::*;
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::ops::{BitAnd, BitXor};
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>);
 
 impl BitTensor {

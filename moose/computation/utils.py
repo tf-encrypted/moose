@@ -38,7 +38,7 @@ SUPPORTED_TYPES = [
     bit_dialect.BitSampleOperation,
     bit_dialect.BitExtractOperation,
     bit_dialect.RingInjectOperation,
-    bit_dialect.FillBitTensorOperation,
+    bit_dialect.BitFillTensorOperation,
     fixed_dialect.EncodedTensorType,
     fixed_dialect.AddOperation,
     fixed_dialect.SubOperation,
