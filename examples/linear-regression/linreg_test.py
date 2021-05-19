@@ -25,14 +25,6 @@ def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
     return x_data, y_data
 
 
-def into_fixed(x):
-    return edsl.cast(x, dtype=edsl.fixed(8, 27))
-
-
-def from_fixed(x):
-    return edsl.cast(x, dtype=edsl.float32)
-
-
 def mse(y_pred, y_true):
     return edsl.mean(edsl.square(edsl.sub(y_pred, y_true)), axis=0)
 
