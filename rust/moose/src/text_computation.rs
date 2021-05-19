@@ -1184,7 +1184,7 @@ mod tests {
     #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "send = Send() {rendezvous_key = \"abc\" receiver = \"bob\"} @Host(alice)",
+            r#"send = Send() {rendezvous_key = "abc" receiver = "bob"} @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
@@ -1200,7 +1200,7 @@ mod tests {
     #[test]
     fn test_receive() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "receive = Receive() {rendezvous_key = \"abc\" sender = \"bob\"} : () -> Float32Tensor @Host(alice)",
+            r#"receive = Receive() {rendezvous_key = "abc" sender = "bob"} : () -> Float32Tensor @Host(alice)"#,
         )?;
         assert_eq!(op.name, "receive");
         assert_eq!(
@@ -1285,7 +1285,7 @@ mod tests {
         // The following tests are verifying that each valid line is parsed successfuly.
         // It does not assert on the result.
         parse_assignment::<(&str, ErrorKind)>(
-            "z = Input() {arg_name = \"prompt\"}: () -> Float32Tensor @Host(alice)",
+            r#"z = Input() {arg_name = "prompt"}: () -> Float32Tensor @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = StdExpandDims() {axis = 0}: (Float32Tensor) -> Float32Tensor @Host(alice)",
@@ -1363,9 +1363,9 @@ mod tests {
 
     #[test]
     fn test_sample_computation_err() {
-        let data = "a = Constant(\"a\") @Host(alice)
+        let data = r#"a = Constant("a") @Host(alice)
             err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)
-            b = Constant(\"b\") @Host(alice)";
+            b = Constant("b") @Host(alice)"#;
         let parsed: IResult<_, _, VerboseError<&str>> = parse_computation(data);
         if let Err(Failure(e)) = parsed {
             assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)\n                                ^\n\n");
