@@ -132,6 +132,7 @@ struct PyRingAddOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -139,6 +140,7 @@ struct PyRingSubOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -146,6 +148,7 @@ struct PyRingMulOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -153,6 +156,7 @@ struct PyRingDotOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -160,6 +164,7 @@ struct PyRingShapeOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    ring_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -168,6 +173,7 @@ struct PyRingSampleOperation {
     max_value: Option<u64>,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -176,6 +182,7 @@ struct PyRingSumOperation {
     inputs: Inputs,
     placement_name: String,
     axis: Option<u32>,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -648,8 +655,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingAddOperation(op) => Ok(Operation {
                         kind: RingAdd(RingAddOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -658,8 +665,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSubOperation(op) => Ok(Operation {
                         kind: RingSub(RingSubOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -668,8 +675,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingMulOperation(op) => Ok(Operation {
                         kind: RingMul(RingMulOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -678,8 +685,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingDotOperation(op) => Ok(Operation {
                         kind: RingDot(RingDotOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -688,7 +695,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: RingShape(RingShapeOp {
-                            ty: Ty::Ring64TensorTy,
+                            ty: map_type(&op.ring_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
@@ -697,7 +704,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSample(RingSampleOp {
-                            output: Ty::Ring64TensorTy,
+                            output: map_type(&op.output_type)?,
                             max_value: op.max_value,
                         }),
                         name: op.name.clone(),
@@ -707,7 +714,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSumOperation(op) => Ok(Operation {
                         kind: RingSum(RingSumOp {
-                            ty: Ty::Ring64TensorTy,
+                            ty: map_type(&op.output_type)?,
                             axis: op.axis,
                         }),
                         name: op.name.clone(),
