@@ -891,9 +891,7 @@ mod tests {
         transpose = StdTranspose(x) : (Float32Tensor) -> Float32Tensor @Host(alice)"#;
 
         let exec = TestExecutor::default();
-        let _outputs = exec
-            .run_computation(&source.try_into()?, SyncArgs::new())
-            .unwrap();
+        let _outputs = exec.run_computation(&source.try_into()?, SyncArgs::new())?;
         Ok(())
     }
 }
