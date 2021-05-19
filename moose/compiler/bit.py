@@ -11,10 +11,10 @@ from moose.computation.base import Computation
 from moose.computation.base import Operation
 from moose.computation.bit import BitAndOperation
 from moose.computation.bit import BitExtractOperation
+from moose.computation.bit import BitFillTensorOperation
 from moose.computation.bit import BitSampleOperation
 from moose.computation.bit import BitShapeOperation
 from moose.computation.bit import BitXorOperation
-from moose.computation.bit import BitFillTensorOperation
 from moose.computation.bit import PrintBitTensorOperation
 from moose.computation.bit import RingInjectOperation
 from moose.computation.standard import UnitType

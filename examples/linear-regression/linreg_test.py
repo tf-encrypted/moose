@@ -15,6 +15,8 @@ from moose.networking.memory import Networking
 from moose.storage.memory import MemoryDataStore
 from moose.testing import TestRuntime as Runtime
 
+FIXED = edsl.fixed(8, 27)
+
 
 def generate_data(seed, n_instances, n_features, coeff=3, shift=10):
     rng = np.random.default_rng()
@@ -90,19 +92,20 @@ class LinearRegressionExample(parameterized.TestCase):
                 X_b = edsl.concatenate([reshaped_bias, X], axis=1)
                 A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
                 B = edsl.dot(A, edsl.transpose(X_b))
-                X_b = into_fixed(X_b)
-                B = into_fixed(B)
+                X_b = edsl.cast(X_b, dtype=FIXED)
+                B = edsl.cast(B, dtype=FIXED)
 
             with y_owner:
                 y_true = edsl.atleast_2d(
                     edsl.load(y_uri, dtype=edsl.float32), to_column_vector=True
                 )
                 if metric_name == "mape":
-                    y_true_inv = into_fixed(
-                        edsl.div(edsl.constant(1.0, dtype=edsl.float32), y_true)
+                    y_true_inv = edsl.cast(
+                        edsl.div(edsl.constant(1.0, dtype=edsl.float32), y_true),
+                        dtype=FIXED,
                     )
                 totals_ss = ss_tot(y_true)
-                y_true = into_fixed(y_true)
+                y_true = edsl.cast(y_true, dtype=FIXED)
 
             with replicated_plc:
                 w = edsl.dot(B, y_true)
@@ -114,12 +117,12 @@ class LinearRegressionExample(parameterized.TestCase):
                 residuals_ss = ss_res(y_pred, y_true)
 
             with model_owner:
-                residuals_ss = from_fixed(residuals_ss)
+                residuals_ss = edsl.cast(residuals_ss, dtype=edsl.float32)
                 rsquared_result = r_squared(residuals_ss, totals_ss)
 
             with model_owner:
-                w = from_fixed(w)
-                metric_result = from_fixed(metric_result)
+                w = edsl.cast(w, dtype=edsl.float32)
+                metric_result = edsl.cast(metric_result, dtype=edsl.float32)
                 res = (
                     edsl.save(w_uri, w),
                     edsl.save(metric_uri, metric_result),

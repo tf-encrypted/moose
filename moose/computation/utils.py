@@ -19,17 +19,6 @@ from moose.computation.base import Value
 from moose.computation.base import ValueType
 from moose.logger import get_logger
 
-
-def serialize_computation(computation):
-    return msgpack.packb(computation, default=_encode)
-
-
-def deserialize_computation(bytes_stream):
-    computation = msgpack.unpackb(bytes_stream, object_hook=_decode)
-    get_logger().debug(computation)
-    return computation
-
-
 SUPPORTED_TYPES = [
     bit_dialect.BitTensorType,
     bit_dialect.BitXorOperation,
@@ -125,10 +114,18 @@ SUPPORTED_TYPES = [
     std_dialect.IntConstant,
     std_dialect.FloatConstant,
 ]
-
-
 TYPES_MAP = {f"{ty.dialect()}_{ty.__name__}": ty for ty in SUPPORTED_TYPES}
-FIXED_DTYPE_REGEX = re.compile("fixed([0-9]*)_([0-9]*)")
+FIXED_DTYPE_REGEX = re.compile("fixed([0-9]+)_([0-9]+)")
+
+
+def serialize_computation(computation):
+    return msgpack.packb(computation, default=_encode)
+
+
+def deserialize_computation(bytes_stream):
+    computation = msgpack.unpackb(bytes_stream, object_hook=_decode)
+    get_logger().debug(computation)
+    return computation
 
 
 def _encode(val):
