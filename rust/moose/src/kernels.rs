@@ -455,6 +455,9 @@ impl Compile<Kernel> for RingMulOp {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
             }
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x * y)
+            }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -466,6 +469,9 @@ impl Compile<Kernel> for RingDotOp {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
             }
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x.dot(y))
+            }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -476,6 +482,7 @@ impl Compile<Kernel> for RingSumOp {
         let axis = self.axis.map(|a| a as usize);
         match self.ty {
             Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x| x.sum(axis)),
+            Ty::Ring128TensorTy => closure_kernel!(Ring128Tensor, |x| x.sum(axis)),
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -511,6 +518,16 @@ impl Compile<Kernel> for RingSampleOp {
                     &shape, &seed
                 ))
             }
+            (Ty::Ring128TensorTy, None) => {
+                function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_uniform(
+                    &shape, &seed
+                ))
+            }
+            (Ty::Ring128TensorTy, Some(max_value)) if max_value == 1 => {
+                function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_bits(
+                    &shape, &seed
+                ))
+            }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -519,14 +536,30 @@ impl Compile<Kernel> for RingSampleOp {
 impl Compile<Kernel> for RingShlOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
-        closure_kernel!(Ring64Tensor, |x| x << amount)
+        match self.ty {
+            Ty::Ring64TensorTy => {
+                closure_kernel!(Ring64Tensor, |x| x << amount)
+            }
+            Ty::Ring128TensorTy => {
+                closure_kernel!(Ring128Tensor, |x| x << amount)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
 impl Compile<Kernel> for RingShrOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
-        closure_kernel!(Ring64Tensor, |x| x >> amount)
+        match self.ty {
+            Ty::Ring64TensorTy => {
+                closure_kernel!(Ring64Tensor, |x| x >> amount)
+            }
+            Ty::Ring128TensorTy => {
+                closure_kernel!(Ring128Tensor, |x| x >> amount)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 

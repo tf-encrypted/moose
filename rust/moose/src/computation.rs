@@ -46,6 +46,12 @@ pub enum Ty {
     Uint64TensorTy,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum TyRingPrimitive {
+    U64(u64),
+    U128(u128),
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
@@ -386,6 +392,7 @@ pub struct RingShapeOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingFillOp {
+    pub ty: Ty,
     pub value: u64,
 }
 
@@ -397,11 +404,13 @@ pub struct RingSampleOp {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingShlOp {
+    pub ty: Ty,
     pub amount: usize,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingShrOp {
+    pub ty: Ty,
     pub amount: usize,
 }
 
@@ -433,18 +442,21 @@ pub struct BitAndOp;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {
-    pub scaling_factor: u64,
+    pub ty: Ty,
+    pub scaling_factor: TyRingPrimitive,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FixedpointRingDecodeOp {
-    pub scaling_factor: u64,
+    pub ty: Ty,
+    pub scaling_factor: TyRingPrimitive,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FixedpointRingMeanOp {
+    pub ty: Ty,
     pub axis: Option<usize>,
-    pub scaling_factor: u64,
+    pub scaling_factor: TyRingPrimitive,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

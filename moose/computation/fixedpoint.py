@@ -107,4 +107,4 @@ class RingEncodeOperation(FixedpointOperation):
 @dataclass
 class RingDecodeOperation(FixedpointOperation):
     scaling_factor: int
-    output_type: ValueType
+    output_type: ValueType = RingTensorType()
