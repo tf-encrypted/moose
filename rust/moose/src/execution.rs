@@ -1142,6 +1142,19 @@ mod tests {
         let _outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
     }
 
+    use std::convert::TryInto;
+
+    #[test]
+    fn test_standard_prod_ops_text() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
+        y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
+        mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
+        dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
+        mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @Host(alice)"#;
+        TestExecutor::default().run_computation(&source.try_into()?, SyncArgs::new())?;
+        Ok(())
+    }
+
     #[test]
     fn test_eager_executor() {
         use crate::prim::Nonce;
@@ -1207,6 +1220,20 @@ mod tests {
         operations.extend(vec![key_op, seed_op, shape_op, output_op]);
 
         let comp = Computation { operations }.toposort().unwrap();
+
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+    }
+
+    #[test]
+    fn test_eager_executor_text() {
+        let definition = r#"key = PrimGenPrfKey() @Host(alice)
+        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
+        shape = Constant([2, 3] : Shape) @Host(alice)
+        x10 = RingSample(shape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)
+        z = Output(x10): (Ring64Tensor) -> Unit @Host(alice)"#;
+        let comp: Computation = definition.try_into().unwrap();
 
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
