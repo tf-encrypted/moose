@@ -8,10 +8,10 @@ from moose_kernels import ring_inject
 
 from moose.computation.bit import BitAndOperation
 from moose.computation.bit import BitExtractOperation
+from moose.computation.bit import BitFillTensorOperation
 from moose.computation.bit import BitSampleOperation
 from moose.computation.bit import BitShapeOperation
 from moose.computation.bit import BitXorOperation
-from moose.computation.bit import FillBitTensorOperation
 from moose.computation.bit import PrintBitTensorOperation
 from moose.computation.bit import RingInjectOperation
 from moose.executor.kernels.base import Kernel
@@ -35,9 +35,9 @@ class BitShapeKernel(Kernel):
         return bit_shape(tensor)
 
 
-class FillBitTensorKernel(Kernel):
+class BitFillTensorKernel(Kernel):
     def execute_synchronous_block(self, op, session, shape):
-        assert isinstance(op, FillBitTensorOperation)
+        assert isinstance(op, BitFillTensorOperation)
         return bit_fill(shape, op.value)
 
 

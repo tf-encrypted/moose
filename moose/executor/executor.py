@@ -77,7 +77,7 @@ class AsyncExecutor:
             bit_ops.BitExtractOperation: bit_kernels.BitExtractKernel(),
             bit_ops.RingInjectOperation: bit_kernels.RingInjectKernel(),
             bit_ops.BitSampleOperation: bit_kernels.BitSampleKernel(),
-            bit_ops.FillBitTensorOperation: bit_kernels.FillBitTensorKernel(),
+            bit_ops.BitFillTensorOperation: bit_kernels.BitFillTensorKernel(),
             bit_ops.BitShapeOperation: bit_kernels.BitShapeKernel(),
             bit_ops.PrintBitTensorOperation: bit_kernels.PrintBitTensorKernel(),
             primitives_ops.DeriveSeedOperation: primitives_kernels.DeriveSeedKernel(),
