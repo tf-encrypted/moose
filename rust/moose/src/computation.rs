@@ -418,9 +418,7 @@ pub struct BitExtractOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BitSampleOp {
-    pub output: Ty,
-}
+pub struct BitSampleOp;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BitFillOp {
@@ -428,14 +426,10 @@ pub struct BitFillOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BitXorOp {
-    pub ty: Ty,
-}
+pub struct BitXorOp;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct BitAndOp {
-    pub ty: Ty,
-}
+pub struct BitAndOp;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {

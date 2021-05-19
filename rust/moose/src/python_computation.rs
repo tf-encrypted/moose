@@ -609,7 +609,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_UnknownType => Err(anyhow::anyhow!("unimplemented type 'unknown'")),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
         PyValueType::ring_RingTensorType => Ok(Ty::Ring64TensorTy),
-        &PyValueType::bit_BitTensorType => Ok(Ty::BitTensorTy),
+        PyValueType::bit_BitTensorType => Ok(Ty::BitTensorTy),
     }
 }
 
@@ -754,9 +754,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitSampleOperation(op) => Ok(Operation {
-                        kind: BitSample(BitSampleOp {
-                            output: Ty::BitTensorTy,
-                        }),
+                        kind: BitSample(BitSampleOp {}),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -770,18 +768,14 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
-                        kind: BitXor(BitXorOp {
-                            ty: Ty::BitTensorTy,
-                        }),
+                        kind: BitXor(BitXorOp {}),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
-                        kind: BitAnd(BitAndOp {
-                            ty: Ty::BitTensorTy,
-                        }),
+                        kind: BitAnd(BitAndOp {}),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
