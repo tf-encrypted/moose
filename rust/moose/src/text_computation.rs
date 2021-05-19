@@ -102,6 +102,13 @@ fn parse_placement<'a, E: 'a + ParseError<&'a str>>(
     ))(input)
 }
 
+/// Parses list of attributes.
+macro_rules! attributes {
+    ($inner:expr) => {
+        |input: &'a str| delimited(ws(tag("{")), permutation($inner), ws(tag("}")))(input)
+    };
+}
+
 /// Constructs a parser for a simple unary operation.
 macro_rules! std_unary {
     ($typ:expr, $sub:ident) => {
@@ -268,8 +275,10 @@ fn send_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, (rendezvous_key, receiver)) =
-        attributes_pair("rendezvous_key", string, "receiver", string)(input)?;
+    let (input, (rendezvous_key, receiver)) = attributes!((
+        attributes_member("rendezvous_key", string),
+        attributes_member("receiver", string)
+    ))(input)?;
     let (input, _opt_type) = opt(type_definition(0))(input)?;
     Ok((
         input,
@@ -288,8 +297,10 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, (rendezvous_key, sender)) =
-        attributes_pair("rendezvous_key", string, "sender", string)(input)?;
+    let (input, (rendezvous_key, sender)) = attributes!((
+        attributes_member("rendezvous_key", string),
+        attributes_member("sender", string)
+    ))(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
@@ -366,7 +377,10 @@ fn stdslice<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, (start, end)) = attributes_pair("start", parse_int, "end", parse_int)(input)?;
+    let (input, (start, end)) = attributes!((
+        attributes_member("start", parse_int),
+        attributes_member("end", parse_int)
+    ))(input)?;
     let (input, (args_types, _result_type)) = type_definition(1)(input)?;
     Ok((
         input,
@@ -506,20 +520,10 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, (scaling_factor, axis)) = delimited(
-        ws(tag("{")),
-        permutation((
-            map(
-                tuple((ws(tag("scaling_factor")), ws(tag("=")), parse_int)),
-                |(_, _, v)| v,
-            ),
-            opt(map(
-                tuple((ws(tag("axis")), ws(tag("=")), parse_int)),
-                |(_, _, v)| v,
-            )),
-        )),
-        ws(tag("}")),
-    )(input)?;
+    let (input, (scaling_factor, axis)) = attributes!((
+        attributes_member("scaling_factor", parse_int),
+        opt(attributes_member("axis", parse_int))
+    ))(input)?;
 
     let (input, _) = opt(type_definition(0))(input)?;
     Ok((
@@ -613,7 +617,9 @@ fn argument_list<'a, E: 'a + ParseError<&'a str>>(
     )(input)
 }
 
-/// Parses list of attributes. Currently only supporting one attribute
+/// Parses list of attributes when there is only one attribute.
+///
+/// This is an optimization to avoid permutation cast for the simple case.
 fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str>>(
     name: &'a str,
     inner: F,
@@ -621,31 +627,20 @@ fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str>>(
 where
     F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
-    delimited(
-        tuple((ws(tag("{")), ws(tag(name)), ws(tag("=")))),
-        inner,
-        ws(tag("}")),
-    )
+    delimited(ws(tag("{")), attributes_member(name, inner), ws(tag("}")))
 }
 
-/// Parses list of attributes. Parses two attributes.
-fn attributes_pair<'a, O1, O2, F1: 'a, F2: 'a, E: 'a + ParseError<&'a str>>(
+/// Parses a single attribute with an optional comma at the end
+fn attributes_member<'a, O, F: 'a, E: 'a + ParseError<&'a str>>(
     name1: &'a str,
-    inner1: F1,
-    name2: &'a str,
-    inner2: F2,
-) -> impl FnMut(&'a str) -> IResult<&'a str, (O1, O2), E>
+    inner1: F,
+) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
 where
-    F1: FnMut(&'a str) -> IResult<&'a str, O1, E>,
-    F2: FnMut(&'a str) -> IResult<&'a str, O2, E>,
+    F: FnMut(&'a str) -> IResult<&'a str, O, E>,
 {
-    delimited(
-        ws(tag("{")),
-        permutation((
-            map(tuple((ws(tag(name1)), ws(tag("=")), inner1)), |(_, _, v)| v),
-            map(tuple((ws(tag(name2)), ws(tag("=")), inner2)), |(_, _, v)| v),
-        )),
-        ws(tag("}")),
+    map(
+        tuple((ws(tag(name1)), ws(tag("=")), inner1, opt(ws(tag(","))))),
+        |(_, _, v, _)| v,
     )
 }
 
@@ -1271,6 +1266,17 @@ mod tests {
                 axis: None,
             })
         );
+
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "op = FixedpointRingMean() {scaling_factor=10, axis=0} : () -> Float32Tensor @Host(alice)",
+        )?;
+        assert_eq!(
+            op.kind,
+            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+                scaling_factor: 10,
+                axis: Some(0),
+            })
+        );
         Ok(())
     }
 
@@ -1288,7 +1294,7 @@ mod tests {
             "z = StdAtLeast2D() {to_column_vector = false}: (Float32Tensor) -> Float32Tensor @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdSlice() {start = 1 end = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = StdSlice() {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingSum() {axis = 0}: (Float32Tensor) -> Float32Tensor @Host(alice)",
