@@ -30,7 +30,7 @@ impl TryFrom<&str> for Computation {
     }
 }
 
-/// Parse the computation line by line
+/// Parses the computation line by line.
 fn parse_computation<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Computation, E> {
@@ -40,7 +40,9 @@ fn parse_computation<'a, E: 'a + ParseError<&'a str>>(
     ))(input)
 }
 
-/// Parse an individual assignment in the form of
+/// Parses an individual assignment.
+///
+/// Accepts an assignment in the form of
 ///
 /// `Identifier = Operation : TypeDefinition @Placement`
 fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(
@@ -61,7 +63,7 @@ fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parse placement
+/// Parses placement.
 fn parse_placement<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Placement, E> {
@@ -161,7 +163,7 @@ macro_rules! operation_on_axis {
     };
 }
 
-/// Parse operator - maps names to structs.
+/// Parses operator - maps names to structs.
 fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -260,7 +262,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
     alt((part1, part2, part3))(input)
 }
 
-/// Parses the Constant
+/// Parses a Constant
 fn constant<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -270,7 +272,7 @@ fn constant<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::Constant(ConstantOp { value: x }), vec![])))
 }
 
-/// Parses Send operator
+/// Parses a Send operator
 fn send_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -292,7 +294,7 @@ fn send_operator<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses Receive operator
+/// Parses a Receive operator
 fn receive_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -315,7 +317,7 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses Input operator
+/// Parses an Input operator
 fn input_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -334,7 +336,7 @@ fn input_operator<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses StdExpandDims
+/// Parses a StdExpandDims operator
 fn stdexpanddims<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -353,7 +355,7 @@ fn stdexpanddims<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses StdAtLeast2D
+/// Parses a StdAtLeast2D operator.
 fn stdatleast2d<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -372,7 +374,7 @@ fn stdatleast2d<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses StdSlice
+/// Parses a StdSlice operator.
 fn stdslice<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -395,7 +397,7 @@ fn stdslice<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses StdConcatenate
+/// Parses a StdConcatenate operator.
 fn stdconcatenate<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -414,7 +416,7 @@ fn stdconcatenate<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses RingSample
+/// Parses a RingSample operator.
 fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -433,7 +435,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses RingFill
+/// Parses a RingFill operator.
 fn ring_fill<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -443,7 +445,7 @@ fn ring_fill<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::RingFill(RingFillOp { value }), args)))
 }
 
-/// Parses RingShl
+/// Parses a RingShl operator.
 fn ring_shl<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -453,7 +455,7 @@ fn ring_shl<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::RingShl(RingShlOp { amount }), args)))
 }
 
-/// Parses RingShr
+/// Parses a RingShr operator.
 fn ring_shr<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -463,7 +465,7 @@ fn ring_shr<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::RingShr(RingShrOp { amount }), args)))
 }
 
-/// Parses PrimGenPrfKey
+/// Parses a PrimGenPrfKey operator.
 fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -471,7 +473,7 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::PrimGenPrfKey(PrimGenPrfKeyOp), args)))
 }
 
-/// Parses PrimDeriveSeed
+/// Parses a PrimDeriveSeed operator.
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -483,7 +485,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses FixedpointRingEncode
+/// Parses a FixedpointRingEncode operator.
 fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -499,7 +501,7 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses FixedpointRingDecode
+/// Parses a FixedpointRingDecode operator.
 fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -515,7 +517,7 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses FixedpointRingMean
+/// Parses a FixedpointRingMean operator.
 fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -538,7 +540,7 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses RingInject
+/// Parses a RingInject operator.
 fn ring_inject<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -557,7 +559,7 @@ fn ring_inject<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses BitExtract
+/// Parses a BitExtract operator.
 fn bit_extract<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -576,7 +578,7 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str>>(
     ))
 }
 
-/// Parses BitSample
+/// Parses a BitSample operator.
 fn bit_sample<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -585,7 +587,7 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::BitSample(BitSampleOp {}), args)))
 }
 
-/// Parses BitFill
+/// Parses a BitFill operator.
 fn bit_fill<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -595,7 +597,7 @@ fn bit_fill<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::BitFill(BitFillOp { value }), args)))
 }
 
-/// Parses BitXor
+/// Parses a BitXor operator.
 fn bit_xor<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
@@ -604,7 +606,9 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str>>(
     Ok((input, (Operator::BitXor(BitXorOp {}), args)))
 }
 
-/// Parses list of arguments in the form of
+/// Parses list of arguments.
+///
+/// Accepts input in the form of
 ///
 /// `(name, name, name)`
 fn argument_list<'a, E: 'a + ParseError<&'a str>>(
@@ -630,7 +634,7 @@ where
     delimited(ws(tag("{")), attributes_member(name, inner), ws(tag("}")))
 }
 
-/// Parses a single attribute with an optional comma at the end
+/// Parses a single attribute with an optional comma at the end.
 fn attributes_member<'a, O, F: 'a, E: 'a + ParseError<&'a str>>(
     name1: &'a str,
     inner1: F,
@@ -644,7 +648,9 @@ where
     )
 }
 
-/// Parses operator's type definition in the form of
+/// Parses operator's type definition
+///
+/// Accepts input in the form of
 ///
 /// `: (Float32Tensor, Float32Tensor) -> Float32Tensor`
 ///
@@ -669,7 +675,7 @@ fn type_definition<'a, E: 'a + ParseError<&'a str>>(
     }
 }
 
-/// Parse individual type's literal
+/// Parses an individual type's literal
 fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
@@ -697,7 +703,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a st
     }
 }
 
-/// Parse literal value.
+/// Parses a literal value.
 fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Value, E> {
     alt((
         map(tuple((parse_hex, type_literal("Seed"))), |(v, _)| {
@@ -830,7 +836,7 @@ fn type_literal<'a, E: 'a + ParseError<&'a str>>(
     }
 }
 
-/// Parses the vector of items, using the supplied innter parser.
+/// Parses a vector of items, using the supplied innter parser.
 fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, E>
@@ -840,6 +846,7 @@ where
     delimited(tag("["), separated_list0(ws(tag(",")), inner), tag("]"))
 }
 
+/// Parses a 2D vector of items, using the supplied innter parser.
 fn vector2<'a, F: 'a, O: 'a, E: 'a>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, ndarray::Array2<O>, E>
@@ -866,7 +873,7 @@ where
     }
 }
 
-/// Parse integer (or anything implementing FromStr from decimal digits)
+/// Parses integer (or anything implementing FromStr from decimal digits)
 fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, O, E> {
@@ -874,7 +881,7 @@ fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str>>(
         .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
-/// Parse a single byte, writte as two hex character.
+/// Parses a single byte, writte as two hex character.
 ///
 /// Leading '0' is mandatory for bytes 0x00 - 0x0F.
 fn parse_hex_u8<'a, E>(input: &'a str) -> IResult<&'a str, u8, E>
@@ -886,7 +893,9 @@ where
         .map_err(|_: nom::Err<nom::error::Error<&str>>| Error(make_error(input, ErrorKind::MapRes)))
 }
 
-/// Parse a hux dump, without any separators. Errors out if there is not enough data to fill an array of length N.
+/// Parse sa hux dump, without any separators.
+///
+/// Errors out if there is not enough data to fill an array of length N.
 fn parse_hex<'a, E, const N: usize>(input: &'a str) -> IResult<&'a str, [u8; N], E>
 where
     E: ParseError<&'a str>,
@@ -907,7 +916,8 @@ where
     delimited(space0, inner, space0)
 }
 
-/// Parse an escaped character: \n, \t, \r, \u{00AC}, etc.
+/// Parses an escaped character: \n, \t, \r, \u{00AC}, etc.
+///
 /// From nom examples (MIT licesnse, so it is ok)
 fn parse_hex_u32<'a, E>(input: &'a str) -> IResult<&'a str, u32, E>
 where
@@ -920,6 +930,7 @@ where
 }
 
 /// Parses a single unicode character.
+///
 /// From nom examples (MIT licesnse, so it is ok)
 fn parse_unicode<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
@@ -929,6 +940,7 @@ where
 }
 
 /// Parses any supported escaped character
+///
 /// From nom examples (MIT licesnse, so it is ok)
 fn parse_escaped_char<'a, E>(input: &'a str) -> IResult<&'a str, char, E>
 where
@@ -952,6 +964,7 @@ where
 
 /// Parse a backslash, followed by any amount of whitespace. This is used later
 /// to discard any escaped whitespace.
+///
 /// From nom examples (MIT licesnse, so it is ok)
 fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(
     input: &'a str,
@@ -960,6 +973,7 @@ fn parse_escaped_whitespace<'a, E: ParseError<&'a str>>(
 }
 
 /// Parse a non-empty block of text that doesn't include \ or "
+///
 /// From nom examples (MIT licesnse, so it is ok)
 fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
     let not_quote_slash = is_not("\"\\");
@@ -969,6 +983,7 @@ fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str,
 /// A string fragment contains a fragment of a string being parsed: either
 /// a non-empty Literal (a series of non-escaped characters), a single
 /// parsed escaped character, or a block of escaped whitespace.
+///
 /// From nom examples (MIT licesnse, so it is ok)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum StringFragment<'a> {
@@ -979,6 +994,7 @@ enum StringFragment<'a> {
 
 /// Combine parse_literal, parse_escaped_whitespace, and parse_escaped_char
 /// into a StringFragment.
+///
 /// From nom examples (MIT licesnse, so it is ok)
 fn parse_fragment<'a, E>(input: &'a str) -> IResult<&'a str, StringFragment<'a>, E>
 where
@@ -993,6 +1009,7 @@ where
 
 /// Parse a string. Use a loop of parse_fragment and push all of the fragments
 /// into an output string.
+///
 /// From nom examples (MIT licesnse, so it is ok)
 fn string<'a, E>(input: &'a str) -> IResult<&'a str, String, E>
 where
@@ -1009,7 +1026,9 @@ where
     delimited(char('"'), build_string, char('"'))(input)
 }
 
-/// Very simple boolean parser
+/// A very simple boolean parser.
+///
+/// Only accepts literals `true` and `false`.
 fn parse_bool<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, bool, E> {
     alt((value(true, tag("true")), value(false, tag("false"))))(input)
 }
@@ -1217,7 +1236,7 @@ mod tests {
     #[test]
     fn test_output() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = Output(x10): (Ring64Tensor) -> Unit @Host(alice)",
+            "z = Output(x10): (Ring64Tensor) -> Ring64Tensor @Host(alice)",
         )?;
         assert_eq!(op.name, "z");
         Ok(())
@@ -1235,7 +1254,7 @@ mod tests {
     #[test]
     fn test_fixedpoint_ring_mean() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {scaling_factor = 10 axis = 0} : () -> Float32Tensor @Host(alice)",
+            "op = FixedpointRingMean() {scaling_factor = 10, axis = 0} : () -> Float32Tensor @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
@@ -1246,7 +1265,7 @@ mod tests {
         );
 
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {axis = 1 scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
+            "op = FixedpointRingMean() {axis = 1, scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
