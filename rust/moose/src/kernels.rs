@@ -880,64 +880,20 @@ impl Compile<AsyncKernel> for LoadOp {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::execution::*;
+    use std::convert::TryInto;
 
     #[test]
-    fn test_standard_shape_ops() {
-        use crate::standard::Float32Tensor;
-        use ndarray::prelude::*;
-
-        let x = Float32Tensor::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let x_op = Operation {
-            name: "x".into(),
-            kind: Operator::Constant(ConstantOp {
-                value: Value::Float32Tensor(x),
-            }),
-            inputs: vec![],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let shape_op = Operation {
-            name: "shape".into(),
-            kind: Operator::StdShape(StdShapeOp {
-                ty: Ty::Float32TensorTy,
-            }),
-            inputs: vec!["x".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let expand_dims_op = Operation {
-            name: "expand_dims".into(),
-            kind: Operator::StdExpandDims(StdExpandDimsOp {
-                ty: Ty::Float32TensorTy,
-                axis: 2,
-            }),
-            inputs: vec!["x".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let transpose_op = Operation {
-            name: "transpose".into(),
-            kind: Operator::StdTranspose(StdTransposeOp {
-                ty: Ty::Float32TensorTy,
-            }),
-            inputs: vec!["x".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let operations = vec![x_op, shape_op, expand_dims_op, transpose_op];
-        let comp = Computation { operations }.toposort().unwrap();
+    fn test_standard_shape_ops() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
+        shape = StdShape(x): (Float32Tensor) -> Float32Tensor @Host(alice)
+        expand_dims = StdExpandDims(x) {axis = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)
+        transpose = StdTranspose(x) : (Float32Tensor) -> Float32Tensor @Host(alice)"#;
 
         let exec = TestExecutor::default();
-        let _outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        let _outputs = exec
+            .run_computation(&source.try_into()?, SyncArgs::new())
+            .unwrap();
+        Ok(())
     }
 }

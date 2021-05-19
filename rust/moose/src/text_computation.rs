@@ -4,12 +4,12 @@ use crate::standard::Shape;
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
-    character::complete::{alphanumeric1, char, digit1, line_ending, multispace1, space0},
-    combinator::{all_consuming, cut, map, map_opt, map_res, opt, value, verify},
+    character::complete::{alpha1, alphanumeric1, char, digit1, line_ending, multispace1, space0},
+    combinator::{all_consuming, cut, map, map_opt, map_res, opt, recognize, value, verify},
     error::{convert_error, make_error, ErrorKind, ParseError, VerboseError},
-    multi::{fill, fold_many0, many1, separated_list0},
+    multi::{fill, fold_many0, many0, many1, separated_list0},
     number::complete::{double, float},
-    sequence::{delimited, preceded, tuple},
+    sequence::{delimited, pair, preceded, tuple},
     Err::{Error, Failure},
     IResult,
 };
@@ -19,14 +19,27 @@ impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
 
     fn try_from(source: &str) -> anyhow::Result<Computation> {
-        match parse_computation::<VerboseError<&str>>(source) {
-            Err(Failure(e)) => Err(anyhow::anyhow!(
-                "Failed to parse computation\n{}",
-                convert_error(source, e)
-            )),
-            Err(e) => Err(anyhow::anyhow!("Failed to parse {} due to {}", source, e)),
-            Ok((_, computation)) => Ok(computation),
-        }
+        verbose_parse_computation(source)
+    }
+}
+
+impl TryFrom<String> for Computation {
+    type Error = anyhow::Error;
+
+    fn try_from(source: String) -> anyhow::Result<Computation> {
+        verbose_parse_computation(&source)
+    }
+}
+
+/// Parses the computation and returns a verbose error description if it fails.
+fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
+    match parse_computation::<VerboseError<&str>>(source) {
+        Err(Failure(e)) => Err(anyhow::anyhow!(
+            "Failed to parse computation\n{}",
+            convert_error(source, e)
+        )),
+        Err(e) => Err(anyhow::anyhow!("Failed to parse {} due to {}", source, e)),
+        Ok((_, computation)) => Ok(computation),
     }
 }
 
@@ -35,7 +48,7 @@ fn parse_computation<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Computation, E> {
     all_consuming(map(
-        separated_list0(many1(line_ending), parse_assignment),
+        separated_list0(many1(line_ending), cut(parse_assignment)),
         |operations| Computation { operations },
     ))(input)
 }
@@ -48,7 +61,7 @@ fn parse_computation<'a, E: 'a + ParseError<&'a str>>(
 fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operation, E> {
-    let (input, identifier) = ws(alphanumeric1)(input)?;
+    let (input, identifier) = ws(identifier)(input)?;
     let (input, _) = tag("=")(input)?;
     let (input, operator) = ws(parse_operator)(input)?;
     let (input, placement) = ws(parse_placement)(input)?;
@@ -905,8 +918,9 @@ where
     Ok((rest, buf))
 }
 
-/// From nom::recepies
 /// Wraps the innner parser in optional spaces.
+///
+/// From nom::recepies
 fn ws<'a, F: 'a, O, E: ParseError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -914,6 +928,16 @@ where
     F: Fn(&'a str) -> IResult<&'a str, O, E>,
 {
     delimited(space0, inner, space0)
+}
+
+/// Parses an identifier
+///
+/// From nom::recepies
+pub fn identifier<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, &'a str, E> {
+    recognize(pair(
+        alt((alpha1, tag("_"))),
+        many0(alt((alphanumeric1, tag("_")))),
+    ))(input)
 }
 
 /// Parses an escaped character: \n, \t, \r, \u{00AC}, etc.
