@@ -243,7 +243,14 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
         preceded(tag("FixedpointRingDecode"), cut(fixed_point_ring_decode)),
         preceded(tag("FixedpointRingMean"), cut(fixed_point_ring_mean)),
     ));
-    alt((part1, part2))(input)
+    let part3 = alt((
+        preceded(tag("RingInject"), cut(ring_inject)),
+        preceded(tag("BitExtract"), cut(bit_extract)),
+        preceded(tag("BitSample"), cut(bit_sample)),
+        preceded(tag("BitFill"), cut(bit_fill)),
+        preceded(tag("BitXor"), cut(bit_xor)),
+    ));
+    alt((part1, part2, part3))(input)
 }
 
 /// Parses the Constant
@@ -525,6 +532,72 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
             args,
         ),
     ))
+}
+
+/// Parses RingInject
+fn ring_inject<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+    Ok((
+        input,
+        (
+            Operator::RingInject(RingInjectOp {
+                output: args_types[0],
+                bit_idx,
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses BitExtract
+fn bit_extract<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
+    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
+    Ok((
+        input,
+        (
+            Operator::BitExtract(BitExtractOp {
+                ring_type: args_types[0],
+                bit_idx,
+            }),
+            args,
+        ),
+    ))
+}
+
+/// Parses BitSample
+fn bit_sample<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, _opt_args) = opt(type_definition(0))(input)?;
+    Ok((input, (Operator::BitSample(BitSampleOp {}), args)))
+}
+
+/// Parses BitFill
+fn bit_fill<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, value) = attributes_single("value", parse_int)(input)?;
+    let (input, _opt_args) = opt(type_definition(0))(input)?;
+    Ok((input, (Operator::BitFill(BitFillOp { value }), args)))
+}
+
+/// Parses BitXor
+fn bit_xor<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, _opt_args) = opt(type_definition(0))(input)?;
+    Ok((input, (Operator::BitXor(BitXorOp {}), args)))
 }
 
 /// Parses list of arguments in the form of
@@ -1231,6 +1304,15 @@ mod tests {
         parse_assignment::<(&str, ErrorKind)>(
             "z = FixedpointRingEncode() {scaling_factor = 2} @Host(alice)",
         )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = RingInject() {bit_idx = 2} : (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = BitExtract() {bit_idx = 2} : (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitSample() @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitFill() { value = 42 } @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
 
         Ok(())
     }

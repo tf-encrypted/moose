@@ -1,3 +1,4 @@
+use crate::bit::BitTensor;
 use crate::error::{Error, Result};
 use crate::prim::{Nonce, PrfKey, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -28,6 +29,7 @@ pub enum Ty {
     Float64Ty,
     Ring64TensorTy,
     Ring128TensorTy,
+    BitTensorTy,
     ShapeTy,
     SeedTy,
     PrfKeyTy,
@@ -52,6 +54,7 @@ pub enum Value {
     String(String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
+    BitTensor(BitTensor),
     Shape(Shape),
     Seed(Seed),
     PrfKey(PrfKey),
@@ -79,6 +82,7 @@ impl Value {
             Float64(_) => Float64Ty,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
+            BitTensor(_) => BitTensorTy,
             Shape(_) => ShapeTy,
             Seed(_) => SeedTy,
             PrfKey(_) => PrfKeyTy,
@@ -136,6 +140,7 @@ macro_rules! value {
 value!(String);
 value!(Ring64Tensor);
 value!(Ring128Tensor);
+value!(BitTensor);
 value!(Shape);
 value!(Seed);
 value!(PrfKey);
@@ -187,6 +192,12 @@ pub enum Operator {
     RingFill(RingFillOp),
     RingShl(RingShlOp),
     RingShr(RingShrOp),
+    RingInject(RingInjectOp),
+    BitExtract(BitExtractOp),
+    BitSample(BitSampleOp),
+    BitFill(BitFillOp),
+    BitXor(BitXorOp),
+    BitAnd(BitAndOp),
     PrimDeriveSeed(PrimDeriveSeedOp),
     PrimGenPrfKey(PrimGenPrfKeyOp),
     FixedpointRingEncode(FixedpointRingEncodeOp),
@@ -393,6 +404,32 @@ pub struct RingShlOp {
 pub struct RingShrOp {
     pub amount: usize,
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RingInjectOp {
+    pub output: Ty,
+    pub bit_idx: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct BitExtractOp {
+    pub ring_type: Ty,
+    pub bit_idx: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct BitSampleOp;
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct BitFillOp {
+    pub value: u8,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct BitXorOp;
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct BitAndOp;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {

@@ -1,3 +1,4 @@
+use crate::bit::BitTensor;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
@@ -62,6 +63,12 @@ impl Compile<SyncKernel> for Operator {
             RingFill(op) => op.compile(ctx),
             RingShl(op) => op.compile(ctx),
             RingShr(op) => op.compile(ctx),
+            RingInject(op) => op.compile(ctx),
+            BitExtract(op) => op.compile(ctx),
+            BitSample(op) => op.compile(ctx),
+            BitFill(op) => op.compile(ctx),
+            BitXor(op) => op.compile(ctx),
+            BitAnd(op) => op.compile(ctx),
             PrimDeriveSeed(op) => op.compile(ctx),
             PrimGenPrfKey(op) => op.compile(ctx),
             FixedpointRingEncode(op) => op.compile(ctx),
@@ -109,6 +116,12 @@ impl Compile<AsyncKernel> for Operator {
             RingFill(op) => op.compile(ctx),
             RingShl(op) => op.compile(ctx),
             RingShr(op) => op.compile(ctx),
+            RingInject(op) => op.compile(ctx),
+            BitExtract(op) => op.compile(ctx),
+            BitSample(op) => op.compile(ctx),
+            BitFill(op) => op.compile(ctx),
+            BitXor(op) => op.compile(ctx),
+            BitAnd(op) => op.compile(ctx),
             PrimDeriveSeed(op) => op.compile(ctx),
             PrimGenPrfKey(op) => op.compile(ctx),
             FixedpointRingEncode(op) => op.compile(ctx),
@@ -514,6 +527,63 @@ impl Compile<Kernel> for RingShrOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
         closure_kernel!(Ring64Tensor, |x| x >> amount)
+    }
+}
+
+impl Compile<Kernel> for RingInjectOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        let bit_idx = self.bit_idx;
+        match self.output {
+            Ty::Ring64TensorTy => {
+                closure_kernel!(BitTensor, |x| Ring64Tensor::from(x) << bit_idx)
+            }
+            Ty::Ring128TensorTy => {
+                closure_kernel!(BitTensor, |x| Ring128Tensor::from(x) << bit_idx)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+impl Compile<Kernel> for BitExtractOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        let bit_idx = self.bit_idx;
+        match self.ring_type {
+            Ty::Ring64TensorTy => {
+                closure_kernel!(Ring64Tensor, |x| x.bit_extract(bit_idx))
+            }
+            Ty::Ring128TensorTy => {
+                closure_kernel!(Ring128Tensor, |x| x.bit_extract(bit_idx))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+impl Compile<Kernel> for BitSampleOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        function_kernel!(Shape, Seed, |shape, seed| BitTensor::sample_uniform(
+            &shape, &seed
+        ))
+    }
+}
+
+impl Compile<Kernel> for BitFillOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        let value = self.value;
+        closure_kernel!(Shape, |shape| BitTensor::fill(&shape, value))
+    }
+}
+
+impl Compile<Kernel> for BitXorOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        function_kernel!(BitTensor, BitTensor, |x, y| x ^ y)
+    }
+}
+
+impl Compile<Kernel> for BitAndOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        function_kernel!(BitTensor, BitTensor, |x, y| x & y)
     }
 }
 
