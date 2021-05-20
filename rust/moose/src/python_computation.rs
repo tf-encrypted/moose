@@ -2,7 +2,6 @@ use crate::{
     computation::*, prim, standard::Float32Tensor, standard::Float64Tensor, standard::Shape,
 };
 use ndarray::prelude::*;
-use proptest::num::u128;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -56,8 +55,8 @@ enum PyOperation {
     std_SaveOperation(PySaveOperation),
     std_LoadOperation(PyLoadOperation),
     std_ReceiveOperation(PyReceiveOperation),
-    fixed_RingEncodeOperation(PyRingEncodeOperation),
-    fixed_RingDecodeOperation(PyRingDecodeOperation),
+    fixed_RingEncodeOperation(PyFixedRingEncodeOperation),
+    fixed_RingDecodeOperation(PyFixedRingDecodeOperation),
     fixed_RingMeanOperation(PyFixedRingMeanOperation),
 }
 
@@ -473,9 +472,10 @@ struct PySaveOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct PyRingEncodeOperation {
+struct PyFixedRingEncodeOperation {
     name: String,
-    scaling_factor: u128,
+    scaling_base: u64,
+    scaling_exp: u32,
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
@@ -487,17 +487,21 @@ struct PyFixedRingMeanOperation {
     inputs: Inputs,
     placement_name: String,
     axis: Option<u32>,
-    precision: u128,
+    scaling_base: u64,
+    scaling_exp: u32,
     output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
-struct PyRingDecodeOperation {
+struct PyFixedRingDecodeOperation {
     name: String,
-    scaling_factor: u128,
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
+    ring_type: PyValueType,
+
+    scaling_base: u64,
+    scaling_exp: u32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -627,12 +631,15 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     }
 }
 
-fn map_to_ring_primitive(py_type: &PyValueType, precision: &TyRingPrimitive) -> anyhow::Result<TyRingPrimitive> {
-    match py_type {
-        PyValueType::ring_RingTensorType => Ok(precision as u128),
-        _ => Err(anyhow::anyhow!("Have no idea what to match on precision")),
-    }
-}
+// fn map_to_ring_scalar(
+//     py_type: &PyValueType,
+//     precision: &RingScalar,
+// ) -> anyhow::Result<TyRingPrimitive> {
+//     match py_type {
+//         PyValueType::ring_RingTensorType => Ok(precision as u128),
+//         _ => Err(anyhow::anyhow!("Have no idea what to match on precision")),
+//     }
+// }
 
 impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
@@ -1069,7 +1076,8 @@ impl TryFrom<PyComputation> for Computation {
                     fixed_RingEncodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingEncode(FixedpointRingEncodeOp {
                             ty: map_type(&op.output_type)?,
-                            scaling_factor: map_to_ring_primitive(&op.output_type, &op.scaling_factor)?,
+                            scaling_base: op.scaling_base,
+                            scaling_exp: op.scaling_exp,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -1079,7 +1087,9 @@ impl TryFrom<PyComputation> for Computation {
                     fixed_RingDecodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingDecode(FixedpointRingDecodeOp {
                             ty: map_type(&op.output_type)?,
-                            scaling_factor: op.scaling_factor,
+                            ring_ty: map_type(&op.ring_type)?,
+                            scaling_base: op.scaling_base,
+                            scaling_exp: op.scaling_exp,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -1090,7 +1100,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: FixedpointRingMean(FixedpointRingMeanOp {
                             ty: map_type(&op.output_type)?,
                             axis: op.axis.map(|x| x as usize),
-                            scaling_factor: op.precision,
+                            scaling_base: op.scaling_base,
+                            scaling_exp: op.scaling_exp,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])

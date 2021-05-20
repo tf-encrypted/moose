@@ -272,6 +272,8 @@ def replicated_encode(x: StandardTensor, precision) -> RingTensor:
             inputs={"value": x.op.name},
             placement_name=x.op.placement_name,
             scaling_factor=2 ** precision,
+            scaling_base=2,
+            scaling_exp=precision,
         )
     )
     return RingTensor(op=encode_op, computation=x.computation, context=x.context)
@@ -286,6 +288,8 @@ def replicated_decode(x: RingTensor, precision, dtype) -> StandardTensor:
             inputs={"value": x.op.name},
             placement_name=x.op.placement_name,
             scaling_factor=2 ** precision,
+            scaling_base=2,
+            scaling_exp=precision,
             output_type=TensorType(dtype=dtype),
         )
     )
