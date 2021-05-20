@@ -4,8 +4,8 @@ use crate::standard::Shape;
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
-    character::complete::{alpha1, alphanumeric1, char, digit1, line_ending, multispace1, space0},
-    combinator::{all_consuming, cut, map, map_opt, map_res, opt, recognize, value, verify},
+    character::complete::{alpha1, alphanumeric1, char, digit1, multispace1, space0},
+    combinator::{all_consuming, cut, eof, map, map_opt, map_res, opt, recognize, value, verify},
     error::{convert_error, make_error, ErrorKind, ParseError, VerboseError},
     multi::{fill, fold_many0, many0, many1, separated_list0},
     number::complete::{double, float},
@@ -48,9 +48,32 @@ fn parse_computation<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Computation, E> {
     all_consuming(map(
-        separated_list0(many1(line_ending), cut(parse_assignment)),
-        |operations| Computation { operations },
+        separated_list0(many1(multispace1), cut(parse_line)),
+        |operations| Computation {
+            operations: operations.into_iter().flatten().collect(),
+        },
     ))(input)
+}
+
+/// Parses a single logical line of the textual IR
+fn parse_line<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Option<Operation>, E> {
+    alt((
+        recognize_comment,
+        map(parse_assignment, Some),
+        value(None, eof),
+    ))(input)
+}
+
+/// Recognizes and consumes away a comment
+fn recognize_comment<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Option<Operation>, E> {
+    value(
+        None, // Output is thrown away.
+        pair(ws(tag("//")), is_not("\n\r")),
+    )(input)
 }
 
 /// Parses an individual assignment.
@@ -1370,8 +1393,11 @@ mod tests {
     fn test_sample_computation() -> Result<(), anyhow::Error> {
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
             "x = Constant([1.0]: Float32Tensor) @Host(alice)
+            
             y = Constant([2.0]: Float32Tensor): () -> Float32Tensor @Host(bob)
-            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
+            // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
+            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)
+            ",
         )?;
         assert_eq!(comp.operations.len(), 3);
         assert_eq!(
