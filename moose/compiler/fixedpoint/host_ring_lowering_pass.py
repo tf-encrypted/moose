@@ -36,7 +36,6 @@ class HostRingLoweringPass(substitution_pass.SubstitutionPass):
                 name=self.context.get_fresh_name("ring_encode"),
                 placement_name=op.placement_name,
                 inputs={"value": input_op_name},
-                scaling_factor=2 ** op.precision,
                 scaling_base=2,
                 scaling_exp=op.precision,
             )
@@ -55,7 +54,6 @@ class HostRingLoweringPass(substitution_pass.SubstitutionPass):
                 placement_name=op.placement_name,
                 inputs={"value": input_op_name},
                 output_type=op.output_type,
-                scaling_factor=2 ** op.precision,
                 scaling_base=2,
                 scaling_exp=op.precision,
             )

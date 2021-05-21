@@ -67,7 +67,6 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 name="ring_encode_0",
                 placement_name="alice",
                 inputs={"value": "x_input"},
-                scaling_factor=2 ** 23,
                 scaling_base=2,
                 scaling_exp=23,
             )
@@ -134,7 +133,6 @@ class HostRingLoweringPassTest(parameterized.TestCase):
                 placement_name="alice",
                 inputs={"value": "x_encoded"},
                 output_type=dtypes.float64,
-                scaling_factor=2 ** 27,
                 scaling_base=2,
                 scaling_exp=27,
             )
