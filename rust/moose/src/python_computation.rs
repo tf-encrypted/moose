@@ -196,7 +196,7 @@ struct PyRingMeanOperation {
 #[derive(Deserialize, Debug)]
 struct PyFillTensorOperation {
     name: String,
-    value: u64,
+    value: String,
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
@@ -631,16 +631,6 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     }
 }
 
-// fn map_to_ring_scalar(
-//     py_type: &PyValueType,
-//     precision: &RingScalar,
-// ) -> anyhow::Result<TyRingPrimitive> {
-//     match py_type {
-//         PyValueType::ring_RingTensorType => Ok(precision as u128),
-//         _ => Err(anyhow::anyhow!("Have no idea what to match on precision")),
-//     }
-// }
-
 impl TryFrom<PyComputation> for Computation {
     type Error = anyhow::Error;
     fn try_from(python_computation: PyComputation) -> anyhow::Result<Computation> {
@@ -658,6 +648,7 @@ impl TryFrom<PyComputation> for Computation {
                 use crate::computation::Operator::*;
                 use anyhow::Context;
                 use PyOperation::*;
+                use std::str::FromStr;
                 match op {
                     prim_SampleKeyOperation(op) => Ok(Operation {
                         kind: PrimGenPrfKey(PrimGenPrfKeyOp {}),
@@ -749,7 +740,7 @@ impl TryFrom<PyComputation> for Computation {
                     ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFill(RingFillOp {
                             ty: map_type(&op.output_type)?,
-                            value: op.value,
+                            value: Value::Ring128(u128::from_str(&op.value)?),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])

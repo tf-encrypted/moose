@@ -500,11 +500,12 @@ impl Compile<Kernel> for RingShapeOp {
 
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let value = self.value;
-        match self.ty {
-            Ty::Ring64TensorTy => closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape, value)),
-            Ty::Ring128TensorTy => {
-                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape, value as u128))
+        match (self.ty, self.value.clone()) {
+            (Ty::Ring64TensorTy, Value::Ring64(value)) => {
+                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape, value))
+            }
+            (Ty::Ring128TensorTy, Value::Ring128(value)) => {
+                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape, value))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

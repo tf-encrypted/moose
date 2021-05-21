@@ -27,6 +27,8 @@ pub enum Ty {
     StringTy,
     Float32Ty,
     Float64Ty,
+    Ring64Ty,
+    Ring128Ty,
     Ring64TensorTy,
     Ring128TensorTy,
     BitTensorTy,
@@ -46,17 +48,13 @@ pub enum Ty {
     Uint64TensorTy,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub enum RingScalar {
-    Ring64(u64),
-    Ring128(u128),
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
     Float32(f32),
     Float64(f64),
+    Ring64(u64),
+    Ring128(u128),
     String(String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
@@ -86,6 +84,8 @@ impl Value {
             String(_) => StringTy,
             Float32(_) => Float32Ty,
             Float64(_) => Float64Ty,
+            Ring64(_) => Ring64Ty,
+            Ring128(_) => Ring128Ty,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
             BitTensor(_) => BitTensorTy,
@@ -393,7 +393,7 @@ pub struct RingShapeOp {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct RingFillOp {
     pub ty: Ty,
-    pub value: u64,
+    pub value: Value,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

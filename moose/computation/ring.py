@@ -77,7 +77,7 @@ class RingSampleOperation(RingOperation):
 
 @dataclass
 class FillTensorOperation(RingOperation):
-    value: int
+    value: str
     output_type: ValueType = RingTensorType()
 
 

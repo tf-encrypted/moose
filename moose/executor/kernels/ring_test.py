@@ -165,7 +165,7 @@ class RingKernelTest(parameterized.TestCase):
             ring_dialect.FillTensorOperation(
                 name="x",
                 placement_name=alice.name,
-                value=1,
+                value="1",
                 inputs={"shape": "x_shape"},
             )
         )

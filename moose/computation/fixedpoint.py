@@ -71,6 +71,8 @@ class SumOperation(FixedpointOperation):
 class MeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
+    scaling_base: int
+    scaling_exp: int
     output_type: ValueType
 
 
@@ -78,6 +80,8 @@ class MeanOperation(FixedpointOperation):
 class RingMeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
+    scaling_base: int
+    scaling_exp: int
     output_type: ValueType
 
 
