@@ -44,10 +44,11 @@ class ReplicatedLoweringPass:
     """Lower replicated ops to ring ops.
     """
 
-    def __init__(self):
+    def __init__(self, ring=64):
         self.interpretations = None
         self.computation = None
         self.context = None
+        self.ring = ring
 
     def run(self, computation, context):
         # TODO(Morten) refactor to avoid this ugly state update
@@ -136,8 +137,10 @@ class ReplicatedLoweringPass:
         assert isinstance(x, ReplicatedRingTensor), type(x)
         assert isinstance(precision, int), type(precision)
         assert isinstance(setup, ReplicatedSetup), type(setup)
-        R=128
-        z = replicated_trunc_pr(x, precision, R, setup, placement_name=op.placement_name)
+        R = self.ring
+        z = replicated_trunc_pr(
+            x, precision, R, setup, placement_name=op.placement_name
+        )
         assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
         return z
@@ -254,7 +257,7 @@ class ReplicatedLoweringPass:
         setup = self.lower(op.inputs["setup"])
         assert isinstance(x, ReplicatedRingTensor), type(x)
         assert isinstance(setup, ReplicatedSetup), type(setup)
-        R = 128
+        R = self.ring
         z = replicated_abs(x, R, setup, placement_name=op.placement_name)
         assert isinstance(z, ReplicatedRingTensor)
         self.interpretations[op.name] = z
@@ -873,9 +876,7 @@ def ring_mean(ring_tensor_input, axis, precision, placement_name):
 
 
 # Kogge-Stone binary adder topology
-def replicated_binary_adder(
-    x, y, R, setup: ReplicatedSetup, placement_name
-):
+def replicated_binary_adder(x, y, R, setup: ReplicatedSetup, placement_name):
     assert len(x) == R
     assert len(y) == R
 
@@ -887,9 +888,7 @@ def replicated_binary_adder(
     def bitwise_and(a, b):
         assert len(a) == R
         assert len(b) == R
-        return [
-            replicated_bit_and(a[i], b[i], setup, placement_name) for i in range(R)
-        ]
+        return [replicated_bit_and(a[i], b[i], setup, placement_name) for i in range(R)]
 
     N = int(log(R, 2))
 
@@ -983,9 +982,9 @@ def replicated_ring_msb(
         for k in range(R)
     ]
 
-    msb = replicated_binary_adder(rep_bit_left, rep_bit_right, R, setup, placement_name)[
-        -1
-    ]
+    msb = replicated_binary_adder(
+        rep_bit_left, rep_bit_right, R, setup, placement_name
+    )[-1]
     return msb
 
 
@@ -1199,7 +1198,7 @@ def replicated_sign_from_msb(msb: ReplicatedRingTensor, R, placement_name):
     )
 
     negative_two = _create_constant_replicated_ring_tensor(
-        2**R-2, rep_shape, placement_name
+        2 ** R - 2, rep_shape, placement_name
     )
     one = _create_constant_replicated_ring_tensor(1, rep_shape, placement_name)
 

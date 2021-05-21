@@ -101,7 +101,7 @@ class SamplingOperations(parameterized.TestCase):
 
 class FillOp(parameterized.TestCase):
     def test_fill_op(self):
-        actual = ring_fill((2, 2), 1)
+        actual = ring_fill((2, 2), "1")
         expected = np.full((2, 2), 1, dtype=np.uint64)
         np.testing.assert_array_equal(actual, expected)
 

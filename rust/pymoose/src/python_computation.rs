@@ -368,7 +368,7 @@ def f(arg1, arg2):
         )
     )
 
-    compiler = Compiler()
+    compiler = Compiler(ring=128)
     comp = compiler.run_passes(comp)
 
     return serialize_computation(comp)
@@ -552,7 +552,7 @@ def f():
 
         return res
 
-    concrete_comp = edsl.trace_and_compile(my_comp)
+    concrete_comp = edsl.trace_and_compile(my_comp, ring=128)
     return serialize_computation(concrete_comp)
 
 "#;
@@ -693,7 +693,7 @@ def f(arg1):
         )
     )
 
-    compiler = Compiler()
+    compiler = Compiler(ring=128)
     comp = compiler.run_passes(comp)
 
     return serialize_computation(comp)

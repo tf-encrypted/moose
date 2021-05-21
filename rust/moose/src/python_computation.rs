@@ -647,8 +647,8 @@ impl TryFrom<PyComputation> for Computation {
             .map(|op| {
                 use crate::computation::Operator::*;
                 use anyhow::Context;
-                use PyOperation::*;
                 use std::str::FromStr;
+                use PyOperation::*;
                 match op {
                     prim_SampleKeyOperation(op) => Ok(Operation {
                         kind: PrimGenPrfKey(PrimGenPrfKeyOp {}),

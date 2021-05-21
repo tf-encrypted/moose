@@ -15,7 +15,7 @@ from moose.logger import get_logger
 
 
 class Compiler:
-    def __init__(self, passes=None):
+    def __init__(self, passes=None, ring=64):
         self.passes = (
             passes
             if passes is not None
@@ -26,7 +26,7 @@ class Compiler:
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
                 HostRingLoweringPass(),
-                ReplicatedLoweringPass(),
+                ReplicatedLoweringPass(ring=ring),
                 PruningPass(),
                 NetworkingPass(),
             ]

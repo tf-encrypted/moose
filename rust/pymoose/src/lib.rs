@@ -10,6 +10,7 @@ use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 use pyo3::{prelude::*, types::PyBytes, types::PyList};
 use std::convert::TryInto;
 use std::num::Wrapping;
+use std::str::FromStr;
 pub mod python_computation;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -110,9 +111,9 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     }
 
     #[pyfn(m, "ring_fill")]
-    fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
+    fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: String) -> &'_ PyArrayDyn<u64> {
         let shape = Shape(shape);
-        let res = Ring64Tensor::fill(&shape, el);
+        let res = Ring64Tensor::fill(&shape, u64::from_str(&el).unwrap());
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }

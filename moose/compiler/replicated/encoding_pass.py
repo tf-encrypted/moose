@@ -179,7 +179,7 @@ class ReplicatedEncodingPass(SubgraphReplacementPass):
                 precision=arg_output_type.precision,
                 output_type=mean_output_type,
                 scaling_base=2,
-                scaling_exp=arg_output_type.precision
+                scaling_exp=arg_output_type.precision,
             )
         )
         if mean_output_type.precision == 0:
