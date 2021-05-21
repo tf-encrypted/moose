@@ -1,4 +1,5 @@
 pub mod bit;
+pub mod compiler;
 pub mod computation;
 pub mod error;
 pub mod execution;
