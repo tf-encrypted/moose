@@ -650,17 +650,11 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
         match self.ring_ty {
             Ty::Ring64TensorTy => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(
-                    &x,
-                    scaling_factor
-                ))
+                closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
             }
             Ty::Ring128TensorTy => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(Ring128Tensor, |x| Ring128Tensor::decode(
-                    &x,
-                    scaling_factor
-                ))
+                closure_kernel!(Ring128Tensor, |x| Ring128Tensor::decode(&x, scaling_factor))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
