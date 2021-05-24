@@ -455,6 +455,9 @@ impl Compile<Kernel> for RingMulOp {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
             }
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x * y)
+            }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -466,6 +469,9 @@ impl Compile<Kernel> for RingDotOp {
             (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
             }
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x.dot(y))
+            }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -476,6 +482,7 @@ impl Compile<Kernel> for RingSumOp {
         let axis = self.axis.map(|a| a as usize);
         match self.ty {
             Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x| x.sum(axis)),
+            Ty::Ring128TensorTy => closure_kernel!(Ring128Tensor, |x| x.sum(axis)),
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -493,8 +500,15 @@ impl Compile<Kernel> for RingShapeOp {
 
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let value = self.value;
-        closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape, value))
+        match (self.ty, self.value.clone()) {
+            (Ty::Ring64TensorTy, Value::Ring64(value)) => {
+                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape, value))
+            }
+            (Ty::Ring128TensorTy, Value::Ring128(value)) => {
+                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape, value))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
@@ -511,6 +525,16 @@ impl Compile<Kernel> for RingSampleOp {
                     &shape, &seed
                 ))
             }
+            (Ty::Ring128TensorTy, None) => {
+                function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_uniform(
+                    &shape, &seed
+                ))
+            }
+            (Ty::Ring128TensorTy, Some(max_value)) if max_value == 1 => {
+                function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_bits(
+                    &shape, &seed
+                ))
+            }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -519,14 +543,30 @@ impl Compile<Kernel> for RingSampleOp {
 impl Compile<Kernel> for RingShlOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
-        closure_kernel!(Ring64Tensor, |x| x << amount)
+        match self.ty {
+            Ty::Ring64TensorTy => {
+                closure_kernel!(Ring64Tensor, |x| x << amount)
+            }
+            Ty::Ring128TensorTy => {
+                closure_kernel!(Ring128Tensor, |x| x << amount)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
 impl Compile<Kernel> for RingShrOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
-        closure_kernel!(Ring64Tensor, |x| x >> amount)
+        match self.ty {
+            Ty::Ring64TensorTy => {
+                closure_kernel!(Ring64Tensor, |x| x >> amount)
+            }
+            Ty::Ring128TensorTy => {
+                closure_kernel!(Ring128Tensor, |x| x >> amount)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
@@ -590,28 +630,59 @@ impl Compile<Kernel> for BitAndOp {
 impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
-        let scaling_factor = self.scaling_factor;
-        closure_kernel!(Float64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
+        match self.ty {
+            Ty::Ring64TensorTy => {
+                let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
+                closure_kernel!(Float64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
+            }
+            Ty::Ring128TensorTy => {
+                let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
+                closure_kernel!(Float64Tensor, |x| Ring128Tensor::encode(&x, scaling_factor))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
 impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
-        let scaling_factor = self.scaling_factor;
-        closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
+        match self.input_ty {
+            Ty::Ring64TensorTy => {
+                let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
+                closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
+            }
+            Ty::Ring128TensorTy => {
+                let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
+                closure_kernel!(Ring128Tensor, |x| Ring128Tensor::decode(&x, scaling_factor))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
 impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis;
-        let scaling_factor = self.scaling_factor;
-        closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(
-            x,
-            axis,
-            scaling_factor
-        ))
+        match self.ty {
+            Ty::Ring64TensorTy => {
+                let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
+                closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(
+                    x,
+                    axis,
+                    scaling_factor
+                ))
+            }
+            Ty::Ring128TensorTy => {
+                let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
+                closure_kernel!(Ring128Tensor, |x| Ring128Tensor::ring_mean(
+                    x,
+                    axis,
+                    scaling_factor
+                ))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 

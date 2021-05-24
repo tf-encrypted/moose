@@ -347,8 +347,23 @@ mod tests {
             ])
         );
 
+        let r128 = Ring128Tensor::sample_uniform(&shape, &seed);
+        assert_eq!(
+            r128,
+            Ring128Tensor::from(vec![
+                78655730786844307471556614669614075016,
+                319591670596555766473793801091584867161,
+                177455464885365520564027128957528354027,
+                72628979995024532377123578937486303732,
+                299726520301515014350190124791858941972
+            ])
+        );
+
         let r_bits = Ring64Tensor::sample_bits(&shape, &seed);
         assert_eq!(r_bits, Ring64Tensor::from(vec![0, 1, 1, 0, 0]));
+
+        let r128_bits = Ring128Tensor::sample_bits(&shape, &seed);
+        assert_eq!(r128_bits, Ring128Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 
     #[test]

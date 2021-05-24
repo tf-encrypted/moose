@@ -476,9 +476,18 @@ fn ring_fill<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, value) = attributes_single("value", parse_int)(input)?;
-    let (input, _) = opt(type_definition(0))(input)?;
-    Ok((input, (Operator::RingFill(RingFillOp { value }), args)))
+    let (input, value) = attributes_single("value", value_literal)(input)?;
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
+    Ok((
+        input,
+        (
+            Operator::RingFill(RingFillOp {
+                ty: result_type,
+                value,
+            }),
+            args,
+        ),
+    ))
 }
 
 /// Parses a RingShl operator.
@@ -487,8 +496,17 @@ fn ring_shl<'a, E: 'a + ParseError<&'a str>>(
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
-    let (input, _) = opt(type_definition(0))(input)?;
-    Ok((input, (Operator::RingShl(RingShlOp { amount }), args)))
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
+    Ok((
+        input,
+        (
+            Operator::RingShl(RingShlOp {
+                ty: result_type,
+                amount,
+            }),
+            args,
+        ),
+    ))
 }
 
 /// Parses a RingShr operator.
@@ -497,8 +515,17 @@ fn ring_shr<'a, E: 'a + ParseError<&'a str>>(
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
-    let (input, _) = opt(type_definition(0))(input)?;
-    Ok((input, (Operator::RingShr(RingShrOp { amount }), args)))
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
+    Ok((
+        input,
+        (
+            Operator::RingShr(RingShrOp {
+                ty: result_type,
+                amount,
+            }),
+            args,
+        ),
+    ))
 }
 
 /// Parses a PrimGenPrfKey operator.
@@ -526,12 +553,19 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, scaling_factor) = attributes_single("scaling_factor", parse_int)(input)?;
-    let (input, _) = opt(type_definition(0))(input)?;
+    let (input, (scaling_base, scaling_exp)) = attributes!((
+        attributes_member("scaling_base", parse_int),
+        attributes_member("scaling_exp", parse_int)
+    ))(input)?;
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
         (
-            Operator::FixedpointRingEncode(FixedpointRingEncodeOp { scaling_factor }),
+            Operator::FixedpointRingEncode(FixedpointRingEncodeOp {
+                ty: result_type,
+                scaling_base,
+                scaling_exp,
+            }),
             args,
         ),
     ))
@@ -542,12 +576,20 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, scaling_factor) = attributes_single("scaling_factor", parse_int)(input)?;
-    let (input, _) = opt(type_definition(0))(input)?;
+    let (input, (scaling_base, scaling_exp)) = attributes!((
+        attributes_member("scaling_base", parse_int),
+        attributes_member("scaling_exp", parse_int)
+    ))(input)?;
+    let (input, (args_types, result_type)) = type_definition(1)(input)?;
     Ok((
         input,
         (
-            Operator::FixedpointRingDecode(FixedpointRingDecodeOp { scaling_factor }),
+            Operator::FixedpointRingDecode(FixedpointRingDecodeOp {
+                input_ty: args_types[0],
+                ty: result_type,
+                scaling_base,
+                scaling_exp,
+            }),
             args,
         ),
     ))
@@ -558,18 +600,21 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, (scaling_factor, axis)) = attributes!((
-        attributes_member("scaling_factor", parse_int),
+    let (input, (scaling_base, scaling_exp, axis)) = attributes!((
+        attributes_member("scaling_base", parse_int),
+        attributes_member("scaling_exp", parse_int),
         opt(attributes_member("axis", parse_int))
     ))(input)?;
 
-    let (input, _) = opt(type_definition(0))(input)?;
+    let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
         (
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
+                ty: result_type,
                 axis,
-                scaling_factor,
+                scaling_base,
+                scaling_exp,
             }),
             args,
         ),
@@ -1301,48 +1346,31 @@ mod tests {
     #[test]
     fn test_fixedpoint_ring_mean() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {scaling_factor = 10, axis = 0} : () -> Float32Tensor @Host(alice)",
+            "op = FixedpointRingMean() {scaling_base = 3, scaling_exp = 1, axis = 0} : () -> Float32Tensor @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                scaling_factor: 10,
+                ty: Ty::Float32TensorTy,
                 axis: Some(0),
+                scaling_base: 3,
+                scaling_exp: 1,
             })
         );
 
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {axis = 1, scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
+            "op = FixedpointRingMean() {scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                scaling_factor: 10,
-                axis: Some(1),
-            })
-        );
-
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {scaling_factor = 10} : () -> Float32Tensor @Host(alice)",
-        )?;
-        assert_eq!(
-            op.kind,
-            Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                scaling_factor: 10,
+                ty: Ty::Float32TensorTy,
                 axis: None,
+                scaling_base: 3,
+                scaling_exp: 1,
             })
         );
 
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {scaling_factor=10, axis=0} : () -> Float32Tensor @Host(alice)",
-        )?;
-        assert_eq!(
-            op.kind,
-            Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                scaling_factor: 10,
-                axis: Some(0),
-            })
-        );
         Ok(())
     }
 
@@ -1368,13 +1396,17 @@ mod tests {
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingFill() {value = 42}: () -> Ring64Tensor @Host(alice)",
         )?;
-        parse_assignment::<(&str, ErrorKind)>("z = RingShl() {amount = 2} @Host(alice)")?;
-        parse_assignment::<(&str, ErrorKind)>("z = RingShr() {amount = 2} @Host(alice)")?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = FixedpointRingDecode() {scaling_factor = 2} @Host(alice)",
+            "z = RingShl() {amount = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = FixedpointRingEncode() {scaling_factor = 2} @Host(alice)",
+            "z = RingShr() {amount = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = FixedpointRingDecode() {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = FixedpointRingEncode() {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingInject() {bit_idx = 2} : (Float32Tensor) -> Float32Tensor @Host(alice)",

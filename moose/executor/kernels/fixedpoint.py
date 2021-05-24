@@ -14,7 +14,8 @@ class RingEncodeKernel(Kernel):
         assert isinstance(op, RingEncodeOperation)
         assert isinstance(value, np.ndarray)
         assert value.dtype == np.float64
-        return fixedpoint_encode(value, op.scaling_factor)
+        scaling_factor = op.scaling_base ** op.scaling_exp
+        return fixedpoint_encode(value, scaling_factor)
 
 
 class RingDecodeKernel(Kernel):
@@ -22,7 +23,8 @@ class RingDecodeKernel(Kernel):
         assert isinstance(op, RingDecodeOperation)
         assert isinstance(value, np.ndarray)
         assert value.dtype == np.uint64
-        return fixedpoint_decode(value, op.scaling_factor)
+        scaling_factor = op.scaling_base ** op.scaling_exp
+        return fixedpoint_decode(value, scaling_factor)
 
 
 class RingMeanKernel(Kernel):

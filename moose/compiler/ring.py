@@ -73,7 +73,7 @@ def fill_tensor(shape: Shape, value: int, placement_name):
         FillTensorOperation(
             name=shape.context.get_fresh_name("fill_tensor"),
             placement_name=placement_name,
-            value=value,
+            value=str(value),
             inputs={"shape": shape.op.name},
         )
     )
@@ -144,7 +144,7 @@ def ring_mul(x: RingTensor, y: RingTensor, placement_name):
 
 
 def ring_shl(x: RingTensor, amount: int, placement_name):
-    assert amount <= 64
+    assert amount <= 128
     z_op = x.computation.add_operation(
         RingShlOperation(
             name=x.context.get_fresh_name("ring_shl"),
@@ -159,7 +159,7 @@ def ring_shl(x: RingTensor, amount: int, placement_name):
 
 
 def ring_shr(x: RingTensor, amount: int, placement_name):
-    assert amount <= 64
+    assert amount <= 128
     z_op = x.computation.add_operation(
         RingShrOperation(
             name=x.context.get_fresh_name("ring_shr"),

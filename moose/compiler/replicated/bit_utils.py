@@ -22,15 +22,13 @@ def rep_inject(x: ReplicatedBitTensor, players):
 
 
 # implement ring_bit_decompose as 64 bit extractions using rust
-def ring_bit_decompose(x: RingTensor, placement_name):
+def ring_bit_decompose(x: RingTensor, R, placement_name):
     assert isinstance(x, RingTensor)
-    R = 64
     return [bit_extract(x, i, placement_name) for i in range(R)]
 
 
-def replicated_ring_to_bits(x: ReplicatedRingTensor, players):
+def replicated_ring_to_bits(x: ReplicatedRingTensor, R, players):
     assert isinstance(x, ReplicatedRingTensor)
-    R = 64
 
     b0 = [ring_bit_decompose(entry, players[0]) for entry in x.shares0]
     b1 = [ring_bit_decompose(entry, players[1]) for entry in x.shares1]
@@ -47,8 +45,8 @@ def replicated_ring_to_bits(x: ReplicatedRingTensor, players):
     ]
 
 
-def rotate_left(tensor_list, amount: int, null_tensor):
-    assert amount <= 64
+def rotate_left(tensor_list, amount: int, null_tensor, R):
+    assert amount <= R
     bot = [null_tensor for i in range(amount)]  # zero the first half
-    top = [tensor_list[i] for i in range(64 - amount)]
+    top = [tensor_list[i] for i in range(R - amount)]
     return bot + top

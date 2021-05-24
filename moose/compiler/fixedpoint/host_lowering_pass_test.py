@@ -366,6 +366,8 @@ class HostLoweringPassTest(parameterized.TestCase):
                 ),
                 axis=axis,
                 precision=23,
+                scaling_base=2,
+                scaling_exp=23,
             )
         )
         expected_comp.add_operation(

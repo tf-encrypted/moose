@@ -72,6 +72,8 @@ class HostLoweringPass(substitution_pass.SubstitutionPass):
                 output_type=mean_output_type,
                 axis=op.axis,
                 precision=input_precision,
+                scaling_base=2,
+                scaling_exp=input_precision,
             )
         )
         trunc_output_type = fixedpoint_dialect.EncodedTensorType(

@@ -77,9 +77,11 @@ def trace(abstract_computation):
     return logical_comp
 
 
-def trace_and_compile(abstract_computation, compiler_passes=None, render=False):
+def trace_and_compile(
+    abstract_computation, compiler_passes=None, render=False, ring=64
+):
     logical_computation = trace(abstract_computation)
-    compiler = Compiler(passes=compiler_passes)
+    compiler = Compiler(passes=compiler_passes, ring=ring)
     physical_comp = compiler.compile(logical_computation, render=render)
     return physical_comp
 

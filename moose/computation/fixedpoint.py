@@ -71,6 +71,8 @@ class SumOperation(FixedpointOperation):
 class MeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
+    scaling_base: int
+    scaling_exp: int
     output_type: ValueType
 
 
@@ -78,6 +80,8 @@ class MeanOperation(FixedpointOperation):
 class RingMeanOperation(FixedpointOperation):
     axis: Optional[Union[int, Tuple[int]]]
     precision: int
+    scaling_base: int
+    scaling_exp: int
     output_type: ValueType
 
 
@@ -100,11 +104,14 @@ class DecodeOperation(FixedpointOperation):
 
 @dataclass
 class RingEncodeOperation(FixedpointOperation):
-    scaling_factor: int
+    scaling_base: int
+    scaling_exp: int
     output_type: ValueType = RingTensorType()
 
 
 @dataclass
 class RingDecodeOperation(FixedpointOperation):
-    scaling_factor: int
+    scaling_base: int
+    scaling_exp: int
     output_type: ValueType
+    input_type: ValueType = RingTensorType()

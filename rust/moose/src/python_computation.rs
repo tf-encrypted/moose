@@ -55,8 +55,8 @@ enum PyOperation {
     std_SaveOperation(PySaveOperation),
     std_LoadOperation(PyLoadOperation),
     std_ReceiveOperation(PyReceiveOperation),
-    fixed_RingEncodeOperation(PyRingEncodeOperation),
-    fixed_RingDecodeOperation(PyRingDecodeOperation),
+    fixed_RingEncodeOperation(PyFixedRingEncodeOperation),
+    fixed_RingDecodeOperation(PyFixedRingDecodeOperation),
     fixed_RingMeanOperation(PyFixedRingMeanOperation),
 }
 
@@ -132,6 +132,7 @@ struct PyRingAddOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -139,6 +140,7 @@ struct PyRingSubOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -146,6 +148,7 @@ struct PyRingMulOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -153,6 +156,7 @@ struct PyRingDotOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -168,6 +172,7 @@ struct PyRingSampleOperation {
     max_value: Option<u64>,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -176,6 +181,7 @@ struct PyRingSumOperation {
     inputs: Inputs,
     placement_name: String,
     axis: Option<u32>,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -189,9 +195,10 @@ struct PyRingMeanOperation {
 #[derive(Deserialize, Debug)]
 struct PyFillTensorOperation {
     name: String,
-    value: u64,
+    value: String,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -208,6 +215,7 @@ struct PyRingShlOperation {
     amount: u64,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -216,6 +224,7 @@ struct PyRingShrOperation {
     amount: u64,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -462,11 +471,13 @@ struct PySaveOperation {
 }
 
 #[derive(Deserialize, Debug)]
-struct PyRingEncodeOperation {
+struct PyFixedRingEncodeOperation {
     name: String,
-    scaling_factor: u64,
+    scaling_base: u64,
+    scaling_exp: u32,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -475,15 +486,21 @@ struct PyFixedRingMeanOperation {
     inputs: Inputs,
     placement_name: String,
     axis: Option<u32>,
-    precision: u64, // TODO(Dragos) change this to precision
+    scaling_base: u64,
+    scaling_exp: u32,
+    output_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
-struct PyRingDecodeOperation {
+struct PyFixedRingDecodeOperation {
     name: String,
-    scaling_factor: u64,
     inputs: Inputs,
     placement_name: String,
+    output_type: PyValueType,
+    input_type: PyValueType,
+
+    scaling_base: u64,
+    scaling_exp: u32,
 }
 
 #[derive(Deserialize, Debug)]
@@ -608,7 +625,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         },
         PyValueType::std_UnknownType => Err(anyhow::anyhow!("unimplemented type 'unknown'")),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
-        PyValueType::ring_RingTensorType => Ok(Ty::Ring64TensorTy),
+        PyValueType::ring_RingTensorType => Ok(Ty::Ring128TensorTy),
         PyValueType::bit_BitTensorType => Ok(Ty::BitTensorTy),
     }
 }
@@ -629,6 +646,7 @@ impl TryFrom<PyComputation> for Computation {
             .map(|op| {
                 use crate::computation::Operator::*;
                 use anyhow::Context;
+                use std::str::FromStr;
                 use PyOperation::*;
                 match op {
                     prim_SampleKeyOperation(op) => Ok(Operation {
@@ -648,8 +666,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingAddOperation(op) => Ok(Operation {
                         kind: RingAdd(RingAddOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -658,8 +676,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSubOperation(op) => Ok(Operation {
                         kind: RingSub(RingSubOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -668,8 +686,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingMulOperation(op) => Ok(Operation {
                         kind: RingMul(RingMulOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -678,8 +696,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingDotOperation(op) => Ok(Operation {
                         kind: RingDot(RingDotOp {
-                            lhs: Ty::Ring64TensorTy,
-                            rhs: Ty::Ring64TensorTy,
+                            lhs: map_type(&op.output_type)?,
+                            rhs: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -688,7 +706,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: RingShape(RingShapeOp {
-                            ty: Ty::Ring64TensorTy,
+                            ty: Ty::Ring128TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
@@ -697,7 +715,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSample(RingSampleOp {
-                            output: Ty::Ring64TensorTy,
+                            output: map_type(&op.output_type)?,
                             max_value: op.max_value,
                         }),
                         name: op.name.clone(),
@@ -707,7 +725,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSumOperation(op) => Ok(Operation {
                         kind: RingSum(RingSumOp {
-                            ty: Ty::Ring64TensorTy,
+                            ty: map_type(&op.output_type)?,
                             axis: op.axis,
                         }),
                         name: op.name.clone(),
@@ -719,7 +737,10 @@ impl TryFrom<PyComputation> for Computation {
                         Err(anyhow::anyhow!("unsupported operation: {:?}", op))
                     }
                     ring_FillTensorOperation(op) => Ok(Operation {
-                        kind: RingFill(RingFillOp { value: op.value }),
+                        kind: RingFill(RingFillOp {
+                            ty: map_type(&op.output_type)?,
+                            value: Value::Ring128(u128::from_str(&op.value)?),
+                        }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -727,6 +748,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShlOperation(op) => Ok(Operation {
                         kind: RingShl(RingShlOp {
+                            ty: map_type(&op.output_type)?,
                             amount: op.amount as usize,
                         }),
                         name: op.name.clone(),
@@ -736,6 +758,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShrOperation(op) => Ok(Operation {
                         kind: RingShr(RingShrOp {
+                            ty: map_type(&op.output_type)?,
                             amount: op.amount as usize,
                         }),
                         name: op.name.clone(),
@@ -1042,7 +1065,9 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingEncode(FixedpointRingEncodeOp {
-                            scaling_factor: op.scaling_factor,
+                            ty: map_type(&op.output_type)?,
+                            scaling_base: op.scaling_base,
+                            scaling_exp: op.scaling_exp,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -1051,7 +1076,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingDecodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingDecode(FixedpointRingDecodeOp {
-                            scaling_factor: op.scaling_factor,
+                            ty: map_type(&op.output_type)?,
+                            input_ty: map_type(&op.input_type)?,
+                            scaling_base: op.scaling_base,
+                            scaling_exp: op.scaling_exp,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -1060,8 +1088,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingMeanOperation(op) => Ok(Operation {
                         kind: FixedpointRingMean(FixedpointRingMeanOp {
+                            ty: map_type(&op.output_type)?,
                             axis: op.axis.map(|x| x as usize),
-                            scaling_factor: op.precision,
+                            scaling_base: op.scaling_base,
+                            scaling_exp: op.scaling_exp,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])

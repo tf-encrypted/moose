@@ -27,6 +27,8 @@ pub enum Ty {
     StringTy,
     Float32Ty,
     Float64Ty,
+    Ring64Ty,
+    Ring128Ty,
     Ring64TensorTy,
     Ring128TensorTy,
     BitTensorTy,
@@ -51,6 +53,8 @@ pub enum Value {
     Unit,
     Float32(f32),
     Float64(f64),
+    Ring64(u64),
+    Ring128(u128),
     String(String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
@@ -80,6 +84,8 @@ impl Value {
             String(_) => StringTy,
             Float32(_) => Float32Ty,
             Float64(_) => Float64Ty,
+            Ring64(_) => Ring64Ty,
+            Ring128(_) => Ring128Ty,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
             BitTensor(_) => BitTensorTy,
@@ -386,7 +392,8 @@ pub struct RingShapeOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingFillOp {
-    pub value: u64,
+    pub ty: Ty,
+    pub value: Value,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -397,11 +404,13 @@ pub struct RingSampleOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShlOp {
+    pub ty: Ty,
     pub amount: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShrOp {
+    pub ty: Ty,
     pub amount: usize,
 }
 
@@ -433,18 +442,25 @@ pub struct BitAndOp;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {
-    pub scaling_factor: u64,
+    pub ty: Ty,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingDecodeOp {
-    pub scaling_factor: u64,
+    pub input_ty: Ty,
+    pub ty: Ty,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingMeanOp {
+    pub ty: Ty,
     pub axis: Option<usize>,
-    pub scaling_factor: u64,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
