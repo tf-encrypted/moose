@@ -164,7 +164,6 @@ struct PyRingShapeOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
-    ring_type: PyValueType,
 }
 
 #[derive(Deserialize, Debug)]
@@ -707,7 +706,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: RingShape(RingShapeOp {
-                            ty: map_type(&op.ring_type)?,
+                            ty: Ty::Ring128TensorTy,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
