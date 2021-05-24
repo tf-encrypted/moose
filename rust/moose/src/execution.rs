@@ -1104,4 +1104,19 @@ mod tests {
         let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
         assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
     }
+
+    #[test]
+    fn test_primitives() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"key = PrimGenPrfKey() @Host(alice)
+        // key = Constant([0; 16] : PrfKey) @Host(alice)
+        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
+        save_key = Constant("abc": String) @Host(alice)
+        y = Save(save_key, seed): (String, PrfKey) -> PrfKey @Host(alice)
+        "#;
+        let comp: Computation = source.try_into().unwrap();
+
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        Ok(())
+    }
 }
