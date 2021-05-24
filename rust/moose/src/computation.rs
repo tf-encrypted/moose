@@ -449,7 +449,7 @@ pub struct FixedpointRingEncodeOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingDecodeOp {
-    pub ring_ty: Ty,
+    pub input_ty: Ty,
     pub ty: Ty,
     pub scaling_base: u64,
     pub scaling_exp: u32,

@@ -549,7 +549,7 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
         input,
         (
             Operator::FixedpointRingDecode(FixedpointRingDecodeOp {
-                ring_ty: args_types[0],
+                input_ty: args_types[0],
                 ty: result_type,
                 scaling_base,
                 scaling_exp,

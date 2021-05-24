@@ -647,7 +647,7 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
 impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
-        match self.ring_ty {
+        match self.input_ty {
             Ty::Ring64TensorTy => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
                 closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))

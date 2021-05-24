@@ -498,7 +498,7 @@ struct PyFixedRingDecodeOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-    ring_type: PyValueType,
+    input_type: PyValueType,
 
     scaling_base: u64,
     scaling_exp: u32,
@@ -1078,7 +1078,7 @@ impl TryFrom<PyComputation> for Computation {
                     fixed_RingDecodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingDecode(FixedpointRingDecodeOp {
                             ty: map_type(&op.output_type)?,
-                            ring_ty: map_type(&op.ring_type)?,
+                            input_ty: map_type(&op.input_type)?,
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
                         }),
