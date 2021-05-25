@@ -1435,7 +1435,6 @@ mod tests {
     fn test_sample_computation() -> Result<(), anyhow::Error> {
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
             "x = Constant([1.0]: Float32Tensor) @Host(alice)
-
             y = Constant([2.0]: Float32Tensor): () -> Float32Tensor @Host(bob)
             // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
             z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)
