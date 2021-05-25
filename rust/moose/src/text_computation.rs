@@ -1087,7 +1087,6 @@ fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str,
 ///
 /// From nom examples (MIT licesnse, so it is ok)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(clippy::upper_case_acronyms)]
 enum StringFragment<'a> {
     Literal(&'a str),
     EscapedChar(char),
