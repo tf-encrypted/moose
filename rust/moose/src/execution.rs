@@ -1066,7 +1066,6 @@ impl AsyncExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::convert::TryFrom;
     use std::convert::TryInto;
 
     #[test]
@@ -1119,7 +1118,7 @@ mod tests {
 
         use crate::prim::{Nonce, PrfKey, Seed};
 
-        let seed: Seed = Seed::try_from(outputs.get("output").unwrap().clone())?;
+        let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed,
             Seed::from_prf(&PrfKey([0; 16]), &Nonce(vec![1, 2, 3]))
@@ -1142,8 +1141,7 @@ mod tests {
         use crate::ring::Ring64Tensor;
         use crate::standard::Shape;
 
-        let x_sampled: Ring64Tensor =
-            Ring64Tensor::try_from(outputs.get("output").unwrap().clone())?;
+        let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(x_sampled.shape(), Shape(vec![2, 2]));
 
         Ok(())
