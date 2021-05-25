@@ -194,16 +194,15 @@ def place_computation(abstract_computation=None, output_placements=None):
     ):
         # replace input arguments with load operations
         input_expressions = []
-        for i, arg in enumerate(args):
-            arg_dtype = parameters[i].annotation.dtype
-            arg_placement = parameters[i].annotation.placement
+        for param in parameters:
+            arg_dtype = param.annotation.dtype
+            arg_placement = param.annotation.placement
             input_expressions.append(
-                edsl.load(arg, dtype=arg_dtype, placement=arg_placement)
+                edsl.load(param.name, dtype=arg_dtype, placement=arg_placement)
             )
         return_expressions = edsl_func(*input_expressions)
         # append function return values with save operations
         save_ops = _append_save_ops(edsl_sig.return_annotation, return_expressions)
-        breakpoint()
         # edsl tracer expects flattened outputs
         output_ops = [op for op in _flatten_outputs(save_ops)]
         return output_ops
@@ -350,9 +349,13 @@ class MooseMixin:
             self._placements = self._find_host_placements(self._logical_comp)
         return self._placements
 
-    def seed_storage(self, placement, *, **keyvalue_store):
+    def seed_storage(self, placement, **key_values):
         # may need to provide initial storage values for some placements
         assert self._local_runtime is not None, "Must build local runtime."
+        self._build_local_runtime(force_rebuild=False)
+        executor_storage = self._local_runtime.get_executor(placement.name).storage
+        for key, value in key_values.items():
+            executor_storage.store[key] = value
 
     def _build_local_runtime(self, force_rebuild=False):
         if self._local_runtime is None or force_rebuild:
@@ -459,8 +462,8 @@ class JaxTask(MooseMixin):
 
 def test_local_computation():
     comp_inputs = {
-        "x": np.array([2.0]),
-        "y": np.array([3.0])
+        (alice, "x"): np.array([2.0]),
+        (bob, "y"): np.array([3.0]),
     }
 
     @place_computation
@@ -489,13 +492,19 @@ def test_local_computation():
     local_runtime = TestRuntime(
         networking=networking, backing_executors=executor_dict
     )
+    # seed executor storage with inputs:
+    for (placement, key), value in comp_inputs.items():
+        executor_storage = local_runtime.get_executor(placement.name).storage
+        executor_storage.store[key] = value
     # placement instantiation
     plc_inst = {plc: plc.name for plc in placements}
     local_runtime.evaluate_computation(local_computation, plc_inst, comp_inputs)
+    for plc in placements:
+        print(plc.name, ": ", local_runtime.get_executor(plc.name).storage.store)
 
 
 if __name__ == "__main__":
-    verbose = True
+    verbose = False
     if verbose:
         get_logger().setLevel(level=logging.DEBUG)
     test_local_computation()
