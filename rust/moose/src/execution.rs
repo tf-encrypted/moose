@@ -1110,19 +1110,16 @@ mod tests {
     fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant(00000000000000000000000000000000: PrfKey) @Host(alice)
         seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
-        savekey = Constant("seed": String) @Host(alice)
-        y = Save(savekey, seed): (String, Seed) -> Unit @Host(alice)
-        "#;
-        let comp: Computation = source.try_into().unwrap();
+        output = Output(seed): (Seed) -> Seed @Host(alice)
+"#;
+        let comp: Computation = source.try_into()?;
 
-        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
-        let exec = TestExecutor::from_storage(&storage);
-        exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
         use crate::prim::{Nonce, PrfKey, Seed};
 
-        let _ = exec.run_computation(&comp, SyncArgs::new()).unwrap();
-        let seed: Seed = Seed::try_from(storage.load("seed", None).unwrap()).unwrap();
+        let seed: Seed = Seed::try_from(outputs.get("output").unwrap().clone())?;
         assert_eq!(
             seed,
             Seed::from_prf(&PrfKey([0; 16]), &Nonce(vec![1, 2, 3]))
@@ -1135,21 +1132,18 @@ mod tests {
         let source = r#"seed = Constant(00000000000000000000000000000000: Seed) @Host(alice)
         xshape = Constant([2, 2]: Shape) @Host(alice)
         sampled = RingSample(xshape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)
-        savekey = Constant("x_sampled": String) @Host(alice)
-        y = Save(savekey, sampled): (String, Ring64Tensor) -> Unit @Host(alice)
+        output = Output(sampled): (Ring64Tensor) -> Ring64Tensor @Host(alice)
         "#;
-        let comp: Computation = source.try_into().unwrap();
+        let comp: Computation = source.try_into()?;
 
-        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
-        let exec = TestExecutor::from_storage(&storage);
-        exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
         use crate::ring::Ring64Tensor;
         use crate::standard::Shape;
 
-        let _ = exec.run_computation(&comp, SyncArgs::new()).unwrap();
         let x_sampled: Ring64Tensor =
-            Ring64Tensor::try_from(storage.load("x_sampled", None).unwrap()).unwrap();
+            Ring64Tensor::try_from(outputs.get("output").unwrap().clone())?;
         assert_eq!(x_sampled.shape(), Shape(vec![2, 2]));
 
         Ok(())
