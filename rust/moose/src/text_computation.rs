@@ -706,7 +706,7 @@ fn argument_list<'a, E: 'a + ParseError<&'a str>>(
 ) -> IResult<&'a str, Vec<String>, E> {
     delimited(
         tag("("),
-        separated_list0(tag(","), map(ws(alphanumeric1), |s| s.to_string())),
+        separated_list0(tag(","), map(ws(identifier), |s| s.to_string())),
         tag(")"),
     )(input)
 }
@@ -1380,6 +1380,20 @@ mod tests {
             })
         );
 
+        Ok(())
+    }
+
+    #[test]
+    fn test_underscore() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "x_shape = Constant([2, 2]: Shape) @Host(alice)",
+        )?;
+        assert_eq!(op.name, "x_shape");
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "z_result = StdAdd(x_shape, y_shape): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
+        )?;
+        assert_eq!(op.name, "z_result");
+        assert_eq!(op.inputs, vec!["x_shape", "y_shape"]);
         Ok(())
     }
 
