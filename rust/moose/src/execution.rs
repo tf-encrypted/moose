@@ -1134,7 +1134,6 @@ mod tests {
         output = Output(sampled): (Ring64Tensor) -> Ring64Tensor @Host(alice)
         "#;
         let comp: Computation = source.try_into()?;
-
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
@@ -1145,5 +1144,52 @@ mod tests {
         assert_eq!(x_sampled.shape(), Shape(vec![2, 2]));
 
         Ok(())
+    }
+
+    #[test]
+    fn test_standard_input() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Input(arg_name = "x"): () -> Int64Tensor @Host(Alice)
+        y = Input(arg_name = "y"): () -> Int64Tensor @Host(Alice)
+        z = StdAdd(x, y): (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(Alice)
+        output = Output(z): (Int64Tensor) -> Int64Tensor @Host(Alice)
+        "#;
+
+        use maplit::hashmap;
+        use ndarray::prelude::*;
+
+        let mut args: HashMap<String, Value> = hashmap!();
+        use std::convert::From;
+
+        let x1 = array![5].into_dimensionality::<IxDyn>().unwrap();
+        let x = crate::standard::Int64Tensor::from(x1);
+
+        let y1 = array![10].into_dimensionality::<IxDyn>().unwrap();
+        let y = crate::standard::Int64Tensor::from(y1);
+
+        args.insert("x".to_string(), Value::from(x));
+        args.insert("y".to_string(), Value::from(y));
+
+        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::from_storage(&storage);
+        let outputs = exec.run_computation(&comp, args)?;
+
+        let z: crate::standard::Int64Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+
+        let z1_eq = array![15].into_dimensionality::<IxDyn>().unwrap();
+        let z_eq = crate::standard::Int64Tensor::from(z1_eq);
+        assert_eq!(z, z_eq);
+
+        Ok(())
+    }
+
+    use proptest::prelude::*;
+    proptest! {
+
+        #[test]
+        fn test_standard_cast(v in "1|2", from_dtype in "Int64Tensor", into_dtype in "Int32Tensor") {
+            let source = r#"value = Constant([v]: from_dtype) @Host(Alice)"#;
+        }
     }
 }
