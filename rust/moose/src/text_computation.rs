@@ -209,12 +209,12 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
             cut(std_unary!(Operator::Identity, IdentityOp)),
         ),
         preceded(tag("Load"), cut(std_unary!(Operator::Load, LoadOp))),
-        preceded(tag("Save"), cut(std_unary!(Operator::Save, SaveOp))),
         preceded(tag("Send"), cut(send_operator)),
         preceded(tag("Receive"), cut(receive_operator)),
         preceded(tag("Input"), cut(input_operator)),
         preceded(tag("Output"), cut(std_unary!(Operator::Output, OutputOp))),
         preceded(tag("Constant"), cut(constant)),
+        preceded(tag("Save"), cut(save_operator)),
         preceded(tag("StdAdd"), cut(std_binary!(Operator::StdAdd, StdAddOp))),
         preceded(tag("StdSub"), cut(std_binary!(Operator::StdSub, StdSubOp))),
         preceded(tag("StdMul"), cut(std_binary!(Operator::StdMul, StdMulOp))),
@@ -593,6 +593,15 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
             args,
         ),
     ))
+}
+
+/// Parses a Save operator.
+fn save_operator<'a, E: 'a + ParseError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, (Operator, Vec<String>), E> {
+    let (input, args) = argument_list(input)?;
+    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
+    Ok((input, (Operator::Save(SaveOp { ty: args_types[1] }), args)))
 }
 
 /// Parses a FixedpointRingMean operator.
@@ -1425,7 +1434,6 @@ mod tests {
     fn test_sample_computation() -> Result<(), anyhow::Error> {
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
             "x = Constant([1.0]: Float32Tensor) @Host(alice)
-            
             y = Constant([2.0]: Float32Tensor): () -> Float32Tensor @Host(bob)
             // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
             z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)

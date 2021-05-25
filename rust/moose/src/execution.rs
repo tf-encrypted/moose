@@ -1104,4 +1104,46 @@ mod tests {
         let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
         assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
     }
+
+    #[test]
+    fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"key = Constant(00000000000000000000000000000000: PrfKey) @Host(alice)
+        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
+        output = Output(seed): (Seed) -> Seed @Host(alice)
+"#;
+        let comp: Computation = source.try_into()?;
+
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        use crate::prim::{Nonce, PrfKey, Seed};
+
+        let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(
+            seed,
+            Seed::from_prf(&PrfKey([0; 16]), &Nonce(vec![1, 2, 3]))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_primitives_sample_ring() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"seed = Constant(00000000000000000000000000000000: Seed) @Host(alice)
+        xshape = Constant([2, 2]: Shape) @Host(alice)
+        sampled = RingSample(xshape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)
+        output = Output(sampled): (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        "#;
+        let comp: Computation = source.try_into()?;
+
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        use crate::ring::Ring64Tensor;
+        use crate::standard::Shape;
+
+        let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(x_sampled.shape(), Shape(vec![2, 2]));
+
+        Ok(())
+    }
 }
