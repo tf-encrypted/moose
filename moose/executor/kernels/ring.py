@@ -73,8 +73,9 @@ class RingShapeKernel(Kernel):
 
 class RingFillKernel(Kernel):
     def execute_synchronous_block(self, op, session, shape):
+        assert isinstance(op.value, str)
         assert isinstance(op, FillTensorOperation)
-        return ring_fill(shape, op.value)
+        return ring_fill(shape, int(op.value))
 
 
 class RingSampleKernel(Kernel):

@@ -368,7 +368,7 @@ def f(arg1, arg2):
         )
     )
 
-    compiler = Compiler()
+    compiler = Compiler(ring=128)
     comp = compiler.run_passes(comp)
 
     return serialize_computation(comp)
@@ -475,6 +475,8 @@ from moose.computation import standard as standard_dialect
 from moose.computation.utils import serialize_computation
 
 
+FIXED = edsl.fixed(8, 27)
+
 def mse(y_pred, y_true):
     return edsl.mean(edsl.square(edsl.sub(y_pred, y_true)), axis=0)
 
@@ -493,13 +495,6 @@ def ss_tot(y_true):
 def r_squared(ss_res, ss_tot):
     residuals_ratio = edsl.div(ss_res, ss_tot)
     return edsl.sub(edsl.constant(np.array([1], dtype=np.float64), dtype=edsl.float64), residuals_ratio)
-
-def into_fixed(x):
-    return edsl.cast(x, dtype=edsl.fixed(8, 27))
-
-
-def from_fixed(x):
-    return edsl.cast(x, dtype=edsl.float64)
 
 
 def f():
@@ -524,8 +519,8 @@ def f():
             X_b = edsl.concatenate([reshaped_bias, X], axis=1)
             A = edsl.inverse(edsl.dot(edsl.transpose(X_b), X_b))
             B = edsl.dot(A, edsl.transpose(X_b))
-            X_b = into_fixed(X_b)
-            B = into_fixed(B)
+            X_b = edsl.cast(X_b, dtype=FIXED)
+            B = edsl.cast(B, dtype=FIXED)
 
 
         with y_owner:
@@ -533,7 +528,7 @@ def f():
                 edsl.load("y_uri", dtype=edsl.float64), to_column_vector=True
             )
             totals_ss = ss_tot(y_true)
-            y_true = into_fixed(y_true)
+            y_true = edsl.cast(y_true, dtype=FIXED)
 
 
         with replicated_plc:
@@ -543,12 +538,12 @@ def f():
             residuals_ss = ss_res(y_pred, y_true)
 
         with model_owner:
-            residuals_ss = from_fixed(residuals_ss)
+            residuals_ss = edsl.cast(residuals_ss, dtype=edsl.float64)
             rsquared_result = r_squared(residuals_ss, totals_ss)
 
         with model_owner:
-            w = from_fixed(w)
-            mse_result = from_fixed(mse_result)
+            w = edsl.cast(w, dtype=edsl.float64)
+            mse_result = edsl.cast(mse_result, dtype=edsl.float64)
             res = (
                 edsl.save("regression_weights", w),
                 edsl.save("mse_result", mse_result),
@@ -557,7 +552,7 @@ def f():
 
         return res
 
-    concrete_comp = edsl.trace_and_compile(my_comp)
+    concrete_comp = edsl.trace_and_compile(my_comp, ring=128)
     return serialize_computation(concrete_comp)
 
 "#;
@@ -698,7 +693,7 @@ def f(arg1):
         )
     )
 
-    compiler = Compiler()
+    compiler = Compiler(ring=128)
     comp = compiler.run_passes(comp)
 
     return serialize_computation(comp)

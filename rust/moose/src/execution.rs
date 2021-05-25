@@ -1066,147 +1066,39 @@ impl AsyncExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryInto;
 
     #[test]
-    fn test_standard_prod_ops() {
-        use crate::standard::Float32Tensor;
-        use ndarray::prelude::*;
-
-        let x = Float32Tensor::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let x_op = Operation {
-            name: "x".into(),
-            kind: Operator::Constant(ConstantOp {
-                value: Value::Float32Tensor(x),
-            }),
-            inputs: vec![],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let y = Float32Tensor::from(
-            array![[1.0, 2.0], [3.0, 4.0]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        let y_op = Operation {
-            name: "y".into(),
-            kind: Operator::Constant(ConstantOp {
-                value: Value::Float32Tensor(y),
-            }),
-            inputs: vec![],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let mul_op = Operation {
-            name: "mul".into(),
-            kind: Operator::StdMul(StdMulOp {
-                lhs: Ty::Float32TensorTy,
-                rhs: Ty::Float32TensorTy,
-            }),
-            inputs: vec!["x".into(), "y".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let dot_op = Operation {
-            name: "dot".into(),
-            kind: Operator::StdDot(StdDotOp {
-                lhs: Ty::Float32TensorTy,
-                rhs: Ty::Float32TensorTy,
-            }),
-            inputs: vec!["x".into(), "y".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let mean_op = Operation {
-            name: "mean".into(),
-            kind: Operator::StdMean(StdMeanOp {
-                ty: Ty::Float32TensorTy,
-                axis: Some(0),
-            }),
-            inputs: vec!["dot".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-        let operations = vec![x_op, y_op, mul_op, dot_op, mean_op];
-        let comp = Computation { operations }.toposort().unwrap();
-
-        let exec = TestExecutor::default();
-        let _outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+    fn test_standard_prod_ops() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
+        y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
+        mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
+        dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
+        mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @Host(alice)"#;
+        TestExecutor::default().run_computation(&source.try_into()?, SyncArgs::new())?;
+        Ok(())
     }
 
     #[test]
     fn test_eager_executor() {
-        use crate::prim::Nonce;
-        use crate::standard::Shape;
-
-        let key_op = Operation {
-            name: "key".into(),
-            kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
-            inputs: vec![],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-
-        let seed_op = Operation {
-            name: "seed".into(),
-            kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp {
-                nonce: Nonce(vec![1, 2, 3]),
-            }),
-            inputs: vec!["key".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-
-        let shape_op = Operation {
-            name: "shape".into(),
-            kind: Operator::Constant(ConstantOp {
-                value: Value::Shape(Shape(vec![2, 3])),
-            }),
-            inputs: vec![],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-
-        let output_op = Operation {
-            name: "z".into(),
-            kind: Operator::Output(OutputOp {
-                ty: Ty::Ring64TensorTy,
-            }),
-            inputs: vec!["x10".into()],
-            placement: Placement::Host(HostPlacement {
-                owner: Role::from("alice"),
-            }),
-        };
-
-        let sample_ops: Vec<_> = (0..100)
-            .map(|i| Operation {
-                name: format!("x{}", i),
-                kind: Operator::RingSample(RingSampleOp {
-                    output: Ty::Ring64TensorTy,
-                    max_value: None,
-                }),
-                inputs: vec!["shape".into(), "seed".into()],
-                placement: Placement::Host(HostPlacement {
-                    owner: Role::from("alice"),
-                }),
+        use itertools::Itertools;
+        let mut definition = String::from(
+            r#"key = PrimGenPrfKey() @Host(alice)
+        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
+        shape = Constant([2, 3] : Shape) @Host(alice)
+        "#,
+        );
+        let body = (0..100)
+            .map(|i| {
+                format!(
+                    "x{} = RingSample(shape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)",
+                    i
+                )
             })
-            .collect();
-
-        let mut operations = sample_ops;
-        operations.extend(vec![key_op, seed_op, shape_op, output_op]);
-
-        let comp = Computation { operations }.toposort().unwrap();
+            .join("\n");
+        definition.push_str(&body);
+        definition.push_str("\nz = Output(x0): (Ring64Tensor) -> Unit @Host(alice)");
+        let comp: Computation = definition.try_into().unwrap();
 
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();

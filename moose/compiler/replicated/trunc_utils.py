@@ -57,7 +57,7 @@ def bit_compose(bits, placement_name):
 
 # assume x, r, r_top, r_msb is a two entry array where each entry corresponds
 # to a share
-def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players):
+def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players, R):
     assert isinstance(x_rep, ReplicatedRingTensor)
 
     def reconstruct(x0: RingTensor, x1: RingTensor):
@@ -80,7 +80,7 @@ def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players):
     opened_mask = reconstruct(masked[0], masked[1])
 
     opened_masked_tr = [None] * 2
-    ring_size = 64
+    ring_size = R
     for i in range(2):
         no_msb_mask = ring_shl(opened_mask[i], 1, placement_name=players[i])
         opened_masked_tr[i] = ring_shr(no_msb_mask, m + 1, placement_name=players[i])

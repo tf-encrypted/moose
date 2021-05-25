@@ -27,6 +27,8 @@ pub enum Ty {
     StringTy,
     Float32Ty,
     Float64Ty,
+    Ring64Ty,
+    Ring128Ty,
     Ring64TensorTy,
     Ring128TensorTy,
     BitTensorTy,
@@ -51,6 +53,8 @@ pub enum Value {
     Unit,
     Float32(f32),
     Float64(f64),
+    Ring64(u64),
+    Ring128(u128),
     String(String),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
@@ -80,6 +84,8 @@ impl Value {
             String(_) => StringTy,
             Float32(_) => Float32Ty,
             Float64(_) => Float64Ty,
+            Ring64(_) => Ring64Ty,
+            Ring128(_) => Ring128Ty,
             Ring64Tensor(_) => Ring64TensorTy,
             Ring128Tensor(_) => Ring128TensorTy,
             BitTensor(_) => BitTensorTy,
@@ -156,7 +162,7 @@ value!(Uint16Tensor);
 value!(Uint32Tensor);
 value!(Uint64Tensor);
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Operator {
     Identity(IdentityOp),
     Load(LoadOp),
@@ -205,249 +211,259 @@ pub enum Operator {
     FixedpointRingMean(FixedpointRingMeanOp),
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SendOp {
     pub rendezvous_key: String,
     pub receiver: Role,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct IdentityOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ReceiveOp {
     pub rendezvous_key: String,
     pub sender: Role,
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct InputOp {
     pub arg_name: String,
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct OutputOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct LoadOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SaveOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ConstantOp {
     pub value: Value,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdAddOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdSubOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdMulOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdDivOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdDotOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdMeanOp {
     pub ty: Ty,
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdOnesOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdConcatenateOp {
     pub ty: Ty,
     pub axis: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdAtLeast2DOp {
     pub ty: Ty,
     pub to_column_vector: bool,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdExpandDimsOp {
     pub ty: Ty,
     pub axis: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdReshapeOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdShapeOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdSliceOp {
     pub ty: Ty,
     pub start: u32,
     pub end: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdSumOp {
     pub ty: Ty,
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdTransposeOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdInverseOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrimDeriveSeedOp {
     pub nonce: Nonce,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrimGenPrfKeyOp;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingAddOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSubOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingMulOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingDotOp {
     pub lhs: Ty,
     pub rhs: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSumOp {
     pub ty: Ty,
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShapeOp {
     pub ty: Ty,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingFillOp {
-    pub value: u64,
+    pub ty: Ty,
+    pub value: Value,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSampleOp {
     pub output: Ty,
     pub max_value: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShlOp {
+    pub ty: Ty,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShrOp {
+    pub ty: Ty,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingInjectOp {
     pub output: Ty,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitExtractOp {
     pub ring_type: Ty,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitSampleOp;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitFillOp {
     pub value: u8,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitXorOp;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitAndOp;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {
-    pub scaling_factor: u64,
+    pub ty: Ty,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingDecodeOp {
-    pub scaling_factor: u64,
+    pub input_ty: Ty,
+    pub ty: Ty,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingMeanOp {
+    pub ty: Ty,
     pub axis: Option<usize>,
-    pub scaling_factor: u64,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Placement {
     Host(HostPlacement),
     Replicated(ReplicatedPlacement),
@@ -474,7 +490,7 @@ impl From<&str> for Role {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostPlacement {
     pub owner: Role,
 }
@@ -485,7 +501,7 @@ impl From<HostPlacement> for Placement {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ReplicatedPlacement {
     pub owners: [Role; 3],
 }
@@ -504,6 +520,7 @@ pub struct Operation {
     pub placement: Placement,
 }
 
+#[derive(Debug)]
 pub struct Computation {
     // pub constants: Vec<Value>,
     // pub operators: Vec<Operator>,
