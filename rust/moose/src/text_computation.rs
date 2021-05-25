@@ -600,16 +600,8 @@ fn save_operator<'a, E: 'a + ParseError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, (args_types, _result_type)) = type_definition(1)(input)?;
-    Ok((
-        input,
-        (
-            Operator::Save(SaveOp{
-                ty: _result_type,
-            }),
-            args,
-        ),
-    ))
+    let (input, (args_types, _result_type)) = type_definition(2)(input)?;
+    Ok((input, (Operator::Save(SaveOp { ty: args_types[1] }), args)))
 }
 
 /// Parses a FixedpointRingMean operator.
@@ -1095,6 +1087,7 @@ fn parse_literal<'a, E: ParseError<&'a str>>(input: &'a str) -> IResult<&'a str,
 ///
 /// From nom examples (MIT licesnse, so it is ok)
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 enum StringFragment<'a> {
     Literal(&'a str),
     EscapedChar(char),
