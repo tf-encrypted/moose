@@ -158,6 +158,17 @@ macro_rules! std_unary {
     };
 }
 
+/// Constructs a parser for a simple unary operation where the op type is given by the output type
+macro_rules! std_unary_output {
+    ($typ:expr, $sub:ident) => {
+        |input: &'a str| {
+            let (input, args) = argument_list(input)?;
+            let (input, (_, result_type)) = type_definition(1)(input)?;
+            Ok((input, ($typ($sub { ty: result_type }), args)))
+        }
+    };
+}
+
 /// Constructs a parser for a simple binary operation.
 macro_rules! std_binary {
     ($typ:expr, $sub:ident) => {
@@ -188,6 +199,7 @@ macro_rules! operation_on_axis {
             Ok((
                 input,
                 (
+                    // (Dragos) Bug in here
                     Operator::StdSum(StdSumOp {
                         ty: args_types[0],
                         axis: opt_axis,
@@ -243,7 +255,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
         ),
         preceded(
             tag("StdOnes"),
-            cut(std_unary!(Operator::StdOnes, StdOnesOp)),
+            cut(std_unary_output!(Operator::StdOnes, StdOnesOp)),
         ),
         preceded(tag("StdConcatenate"), cut(stdconcatenate)),
         preceded(

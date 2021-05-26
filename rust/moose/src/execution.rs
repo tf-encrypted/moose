@@ -8,6 +8,7 @@ use crate::storage::{AsyncStorage, LocalSyncStorage, SyncStorage};
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
+use ndarray::prelude::*;
 use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
@@ -1148,8 +1149,8 @@ mod tests {
 
     #[test]
     fn test_standard_input() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Input(arg_name = "x"): () -> Int64Tensor @Host(Alice)
-        y = Input(arg_name = "y"): () -> Int64Tensor @Host(Alice)
+        let source = r#"x = Input() {arg_name = "x"}: () -> Int64Tensor @Host(Alice)
+        y = Input() {arg_name = "y"}: () -> Int64Tensor @Host(Alice)
         z = StdAdd(x, y): (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(Alice)
         output = Output(z): (Int64Tensor) -> Int64Tensor @Host(Alice)
         "#;
@@ -1183,13 +1184,224 @@ mod tests {
 
         Ok(())
     }
+    use rstest::rstest;
+    #[rstest]
+    #[case("0")]
+    #[case("1")]
+    fn test_standard_concatenate(#[case] axis: usize) -> std::result::Result<(), anyhow::Error> {
+        let source_template = r#"x_0 = Constant([[1,2], [3,4]]: Int64Tensor) @Host(alice)
+        x_1 = Constant([[5, 6], [7,8]]: Int64Tensor) @Host(alice)
+        concatenated = StdConcatenate(x_0, x_1) {axis=test_axis}: (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(alice)
+        output = Output(concatenated): (Int64Tensor) -> Int64Tensor @Host(alice)
+        "#;
+        let source = source_template.replace("test_axis", &axis.to_string());
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
-    use proptest::prelude::*;
-    proptest! {
+        let concatenated: crate::standard::Int64Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+        let x0 = crate::standard::Int64Tensor::from(
+            array![[1, 2], [3, 4]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
 
-        #[test]
-        fn test_standard_cast(v in "1|2", from_dtype in "Int64Tensor", into_dtype in "Int32Tensor") {
-            let source = r#"value = Constant([v]: from_dtype) @Host(Alice)"#;
+        let x1 = crate::standard::Int64Tensor::from(
+            array![[5, 6], [7, 8]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+
+        Ok(assert_eq!(
+            concatenated,
+            crate::standard::concatenate(axis, &[x0, x1])
+        ))
+    }
+
+    // proptest! {
+
+    //      #[test]
+    //      fn test_standard_cast(input_value in "1|2", from_dtype in "Int64Tensor", into_dtype in "Int32Tensor") {
+    //          let source = r#"value = Constant([input_value]: from_dtype) @Host(Alice)"#;
+    //          let code = source.replace("from_dtype", &from_dtype).replace("input_value", &input_value);
+    //          // TODO(implement cast operation)
+    //      }
+
+    #[rstest]
+    #[case("StdAdd")]
+    #[case("StdSub")]
+    #[case("StdMul")]
+    #[case("StdDiv")]
+    fn test_standard_op(#[case] test_op: String) -> std::result::Result<(), anyhow::Error> {
+        let source_template = r#"x0 = Constant([5]: Int64Tensor) @Host(alice)
+        x1 = Constant([3]: Int64Tensor) @Host(bob)
+        res = StdOp(x0, x1): (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(alice)
+        output = Output(res): (Int64Tensor) -> Int64Tensor @Host(alice)
+        "#;
+        let source = source_template.replace("StdOp", &test_op);
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let x0 =
+            crate::standard::Int64Tensor::from(array![5].into_dimensionality::<IxDyn>().unwrap());
+        let x1 =
+            crate::standard::Int64Tensor::from(array![3].into_dimensionality::<IxDyn>().unwrap());
+
+        let res: crate::standard::Int64Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+
+        match test_op.as_str() {
+            "StdAdd" => Ok(assert_eq!(res, x0 + x1)),
+            "StdSub" => Ok(assert_eq!(res, x0 - x1)),
+            "StdMul" => Ok(assert_eq!(res, x0 * x1)),
+            "StdDiv" => Ok(assert_eq!(res, x0 / x1)),
+            _ => Err(anyhow::anyhow!("Failed to parse test case")),
+        }
+    }
+
+    // #[rstest]
+    // #[case("None", "(2,2)")]
+    // #[case("1", "(2, 2, 1)")]
+    // #[case("(1,3)", "(2, 2)")]
+    // fn test_standard_squeeze(#[case] str_axis: String, #[case] str_shape: String) -> std::result::Result<(), anyhow::Error> {
+    //     let source_template = r#"x = Constant([[[[1], [2]]], [[[3], [4]]]]: Int64Tensor) @Host(alice)
+    //     res = StdSqueeze()
+    //     x1 = Constant([3]: Int64Tensor) @Host(bob)
+    //     res = StdOp(x0, x1): (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(alice)
+    //     output = Output(res): (Int64Tensor) -> Int64Tensor @Host(alice)
+    //     "#;
+
+    //     Ok(())
+    // }
+
+    #[test]
+    fn test_standard_inverse() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant([[3.0, 2.0], [2.0, 3.0]]: Float32Tensor) : () -> Float32Tensor @Host(alice)
+        x_inv = StdInverse(x) : (Float32Tensor) -> Float32Tensor @Host(alice)
+        output = Output(x_inv): (Float32Tensor) -> Float32Tensor @Host(alice)
+        "#;
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let x = crate::standard::Float32Tensor::from(
+            array![[3.0, 2.0], [2.0, 3.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+
+        let x_inv: crate::standard::Float32Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(x_inv, x.inv());
+
+        Ok(())
+    }
+
+    use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor};
+    #[rstest]
+    #[case("Float32Tensor")]
+    #[case("Float64Tensor")]
+    #[case("Int64Tensor")]
+    fn test_standard_ones(#[case] dtype: String) -> std::result::Result<(), anyhow::Error> {
+        let template = r#"s = Constant([2, 2]: Shape) @Host(alice)
+        r = StdOnes(s) : (Shape) -> dtype @Host(alice)
+        output = Output(r) : (dtype) -> dtype @Host(alice)
+        "#;
+        let source = template.replace("dtype", &dtype);
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        match dtype.as_str() {
+            "Float32Tensor" => {
+                let r: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                println!("Computation output: {:?}", r);
+                Ok(assert_eq!(
+                    r,
+                    Float32Tensor::from(
+                        array![[1.0, 1.0], [1.0, 1.0]]
+                            .into_dimensionality::<IxDyn>()
+                            .unwrap(),
+                    )
+                ))
+            }
+            "Float64Tensor" => {
+                let r: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                Ok(assert_eq!(
+                    r,
+                    Float64Tensor::from(
+                        array![[1.0, 1.0], [1.0, 1.0]]
+                            .into_dimensionality::<IxDyn>()
+                            .unwrap(),
+                    )
+                ))
+            }
+            "Int64Tensor" => {
+                let r: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                Ok(assert_eq!(
+                    r,
+                    Int64Tensor::from(
+                        array![[1, 1], [1, 1]]
+                            .into_dimensionality::<IxDyn>()
+                            .unwrap(),
+                    )
+                ))
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case")),
+        }
+    }
+
+    #[rstest]
+    #[case("StdSum", "None")]
+    #[case("StdSum", "0")]
+    #[case("StdSum", "1")]
+    #[case("StdMean", "None")]
+    #[case("StdMean", "0")]
+    #[case("StdMean", "1")]
+    fn test_reduce_op(
+        #[case] reduce_op_test: String,
+        #[case] axis_test: String,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let template = r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
+        r = reduce_op_str(s) {axis=axis_str}: (Int64Tensor) -> Int64Tensor @Host(alice)
+        output = Output(r) : (Int64Tensor) -> Int64Tensor @Host(alice)
+        "#;
+        let source = template
+            .replace("reduce_op_str", &reduce_op_test)
+            .replace("axis_str", &axis_test);
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+
+        let x: Int64Tensor = Int64Tensor::from(
+            array![[1, 2], [3, 4]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+
+        match (reduce_op_test.as_str(), axis_test.as_str()) {
+            ("StdSum", "None") => {
+                Ok(assert_eq!(x.sum(None), comp_result))
+            }
+            ("StdSum", "0") => {
+                Ok(assert_eq!(x.sum(Some(0)), comp_result))
+            }
+            ("StdSum", "1") => {
+                Ok(assert_eq!(x.sum(Some(1)), comp_result))
+            }
+            ("StdMean", "None") => {
+                Ok(assert_eq!(x.mean(None), comp_result))
+            }
+            ("StdMean", "0") => {
+                Ok(assert_eq!(x.mean(Some(0)), comp_result))
+            }
+            ("StdMean", "1") => {
+                Ok(assert_eq!(x.mean(Some(1)), comp_result))
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case")),
         }
     }
 }
