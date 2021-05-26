@@ -71,7 +71,12 @@ impl AsyncStorage for LocalAsyncStorage {
         Ok(())
     }
 
-    async fn load(&self, key: &str, _type_hint: Option<Ty>, _query: Option<String>) -> Result<Value> {
+    async fn load(
+        &self,
+        key: &str,
+        _type_hint: Option<Ty>,
+        _query: Option<String>,
+    ) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
         let store = self.store.read().await;
         store
