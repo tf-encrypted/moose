@@ -11,7 +11,7 @@ pub trait SyncStorage {
 #[async_trait]
 pub trait AsyncStorage {
     async fn save(&self, key: &str, val: &Value) -> Result<()>;
-    async fn load(&self, key: &str, type_hint: Option<Ty>) -> Result<Value>;
+    async fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value>;
 }
 
 #[derive(Default)]
@@ -71,7 +71,7 @@ impl AsyncStorage for LocalAsyncStorage {
         Ok(())
     }
 
-    async fn load(&self, key: &str, _type_hint: Option<Ty>) -> Result<Value> {
+    async fn load(&self, key: &str, _type_hint: Option<Ty>, _query: Option<String>) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
         let store = self.store.read().await;
         store

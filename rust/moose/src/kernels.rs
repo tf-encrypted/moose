@@ -940,7 +940,7 @@ impl Compile<AsyncKernel> for LoadOp {
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let _query = String::try_from(query.await.map_err(map_receive_error)?)?;
-                    let val = sess.storage.load(&key, Some(expected_ty)).await?;
+                    let val = sess.storage.load(&key, Some(expected_ty), None).await?;
                     check_type(&val, expected_ty)?;
                     map_send_result(sender.send(val))
                 })
