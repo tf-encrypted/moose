@@ -31,6 +31,16 @@ impl TryFrom<String> for Computation {
     }
 }
 
+impl TryFrom<&str> for Value {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<Value> {
+        value_literal::<(&str, ErrorKind)>(source)
+            .map(|(_, v)| v)
+            .map_err(|_| anyhow::anyhow!("Failed to parse value literal {}", source))
+    }
+}
+
 /// Parses the computation and returns a verbose error description if it fails.
 fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<VerboseError<&str>>(source) {
