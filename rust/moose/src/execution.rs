@@ -1382,10 +1382,12 @@ mod tests {
         }
         Ok(())
     }
-    use ndarray::{OwnedRepr};
+    use ndarray::OwnedRepr;
     #[rstest]
     #[case(array![[1, 3], [2, 4]])]
-    fn test_standard_transpose(#[case] expected_result: ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>) -> std::result::Result<(), anyhow::Error> {
+    fn test_standard_transpose(
+        #[case] expected_result: ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
+    ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
         r = StdTranspose(s) : (Int64Tensor) -> Int64Tensor @Host(alice)
         output = Output(r) : (Int64Tensor) -> Int64Tensor @Host(alice)
@@ -1399,24 +1401,29 @@ mod tests {
         assert_eq!(Int64Tensor::from(expected_result), comp_result);
         Ok(())
     }
+
     #[rstest]
-    #[case(true)]
-    #[case(false)]
-    fn test_standard_atleast_2d(#[case] to_column_vector: bool) -> std::result::Result<(), anyhow::Error> {
-        let source = format!(r#"x =  Constant([1.0, 1.0, 1.0]: Float64Tensor) @Host(alice)
+    #[case(true, array![[1.0], [1.0], [1.0]])]
+    #[case(false, array![[1.0, 1.0, 1.0]])]
+    fn test_standard_atleast_2d(
+        #[case] to_column_vector: bool,
+        #[case] expected_result: ArrayBase<OwnedRepr<f64>, Dim<[usize; 2]>>,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"x =  Constant([1.0, 1.0, 1.0]: Float64Tensor) @Host(alice)
         res = StdAtLeast2D(x) {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor @Host(alice)
         output = Output(res) : (Float64Tensor) -> Float64Tensor @Host(alice)
-        "#, to_column_vector);
+        "#,
+            to_column_vector
+        );
 
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
         let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        println!("{:?}", comp_result);
-        assert_eq!(false, true);
+        assert_eq!(Float64Tensor::from(expected_result), comp_result);
 
         Ok(())
     }
-
 }
