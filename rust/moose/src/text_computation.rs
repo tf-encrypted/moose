@@ -6,7 +6,9 @@ use nom::{
     bytes::complete::{is_not, tag, take_while_m_n},
     character::complete::{alpha1, alphanumeric1, char, digit1, multispace1, space0},
     combinator::{all_consuming, cut, eof, map, map_opt, map_res, opt, recognize, value, verify},
-    error::{convert_error, make_error, ErrorKind, ParseError, VerboseError},
+    error::{
+        context, convert_error, make_error, ContextError, ErrorKind, ParseError, VerboseError,
+    },
     multi::{fill, fold_many0, many0, many1, separated_list0},
     number::complete::{double, float},
     sequence::{delimited, pair, preceded, tuple},
@@ -31,6 +33,16 @@ impl TryFrom<String> for Computation {
     }
 }
 
+impl TryFrom<&str> for Value {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<Value> {
+        value_literal::<(&str, ErrorKind)>(source)
+            .map(|(_, v)| v)
+            .map_err(|_| anyhow::anyhow!("Failed to parse value literal {}", source))
+    }
+}
+
 /// Parses the computation and returns a verbose error description if it fails.
 fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<VerboseError<&str>>(source) {
@@ -44,7 +56,7 @@ fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
 }
 
 /// Parses the computation line by line.
-fn parse_computation<'a, E: 'a + ParseError<&'a str>>(
+fn parse_computation<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Computation, E> {
     all_consuming(map(
@@ -56,7 +68,7 @@ fn parse_computation<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a single logical line of the textual IR
-fn parse_line<'a, E: 'a + ParseError<&'a str>>(
+fn parse_line<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Option<Operation>, E> {
     alt((
@@ -67,7 +79,7 @@ fn parse_line<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Recognizes and consumes away a comment
-fn recognize_comment<'a, E: 'a + ParseError<&'a str>>(
+fn recognize_comment<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Option<Operation>, E> {
     value(
@@ -81,7 +93,7 @@ fn recognize_comment<'a, E: 'a + ParseError<&'a str>>(
 /// Accepts an assignment in the form of
 ///
 /// `Identifier = Operation : TypeDefinition @Placement`
-fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(
+fn parse_assignment<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operation, E> {
     let (input, identifier) = ws(identifier)(input)?;
@@ -100,41 +112,47 @@ fn parse_assignment<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses placement.
-fn parse_placement<'a, E: 'a + ParseError<&'a str>>(
+fn parse_placement<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Placement, E> {
     alt((
         preceded(
             tag("@Host"),
-            cut(map(
-                delimited(ws(tag("(")), alphanumeric1, ws(tag(")"))),
-                |name| {
-                    Placement::Host(HostPlacement {
-                        owner: Role::from(name),
-                    })
-                },
+            cut(context(
+                "Expecting alphanumeric host name as in @Host(alice)",
+                map(
+                    delimited(ws(tag("(")), alphanumeric1, ws(tag(")"))),
+                    |name| {
+                        Placement::Host(HostPlacement {
+                            owner: Role::from(name),
+                        })
+                    },
+                ),
             )),
         ),
         preceded(
             tag("@Replicated"),
-            cut(map(
-                delimited(
-                    ws(tag("(")),
-                    verify(
-                        separated_list0(tag(","), ws(alphanumeric1)),
-                        |v: &Vec<&str>| v.len() == 3,
+            cut(context(
+                "Expecting host names triplet as in @Replicated(alice, bob, charlie)",
+                map(
+                    delimited(
+                        ws(tag("(")),
+                        verify(
+                            separated_list0(tag(","), ws(alphanumeric1)),
+                            |v: &Vec<&str>| v.len() == 3,
+                        ),
+                        ws(tag(")")),
                     ),
-                    ws(tag(")")),
+                    |names| {
+                        Placement::Replicated(ReplicatedPlacement {
+                            owners: [
+                                Role::from(names[0]),
+                                Role::from(names[1]),
+                                Role::from(names[2]),
+                            ],
+                        })
+                    },
                 ),
-                |names| {
-                    Placement::Replicated(ReplicatedPlacement {
-                        owners: [
-                            Role::from(names[0]),
-                            Role::from(names[1]),
-                            Role::from(names[2]),
-                        ],
-                    })
-                },
             )),
         ),
     ))(input)
@@ -211,7 +229,7 @@ macro_rules! operation_on_axis {
 }
 
 /// Parses operator - maps names to structs.
-fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
+fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let part1 = alt((
@@ -310,7 +328,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a Constant
-fn constant<'a, E: 'a + ParseError<&'a str>>(
+fn constant<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, x) = delimited(tag("("), ws(value_literal), tag(")"))(input)?;
@@ -320,7 +338,7 @@ fn constant<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a Send operator
-fn send_operator<'a, E: 'a + ParseError<&'a str>>(
+fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -342,7 +360,7 @@ fn send_operator<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a Receive operator
-fn receive_operator<'a, E: 'a + ParseError<&'a str>>(
+fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -365,7 +383,7 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses an Input operator
-fn input_operator<'a, E: 'a + ParseError<&'a str>>(
+fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -384,7 +402,7 @@ fn input_operator<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a StdExpandDims operator
-fn stdexpanddims<'a, E: 'a + ParseError<&'a str>>(
+fn stdexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -403,7 +421,7 @@ fn stdexpanddims<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a StdAtLeast2D operator.
-fn stdatleast2d<'a, E: 'a + ParseError<&'a str>>(
+fn stdatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -422,7 +440,7 @@ fn stdatleast2d<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a StdSlice operator.
-fn stdslice<'a, E: 'a + ParseError<&'a str>>(
+fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -445,7 +463,7 @@ fn stdslice<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a StdConcatenate operator.
-fn stdconcatenate<'a, E: 'a + ParseError<&'a str>>(
+fn stdconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -464,7 +482,7 @@ fn stdconcatenate<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a RingSample operator.
-fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
+fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -483,7 +501,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a RingFill operator.
-fn ring_fill<'a, E: 'a + ParseError<&'a str>>(
+fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -502,7 +520,7 @@ fn ring_fill<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a RingShl operator.
-fn ring_shl<'a, E: 'a + ParseError<&'a str>>(
+fn ring_shl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -521,7 +539,7 @@ fn ring_shl<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a RingShr operator.
-fn ring_shr<'a, E: 'a + ParseError<&'a str>>(
+fn ring_shr<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -540,7 +558,7 @@ fn ring_shr<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a PrimGenPrfKey operator.
-fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str>>(
+fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -548,7 +566,7 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a PrimDeriveSeed operator.
-fn prim_derive_seed<'a, E: 'a + ParseError<&'a str>>(
+fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = ws(argument_list)(input)?;
@@ -560,7 +578,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a FixedpointRingEncode operator.
-fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str>>(
+fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -583,7 +601,7 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a FixedpointRingDecode operator.
-fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
+fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -607,7 +625,7 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a Save operator.
-fn save_operator<'a, E: 'a + ParseError<&'a str>>(
+fn save_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -616,7 +634,7 @@ fn save_operator<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a FixedpointRingMean operator.
-fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
+fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -642,7 +660,7 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a RingInject operator.
-fn ring_inject<'a, E: 'a + ParseError<&'a str>>(
+fn ring_inject<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -661,7 +679,7 @@ fn ring_inject<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a BitExtract operator.
-fn bit_extract<'a, E: 'a + ParseError<&'a str>>(
+fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -680,7 +698,7 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a BitSample operator.
-fn bit_sample<'a, E: 'a + ParseError<&'a str>>(
+fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -689,7 +707,7 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a BitFill operator.
-fn bit_fill<'a, E: 'a + ParseError<&'a str>>(
+fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -699,7 +717,7 @@ fn bit_fill<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a BitXor operator.
-fn bit_xor<'a, E: 'a + ParseError<&'a str>>(
+fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
@@ -712,20 +730,23 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str>>(
 /// Accepts input in the form of
 ///
 /// `(name, name, name)`
-fn argument_list<'a, E: 'a + ParseError<&'a str>>(
+fn argument_list<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Vec<String>, E> {
-    delimited(
-        tag("("),
-        separated_list0(tag(","), map(ws(identifier), |s| s.to_string())),
-        tag(")"),
+    context(
+        "Expecting comma separated list of identifiers",
+        delimited(
+            tag("("),
+            separated_list0(tag(","), map(ws(identifier), |s| s.to_string())),
+            tag(")"),
+        ),
     )(input)
 }
 
 /// Parses list of attributes when there is only one attribute.
 ///
 /// This is an optimization to avoid permutation cast for the simple case.
-fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str>>(
+fn attributes_single<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     name: &'a str,
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -736,7 +757,7 @@ where
 }
 
 /// Parses a single attribute with an optional comma at the end.
-fn attributes_member<'a, O, F: 'a, E: 'a + ParseError<&'a str>>(
+fn attributes_member<'a, O, F: 'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     name1: &'a str,
     inner1: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, O, E>
@@ -756,7 +777,7 @@ where
 /// `: (Float32Tensor, Float32Tensor) -> Float32Tensor`
 ///
 /// * `arg_count` - the number of required arguments
-fn type_definition<'a, E: 'a + ParseError<&'a str>>(
+fn type_definition<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     arg_count: usize,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, (Vec<Ty>, Ty), E> {
     move |input: &'a str| {
@@ -777,7 +798,9 @@ fn type_definition<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses an individual type's literal
-fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Ty, E> {
+fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
         "Unit" => Ok((i, Ty::UnitTy)),
@@ -805,7 +828,9 @@ fn parse_type<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a st
 }
 
 /// Parses a literal value.
-fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, Value, E> {
+fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Value, E> {
     alt((
         map(tuple((parse_hex, type_literal("Seed"))), |(v, _)| {
             Value::Seed(Seed(v))
@@ -928,7 +953,7 @@ fn value_literal<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a
 }
 
 /// Expects the specified type literal to be present.
-fn type_literal<'a, E: 'a + ParseError<&'a str>>(
+fn type_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     expected_type: &'a str,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, &'a str, E> {
     move |input: &'a str| {
@@ -938,7 +963,7 @@ fn type_literal<'a, E: 'a + ParseError<&'a str>>(
 }
 
 /// Parses a vector of items, using the supplied innter parser.
-fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str>>(
+fn vector<'a, F: 'a, O, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     inner: F,
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Vec<O>, E>
 where
@@ -954,7 +979,7 @@ fn vector2<'a, F: 'a, O: 'a, E: 'a>(
 where
     F: FnMut(&'a str) -> IResult<&'a str, O, E> + Copy,
     O: Clone,
-    E: ParseError<&'a str>,
+    E: ParseError<&'a str> + ContextError<&'a str>,
 {
     move |input: &'a str| {
         let (input, vec2) = vector(vector(inner))(input)?;
@@ -975,7 +1000,7 @@ where
 }
 
 /// Parses integer (or anything implementing FromStr from decimal digits)
-fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str>>(
+fn parse_int<'a, O: std::str::FromStr, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, O, E> {
     map_res(digit1, |s: &str| s.parse::<O>())(input)
@@ -1141,7 +1166,9 @@ where
 /// A very simple boolean parser.
 ///
 /// Only accepts literals `true` and `false`.
-fn parse_bool<'a, E: 'a + ParseError<&'a str>>(input: &'a str) -> IResult<&'a str, bool, E> {
+fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, bool, E> {
     alt((value(true, tag("true")), value(false, tag("false"))))(input)
 }
 
@@ -1514,6 +1541,14 @@ mod tests {
             z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)"
             .try_into()?;
         assert_eq!(comp.operations.len(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_value_try_into() -> Result<(), anyhow::Error> {
+        use std::convert::TryInto;
+        let v: Value = "[1.0, 2.0, 3.0]: Float32Tensor".try_into()?;
+        assert_eq!(v, Value::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
         Ok(())
     }
 }
