@@ -278,13 +278,13 @@ impl PlacementAdd<&ReplicatedTensor<Ring128Tensor>, &ReplicatedTensor<Ring128Ten
 trait PlacementSub<T, U> {
     type Output;
 
-    fn sub(&self, ctx: &ConcreteContext, x: T, y: U) -> Self::Output;
+    fn sub<C: Context<Value>>(&self, ctx: &C, x: T, y: U) -> Self::Output;
 }
 
 impl PlacementSub<&Ring64Tensor, &Ring64Tensor> for HostPlacement {
     type Output = Ring64Tensor;
 
-    fn sub(&self, ctx: &ConcreteContext, x: &Ring64Tensor, y: &Ring64Tensor) -> Self::Output {
+    fn sub<C: Context<Value>>(&self, ctx: &C, x: &Ring64Tensor, y: &Ring64Tensor) -> Self::Output {
         ctx.execute_binary(
             RingSubOp {
                 lhs: Ty::Ring64TensorTy,
@@ -300,7 +300,7 @@ impl PlacementSub<&Ring64Tensor, &Ring64Tensor> for HostPlacement {
 impl PlacementSub<&Ring128Tensor, &Ring128Tensor> for HostPlacement {
     type Output = Ring128Tensor;
 
-    fn sub(&self, ctx: &ConcreteContext, x: &Ring128Tensor, y: &Ring128Tensor) -> Self::Output {
+    fn sub<C: Context<Value>>(&self, ctx: &C, x: &Ring128Tensor, y: &Ring128Tensor) -> Self::Output {
         ctx.execute_binary(
             RingSubOp {
                 lhs: Ty::Ring128TensorTy,
@@ -313,9 +313,9 @@ impl PlacementSub<&Ring128Tensor, &Ring128Tensor> for HostPlacement {
     }
 }
 
-trait Context<T> {
-    fn execute_nullary(&self, op: Operator) -> T;
-    fn execute_binary(&self, op: Operator, x: T, y: T) -> T;
+trait Context<V> {
+    fn execute_nullary(&self, op: Operator) -> V;
+    fn execute_binary(&self, op: Operator, x: V, y: V) -> V;
 }
 
 #[derive(Clone, Debug)]
@@ -333,6 +333,27 @@ impl Context<Value> for ConcreteContext {
         match op {
             Operator::RepAdd(op) => op.compile(self)(x, y).try_into().unwrap(),
             Operator::RingAdd(op) => op.compile(self)(x, y).try_into().unwrap(),
+            Operator::RingSub(op) => op.compile(self)(x, y).try_into().unwrap(),
+            _ => unimplemented!()
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+struct SymbolicContext {}
+
+impl Context<Value> for SymbolicContext {
+    fn execute_nullary(&self, op: Operator) -> Value {
+        match op {
+            Operator::RingSample(op) => op.compile_symbolic()().try_into().unwrap(),
+            _ => unimplemented!()
+        }
+    }
+
+    fn execute_binary(&self, op: Operator, x: Value, y: Value) -> Value {
+        match op {
+            // Operator::RepAdd(op) => op.compile(self)(x, y).try_into().unwrap(),
+            // Operator::RingAdd(op) => op.compile(self)(x, y).try_into().unwrap(),
             Operator::RingSub(op) => op.compile(self)(x, y).try_into().unwrap(),
             _ => unimplemented!()
         }
@@ -450,90 +471,82 @@ struct RepShareOp {
     plc: Placement,
 }
 
-// impl RepShareOp {
-//     pub fn compile(&self) -> Box<dyn Fn(Value) -> Value> {
-//         match (&self.plc, &self.lhs) {
+impl RepShareOp {
+    pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value) -> Value> {
+        match (&self.plc, &self.lhs) {
 
-//             (Placement::Replicated(rep_plc), Ty::Ring64TensorTy) => {
-//                 let rep_plc = rep_plc.clone();
+            (Placement::Replicated(rep_plc), Ty::Ring64TensorTy) => {
+                let rep_plc = rep_plc.clone();
+                let ctx = ctx.clone();
+                Box::new(move |x: Value| {
+                    match x {
+                        Value::Ring64Tensor(x) => {
+                            Self::abstract_kernel(&ctx, &rep_plc, x).into()
+                        }
+                        _ => unimplemented!()
+                    }
+                })
+            }
 
-//                 Box::new(move |x: Value| {
-//                     match x {
-//                         Value::Ring64Tensor(x) => {
-//                             match x {
-//                                 Ring64Tensor::Concrete(x) => {
-//                                     Self::abstract_kernel(&rep_plc, x).into()
-//                                 }
-//                             }
-//                         }
-//                         _ => unimplemented!()
-//                     }
-//                 })
-//             }
+            (Placement::Replicated(rep_plc), Ty::Ring128TensorTy) => {
+                let rep_plc = rep_plc.clone();
+                let ctx = ctx.clone();
+                Box::new(move |x: Value| {
+                    match x {
+                        Value::Ring128Tensor(x) => {
+                            Self::abstract_kernel(&ctx, &rep_plc, x).into()
+                        }
+                        _ => unimplemented!()
+                    }
+                })
+            }
 
-//             (Placement::Replicated(rep_plc), Ty::Ring128TensorTy) => {
-//                 let rep_plc = rep_plc.clone();
+            // (Placement::Rep, Ty::HostFixedTy, Ty::HostFixedTy) => {
+            //     |x: Value, y: Value| {
+            //         // let x_owner = ctx.placement_instantiation(x.placement());
+            //         // let y_owner = ctx.placement_instantiation(y.placement());
 
-//                 Box::new(move |x: Value| {
-//                     match x {
-//                         Value::Ring128Tensor(x) => {
-//                             match x {
-//                                 Ring128Tensor::Concrete(x) => {
-//                                     Self::abstract_kernel(&rep_plc, x).into()
-//                                 }
-//                             }    
-//                         }
-//                         _ => unimplemented!()
-//                     }
-//                 })
-//             }
+            //         // let xe = x_owner.share(x);
+            //         // let ye = y_owner.share(y);
+            //         // add(xe, ye)
+            //         unimplemented!()
+            //     }
+            // }
+            // (Placement::Rep, Ty::RepFixedTy, Ty::RepFixedTy) => {
+            //     |x: Value, y: Value| {
+            //         unimplemented!()
+            //     }
+            // }
+            _ => unimplemented!()
+        }
+    }
 
+    // pulling this out as a function to cover abstract replicated tensors (based on ring64, ring128, etc)
+    fn abstract_kernel<R>(ctx: &ConcreteContext, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
+    where
+        R: Clone,
+        HostPlacement: PlacementSample<R>,    
+        for<'x, 'y> HostPlacement: PlacementAdd<&'x R, &'y R, Output=R>,
+        for<'x, 'y> HostPlacement: PlacementSub<&'x R, &'y R, Output=R>,
+    {
+        let player0 = HostPlacement{ player: rep.players[0].clone() };
+        let player1 = HostPlacement{ player: rep.players[1].clone() };
+        let player2 = HostPlacement{ player: rep.players[2].clone() };
 
-//             // (Placement::Rep, Ty::HostFixedTy, Ty::HostFixedTy) => {
-//             //     |x: Value, y: Value| {
-//             //         // let x_owner = ctx.placement_instantiation(x.placement());
-//             //         // let y_owner = ctx.placement_instantiation(y.placement());
+        // TODO we should not use player0 here, but rather the owner of `x`
+        let x0 = player0.sample(ctx);
+        let x1 = player0.sample(ctx);
+        let x2 = player0.sub(ctx, &x, &player0.add(ctx, &x0, &x1));
 
-//             //         // let xe = x_owner.share(x);
-//             //         // let ye = y_owner.share(y);
-//             //         // add(xe, ye)
-//             //         unimplemented!()
-//             //     }
-//             // }
-//             // (Placement::Rep, Ty::RepFixedTy, Ty::RepFixedTy) => {
-//             //     |x: Value, y: Value| {
-//             //         unimplemented!()
-//             //     }
-//             // }
-//             _ => unimplemented!()
-//         }
-//     }
-
-//     // pulling this out as a function to cover abstract replicated tensors (based on ring64, ring128, etc)
-//     fn abstract_kernel<R>(rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
-//     where
-//         for<'x, 'y> HostPlacement: PlacementAdd<&'x R, &'y R, Output=R>,
-//         for<'x, 'y> HostPlacement: PlacementSub<&'x R, &'y R, Output=R>,
-//         HostPlacement: PlacementSample<R>,
-//     {
-//         let player0 = HostPlacement{ player: rep.players[0].clone() };
-//         let player1 = HostPlacement{ player: rep.players[1].clone() };
-//         let player2 = HostPlacement{ player: rep.players[2].clone() };
-
-//         // TODO we should not use player0 here, but rather the owner of `x`
-//         let x0 = player0.sample();
-//         let x1 = player0.sample();
-//         let x2 = player0.sub(&x, &player0.add(&x0, &x1));
-
-//         ReplicatedTensor {
-//             shares: [
-//                 [x0, x1],
-//                 [x1, x2],
-//                 [x2, x0],
-//             ]
-//         }
-//     }
-// }
+        ReplicatedTensor {
+            shares: [
+                [x0.clone(), x1.clone()],
+                [x1.clone(), x2.clone()],
+                [x2.clone(), x0.clone()],
+            ]
+        }
+    }
+}
 
 #[derive(Clone, Debug)]
 struct RingAddOp {
@@ -606,7 +619,7 @@ struct RingSubOp {
 }
 
 impl RingSubOp {
-    pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value) -> Value> {
+    pub fn compile<C: Context<Value>>(&self, ctx: &C) -> Box<dyn Fn(Value, Value) -> Value> {
         match (&self.plc, &self.lhs, &self.rhs) {
 
             (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
@@ -662,12 +675,30 @@ impl RingSubOp {
 }
 
 trait PlacementSample<O> {
-    fn sample(&self) -> O;
+    fn sample<C: Context<Value>>(&self, ctx: &C) -> O;
 }
 
-// impl PlacementSample for HostPlacement {
-//     type Output
-// }
+impl PlacementSample<Ring64Tensor> for HostPlacement {
+    fn sample<C: Context<Value>>(&self, ctx: &C) -> Ring64Tensor {
+        ctx.execute_nullary(
+            RingSampleOp {
+                ty: Ty::Ring64TensorTy,
+                plc: Placement::Host(self.clone()),
+            }.into()
+        ).try_into().unwrap()
+    }
+}
+
+impl PlacementSample<Ring128Tensor> for HostPlacement {
+    fn sample<C: Context<Value>>(&self, ctx: &C) -> Ring128Tensor {
+        ctx.execute_nullary(
+            RingSampleOp {
+                ty: Ty::Ring128TensorTy,
+                plc: Placement::Host(self.clone()),
+            }.into()
+        ).try_into().unwrap()
+    }
+}
 
 #[derive(Clone, Debug)]
 struct RingSampleOp {
@@ -678,19 +709,37 @@ struct RingSampleOp {
 impl RingSampleOp {
     pub fn compile(&self) -> Box<dyn Fn() -> Value> {
         match (&self.plc, &self.ty) {
-
             (Placement::Host(_), Ty::Ring64TensorTy) => {
-                Box::new(move || -> Value {
-                    Ring64Tensor::Concrete(RingTensor(5)).into()
+                Box::new(move || {
+                    Ring64Tensor::Concrete(RingTensor(987654321)).into()
                 })
             }
-
             (Placement::Host(_), Ty::Ring128TensorTy) => {
-                Box::new(move || -> Value {
-                    Ring128Tensor::Concrete(RingTensor(5)).into()
+                Box::new(move || {
+                    Ring128Tensor::Concrete(RingTensor(987654321)).into()
                 })
             }
+            _ => unimplemented!()
+        }
+    }
 
+    // TODO could we derive this from the return type of the closure returned by `compile`?
+    // not sure this will work, seems like we need a Ty instead, which comes as part of
+    // type checking.
+    pub fn compile_symbolic(&self) -> Box<dyn Fn() -> Value> {
+        match (&self.plc, &self.ty) {
+            (Placement::Host(_), Ty::Ring64TensorTy) => {
+                let op = self.clone();
+                Box::new(move || { 
+                    Ring64Tensor::Symbolic(op.clone().into()).into()
+                })
+            }
+            (Placement::Host(_), Ty::Ring128TensorTy) => {
+                let op = self.clone();
+                Box::new(move || { 
+                    Ring128Tensor::Symbolic(op.clone().into()).into()
+                })
+            }
             _ => unimplemented!()
         }
     }
@@ -862,11 +911,18 @@ fn test_rep_add() {
     // };
 
     let ctx = ConcreteContext{};
-
     let rep_plc = ReplicatedPlacement{ players: ["alice".into(), "bob".into(), "carole".into()] };
-
     let z: ReplicatedTensor<_> = rep_plc.add(&ctx, &x, &y);
-    println!("{:?}", z);
+    // println!("{:?}", z);
+
+    let ctx = SymbolicContext{};
+    let host_plc = HostPlacement{ player: "alice".into() };
+    // let r = Ring64Tensor::Concrete(RingTensor(2));
+    // let s = Ring64Tensor::Concrete(RingTensor(1));
+    // let t = host_plc.sub(&ctx, &r, &s);
+    // println!("{:?}", t);
+    let r: Ring128Tensor = host_plc.sample(&ctx);
+    println!("{:?}", r);
 
     assert!(false);
-} 
+}
