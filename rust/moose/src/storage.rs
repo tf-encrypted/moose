@@ -104,13 +104,10 @@ fn check_types(item: &Value, type_hint: &Option<Ty>) -> Result<()> {
             if item_ty == *ty {
                 Ok(())
             } else {
-                Err(Error::Storage(
-                    format!(
-                        "type hint does not match type of item: type_hint: {:?} type of item: {:?}",
-                        type_hint, item_ty
-                    )
-                    .into(),
-                ))
+                Err(Error::Storage(format!(
+                    "type hint does not match type of item: type_hint: {:?} type of item: {:?}",
+                    type_hint, item_ty
+                )))
             }
         }
         None => Ok(()),
