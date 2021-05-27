@@ -16,6 +16,7 @@ use nom::{
     IResult,
 };
 use std::convert::TryFrom;
+use std::str::FromStr;
 
 impl TryFrom<&str> for Computation {
     type Error = anyhow::Error;
@@ -37,6 +38,15 @@ impl TryFrom<&str> for Value {
     type Error = anyhow::Error;
 
     fn try_from(source: &str) -> anyhow::Result<Value> {
+        value_literal::<(&str, ErrorKind)>(source)
+            .map(|(_, v)| v)
+            .map_err(|_| anyhow::anyhow!("Failed to parse value literal {}", source))
+    }
+}
+
+impl FromStr for Value {
+    type Err = anyhow::Error;
+    fn from_str(source: &str) -> Result<Self, Self::Err> {
         value_literal::<(&str, ErrorKind)>(source)
             .map(|(_, v)| v)
             .map_err(|_| anyhow::anyhow!("Failed to parse value literal {}", source))

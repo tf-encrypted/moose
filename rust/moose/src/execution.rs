@@ -1386,7 +1386,7 @@ mod tests {
     #[rstest]
     #[case(r#"[[1, 3], [2, 4]]: Int64Tensor"#)]
     fn test_standard_transpose(
-        #[case] expected_result_str: String
+        #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
         r = StdTranspose(s) : (Int64Tensor) -> Int64Tensor @Host(alice)
@@ -1398,7 +1398,6 @@ mod tests {
 
         let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let expected_result: Value = expected_result_str.as_str().try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
