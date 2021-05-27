@@ -40,7 +40,9 @@ impl SyncStorage for LocalSyncStorage {
     fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value> {
         match query {
             None => Ok(()),
-            _ => Err(Error::Storage("query is not allowed for local storage".into())),
+            _ => Err(Error::Storage(
+                "query is not allowed for local storage".into(),
+            )),
         }?;
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
@@ -77,16 +79,13 @@ impl AsyncStorage for LocalAsyncStorage {
         Ok(())
     }
 
-    async fn load(
-        &self,
-        key: &str,
-        type_hint: Option<Ty>,
-        query: Option<String>,
-    ) -> Result<Value> {
+    async fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
         match query {
             None => Ok(()),
-            _ => Err(Error::Storage("query is not allowed for local storage".into())),
+            _ => Err(Error::Storage(
+                "query is not allowed for local storage".into(),
+            )),
         }?;
         let store = self.store.read().await;
         let item = store
@@ -105,7 +104,13 @@ fn check_types(item: &Value, type_hint: &Option<Ty>) -> Result<()> {
             if item_ty == *ty {
                 Ok(())
             } else {
-                Err(Error::Storage(format!("type hint does not match type of item: type_hint: {:?} type of item: {:?}", type_hint, item_ty).into()))
+                Err(Error::Storage(
+                    format!(
+                        "type hint does not match type of item: type_hint: {:?} type of item: {:?}",
+                        type_hint, item_ty
+                    )
+                    .into(),
+                ))
             }
         }
         None => Ok(()),
@@ -120,6 +125,6 @@ fn value_ty(val: &Value) -> Result<Ty> {
         Value::Int64Tensor(_) => Ok(Ty::Int64TensorTy),
         Value::Uint64Tensor(_) => Ok(Ty::Uint64TensorTy),
         Value::Uint32Tensor(_) => Ok(Ty::Uint32TensorTy),
-        _ => Err(Error::Storage("variant not implemented".into()))
+        _ => Err(Error::Storage("variant not implemented".into())),
     }
 }
