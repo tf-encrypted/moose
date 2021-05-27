@@ -5,13 +5,13 @@ use std::collections::HashMap;
 
 pub trait SyncStorage {
     fn save(&self, key: &str, val: &Value) -> Result<()>;
-    fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value>;
+    fn load(&self, key: &str, type_hint: Option<Ty>, query: &str) -> Result<Value>;
 }
 
 #[async_trait]
 pub trait AsyncStorage {
     async fn save(&self, key: &str, val: &Value) -> Result<()>;
-    async fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value>;
+    async fn load(&self, key: &str, type_hint: Option<Ty>, query: &str) -> Result<Value>;
 }
 
 #[derive(Default)]
@@ -37,9 +37,9 @@ impl SyncStorage for LocalSyncStorage {
         Ok(())
     }
 
-    fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value> {
+    fn load(&self, key: &str, type_hint: Option<Ty>, query: &str) -> Result<Value> {
         match query {
-            None => Ok(()),
+            "" => Ok(()),
             _ => Err(Error::Storage(
                 "query is not allowed for local storage".into(),
             )),
@@ -79,10 +79,10 @@ impl AsyncStorage for LocalAsyncStorage {
         Ok(())
     }
 
-    async fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value> {
-        tracing::debug!("Async storage loading; key:'{}'", key,);
+    async fn load(&self, key: &str, type_hint: Option<Ty>, query: &str) -> Result<Value> {
+        tracing::debug!("Async storage loading; key:'{}'", key);
         match query {
-            None => Ok(()),
+            "" => Ok(()),
             _ => Err(Error::Storage(
                 "query is not allowed for local storage".into(),
             )),
