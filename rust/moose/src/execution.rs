@@ -1341,16 +1341,16 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdSum", None, vec![10.0], true)]
-    #[case("StdSum", Some(0), vec![4.0, 6.0], false)]
-    #[case("StdSum", Some(1), vec![3.0, 7.0], false)]
-    #[case("StdMean", None, vec![2.5], true)]
-    #[case("StdMean", Some(0), vec![2.0, 3.0], false)]
-    #[case("StdMean", Some(1), vec![1.5, 3.5], false)]
+    #[case("StdSum", None, "10.0: Float32Tensor", true)]
+    #[case("StdSum", Some(0), "[4.0, 6.0]: Float32Tensor", false)]
+    #[case("StdSum", Some(1), "[3.0, 7.0]: Float32Tensor", false)]
+    #[case("StdMean", None, "2.5: Float32Tensor", true)]
+    #[case("StdMean", Some(0), "[2.0, 3.0]: Float32Tensor", false)]
+    #[case("StdMean", Some(1), "[1.5, 3.5]: Float32Tensor", false)]
     fn test_standard_reduce_op(
         #[case] reduce_op_test: String,
         #[case] axis_test: Option<usize>,
-        #[case] expected_result: Vec<f32>,
+        #[case] expected_result: Value,
         #[case] unwrap_flag: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let axis_str: String =
@@ -1369,22 +1369,16 @@ mod tests {
 
         let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
-        match unwrap_flag {
-            true => assert_eq!(
-                Float32Tensor::from(
-                    Array::from_elem([], expected_result[0])
-                        .into_dimensionality::<IxDyn>()
-                        .unwrap()
-                ),
-                comp_result
-            ),
-            false => assert_eq!(Float32Tensor::from(expected_result), comp_result),
+        if unwrap_flag {
+            let shaped_result = comp_result.reshape(crate::standard::Shape(vec![1]));
+            assert_eq!(expected_result, Value::Float32(shaped_result.0[0]));
+        } else {
+            assert_eq!(expected_result, comp_result.into());
         }
         Ok(())
     }
-    use ndarray::OwnedRepr;
     #[rstest]
-    #[case(r#"[[1, 3], [2, 4]]: Int64Tensor"#)]
+    #[case("[[1, 3], [2, 4]]: Int64Tensor")]
     fn test_standard_transpose(
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
@@ -1403,11 +1397,11 @@ mod tests {
     }
 
     #[rstest]
-    #[case(true, array![[1.0], [1.0], [1.0]])]
-    #[case(false, array![[1.0, 1.0, 1.0]])]
+    #[case(true, "[[1.0], [1.0], [1.0]]: Float64Tensor")]
+    #[case(false, "[[1.0, 1.0, 1.0]]: Float64Tensor")]
     fn test_standard_atleast_2d(
         #[case] to_column_vector: bool,
-        #[case] expected_result: ArrayBase<OwnedRepr<f64>, Dim<[usize; 2]>>,
+        #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"x =  Constant([1.0, 1.0, 1.0]: Float64Tensor) @Host(alice)
@@ -1422,7 +1416,9 @@ mod tests {
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
         let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(Float64Tensor::from(expected_result), comp_result);
+        println!("{:?}", expected_result);
+        println!("{:?}", comp_result);
+        assert_eq!(expected_result, comp_result.into());
 
         Ok(())
     }
