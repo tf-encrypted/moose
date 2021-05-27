@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 pub trait SyncStorage {
     fn save(&self, key: &str, val: &Value) -> Result<()>;
-    fn load(&self, key: &str, type_hint: Option<Ty>, _query: Option<String>) -> Result<Value>;
+    fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value>;
 }
 
 #[async_trait]
