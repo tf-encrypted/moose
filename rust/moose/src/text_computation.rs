@@ -199,7 +199,6 @@ macro_rules! operation_on_axis {
             Ok((
                 input,
                 (
-                    // (Dragos) Bug in here
                     $typ($sub {
                         ty: args_types[0],
                         axis: opt_axis,
