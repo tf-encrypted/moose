@@ -37,7 +37,7 @@ impl SyncStorage for LocalSyncStorage {
         Ok(())
     }
 
-    fn load(&self, key: &str, _type_hint: Option<Ty>, query: Option<String>) -> Result<Value> {
+    fn load(&self, key: &str, type_hint: Option<Ty>, query: Option<String>) -> Result<Value> {
         match query {
             None => Ok(()),
             _ => Err(Error::Storage("query is not allowed for local storage".into())),
@@ -46,10 +46,12 @@ impl SyncStorage for LocalSyncStorage {
             tracing::error!("failed to get read lock: {:?}", e);
             Error::Unexpected
         })?;
-        store
+        let item = store
             .get(key)
             .cloned()
-            .ok_or_else(|| Error::Storage("key not found in store".into()))
+            .ok_or_else(|| Error::Storage("key not found in store".into()))?;
+        check_types(&item, &type_hint)?;
+        Ok(item)
     }
 }
 
@@ -78,7 +80,7 @@ impl AsyncStorage for LocalAsyncStorage {
     async fn load(
         &self,
         key: &str,
-        _type_hint: Option<Ty>,
+        type_hint: Option<Ty>,
         query: Option<String>,
     ) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
@@ -87,9 +89,37 @@ impl AsyncStorage for LocalAsyncStorage {
             _ => Err(Error::Storage("query is not allowed for local storage".into())),
         }?;
         let store = self.store.read().await;
-        store
+        let item = store
             .get(key)
             .cloned()
-            .ok_or_else(|| Error::Storage("key not found in store".into()))
+            .ok_or_else(|| Error::Storage("key not found in store".into()))?;
+        check_types(&item, &type_hint)?;
+        Ok(item)
+    }
+}
+
+fn check_types(item: &Value, type_hint: &Option<Ty>) -> Result<()> {
+    let item_ty = value_ty(&item)?;
+    match type_hint {
+        Some(ty) => {
+            if item_ty == *ty {
+                Ok(())
+            } else {
+                Err(Error::Storage(format!("type hint does not match type of item: type_hint: {:?} type of item: {:?}", type_hint, item_ty).into()))
+            }
+        }
+        None => Ok(()),
+    }
+}
+
+fn value_ty(val: &Value) -> Result<Ty> {
+    match val {
+        Value::Float64Tensor(_) => Ok(Ty::Float64TensorTy),
+        Value::Float32Tensor(_) => Ok(Ty::Float32TensorTy),
+        Value::Int32Tensor(_) => Ok(Ty::Int32TensorTy),
+        Value::Int64Tensor(_) => Ok(Ty::Int64TensorTy),
+        Value::Uint64Tensor(_) => Ok(Ty::Uint64TensorTy),
+        Value::Uint32Tensor(_) => Ok(Ty::Uint32TensorTy),
+        _ => Err(Error::Storage("variant not implemented".into()))
     }
 }
