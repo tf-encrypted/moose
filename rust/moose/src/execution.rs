@@ -1341,23 +1341,25 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdSum", None)]
-    #[case("StdSum", Some(0))]
-    #[case("StdSum", Some(1))]
-    #[case("StdMean", None)]
-    #[case("StdMean", Some(0))]
-    #[case("StdMean", Some(1))]
+    #[case("StdSum", None, vec![10.0], true)]
+    #[case("StdSum", Some(0), vec![4.0, 6.0], false)]
+    #[case("StdSum", Some(1), vec![3.0, 7.0], false)]
+    #[case("StdMean", None, vec![2.5], true)]
+    #[case("StdMean", Some(0), vec![2.0, 3.0], false)]
+    #[case("StdMean", Some(1), vec![1.5, 3.5], false)]
     fn test_standard_reduce_op(
         #[case] reduce_op_test: String,
         #[case] axis_test: Option<usize>,
+        #[case] expected_result: Vec<f32>,
+        #[case] unwrap_flag: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let axis_str: String =
             axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
 
         let source = format!(
-            r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
-            r = {}(s) {}: (Int64Tensor) -> Int64Tensor @Host(alice)
-            output = Output(r) : (Int64Tensor) -> Int64Tensor @Host(alice)
+            r#"s = Constant([[1,2], [3, 4]]: Float32Tensor) @Host(alice)
+            r = {}(s) {}: (Float32Tensor) -> Float32Tensor @Host(alice)
+            output = Output(r) : (Float32Tensor) -> Float32Tensor @Host(alice)
         "#,
             reduce_op_test, axis_str
         );
@@ -1365,29 +1367,25 @@ mod tests {
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
-        let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let x: Int64Tensor = Int64Tensor::from(
-            array![[1, 2], [3, 4]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-
-        match reduce_op_test.as_str() {
-            "StdSum" => {
-                assert_eq!(x.sum(axis_test), comp_result);
-                Ok(())
-            }
-            "StdMean" => {
-                assert_eq!(x.mean(axis_test), comp_result);
-                Ok(())
-            }
-            _ => Err(anyhow::anyhow!("Failed to parse test case")),
+        match unwrap_flag {
+            true => assert_eq!(
+                Float32Tensor::from(
+                    Array::from_elem([], expected_result[0])
+                        .into_dimensionality::<IxDyn>()
+                        .unwrap()
+                ),
+                comp_result
+            ),
+            false => assert_eq!(Float32Tensor::from(expected_result), comp_result),
         }
+        Ok(())
     }
-
-    #[test]
-    fn test_standard_transpose() -> std::result::Result<(), anyhow::Error> {
+    use ndarray::{OwnedRepr};
+    #[rstest]
+    #[case(array![[1, 3], [2, 4]])]
+    fn test_standard_transpose(#[case] expected_result: ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>) -> std::result::Result<(), anyhow::Error> {
         let source = r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
         r = StdTranspose(s) : (Int64Tensor) -> Int64Tensor @Host(alice)
         output = Output(r) : (Int64Tensor) -> Int64Tensor @Host(alice)
@@ -1398,13 +1396,27 @@ mod tests {
 
         let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let x: Int64Tensor = Int64Tensor::from(
-            array![[1, 2], [3, 4]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-
-        assert_eq!(comp_result, x.transpose());
+        assert_eq!(Int64Tensor::from(expected_result), comp_result);
         Ok(())
     }
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_standard_atleast_2d(#[case] to_column_vector: bool) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(r#"x =  Constant([1.0, 1.0, 1.0]: Float64Tensor) @Host(alice)
+        res = StdAtLeast2D(x) {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor @Host(alice)
+        output = Output(res) : (Float64Tensor) -> Float64Tensor @Host(alice)
+        "#, to_column_vector);
+
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        println!("{:?}", comp_result);
+        assert_eq!(false, true);
+
+        Ok(())
+    }
+
 }
