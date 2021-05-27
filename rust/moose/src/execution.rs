@@ -1156,19 +1156,13 @@ mod tests {
         "#;
 
         use maplit::hashmap;
-        use ndarray::prelude::*;
-
         let mut args: HashMap<String, Value> = hashmap!();
-        use std::convert::From;
 
-        let x1 = array![5].into_dimensionality::<IxDyn>().unwrap();
-        let x = crate::standard::Int64Tensor::from(x1);
+        let x: Value = "[5]: Int64Tensor".try_into()?;
+        let y: Value = "[10]: Int64Tensor".try_into()?;
 
-        let y1 = array![10].into_dimensionality::<IxDyn>().unwrap();
-        let y = crate::standard::Int64Tensor::from(y1);
-
-        args.insert("x".to_string(), Value::from(x));
-        args.insert("y".to_string(), Value::from(y));
+        args.insert("x".to_string(), x);
+        args.insert("y".to_string(), y);
 
         let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
         let comp: Computation = source.try_into()?;
@@ -1178,17 +1172,20 @@ mod tests {
         let z: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let z1_eq = array![15].into_dimensionality::<IxDyn>().unwrap();
-        let z_eq = crate::standard::Int64Tensor::from(z1_eq);
-        assert_eq!(z, z_eq);
+        let expected: Value = "[15]: Int64Tensor".try_into()?;
+
+        assert_eq!(expected, z.into());
 
         Ok(())
     }
     use rstest::rstest;
     #[rstest]
-    #[case("0")]
-    #[case("1")]
-    fn test_standard_concatenate(#[case] axis: usize) -> std::result::Result<(), anyhow::Error> {
+    #[case("0", "[[1, 2], [3, 4], [5, 6], [7, 8]]: Int64Tensor")]
+    #[case("1", "[[1, 2, 5, 6], [3, 4, 7, 8]]: Int64Tensor")]
+    fn test_standard_concatenate(
+        #[case] axis: usize,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
         let source_template = r#"x_0 = Constant([[1,2], [3,4]]: Int64Tensor) @Host(alice)
         x_1 = Constant([[5, 6], [7,8]]: Int64Tensor) @Host(alice)
         concatenated = StdConcatenate(x_0, x_1) {axis=test_axis}: (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(alice)
@@ -1201,27 +1198,19 @@ mod tests {
 
         let concatenated: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
-        let x0 = crate::standard::Int64Tensor::from(
-            array![[1, 2], [3, 4]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-
-        let x1 = crate::standard::Int64Tensor::from(
-            array![[5, 6], [7, 8]]
-                .into_dimensionality::<IxDyn>()
-                .unwrap(),
-        );
-        assert_eq!(concatenated, crate::standard::concatenate(axis, &[x0, x1]));
+        assert_eq!(expected_result, concatenated.into());
         Ok(())
     }
 
     #[rstest]
-    #[case("StdAdd")]
-    #[case("StdSub")]
-    #[case("StdMul")]
-    #[case("StdDiv")]
-    fn test_standard_op(#[case] test_op: String) -> std::result::Result<(), anyhow::Error> {
+    #[case("StdAdd", "[8]: Int64Tensor")]
+    #[case("StdSub", "[2]: Int64Tensor")]
+    #[case("StdMul", "[15]: Int64Tensor")]
+    #[case("StdDiv", "[1]: Int64Tensor")]
+    fn test_standard_op(
+        #[case] test_op: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
         let source_template = r#"x0 = Constant([5]: Int64Tensor) @Host(alice)
         x1 = Constant([3]: Int64Tensor) @Host(bob)
         res = StdOp(x0, x1): (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(alice)
@@ -1232,33 +1221,11 @@ mod tests {
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
-        let x0 =
-            crate::standard::Int64Tensor::from(array![5].into_dimensionality::<IxDyn>().unwrap());
-        let x1 =
-            crate::standard::Int64Tensor::from(array![3].into_dimensionality::<IxDyn>().unwrap());
-
         let res: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
 
-        match test_op.as_str() {
-            "StdAdd" => {
-                assert_eq!(res, x0 + x1);
-                Ok(())
-            }
-            "StdSub" => {
-                assert_eq!(res, x0 - x1);
-                Ok(())
-            }
-            "StdMul" => {
-                assert_eq!(res, x0 * x1);
-                Ok(())
-            }
-            "StdDiv" => {
-                assert_eq!(res, x0 / x1);
-                Ok(())
-            }
-            _ => Err(anyhow::anyhow!("Failed to parse test case")),
-        }
+        assert_eq!(expected_result, res.into());
+        Ok(())
     }
 
     #[test]
