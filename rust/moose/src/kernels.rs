@@ -922,7 +922,7 @@ impl Compile<SyncKernel> for LoadOp {
         Ok(SyncKernel::Binary(Box::new(move |sess, key, query| {
             let key = String::try_from(key)?;
             let _query = String::try_from(query)?;
-            let val = sess.storage.load(&key, Some(expected_ty))?;
+            let val = sess.storage.load(&key, Some(expected_ty), None)?;
             check_type(&val, expected_ty)?;
             Ok(val)
         })))

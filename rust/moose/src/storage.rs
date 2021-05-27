@@ -5,7 +5,7 @@ use std::collections::HashMap;
 
 pub trait SyncStorage {
     fn save(&self, key: &str, val: &Value) -> Result<()>;
-    fn load(&self, key: &str, type_hint: Option<Ty>) -> Result<Value>;
+    fn load(&self, key: &str, type_hint: Option<Ty>, _query: Option<String>) -> Result<Value>;
 }
 
 #[async_trait]
@@ -37,7 +37,7 @@ impl SyncStorage for LocalSyncStorage {
         Ok(())
     }
 
-    fn load(&self, key: &str, _type_hint: Option<Ty>) -> Result<Value> {
+    fn load(&self, key: &str, _type_hint: Option<Ty>, _query: Option<String>) -> Result<Value> {
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
             Error::Unexpected
