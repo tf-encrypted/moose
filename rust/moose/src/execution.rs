@@ -1363,13 +1363,21 @@ mod tests {
         #[case] reduce_op_test: String,
         #[case] axis_test: String,
     ) -> std::result::Result<(), anyhow::Error> {
-        let template = r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
-        r = reduce_op_str(s) {axis=axis_str}: (Int64Tensor) -> Int64Tensor @Host(alice)
+        let axis_str: String = if axis_test == "None" {
+            "".to_string()
+        } else {
+            format!("{{axis={}}}", &axis_test)
+        };
+
+        let source = format!(
+            r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
+        r = {}(s) {}: (Int64Tensor) -> Int64Tensor @Host(alice)
         output = Output(r) : (Int64Tensor) -> Int64Tensor @Host(alice)
-        "#;
-        let source = template
-            .replace("reduce_op_str", &reduce_op_test)
-            .replace("axis_str", &axis_test);
+        "#,
+            reduce_op_test, axis_str
+        );
+        println!("{:?}", source);
+
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
@@ -1383,24 +1391,12 @@ mod tests {
         );
 
         match (reduce_op_test.as_str(), axis_test.as_str()) {
-            ("StdSum", "None") => {
-                Ok(assert_eq!(x.sum(None), comp_result))
-            }
-            ("StdSum", "0") => {
-                Ok(assert_eq!(x.sum(Some(0)), comp_result))
-            }
-            ("StdSum", "1") => {
-                Ok(assert_eq!(x.sum(Some(1)), comp_result))
-            }
-            ("StdMean", "None") => {
-                Ok(assert_eq!(x.mean(None), comp_result))
-            }
-            ("StdMean", "0") => {
-                Ok(assert_eq!(x.mean(Some(0)), comp_result))
-            }
-            ("StdMean", "1") => {
-                Ok(assert_eq!(x.mean(Some(1)), comp_result))
-            }
+            ("StdSum", "None") => Ok(assert_eq!(x.sum(None), comp_result)),
+            ("StdSum", "0") => Ok(assert_eq!(x.sum(Some(0)), comp_result)),
+            ("StdSum", "1") => Ok(assert_eq!(x.sum(Some(1)), comp_result)),
+            ("StdMean", "None") => Ok(assert_eq!(x.mean(None), comp_result)),
+            ("StdMean", "0") => Ok(assert_eq!(x.mean(Some(0)), comp_result)),
+            ("StdMean", "1") => Ok(assert_eq!(x.mean(Some(1)), comp_result)),
             _ => Err(anyhow::anyhow!("Failed to parse test case")),
         }
     }
