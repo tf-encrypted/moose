@@ -98,7 +98,7 @@ impl AsyncStorage for LocalAsyncStorage {
 }
 
 fn check_types(item: &Value, type_hint: &Option<Ty>) -> Result<()> {
-    let item_ty = value_ty(&item)?;
+    let item_ty = item.ty();
     match type_hint {
         Some(ty) => {
             if item_ty == *ty {
@@ -114,17 +114,5 @@ fn check_types(item: &Value, type_hint: &Option<Ty>) -> Result<()> {
             }
         }
         None => Ok(()),
-    }
-}
-
-fn value_ty(val: &Value) -> Result<Ty> {
-    match val {
-        Value::Float64Tensor(_) => Ok(Ty::Float64TensorTy),
-        Value::Float32Tensor(_) => Ok(Ty::Float32TensorTy),
-        Value::Int32Tensor(_) => Ok(Ty::Int32TensorTy),
-        Value::Int64Tensor(_) => Ok(Ty::Int64TensorTy),
-        Value::Uint64Tensor(_) => Ok(Ty::Uint64TensorTy),
-        Value::Uint32Tensor(_) => Ok(Ty::Uint32TensorTy),
-        _ => Err(Error::Storage("variant not implemented".into())),
     }
 }
