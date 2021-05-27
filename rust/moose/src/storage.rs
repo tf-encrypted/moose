@@ -37,7 +37,11 @@ impl SyncStorage for LocalSyncStorage {
         Ok(())
     }
 
-    fn load(&self, key: &str, _type_hint: Option<Ty>, _query: Option<String>) -> Result<Value> {
+    fn load(&self, key: &str, _type_hint: Option<Ty>, query: Option<String>) -> Result<Value> {
+        match query {
+            None => Ok(()),
+            _ => Err(Error::Storage("query is not allowed for local storage".into())),
+        }?;
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
             Error::Unexpected
@@ -75,9 +79,13 @@ impl AsyncStorage for LocalAsyncStorage {
         &self,
         key: &str,
         _type_hint: Option<Ty>,
-        _query: Option<String>,
+        query: Option<String>,
     ) -> Result<Value> {
         tracing::debug!("Async storage loading; key:'{}'", key,);
+        match query {
+            None => Ok(()),
+            _ => Err(Error::Storage("query is not allowed for local storage".into())),
+        }?;
         let store = self.store.read().await;
         store
             .get(key)
