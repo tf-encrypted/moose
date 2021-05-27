@@ -33,6 +33,16 @@ impl TryFrom<String> for Computation {
     }
 }
 
+impl TryFrom<&str> for Value {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<Value> {
+        value_literal::<(&str, ErrorKind)>(source)
+            .map(|(_, v)| v)
+            .map_err(|_| anyhow::anyhow!("Failed to parse value literal {}", source))
+    }
+}
+
 /// Parses the computation and returns a verbose error description if it fails.
 fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<VerboseError<&str>>(source) {
@@ -1520,6 +1530,14 @@ mod tests {
             z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)"
             .try_into()?;
         assert_eq!(comp.operations.len(), 3);
+        Ok(())
+    }
+
+    #[test]
+    fn test_value_try_into() -> Result<(), anyhow::Error> {
+        use std::convert::TryInto;
+        let v: Value = "[1.0, 2.0, 3.0]: Float32Tensor".try_into()?;
+        assert_eq!(v, Value::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
         Ok(())
     }
 }
