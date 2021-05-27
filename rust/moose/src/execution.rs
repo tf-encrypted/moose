@@ -1271,15 +1271,15 @@ mod tests {
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
-        let x = crate::standard::Float32Tensor::from(
-            array![[3.0, 2.0], [2.0, 3.0]]
+        let expected_output = crate::standard::Float32Tensor::from(
+            array![[0.6, -0.40000004], [-0.40000004, 0.6]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-
         let x_inv: crate::standard::Float32Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(x_inv, x.inv());
+
+        assert_eq!(expected_output, x_inv);
 
         Ok(())
     }
@@ -1384,9 +1384,9 @@ mod tests {
     }
     use ndarray::OwnedRepr;
     #[rstest]
-    #[case(array![[1, 3], [2, 4]])]
+    #[case(r#"[[1, 3], [2, 4]]: Int64Tensor"#)]
     fn test_standard_transpose(
-        #[case] expected_result: ArrayBase<OwnedRepr<i64>, Dim<[usize; 2]>>,
+        #[case] expected_result_str: String
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
         r = StdTranspose(s) : (Int64Tensor) -> Int64Tensor @Host(alice)
@@ -1398,7 +1398,8 @@ mod tests {
 
         let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
-        assert_eq!(Int64Tensor::from(expected_result), comp_result);
+        let expected_result: Value = expected_result_str.as_str().try_into()?;
+        assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
 
