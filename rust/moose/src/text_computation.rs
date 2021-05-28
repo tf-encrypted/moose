@@ -515,7 +515,7 @@ fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, value) = attributes_single("value", parse_int)(input)?;
+    let (input, value) = attributes_single("value", value_literal)(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
@@ -853,20 +853,18 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         map(tuple((float, type_literal("Float32"))), |(x, _)| {
             Value::Float32(x)
         }),
-        map(tuple((double, opt(type_literal("Float64")))), |(x, _)| {
+        map(tuple((double, type_literal("Float64"))), |(x, _)| {
             Value::Float64(x)
         }),
         map(tuple((string, opt(type_literal("String")))), |(s, _)| {
             Value::String(s)
         }),
-        map(
-            tuple((vector(parse_int), type_literal("Ring64Tensor"))),
-            |(v, _)| Value::Ring64Tensor(v.into()),
-        ),
-        map(
-            tuple((vector(parse_int), type_literal("Ring128Tensor"))),
-            |(v, _)| Value::Ring128Tensor(v.into()),
-        ),
+        map(tuple((parse_int, type_literal("Ring64"))), |(x, _)| {
+            Value::Ring64(x)
+        }),
+        map(tuple((parse_int, type_literal("Ring128"))), |(x, _)| {
+            Value::Ring128(x)
+        }),
         map(
             tuple((vector(parse_int), type_literal("Shape"))),
             |(v, _): (Vec<usize>, &str)| Value::Shape(Shape(v)),
@@ -917,6 +915,14 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 tuple((vector(double), type_literal("Float64Tensor"))),
                 |(v, _)| Value::Float64Tensor(v.into()),
             ),
+            map(
+                tuple((vector(parse_int), type_literal("Ring64Tensor"))),
+                |(v, _)| Value::Ring64Tensor(v.into()),
+            ),
+            map(
+                tuple((vector(parse_int), type_literal("Ring128Tensor"))),
+                |(v, _)| Value::Ring128Tensor(v.into()),
+            ),
         )),
         // 2D arrars
         alt((
@@ -960,6 +966,14 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 tuple((vector2(double), type_literal("Float64Tensor"))),
                 |(v, _)| Value::Float64Tensor(v.into()),
             ),
+            map(
+                tuple((vector2(parse_int), type_literal("Ring64Tensor"))),
+                |(v, _): (ndarray::ArrayD<u64>, _)| Value::Ring64Tensor(v.into()),
+            ),
+            map(
+                tuple((vector2(parse_int), type_literal("Ring128Tensor"))),
+                |(v, _): (ndarray::ArrayD<u128>, _)| Value::Ring128Tensor(v.into()),
+            ),
         )),
     ))(input)
 }
@@ -987,7 +1001,7 @@ where
 /// Parses a 2D vector of items, using the supplied innter parser.
 fn vector2<'a, F: 'a, O: 'a, E: 'a>(
     inner: F,
-) -> impl FnMut(&'a str) -> IResult<&'a str, ndarray::Array2<O>, E>
+) -> impl FnMut(&'a str) -> IResult<&'a str, ndarray::ArrayD<O>, E>
 where
     F: FnMut(&'a str) -> IResult<&'a str, O, E> + Copy,
     O: Clone,
@@ -1005,7 +1019,7 @@ where
             nrows += 1;
         }
 
-        ndarray::Array2::from_shape_vec((nrows, ncols), data)
+        ndarray::Array::from_shape_vec(ndarray::IxDyn(&[nrows, ncols]), data)
             .map(|a| (input, a))
             .map_err(|_: ndarray::ShapeError| Error(make_error(input, ErrorKind::MapRes)))
     }
@@ -1190,8 +1204,6 @@ mod tests {
 
     #[test]
     fn test_value_literal() -> Result<(), anyhow::Error> {
-        let (_, parsed_f64) = value_literal::<(&str, ErrorKind)>("1.23")?;
-        assert_eq!(parsed_f64, Value::Float64(1.23));
         let (_, parsed_f32) = value_literal::<(&str, ErrorKind)>("1.23 : Float32")?;
         assert_eq!(parsed_f32, Value::Float32(1.23));
         let (_, parsed_f64) = value_literal::<(&str, ErrorKind)>("1.23 : Float64")?;
@@ -1229,6 +1241,35 @@ mod tests {
                 0xb8, 0xd4
             ]))
         );
+        let (_, parsed_ring64) = value_literal::<(&str, ErrorKind)>("42:Ring64")?;
+        assert_eq!(parsed_ring64, Value::Ring64(42));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_array_literal() -> Result<(), anyhow::Error> {
+        use std::convert::TryInto;
+        use ndarray::prelude::*;
+        let parsed_f32: Value = "[[1.0, 2.0], [3.0, 4.0]] : Float32Tensor".try_into()?;
+
+        let x = crate::standard::Float32Tensor::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+
+        assert_eq!(parsed_f32, Value::Float32Tensor(x));
+
+        let parsed_ring64: Value = "[[1, 2], [3, 4]] : Ring64Tensor".try_into()?;
+
+        let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+        let x = crate::ring::Ring64Tensor::from(x_backing);
+
+        assert_eq!(parsed_ring64, Value::Ring64Tensor(x));
+
         Ok(())
     }
 
@@ -1467,7 +1508,7 @@ mod tests {
             "z = RingSum() {axis = 0}: (Float32Tensor) -> Float32Tensor @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill() {value = 42}: () -> Ring64Tensor @Host(alice)",
+            "z = RingFill() {value = 42 : Ring64 }: () -> Ring64Tensor @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingShl() {amount = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",

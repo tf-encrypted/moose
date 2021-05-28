@@ -1470,14 +1470,14 @@ mod tests {
 
     #[rstest]
     #[case("Ring64Tensor", "[1, 1]: Ring64Tensor")]
-    // #[case("Ring128Tensor", "[1, 1]: Ring64Tensor")]
+    // #[case("Ring128Tensor", "[1, 1]: Ring128Tensor")]
     fn test_ring_fill(
         #[case] type_str: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"shape = Constant([2] : Shape) @Host(alice)
-        res = RingFill(shape) {{value = 1 }} : (Shape) -> {} @Host(alice)
+        res = RingFill(shape) {{value = 1 : Ring64 }} : (Shape) -> {} @Host(alice)
         output = Output(res) : ({}) -> {} @Host(alice)
         "#,
             type_str, type_str, type_str
