@@ -232,6 +232,13 @@ impl TryFrom<SymbolicValue> for Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor
         }
     }
 }
+
+#[derive(Clone, Debug)]
+enum Symbolic<T> {
+    Symbolic { ty: Ty },
+    Concrete(T),
+}
+
 #[derive(Clone, Debug)]
 enum Operator {
     RingAdd(RingAddOp),
@@ -809,12 +816,6 @@ impl Context for ConcreteContext {
 
 #[derive(Clone, Debug)]
 struct SymbolicContext {}
-
-#[derive(Clone, Debug)]
-enum Symbolic<T> {
-    Symbolic { ty: Ty },
-    Concrete(T),
-}
 
 impl Context for SymbolicContext {
     type Value = SymbolicValue;
