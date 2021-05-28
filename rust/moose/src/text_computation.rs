@@ -1249,8 +1249,8 @@ mod tests {
 
     #[test]
     fn test_array_literal() -> Result<(), anyhow::Error> {
-        use std::convert::TryInto;
         use ndarray::prelude::*;
+        use std::convert::TryInto;
         let parsed_f32: Value = "[[1.0, 2.0], [3.0, 4.0]] : Float32Tensor".try_into()?;
 
         let x = crate::standard::Float32Tensor::from(
