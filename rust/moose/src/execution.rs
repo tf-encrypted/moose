@@ -1469,18 +1469,24 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64", "[1, 1]: Ring64Tensor")]
-    #[case("Ring128", "[1, 1]: Ring128Tensor")]
+    #[case("Ring64", "2", "[1, 1]: Ring64Tensor")]
+    #[case("Ring128", "2", "[1, 1]: Ring128Tensor")]
+    #[case("Ring64", "2, 1", "[[1], [1]]: Ring64Tensor")]
+    #[case("Ring64", "2, 2", "[[1, 1], [1, 1]]: Ring64Tensor")]
+    #[case("Ring64", "1, 2", "[[1, 1]]: Ring64Tensor")]
+    #[case("Ring128", "2, 3", "[[1, 1, 1], [1, 1, 1]]: Ring128Tensor")]
     fn test_ring_fill(
         #[case] type_str: String,
+        #[case] shape_str: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"shape = Constant([2] : Shape) @Host(alice)
+            r#"shape = Constant([{shape}] : Shape) @Host(alice)
         res = RingFill(shape) {{value = 1 : {t} }} : (Shape) -> {t}Tensor @Host(alice)
         output = Output(res) : ({t}Tensor) -> {t}Tensor @Host(alice)
         "#,
-            t = type_str
+            t = type_str,
+            shape = shape_str,
         );
 
         let comp: Computation = source.try_into()?;
