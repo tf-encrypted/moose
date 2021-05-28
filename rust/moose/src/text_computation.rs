@@ -515,7 +515,7 @@ fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, (Operator, Vec<String>), E> {
     let (input, args) = argument_list(input)?;
-    let (input, value) = attributes_single("value", value_literal)(input)?;
+    let (input, value) = attributes_single("value", parse_int)(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
@@ -817,6 +817,8 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "String" => Ok((i, Ty::StringTy)),
         "Float32" => Ok((i, Ty::Float32Ty)),
         "Float64" => Ok((i, Ty::Float64Ty)),
+        "Ring64" => Ok((i, Ty::Ring64Ty)),
+        "Ring128" => Ok((i, Ty::Ring128Ty)),
         "Ring64Tensor" => Ok((i, Ty::Ring64TensorTy)),
         "Ring128Tensor" => Ok((i, Ty::Ring128TensorTy)),
         "Shape" => Ok((i, Ty::ShapeTy)),

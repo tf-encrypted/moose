@@ -1447,7 +1447,42 @@ mod tests {
             x_str, y_str
         );
 
-        println!("source: {:?}", source);
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        match type_str.as_str() {
+            "Ring64Tensor" => {
+                let comp_result: Ring64Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            "Ring128Tensor" => {
+                let comp_result: Ring128Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case type")),
+        }
+    }
+
+    #[rstest]
+    #[case("Ring64Tensor", "[1, 1]: Ring64Tensor")]
+    // #[case("Ring128Tensor", "[1, 1]: Ring64Tensor")]
+    fn test_ring_fill(
+        #[case] type_str: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"shape = Constant([2] : Shape) @Host(alice)
+        res = RingFill(shape) {{value = 1 }} : (Shape) -> {} @Host(alice)
+        output = Output(res) : ({}) -> {} @Host(alice)
+        "#,
+            type_str, type_str, type_str
+        );
+
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
