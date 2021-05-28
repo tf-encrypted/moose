@@ -1503,4 +1503,51 @@ mod tests {
             _ => Err(anyhow::anyhow!("Failed to parse test case type")),
         }
     }
+
+    #[rstest]
+    #[case("[4, 6]: Ring64Tensor")]
+    fn test_ring_sum(#[case] expected_result: Value) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant([[1, 2], [3, 4]]: Ring64Tensor) @Host(alice)
+        r = RingSum(x) {axis = 0}: (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        output = Output(s): (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        "#;
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(expected_result, comp_result.into());
+        Ok(())
+    }
+
+    #[rstest]
+    #[case("Ring64Tensor", "[2, 2]: Ring64Tensor")]
+    #[case("Ring128Tensor", "[2, 2]: Ring128Tensor")]
+    fn test_ring_bitwise_ops(
+        #[case] type_str: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let template_source = r#"x = Constant([4, 4]: Ring64Tensor) @Host(alice)
+        res = RingShr(x) {amount = 1}: (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        output = Output(res): (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        "#;
+        let source = template_source.replace("Ring64Tensor", &type_str.as_str());
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        match type_str.as_str() {
+            "Ring64Tensor" => {
+                let comp_result: Ring64Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            "Ring128Tensor" => {
+                let comp_result: Ring128Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case")),
+        }
+    }
 }
