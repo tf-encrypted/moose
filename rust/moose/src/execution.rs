@@ -1268,7 +1268,6 @@ mod tests {
         match dtype.as_str() {
             "Float32Tensor" => {
                 let r: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-                println!("Computation output: {:?}", r);
                 assert_eq!(
                     r,
                     Float32Tensor::from(
@@ -1383,10 +1382,90 @@ mod tests {
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
         let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        println!("{:?}", expected_result);
-        println!("{:?}", comp_result);
         assert_eq!(expected_result, comp_result.into());
 
         Ok(())
+    }
+
+    use crate::ring::{Ring128Tensor, Ring64Tensor};
+    #[rstest]
+    #[case("RingAdd", "[5]: Ring64Tensor")]
+    #[case("RingMul", "[6]: Ring64Tensor")]
+    #[case("RingSub", "[1]: Ring64Tensor")]
+    fn test_ring_binop_invocation(
+        #[case] test_op: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"x =  Constant([3]: Ring64Tensor) @Host(alice)
+        y = Constant([2]: Ring64Tensor) @Host(alice)
+        res = {}(x, y) : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor @Host(alice)
+        output = Output(res) : (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        "#,
+            test_op
+        );
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(expected_result, comp_result.into());
+        Ok(())
+    }
+
+    #[rstest]
+    #[case(
+        "Ring64Tensor",
+        "[[1, 2], [3, 4]]: Ring64Tensor",
+        "[[1, 0], [0, 1]]: Ring64Tensor",
+        "[[1, 2], [3, 4]]: Ring64Tensor"
+    )]
+    #[case(
+        "Ring64Tensor",
+        "[[1, 2], [3, 4]]: Ring64Tensor",
+        "[1, 1]: Ring64Tensor",
+        "[3, 7]: Ring64Tensor"
+    )]
+    #[case(
+        "Ring64Tensor",
+        "[1, 1]: Ring64Tensor",
+        "[[1, 2], [3, 4]]: Ring64Tensor",
+        "[4, 6]: Ring64Tensor"
+    )]
+    fn test_ring_dot_invocation(
+        #[case] type_str: String,
+        #[case] x_str: String,
+        #[case] y_str: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"x = Constant({}) @Host(alice)
+        y = Constant({}) @Host(alice)
+        res = RingDot(x, y) : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor @Host(alice)
+        output = Output(res) : (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        "#,
+            x_str, y_str
+        );
+
+        println!("source: {:?}", source);
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        match type_str.as_str() {
+            "Ring64Tensor" => {
+                let comp_result: Ring64Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            "Ring128Tensor" => {
+                let comp_result: Ring128Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case type")),
+        }
     }
 }
