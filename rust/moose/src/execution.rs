@@ -1509,7 +1509,7 @@ mod tests {
     fn test_ring_sum(#[case] expected_result: Value) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant([[1, 2], [3, 4]]: Ring64Tensor) @Host(alice)
         r = RingSum(x) {axis = 0}: (Ring64Tensor) -> Ring64Tensor @Host(alice)
-        output = Output(s): (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        output = Output(r): (Ring64Tensor) -> Ring64Tensor @Host(alice)
         "#;
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
