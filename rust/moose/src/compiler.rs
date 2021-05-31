@@ -413,6 +413,30 @@ impl PlacementAdd<ConcreteContext, &Ring64Tensor, &Ring64Tensor, Ring64Tensor> f
     }
 }
 
+// impl<'x, 'y, X, Y, Z> PlacementAdd<SymbolicContext, &X::Symbolic, &Y::Symbolic, Z::Symbolic> for HostPlacement 
+// where
+//     HostPlacement: PlacementAdd<ConcreteContext, &'x X, &'y Y, Z>,
+//     X: KnownType,
+//     Y: KnownType,
+//     Z: KnownType,
+// {
+//     fn add(&self, ctx: &SymbolicContext, x: &X::Symbolic, y: &Y::Symbolic) -> Z::Symbolic {
+//         // TODO pull operator construction into separate method
+//         let op = RingAddOp {
+//             lhs: Ring64Tensor::ty(),
+//             rhs: Ring64Tensor::ty(),
+//             plc: self.clone().into(),
+//         }.into();
+//         ctx.execute_binary(
+//             op,
+//             x.clone().into(),
+//             y.clone().into(),
+//         )
+//         .try_into()
+//         .unwrap()
+//     }
+// }
+
 impl PlacementAdd<ConcreteContext, &Ring128Tensor, &Ring128Tensor, Ring128Tensor>
     for HostPlacement
 {
