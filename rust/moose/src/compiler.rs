@@ -2,7 +2,7 @@
 #![allow(unused_variables)]
 
 use std::convert::{TryFrom, TryInto};
-use std::ops::{Add, Sub};
+use std::ops::{Add, Sub, Mul};
 
 #[derive(Debug, Clone)]
 enum Placement {
@@ -36,7 +36,7 @@ struct ReplicatedPlacement {
 //     Rep,
 // }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Ty {
     // HostFixedTy,
     Ring64TensorTy,
@@ -47,48 +47,32 @@ enum Ty {
 
 trait KnownType {
     type Symbolic;
-
-    fn ty() -> Ty;
+    const TY: Ty;
 }
 
 impl KnownType for Ring64Tensor {
     type Symbolic = Symbolic<Ring64Tensor>;
-
-    fn ty() -> Ty {
-        Ty::Ring64TensorTy
-    }
+    const TY: Ty = Ty::Ring64TensorTy;
 }
 
 impl KnownType for Ring128Tensor {
     type Symbolic = Symbolic<Ring128Tensor>;
-
-    fn ty() -> Ty {
-        Ty::Ring128TensorTy
-    }
+    const TY: Ty = Ty::Ring128TensorTy;
 }
 
 impl KnownType for Replicated64Tensor {
     type Symbolic = Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>;
-
-    fn ty() -> Ty {
-        Ty::Replicated64TensorTy
-    }
+    const TY: Ty = Ty::Replicated64TensorTy;
 }
 
 impl KnownType for Replicated128Tensor {
     type Symbolic = Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>;
-
-    fn ty() -> Ty {
-        Ty::Replicated128TensorTy
-    }
+    const TY: Ty = Ty::Replicated128TensorTy;
 }
 
 impl<T: KnownType> KnownType for Symbolic<T> {
     type Symbolic = Self;
-
-    fn ty() -> Ty {
-        T::ty()
-    }
+    const TY: Ty = T::TY;
 }
 
 #[derive(Clone, Debug)]
@@ -99,74 +83,7 @@ enum Value {
     Ring128Tensor(Ring128Tensor),
     Replicated64Tensor(Replicated64Tensor),
     Replicated128Tensor(Replicated128Tensor),
-}
-
-impl From<Ring64Tensor> for Value {
-    fn from(x: Ring64Tensor) -> Value {
-        Value::Ring64Tensor(x)
-    }
-}
-
-impl From<Ring128Tensor> for Value {
-    fn from(x: Ring128Tensor) -> Value {
-        Value::Ring128Tensor(x)
-    }
-}
-
-impl From<Replicated64Tensor> for Value {
-    fn from(x: Replicated64Tensor) -> Value {
-        Value::Replicated64Tensor(x)
-    }
-}
-
-impl From<Replicated128Tensor> for Value {
-    fn from(x: Replicated128Tensor) -> Value {
-        Value::Replicated128Tensor(x)
-    }
-}
-
-impl TryFrom<Value> for Ring64Tensor {
-    type Error = ();
-
-    fn try_from(x: Value) -> Result<Self, Self::Error> {
-        match x {
-            Value::Ring64Tensor(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<Value> for Ring128Tensor {
-    type Error = ();
-
-    fn try_from(x: Value) -> Result<Self, Self::Error> {
-        match x {
-            Value::Ring128Tensor(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<Value> for ReplicatedTensor<Ring64Tensor> {
-    type Error = ();
-
-    fn try_from(x: Value) -> Result<Self, Self::Error> {
-        match x {
-            Value::Replicated64Tensor(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<Value> for ReplicatedTensor<Ring128Tensor> {
-    type Error = ();
-
-    fn try_from(x: Value) -> Result<Self, Self::Error> {
-        match x {
-            Value::Replicated128Tensor(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
+    ReplicatedSetup(ReplicatedSetup<PrfKey>),
 }
 
 #[derive(Clone, Debug)]
@@ -175,75 +92,76 @@ enum SymbolicValue {
     Ring128Tensor(Symbolic<Ring128Tensor>),
     Replicated64Tensor(Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>),
     Replicated128Tensor(Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>),
+    // ReplicatedSetup(ReplicatedSetup<PrfKey>), // TODO
 }
 
-impl From<Symbolic<Ring64Tensor>> for SymbolicValue {
-    fn from(x: Symbolic<Ring64Tensor>) -> SymbolicValue {
-        SymbolicValue::Ring64Tensor(x)
+macro_rules! value {
+    ($t:ident) => {
+        impl From<$t> for Value {
+            fn from(x: $t) -> Value {
+                Value::$t(x)
+            }
+        }
+        
+        impl From<&$t> for Value {
+            fn from(x: &$t) -> Value {
+                Value::$t(x.clone())
+            }
+        }
+
+        impl TryFrom<Value> for $t {
+            type Error = ();
+        
+            fn try_from(x: Value) -> Result<Self, Self::Error> {
+                match x {
+                    Value::$t(x) => Ok(x),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl From<<$t as KnownType>::Symbolic> for SymbolicValue {
+            fn from(x: <$t as KnownType>::Symbolic) -> SymbolicValue {
+                SymbolicValue::$t(x)
+            }
+        }
+
+        impl TryFrom<SymbolicValue> for <$t as KnownType>::Symbolic {
+            type Error = ();
+
+            fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
+                match x {
+                    SymbolicValue::$t(x) => Ok(x),
+                    _ => Err(()),
+                }
+            }
+        }
+
+    };
+}
+
+value!(Ring64Tensor);
+value!(Ring128Tensor);
+value!(Replicated64Tensor);
+value!(Replicated128Tensor);
+
+impl From<ReplicatedSetup<PrfKey>> for Value {
+    fn from(x: ReplicatedSetup<PrfKey>) -> Value {
+        Value::ReplicatedSetup(x)
     }
 }
 
-impl From<Symbolic<Ring128Tensor>> for SymbolicValue {
-    fn from(x: Symbolic<Ring128Tensor>) -> SymbolicValue {
-        SymbolicValue::Ring128Tensor(x)
-    }
-}
-
-impl From<Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>> for SymbolicValue {
-    fn from(x: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>) -> SymbolicValue {
-        SymbolicValue::Replicated64Tensor(x)
-    }
-}
-
-impl From<Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>> for SymbolicValue {
-    fn from(x: Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>) -> SymbolicValue {
-        SymbolicValue::Replicated128Tensor(x)
-    }
-}
-
-impl TryFrom<SymbolicValue> for Symbolic<Ring64Tensor> {
+impl TryFrom<Value> for ReplicatedSetup<PrfKey> {
     type Error = ();
 
-    fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
+    fn try_from(x: Value) -> Result<Self, Self::Error> {
         match x {
-            SymbolicValue::Ring64Tensor(x) => Ok(x),
+            Value::ReplicatedSetup(x) => Ok(x),
             _ => Err(()),
         }
     }
 }
 
-impl TryFrom<SymbolicValue> for Symbolic<Ring128Tensor> {
-    type Error = ();
-
-    fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
-        match x {
-            SymbolicValue::Ring128Tensor(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<SymbolicValue> for Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> {
-    type Error = ();
-
-    fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
-        match x {
-            SymbolicValue::Replicated64Tensor(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
-impl TryFrom<SymbolicValue> for Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>> {
-    type Error = ();
-
-    fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
-        match x {
-            SymbolicValue::Replicated128Tensor(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
 
 #[derive(Clone, Debug)]
 enum Symbolic<T> {
@@ -266,17 +184,11 @@ impl<T> From<SymbolicHandle> for Symbolic<T> {
 enum Operator {
     RingAdd(RingAddOp),
     RingSub(RingSubOp),
+    RingMul(RingMulOp),
     RingSample(RingSampleOp),
     RepAdd(RepAddOp),
     RepShare(RepShareOp),
     // Constant(ConstantOp),
-}
-
-#[derive(Clone, Debug)]
-struct Operation {
-    name: String,
-    operator: Operator,
-    operands: Vec<String>,
 }
 
 impl From<RingAddOp> for Operator {
@@ -288,6 +200,12 @@ impl From<RingAddOp> for Operator {
 impl From<RingSubOp> for Operator {
     fn from(op: RingSubOp) -> Self {
         Operator::RingSub(op)
+    }
+}
+
+impl From<RingMulOp> for Operator {
+    fn from(op: RingMulOp) -> Self {
+        Operator::RingMul(op)
     }
 }
 
@@ -308,6 +226,14 @@ impl From<RepShareOp> for Operator {
         Operator::RepShare(op)
     }
 }
+
+#[derive(Clone, Debug)]
+struct Operation {
+    name: String,
+    operator: Operator,
+    operands: Vec<String>,
+}
+
 
 #[derive(Clone, Debug)]
 struct RingTensor<T>(T);
@@ -344,9 +270,38 @@ impl Sub<RingTensor<u128>> for RingTensor<u128> {
     }
 }
 
+impl Mul<RingTensor<u64>> for RingTensor<u64> {
+    type Output = RingTensor<u64>;
+
+    fn mul(self, other: RingTensor<u64>) -> Self::Output {
+        RingTensor(self.0.wrapping_mul(other.0))
+    }
+}
+
+impl Mul<RingTensor<u128>> for RingTensor<u128> {
+    type Output = RingTensor<u128>;
+
+    fn mul(self, other: RingTensor<u128>) -> Self::Output {
+        RingTensor(self.0.wrapping_mul(other.0))
+    }
+}
+
 #[derive(Clone, Debug)]
 struct ReplicatedTensor<R> {
     shares: [[R; 2]; 3],
+}
+
+#[derive(Clone, Debug)]
+struct PrfKey([u8; 16]);
+
+#[derive(Clone, Debug)]
+struct ReplicatedSetup<K> {
+    keys: [[K; 2]; 3],
+}
+
+#[derive(Clone, Debug)]
+struct ReplicatedZeroShare<R> {
+    alphas: [R; 3],
 }
 
 type Ring64Tensor = RingTensor<u64>;
@@ -392,468 +347,142 @@ type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 //     Symbolic,
 // }
 
-trait PlacementAdd<C: Context, T, U, O> {
-    fn add(&self, ctx: &C, x: T, y: U) -> O;
+
+macro_rules! modelled_op {
+    ($op:ident, $t:ident, $plc:ty, $t0:ty, $u:ty) => {
+        
+        impl $t::<ConcreteContext, $t0> for $plc {
+            type Output = $u;
+
+            fn apply(&self, ctx: &ConcreteContext, x0: &$t0) -> Self::Output {
+                let op = $op {
+                    lhs: <$t0>::TY,
+                    plc: self.clone().into(),
+                };
+                ctx.execute_unary(
+                    op.into(),
+                    x0.clone().into(),
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+        impl $t::<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn apply(&self, ctx: &SymbolicContext, x0: &<$t0 as KnownType>::Symbolic) -> Self::Output {
+                let op = $op {
+                    lhs: <$t0>::TY,
+                    plc: self.clone().into(),
+                };
+                ctx.execute_unary(
+                    op.into(),
+                    x0.clone().into(),
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+    };
+
+    ($op:ident, $t:ident, $plc:ty, $t0:ty, $t1:ty, $u:ty) => {
+        
+        impl $t::<ConcreteContext, $t0, $t1> for $plc {
+            type Output = $u;
+
+            fn apply(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
+                let op = $op {
+                    lhs: <$t0>::TY,
+                    rhs: <$t1>::TY,
+                    plc: self.clone().into(),
+                };
+                ctx.execute_binary(
+                    op.into(),
+                    x0.clone().into(),
+                    x1.clone().into(),
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+        impl $t::<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic> for $plc {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn apply(&self, ctx: &SymbolicContext, x0: &<$t0 as KnownType>::Symbolic, x1: &<$t1 as KnownType>::Symbolic) -> Self::Output {
+                let op = $op {
+                    lhs: <$t0>::TY,
+                    rhs: <$t1>::TY,
+                    plc: self.clone().into(),
+                };
+                ctx.execute_binary(
+                    op.into(),
+                    x0.clone().into(),
+                    x1.clone().into(),
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+    };
 }
 
-impl PlacementAdd<ConcreteContext, &Ring64Tensor, &Ring64Tensor, Ring64Tensor> for HostPlacement {
-    fn add(&self, ctx: &ConcreteContext, x: &Ring64Tensor, y: &Ring64Tensor) -> Ring64Tensor {
-        ctx.execute_binary(
-            RingAddOp {
-                lhs: Ring64Tensor::ty(),
-                rhs: Ring64Tensor::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
+trait PlacementAdd<C: Context, T, U> {
+    type Output;
+
+    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+
+    fn add(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
+        self.apply(ctx, x, y)
     }
 }
 
-// impl<'x, 'y, X, Y, Z> PlacementAdd<SymbolicContext, &X::Symbolic, &Y::Symbolic, Z::Symbolic> for HostPlacement 
-// where
-//     HostPlacement: PlacementAdd<ConcreteContext, &'x X, &'y Y, Z>,
-//     X: KnownType,
-//     Y: KnownType,
-//     Z: KnownType,
-// {
-//     fn add(&self, ctx: &SymbolicContext, x: &X::Symbolic, y: &Y::Symbolic) -> Z::Symbolic {
-//         // TODO pull operator construction into separate method
-//         let op = RingAddOp {
-//             lhs: Ring64Tensor::ty(),
-//             rhs: Ring64Tensor::ty(),
-//             plc: self.clone().into(),
-//         }.into();
-//         ctx.execute_binary(
-//             op,
-//             x.clone().into(),
-//             y.clone().into(),
-//         )
-//         .try_into()
-//         .unwrap()
-//     }
-// }
-
-impl PlacementAdd<ConcreteContext, &Ring128Tensor, &Ring128Tensor, Ring128Tensor>
-    for HostPlacement
-{
-    fn add(&self, ctx: &ConcreteContext, x: &Ring128Tensor, y: &Ring128Tensor) -> Ring128Tensor {
-        ctx.execute_binary(
-            RingAddOp {
-                lhs: Ring128Tensor::ty(),
-                rhs: Ring128Tensor::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-// TODO the following could probably be derived from the above
-impl
-    PlacementAdd<
-        SymbolicContext,
-        &Symbolic<Ring64Tensor>,
-        &Symbolic<Ring64Tensor>,
-        Symbolic<Ring64Tensor>,
-    > for HostPlacement
-{
-    fn add(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<Ring64Tensor>,
-        y: &Symbolic<Ring64Tensor>,
-    ) -> Symbolic<Ring64Tensor> {
-        ctx.execute_binary(
-            RingAddOp {
-                lhs: Symbolic::<Ring64Tensor>::ty(),
-                rhs: Symbolic::<Ring64Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl
-    PlacementAdd<
-        SymbolicContext,
-        &Symbolic<Ring128Tensor>,
-        &Symbolic<Ring128Tensor>,
-        Symbolic<Ring128Tensor>,
-    > for HostPlacement
-{
-    fn add(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<Ring128Tensor>,
-        y: &Symbolic<Ring128Tensor>,
-    ) -> Symbolic<Ring128Tensor> {
-        ctx.execute_binary(
-            RingAddOp {
-                lhs: Symbolic::<Ring128Tensor>::ty(),
-                rhs: Symbolic::<Ring128Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl
-    PlacementAdd<
-        ConcreteContext,
-        &ReplicatedTensor<Ring64Tensor>,
-        &ReplicatedTensor<Ring64Tensor>,
-        ReplicatedTensor<Ring64Tensor>,
-    > for ReplicatedPlacement
-{
-    fn add(
-        &self,
-        ctx: &ConcreteContext,
-        x: &ReplicatedTensor<Ring64Tensor>,
-        y: &ReplicatedTensor<Ring64Tensor>,
-    ) -> ReplicatedTensor<Ring64Tensor> {
-        ctx.execute_binary(
-            RepAddOp {
-                lhs: ReplicatedTensor::<Ring64Tensor>::ty(),
-                rhs: ReplicatedTensor::<Ring64Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl
-    PlacementAdd<
-        ConcreteContext,
-        &ReplicatedTensor<Ring128Tensor>,
-        &ReplicatedTensor<Ring128Tensor>,
-        ReplicatedTensor<Ring128Tensor>,
-    > for ReplicatedPlacement
-{
-    fn add(
-        &self,
-        ctx: &ConcreteContext,
-        x: &ReplicatedTensor<Ring128Tensor>,
-        y: &ReplicatedTensor<Ring128Tensor>,
-    ) -> ReplicatedTensor<Ring128Tensor> {
-        ctx.execute_binary(
-            RepAddOp {
-                lhs: ReplicatedTensor::<Ring128Tensor>::ty(),
-                rhs: ReplicatedTensor::<Ring128Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl
-    PlacementAdd<
-        SymbolicContext,
-        &Symbolic<Ring64Tensor>,
-        &Symbolic<Ring64Tensor>,
-        Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>,
-    > for ReplicatedPlacement
-{
-    fn add(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<Ring64Tensor>,
-        y: &Symbolic<Ring64Tensor>,
-    ) -> Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> {
-        ctx.execute_binary(
-            RepAddOp {
-                lhs: Ring64Tensor::ty(),
-                rhs: Ring64Tensor::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl
-    PlacementAdd<
-        SymbolicContext,
-        &Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>,
-        &Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>,
-        Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>,
-    > for ReplicatedPlacement
-{
-    fn add(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>,
-        y: &Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>,
-    ) -> Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> {
-        ctx.execute_binary(
-            RepAddOp {
-                lhs: ReplicatedTensor::<Ring64Tensor>::ty(),
-                rhs: ReplicatedTensor::<Ring64Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-// binary_op!(
-//     add,
-//     RepAddOp,
-//     [
-//         (ReplicatedTensor<Ring64Tensor>, ReplicatedTensor<Ring64Tensor>) -> ReplicatedTensor<Ring64Tensor> @ReplicatedPlacement,
-//         (ReplicatedTensor<Ring128Tensor>, ReplicatedTensor<Ring128Tensor>) -> ReplicatedTensor<Ring128Tensor> @ReplicatedPlacement,
-//         (Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>, Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>) -> Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> @ReplicatedPlacement,
-//         (Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>, Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>) -> Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>> @ReplicatedPlacement,
-//     ]
-// )
-
-impl
-    PlacementAdd<
-        SymbolicContext,
-        &Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>,
-        &Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>,
-        Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>,
-    > for ReplicatedPlacement
-{
-    fn add(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>,
-        y: &Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>,
-    ) -> Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>> {
-        ctx.execute_binary(
-            RepAddOp {
-                lhs: ReplicatedTensor::<Ring128Tensor>::ty(),
-                rhs: ReplicatedTensor::<Ring128Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
+modelled_op!(RingAddOp, PlacementAdd, HostPlacement, Ring64Tensor, Ring64Tensor, Ring64Tensor);
+modelled_op!(RingAddOp, PlacementAdd, HostPlacement, Ring128Tensor, Ring128Tensor, Ring128Tensor);
+modelled_op!(RepAddOp, PlacementAdd, ReplicatedPlacement, Replicated64Tensor, Replicated64Tensor, Replicated64Tensor);
+modelled_op!(RepAddOp, PlacementAdd, ReplicatedPlacement, Replicated128Tensor, Replicated128Tensor, Replicated128Tensor);
 
 trait PlacementSub<C: Context, T, U> {
     type Output;
 
-    fn sub(&self, ctx: &C, x: T, y: U) -> Self::Output;
-}
+    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 
-impl PlacementSub<ConcreteContext, &Ring64Tensor, &Ring64Tensor> for HostPlacement {
-    type Output = Ring64Tensor;
-
-    fn sub(&self, ctx: &ConcreteContext, x: &Ring64Tensor, y: &Ring64Tensor) -> Self::Output {
-        ctx.execute_binary(
-            RingSubOp {
-                lhs: Ring64Tensor::ty(),
-                rhs: Ring64Tensor::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
+    fn sub(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
+        self.apply(ctx, x, y)
     }
 }
 
-impl PlacementSub<ConcreteContext, &Ring128Tensor, &Ring128Tensor> for HostPlacement {
-    type Output = Ring128Tensor;
+modelled_op!(RingSubOp, PlacementSub, HostPlacement, Ring64Tensor, Ring64Tensor, Ring64Tensor);
+modelled_op!(RingSubOp, PlacementSub, HostPlacement, Ring128Tensor, Ring128Tensor, Ring128Tensor);
 
-    fn sub(&self, ctx: &ConcreteContext, x: &Ring128Tensor, y: &Ring128Tensor) -> Self::Output {
-        ctx.execute_binary(
-            RingSubOp {
-                lhs: Ring128Tensor::ty(),
-                rhs: Ring128Tensor::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
+trait PlacementMul<C: Context, T, U> {
+    type Output;
+
+    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+
+    fn mul(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
+        self.apply(ctx, x, y)
     }
 }
 
-impl PlacementSub<SymbolicContext, &Symbolic<Ring64Tensor>, &Symbolic<Ring64Tensor>>
-    for HostPlacement
-{
-    type Output = Symbolic<Ring64Tensor>;
+modelled_op!(RingMulOp, PlacementMul, HostPlacement, Ring64Tensor, Ring64Tensor, Ring64Tensor);
+modelled_op!(RingMulOp, PlacementMul, HostPlacement, Ring128Tensor, Ring128Tensor, Ring128Tensor);
 
-    fn sub(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<Ring64Tensor>,
-        y: &Symbolic<Ring64Tensor>,
-    ) -> Self::Output {
-        ctx.execute_binary(
-            RingSubOp {
-                lhs: Symbolic::<Ring64Tensor>::ty(),
-                rhs: Symbolic::<Ring64Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
+trait PlacementShare<C: Context, T> {
+    type Output;
+
+    fn apply(&self, ctx: &C, x: &T) -> Self::Output;
+
+    fn share(&self, ctx: &C, x: &T) -> Self::Output {
+        self.apply(ctx, x)
     }
 }
 
-impl PlacementSub<SymbolicContext, &Symbolic<Ring128Tensor>, &Symbolic<Ring128Tensor>>
-    for HostPlacement
-{
-    type Output = Symbolic<Ring128Tensor>;
-
-    fn sub(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<Ring128Tensor>,
-        y: &Symbolic<Ring128Tensor>,
-    ) -> Self::Output {
-        ctx.execute_binary(
-            RingSubOp {
-                lhs: Symbolic::<Ring128Tensor>::ty(),
-                rhs: Symbolic::<Ring128Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-            y.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-trait PlacementShare<C: Context, T, O> {
-    fn share(&self, ctx: &C, x: T) -> O;
-}
-
-impl PlacementShare<ConcreteContext, &Ring64Tensor, ReplicatedTensor<Ring64Tensor>>
-    for ReplicatedPlacement
-{
-    fn share(&self, ctx: &ConcreteContext, x: &Ring64Tensor) -> ReplicatedTensor<Ring64Tensor> {
-        ctx.execute_unary(
-            RepShareOp {
-                lhs: Ring64Tensor::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl PlacementShare<ConcreteContext, &Ring128Tensor, ReplicatedTensor<Ring128Tensor>>
-    for ReplicatedPlacement
-{
-    fn share(&self, ctx: &ConcreteContext, x: &Ring128Tensor) -> ReplicatedTensor<Ring128Tensor> {
-        ctx.execute_unary(
-            RepShareOp {
-                lhs: Ring128Tensor::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl
-    PlacementShare<
-        SymbolicContext,
-        &Symbolic<Ring64Tensor>,
-        Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>,
-    > for ReplicatedPlacement
-{
-    fn share(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<Ring64Tensor>,
-    ) -> Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> {
-        ctx.execute_unary(
-            RepShareOp {
-                lhs: Symbolic::<Ring64Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
-
-impl
-    PlacementShare<
-        SymbolicContext,
-        &Symbolic<Ring128Tensor>,
-        Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>,
-    > for ReplicatedPlacement
-{
-    fn share(
-        &self,
-        ctx: &SymbolicContext,
-        x: &Symbolic<Ring128Tensor>,
-    ) -> Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>> {
-        ctx.execute_unary(
-            RepShareOp {
-                lhs: Symbolic::<Ring128Tensor>::ty(),
-                plc: self.clone().into(),
-            }
-            .into(),
-            x.clone().into(),
-        )
-        .try_into()
-        .unwrap()
-    }
-}
+modelled_op!(RepShareOp, PlacementShare, ReplicatedPlacement, Ring64Tensor, Replicated64Tensor);
+modelled_op!(RepShareOp, PlacementShare, ReplicatedPlacement, Ring128Tensor, Replicated128Tensor);
 
 trait Context {
     type Value;
@@ -982,47 +611,31 @@ struct RepAddOp {
 
 impl RepAddOp {
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value) -> Value> {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Replicated(plc), Ty::Replicated64TensorTy, Ty::Replicated64TensorTy) => {
+        match (&self.plc, self.lhs, self.rhs) {
+            (Placement::Replicated(plc), Replicated64Tensor::TY, Replicated64Tensor::TY) => {
                 let ctx = ctx.clone();
                 let plc = plc.clone();
 
                 Box::new(move |x: Value, y: Value| {
-                    let x: ReplicatedTensor<Ring64Tensor> = x.try_into().unwrap();
-                    let y: ReplicatedTensor<Ring64Tensor> = y.try_into().unwrap();
+                    let x: Replicated64Tensor = x.try_into().unwrap();
+                    let y: Replicated64Tensor = y.try_into().unwrap();
 
                     Self::abstract_kernel(&ctx, &plc, x, y).into()
                 })
             }
 
-            (Placement::Replicated(plc), Ty::Replicated128TensorTy, Ty::Replicated128TensorTy) => {
+            (Placement::Replicated(plc), Replicated128Tensor::TY, Replicated128Tensor::TY) => {
                 let ctx = ctx.clone();
                 let plc = plc.clone();
 
                 Box::new(move |x: Value, y: Value| {
-                    let x: ReplicatedTensor<Ring128Tensor> = x.try_into().unwrap();
-                    let y: ReplicatedTensor<Ring128Tensor> = y.try_into().unwrap();
+                    let x: Replicated128Tensor = x.try_into().unwrap();
+                    let y: Replicated128Tensor = y.try_into().unwrap();
 
                     Self::abstract_kernel(&ctx, &plc, x, y).into()
                 })
             }
 
-            // (Placement::Rep, Ty::HostFixedTy, Ty::HostFixedTy) => {
-            //     |x: Value, y: Value| {
-            //         // let x_owner = ctx.placement_instantiation(x.placement());
-            //         // let y_owner = ctx.placement_instantiation(y.placement());
-
-            //         // let xe = x_owner.share(x);
-            //         // let ye = y_owner.share(y);
-            //         // add(xe, ye)
-            //         unimplemented!()
-            //     }
-            // }
-            // (Placement::Rep, Ty::RepFixedTy, Ty::RepFixedTy) => {
-            //     |x: Value, y: Value| {
-            //         unimplemented!()
-            //     }
-            // }
             _ => unimplemented!(), // ok
         }
     }
@@ -1033,8 +646,8 @@ impl RepAddOp {
         x: SymbolicValue,
         y: SymbolicValue,
     ) -> SymbolicValue {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Replicated(plc), Ty::Replicated64TensorTy, Ty::Replicated64TensorTy) => {
+        match (&self.plc, self.lhs, self.rhs) {
+            (Placement::Replicated(plc), Replicated64Tensor::TY, Replicated64Tensor::TY) => {
                 let x: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> = x.try_into().unwrap();
                 let y: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> = y.try_into().unwrap();
 
@@ -1056,7 +669,7 @@ impl RepAddOp {
                 .into()
             }
 
-            (Placement::Replicated(plc), Ty::Replicated128TensorTy, Ty::Replicated128TensorTy) => {
+            (Placement::Replicated(plc), Replicated128Tensor::TY, Replicated128Tensor::TY) => {
                 let x: Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>> = x.try_into().unwrap();
                 let y: Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>> = y.try_into().unwrap();
 
@@ -1090,7 +703,7 @@ impl RepAddOp {
         y: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
     where
-        for<'x, 'y> HostPlacement: PlacementAdd<C, &'x R, &'y R, R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let player0 = HostPlacement {
             player: rep.players[0].clone(),
@@ -1127,6 +740,159 @@ impl RepAddOp {
 }
 
 #[derive(Clone, Debug)]
+struct RepMulOp {
+    lhs: Ty,
+    rhs: Ty,
+    plc: Placement,
+}
+
+impl RepMulOp {
+    pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value, Value) -> Value> {
+        match (&self.plc, &self.lhs, &self.rhs) {
+            (Placement::Replicated(plc), Ty::Replicated64TensorTy, Ty::Replicated64TensorTy) => {
+                let ctx = ctx.clone();
+                let plc = plc.clone();
+
+                Box::new(move |s: Value, x: Value, y: Value| {
+                    let s: ReplicatedSetup<PrfKey> = s.try_into().unwrap();
+                    let x: ReplicatedTensor<Ring64Tensor> = x.try_into().unwrap();
+                    let y: ReplicatedTensor<Ring64Tensor> = y.try_into().unwrap();
+
+                    Self::abstract_kernel(&ctx, &plc, s, x, y).into()
+                })
+            }
+
+            (Placement::Replicated(plc), Ty::Replicated128TensorTy, Ty::Replicated128TensorTy) => {
+                let ctx = ctx.clone();
+                let plc = plc.clone();
+
+                Box::new(move |s: Value, x: Value, y: Value| {
+                    let s: ReplicatedSetup<PrfKey> = s.try_into().unwrap();
+                    let x: ReplicatedTensor<Ring128Tensor> = x.try_into().unwrap();
+                    let y: ReplicatedTensor<Ring128Tensor> = y.try_into().unwrap();
+
+                    Self::abstract_kernel(&ctx, &plc, s, x, y).into()
+                })
+            }
+
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    fn abstract_kernel<C: Context, R, K>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        s: ReplicatedSetup<K>,
+        x: ReplicatedTensor<R>,
+        y: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone + Into<C::Value> + TryFrom<C::Value>,
+        HostPlacement: PlacementSample<C, R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementMul<C, R, R, Output = R>,
+        ReplicatedPlacement: PlacementZeroShare<C, K, R>,
+    {
+        let player0 = HostPlacement {
+            player: rep.players[0].clone(),
+        };
+        let player1 = HostPlacement {
+            player: rep.players[1].clone(),
+        };
+        let player2 = HostPlacement {
+            player: rep.players[2].clone(),
+        };
+
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let ReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = &y;
+
+        // TODO improve syntax
+        let t0 = player0.add(ctx, &player0.add(ctx, &player0.mul(ctx, x00, y00), &player0.mul(ctx, x00, y10)), &player0.mul(ctx, x10, y00));
+        let t1 = player1.add(ctx, &player1.add(ctx, &player1.mul(ctx, x11, y11), &player1.mul(ctx, x11, y21)), &player1.mul(ctx, x21, y11));
+        let t2 = player2.add(ctx, &player2.add(ctx, &player2.mul(ctx, x22, y22), &player2.mul(ctx, x22, y02)), &player2.mul(ctx, x02, y22));
+
+        let ReplicatedZeroShare {
+            alphas: [a0, a1, a2]
+        } = rep.zero_share(ctx, &s);
+
+        let z0 = player0.add(ctx, &t0, &a0);
+        let z1 = player1.add(ctx, &t1, &a1);
+        let z2 = player2.add(ctx, &t2, &a2);
+
+        ReplicatedTensor {
+            shares: [[z0.clone(), z1.clone()], [z1.clone(), z2.clone()], [z2.clone(), z0.clone()]],
+        }
+    }
+}
+
+trait PlacementZeroShare<C: Context, K, R> {
+    fn zero_share(&self, ctx: &C, setup: &ReplicatedSetup<K>) -> ReplicatedZeroShare<R>;
+}
+
+// NOTE this is an un-modelled operation (as opposed to the modelled operation that have a representation in computations)
+impl<C: Context, K, R> PlacementZeroShare<C, K, R> for ReplicatedPlacement
+where
+    HostPlacement: PlacementSample<C, R>,
+    HostPlacement: PlacementSub<C, R, R, Output = R>,
+{
+    fn zero_share(&self, ctx: &C, s: &ReplicatedSetup<K>) -> ReplicatedZeroShare<R> {
+        let ReplicatedSetup { keys: [[k00, k10], [k11, k21], [k22, k02]] } = s;
+
+        let player0 = HostPlacement {
+            player: self.players[0].clone(),
+        };
+        let player1 = HostPlacement {
+            player: self.players[1].clone(),
+        };
+        let player2 = HostPlacement {
+            player: self.players[2].clone(),
+        };
+
+        // TODO use keys when sampling below!
+
+        let r00 = player0.sample(ctx);
+        let r10 = player0.sample(ctx);
+        let alpha0 = player0.sub(ctx, &r00, &r10);
+
+        let r11 = player1.sample(ctx);
+        let r21 = player1.sample(ctx);
+        let alpha1 = player0.sub(ctx, &r11, &r21);
+
+        let r22 = player2.sample(ctx);
+        let r02 = player2.sample(ctx);
+        let alpha2 = player0.sub(ctx, &r22, &r02);
+
+        ReplicatedZeroShare {
+            alphas: [alpha0, alpha1, alpha2],
+        }
+    }
+}
+
+
+
+// struct Placed<T> {
+//     plc: Placement,
+//     val: T,
+// }
+
+// impl<T> Add<Placed<T>> for Placed<T>
+// where
+//     T: Add<T, Output=T>,
+// {
+//     type Output = Placed<T>;
+
+//     fn add(self, other: Placed<T>) -> Placed<T> {
+//         // assert_eq!(self.plc, other.plc); // TODO
+//         self.plc.add()
+//     }
+// }
+
+#[derive(Clone, Debug)]
 struct RepShareOp {
     lhs: Ty,
     plc: Placement,
@@ -1153,23 +919,7 @@ impl RepShareOp {
                 })
             }
 
-            // (Placement::Rep, Ty::HostFixedTy, Ty::HostFixedTy) => {
-            //     |x: Value, y: Value| {
-            //         // let x_owner = ctx.placement_instantiation(x.placement());
-            //         // let y_owner = ctx.placement_instantiation(y.placement());
-
-            //         // let xe = x_owner.share(x);
-            //         // let ye = y_owner.share(y);
-            //         // add(xe, ye)
-            //         unimplemented!()
-            //     }
-            // }
-            // (Placement::Rep, Ty::RepFixedTy, Ty::RepFixedTy) => {
-            //     |x: Value, y: Value| {
-            //         unimplemented!()
-            //     }
-            // }
-            _ => unimplemented!(),
+            _ => unimplemented!(), // ok
         }
     }
 
@@ -1189,22 +939,6 @@ impl RepShareOp {
                 Symbolic::Concrete(Self::abstract_kernel(&ctx, &rep_plc, x)).into()
             }
 
-            // (Placement::Rep, Ty::HostFixedTy, Ty::HostFixedTy) => {
-            //     |x: Value, y: Value| {
-            //         // let x_owner = ctx.placement_instantiation(x.placement());
-            //         // let y_owner = ctx.placement_instantiation(y.placement());
-
-            //         // let xe = x_owner.share(x);
-            //         // let ye = y_owner.share(y);
-            //         // add(xe, ye)
-            //         unimplemented!()
-            //     }
-            // }
-            // (Placement::Rep, Ty::RepFixedTy, Ty::RepFixedTy) => {
-            //     |x: Value, y: Value| {
-            //         unimplemented!()
-            //     }
-            // }
             _ => unimplemented!(), // ok
         }
     }
@@ -1215,9 +949,10 @@ impl RepShareOp {
         x: R,
     ) -> ReplicatedTensor<R>
     where
+        R: Into<C::Value> + TryFrom<C::Value>,
         HostPlacement: PlacementSample<C, R>,
-        for<'x, 'y> HostPlacement: PlacementAdd<C, &'x R, &'y R, R>,
-        for<'x, 'y> HostPlacement: PlacementSub<C, &'x R, &'y R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementSub<C, R, R, Output = R>,
     {
         let player0 = HostPlacement {
             player: rep.players[0].clone(),
@@ -1229,7 +964,7 @@ impl RepShareOp {
             player: rep.players[2].clone(),
         };
 
-        // TODO we should not use player0 here, but rather the owner of `x`
+        // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
         let x0 = player0.sample(ctx);
         let x1 = player0.sample(ctx);
         let x2 = player0.sub(ctx, &x, &player0.add(ctx, &x0, &x1));
@@ -1418,6 +1153,93 @@ impl RingSubOp {
     }
 }
 
+#[derive(Clone, Debug)]
+struct RingMulOp {
+    lhs: Ty,
+    rhs: Ty,
+    plc: Placement,
+}
+
+impl RingMulOp {
+    pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value) -> Value> {
+        match (&self.plc, &self.lhs, &self.rhs) {
+            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+                let op = self.clone();
+                Box::new(move |x: Value, y: Value| -> Value {
+                    let x: Ring64Tensor = x.try_into().unwrap();
+                    let y: Ring64Tensor = y.try_into().unwrap();
+
+                    Self::abstract_kernel(x, y).into()
+                })
+            }
+
+            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+                let op = self.clone();
+                Box::new(move |x: Value, y: Value| -> Value {
+                    let x: Ring128Tensor = x.try_into().unwrap();
+                    let y: Ring128Tensor = y.try_into().unwrap();
+
+                    Self::abstract_kernel(x, y).into()
+                })
+            }
+
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    pub fn execute_symbolic(
+        &self,
+        ctx: &SymbolicContext,
+        x: SymbolicValue,
+        y: SymbolicValue,
+    ) -> SymbolicValue {
+        match (&self.plc, &self.lhs, &self.rhs) {
+            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+                let x: Symbolic<Ring64Tensor> = x.try_into().unwrap();
+                let y: Symbolic<Ring64Tensor> = y.try_into().unwrap();
+
+                match (x, y) {
+                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
+                        Symbolic::Concrete(Self::abstract_kernel(x, y))
+                    }
+                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
+                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    }
+                    _ => unimplemented!(), // ok
+                }
+                .into()
+            }
+
+            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+                let x: Symbolic<Ring128Tensor> = x.try_into().unwrap();
+                let y: Symbolic<Ring128Tensor> = y.try_into().unwrap();
+
+                match (x, y) {
+                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
+                        Symbolic::Concrete(Self::abstract_kernel(x, y))
+                    }
+                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
+                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    }
+                    _ => unimplemented!(), // ok
+                }
+                .into()
+            }
+
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    fn abstract_kernel<T>(x: RingTensor<T>, y: RingTensor<T>) -> RingTensor<T>
+    where
+        RingTensor<T>: Mul<RingTensor<T>, Output = RingTensor<T>>,
+    {
+        x * y
+    }
+}
+
 trait PlacementSample<C: Context, O> {
     fn sample(&self, ctx: &C) -> O;
 }
@@ -1426,7 +1248,7 @@ impl PlacementSample<ConcreteContext, Ring64Tensor> for HostPlacement {
     fn sample(&self, ctx: &ConcreteContext) -> Ring64Tensor {
         ctx.execute_nullary(
             RingSampleOp {
-                ty: Ty::Ring64TensorTy,
+                ty: Ring64Tensor::TY,
                 plc: Placement::Host(self.clone()),
             }
             .into(),
@@ -1440,7 +1262,7 @@ impl PlacementSample<ConcreteContext, Ring128Tensor> for HostPlacement {
     fn sample(&self, ctx: &ConcreteContext) -> Ring128Tensor {
         ctx.execute_nullary(
             RingSampleOp {
-                ty: Ring128Tensor::ty(),
+                ty: Ring128Tensor::TY,
                 plc: Placement::Host(self.clone()),
             }
             .into(),
