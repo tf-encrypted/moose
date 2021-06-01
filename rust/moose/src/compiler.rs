@@ -182,50 +182,31 @@ impl<T> From<SymbolicHandle> for Symbolic<T> {
 
 #[derive(Clone, Debug)]
 enum Operator {
-    RingAdd(RingAddOp),
-    RingSub(RingSubOp),
-    RingMul(RingMulOp),
-    RingSample(RingSampleOp),
-    RepAdd(RepAddOp),
-    RepShare(RepShareOp),
+    RingAddOp(RingAddOp),
+    RingSubOp(RingSubOp),
+    RingMulOp(RingMulOp),
+    RingSampleOp(RingSampleOp),
+    RepAddOp(RepAddOp),
+    RepShareOp(RepShareOp),
     // Constant(ConstantOp),
 }
 
-impl From<RingAddOp> for Operator {
-    fn from(op: RingAddOp) -> Self {
-        Operator::RingAdd(op)
-    }
+macro_rules! operator {
+    ($t:ident) => {
+        impl From<$t> for Operator {
+            fn from(x: $t) -> Operator {
+                Operator::$t(x)
+            }
+        }
+    };
 }
 
-impl From<RingSubOp> for Operator {
-    fn from(op: RingSubOp) -> Self {
-        Operator::RingSub(op)
-    }
-}
-
-impl From<RingMulOp> for Operator {
-    fn from(op: RingMulOp) -> Self {
-        Operator::RingMul(op)
-    }
-}
-
-impl From<RingSampleOp> for Operator {
-    fn from(op: RingSampleOp) -> Self {
-        Operator::RingSample(op)
-    }
-}
-
-impl From<RepAddOp> for Operator {
-    fn from(op: RepAddOp) -> Self {
-        Operator::RepAdd(op)
-    }
-}
-
-impl From<RepShareOp> for Operator {
-    fn from(op: RepShareOp) -> Self {
-        Operator::RepShare(op)
-    }
-}
+operator!(RingAddOp);
+operator!(RingSubOp);
+operator!(RingMulOp);
+operator!(RingSampleOp);
+operator!(RepAddOp);
+operator!(RepShareOp);
 
 #[derive(Clone, Debug)]
 struct Operation {
@@ -233,7 +214,6 @@ struct Operation {
     operator: Operator,
     operands: Vec<String>,
 }
-
 
 #[derive(Clone, Debug)]
 struct RingTensor<T>(T);
@@ -346,7 +326,6 @@ type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 //     Concrete(T),
 //     Symbolic,
 // }
-
 
 macro_rules! modelled_op {
     ($op:ident, $t:ident, $plc:ty, $t0:ty, $u:ty) => {
@@ -499,23 +478,23 @@ impl Context for ConcreteContext {
 
     fn execute_nullary(&self, op: Operator) -> Value {
         match op {
-            Operator::RingSample(op) => op.compile(self)().try_into().unwrap(),
+            Operator::RingSampleOp(op) => op.compile(self)().try_into().unwrap(),
             _ => unimplemented!(),
         }
     }
 
     fn execute_unary(&self, op: Operator, x: Value) -> Value {
         match op {
-            Operator::RepShare(op) => op.compile(self)(x).try_into().unwrap(),
+            Operator::RepShareOp(op) => op.compile(self)(x).try_into().unwrap(),
             _ => unimplemented!(),
         }
     }
 
     fn execute_binary(&self, op: Operator, x: Value, y: Value) -> Value {
         match op {
-            Operator::RepAdd(op) => op.compile(self)(x, y).try_into().unwrap(),
-            Operator::RingAdd(op) => op.compile(self)(x, y).try_into().unwrap(),
-            Operator::RingSub(op) => op.compile(self)(x, y).try_into().unwrap(),
+            Operator::RepAddOp(op) => op.compile(self)(x, y).try_into().unwrap(),
+            Operator::RingAddOp(op) => op.compile(self)(x, y).try_into().unwrap(),
+            Operator::RingSubOp(op) => op.compile(self)(x, y).try_into().unwrap(),
             _ => unimplemented!(),
         }
     }
@@ -533,23 +512,23 @@ impl Context for SymbolicContext {
 
     fn execute_nullary(&self, op: Operator) -> SymbolicValue {
         match op {
-            Operator::RingSample(op) => op.execute_symbolic(self).try_into().unwrap(),
+            Operator::RingSampleOp(op) => op.execute_symbolic(self).try_into().unwrap(),
             _ => unimplemented!(),
         }
     }
 
     fn execute_unary(&self, op: Operator, x: SymbolicValue) -> SymbolicValue {
         match op {
-            Operator::RepShare(op) => op.execute_symbolic(self, x).try_into().unwrap(),
+            Operator::RepShareOp(op) => op.execute_symbolic(self, x).try_into().unwrap(),
             _ => unimplemented!(),
         }
     }
 
     fn execute_binary(&self, op: Operator, x: SymbolicValue, y: SymbolicValue) -> SymbolicValue {
         match op {
-            Operator::RepAdd(op) => op.execute_symbolic(self, x, y).try_into().unwrap(),
-            Operator::RingAdd(op) => op.execute_symbolic(self, x, y).try_into().unwrap(),
-            Operator::RingSub(op) => op.execute_symbolic(self, x, y).try_into().unwrap(),
+            Operator::RepAddOp(op) => op.execute_symbolic(self, x, y).try_into().unwrap(),
+            Operator::RingAddOp(op) => op.execute_symbolic(self, x, y).try_into().unwrap(),
+            Operator::RingSubOp(op) => op.execute_symbolic(self, x, y).try_into().unwrap(),
             _ => unimplemented!(),
         }
     }
@@ -900,8 +879,8 @@ struct RepShareOp {
 
 impl RepShareOp {
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value) -> Value> {
-        match (&self.plc, &self.lhs) {
-            (Placement::Replicated(rep_plc), Ty::Ring64TensorTy) => {
+        match (&self.plc, self.lhs) {
+            (Placement::Replicated(rep_plc), Ring64Tensor::TY) => {
                 let rep_plc = rep_plc.clone();
                 let ctx = ctx.clone();
                 Box::new(move |x: Value| {
@@ -910,7 +889,7 @@ impl RepShareOp {
                 })
             }
 
-            (Placement::Replicated(rep_plc), Ty::Ring128TensorTy) => {
+            (Placement::Replicated(rep_plc), Ring128Tensor::TY) => {
                 let rep_plc = rep_plc.clone();
                 let ctx = ctx.clone();
                 Box::new(move |x: Value| {
@@ -924,15 +903,15 @@ impl RepShareOp {
     }
 
     pub fn execute_symbolic(&self, ctx: &SymbolicContext, x: SymbolicValue) -> SymbolicValue {
-        match (&self.plc, &self.lhs) {
-            (Placement::Replicated(rep_plc), Ty::Ring64TensorTy) => {
+        match (&self.plc, self.lhs) {
+            (Placement::Replicated(rep_plc), Ring64Tensor::TY) => {
                 let rep_plc = rep_plc.clone();
                 let ctx = ctx.clone();
                 let x: Symbolic<Ring64Tensor> = x.try_into().unwrap();
                 Symbolic::Concrete(Self::abstract_kernel(&ctx, &rep_plc, x)).into()
             }
 
-            (Placement::Replicated(rep_plc), Ty::Ring128TensorTy) => {
+            (Placement::Replicated(rep_plc), Ring128Tensor::TY) => {
                 let rep_plc = rep_plc.clone();
                 let ctx = ctx.clone();
                 let x: Symbolic<Ring128Tensor> = x.try_into().unwrap();
@@ -986,10 +965,16 @@ struct RingAddOp {
     plc: Placement,
 }
 
+// foo!{
+//     RingAddOp,
+//     (Ring64Tensor, Ring64Tensor),
+//     (Ring128Tensor, Ring128Tensor),
+// }
+
 impl RingAddOp {
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value) -> Value> {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match (&self.plc, self.lhs, self.rhs) {
+            (Placement::Host(_), Ring64Tensor::TY, Ring64Tensor::TY) => {
                 let op = self.clone();
                 Box::new(move |x: Value, y: Value| -> Value {
                     let x: Ring64Tensor = x.try_into().unwrap();
@@ -999,7 +984,7 @@ impl RingAddOp {
                 })
             }
 
-            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            (Placement::Host(_), Ring128Tensor::TY, Ring128Tensor::TY) => {
                 let op = self.clone();
                 Box::new(move |x: Value, y: Value| -> Value {
                     let x: Ring128Tensor = x.try_into().unwrap();
@@ -1019,10 +1004,10 @@ impl RingAddOp {
         x: SymbolicValue,
         y: SymbolicValue,
     ) -> SymbolicValue {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                let x: Symbolic<Ring64Tensor> = x.try_into().unwrap();
-                let y: Symbolic<Ring64Tensor> = y.try_into().unwrap();
+        match (&self.plc, self.lhs, self.rhs) {
+            (Placement::Host(_), Symbolic::<Ring64Tensor>::TY, Symbolic::<Ring64Tensor>::TY) => {
+                let x: Symbolic::<Ring64Tensor> = x.try_into().unwrap();
+                let y: Symbolic::<Ring64Tensor> = y.try_into().unwrap();
 
                 match (x, y) {
                     (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
@@ -1037,9 +1022,9 @@ impl RingAddOp {
                 .into()
             }
 
-            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
-                let x: Symbolic<Ring128Tensor> = x.try_into().unwrap();
-                let y: Symbolic<Ring128Tensor> = y.try_into().unwrap();
+            (Placement::Host(_), Symbolic::<Ring128Tensor>::TY, Symbolic::<Ring128Tensor>::TY) => {
+                let x: Symbolic::<Ring128Tensor> = x.try_into().unwrap();
+                let y: Symbolic::<Ring128Tensor> = y.try_into().unwrap();
 
                 match (x, y) {
                     (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
