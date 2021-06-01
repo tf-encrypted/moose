@@ -958,6 +958,58 @@ impl RepShareOp {
     }
 }
 
+macro_rules! foo {
+    ($op:ty, [$(($t0:ty, $t1:ty)),+], $f:expr) => {
+        impl $op {
+            pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value) -> Value> {
+                match (&self.plc, self.lhs, self.rhs) {
+                    $(
+                        (Placement::Host(_), <$t0>::TY, <$t1>::TY) => {
+                            let op = self.clone();
+                            Box::new(move |x: Value, y: Value| -> Value {
+                                let x0: $t0 = x.try_into().unwrap();
+                                let x1: $t1 = y.try_into().unwrap();
+                                $f(x0, x1).into()
+                            })
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+
+            pub fn execute_symbolic(
+                &self,
+                ctx: &SymbolicContext,
+                x: SymbolicValue,
+                y: SymbolicValue,
+            ) -> SymbolicValue {
+                match (&self.plc, self.lhs, self.rhs) {
+                    $(
+                        (Placement::Host(_), Symbolic::<$t0>::TY, Symbolic::<$t1>::TY) => {
+                            let x0: Symbolic::<$t0> = x.try_into().unwrap();
+                            let x1: Symbolic::<$t1> = y.try_into().unwrap();
+            
+                            match (x0, x1) {
+                                (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
+                                    Symbolic::Concrete($f(x0, x1))
+                                }
+                                (Symbolic::Symbolic(x0), Symbolic::Symbolic(x1)) => {
+                                    let op_name = ctx.add_binary_operation(self, &x0.op, &x1.op);
+                                    Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                                }
+                                _ => unimplemented!(), // ok
+                            }
+                            .into()
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+        
+        }
+    };
+}
+
 #[derive(Clone, Debug)]
 struct RingAddOp {
     lhs: Ty,
@@ -965,90 +1017,22 @@ struct RingAddOp {
     plc: Placement,
 }
 
-// foo!{
-//     RingAddOp,
-//     (Ring64Tensor, Ring64Tensor),
-//     (Ring128Tensor, Ring128Tensor),
-// }
-
 impl RingAddOp {
-    pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value) -> Value> {
-        match (&self.plc, self.lhs, self.rhs) {
-            (Placement::Host(_), Ring64Tensor::TY, Ring64Tensor::TY) => {
-                let op = self.clone();
-                Box::new(move |x: Value, y: Value| -> Value {
-                    let x: Ring64Tensor = x.try_into().unwrap();
-                    let y: Ring64Tensor = y.try_into().unwrap();
-
-                    Self::abstract_kernel(x, y).into()
-                })
-            }
-
-            (Placement::Host(_), Ring128Tensor::TY, Ring128Tensor::TY) => {
-                let op = self.clone();
-                Box::new(move |x: Value, y: Value| -> Value {
-                    let x: Ring128Tensor = x.try_into().unwrap();
-                    let y: Ring128Tensor = y.try_into().unwrap();
-
-                    Self::abstract_kernel(x, y).into()
-                })
-            }
-
-            _ => unimplemented!(), // ok
-        }
-    }
-
-    pub fn execute_symbolic(
-        &self,
-        ctx: &SymbolicContext,
-        x: SymbolicValue,
-        y: SymbolicValue,
-    ) -> SymbolicValue {
-        match (&self.plc, self.lhs, self.rhs) {
-            (Placement::Host(_), Symbolic::<Ring64Tensor>::TY, Symbolic::<Ring64Tensor>::TY) => {
-                let x: Symbolic::<Ring64Tensor> = x.try_into().unwrap();
-                let y: Symbolic::<Ring64Tensor> = y.try_into().unwrap();
-
-                match (x, y) {
-                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
-                        Symbolic::Concrete(Self::abstract_kernel(x, y))
-                    }
-                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
-                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                    }
-                    _ => unimplemented!(), // ok
-                }
-                .into()
-            }
-
-            (Placement::Host(_), Symbolic::<Ring128Tensor>::TY, Symbolic::<Ring128Tensor>::TY) => {
-                let x: Symbolic::<Ring128Tensor> = x.try_into().unwrap();
-                let y: Symbolic::<Ring128Tensor> = y.try_into().unwrap();
-
-                match (x, y) {
-                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
-                        Symbolic::Concrete(Self::abstract_kernel(x, y))
-                    }
-                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
-                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                    }
-                    _ => unimplemented!(), // ok
-                }
-                .into()
-            }
-
-            _ => unimplemented!(), // ok
-        }
-    }
-
     fn abstract_kernel<T>(x: RingTensor<T>, y: RingTensor<T>) -> RingTensor<T>
     where
         RingTensor<T>: Add<RingTensor<T>, Output = RingTensor<T>>,
     {
         x + y
     }
+}
+
+foo!{
+    RingAddOp,
+    [
+        (Ring64Tensor, Ring64Tensor),
+        (Ring128Tensor, Ring128Tensor)
+    ],
+    Self::abstract_kernel
 }
 
 #[derive(Clone, Debug)]
@@ -1059,83 +1043,21 @@ struct RingSubOp {
 }
 
 impl RingSubOp {
-    pub fn compile<C: Context>(&self, ctx: &C) -> Box<dyn Fn(Value, Value) -> Value> {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                let op = self.clone();
-                Box::new(move |x: Value, y: Value| -> Value {
-                    let x: Ring64Tensor = x.try_into().unwrap();
-                    let y: Ring64Tensor = y.try_into().unwrap();
-
-                    Self::abstract_kernel(x, y).into()
-                })
-            }
-
-            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
-                let op = self.clone();
-                Box::new(move |x: Value, y: Value| -> Value {
-                    let x: Ring128Tensor = x.try_into().unwrap();
-                    let y: Ring128Tensor = y.try_into().unwrap();
-
-                    Self::abstract_kernel(x, y).into()
-                })
-            }
-
-            _ => unimplemented!(), // ok
-        }
-    }
-
-    pub fn execute_symbolic(
-        &self,
-        ctx: &SymbolicContext,
-        x: SymbolicValue,
-        y: SymbolicValue,
-    ) -> SymbolicValue {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                let x: Symbolic<Ring64Tensor> = x.try_into().unwrap();
-                let y: Symbolic<Ring64Tensor> = y.try_into().unwrap();
-
-                match (x, y) {
-                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
-                        Symbolic::Concrete(Self::abstract_kernel(x, y))
-                    }
-                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
-                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                    }
-                    _ => unimplemented!(), // ok
-                }
-                .into()
-            }
-
-            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
-                let x: Symbolic<Ring128Tensor> = x.try_into().unwrap();
-                let y: Symbolic<Ring128Tensor> = y.try_into().unwrap();
-
-                match (x, y) {
-                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
-                        Symbolic::Concrete(Self::abstract_kernel(x, y))
-                    }
-                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
-                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                    }
-                    _ => unimplemented!(),
-                }
-                .into()
-            }
-
-            _ => unimplemented!(),
-        }
-    }
-
     fn abstract_kernel<T>(x: RingTensor<T>, y: RingTensor<T>) -> RingTensor<T>
     where
         RingTensor<T>: Sub<RingTensor<T>, Output = RingTensor<T>>,
     {
         x - y
     }
+}
+
+foo!{
+    RingSubOp,
+    [
+        (Ring64Tensor, Ring64Tensor),
+        (Ring128Tensor, Ring128Tensor)
+    ],
+    Self::abstract_kernel
 }
 
 #[derive(Clone, Debug)]
@@ -1146,83 +1068,21 @@ struct RingMulOp {
 }
 
 impl RingMulOp {
-    pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Value, Value) -> Value> {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                let op = self.clone();
-                Box::new(move |x: Value, y: Value| -> Value {
-                    let x: Ring64Tensor = x.try_into().unwrap();
-                    let y: Ring64Tensor = y.try_into().unwrap();
-
-                    Self::abstract_kernel(x, y).into()
-                })
-            }
-
-            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
-                let op = self.clone();
-                Box::new(move |x: Value, y: Value| -> Value {
-                    let x: Ring128Tensor = x.try_into().unwrap();
-                    let y: Ring128Tensor = y.try_into().unwrap();
-
-                    Self::abstract_kernel(x, y).into()
-                })
-            }
-
-            _ => unimplemented!(), // ok
-        }
-    }
-
-    pub fn execute_symbolic(
-        &self,
-        ctx: &SymbolicContext,
-        x: SymbolicValue,
-        y: SymbolicValue,
-    ) -> SymbolicValue {
-        match (&self.plc, &self.lhs, &self.rhs) {
-            (Placement::Host(_), Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
-                let x: Symbolic<Ring64Tensor> = x.try_into().unwrap();
-                let y: Symbolic<Ring64Tensor> = y.try_into().unwrap();
-
-                match (x, y) {
-                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
-                        Symbolic::Concrete(Self::abstract_kernel(x, y))
-                    }
-                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
-                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                    }
-                    _ => unimplemented!(), // ok
-                }
-                .into()
-            }
-
-            (Placement::Host(_), Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
-                let x: Symbolic<Ring128Tensor> = x.try_into().unwrap();
-                let y: Symbolic<Ring128Tensor> = y.try_into().unwrap();
-
-                match (x, y) {
-                    (Symbolic::Concrete(x), Symbolic::Concrete(y)) => {
-                        Symbolic::Concrete(Self::abstract_kernel(x, y))
-                    }
-                    (Symbolic::Symbolic(x), Symbolic::Symbolic(y)) => {
-                        let op_name = ctx.add_binary_operation(self, &x.op, &y.op);
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                    }
-                    _ => unimplemented!(), // ok
-                }
-                .into()
-            }
-
-            _ => unimplemented!(), // ok
-        }
-    }
-
     fn abstract_kernel<T>(x: RingTensor<T>, y: RingTensor<T>) -> RingTensor<T>
     where
         RingTensor<T>: Mul<RingTensor<T>, Output = RingTensor<T>>,
     {
         x * y
     }
+}
+
+foo!{
+    RingMulOp,
+    [
+        (Ring64Tensor, Ring64Tensor),
+        (Ring128Tensor, Ring128Tensor)
+    ],
+    Self::abstract_kernel
 }
 
 trait PlacementSample<C: Context, O> {
