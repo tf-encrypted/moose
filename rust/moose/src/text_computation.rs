@@ -1198,6 +1198,86 @@ fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     alt((value(true, tag("true")), value(false, tag("false"))))(input)
 }
 
+/// A serde serializer to produce the same textual format
+pub fn to_textual(comp: &Computation) -> String {
+    itertools::join(comp.operations.iter().map(operation_to_textual), "\n")
+}
+
+fn operation_to_textual(op: &Operation) -> String {
+    format!(
+        "{} = {} {}",
+        op.name,
+        operator_to_textual(&op.kind, &op.inputs),
+        placement_to_textual(&op.placement)
+    )
+}
+
+fn placement_to_textual(placement: &Placement) -> String {
+    match placement {
+        Placement::Host(HostPlacement { owner }) => format!("@Host({})", owner),
+        Placement::Replicated(ReplicatedPlacement { owners }) => {
+            format!("@Replicated({}, {}, {})", owners[0], owners[1], owners[2])
+        }
+    }
+}
+
+fn operator_to_textual(op: &Operator, inputs: &[String]) -> String {
+    match op {
+        Operator::Constant(ConstantOp { value: x }) => format!("Constant({})", value_to_textual(x)),
+        Operator::StdAdd(StdAddOp { lhs, rhs }) => format!(
+            "StdAdd({}): ({}, {}) -> {}",
+            inputs.join(", "),
+            type_to_textual(lhs),
+            type_to_textual(rhs),
+            type_to_textual(lhs)
+        ),
+        _ => unimplemented!(),
+    }
+}
+
+fn type_to_textual(ty: &Ty) -> String {
+    match ty {
+        Ty::Float32TensorTy => "Float32Tensor".to_string(),
+        _ => unimplemented!(),
+    }
+}
+
+fn value_to_textual(value: &Value) -> String {
+    match value {
+        Value::Float32Tensor(x) => format!("{}: Float32Tensor", tensor_to_textual(&x.0)),
+        _ => unimplemented!(),
+    }
+}
+
+fn tensor_to_textual<T: std::fmt::Debug>(array: &ndarray::ArrayD<T>) -> String {
+    match array.shape() {
+        [_len] => format!("{:?}", array.as_slice().unwrap()),
+        [cols, rows] => {
+            let mut buffer = String::from("[");
+            let mut first_row = true;
+            for r in 0..*rows {
+                if !first_row {
+                    buffer.push_str(&", ");
+                }
+                let mut first_col = true;
+                buffer.push('[');
+                for c in 0..*cols {
+                    if !first_col {
+                        buffer.push_str(&", ");
+                    }
+                    buffer += &format!("{:?}", array[[r, c]]);
+                    first_col = false;
+                }
+                buffer.push_str(&"]");
+                first_row = false;
+            }
+            buffer.push(']');
+            buffer
+        }
+        _ => unimplemented!(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1602,6 +1682,20 @@ mod tests {
         use std::convert::TryInto;
         let v: Value = "[1.0, 2.0, 3.0]: Float32Tensor".try_into()?;
         assert_eq!(v, Value::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_computation_into_text() -> Result<(), anyhow::Error> {
+        use std::convert::TryInto;
+        let comp: Computation = "x = Constant([1.0]: Float32Tensor) @Host(alice)
+            y = Constant([[1.0, 2.0], [3.0, 4.0]]: Float32Tensor): () -> Float32Tensor @Host(bob)
+            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Replicated(alice, bob, carole)"
+            .try_into()?;
+        let textual = to_textual(&comp);
+        println!("TEXT:\n{}", textual); // TODO Debug output
+        let comp2: Computation = textual.try_into()?;
+        assert_eq!(comp.operations[0], comp2.operations[0]);
         Ok(())
     }
 }
