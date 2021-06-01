@@ -1071,11 +1071,11 @@ mod tests {
 
     #[test]
     fn test_standard_prod_ops() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
-        y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
-        mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
-        dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
-        mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @Host(alice)"#;
+        let source = r#"x = Constant{value=[[1.0, 2.0], [3.0, 4.0]] : Float32Tensor} @Host(alice)
+        y = Constant{value=[[1.0, 2.0], [3.0, 4.0]] : Float32Tensor} @Host(alice)
+        mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
         TestExecutor::default().run_computation(&source.try_into()?, SyncArgs::new())?;
         Ok(())
     }
@@ -1085,20 +1085,20 @@ mod tests {
         use itertools::Itertools;
         let mut definition = String::from(
             r#"key = PrimGenPrfKey() @Host(alice)
-        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
-        shape = Constant([2, 3] : Shape) @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        shape = Constant{value =[2, 3] : Shape} @Host(alice)
         "#,
         );
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = RingSample(shape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)",
+                    "x{} = RingSample: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
             .join("\n");
         definition.push_str(&body);
-        definition.push_str("\nz = Output(x0): (Ring64Tensor) -> Unit @Host(alice)");
+        definition.push_str("\nz = Output: (Ring64Tensor) -> Unit (x0) @Host(alice)");
         let comp: Computation = definition.try_into().unwrap();
 
         let exec = TestExecutor::default();
@@ -1108,9 +1108,9 @@ mod tests {
 
     #[test]
     fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant(00000000000000000000000000000000: PrfKey) @Host(alice)
-        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
-        output = Output(seed): (Seed) -> Seed @Host(alice)
+        let source = r#"key = Constant{value=00000000000000000000000000000000: PrfKey} @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        output = Output: (Seed) -> Seed (seed) @Host(alice)
 "#;
         let comp: Computation = source.try_into()?;
 
@@ -1129,10 +1129,10 @@ mod tests {
 
     #[test]
     fn test_primitives_sample_ring() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"seed = Constant(00000000000000000000000000000000: Seed) @Host(alice)
-        xshape = Constant([2, 2]: Shape) @Host(alice)
-        sampled = RingSample(xshape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)
-        output = Output(sampled): (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        let source = r#"seed = Constant{value=00000000000000000000000000000000: Seed} @Host(alice)
+        xshape = Constant{value=[2, 2]: Shape} @Host(alice)
+        sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
+        output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
         "#;
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
@@ -1149,10 +1149,10 @@ mod tests {
 
     #[test]
     fn test_standard_input() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Input() {arg_name = "x"}: () -> Int64Tensor @Host(Alice)
-        y = Input() {arg_name = "y"}: () -> Int64Tensor @Host(Alice)
-        z = StdAdd(x, y): (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(Alice)
-        output = Output(z): (Int64Tensor) -> Int64Tensor @Host(Alice)
+        let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(Alice)
+        y = Input {arg_name = "y"}: () -> Int64Tensor @Host(Alice)
+        z = StdAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(Alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(Alice)
         "#;
 
         use maplit::hashmap;
@@ -1186,10 +1186,10 @@ mod tests {
         #[case] axis: usize,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source_template = r#"x_0 = Constant([[1,2], [3,4]]: Int64Tensor) @Host(alice)
-        x_1 = Constant([[5, 6], [7,8]]: Int64Tensor) @Host(alice)
-        concatenated = StdConcatenate(x_0, x_1) {axis=test_axis}: (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(alice)
-        output = Output(concatenated): (Int64Tensor) -> Int64Tensor @Host(alice)
+        let source_template = r#"x_0 = Constant{value=[[1,2], [3,4]]: Int64Tensor} @Host(alice)
+        x_1 = Constant{value=[[5, 6], [7,8]]: Int64Tensor} @Host(alice)
+        concatenated = StdConcatenate {axis=test_axis}: (Int64Tensor, Int64Tensor) -> Int64Tensor (x_0, x_1) @Host(alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (concatenated) @Host(alice)
         "#;
         let source = source_template.replace("test_axis", &axis.to_string());
         let comp: Computation = source.try_into()?;
@@ -1211,10 +1211,10 @@ mod tests {
         #[case] test_op: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source_template = r#"x0 = Constant([5]: Int64Tensor) @Host(alice)
-        x1 = Constant([3]: Int64Tensor) @Host(bob)
-        res = StdOp(x0, x1): (Int64Tensor, Int64Tensor) -> Int64Tensor @Host(alice)
-        output = Output(res): (Int64Tensor) -> Int64Tensor @Host(alice)
+        let source_template = r#"x0 = Constant{value=[5]: Int64Tensor} @Host(alice)
+        x1 = Constant{value=[3]: Int64Tensor} @Host(bob)
+        res = StdOp: (Int64Tensor, Int64Tensor) -> Int64Tensor (x0, x1) @Host(alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
         "#;
         let source = source_template.replace("StdOp", &test_op);
         let comp: Computation = source.try_into()?;
@@ -1230,9 +1230,9 @@ mod tests {
 
     #[test]
     fn test_standard_inverse() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant([[3.0, 2.0], [2.0, 3.0]]: Float32Tensor) : () -> Float32Tensor @Host(alice)
-        x_inv = StdInverse(x) : (Float32Tensor) -> Float32Tensor @Host(alice)
-        output = Output(x_inv): (Float32Tensor) -> Float32Tensor @Host(alice)
+        let source = r#"x = Constant{value=[[3.0, 2.0], [2.0, 3.0]]: Float32Tensor} : () -> Float32Tensor @Host(alice)
+        x_inv = StdInverse : (Float32Tensor) -> Float32Tensor (x) @Host(alice)
+        output = Output: (Float32Tensor) -> Float32Tensor (x_inv) @Host(alice)
         "#;
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
@@ -1257,9 +1257,9 @@ mod tests {
     #[case("Float64Tensor")]
     #[case("Int64Tensor")]
     fn test_standard_ones(#[case] dtype: String) -> std::result::Result<(), anyhow::Error> {
-        let template = r#"s = Constant([2, 2]: Shape) @Host(alice)
-        r = StdOnes(s) : (Shape) -> dtype @Host(alice)
-        output = Output(r) : (dtype) -> dtype @Host(alice)
+        let template = r#"s = Constant{value=[2, 2]: Shape} @Host(alice)
+        r = StdOnes : (Shape) -> dtype (s) @Host(alice)
+        output = Output : (dtype) -> dtype (r) @Host(alice)
         "#;
         let source = template.replace("dtype", &dtype);
         let comp: Computation = source.try_into()?;
@@ -1323,9 +1323,9 @@ mod tests {
             axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
 
         let source = format!(
-            r#"s = Constant([[1,2], [3, 4]]: Float32Tensor) @Host(alice)
-            r = {}(s) {}: (Float32Tensor) -> Float32Tensor @Host(alice)
-            output = Output(r) : (Float32Tensor) -> Float32Tensor @Host(alice)
+            r#"s = Constant{{value=[[1,2], [3, 4]]: Float32Tensor}} @Host(alice)
+            r = {} {}: (Float32Tensor) -> Float32Tensor (s) @Host(alice)
+            output = Output : (Float32Tensor) -> Float32Tensor (r) @Host(alice)
         "#,
             reduce_op_test, axis_str
         );
@@ -1348,9 +1348,9 @@ mod tests {
     fn test_standard_transpose(
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"s = Constant([[1,2], [3, 4]]: Int64Tensor) @Host(alice)
-        r = StdTranspose(s) : (Int64Tensor) -> Int64Tensor @Host(alice)
-        output = Output(r) : (Int64Tensor) -> Int64Tensor @Host(alice)
+        let source = r#"s = Constant{value=[[1,2], [3, 4]]: Int64Tensor} @Host(alice)
+        r = StdTranspose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
+        output = Output : (Int64Tensor) -> Int64Tensor (r) @Host(alice)
         "#;
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
@@ -1370,9 +1370,9 @@ mod tests {
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x =  Constant([1.0, 1.0, 1.0]: Float64Tensor) @Host(alice)
-        res = StdAtLeast2D(x) {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor @Host(alice)
-        output = Output(res) : (Float64Tensor) -> Float64Tensor @Host(alice)
+            r#"x =  Constant{{value=[1.0, 1.0, 1.0]: Float64Tensor}} @Host(alice)
+        res = StdAtLeast2D {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor (x) @Host(alice)
+        output = Output : (Float64Tensor) -> Float64Tensor (res) @Host(alice)
         "#,
             to_column_vector
         );
@@ -1397,10 +1397,10 @@ mod tests {
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x =  Constant([3]: Ring64Tensor) @Host(alice)
-        y = Constant([2]: Ring64Tensor) @Host(alice)
-        res = {}(x, y) : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor @Host(alice)
-        output = Output(res) : (Ring64Tensor) -> Ring64Tensor @Host(alice)
+            r#"x =  Constant{{value=[3]: Ring64Tensor}} @Host(alice)
+        y = Constant{{value=[2]: Ring64Tensor}} @Host(alice)
+        res = {} : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
+        output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#,
             test_op
         );
@@ -1439,10 +1439,10 @@ mod tests {
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x = Constant({}) @Host(alice)
-        y = Constant({}) @Host(alice)
-        res = RingDot(x, y) : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor @Host(alice)
-        output = Output(res) : (Ring64Tensor) -> Ring64Tensor @Host(alice)
+            r#"x = Constant{{value={}}} @Host(alice)
+        y = Constant{{value={}}} @Host(alice)
+        res = RingDot : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
+        output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#,
             x_str, y_str
         );
@@ -1481,9 +1481,9 @@ mod tests {
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"shape = Constant([{shape}] : Shape) @Host(alice)
-        res = RingFill(shape) {{value = 1 : {t} }} : (Shape) -> {t}Tensor @Host(alice)
-        output = Output(res) : ({t}Tensor) -> {t}Tensor @Host(alice)
+            r#"shape = Constant{{value=[{shape}] : Shape}} @Host(alice)
+        res = RingFill {{value = 1 : {t} }} : (Shape) -> {t}Tensor (shape) @Host(alice)
+        output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
         "#,
             t = type_str,
             shape = shape_str,
@@ -1513,9 +1513,9 @@ mod tests {
     #[rstest]
     #[case("[4, 6]: Ring64Tensor")]
     fn test_ring_sum(#[case] expected_result: Value) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant([[1, 2], [3, 4]]: Ring64Tensor) @Host(alice)
-        r = RingSum(x) {axis = 0}: (Ring64Tensor) -> Ring64Tensor @Host(alice)
-        output = Output(r): (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        let source = r#"x = Constant{value=[[1, 2], [3, 4]]: Ring64Tensor} @Host(alice)
+        r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
+        output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
         "#;
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
@@ -1532,9 +1532,9 @@ mod tests {
         #[case] type_str: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let template_source = r#"x = Constant([4, 4]: Ring64Tensor) @Host(alice)
-        res = RingShr(x) {amount = 1}: (Ring64Tensor) -> Ring64Tensor @Host(alice)
-        output = Output(res): (Ring64Tensor) -> Ring64Tensor @Host(alice)
+        let template_source = r#"x = Constant{value=[4, 4]: Ring64Tensor} @Host(alice)
+        res = RingShr {amount = 1}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
+        output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#;
         let source = template_source.replace("Ring64Tensor", &type_str.as_str());
         let comp: Computation = source.try_into()?;

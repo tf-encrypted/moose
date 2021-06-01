@@ -109,13 +109,14 @@ fn parse_assignment<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, identifier) = ws(identifier)(input)?;
     let (input, _) = tag("=")(input)?;
     let (input, operator) = ws(parse_operator)(input)?;
+    let (input, args) = opt(argument_list)(input)?;
     let (input, placement) = ws(parse_placement)(input)?;
     Ok((
         input,
         Operation {
             name: identifier.into(),
-            kind: operator.0,
-            inputs: operator.1,
+            kind: operator,
+            inputs: args.unwrap_or_default(),
             placement,
         },
     ))
@@ -179,9 +180,8 @@ macro_rules! attributes {
 macro_rules! std_unary {
     ($typ:expr, $sub:ident) => {
         |input: &'a str| {
-            let (input, args) = argument_list(input)?;
             let (input, (args_types, _result_type)) = type_definition(1)(input)?;
-            Ok((input, ($typ($sub { ty: args_types[0] }), args)))
+            Ok((input, $typ($sub { ty: args_types[0] })))
         }
     };
 }
@@ -190,9 +190,8 @@ macro_rules! std_unary {
 macro_rules! std_unary_output {
     ($typ:expr, $sub:ident) => {
         |input: &'a str| {
-            let (input, args) = argument_list(input)?;
             let (input, (_, result_type)) = type_definition(1)(input)?;
-            Ok((input, ($typ($sub { ty: result_type }), args)))
+            Ok((input, $typ($sub { ty: result_type })))
         }
     };
 }
@@ -201,17 +200,13 @@ macro_rules! std_unary_output {
 macro_rules! std_binary {
     ($typ:expr, $sub:ident) => {
         |input: &'a str| {
-            let (input, args) = argument_list(input)?;
             let (input, (args_types, _result_type)) = type_definition(2)(input)?;
             Ok((
                 input,
-                (
-                    $typ($sub {
-                        lhs: args_types[0],
-                        rhs: args_types[1],
-                    }),
-                    args,
-                ),
+                $typ($sub {
+                    lhs: args_types[0],
+                    rhs: args_types[1],
+                }),
             ))
         }
     };
@@ -221,18 +216,14 @@ macro_rules! std_binary {
 macro_rules! operation_on_axis {
     ($typ:expr, $sub:ident) => {
         |input: &'a str| {
-            let (input, args) = argument_list(input)?;
             let (input, opt_axis) = opt(attributes_single("axis", parse_int))(input)?;
             let (input, (args_types, _result_type)) = type_definition(1)(input)?;
             Ok((
                 input,
-                (
-                    $typ($sub {
-                        ty: args_types[0],
-                        axis: opt_axis,
-                    }),
-                    args,
-                ),
+                $typ($sub {
+                    ty: args_types[0],
+                    axis: opt_axis,
+                }),
             ))
         }
     };
@@ -241,7 +232,7 @@ macro_rules! operation_on_axis {
 /// Parses operator - maps names to structs.
 fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
+) -> IResult<&'a str, Operator, E> {
     let part1 = alt((
         preceded(
             tag("Identity"),
@@ -340,18 +331,17 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 /// Parses a Constant
 fn constant<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, x) = delimited(tag("("), ws(value_literal), tag(")"))(input)?;
+) -> IResult<&'a str, Operator, E> {
+    let (input, value) = attributes_single("value", value_literal)(input)?;
     let (input, _optional_types) = opt(type_definition(0))(input)?;
 
-    Ok((input, (Operator::Constant(ConstantOp { value: x }), vec![])))
+    Ok((input, Operator::Constant(ConstantOp { value })))
 }
 
 /// Parses a Send operator
 fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, receiver)) = attributes!((
         attributes_member("rendezvous_key", string),
         attributes_member("receiver", string)
@@ -359,21 +349,17 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, _opt_type) = opt(type_definition(0))(input)?;
     Ok((
         input,
-        (
-            Operator::Send(SendOp {
-                rendezvous_key,
-                receiver: Role::from(receiver),
-            }),
-            args,
-        ),
+        Operator::Send(SendOp {
+            rendezvous_key,
+            receiver: Role::from(receiver),
+        }),
     ))
 }
 
 /// Parses a Receive operator
 fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, sender)) = attributes!((
         attributes_member("rendezvous_key", string),
         attributes_member("sender", string)
@@ -381,79 +367,63 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::Receive(ReceiveOp {
-                rendezvous_key,
-                sender: Role::from(sender),
-                ty: result_type,
-            }),
-            args,
-        ),
+        Operator::Receive(ReceiveOp {
+            rendezvous_key,
+            sender: Role::from(sender),
+            ty: result_type,
+        }),
     ))
 }
 
 /// Parses an Input operator
 fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, arg_name) = attributes_single("arg_name", string)(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::Input(InputOp {
-                arg_name,
-                ty: result_type,
-            }),
-            args,
-        ),
+        Operator::Input(InputOp {
+            arg_name,
+            ty: result_type,
+        }),
     ))
 }
 
 /// Parses a StdExpandDims operator
 fn stdexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
     let (input, (args_types, _result_type)) = type_definition(1)(input)?;
     Ok((
         input,
-        (
-            Operator::StdExpandDims(StdExpandDimsOp {
-                ty: args_types[0],
-                axis,
-            }),
-            args,
-        ),
+        Operator::StdExpandDims(StdExpandDimsOp {
+            ty: args_types[0],
+            axis,
+        }),
     ))
 }
 
 /// Parses a StdAtLeast2D operator.
 fn stdatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, to_column_vector) = attributes_single("to_column_vector", parse_bool)(input)?;
     let (input, (args_types, _result_type)) = type_definition(1)(input)?;
     Ok((
         input,
-        (
-            Operator::StdAtLeast2D(StdAtLeast2DOp {
-                ty: args_types[0],
-                to_column_vector,
-            }),
-            args,
-        ),
+        Operator::StdAtLeast2D(StdAtLeast2DOp {
+            ty: args_types[0],
+            to_column_vector,
+        }),
     ))
 }
 
 /// Parses a StdSlice operator.
 fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, (start, end)) = attributes!((
         attributes_member("start", parse_int),
         attributes_member("end", parse_int)
@@ -461,137 +431,108 @@ fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, (args_types, _result_type)) = type_definition(1)(input)?;
     Ok((
         input,
-        (
-            Operator::StdSlice(StdSliceOp {
-                ty: args_types[0],
-                start,
-                end,
-            }),
-            args,
-        ),
+        Operator::StdSlice(StdSliceOp {
+            ty: args_types[0],
+            start,
+            end,
+        }),
     ))
 }
 
 /// Parses a StdConcatenate operator.
 fn stdconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
     let (input, (args_types, _result_type)) = type_definition(1)(input)?;
     Ok((
         input,
-        (
-            Operator::StdConcatenate(StdConcatenateOp {
-                ty: args_types[0],
-                axis,
-            }),
-            args,
-        ),
+        Operator::StdConcatenate(StdConcatenateOp {
+            ty: args_types[0],
+            axis,
+        }),
     ))
 }
 
 /// Parses a RingSample operator.
 fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::RingSample(RingSampleOp {
-                output: result_type,
-                max_value: opt_max_value,
-            }),
-            args,
-        ),
+        Operator::RingSample(RingSampleOp {
+            output: result_type,
+            max_value: opt_max_value,
+        }),
     ))
 }
 
 /// Parses a RingFill operator.
 fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", value_literal)(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::RingFill(RingFillOp {
-                ty: result_type,
-                value,
-            }),
-            args,
-        ),
+        Operator::RingFill(RingFillOp {
+            ty: result_type,
+            value,
+        }),
     ))
 }
 
 /// Parses a RingShl operator.
 fn ring_shl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::RingShl(RingShlOp {
-                ty: result_type,
-                amount,
-            }),
-            args,
-        ),
+        Operator::RingShl(RingShlOp {
+            ty: result_type,
+            amount,
+        }),
     ))
 }
 
 /// Parses a RingShr operator.
 fn ring_shr<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::RingShr(RingShrOp {
-                ty: result_type,
-                amount,
-            }),
-            args,
-        ),
+        Operator::RingShr(RingShrOp {
+            ty: result_type,
+            amount,
+        }),
     ))
 }
 
 /// Parses a PrimGenPrfKey operator.
 fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
-    Ok((input, (Operator::PrimGenPrfKey(PrimGenPrfKeyOp), args)))
+) -> IResult<&'a str, Operator, E> {
+    Ok((input, Operator::PrimGenPrfKey(PrimGenPrfKeyOp)))
 }
 
 /// Parses a PrimDeriveSeed operator.
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = ws(argument_list)(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, nonce) = attributes_single("nonce", map(vector(parse_int), Nonce))(input)?;
-    Ok((
-        input,
-        (Operator::PrimDeriveSeed(PrimDeriveSeedOp { nonce }), args),
-    ))
+    Ok((input, Operator::PrimDeriveSeed(PrimDeriveSeedOp { nonce })))
 }
 
 /// Parses a FixedpointRingEncode operator.
 fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, (scaling_base, scaling_exp)) = attributes!((
         attributes_member("scaling_base", parse_int),
         attributes_member("scaling_exp", parse_int)
@@ -599,22 +540,18 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::FixedpointRingEncode(FixedpointRingEncodeOp {
-                ty: result_type,
-                scaling_base,
-                scaling_exp,
-            }),
-            args,
-        ),
+        Operator::FixedpointRingEncode(FixedpointRingEncodeOp {
+            ty: result_type,
+            scaling_base,
+            scaling_exp,
+        }),
     ))
 }
 
 /// Parses a FixedpointRingDecode operator.
 fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, (scaling_base, scaling_exp)) = attributes!((
         attributes_member("scaling_base", parse_int),
         attributes_member("scaling_exp", parse_int)
@@ -622,32 +559,27 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
     let (input, (args_types, result_type)) = type_definition(1)(input)?;
     Ok((
         input,
-        (
-            Operator::FixedpointRingDecode(FixedpointRingDecodeOp {
-                input_ty: args_types[0],
-                ty: result_type,
-                scaling_base,
-                scaling_exp,
-            }),
-            args,
-        ),
+        Operator::FixedpointRingDecode(FixedpointRingDecodeOp {
+            input_ty: args_types[0],
+            ty: result_type,
+            scaling_base,
+            scaling_exp,
+        }),
     ))
 }
 
 /// Parses a Save operator.
 fn save_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, (args_types, _result_type)) = type_definition(2)(input)?;
-    Ok((input, (Operator::Save(SaveOp { ty: args_types[1] }), args)))
+    Ok((input, Operator::Save(SaveOp { ty: args_types[1] })))
 }
 
 /// Parses a FixedpointRingMean operator.
 fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, (scaling_base, scaling_exp, axis)) = attributes!((
         attributes_member("scaling_base", parse_int),
         attributes_member("scaling_exp", parse_int),
@@ -657,82 +589,68 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>
     let (input, (_args_types, result_type)) = type_definition(0)(input)?;
     Ok((
         input,
-        (
-            Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                ty: result_type,
-                axis,
-                scaling_base,
-                scaling_exp,
-            }),
-            args,
-        ),
+        Operator::FixedpointRingMean(FixedpointRingMeanOp {
+            ty: result_type,
+            axis,
+            scaling_base,
+            scaling_exp,
+        }),
     ))
 }
 
 /// Parses a RingInject operator.
 fn ring_inject<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
     let (input, (args_types, _result_type)) = type_definition(1)(input)?;
     Ok((
         input,
-        (
-            Operator::RingInject(RingInjectOp {
-                output: args_types[0],
-                bit_idx,
-            }),
-            args,
-        ),
+        Operator::RingInject(RingInjectOp {
+            output: args_types[0],
+            bit_idx,
+        }),
     ))
 }
 
 /// Parses a BitExtract operator.
 fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
     let (input, (args_types, _result_type)) = type_definition(1)(input)?;
     Ok((
         input,
-        (
-            Operator::BitExtract(BitExtractOp {
-                ring_type: args_types[0],
-                bit_idx,
-            }),
-            args,
-        ),
+        Operator::BitExtract(BitExtractOp {
+            ring_type: args_types[0],
+            bit_idx,
+        }),
     ))
 }
 
 /// Parses a BitSample operator.
 fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, _opt_args) = opt(type_definition(0))(input)?;
-    Ok((input, (Operator::BitSample(BitSampleOp {}), args)))
+    Ok((input, Operator::BitSample(BitSampleOp {})))
 }
 
 /// Parses a BitFill operator.
 fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", parse_int)(input)?;
     let (input, _opt_args) = opt(type_definition(0))(input)?;
-    Ok((input, (Operator::BitFill(BitFillOp { value }), args)))
+    Ok((input, Operator::BitFill(BitFillOp { value })))
 }
 
 /// Parses a BitXor operator.
 fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, (Operator, Vec<String>), E> {
-    let (input, args) = argument_list(input)?;
+) -> IResult<&'a str, Operator, E> {
     let (input, _opt_args) = opt(type_definition(0))(input)?;
-    Ok((input, (Operator::BitXor(BitXorOp {}), args)))
+    Ok((input, Operator::BitXor(BitXorOp {})))
 }
 
 /// Parses list of arguments.
@@ -1200,81 +1118,105 @@ fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 
 /// A serde serializer to produce the same textual format
 pub fn to_textual(comp: &Computation) -> String {
-    itertools::join(comp.operations.iter().map(operation_to_textual), "\n")
+    comp.to_textual()
 }
 
-fn operation_to_textual(op: &Operation) -> String {
-    format!(
-        "{} = {} {}",
-        op.name,
-        operator_to_textual(&op.kind, &op.inputs),
-        placement_to_textual(&op.placement)
-    )
+trait ToTextual {
+    fn to_textual(&self) -> String;
 }
 
-fn placement_to_textual(placement: &Placement) -> String {
-    match placement {
-        Placement::Host(HostPlacement { owner }) => format!("@Host({})", owner),
-        Placement::Replicated(ReplicatedPlacement { owners }) => {
-            format!("@Replicated({}, {}, {})", owners[0], owners[1], owners[2])
+impl ToTextual for Computation {
+    fn to_textual(&self) -> String {
+        itertools::join(self.operations.iter().map(|op| op.to_textual()), "\n")
+    }
+}
+
+impl ToTextual for Operation {
+    fn to_textual(&self) -> String {
+        format!(
+            "{} = {} ({}) {}",
+            self.name,
+            self.kind.to_textual(),
+            self.inputs.join(", "),
+            self.placement.to_textual(),
+        )
+    }
+}
+
+impl ToTextual for Placement {
+    fn to_textual(&self) -> String {
+        match self {
+            Placement::Host(HostPlacement { owner }) => format!("@Host({})", owner),
+            Placement::Replicated(ReplicatedPlacement { owners }) => {
+                format!("@Replicated({}, {}, {})", owners[0], owners[1], owners[2])
+            }
         }
     }
 }
 
-fn operator_to_textual(op: &Operator, inputs: &[String]) -> String {
-    match op {
-        Operator::Constant(ConstantOp { value: x }) => format!("Constant({})", value_to_textual(x)),
-        Operator::StdAdd(StdAddOp { lhs, rhs }) => format!(
-            "StdAdd({}): ({}, {}) -> {}",
-            inputs.join(", "),
-            type_to_textual(lhs),
-            type_to_textual(rhs),
-            type_to_textual(lhs)
-        ),
-        _ => unimplemented!(),
+impl ToTextual for Operator {
+    fn to_textual(&self) -> String {
+        match self {
+            Operator::Constant(ConstantOp { value: x }) => {
+                format!("Constant{{value = {}}}", x.to_textual())
+            }
+            Operator::StdAdd(StdAddOp { lhs, rhs }) => format!(
+                "StdAdd: ({}, {}) -> {}",
+                lhs.to_textual(),
+                rhs.to_textual(),
+                lhs.to_textual(),
+            ),
+            _ => unimplemented!(),
+        }
     }
 }
 
-fn type_to_textual(ty: &Ty) -> String {
-    match ty {
-        Ty::Float32TensorTy => "Float32Tensor".to_string(),
-        _ => unimplemented!(),
+impl ToTextual for Ty {
+    fn to_textual(&self) -> String {
+        match self {
+            Ty::Float32TensorTy => "Float32Tensor".to_string(),
+            _ => unimplemented!(),
+        }
     }
 }
 
-fn value_to_textual(value: &Value) -> String {
-    match value {
-        Value::Float32Tensor(x) => format!("{}: Float32Tensor", tensor_to_textual(&x.0)),
-        _ => unimplemented!(),
+impl ToTextual for Value {
+    fn to_textual(&self) -> String {
+        match self {
+            Value::Float32Tensor(x) => format!("{}: Float32Tensor", x.0.to_textual()),
+            _ => unimplemented!(),
+        }
     }
 }
 
-fn tensor_to_textual<T: std::fmt::Debug>(array: &ndarray::ArrayD<T>) -> String {
-    match array.shape() {
-        [_len] => format!("{:?}", array.as_slice().unwrap()),
-        [cols, rows] => {
-            let mut buffer = String::from("[");
-            let mut first_row = true;
-            for r in 0..*rows {
-                if !first_row {
-                    buffer.push_str(&", ");
-                }
-                let mut first_col = true;
-                buffer.push('[');
-                for c in 0..*cols {
-                    if !first_col {
+impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
+    fn to_textual(&self) -> String {
+        match self.shape() {
+            [_len] => format!("{:?}", self.as_slice().unwrap()),
+            [cols, rows] => {
+                let mut buffer = String::from("[");
+                let mut first_row = true;
+                for r in 0..*rows {
+                    if !first_row {
                         buffer.push_str(&", ");
                     }
-                    buffer += &format!("{:?}", array[[r, c]]);
-                    first_col = false;
+                    let mut first_col = true;
+                    buffer.push('[');
+                    for c in 0..*cols {
+                        if !first_col {
+                            buffer.push_str(&", ");
+                        }
+                        buffer += &format!("{:?}", self[[r, c]]);
+                        first_col = false;
+                    }
+                    buffer.push_str(&"]");
+                    first_row = false;
                 }
-                buffer.push_str(&"]");
-                first_row = false;
+                buffer.push(']');
+                buffer
             }
-            buffer.push(']');
-            buffer
+            _ => unimplemented!(),
         }
-        _ => unimplemented!(),
     }
 }
 
@@ -1383,7 +1325,7 @@ mod tests {
     #[test]
     fn test_constant() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x = Constant([1.0] : Float32Tensor): () -> Float32Tensor @Host(alice)",
+            "x = Constant{value = [1.0] : Float32Tensor}: () -> Float32Tensor () @Host(alice)",
         )?;
         assert_eq!(op.name, "x");
         assert_eq!(
@@ -1401,7 +1343,7 @@ mod tests {
                 .unwrap(),
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor): () -> Float32Tensor @Replicated(alice, bob, charlie)",
+            "x = Constant{value = [[1.0, 2.0], [3.0, 4.0]] : Float32Tensor}: () -> Float32Tensor () @Replicated(alice, bob, charlie)",
         )?;
         assert_eq!(
             op.kind,
@@ -1415,7 +1357,7 @@ mod tests {
     #[test]
     fn test_stdbinary() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
+            "z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
@@ -1426,7 +1368,7 @@ mod tests {
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
+            "z = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
@@ -1441,10 +1383,10 @@ mod tests {
 
     #[test]
     fn test_stdadd_err() {
-        let data = "z = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)";
+        let data = "z = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)\n                  ^\n\n");
+            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n            ^\n\n");
         } else {
             panic!("Type parsing should have given an error on an invalid type, but did not");
         }
@@ -1460,7 +1402,7 @@ mod tests {
     #[test]
     fn test_seed() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)",
+            "seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
         assert_eq!(
@@ -1475,7 +1417,7 @@ mod tests {
     #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"send = Send() {rendezvous_key = "abc" receiver = "bob"} @Host(alice)"#,
+            r#"send = Send{rendezvous_key = "abc" receiver = "bob"}() @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
@@ -1491,7 +1433,7 @@ mod tests {
     #[test]
     fn test_receive() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"receive = Receive() {rendezvous_key = "abc" sender = "bob"} : () -> Float32Tensor @Host(alice)"#,
+            r#"receive = Receive{rendezvous_key = "abc", sender = "bob"} : () -> Float32Tensor () @Host(alice)"#,
         )?;
         assert_eq!(op.name, "receive");
         assert_eq!(
@@ -1508,7 +1450,7 @@ mod tests {
     #[test]
     fn test_output() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = Output(x10): (Ring64Tensor) -> Ring64Tensor @Host(alice)",
+            "z = Output: (Ring64Tensor) -> Ring64Tensor (x10) @Host(alice)",
         )?;
         assert_eq!(op.name, "z");
         Ok(())
@@ -1517,7 +1459,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSample(shape, seed){max_value = 1}: (Shape, Seed) -> Ring64Tensor @Host(alice)",
+            "x10 = RingSample{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -1526,7 +1468,7 @@ mod tests {
     #[test]
     fn test_fixedpoint_ring_mean() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {scaling_base = 3, scaling_exp = 1, axis = 0} : () -> Float32Tensor @Host(alice)",
+            "op = FixedpointRingMean{scaling_base = 3, scaling_exp = 1, axis = 0} : () -> Float32Tensor () @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
@@ -1539,7 +1481,7 @@ mod tests {
         );
 
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean() {scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor @Host(alice)",
+            "op = FixedpointRingMean{scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor () @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
@@ -1557,11 +1499,11 @@ mod tests {
     #[test]
     fn test_underscore() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x_shape = Constant([2, 2]: Shape) @Host(alice)",
+            "x_shape = Constant{value = [2, 2]: Shape} () @Host(alice)",
         )?;
         assert_eq!(op.name, "x_shape");
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z_result = StdAdd(x_shape, y_shape): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)",
+            "z_result = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x_shape, y_shape) @Host(carole)",
         )?;
         assert_eq!(op.name, "z_result");
         assert_eq!(op.inputs, vec!["x_shape", "y_shape"]);
@@ -1573,43 +1515,43 @@ mod tests {
         // The following tests are verifying that each valid line is parsed successfuly.
         // It does not assert on the result.
         parse_assignment::<(&str, ErrorKind)>(
-            r#"z = Input() {arg_name = "prompt"}: () -> Float32Tensor @Host(alice)"#,
+            r#"z = Input{arg_name = "prompt"}: () -> Float32Tensor () @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdExpandDims() {axis = 0}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = StdExpandDims {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdAtLeast2D() {to_column_vector = false}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = StdAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdSlice() {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = StdSlice {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingSum() {axis = 0}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill() {value = 42 : Ring64 }: () -> Ring64Tensor @Host(alice)",
+            "z = RingFill {value = 42 : Ring64 }: () -> Ring64Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingShl() {amount = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = RingShl {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingShr() {amount = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = RingShr {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = FixedpointRingDecode() {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = FixedpointRingDecode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = FixedpointRingEncode() {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = FixedpointRingEncode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingInject() {bit_idx = 2} : (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = RingInject {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitExtract() {bit_idx = 2} : (Float32Tensor) -> Float32Tensor @Host(alice)",
+            "z = BitExtract {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>("z = BitSample() @Host(alice)")?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitFill() { value = 42 } @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitFill { value = 42 } () @Host(alice)")?;
         parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
 
         Ok(())
@@ -1618,10 +1560,10 @@ mod tests {
     #[test]
     fn test_sample_computation() -> Result<(), anyhow::Error> {
         let (_, comp) = parse_computation::<(&str, ErrorKind)>(
-            "x = Constant([1.0]: Float32Tensor) @Host(alice)
-            y = Constant([2.0]: Float32Tensor): () -> Float32Tensor @Host(bob)
+            "x = Constant{value = [1.0]: Float32Tensor}() @Host(alice)
+            y = Constant{value = [2.0]: Float32Tensor}: () -> Float32Tensor () @Host(bob)
             // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
-            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)
+            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
             ",
         )?;
         assert_eq!(comp.operations.len(), 3);
@@ -1657,21 +1599,21 @@ mod tests {
 
     #[test]
     fn test_sample_computation_err() {
-        let data = r#"a = Constant("a") @Host(alice)
-            err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)
-            b = Constant("b") @Host(alice)"#;
+        let data = r#"a = Constant{value = "a"} () @Host(alice)
+            err = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            b = Constant{value = "b"} () @Host(alice)"#;
         let parsed: IResult<_, _, VerboseError<&str>> = parse_computation(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = StdAdd(x, y): (Float32Tensor) -> Float32Tensor @Host(carole)\n                                ^\n\n");
+            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n                          ^\n\n");
         }
     }
 
     #[test]
     fn test_computation_try_into() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: Computation = "x = Constant([1.0]: Float32Tensor) @Host(alice)
-            y = Constant([2.0]: Float32Tensor): () -> Float32Tensor @Host(bob)
-            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(carole)"
+        let comp: Computation = "x = Constant{value = [1.0]: Float32Tensor} @Host(alice)
+            y = Constant{value = [2.0]: Float32Tensor}: () -> Float32Tensor () @Host(bob)
+            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)"
             .try_into()?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
@@ -1688,9 +1630,9 @@ mod tests {
     #[test]
     fn test_computation_into_text() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let comp: Computation = "x = Constant([1.0]: Float32Tensor) @Host(alice)
-            y = Constant([[1.0, 2.0], [3.0, 4.0]]: Float32Tensor): () -> Float32Tensor @Host(bob)
-            z = StdAdd(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Replicated(alice, bob, carole)"
+        let comp: Computation = "x = Constant{value = [1.0]: Float32Tensor} @Host(alice)
+            y = Constant{value = [[1.0, 2.0], [3.0, 4.0]]: Float32Tensor}: () -> Float32Tensor @Host(bob)
+            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)"
             .try_into()?;
         let textual = to_textual(&comp);
         println!("TEXT:\n{}", textual); // TODO Debug output
