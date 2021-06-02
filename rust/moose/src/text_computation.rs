@@ -1116,12 +1116,8 @@ fn parse_bool<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     alt((value(true, tag("true")), value(false, tag("false"))))(input)
 }
 
-/// A serde serializer to produce the same textual format
-pub fn to_textual(comp: &Computation) -> String {
-    comp.to_textual()
-}
-
-trait ToTextual {
+/// A serializer to produce the same textual format from a computation
+pub trait ToTextual {
     fn to_textual(&self) -> String;
 }
 
@@ -1146,27 +1142,235 @@ impl ToTextual for Operation {
 impl ToTextual for Placement {
     fn to_textual(&self) -> String {
         match self {
-            Placement::Host(HostPlacement { owner }) => format!("@Host({})", owner),
-            Placement::Replicated(ReplicatedPlacement { owners }) => {
-                format!("@Replicated({}, {}, {})", owners[0], owners[1], owners[2])
-            }
+            Placement::Host(p) => p.to_textual(),
+            Placement::Replicated(p) => p.to_textual(),
         }
+    }
+}
+
+impl ToTextual for HostPlacement {
+    fn to_textual(&self) -> String {
+        format!("@Host({})", self.owner)
+    }
+}
+
+impl ToTextual for ReplicatedPlacement {
+    fn to_textual(&self) -> String {
+        format!(
+            "@Replicated({}, {}, {})",
+            self.owners[0], self.owners[1], self.owners[2]
+        )
     }
 }
 
 impl ToTextual for Operator {
     fn to_textual(&self) -> String {
+        use Operator::*;
         match self {
-            Operator::Constant(ConstantOp { value: x }) => {
-                format!("Constant{{value = {}}}", x.to_textual())
-            }
-            Operator::StdAdd(StdAddOp { lhs, rhs }) => format!(
-                "StdAdd: ({}, {}) -> {}",
-                lhs.to_textual(),
-                rhs.to_textual(),
-                lhs.to_textual(),
-            ),
+            Identity(op) => op.to_textual(),
+            Load(op) => op.to_textual(),
+            Save(op) => op.to_textual(),
+            Send(op) => op.to_textual(),
+            Receive(op) => op.to_textual(),
+            Input(op) => op.to_textual(),
+            Output(op) => op.to_textual(),
+            Constant(op) => op.to_textual(),
+            StdAdd(op) => op.to_textual(),
+            StdSub(op) => op.to_textual(),
+            StdMul(op) => op.to_textual(),
+            StdDiv(op) => op.to_textual(),
+            StdDot(op) => op.to_textual(),
+            StdMean(op) => op.to_textual(),
+            StdOnes(op) => op.to_textual(),
+            StdConcatenate(op) => op.to_textual(),
+            StdExpandDims(op) => op.to_textual(),
+            StdReshape(op) => op.to_textual(),
+            StdAtLeast2D(op) => op.to_textual(),
+            StdShape(op) => op.to_textual(),
+            StdSlice(op) => op.to_textual(),
+            StdSum(op) => op.to_textual(),
+            StdTranspose(op) => op.to_textual(),
+            StdInverse(op) => op.to_textual(),
+            RingAdd(op) => op.to_textual(),
+            RingSub(op) => op.to_textual(),
+            RingMul(op) => op.to_textual(),
+            RingDot(op) => op.to_textual(),
+            RingSum(op) => op.to_textual(),
+            RingShape(op) => op.to_textual(),
+            RingSample(op) => op.to_textual(),
+            RingFill(op) => op.to_textual(),
+            RingShl(op) => op.to_textual(),
+            RingShr(op) => op.to_textual(),
+            RingInject(op) => op.to_textual(),
+            BitExtract(op) => op.to_textual(),
+            BitSample(op) => op.to_textual(),
+            // BitFill(op) => op.to_textual(),
+            // BitXor(op) => op.to_textual(),
+            // BitAnd(op) => op.to_textual(),
+            PrimDeriveSeed(op) => op.to_textual(),
+            PrimGenPrfKey(op) => op.to_textual(),
+            // FixedpointRingEncode(op) => op.to_textual(),
+            // FixedpointRingDecode(op) => op.to_textual(),
+            // FixedpointRingMean(op) => op.to_textual(),
             _ => unimplemented!(),
+        }
+    }
+}
+
+macro_rules! standard_op_to_textual {
+    ($op:ty, $format:expr, $($member:tt),* ) => {
+        impl ToTextual for $op {
+            fn to_textual(&self) -> String {
+                format!(
+                    $format,
+                    $(self.$member.to_textual()),*
+                )
+            }
+        }
+    };
+}
+
+standard_op_to_textual!(ConstantOp, "Constant{{value = {}}}", value);
+standard_op_to_textual!(IdentityOp, "Identity: ({}) -> {}", ty, ty);
+standard_op_to_textual!(LoadOp, "Load: ({}) -> {}", ty, ty);
+standard_op_to_textual!(SaveOp, "Save: ({}) -> {}", ty, ty);
+standard_op_to_textual!(
+    SendOp,
+    "Send {{rendezvous_key={}, receiver={}}}",
+    rendezvous_key,
+    receiver
+);
+standard_op_to_textual!(
+    ReceiveOp,
+    "Receive {{rendezvous_key={}, sender={}}} : () -> {}",
+    rendezvous_key,
+    sender,
+    ty
+);
+standard_op_to_textual!(InputOp, "Input {{arg_name={}}}: () -> {}", arg_name, ty);
+standard_op_to_textual!(OutputOp, "Output ({}) -> {}", ty, ty);
+standard_op_to_textual!(StdAddOp, "StdAdd: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(StdSubOp, "StdSub: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(StdMulOp, "StdMul: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(StdDivOp, "StdDiv: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(StdDotOp, "StdDot: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(StdOnesOp, "StdOnes: () -> {}", ty);
+standard_op_to_textual!(
+    StdConcatenateOp,
+    "StdConcatenate{{axis={}}}: ({}) -> {}",
+    axis,
+    ty,
+    ty
+);
+standard_op_to_textual!(
+    StdExpandDimsOp,
+    "StdExpandDims{{axis={}}}: ({}) -> {}",
+    axis,
+    ty,
+    ty
+);
+standard_op_to_textual!(StdReshapeOp, "StdReshape: ({}) -> {}", ty, ty);
+standard_op_to_textual!(StdShapeOp, "StdShape: ({}) -> {}", ty, ty);
+standard_op_to_textual!(
+    StdAtLeast2DOp,
+    "StdAtLeast2D{{to_column_vector={}}}: ({}) -> {}",
+    to_column_vector,
+    ty,
+    ty
+);
+standard_op_to_textual!(
+    StdSliceOp,
+    "StdSlice{{start={}, end={}}}: ({}) -> {}",
+    start,
+    end,
+    ty,
+    ty
+);
+standard_op_to_textual!(StdTransposeOp, "StdTranspose: ({}) -> {}", ty, ty);
+standard_op_to_textual!(StdInverseOp, "StdInverse: ({}) -> {}", ty, ty);
+standard_op_to_textual!(RingAddOp, "RingAdd: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(RingSubOp, "RingSub: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(RingMulOp, "RingMul: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(RingDotOp, "RingDot: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(RingShapeOp, "RingShape: ({}) -> {}", ty, ty);
+standard_op_to_textual!(RingFillOp, "RingFill{{value={}}}: () -> {}", value, ty);
+standard_op_to_textual!(
+    RingShlOp,
+    "RingShl{{amount={}}}: ({}) -> {}",
+    amount,
+    ty,
+    ty
+);
+standard_op_to_textual!(
+    RingShrOp,
+    "RingShr{{amount={}}}: ({}) -> {}",
+    amount,
+    ty,
+    ty
+);
+standard_op_to_textual!(
+    RingInjectOp,
+    "RingInject{{bit_idx={}}}: ({}) -> {}",
+    bit_idx,
+    output,
+    output
+);
+standard_op_to_textual!(
+    BitExtractOp,
+    "BitExtract{{bit_idx={}}}: ({}) -> {}",
+    bit_idx,
+    ring_type,
+    ring_type
+);
+standard_op_to_textual!(BitSampleOp, "BitSample",);
+standard_op_to_textual!(PrimDeriveSeedOp, "PrimDeriveSeed{{nonce={}}}", nonce);
+standard_op_to_textual!(PrimGenPrfKeyOp, "PrimGenPrfKey",);
+
+impl ToTextual for StdMeanOp {
+    fn to_textual(&self) -> String {
+        match self {
+            StdMeanOp { ty, axis: Some(a) } => {
+                format!("StdMean{{axis = {}}}: ({}) -> {}", a, ty, ty)
+            }
+            StdMeanOp { ty, axis: None } => format!("StdMean: ({}) -> {}", ty, ty),
+        }
+    }
+}
+
+impl ToTextual for StdSumOp {
+    fn to_textual(&self) -> String {
+        match self {
+            StdSumOp { ty, axis: Some(a) } => format!("StdSum{{axis = {}}}: ({}) -> {}", a, ty, ty),
+            StdSumOp { ty, axis: None } => format!("StdSum: ({}) -> {}", ty, ty),
+        }
+    }
+}
+
+impl ToTextual for RingSumOp {
+    fn to_textual(&self) -> String {
+        match self {
+            RingSumOp { ty, axis: Some(a) } => {
+                format!("RingSum{{axis = {}}}: ({}) -> {}", a, ty, ty)
+            }
+            RingSumOp { ty, axis: None } => format!("RingSum: ({}) -> {}", ty, ty),
+        }
+    }
+}
+
+impl ToTextual for RingSampleOp {
+    fn to_textual(&self) -> String {
+        match self {
+            RingSampleOp {
+                output,
+                max_value: Some(a),
+            } => format!(
+                "RingSample{{max_value = {}}}: ({}) -> {}",
+                a, output, output
+            ),
+            RingSampleOp {
+                output,
+                max_value: None,
+            } => format!("RingSample: ({}) -> {}", output, output),
         }
     }
 }
@@ -1219,6 +1423,33 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
         }
     }
 }
+
+impl ToTextual for Role {
+    fn to_textual(&self) -> String {
+        format!("{:?}", self.0)
+    }
+}
+
+impl ToTextual for Nonce {
+    fn to_textual(&self) -> String {
+        format!("{:?}", self.0)
+    }
+}
+
+macro_rules! use_debug_to_textual {
+    ($op:ty) => {
+        impl ToTextual for $op {
+            fn to_textual(&self) -> String {
+                format!("{:?}", self)
+            }
+        }
+    };
+}
+
+use_debug_to_textual!(String);
+use_debug_to_textual!(usize);
+use_debug_to_textual!(u32);
+use_debug_to_textual!(bool);
 
 #[cfg(test)]
 mod tests {
@@ -1632,10 +1863,11 @@ mod tests {
         use std::convert::TryInto;
         let comp: Computation = "x = Constant{value = [1.0]: Float32Tensor} @Host(alice)
             y = Constant{value = [[1.0, 2.0], [3.0, 4.0]]: Float32Tensor}: () -> Float32Tensor @Host(bob)
-            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)"
+            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
+            seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)"
             .try_into()?;
-        let textual = to_textual(&comp);
-        println!("TEXT:\n{}", textual); // TODO Debug output
+        let textual = comp.to_textual();
+        // After serializing it into the textual IR we need to make sure it parses back the same
         let comp2: Computation = textual.try_into()?;
         assert_eq!(comp.operations[0], comp2.operations[0]);
         Ok(())
