@@ -1071,8 +1071,8 @@ mod tests {
 
     #[test]
     fn test_standard_prod_ops() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=[[1.0, 2.0], [3.0, 4.0]] : Float32Tensor} @Host(alice)
-        y = Constant{value=[[1.0, 2.0], [3.0, 4.0]] : Float32Tensor} @Host(alice)
+        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
         mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
@@ -1086,7 +1086,7 @@ mod tests {
         let mut definition = String::from(
             r#"key = PrimGenPrfKey() @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
-        shape = Constant{value =[2, 3] : Shape} @Host(alice)
+        shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
         );
         let body = (0..100)
@@ -1108,10 +1108,9 @@ mod tests {
 
     #[test]
     fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"key = Constant{value=00000000000000000000000000000000: PrfKey} @Host(alice)
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
-        output = Output: (Seed) -> Seed (seed) @Host(alice)
-"#;
+        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let comp: Computation = source.try_into()?;
 
         let exec = TestExecutor::default();
@@ -1129,8 +1128,8 @@ mod tests {
 
     #[test]
     fn test_primitives_sample_ring() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"seed = Constant{value=00000000000000000000000000000000: Seed} @Host(alice)
-        xshape = Constant{value=[2, 2]: Shape} @Host(alice)
+        let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)} @Host(alice)
+        xshape = Constant{value=Shape([2, 2])} @Host(alice)
         sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
         "#;
@@ -1158,8 +1157,8 @@ mod tests {
         use maplit::hashmap;
         let mut args: HashMap<String, Value> = hashmap!();
 
-        let x: Value = "[5]: Int64Tensor".try_into()?;
-        let y: Value = "[10]: Int64Tensor".try_into()?;
+        let x: Value = "Int64Tensor([5])".try_into()?;
+        let y: Value = "Int64Tensor([10])".try_into()?;
 
         args.insert("x".to_string(), x);
         args.insert("y".to_string(), y);
@@ -1172,7 +1171,7 @@ mod tests {
         let z: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let expected: Value = "[15]: Int64Tensor".try_into()?;
+        let expected: Value = "Int64Tensor([15])".try_into()?;
 
         assert_eq!(expected, z.into());
 
@@ -1180,14 +1179,14 @@ mod tests {
     }
     use rstest::rstest;
     #[rstest]
-    #[case("0", "[[1, 2], [3, 4], [5, 6], [7, 8]]: Int64Tensor")]
-    #[case("1", "[[1, 2, 5, 6], [3, 4, 7, 8]]: Int64Tensor")]
+    #[case("0", "Int64Tensor([[1, 2], [3, 4], [5, 6], [7, 8]])")]
+    #[case("1", "Int64Tensor([[1, 2, 5, 6], [3, 4, 7, 8]])")]
     fn test_standard_concatenate(
         #[case] axis: usize,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source_template = r#"x_0 = Constant{value=[[1,2], [3,4]]: Int64Tensor} @Host(alice)
-        x_1 = Constant{value=[[5, 6], [7,8]]: Int64Tensor} @Host(alice)
+        let source_template = r#"x_0 = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
+        x_1 = Constant{value=Int64Tensor([[5, 6], [7,8]])} @Host(alice)
         concatenated = StdConcatenate {axis=test_axis}: (Int64Tensor, Int64Tensor) -> Int64Tensor (x_0, x_1) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (concatenated) @Host(alice)
         "#;
@@ -1203,16 +1202,16 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdAdd", "[8]: Int64Tensor")]
-    #[case("StdSub", "[2]: Int64Tensor")]
-    #[case("StdMul", "[15]: Int64Tensor")]
-    #[case("StdDiv", "[1]: Int64Tensor")]
+    #[case("StdAdd", "Int64Tensor([8])")]
+    #[case("StdSub", "Int64Tensor([2])")]
+    #[case("StdMul", "Int64Tensor([15])")]
+    #[case("StdDiv", "Int64Tensor([1])")]
     fn test_standard_op(
         #[case] test_op: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source_template = r#"x0 = Constant{value=[5]: Int64Tensor} @Host(alice)
-        x1 = Constant{value=[3]: Int64Tensor} @Host(bob)
+        let source_template = r#"x0 = Constant{value=Int64Tensor([5])} @Host(alice)
+        x1 = Constant{value=Int64Tensor([3])} @Host(bob)
         res = StdOp: (Int64Tensor, Int64Tensor) -> Int64Tensor (x0, x1) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
         "#;
@@ -1230,7 +1229,7 @@ mod tests {
 
     #[test]
     fn test_standard_inverse() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=[[3.0, 2.0], [2.0, 3.0]]: Float32Tensor} : () -> Float32Tensor @Host(alice)
+        let source = r#"x = Constant{value=Float32Tensor([[3.0, 2.0], [2.0, 3.0]])} : () -> Float32Tensor @Host(alice)
         x_inv = StdInverse : (Float32Tensor) -> Float32Tensor (x) @Host(alice)
         output = Output: (Float32Tensor) -> Float32Tensor (x_inv) @Host(alice)
         "#;
@@ -1257,7 +1256,7 @@ mod tests {
     #[case("Float64Tensor")]
     #[case("Int64Tensor")]
     fn test_standard_ones(#[case] dtype: String) -> std::result::Result<(), anyhow::Error> {
-        let template = r#"s = Constant{value=[2, 2]: Shape} @Host(alice)
+        let template = r#"s = Constant{value=Shape([2, 2])} @Host(alice)
         r = StdOnes : (Shape) -> dtype (s) @Host(alice)
         output = Output : (dtype) -> dtype (r) @Host(alice)
         "#;
@@ -1307,12 +1306,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdSum", None, "10.0: Float32Tensor", true)]
-    #[case("StdSum", Some(0), "[4.0, 6.0]: Float32Tensor", false)]
-    #[case("StdSum", Some(1), "[3.0, 7.0]: Float32Tensor", false)]
-    #[case("StdMean", None, "2.5: Float32Tensor", true)]
-    #[case("StdMean", Some(0), "[2.0, 3.0]: Float32Tensor", false)]
-    #[case("StdMean", Some(1), "[1.5, 3.5]: Float32Tensor", false)]
+    #[case("StdSum", None, "Float32(10.0)", true)]
+    #[case("StdSum", Some(0), "Float32Tensor([4.0, 6.0])", false)]
+    #[case("StdSum", Some(1), "Float32Tensor([3.0, 7.0])", false)]
+    #[case("StdMean", None, "Float32(2.5)", true)]
+    #[case("StdMean", Some(0), "Float32Tensor([2.0, 3.0])", false)]
+    #[case("StdMean", Some(1), "Float32Tensor([1.5, 3.5])", false)]
     fn test_standard_reduce_op(
         #[case] reduce_op_test: String,
         #[case] axis_test: Option<usize>,
@@ -1323,7 +1322,7 @@ mod tests {
             axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
 
         let source = format!(
-            r#"s = Constant{{value=[[1,2], [3, 4]]: Float32Tensor}} @Host(alice)
+            r#"s = Constant{{value=Float32Tensor([[1,2], [3, 4]])}} @Host(alice)
             r = {} {}: (Float32Tensor) -> Float32Tensor (s) @Host(alice)
             output = Output : (Float32Tensor) -> Float32Tensor (r) @Host(alice)
         "#,
@@ -1344,11 +1343,11 @@ mod tests {
         Ok(())
     }
     #[rstest]
-    #[case("[[1, 3], [2, 4]]: Int64Tensor")]
+    #[case("Int64Tensor([[1, 3], [2, 4]])")]
     fn test_standard_transpose(
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"s = Constant{value=[[1,2], [3, 4]]: Int64Tensor} @Host(alice)
+        let source = r#"s = Constant{value=Int64Tensor([[1,2], [3, 4]])} @Host(alice)
         r = StdTranspose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
         output = Output : (Int64Tensor) -> Int64Tensor (r) @Host(alice)
         "#;
@@ -1363,14 +1362,14 @@ mod tests {
     }
 
     #[rstest]
-    #[case(true, "[[1.0], [1.0], [1.0]]: Float64Tensor")]
-    #[case(false, "[[1.0, 1.0, 1.0]]: Float64Tensor")]
+    #[case(true, "Float64Tensor([[1.0], [1.0], [1.0]])")]
+    #[case(false, "Float64Tensor([[1.0, 1.0, 1.0]])")]
     fn test_standard_atleast_2d(
         #[case] to_column_vector: bool,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x =  Constant{{value=[1.0, 1.0, 1.0]: Float64Tensor}} @Host(alice)
+            r#"x =  Constant{{value=Float64Tensor([1.0, 1.0, 1.0])}} @Host(alice)
         res = StdAtLeast2D {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor (x) @Host(alice)
         output = Output : (Float64Tensor) -> Float64Tensor (res) @Host(alice)
         "#,
@@ -1389,16 +1388,16 @@ mod tests {
 
     use crate::ring::{Ring128Tensor, Ring64Tensor};
     #[rstest]
-    #[case("RingAdd", "[5]: Ring64Tensor")]
-    #[case("RingMul", "[6]: Ring64Tensor")]
-    #[case("RingSub", "[1]: Ring64Tensor")]
+    #[case("RingAdd", "Ring64Tensor([5])")]
+    #[case("RingMul", "Ring64Tensor([6])")]
+    #[case("RingSub", "Ring64Tensor([1])")]
     fn test_ring_binop_invocation(
         #[case] test_op: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"x =  Constant{{value=[3]: Ring64Tensor}} @Host(alice)
-        y = Constant{{value=[2]: Ring64Tensor}} @Host(alice)
+            r#"x =  Constant{{value=Ring64Tensor([3])}} @Host(alice)
+        y = Constant{{value=Ring64Tensor([2])}} @Host(alice)
         res = {} : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
         output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#,
@@ -1416,21 +1415,21 @@ mod tests {
     #[rstest]
     #[case(
         "Ring64Tensor",
-        "[[1, 2], [3, 4]]: Ring64Tensor",
-        "[[1, 0], [0, 1]]: Ring64Tensor",
-        "[[1, 2], [3, 4]]: Ring64Tensor"
+        "Ring64Tensor([[1, 2], [3, 4]])",
+        "Ring64Tensor([[1, 0], [0, 1]])",
+        "Ring64Tensor([[1, 2], [3, 4]])"
     )]
     #[case(
         "Ring64Tensor",
-        "[[1, 2], [3, 4]]: Ring64Tensor",
-        "[1, 1]: Ring64Tensor",
-        "[3, 7]: Ring64Tensor"
+        "Ring64Tensor([[1, 2], [3, 4]])",
+        "Ring64Tensor([1, 1])",
+        "Ring64Tensor([3, 7])"
     )]
     #[case(
         "Ring64Tensor",
-        "[1, 1]: Ring64Tensor",
-        "[[1, 2], [3, 4]]: Ring64Tensor",
-        "[4, 6]: Ring64Tensor"
+        "Ring64Tensor([1, 1])",
+        "Ring64Tensor([[1, 2], [3, 4]])",
+        "Ring64Tensor([4, 6])"
     )]
     fn test_ring_dot_invocation(
         #[case] type_str: String,
@@ -1469,20 +1468,20 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64", "2", "[1, 1]: Ring64Tensor")]
-    #[case("Ring128", "2", "[1, 1]: Ring128Tensor")]
-    #[case("Ring64", "2, 1", "[[1], [1]]: Ring64Tensor")]
-    #[case("Ring64", "2, 2", "[[1, 1], [1, 1]]: Ring64Tensor")]
-    #[case("Ring64", "1, 2", "[[1, 1]]: Ring64Tensor")]
-    #[case("Ring128", "2, 3", "[[1, 1, 1], [1, 1, 1]]: Ring128Tensor")]
+    #[case("Ring64", "2", "Ring64Tensor([1, 1])")]
+    #[case("Ring128", "2", "Ring128Tensor([1, 1])")]
+    #[case("Ring64", "2, 1", "Ring64Tensor([[1], [1]])")]
+    #[case("Ring64", "2, 2", "Ring64Tensor([[1, 1], [1, 1]])")]
+    #[case("Ring64", "1, 2", "Ring64Tensor([[1, 1]])")]
+    #[case("Ring128", "2, 3", "Ring128Tensor([[1, 1, 1], [1, 1, 1]])")]
     fn test_ring_fill(
         #[case] type_str: String,
         #[case] shape_str: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
-            r#"shape = Constant{{value=[{shape}] : Shape}} @Host(alice)
-        res = RingFill {{value = 1 : {t} }} : (Shape) -> {t}Tensor (shape) @Host(alice)
+            r#"shape = Constant{{value=Shape([{shape}])}} @Host(alice)
+        res = RingFill {{value = {t}(1) }} : (Shape) -> {t}Tensor (shape) @Host(alice)
         output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
         "#,
             t = type_str,
@@ -1511,9 +1510,9 @@ mod tests {
     }
 
     #[rstest]
-    #[case("[4, 6]: Ring64Tensor")]
+    #[case("Ring64Tensor([4, 6])")]
     fn test_ring_sum(#[case] expected_result: Value) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=[[1, 2], [3, 4]]: Ring64Tensor} @Host(alice)
+        let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])} @Host(alice)
         r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
         "#;
@@ -1526,13 +1525,13 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64Tensor", "[2, 2]: Ring64Tensor")]
-    #[case("Ring128Tensor", "[2, 2]: Ring128Tensor")]
+    #[case("Ring64Tensor", "Ring64Tensor([2, 2])")]
+    #[case("Ring128Tensor", "Ring128Tensor([2, 2])")]
     fn test_ring_bitwise_ops(
         #[case] type_str: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
-        let template_source = r#"x = Constant{value=[4, 4]: Ring64Tensor} @Host(alice)
+        let template_source = r#"x = Constant{value=Ring64Tensor([4, 4])} @Host(alice)
         res = RingShr {amount = 1}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#;
