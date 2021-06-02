@@ -653,6 +653,7 @@ impl SymbolicContext {
 }
 
 macro_rules! kernel {
+
     ($op:ty, [$(($plc:ty, $t0:ty, $t1:ty)),+], $k:expr) => {
         impl $op {
             pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
@@ -1281,6 +1282,15 @@ struct PrfKeyGenOp {
 
 modelled!(PlacementKeyGen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
 
+// kernel!{
+//     PrfKeyGenOp,
+//     [
+//         (HostPlacement),
+//         (HostPlacement)
+//     ],
+//     Self::kernel
+// }
+
 impl PrfKeyGenOp {
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
         match &self.plc {
@@ -1393,10 +1403,16 @@ impl RingSampleOp {
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
         match (&self.plc, &self.ty) {
             (Placement::HostPlacement(_), Ty::Ring64TensorTy) => {
-                Box::new(move |_operands| RingTensor(987654321_u64).into())
+                Box::new(move |_operands| {
+                    let y: Ring64Tensor = RingTensor(987654321);
+                    y.into()
+                })
             }
             (Placement::HostPlacement(_), Ty::Ring128TensorTy) => {
-                Box::new(move |_operands| RingTensor(987654321_u128).into())
+                Box::new(move |_operands| {
+                    let y: Ring128Tensor = RingTensor(987654321);
+                    y.into()
+                })
             }
             _ => unimplemented!(),
         }
