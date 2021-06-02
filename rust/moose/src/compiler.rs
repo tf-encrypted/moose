@@ -1741,9 +1741,20 @@ fn test_rep_exec() {
             .into(),
             operands: vec!["s".into(), "xe".into(), "ye".into()],
         },
+        Operation {
+            name: "ve".into(),
+            operator: RepMulOp {
+                lhs: Replicated128Tensor::TY,
+                rhs: Replicated128Tensor::TY,
+                plc: rep_plc.clone().into(),
+            }
+            .into(),
+            operands: vec!["s".into(), "xe".into(), "ye".into()],
+        },
     ];
 
     let ctx = SymbolicContext::default();
+    // let ctx = ConcreteContext::default();
 
     let mut env: HashMap<String, SymbolicValue> = HashMap::default();
     for op in ops {
@@ -1752,6 +1763,8 @@ fn test_rep_exec() {
         let res = ctx.execute(operator, operands);
         env.insert(op.name, res);
     }
+
+    // println!("{:?}", env);
 
     let ops = ctx.ops.read().unwrap();
     for op in ops.iter() {
