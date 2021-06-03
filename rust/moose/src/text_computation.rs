@@ -54,7 +54,7 @@ impl FromStr for Value {
 }
 
 /// Parses the computation and returns a verbose error description if it fails.
-fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
+pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<VerboseError<&str>>(source) {
         Err(Failure(e)) => Err(anyhow::anyhow!(
             "Failed to parse computation\n{}",
