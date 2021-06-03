@@ -277,10 +277,11 @@ struct Operation {
     operands: Vec<String>,
 }
 
-enum Signature {
-    Nullary{res: Ty},
-    Unary{t0: Ty, res: Ty},
-    Binary
+pub enum Signature {
+    Nullary{ret: Ty},
+    Unary{arg0: Ty, ret: Ty},
+    Binary{arg0: Ty, arg1: Ty, ret: Ty},
+    Ternary{arg0: Ty, arg1: Ty, arg2: Ty, ret: Ty},
 }
 
 #[derive(Clone, Debug)]
@@ -642,9 +643,9 @@ macro_rules! kernel {
 
         impl $op {
             pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-                match (self.plc.ty(), self.lhs) {
+                match (self.plc.ty(), self.signature()) {
                     $(
-                        (<$plc>::TY, <$t0>::TY) => {
+                        (<$plc>::TY, Signature::Unary{ arg0: <$t0>::TY, ret: <$u>::TY }) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             Box::new(move |operands: Vec<Value>| {
@@ -660,9 +661,9 @@ macro_rules! kernel {
             }
         
             pub fn execute_symbolic(&self, ctx: &SymbolicContext, operands: Vec<SymbolicValue>) -> SymbolicValue {
-                match (self.plc.ty(), self.lhs) {
+                match (self.plc.ty(), self.signature()) {
                     $(
-                        (<$plc>::TY, <$t0>::TY) => {
+                        (<$plc>::TY, Signature::Unary{ arg0: <$t0>::TY, ret: <$u>::TY }) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
 
@@ -694,9 +695,9 @@ macro_rules! kernel {
 
         impl $op {
             pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-                match (self.plc.ty(), self.lhs, self.rhs) {
+                match (self.plc.ty(), self.signature()) {
                     $(
-                        (<$plc>::TY, <$t0>::TY, <$t1>::TY) => {
+                        (<$plc>::TY, Signature::Binary{ arg0: <$t0>::TY, arg1: <$t1>::TY, ret: <$u>::TY }) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             let op = self.clone();
@@ -718,9 +719,9 @@ macro_rules! kernel {
                 ctx: &SymbolicContext,
                 operands: Vec<SymbolicValue>,
             ) -> SymbolicValue {
-                match (self.plc.ty(), self.lhs, self.rhs) {
+                match (self.plc.ty(), self.signature()) {
                     $(
-                        (<$plc>::TY, Symbolic::<$t0>::TY, Symbolic::<$t1>::TY) => {
+                        (<$plc>::TY, Signature::Binary{ arg0: Symbolic::<$t0>::TY, arg1: Symbolic::<$t1>::TY, ret: Symbolic::<$u>::TY }) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
 
                             let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
@@ -758,10 +759,9 @@ macro_rules! kernel {
 
         impl $op {
             pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-                // TODO we're not matching on $t0 here because we don't have a uniform way for type maching for ops
-                match (self.plc.ty(), self.lhs, self.rhs) {
+                match (self.plc.ty(), self.signature()) {
                     $(
-                        (<$plc>::TY, <$t1>::TY, <$t2>::TY) => {
+                        (<$plc>::TY, Signature::Ternary{ arg0: <$t0>::TY, arg1: <$t1>::TY, arg2: <$t2>::TY, ret: <$u>::TY }) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             let op = self.clone();
@@ -784,10 +784,9 @@ macro_rules! kernel {
                 ctx: &SymbolicContext,
                 operands: Vec<SymbolicValue>,
             ) -> SymbolicValue {
-                match (self.plc.ty(), self.lhs, self.rhs) {
+                match (self.plc.ty(), self.signature()) {
                     $(
-                        // TODO we're not matching on $t0 here because we don't have a uniform way for type maching for ops
-                        (<$plc>::TY, Symbolic::<$t1>::TY, Symbolic::<$t2>::TY) => {
+                        (<$plc>::TY, Signature::Ternary{ arg0: Symbolic::<$t0>::TY, arg1: Symbolic::<$t1>::TY, arg2: Symbolic::<$t2>::TY, ret: Symbolic::<$u>::TY }) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
 
                             let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
@@ -854,6 +853,10 @@ pub struct RepSetupOp {
 }
 
 impl RepSetupOp {
+    pub fn signature(&self) -> Signature {
+        Signature::Nullary{ret: Ty::ReplicatedSetupTy}
+    }
+
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
         match &self.plc {
             Placement::ReplicatedPlacement(plc) => {
@@ -929,6 +932,14 @@ kernel!{
 }
 
 impl RepAddOp {
+    pub fn signature(&self) -> Signature {
+        match (self.lhs, self.rhs) {
+            (Ty::Replicated64TensorTy, Ty::Replicated64TensorTy) => Signature::Binary{arg0: Ty::Replicated64TensorTy, arg1: Ty::Replicated64TensorTy, ret: Ty::Replicated64TensorTy},
+            (Ty::Replicated128TensorTy, Ty::Replicated128TensorTy) => Signature::Binary{arg0: Ty::Replicated128TensorTy, arg1: Ty::Replicated128TensorTy, ret: Ty::Replicated128TensorTy},
+            _ => unimplemented!()
+        }
+    }
+
     fn abstract_kernel<C: Context, R>(
         ctx: &C,
         rep: &ReplicatedPlacement,
@@ -980,6 +991,14 @@ pub struct RepMulOp {
 }
 
 impl RepMulOp {
+    pub fn signature(&self) -> Signature {
+        match (self.lhs, self.rhs) {
+            (Ty::Replicated64TensorTy, Ty::Replicated64TensorTy) => Signature::Ternary{arg0: Ty::ReplicatedSetupTy, arg1: Ty::Replicated64TensorTy, arg2: Ty::Replicated64TensorTy, ret: Ty::Replicated64TensorTy},
+            (Ty::Replicated128TensorTy, Ty::Replicated128TensorTy) => Signature::Ternary{arg0: Ty::ReplicatedSetupTy, arg1: Ty::Replicated128TensorTy, arg2: Ty::Replicated128TensorTy, ret: Ty::Replicated128TensorTy},
+            _ => unimplemented!()
+        }
+    }
+
     fn abstract_kernel<C: Context, R, K>(
         ctx: &C,
         rep: &ReplicatedPlacement,
@@ -1119,6 +1138,14 @@ kernel!{
 }
 
 impl RepShareOp {
+    pub fn signature(&self) -> Signature {
+        match self.lhs {
+            Ty::Ring64TensorTy => Signature::Unary{arg0: Ty::Ring64TensorTy, ret: Ty::Replicated64TensorTy},
+            Ty::Ring128TensorTy => Signature::Unary{arg0: Ty::Ring128TensorTy, ret: Ty::Replicated128TensorTy},
+            _ => unimplemented!()
+        }
+    }
+
     fn abstract_kernel<C: Context, R: Clone>(
         ctx: &C,
         rep: &ReplicatedPlacement,
@@ -1163,6 +1190,14 @@ pub struct RingAddOp {
 }
 
 impl RingAddOp {
+    pub fn signature(&self) -> Signature {
+        match (self.lhs, self.rhs) {
+            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => Signature::Binary{arg0: Ty::Ring64TensorTy, arg1: Ty::Ring64TensorTy, ret: Ty::Ring64TensorTy},
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => Signature::Binary{arg0: Ty::Ring128TensorTy, arg1: Ty::Ring128TensorTy, ret: Ty::Ring128TensorTy},
+            _ => unimplemented!()
+        }
+    }
+
     fn abstract_kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: RingTensor<T>, y: RingTensor<T>) -> RingTensor<T>
     where
         RingTensor<T>: Add<RingTensor<T>, Output = RingTensor<T>>,
@@ -1188,6 +1223,14 @@ pub struct RingSubOp {
 }
 
 impl RingSubOp {
+    pub fn signature(&self) -> Signature {
+        match (self.lhs, self.rhs) {
+            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => Signature::Binary{arg0: Ty::Ring64TensorTy, arg1: Ty::Ring64TensorTy, ret: Ty::Ring64TensorTy},
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => Signature::Binary{arg0: Ty::Ring128TensorTy, arg1: Ty::Ring128TensorTy, ret: Ty::Ring128TensorTy},
+            _ => unimplemented!()
+        }
+    }
+
     fn abstract_kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: RingTensor<T>, y: RingTensor<T>) -> RingTensor<T>
     where
         RingTensor<T>: Sub<RingTensor<T>, Output = RingTensor<T>>,
@@ -1213,6 +1256,14 @@ pub struct RingMulOp {
 }
 
 impl RingMulOp {
+    pub fn signature(&self) -> Signature {
+        match (self.lhs, self.rhs) {
+            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => Signature::Binary{arg0: Ty::Ring64TensorTy, arg1: Ty::Ring64TensorTy, ret: Ty::Ring64TensorTy},
+            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => Signature::Binary{arg0: Ty::Ring128TensorTy, arg1: Ty::Ring128TensorTy, ret: Ty::Ring128TensorTy},
+            _ => unimplemented!()
+        }
+    }
+
     fn abstract_kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: RingTensor<T>, y: RingTensor<T>) -> RingTensor<T>
     where
         RingTensor<T>: Mul<RingTensor<T>, Output = RingTensor<T>>,
@@ -1261,6 +1312,10 @@ impl NullaryKernel<ConcreteContext, HostPlacement, PrfKey> for PrfKeyGenOp {
 }
 
 impl PrfKeyGenOp {
+    pub fn signature(&self) -> Signature {
+        Signature::Nullary{ret: Ty::PrfKeyTy}
+    }
+
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
         match &self.plc {
             Placement::HostPlacement(plc) => {
@@ -1377,15 +1432,23 @@ pub struct RingSampleOp {
 }
 
 impl RingSampleOp {
+    pub fn signature(&self) -> Signature {
+        match self.ty {
+            Ty::Ring64TensorTy => Signature::Nullary{ret: Ty::Ring64TensorTy},
+            Ty::Ring128TensorTy => Signature::Nullary{ret: Ty::Ring128TensorTy},
+            _ => unimplemented!()
+        }
+    }
+
     pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-        match (&self.plc, &self.ty) {
-            (Placement::HostPlacement(_), Ty::Ring64TensorTy) => {
+        match (&self.plc, self.signature()) {
+            (Placement::HostPlacement(_), Signature::Nullary{ ret: Ring64Tensor::TY }) => {
                 Box::new(move |_operands| {
                     let y: Ring64Tensor = RingTensor(987654321);
                     y.into()
                 })
             }
-            (Placement::HostPlacement(_), Ty::Ring128TensorTy) => {
+            (Placement::HostPlacement(_), Signature::Nullary{ ret: Ring128Tensor::TY }) => {
                 Box::new(move |_operands| {
                     let y: Ring128Tensor = RingTensor(987654321);
                     y.into()
@@ -1399,14 +1462,14 @@ impl RingSampleOp {
     // not sure this will work, seems like we need a Ty instead, which comes as part of
     // type checking.
     pub fn execute_symbolic(&self, ctx: &SymbolicContext, _operands: Vec<SymbolicValue>) -> SymbolicValue {
-        match (&self.plc, &self.ty) {
-            (Placement::HostPlacement(_), Ty::Ring64TensorTy) => {
+        match (&self.plc, self.signature()) {
+            (Placement::HostPlacement(_), Signature::Nullary{ ret: Ring64Tensor::TY }) => {
                 let op_name = ctx.add_operation(self, &[]);
                 SymbolicValue::Ring64Tensor(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
                 }))
             }
-            (Placement::HostPlacement(_), Ty::Ring128TensorTy) => {
+            (Placement::HostPlacement(_), Signature::Nullary{ ret: Ring128Tensor::TY }) => {
                 let op_name = ctx.add_operation(self, &[]);
                 SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
