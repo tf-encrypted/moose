@@ -7,7 +7,7 @@ pub fn compiler_networking(comp: &Computation) -> anyhow::Result<Computation> {
     let mut operations = comp.operations.clone();
     let extra_ops = cut_networking_edges(&mut operations);
     operations.extend(extra_ops);
-    Ok(Computation { operations })
+    Computation { operations }.toposort().map_err(|e| anyhow::anyhow!("Failed to sort the ops {}", e))
 }
 
 fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
@@ -29,16 +29,6 @@ fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
     let mut extra_ops = Vec::new();
     for (op, inputs) in edges {
         for input in inputs {
-            let serialize_operation = Operation {
-                name: "serializeXX_todo".into(), // TODO
-                kind: Operator::Identity(IdentityOp {
-                    ty: Ty::Float32TensorTy,
-                }), // TODO TYPES!
-                inputs: vec![],                  // TODO
-                placement: op.placement.clone(), // TODO: should be source placement
-            };
-            extra_ops.push(serialize_operation);
-
             // rendezvous_key = context.get_fresh_name("rendezvous_key")
             let rendezvous_key = "rendezvous_key_todo";
 
@@ -47,8 +37,8 @@ fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
                 kind: Operator::Send(SendOp {
                     rendezvous_key: rendezvous_key.into(),
                     receiver: Role::from("bob"),
-                }), // TODO
-                inputs: vec!["serializeXX_todo".into()], // TODO
+                }), // TODO, receiver
+                inputs: vec!["y".into()], // TODO: source op
                 placement: op.placement.clone(), // TODO: source
             };
             extra_ops.push(send_operation);
@@ -59,23 +49,14 @@ fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
                     rendezvous_key: rendezvous_key.into(),
                     sender: Role::from("alice"),
                     ty: Ty::Float32TensorTy,
-                }), // TODO
-                inputs: vec![],                // TODO
+                }), // TODO Types, sender
+                inputs: vec![],
                 placement: op.placement.clone(),
             };
             extra_ops.push(receive_operation);
 
-            let deserialize_operation = Operation {
-                name: "deserializeXX_todo".into(), // TODO
-                kind: Operator::Identity(IdentityOp {
-                    ty: Ty::Float32TensorTy,
-                }), // TODO TYPES!
-                inputs: vec!["receiveXX_todo".into()], // TODO
-                placement: op.placement.clone(),
-            };
-            extra_ops.push(deserialize_operation);
             let index = op.inputs.iter().position(|r| input.eq(r)).unwrap();
-            op.inputs[index] = "deserializeXX_todo".into(); // TODO find the index of `input` - perhaps just work with the index from the start?
+            op.inputs[index] = "receiveXX_todo".into(); // TODO find the index of `input` - perhaps just work with the index from the start?
         }
     }
     extra_ops
