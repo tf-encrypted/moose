@@ -2,5 +2,5 @@
 members = [
   "moose",
   "pymoose",
-  "compiler",
+  "elk",
 ]
