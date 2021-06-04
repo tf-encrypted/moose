@@ -20,16 +20,16 @@ struct Opt {
     #[structopt(parse(from_os_str))]
     output: Option<PathBuf>,
 
-    /// List of passes to apply. In order.
+    /// List of passes to apply. In order. Default to run all the passes
     #[structopt(short, long)]
-    passes: Vec<String>,
+    passes: Option<Vec<String>>,
 }
 
 fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
     let source = read_to_string(opt.input)?;
     let mut comp = verbose_parse_computation(&source)?;
-    for pass in opt.passes {
+    for pass in opt.passes.unwrap_or_else(all_passes) {
         comp = do_pass(&pass, &comp)?;
     }
     // TODO: Apply some passes
@@ -38,6 +38,12 @@ fn main() -> anyhow::Result<()> {
         None => println!("{}", comp.to_textual()),
     }
     Ok(())
+}
+
+/// Finds all the passes and the proper order for them
+fn all_passes() -> Vec<String> {
+    // Currently is not doing any magical discover and sorting, just returns a hard-coded list.
+    vec!["networking".into()]
 }
 
 fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Computation> {
