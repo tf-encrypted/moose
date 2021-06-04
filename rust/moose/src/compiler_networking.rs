@@ -7,7 +7,9 @@ pub fn compiler_networking(comp: &Computation) -> anyhow::Result<Computation> {
     let mut operations = comp.operations.clone();
     let extra_ops = cut_networking_edges(&mut operations);
     operations.extend(extra_ops);
-    Computation { operations }.toposort().map_err(|e| anyhow::anyhow!("Failed to sort the ops {}", e))
+    Computation { operations }
+        .toposort()
+        .map_err(|e| anyhow::anyhow!("Failed to sort the ops {}", e))
 }
 
 fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
@@ -38,7 +40,7 @@ fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
                     rendezvous_key: rendezvous_key.into(),
                     receiver: Role::from("bob"),
                 }), // TODO, receiver
-                inputs: vec!["y".into()], // TODO: source op
+                inputs: vec!["y".into()],   // TODO: source op
                 placement: op.placement.clone(), // TODO: source
             };
             extra_ops.push(send_operation);
