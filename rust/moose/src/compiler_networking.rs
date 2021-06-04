@@ -31,18 +31,23 @@ fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
         for input in inputs {
             let serialize_operation = Operation {
                 name: "serializeXX_todo".into(), // TODO
-                kind: Operator::Identity(IdentityOp{ty: Ty::Float32TensorTy }), // TODO TYPES!
-                inputs: vec![], // TODO
+                kind: Operator::Identity(IdentityOp {
+                    ty: Ty::Float32TensorTy,
+                }), // TODO TYPES!
+                inputs: vec![],                  // TODO
                 placement: op.placement.clone(), // TODO: should be source placement
             };
             extra_ops.push(serialize_operation);
 
             // rendezvous_key = context.get_fresh_name("rendezvous_key")
             let rendezvous_key = "rendezvous_key_todo";
-            
+
             let send_operation = Operation {
                 name: "sendXX_todo".into(), // TODO
-                kind: Operator::Send(SendOp{rendezvous_key: rendezvous_key.into(), receiver: Role::from("bob")}), // TODO
+                kind: Operator::Send(SendOp {
+                    rendezvous_key: rendezvous_key.into(),
+                    receiver: Role::from("bob"),
+                }), // TODO
                 inputs: vec!["serializeXX_todo".into()], // TODO
                 placement: op.placement.clone(), // TODO: source
             };
@@ -50,15 +55,21 @@ fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
 
             let receive_operation = Operation {
                 name: "receiveXX_todo".into(), // TODO
-                kind: Operator::Receive(ReceiveOp{rendezvous_key: rendezvous_key.into(), sender: Role::from("alice"), ty: Ty::Float32TensorTy}), // TODO
-                inputs: vec![], // TODO
+                kind: Operator::Receive(ReceiveOp {
+                    rendezvous_key: rendezvous_key.into(),
+                    sender: Role::from("alice"),
+                    ty: Ty::Float32TensorTy,
+                }), // TODO
+                inputs: vec![],                // TODO
                 placement: op.placement.clone(),
             };
             extra_ops.push(receive_operation);
 
             let deserialize_operation = Operation {
                 name: "deserializeXX_todo".into(), // TODO
-                kind: Operator::Identity(IdentityOp{ty: Ty::Float32TensorTy }), // TODO TYPES!
+                kind: Operator::Identity(IdentityOp {
+                    ty: Ty::Float32TensorTy,
+                }), // TODO TYPES!
                 inputs: vec!["receiveXX_todo".into()], // TODO
                 placement: op.placement.clone(),
             };
@@ -70,7 +81,7 @@ fn cut_networking_edges(ops: &mut Vec<Operation>) -> Vec<Operation> {
     extra_ops
 }
 
-fn compute_operations_lookup_dict(ops: &Vec<Operation>) -> HashMap<String, String> {
+fn compute_operations_lookup_dict(ops: &[Operation]) -> HashMap<String, String> {
     let mut dict = HashMap::new();
     for op in ops {
         dict.insert(op.name.clone(), format!("{:?}", op.placement)); // TODO: Consider textual format instead of debug print?
