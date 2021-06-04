@@ -587,6 +587,64 @@ macro_rules! modelled {
 
     };
 
+    /*
+    Ternary
+    */
+
+    ($t:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+
+        impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
+            fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1, x2: $t2) -> $u {
+                // NOTE we shouldn't do anything here, the kernel call is simply to check
+                
+                // TODO not sure whether to add `unimplemented!`. it might be better to
+                // simply make sure the Check traits are private.
+                <Self as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::kernel(ctx, plc, x0, x1, x2)
+            }
+        }
+
+        impl $t::<ConcreteContext, $t0, $t1, $t2> for $plc {
+            type Output = $u;
+
+            fn apply(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, x2: &$t2) -> Self::Output {
+                let signature = TernarySignature{
+                    arg0: <$t0 as KnownType>::TY,
+                    arg1: <$t1 as KnownType>::TY,
+                    arg2: <$t2 as KnownType>::TY,
+                    ret: <$u as KnownType>::TY,
+                };
+                let op = $op::from_placement_signature(&self, signature);
+                ctx.execute(
+                    op.into(),
+                    vec![x0.clone().into(), x1.clone().into(), x2.clone().into()]
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+        impl $t::<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic, <$t2 as KnownType>::Symbolic> for $plc {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn apply(&self, ctx: &SymbolicContext, x0: &<$t0 as KnownType>::Symbolic, x1: &<$t1 as KnownType>::Symbolic, x2: &<$t2 as KnownType>::Symbolic) -> Self::Output {
+                let signature = TernarySignature{
+                    arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
+                    arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
+                    arg2: <<$t2 as KnownType>::Symbolic as KnownType>::TY,
+                    ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+                };
+                let op = $op::from_placement_signature(&self, signature);
+                ctx.execute(
+                    op.into(),
+                    vec![x0.clone().into(), x1.clone().into(), x2.clone().into()]
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+    };
+
 }
 
 trait PlacementAdd<C: Context, T, U> {
@@ -630,12 +688,20 @@ trait PlacementMul<C: Context, T, U> {
     }
 }
 
+trait PlacementMulSetup<C: Context, S, T, U> {
+    type Output;
+
+    fn apply(&self, ctx: &C, s: &S, x: &T, y: &U) -> Self::Output;
+
+    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> Self::Output {
+        self.apply(ctx, s, x, y)
+    }
+}
+
 modelled!(PlacementMul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
 modelled!(PlacementMul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
-
-// TODO need ternary trait
-// modelled!(PlacementMul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
-// modelled!(PlacementMul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
 
 trait PlacementShare<C: Context, T> {
     type Output;
