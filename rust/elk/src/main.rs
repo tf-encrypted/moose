@@ -1,4 +1,4 @@
-use moose::compiler_networking::compiler_networking;
+use moose::compiler_networking::{compiler_networking, print_graph};
 use moose::computation::Computation;
 use moose::text_computation::verbose_parse_computation;
 use moose::text_computation::ToTextual;
@@ -49,6 +49,7 @@ fn all_passes() -> Vec<String> {
 fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Computation> {
     match pass {
         "networking" => compiler_networking(comp),
+        "print" => print_graph(comp),
         missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
     }
 }

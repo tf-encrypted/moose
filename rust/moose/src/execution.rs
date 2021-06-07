@@ -614,7 +614,7 @@ impl Operation {
 impl Computation {
     pub fn graph_operation<O>(
         &self,
-        operation: impl Fn(&Graph<String, ()>, HashMap<NodeIndex, usize>) -> Result<O>,
+        mut operation: impl FnMut(&Graph<String, ()>, HashMap<NodeIndex, usize>) -> Result<O>,
     ) -> Result<O> {
         let mut graph = Graph::<String, ()>::new();
 
