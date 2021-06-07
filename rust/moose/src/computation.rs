@@ -46,6 +46,7 @@ pub enum Ty {
     Uint16TensorTy,
     Uint32TensorTy,
     Uint64TensorTy,
+    UnknownTy,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

@@ -30,8 +30,6 @@ impl NetworkingPass {
     }
 
     /// Applies the networking pass to the entire computation
-    ///
-    /// TODO: Types
     pub fn pass(comp: &Computation) -> anyhow::Result<Computation> {
         // We clone the operations to make the changes to them.
         let mut pass = NetworkingPass::new(comp);
@@ -103,8 +101,8 @@ impl NetworkingPass {
             kind: Operator::Receive(ReceiveOp {
                 rendezvous_key,
                 sender: Role::from(src),
-                ty: Ty::Float32TensorTy,
-            }), // TODO Types
+                ty: Ty::UnknownTy,
+            }),
             inputs: vec![],
             placement: dst_op.placement.clone(),
         };
@@ -145,7 +143,6 @@ mod tests {
         mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
 
         let comp = NetworkingPass::pass(&source.try_into()?)?;
-        // println!("\n\n\n{}\n\n\n", comp.to_textual());
         // Networking should not introduce any changes to such a computation
         assert!(comp.to_textual().contains(
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
@@ -168,11 +165,12 @@ mod tests {
         mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
 
         let comp = NetworkingPass::pass(&source.try_into()?)?;
+        // println!("\n\n\n{}\n\n\n", comp.to_textual());
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.to_textual().contains(
             r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="alice"} (y) @Host(bob)"#
         ));
-        assert!(comp.to_textual().contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Float32Tensor () @Host(alice)"#));
+        assert!(comp.to_textual().contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Unknown () @Host(alice)"#));
         assert!(comp.to_textual().contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp.to_textual().contains("dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp
