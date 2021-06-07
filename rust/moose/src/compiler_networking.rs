@@ -15,19 +15,26 @@ pub struct NetworkingPass {
     operations: Vec<Operation>,
     extra_ops: Vec<Operation>,
     counter: std::ops::RangeFrom<usize>,
+    rendezvous: std::ops::RangeFrom<usize>,
 }
 
 impl NetworkingPass {
-    /// Applies the networking pass to the entire computation
-    ///
-    /// TODO: Types, rendezvous_key_
-    pub fn compiler_networking(comp: &Computation) -> anyhow::Result<Computation> {
-        // We clone the operations to make the changes to them.
-        let mut pass = NetworkingPass {
+    /// Create a new context for the Networking pass
+    fn new(comp: &Computation) -> NetworkingPass {
+        NetworkingPass {
             operations: comp.operations.clone(),
             extra_ops: Vec::new(),
             counter: 0..,
-        };
+            rendezvous: 0..,
+        }
+    }
+
+    /// Applies the networking pass to the entire computation
+    ///
+    /// TODO: Types
+    pub fn compiler_networking(comp: &Computation) -> anyhow::Result<Computation> {
+        // We clone the operations to make the changes to them.
+        let mut pass = NetworkingPass::new(comp);
 
         comp.graph_operation(|graph, inv_map| {
             use petgraph::visit::EdgeRef;
@@ -78,8 +85,7 @@ impl NetworkingPass {
     ) -> String {
         let index = self.counter.next().unwrap();
 
-        // rendezvous_key = context.get_fresh_name("rendezvous_key")
-        let rendezvous_key = format!("rendezvous_key_{}", index); // TODO
+        let rendezvous_key = format!("rendezvous_key_{}", self.rendezvous.next().unwrap());
 
         let send_operation = Operation {
             name: format!("send_{}", index),
