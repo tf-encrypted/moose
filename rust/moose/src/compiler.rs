@@ -223,6 +223,7 @@ pub enum Operator {
     RepAddOp(RepAddOp),
     RepMulOp(RepMulOp),
     RepShareOp(RepShareOp),
+    RepRevealOp(RepRevealOp),
     ConstantOp(ConstantOp),
 }
 
@@ -247,6 +248,7 @@ operator!(RepSetupOp);
 operator!(RepAddOp);
 operator!(RepMulOp);
 operator!(RepShareOp);
+operator!(RepRevealOp);
 operator!(ConstantOp);
 
 #[derive(Clone, Debug)]
@@ -696,6 +698,7 @@ impl Context for ConcreteContext {
             Operator::RingMulOp(op) => op.compile(self)(operands).try_into().unwrap(),
             Operator::RepSetupOp(op) => op.compile(self)(operands).try_into().unwrap(),
             Operator::RepShareOp(op) => op.compile(self)(operands).try_into().unwrap(),
+            Operator::RepRevealOp(op) => op.compile(self)(operands).try_into().unwrap(),
             Operator::RepAddOp(op) => op.compile(self)(operands).try_into().unwrap(),
             Operator::RepMulOp(op) => op.compile(self)(operands).try_into().unwrap(),
             Operator::ConstantOp(op) => op.compile(self)(operands).try_into().unwrap(),
@@ -722,6 +725,7 @@ impl Context for SymbolicContext {
             Operator::RingMulOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
             Operator::RepSetupOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
             Operator::RepShareOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
+            Operator::RepRevealOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
             Operator::RepAddOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
             Operator::RepMulOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
             Operator::ConstantOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
@@ -1057,7 +1061,7 @@ macro_rules! kernel {
     };
 }
 
-/// Kernel function is used to map Symbolic::Concrete to Symbolic::Concrete in symbolic contexts
+/// Kernel function is used to map Symbolic::Concrete to Into<Symbolic> in symbolic contexts
 macro_rules! hybrid_kernel {
 
     /*
@@ -1106,7 +1110,7 @@ macro_rules! hybrid_kernel {
                         ) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
 
-                            let y: <$u as KnownType>::Symbolic = Symbolic::Concrete($k(ctx, &plc));
+                            let y: <$u as KnownType>::Symbolic = $k(ctx, &plc).into();
                             y.into()
                         }
                     )+
@@ -1170,7 +1174,7 @@ macro_rules! hybrid_kernel {
 
                             match x0 {
                                 Symbolic::Concrete(x0) => {
-                                    let y: <$u as KnownType>::Symbolic = Symbolic::Concrete($k(ctx, &plc, x0));
+                                    let y: <$u as KnownType>::Symbolic = $k(ctx, &plc, x0).into();
                                     y
                                 }
                                 Symbolic::Symbolic(x0) => {
@@ -1178,9 +1182,6 @@ macro_rules! hybrid_kernel {
                                     Symbolic::Symbolic(SymbolicHandle { op: op_name })
                                 }
                             }.into()
-
-                            // let y: <$u as KnownType>::Symbolic = Symbolic::Concrete($k(ctx, &plc, x0));
-                            // y.into()
                         }
                     )+
                     _ => unimplemented!(), // ok
@@ -1252,7 +1253,7 @@ macro_rules! hybrid_kernel {
 
                             match (x0, x1) {
                                 (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
-                                    let y: <$u as KnownType>::Symbolic = Symbolic::Concrete($k(ctx, &plc, x0, x1));
+                                    let y: <$u as KnownType>::Symbolic = $k(ctx, &plc, x0, x1).into();
                                     y
                                 }
                                 (Symbolic::Symbolic(x0), Symbolic::Symbolic(x1)) => {
@@ -1338,7 +1339,7 @@ macro_rules! hybrid_kernel {
 
                             match (x0, x1, x2) {
                                 (Symbolic::Concrete(x0), Symbolic::Concrete(x1), Symbolic::Concrete(x2)) => {
-                                    let y: <$u as KnownType>::Symbolic = Symbolic::Concrete($k(ctx, &plc, x0, x1, x2));
+                                    let y: <$u as KnownType>::Symbolic = $k(ctx, &plc, x0, x1, x2).into();
                                     y
                                 }
                                 (Symbolic::Symbolic(x0), Symbolic::Symbolic(x1), Symbolic::Symbolic(x2)) => {
@@ -1366,6 +1367,12 @@ impl<T> From<RingTensor<T>> for Symbolic<RingTensor<T>> {
 
 impl<R> From<ReplicatedTensor<R>> for Symbolic<ReplicatedTensor<R>> {
     fn from(x: ReplicatedTensor<R>) -> Symbolic<ReplicatedTensor<R>> {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>> {
+    fn from(x: AbstractReplicatedSetup<K>) -> Symbolic<AbstractReplicatedSetup<K>> {
         Symbolic::Concrete(x)
     }
 }
@@ -2005,6 +2012,60 @@ impl RepShareOp {
 }
 
 #[derive(Clone, Debug)]
+pub struct RepRevealOp {
+    sig: Signature,
+    plc: Placement,
+}
+
+hybrid_kernel! {
+    RepRevealOp,
+    [
+        (ReplicatedPlacement, (Replicated64Tensor) -> Ring64Tensor),
+        (ReplicatedPlacement, (Replicated128Tensor) -> Ring128Tensor)
+    ],
+    Self::kernel
+}
+
+impl RepRevealOp {
+    fn from_placement_signature(plc: &ReplicatedPlacement, sig: UnarySignature) -> Self {
+        RepRevealOp {
+            sig: sig.into(),
+            plc: plc.clone().into(),
+        }
+    }
+
+    fn kernel<C: Context, R: Clone>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        xe: ReplicatedTensor<R>,
+    ) -> R
+    where
+        R: Clone,
+        // HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let player0 = HostPlacement {
+            player: rep.players[0].clone(),
+        };
+        let player1 = HostPlacement {
+            player: rep.players[1].clone(),
+        };
+        let player2 = HostPlacement {
+            player: rep.players[2].clone(),
+        };
+
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &xe;
+
+        // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
+        // let x = player0.add(ctx, &player0.add(ctx, x00, x10), x21);
+        // x
+
+        x00.clone()
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct RingAddOp {
     sig: Signature,
     plc: Placement,
@@ -2555,9 +2616,11 @@ fn test_rep_exec() {
     ];
 
     let ctx = SymbolicContext::default();
-    // let ctx = ConcreteContext::default();
-
     let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+
+    // let ctx = ConcreteContext::default();
+    // let mut env: HashMap<String, Value> = HashMap::default();
+
     for op in ops {
         let operator = op.operator;
         let operands = op
@@ -2569,12 +2632,12 @@ fn test_rep_exec() {
         env.insert(op.name, res);
     }
 
-    // println!("{:?}", env);
+    println!("{:?}", env);
 
-    let ops = ctx.ops.read().unwrap();
-    for op in ops.iter() {
-        println!("  {:?}", op);
-    }
+    // let ops = ctx.ops.read().unwrap();
+    // for op in ops.iter() {
+    //     println!("  {:?}", op);
+    // }
 
     // let comp = r#"
 
