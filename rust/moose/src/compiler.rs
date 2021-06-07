@@ -396,7 +396,6 @@ pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
 macro_rules! modelled {
-
     /*
     Nullary
     */
@@ -1973,11 +1972,7 @@ impl RepShareOp {
         }
     }
 
-    fn kernel<C: Context, R: Clone>(
-        ctx: &C,
-        rep: &ReplicatedPlacement,
-        x: R,
-    ) -> ReplicatedTensor<R>
+    fn kernel<C: Context, R: Clone>(ctx: &C, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
     where
         R: Into<C::Value> + TryFrom<C::Value>,
         HostPlacement: PlacementSample<C, R>,
