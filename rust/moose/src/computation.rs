@@ -512,7 +512,7 @@ impl From<ReplicatedPlacement> for Placement {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Operation {
     pub name: String,
     pub kind: Operator,
