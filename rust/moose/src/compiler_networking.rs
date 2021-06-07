@@ -101,7 +101,7 @@ impl NetworkingPass {
         let receive_operation = Operation {
             name: format!("receive_{}", index),
             kind: Operator::Receive(ReceiveOp {
-                rendezvous_key: rendezvous_key.clone(),
+                rendezvous_key,
                 sender: Role::from(src),
                 ty: Ty::Float32TensorTy,
             }), // TODO Types
