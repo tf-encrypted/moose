@@ -1168,15 +1168,10 @@ macro_rules! hybrid_kernel {
                         ) => {
                             let plc: $plc = self.plc.clone().try_into().unwrap();
 
-                            let x: Symbolic<$t0> = operands.get(0).unwrap().clone().try_into().unwrap();
+                            let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
 
-                            // TODO this strategy differs from the binary kernels below, where we match on Symbolic
-                            // and only pass in concrete values to $k. this corresponds to it being okay to execute
-                            // concrete replicated ops at this level, but not concrete ring ops. how to make this
-                            // configurable outside the macros?
-                            let y = $k(ctx, &plc, x);
-
-                            Symbolic::Concrete(y).into()
+                            let y: <$u as KnownType>::Symbolic = Symbolic::Concrete($k(ctx, &plc, x0));
+                            y.into()
                         }
                     )+
                     _ => unimplemented!(), // ok
@@ -1245,6 +1240,8 @@ macro_rules! hybrid_kernel {
 
                             let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
                             let x1: <$t1 as KnownType>::Symbolic = operands.get(1).unwrap().clone().try_into().unwrap();
+
+                            
 
                             match (x0, x1) {
                                 (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
