@@ -907,6 +907,7 @@ impl Compile<AsyncKernel> for SaveOp {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
+                    eprintln!("kernel: key = {} val = {:?}", key, val);
                     sess.storage.save(&key, &val).await?;
                     map_send_result(sender.send(Value::Unit))
                 })
