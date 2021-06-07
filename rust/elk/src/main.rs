@@ -32,7 +32,6 @@ fn main() -> anyhow::Result<()> {
     for pass in opt.passes.unwrap_or_else(all_passes) {
         comp = do_pass(&pass, &comp)?;
     }
-    // TODO: Apply some passes
     match opt.output {
         Some(path) => write(path, comp.to_textual())?,
         None => println!("{}", comp.to_textual()),
@@ -48,7 +47,7 @@ fn all_passes() -> Vec<String> {
 
 fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Computation> {
     match pass {
-        "networking" => NetworkingPass::compiler_networking(comp),
+        "networking" => NetworkingPass::pass(comp),
         "print" => print_graph(comp),
         missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
     }
