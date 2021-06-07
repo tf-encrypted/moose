@@ -2183,7 +2183,10 @@ fn test_rep_exec() {
         Operation {
             name: "x".into(),
             operator: RingSampleOp {
-                sig: NullarySignature{ ret: Ty::Ring128Tensor }.into(),
+                sig: NullarySignature {
+                    ret: Ty::Ring128Tensor,
+                }
+                .into(),
                 plc: alice_plc.clone().into(),
             }
             .into(),
@@ -2192,7 +2195,11 @@ fn test_rep_exec() {
         Operation {
             name: "xe".into(),
             operator: RepShareOp {
-                sig: UnarySignature{ arg0: Ty::Ring128Tensor, ret: Ty::Replicated128Tensor }.into(),
+                sig: UnarySignature {
+                    arg0: Ty::Ring128Tensor,
+                    ret: Ty::Replicated128Tensor,
+                }
+                .into(),
                 plc: rep_plc.clone().into(),
             }
             .into(),
@@ -2201,7 +2208,10 @@ fn test_rep_exec() {
         Operation {
             name: "y".into(),
             operator: RingSampleOp {
-                sig: NullarySignature{ ret: Ty::Ring128Tensor }.into(),
+                sig: NullarySignature {
+                    ret: Ty::Ring128Tensor,
+                }
+                .into(),
                 plc: bob_plc.clone().into(),
             }
             .into(),
@@ -2210,7 +2220,11 @@ fn test_rep_exec() {
         Operation {
             name: "ye".into(),
             operator: RepShareOp {
-                sig: UnarySignature{ arg0: Ty::Ring128Tensor, ret: Ty::Replicated128Tensor }.into(),
+                sig: UnarySignature {
+                    arg0: Ty::Ring128Tensor,
+                    ret: Ty::Replicated128Tensor,
+                }
+                .into(),
                 plc: rep_plc.clone().into(),
             }
             .into(),
@@ -2219,7 +2233,10 @@ fn test_rep_exec() {
         Operation {
             name: "s".into(),
             operator: RepSetupOp {
-                sig: NullarySignature{ ret: Ty::ReplicatedSetup }.into(),
+                sig: NullarySignature {
+                    ret: Ty::ReplicatedSetup,
+                }
+                .into(),
                 plc: rep_plc.clone().into(),
             }
             .into(),
@@ -2228,7 +2245,13 @@ fn test_rep_exec() {
         Operation {
             name: "ze".into(),
             operator: RepMulOp {
-                sig: TernarySignature{ arg0: Ty::ReplicatedSetup, arg1: Ty::Replicated128Tensor, arg2: Ty::Replicated128Tensor, ret: Ty::Replicated128Tensor }.into(),
+                sig: TernarySignature {
+                    arg0: Ty::ReplicatedSetup,
+                    arg1: Ty::Replicated128Tensor,
+                    arg2: Ty::Replicated128Tensor,
+                    ret: Ty::Replicated128Tensor,
+                }
+                .into(),
                 plc: rep_plc.clone().into(),
             }
             .into(),
@@ -2237,7 +2260,13 @@ fn test_rep_exec() {
         Operation {
             name: "ve".into(),
             operator: RepMulOp {
-                sig: TernarySignature{ arg0: Ty::ReplicatedSetup, arg1: Ty::Replicated128Tensor, arg2: Ty::Replicated128Tensor, ret: Ty::Replicated128Tensor }.into(),
+                sig: TernarySignature {
+                    arg0: Ty::ReplicatedSetup,
+                    arg1: Ty::Replicated128Tensor,
+                    arg2: Ty::Replicated128Tensor,
+                    ret: Ty::Replicated128Tensor,
+                }
+                .into(),
                 plc: rep_plc.clone().into(),
             }
             .into(),
