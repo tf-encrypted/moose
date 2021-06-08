@@ -130,7 +130,9 @@ mod tests {
         dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
 
-        let comp = NetworkingPass::pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = NetworkingPass::pass(&source.try_into()?)?
+            .unwrap()
+            .to_textual();
         // Networking should not introduce any changes to such a computation
         assert!(comp.contains(
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
@@ -150,7 +152,9 @@ mod tests {
         mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
-        let comp = NetworkingPass::pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = NetworkingPass::pass(&source.try_into()?)?
+            .unwrap()
+            .to_textual();
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
@@ -170,7 +174,9 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
         mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(bob)
         add = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(bob)"#;
-        let comp = NetworkingPass::pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = NetworkingPass::pass(&source.try_into()?)?
+            .unwrap()
+            .to_textual();
 
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
@@ -193,7 +199,9 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(bob)
         mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, charlie)"#;
 
-        let comp = NetworkingPass::pass(&source.try_into()?)?.unwrap().to_textual();
+        let comp = NetworkingPass::pass(&source.try_into()?)?
+            .unwrap()
+            .to_textual();
         // Networking should not make any changes to the replicated placement (should probably never see it in real life)
         assert!(comp.contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, charlie)"));
         Ok(())
