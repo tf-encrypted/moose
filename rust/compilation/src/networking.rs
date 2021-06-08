@@ -1,4 +1,5 @@
 use moose::computation::*;
+use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
 pub struct NetworkingPass {
@@ -24,37 +25,32 @@ impl NetworkingPass {
         // We clone the operations to make the changes to them.
         let mut pass = NetworkingPass::new(comp);
 
-        comp.graph_operation(|graph, inv_map| {
-            use petgraph::visit::EdgeRef;
+        let (graph, inv_map) = comp.as_graph();
 
-            let mut created_cache = HashMap::new();
-            for er in graph.edge_references() {
-                let src_op = &comp.operations[inv_map[&er.source()]];
-                let dst_op = &comp.operations[inv_map[&er.target()]];
-                match placement_discrimnator(src_op, dst_op) {
-                    // We only operate on edges that jump from a host to a different host
-                    (Some(src), Some(dst)) if src != dst => {
-                        // Create a jump, if we never jumped from host `src` to host `dst`
-                        let receive_op_name = created_cache
-                            .entry((src, dst, src_op.name.clone()))
-                            .or_insert_with(|| {
-                                pass.create_networking_jump(src_op, dst_op, src, dst)
-                            });
+        let mut created_cache = HashMap::new();
+        for er in graph.edge_references() {
+            let src_op = &comp.operations[inv_map[&er.source()]];
+            let dst_op = &comp.operations[inv_map[&er.target()]];
+            match placement_discrimnator(src_op, dst_op) {
+                // We only operate on edges that jump from a host to a different host
+                (Some(src), Some(dst)) if src != dst => {
+                    // Create a jump, if we never jumped from host `src` to host `dst`
+                    let receive_op_name = created_cache
+                        .entry((src, dst, src_op.name.clone()))
+                        .or_insert_with(|| pass.create_networking_jump(src_op, dst_op, src, dst));
 
-                        // Update target operation's input to the receive operation's name
-                        if let Some(input) = pass.operations[inv_map[&er.target()]]
-                            .inputs
-                            .iter_mut()
-                            .find(|r| *r == &src_op.name)
-                        {
-                            *input = receive_op_name.clone();
-                        }
+                    // Update target operation's input to the receive operation's name
+                    if let Some(input) = pass.operations[inv_map[&er.target()]]
+                        .inputs
+                        .iter_mut()
+                        .find(|r| *r == &src_op.name)
+                    {
+                        *input = receive_op_name.clone();
                     }
-                    _ => (),
                 }
+                _ => (),
             }
-            Ok(())
-        })?;
+        }
 
         pass.operations.extend(pass.extra_ops);
         Computation {

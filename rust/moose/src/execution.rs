@@ -612,10 +612,7 @@ impl Operation {
 }
 
 impl Computation {
-    pub fn graph_operation<O>(
-        &self,
-        mut operation: impl FnMut(&Graph<String, ()>, HashMap<NodeIndex, usize>) -> Result<O>,
-    ) -> Result<O> {
+    pub fn as_graph(&self) -> (Graph<String, ()>, HashMap<NodeIndex, usize>) {
         let mut graph = Graph::<String, ()>::new();
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
@@ -678,22 +675,21 @@ impl Computation {
             graph.add_edge(send_nodes[key], recv_nodes[key], ());
         }
 
-        operation(&graph, inv_map)
+        (graph, inv_map)
     }
 
     pub fn toposort(&self) -> Result<Computation> {
-        self.graph_operation(|graph, inv_map| {
-            let toposort = toposort(&graph, None).map_err(|_| {
-                Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
-            })?;
+        let (graph, inv_map) = self.as_graph();
+        let toposort = toposort(&graph, None).map_err(|_| {
+            Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
+        })?;
 
-            let operations = toposort
-                .iter()
-                .map(|node| self.operations[inv_map[node]].clone())
-                .collect();
+        let operations = toposort
+            .iter()
+            .map(|node| self.operations[inv_map[node]].clone())
+            .collect();
 
-            Ok(Computation { operations })
-        })
+        Ok(Computation { operations })
     }
 
     pub fn apply(
