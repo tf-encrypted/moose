@@ -25,12 +25,12 @@ impl NetworkingPass {
         // We clone the operations to make the changes to them.
         let mut pass = NetworkingPass::new(comp);
 
-        let (graph, inv_map) = comp.as_graph();
+        let graph = comp.as_graph();
 
         let mut created_cache = HashMap::new();
         for er in graph.edge_references() {
-            let src_op = &comp.operations[inv_map[&er.source()]];
-            let dst_op = &comp.operations[inv_map[&er.target()]];
+            let src_op = &comp.operations[graph[er.source()].1];
+            let dst_op = &comp.operations[graph[er.target()].1];
             match placement_discrimnator(src_op, dst_op) {
                 // We only operate on edges that jump from a host to a different host
                 (Some(src), Some(dst)) if src != dst => {
@@ -40,7 +40,7 @@ impl NetworkingPass {
                         .or_insert_with(|| pass.create_networking_jump(src_op, dst_op, src, dst));
 
                     // Update target operation's input to the receive operation's name
-                    if let Some(input) = pass.operations[inv_map[&er.target()]]
+                    if let Some(input) = pass.operations[graph[er.target()].1]
                         .inputs
                         .iter_mut()
                         .find(|r| *r == &src_op.name)
