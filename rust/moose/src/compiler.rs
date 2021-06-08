@@ -990,9 +990,9 @@ macro_rules! compiletime_kernel {
                             let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
 
                             let k: fn(
-                                &Self, 
-                                &SymbolicContext, 
-                                $plc, 
+                                &Self,
+                                &SymbolicContext,
+                                $plc,
                                 <$t0 as KnownType>::Symbolic
                             ) -> <$u as KnownType>::Symbolic = $k;
 
@@ -1033,10 +1033,10 @@ macro_rules! compiletime_kernel {
                             let x1: <$t1 as KnownType>::Symbolic = operands.get(1).unwrap().clone().try_into().unwrap();
 
                             let k: fn(
-                                &Self, 
-                                &SymbolicContext, 
-                                $plc, 
-                                <$t0 as KnownType>::Symbolic, 
+                                &Self,
+                                &SymbolicContext,
+                                $plc,
+                                <$t0 as KnownType>::Symbolic,
                                 <$t1 as KnownType>::Symbolic
                             ) -> <$u as KnownType>::Symbolic = $k;
 
@@ -1080,10 +1080,10 @@ macro_rules! compiletime_kernel {
                             let x2: <$t2 as KnownType>::Symbolic = operands.get(2).unwrap().clone().try_into().unwrap();
 
                             let k: fn(
-                                &Self, 
-                                &SymbolicContext, 
-                                $plc, 
-                                <$t0 as KnownType>::Symbolic, 
+                                &Self,
+                                &SymbolicContext,
+                                $plc,
+                                <$t0 as KnownType>::Symbolic,
                                 <$t1 as KnownType>::Symbolic,
                                 <$t2 as KnownType>::Symbolic,
                             ) -> <$u as KnownType>::Symbolic = $k;
