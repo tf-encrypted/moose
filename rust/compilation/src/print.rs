@@ -1,11 +1,11 @@
 use moose::computation::{Computation, Operation, Operator};
-use petgraph::dot::Dot;
+use petgraph::dot::{Config, Dot};
 
 /// Prints the computation's graph DOT representation to stdout
 pub fn print_graph(comp: &Computation) -> anyhow::Result<Computation> {
     let graph = comp.as_graph();
     let graph2 = graph.map(|_, n| pretty(&comp.operations[n.1]), |_, e| e);
-    println!("{:?}", Dot::new(&graph2));
+    println!("{:?}", Dot::with_config(&graph2, &[Config::EdgeNoLabel]));
     Ok(Computation {
         operations: comp.operations.clone(),
     })
