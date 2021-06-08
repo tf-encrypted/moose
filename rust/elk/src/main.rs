@@ -1,4 +1,4 @@
-use moose::compiler_networking::{print_graph, NetworkingPass};
+use compilation::networking::{print_graph, NetworkingPass};
 use moose::computation::Computation;
 use moose::text_computation::verbose_parse_computation;
 use moose::text_computation::ToTextual;

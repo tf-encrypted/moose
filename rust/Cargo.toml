@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "compilation",
   "moose",
   "pymoose",
   "elk",

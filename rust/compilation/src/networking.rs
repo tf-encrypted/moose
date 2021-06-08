@@ -1,4 +1,4 @@
-use crate::computation::*;
+use moose::computation::*;
 use std::collections::HashMap;
 
 pub fn print_graph(comp: &Computation) -> anyhow::Result<Computation> {
@@ -132,7 +132,7 @@ fn placement_discrimnator<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::text_computation::ToTextual;
+    use moose::text_computation::ToTextual;
     use std::convert::TryInto;
 
     #[test]
