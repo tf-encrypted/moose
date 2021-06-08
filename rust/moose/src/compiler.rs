@@ -4,7 +4,7 @@
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum Placement {
     HostPlacement(HostPlacement),
     ReplicatedPlacement(ReplicatedPlacement),
@@ -19,12 +19,12 @@ impl Placement {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct HostPlacement {
     player: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct ReplicatedPlacement {
     players: [String; 3],
 }
@@ -96,7 +96,7 @@ macro_rules! placement {
 placement!(HostPlacement);
 placement!(ReplicatedPlacement);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Ty {
     Ring32Tensor,
     Ring64Tensor,
@@ -112,7 +112,7 @@ pub trait KnownType {
     const TY: Ty;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Ring32Tensor(Ring32Tensor),
     Ring64Tensor(Ring64Tensor),
@@ -123,7 +123,7 @@ pub enum Value {
     PrfKey(PrfKey),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum SymbolicValue {
     Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
     Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
@@ -210,13 +210,13 @@ value!(
 );
 value!(PrfKey, Symbolic<PrfKey>);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T> {
     Symbolic(SymbolicHandle),
     Concrete(T),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct SymbolicHandle {
     op: String,
 }
@@ -227,7 +227,7 @@ impl<T> From<SymbolicHandle> for Symbolic<T> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
     RingAddOp(RingAddOp),
@@ -266,14 +266,14 @@ operator!(RepShareOp);
 operator!(RepRevealOp);
 operator!(ConstantOp);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct Operation {
     name: String,
     operator: Operator,
     operands: Vec<String>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Signature {
     Nullary(NullarySignature),
     Unary(UnarySignature),
@@ -281,25 +281,25 @@ pub enum Signature {
     Ternary(TernarySignature),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct NullarySignature {
     ret: Ty,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct UnarySignature {
     arg0: Ty,
     ret: Ty,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct BinarySignature {
     arg0: Ty,
     arg1: Ty,
     ret: Ty,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct TernarySignature {
     arg0: Ty,
     arg1: Ty,
@@ -331,7 +331,7 @@ impl From<TernarySignature> for Signature {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RingTensor<T>(T);
 
 impl Add<RingTensor<u64>> for RingTensor<u64> {
@@ -382,20 +382,20 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ReplicatedTensor<R> {
     shares: [[R; 2]; 3],
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PrfKey([u8; 16]);
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedSetup<K> {
     keys: [[K; 2]; 3],
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 struct ReplicatedZeroShare<R> {
     alphas: [R; 3],
 }
@@ -675,17 +675,17 @@ impl Context for ConcreteContext {
 
     fn execute(&self, op: Operator, operands: Vec<Value>) -> Value {
         match op {
-            Operator::PrfKeyGenOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RingSampleOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RingAddOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RingSubOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RingMulOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RepSetupOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RepShareOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RepRevealOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RepAddOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::RepMulOp(op) => op.compile(self)(operands).try_into().unwrap(),
-            Operator::ConstantOp(op) => op.compile(self)(operands).try_into().unwrap(),
+            Operator::PrfKeyGenOp(op) => op.compile(self)(operands),
+            Operator::RingSampleOp(op) => op.compile(self)(operands),
+            Operator::RingAddOp(op) => op.compile(self)(operands),
+            Operator::RingSubOp(op) => op.compile(self)(operands),
+            Operator::RingMulOp(op) => op.compile(self)(operands),
+            Operator::RepSetupOp(op) => op.compile(self)(operands),
+            Operator::RepShareOp(op) => op.compile(self)(operands),
+            Operator::RepRevealOp(op) => op.compile(self)(operands),
+            Operator::RepAddOp(op) => op.compile(self)(operands),
+            Operator::RepMulOp(op) => op.compile(self)(operands),
+            Operator::ConstantOp(op) => op.compile(self)(operands),
         }
     }
 }
@@ -702,17 +702,17 @@ impl Context for SymbolicContext {
 
     fn execute(&self, op: Operator, operands: Vec<SymbolicValue>) -> SymbolicValue {
         match op {
-            Operator::PrfKeyGenOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RingSampleOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RingAddOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RingSubOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RingMulOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RepSetupOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RepShareOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RepRevealOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RepAddOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::RepMulOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
-            Operator::ConstantOp(op) => op.execute_symbolic(self, operands).try_into().unwrap(),
+            Operator::PrfKeyGenOp(op) => op.execute_symbolic(self, operands),
+            Operator::RingSampleOp(op) => op.execute_symbolic(self, operands),
+            Operator::RingAddOp(op) => op.execute_symbolic(self, operands),
+            Operator::RingSubOp(op) => op.execute_symbolic(self, operands),
+            Operator::RingMulOp(op) => op.execute_symbolic(self, operands),
+            Operator::RepSetupOp(op) => op.execute_symbolic(self, operands),
+            Operator::RepShareOp(op) => op.execute_symbolic(self, operands),
+            Operator::RepRevealOp(op) => op.execute_symbolic(self, operands),
+            Operator::RepAddOp(op) => op.execute_symbolic(self, operands),
+            Operator::RepMulOp(op) => op.execute_symbolic(self, operands),
+            Operator::ConstantOp(op) => op.execute_symbolic(self, operands),
         }
     }
 }
@@ -1320,7 +1320,7 @@ trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> {
     fn check(ctx: &C, plc: &P, x0: X0, x1: X1, x2: X2) -> Y;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RepSetupOp {
     sig: Signature,
     plc: Placement,
@@ -1341,11 +1341,7 @@ impl RepSetupOp {
         let k2 = player2.keygen(ctx);
 
         AbstractReplicatedSetup {
-            keys: [
-                [k0.clone(), k1.clone()],
-                [k1.clone(), k2.clone()],
-                [k2.clone(), k0.clone()],
-            ],
+            keys: [[k0.clone(), k1.clone()], [k1, k2.clone()], [k2, k0]],
         }
     }
 }
@@ -1358,7 +1354,7 @@ hybrid_kernel! {
     Self::kernel
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RepAddOp {
     sig: Signature,
     plc: Placement,
@@ -1419,7 +1415,7 @@ hybrid_kernel! {
     Self::kernel
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RepMulOp {
     sig: Signature,
     plc: Placement,
@@ -1495,11 +1491,7 @@ impl RepMulOp {
         let z2 = player2.add(ctx, &t2, &a2);
 
         ReplicatedTensor {
-            shares: [
-                [z0.clone(), z1.clone()],
-                [z1.clone(), z2.clone()],
-                [z2.clone(), z0.clone()],
-            ],
+            shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
         }
     }
 }
@@ -1554,7 +1546,7 @@ where
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RepShareOp {
     sig: Signature,
     plc: Placement,
@@ -1583,11 +1575,7 @@ impl RepShareOp {
         let x2 = player0.sub(ctx, &x, &player0.add(ctx, &x0, &x1));
 
         ReplicatedTensor {
-            shares: [
-                [x0.clone(), x1.clone()],
-                [x1.clone(), x2.clone()],
-                [x2.clone(), x0.clone()],
-            ],
+            shares: [[x0.clone(), x1.clone()], [x1, x2.clone()], [x2, x0]],
         }
     }
 }
@@ -1604,7 +1592,7 @@ abstract_kernel! {
     Self::kernel
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RepRevealOp {
     sig: Signature,
     plc: Placement,
@@ -1643,15 +1631,14 @@ impl RepRevealOp {
         } = &xe;
 
         // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        let x = player0.add(ctx, &player0.add(ctx, x00, x10), x21);
-        x
+        player0.add(ctx, &player0.add(ctx, x00, x10), x21)
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RingAddOp {
     sig: Signature,
-    plc: Placement,
+    plc: Placement, // TODO placement should be on Operation!
 }
 
 impl RingAddOp {
@@ -1690,7 +1677,7 @@ kernel! {
     Self::kernel
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RingSubOp {
     sig: Signature,
     plc: Placement,
@@ -1729,7 +1716,7 @@ kernel! {
     Self::kernel
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RingMulOp {
     sig: Signature,
     plc: Placement,
@@ -1776,7 +1763,7 @@ trait PlacementKeyGen<C: Context, K> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PrfKeyGenOp {
     sig: Signature,
     plc: Placement,
@@ -1826,7 +1813,7 @@ kernel! {
     Self::kernel
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RingSampleOp {
     sig: Signature,
     plc: Placement,
@@ -1849,7 +1836,7 @@ impl RingSampleOp {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct ConstantOp {
     sig: Signature,
     plc: Placement,
@@ -1915,152 +1902,248 @@ impl ConstantOp {
     }
 }
 
-#[test]
-fn test_rep_add() {
-    // let x = ReplicatedTensor{
-    //     shares: [
-    //         [Ring64Tensor::Concrete(RingTensor(1)), Ring64Tensor::Concrete(RingTensor(2))],
-    //         [Ring64Tensor::Concrete(RingTensor(2)), Ring64Tensor::Concrete(RingTensor(3))],
-    //         [Ring64Tensor::Concrete(RingTensor(3)), Ring64Tensor::Concrete(RingTensor(1))],
-    //     ]
-    // };
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    // let y = ReplicatedTensor{
-    //     shares: [
-    //         [Ring64Tensor::Concrete(RingTensor(1)), Ring64Tensor::Concrete(RingTensor(2))],
-    //         [Ring64Tensor::Concrete(RingTensor(2)), Ring64Tensor::Concrete(RingTensor(3))],
-    //         [Ring64Tensor::Concrete(RingTensor(3)), Ring64Tensor::Concrete(RingTensor(1))],
-    //     ]
-    // };
-
-    // let x = ReplicatedTensor{
-    //     shares: [
-    //         [Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //     ]
-    // };
-
-    // let y = ReplicatedTensor{
-    //     shares: [
-    //         [Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring64Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //     ]
-    // };
-
-    let x = ReplicatedTensor {
-        shares: [
-            [RingTensor(1_u128), RingTensor(2_u128)],
-            [RingTensor(2_u128), RingTensor(3_u128)],
-            [RingTensor(3_u128), RingTensor(1_u128)],
-        ],
-    };
-
-    let y = ReplicatedTensor {
-        shares: [
-            [RingTensor(1_u128), RingTensor(2_u128)],
-            [RingTensor(2_u128), RingTensor(3_u128)],
-            [RingTensor(3_u128), RingTensor(1_u128)],
-        ],
-    };
-
-    // let x = ReplicatedTensor{
-    //     shares: [
-    //         [Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //     ]
-    // };
-
-    // let y = ReplicatedTensor{
-    //     shares: [
-    //         [Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //         [Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{})), Ring128Tensor::Symbolic(Operator::Constant(ConstantOp{}))],
-    //     ]
-    // };
-
-    let ctx = ConcreteContext::default();
-    let rep_plc = ReplicatedPlacement {
-        players: ["alice".into(), "bob".into(), "carole".into()],
-    };
-    let z: ReplicatedTensor<_> = rep_plc.add(&ctx, &x, &y);
-    // println!("{:?}", z);
-
-    let graph: Vec<Operator> = vec![];
-    let ctx = SymbolicContext::default();
-    let host_plc = HostPlacement {
-        player: "alice".into(),
-    };
-    // let r = Ring64Tensor::Concrete(RingTensor(2));
-    // let s = Ring64Tensor::Concrete(RingTensor(1));
-    // let t = host_plc.sub(&ctx, &r, &s);
-    // println!("{:?}", t);
-    let r: Symbolic<Ring128Tensor> = host_plc.sample(&ctx);
-    println!("{:?}", r);
-
-    let a: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> =
-        Symbolic::Concrete(ReplicatedTensor {
-            shares: [
-                [
-                    SymbolicHandle { op: "a00".into() }.into(),
-                    SymbolicHandle { op: "a10".into() }.into(),
-                ],
-                [
-                    SymbolicHandle { op: "a11".into() }.into(),
-                    SymbolicHandle { op: "a21".into() }.into(),
-                ],
-                [
-                    SymbolicHandle { op: "a22".into() }.into(),
-                    SymbolicHandle { op: "a02".into() }.into(),
-                ],
-            ],
-        });
-    let b: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> =
-        Symbolic::Concrete(ReplicatedTensor {
-            shares: [
-                [
-                    SymbolicHandle { op: "b00".into() }.into(),
-                    SymbolicHandle { op: "b10".into() }.into(),
-                ],
-                [
-                    SymbolicHandle { op: "b11".into() }.into(),
-                    SymbolicHandle { op: "b21".into() }.into(),
-                ],
-                [
-                    SymbolicHandle { op: "b22".into() }.into(),
-                    SymbolicHandle { op: "b02".into() }.into(),
-                ],
-            ],
-        });
-    let c = rep_plc.add(&ctx, &a, &b);
-    // println!("{:?}", c);
-}
-
-#[test]
-fn test_rep_share() {
-    let alice_plc = HostPlacement {
-        player: "alice".into(),
-    };
-    let bob_plc = HostPlacement {
-        player: "bob".into(),
-    };
-    let rep_plc = ReplicatedPlacement {
-        players: ["alice".into(), "bob".into(), "carole".into()],
-    };
-
-    {
+    #[test]
+    fn test_rep_add_concrete() {
         let ctx = ConcreteContext::default();
-        let x: Ring64Tensor = alice_plc.sample(&ctx);
-        let y: Ring64Tensor = bob_plc.sample(&ctx);
-        let xe = rep_plc.share(&ctx, &x);
-        let ye = rep_plc.share(&ctx, &y);
-        let ze = rep_plc.add(&ctx, &xe, &ye);
-        println!("CONCRETE {:?}", ze);
+
+        let rep = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let xe: Replicated64Tensor = ReplicatedTensor {
+            shares: [
+                [RingTensor(1), RingTensor(2)],
+                [RingTensor(2), RingTensor(3)],
+                [RingTensor(3), RingTensor(1)],
+            ],
+        };
+
+        let ye = ReplicatedTensor {
+            shares: [
+                [RingTensor(1), RingTensor(2)],
+                [RingTensor(2), RingTensor(3)],
+                [RingTensor(3), RingTensor(1)],
+            ],
+        };
+
+        let ze: ReplicatedTensor<_> = rep.add(&ctx, &xe, &ye);
+
+        assert_eq!(
+            ze,
+            ReplicatedTensor {
+                shares: [
+                    [RingTensor(2), RingTensor(4)],
+                    [RingTensor(4), RingTensor(6)],
+                    [RingTensor(6), RingTensor(2)],
+                ],
+            }
+        );
     }
 
-    {
+    #[test]
+    fn test_rep_add_symbolic() {
+        let ctx = SymbolicContext::default();
+
+        let rep = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let xe: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> =
+            Symbolic::Concrete(ReplicatedTensor {
+                shares: [
+                    [
+                        SymbolicHandle { op: "x00".into() }.into(),
+                        SymbolicHandle { op: "x10".into() }.into(),
+                    ],
+                    [
+                        SymbolicHandle { op: "x11".into() }.into(),
+                        SymbolicHandle { op: "x21".into() }.into(),
+                    ],
+                    [
+                        SymbolicHandle { op: "x22".into() }.into(),
+                        SymbolicHandle { op: "x02".into() }.into(),
+                    ],
+                ],
+            });
+
+        let ye: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> =
+            Symbolic::Concrete(ReplicatedTensor {
+                shares: [
+                    [
+                        SymbolicHandle { op: "y00".into() }.into(),
+                        SymbolicHandle { op: "y10".into() }.into(),
+                    ],
+                    [
+                        SymbolicHandle { op: "y11".into() }.into(),
+                        SymbolicHandle { op: "y21".into() }.into(),
+                    ],
+                    [
+                        SymbolicHandle { op: "y22".into() }.into(),
+                        SymbolicHandle { op: "y02".into() }.into(),
+                    ],
+                ],
+            });
+
+        let ze = rep.add(&ctx, &xe, &ye);
+
+        assert_eq!(
+            ze,
+            Symbolic::Concrete(ReplicatedTensor {
+                shares: [
+                    [
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_0".into() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_1".into() }),
+                    ],
+                    [
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_2".into() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_3".into() }),
+                    ],
+                    [
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_4".into() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_5".into() }),
+                    ],
+                ]
+            })
+        );
+
+        let ops: &[_] = &ctx.ops.read().unwrap();
+        assert_eq!(
+            ops,
+            &vec![
+                Operation {
+                    name: "op_0".into(),
+                    operator: RingAddOp {
+                        sig: BinarySignature {
+                            arg0: Ty::Ring64Tensor,
+                            arg1: Ty::Ring64Tensor,
+                            ret: Ty::Ring64Tensor
+                        }
+                        .into(),
+                        plc: HostPlacement {
+                            player: "alice".into()
+                        }
+                        .into(),
+                    }
+                    .into(),
+                    operands: vec!["x00".into(), "y00".into()],
+                },
+                Operation {
+                    name: "op_1".into(),
+                    operator: RingAddOp {
+                        sig: BinarySignature {
+                            arg0: Ty::Ring64Tensor,
+                            arg1: Ty::Ring64Tensor,
+                            ret: Ty::Ring64Tensor
+                        }
+                        .into(),
+                        plc: HostPlacement {
+                            player: "alice".into()
+                        }
+                        .into(),
+                    }
+                    .into(),
+                    operands: vec!["x10".into(), "y10".into()],
+                },
+                Operation {
+                    name: "op_2".into(),
+                    operator: RingAddOp {
+                        sig: BinarySignature {
+                            arg0: Ty::Ring64Tensor,
+                            arg1: Ty::Ring64Tensor,
+                            ret: Ty::Ring64Tensor
+                        }
+                        .into(),
+                        plc: HostPlacement {
+                            player: "bob".into()
+                        }
+                        .into(),
+                    }
+                    .into(),
+                    operands: vec!["x11".into(), "y11".into()],
+                },
+                Operation {
+                    name: "op_3".into(),
+                    operator: RingAddOp {
+                        sig: BinarySignature {
+                            arg0: Ty::Ring64Tensor,
+                            arg1: Ty::Ring64Tensor,
+                            ret: Ty::Ring64Tensor
+                        }
+                        .into(),
+                        plc: HostPlacement {
+                            player: "bob".into()
+                        }
+                        .into(),
+                    }
+                    .into(),
+                    operands: vec!["x21".into(), "y21".into()],
+                },
+                Operation {
+                    name: "op_4".into(),
+                    operator: RingAddOp {
+                        sig: BinarySignature {
+                            arg0: Ty::Ring64Tensor,
+                            arg1: Ty::Ring64Tensor,
+                            ret: Ty::Ring64Tensor
+                        }
+                        .into(),
+                        plc: HostPlacement {
+                            player: "carole".into()
+                        }
+                        .into(),
+                    }
+                    .into(),
+                    operands: vec!["x22".into(), "y22".into()],
+                },
+                Operation {
+                    name: "op_5".into(),
+                    operator: RingAddOp {
+                        sig: BinarySignature {
+                            arg0: Ty::Ring64Tensor,
+                            arg1: Ty::Ring64Tensor,
+                            ret: Ty::Ring64Tensor
+                        }
+                        .into(),
+                        plc: HostPlacement {
+                            player: "carole".into()
+                        }
+                        .into(),
+                    }
+                    .into(),
+                    operands: vec!["x02".into(), "y02".into()],
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn test_rep_share_concrete() {
+        let rep = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let ctx = ConcreteContext::default();
+
+        let x: Ring64Tensor = RingTensor(5);
+        let xe = rep.share(&ctx, &x);
+    }
+
+    #[test]
+    fn test_rep_share_symbolic() {
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
         let ctx = SymbolicContext::default();
         let x: Symbolic<Ring64Tensor> = alice_plc.sample(&ctx);
         let y: Symbolic<Ring64Tensor> = bob_plc.sample(&ctx);
@@ -2068,176 +2151,161 @@ fn test_rep_share() {
         let ye = rep_plc.share(&ctx, &y);
         let ze = rep_plc.add(&ctx, &xe, &ye);
         println!("SYMBOLIC {:?}", ze);
+    }
+
+    #[test]
+    fn test_rep_exec() {
+        #![allow(clippy::redundant_clone)]
+
+        use std::collections::HashMap;
+
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let ops: Vec<Operation> = vec![
+            Operation {
+                name: "x".into(),
+                operator: RingSampleOp {
+                    sig: NullarySignature {
+                        ret: Ty::Ring128Tensor,
+                    }
+                    .into(),
+                    plc: alice_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "xe".into(),
+                operator: RepShareOp {
+                    sig: UnarySignature {
+                        arg0: Ty::Ring128Tensor,
+                        ret: Ty::Replicated128Tensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["x".into()],
+            },
+            Operation {
+                name: "y".into(),
+                operator: RingSampleOp {
+                    sig: NullarySignature {
+                        ret: Ty::Ring128Tensor,
+                    }
+                    .into(),
+                    plc: bob_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "ye".into(),
+                operator: RepShareOp {
+                    sig: UnarySignature {
+                        arg0: Ty::Ring128Tensor,
+                        ret: Ty::Replicated128Tensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["y".into()],
+            },
+            Operation {
+                name: "s".into(),
+                operator: RepSetupOp {
+                    sig: NullarySignature {
+                        ret: Ty::ReplicatedSetup,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "ze".into(),
+                operator: RepMulOp {
+                    sig: TernarySignature {
+                        arg0: Ty::ReplicatedSetup,
+                        arg1: Ty::Replicated128Tensor,
+                        arg2: Ty::Replicated128Tensor,
+                        ret: Ty::Replicated128Tensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["s".into(), "xe".into(), "ye".into()],
+            },
+            Operation {
+                name: "ve".into(),
+                operator: RepMulOp {
+                    sig: TernarySignature {
+                        arg0: Ty::ReplicatedSetup,
+                        arg1: Ty::Replicated128Tensor,
+                        arg2: Ty::Replicated128Tensor,
+                        ret: Ty::Replicated128Tensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["s".into(), "xe".into(), "ye".into()],
+            },
+        ];
+
+        let ctx = SymbolicContext::default();
+        let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+
+        for op in ops.iter() {
+            let operator = op.operator.clone();
+            let operands = op
+                .operands
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = ctx.execute(operator, operands);
+            env.insert(op.name.clone(), res);
+        }
+
+        println!("{:?}", env);
+
+        let ctx = ConcreteContext::default();
+        let mut env: HashMap<String, Value> = HashMap::default();
+
+        for op in ops.iter() {
+            let operator = op.operator.clone();
+            let operands = op
+                .operands
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = ctx.execute(operator, operands);
+            env.insert(op.name.clone(), res);
+        }
+
+        println!("{:?}", env);
 
         // let ops = ctx.ops.read().unwrap();
         // for op in ops.iter() {
         //     println!("  {:?}", op);
         // }
+
+        // let comp = r#"
+
+        // "#.try_into().unwrap();
+
+        // let exec = SymbolicExecutor;
+        // exec.eval(comp);
     }
-
-    // let xe = rep_plc.share(&ctx, &x);
-
-    // let a: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> = Symbolic::Concrete(ReplicatedTensor {
-    //     shares: [
-    //         [Symbolic::Symbolic{ty: Ty::Ring64TensorTy}, Symbolic::Symbolic{ty: Ty::Ring64TensorTy}],
-    //         [Symbolic::Symbolic{ty: Ty::Ring64TensorTy}, Symbolic::Symbolic{ty: Ty::Ring64TensorTy}],
-    //         [Symbolic::Symbolic{ty: Ty::Ring64TensorTy}, Symbolic::Symbolic{ty: Ty::Ring64TensorTy}],
-    //     ]
-    // });
-    // let b: Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>> = Symbolic::Concrete(ReplicatedTensor {
-    //     shares: [
-    //         [Symbolic::Symbolic{ty: Ty::Ring64TensorTy}, Symbolic::Symbolic{ty: Ty::Ring64TensorTy}],
-    //         [Symbolic::Symbolic{ty: Ty::Ring64TensorTy}, Symbolic::Symbolic{ty: Ty::Ring64TensorTy}],
-    //         [Symbolic::Symbolic{ty: Ty::Ring64TensorTy}, Symbolic::Symbolic{ty: Ty::Ring64TensorTy}],
-    //     ]
-    // });
-    // let op = RepAddOp {
-    //     lhs: Ty::Replicated64TensorTy,
-    //     rhs: Ty::Replicated64TensorTy,
-    //     plc: Placement::Replicated(rep_plc.clone()),
-    // };
-    // let c = ctx.execute_binary(op.into(), a.into(), b.into());
-    // println!("{:?}", c);
-    // let c = rep_plc.add(&ctx, &a, &b);
-}
-
-#[test]
-fn test_rep_exec() {
-    use std::collections::HashMap;
-
-    let alice_plc = HostPlacement {
-        player: "alice".into(),
-    };
-    let bob_plc = HostPlacement {
-        player: "bob".into(),
-    };
-    let rep_plc = ReplicatedPlacement {
-        players: ["alice".into(), "bob".into(), "carole".into()],
-    };
-
-    let ops: Vec<Operation> = vec![
-        Operation {
-            name: "x".into(),
-            operator: RingSampleOp {
-                sig: NullarySignature {
-                    ret: Ty::Ring128Tensor,
-                }
-                .into(),
-                plc: alice_plc.clone().into(),
-            }
-            .into(),
-            operands: vec![],
-        },
-        Operation {
-            name: "xe".into(),
-            operator: RepShareOp {
-                sig: UnarySignature {
-                    arg0: Ty::Ring128Tensor,
-                    ret: Ty::Replicated128Tensor,
-                }
-                .into(),
-                plc: rep_plc.clone().into(),
-            }
-            .into(),
-            operands: vec!["x".into()],
-        },
-        Operation {
-            name: "y".into(),
-            operator: RingSampleOp {
-                sig: NullarySignature {
-                    ret: Ty::Ring128Tensor,
-                }
-                .into(),
-                plc: bob_plc.clone().into(),
-            }
-            .into(),
-            operands: vec![],
-        },
-        Operation {
-            name: "ye".into(),
-            operator: RepShareOp {
-                sig: UnarySignature {
-                    arg0: Ty::Ring128Tensor,
-                    ret: Ty::Replicated128Tensor,
-                }
-                .into(),
-                plc: rep_plc.clone().into(),
-            }
-            .into(),
-            operands: vec!["y".into()],
-        },
-        Operation {
-            name: "s".into(),
-            operator: RepSetupOp {
-                sig: NullarySignature {
-                    ret: Ty::ReplicatedSetup,
-                }
-                .into(),
-                plc: rep_plc.clone().into(),
-            }
-            .into(),
-            operands: vec![],
-        },
-        Operation {
-            name: "ze".into(),
-            operator: RepMulOp {
-                sig: TernarySignature {
-                    arg0: Ty::ReplicatedSetup,
-                    arg1: Ty::Replicated128Tensor,
-                    arg2: Ty::Replicated128Tensor,
-                    ret: Ty::Replicated128Tensor,
-                }
-                .into(),
-                plc: rep_plc.clone().into(),
-            }
-            .into(),
-            operands: vec!["s".into(), "xe".into(), "ye".into()],
-        },
-        Operation {
-            name: "ve".into(),
-            operator: RepMulOp {
-                sig: TernarySignature {
-                    arg0: Ty::ReplicatedSetup,
-                    arg1: Ty::Replicated128Tensor,
-                    arg2: Ty::Replicated128Tensor,
-                    ret: Ty::Replicated128Tensor,
-                }
-                .into(),
-                plc: rep_plc.clone().into(),
-            }
-            .into(),
-            operands: vec!["s".into(), "xe".into(), "ye".into()],
-        },
-    ];
-
-    let ctx = SymbolicContext::default();
-    let mut env: HashMap<String, SymbolicValue> = HashMap::default();
-
-    // let ctx = ConcreteContext::default();
-    // let mut env: HashMap<String, Value> = HashMap::default();
-
-    for op in ops {
-        let operator = op.operator;
-        let operands = op
-            .operands
-            .iter()
-            .map(|input_name| env.get(input_name).unwrap().clone())
-            .collect();
-        let res = ctx.execute(operator, operands);
-        env.insert(op.name, res);
-    }
-
-    println!("{:?}", env);
-
-    // let ops = ctx.ops.read().unwrap();
-    // for op in ops.iter() {
-    //     println!("  {:?}", op);
-    // }
-
-    // let comp = r#"
-
-    // "#.try_into().unwrap();
-
-    // let exec = SymbolicExecutor;
-    // exec.eval(comp);
 }
