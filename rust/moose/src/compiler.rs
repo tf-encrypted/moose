@@ -2041,7 +2041,7 @@ impl RepRevealOp {
     ) -> R
     where
         R: Clone,
-        // HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let player0 = HostPlacement {
             player: rep.players[0].clone(),
@@ -2058,10 +2058,8 @@ impl RepRevealOp {
         } = &xe;
 
         // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        // let x = player0.add(ctx, &player0.add(ctx, x00, x10), x21);
-        // x
-
-        x00.clone()
+        let x = player0.add(ctx, &player0.add(ctx, x00, x10), x21);
+        x
     }
 }
 
