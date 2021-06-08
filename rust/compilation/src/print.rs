@@ -1,11 +1,16 @@
-use moose::computation::{Computation, Operation, Operator};
-use petgraph::dot::{Config, Dot};
+use moose::computation::{Computation, HostPlacement, Operation, Operator, Placement};
+use petgraph::dot::Dot;
+use petgraph::graph::{EdgeIndex, Graph};
 
 /// Prints the computation's graph DOT representation to stdout
 pub fn print_graph(comp: &Computation) -> anyhow::Result<Computation> {
     let graph = comp.as_graph();
-    let graph2 = graph.map(|_, n| pretty(&comp.operations[n.1]), |_, e| e);
-    println!("{:?}", Dot::with_config(&graph2, &[Config::EdgeNoLabel]));
+    let graph2 = graph.map(
+        |_, n| pretty(&comp.operations[n.1]),
+        |e, _| pretty_edge(&graph, comp, e),
+    );
+    // Place Config::EdgeNoLabel inside the config element to have no labels on edges
+    println!("{}", Dot::with_config(&graph2, &[]));
     Ok(Computation {
         operations: comp.operations.clone(),
     })
@@ -61,4 +66,17 @@ fn pretty(op: &Operation) -> String {
         Operator::FixedpointRingMean(_) => "FixedpointRingMean",
     };
     format!("{}, {}", op.name, op_kind)
+}
+
+fn pretty_edge(g: &Graph<(String, usize), ()>, comp: &Computation, e: EdgeIndex) -> String {
+    let edge = &g.raw_edges()[e.index()];
+    let source = &comp.operations[g[edge.source()].1];
+    let target = &comp.operations[g[edge.target()].1];
+    match (&source.placement, &target.placement) {
+        (
+            Placement::Host(HostPlacement { owner: host_a }),
+            Placement::Host(HostPlacement { owner: host_b }),
+        ) if host_a != host_b => format!("net {} to {}", host_a, host_b),
+        _ => "".into(),
+    }
 }
