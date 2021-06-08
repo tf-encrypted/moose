@@ -11,7 +11,7 @@ const COLORS: [&str; 9] = [
 ];
 
 /// Prints the computation's graph DOT representation to stdout
-pub fn print_graph(comp: &Computation) -> anyhow::Result<Computation> {
+pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     let graph = comp.as_graph();
 
     // We need to compute the color lookup table ahead of time, because `Dot`'s closures capture everything as immutable
@@ -56,9 +56,7 @@ pub fn print_graph(comp: &Computation) -> anyhow::Result<Computation> {
             }
         )
     );
-    Ok(Computation {
-        operations: comp.operations.clone(),
-    })
+    Ok(None)
 }
 
 /// Prints only the bits of the operation that we want visible on the graph's DOT

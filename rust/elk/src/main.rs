@@ -31,7 +31,9 @@ fn main() -> anyhow::Result<()> {
     let source = read_to_string(opt.input)?;
     let mut comp = verbose_parse_computation(&source)?;
     for pass in opt.passes.unwrap_or_else(all_passes) {
-        comp = do_pass(&pass, &comp)?;
+        if let Some(new_comp) = do_pass(&pass, &comp)? {
+            comp = new_comp;
+        }
     }
     match opt.output {
         Some(path) => write(path, comp.to_textual())?,
@@ -46,7 +48,7 @@ fn all_passes() -> Vec<String> {
     vec!["networking".into()]
 }
 
-fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Computation> {
+fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
     match pass {
         "networking" => NetworkingPass::pass(comp),
         "print" => print_graph(comp),
