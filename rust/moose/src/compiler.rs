@@ -413,11 +413,9 @@ pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
 macro_rules! modelled {
-
     /*
     Nullary
     */
-
     ($t:ident, $plc:ty, () -> $u:ty, $op:ident) => {
         impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc) -> $u {
@@ -453,7 +451,6 @@ macro_rules! modelled {
     /*
     Unary
     */
-
     ($t:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0) -> $u {
@@ -499,7 +496,6 @@ macro_rules! modelled {
     /*
     Binary
     */
-
     ($t:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
         impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1) -> $u {
@@ -552,7 +548,6 @@ macro_rules! modelled {
     /*
     Ternary
     */
-
     ($t:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
         impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1, x2: $t2) -> $u {
