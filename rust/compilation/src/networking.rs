@@ -1,16 +1,6 @@
 use moose::computation::*;
 use std::collections::HashMap;
 
-pub fn print_graph(comp: &Computation) -> anyhow::Result<Computation> {
-    comp.graph_operation(|graph, _| {
-        println!("{:?}", petgraph::dot::Dot::new(&graph));
-        Ok(())
-    })?;
-    Ok(Computation {
-        operations: comp.operations.clone(),
-    })
-}
-
 pub struct NetworkingPass {
     operations: Vec<Operation>,
     extra_ops: Vec<Operation>,
