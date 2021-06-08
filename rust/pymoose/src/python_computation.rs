@@ -604,7 +604,7 @@ def f():
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let diff =
-            Float64Tensor::try_from(storage.load("regression_weights", None, "").unwrap()).unwrap();
+            Float64Tensor::try_from(storage.load("regression_weights", &SessionId::from("foobar"), None, "").unwrap()).unwrap();
 
         assert!(diff.0.abs_diff_eq(&res, 0.000001));
     }
