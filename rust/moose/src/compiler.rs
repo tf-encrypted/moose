@@ -29,6 +29,21 @@ struct ReplicatedPlacement {
     players: [String; 3],
 }
 
+impl ReplicatedPlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            player: self.players[0].clone(),
+        };
+        let player1 = HostPlacement {
+            player: self.players[1].clone(),
+        };
+        let player2 = HostPlacement {
+            player: self.players[2].clone(),
+        };
+        (player0, player1, player2)
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum PlacementTy {
     HostTy,
@@ -398,15 +413,17 @@ pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
 macro_rules! modelled {
+
     /*
     Nullary
     */
+
     ($t:ident, $plc:ty, () -> $u:ty, $op:ident) => {
         impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc) -> $u {
                 // NOTE we shouldn't do anything here, the kernel call is simply to check
 
-                // TODO not sure whether to add `unimplemented!`. it might be better to
+                // NOTE not sure whether to add `unimplemented!`. it might be better to
                 // simply make sure the Check traits are private.
                 <Self as NullaryKernel<ConcreteContext, $plc, $u>>::kernel(ctx, plc)
             }
@@ -436,13 +453,10 @@ macro_rules! modelled {
     /*
     Unary
     */
+
     ($t:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0) -> $u {
-                // NOTE we shouldn't do anything here, the kernel call is simply to check
-
-                // TODO not sure whether to add `unimplemented!`. it might be better to
-                // simply make sure the Check traits are private.
                 <Self as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::kernel(ctx, plc, x0)
             }
         }
@@ -485,13 +499,10 @@ macro_rules! modelled {
     /*
     Binary
     */
+
     ($t:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
         impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1) -> $u {
-                // NOTE we shouldn't do anything here, the kernel call is simply to check
-
-                // TODO not sure whether to add `unimplemented!`. it might be better to
-                // simply make sure the Check traits are private.
                 <Self as BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u>>::kernel(
                     ctx, plc, x0, x1,
                 )
@@ -541,13 +552,10 @@ macro_rules! modelled {
     /*
     Ternary
     */
+
     ($t:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
         impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1, x2: $t2) -> $u {
-                // NOTE we shouldn't do anything here, the kernel call is simply to check
-
-                // TODO not sure whether to add `unimplemented!`. it might be better to
-                // simply make sure the Check traits are private.
                 <Self as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::kernel(
                     ctx, plc, x0, x1, x2,
                 )
@@ -619,14 +627,6 @@ trait PlacementAdd<C: Context, T, U> {
     }
 }
 
-// NOTE uncomment the next line to see the kernel check system in action
-// modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
-// NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
-modelled!(PlacementAdd, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
-modelled!(PlacementAdd, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-
 trait PlacementSub<C: Context, T, U> {
     type Output;
 
@@ -636,9 +636,6 @@ trait PlacementSub<C: Context, T, U> {
         self.apply(ctx, x, y)
     }
 }
-
-modelled!(PlacementSub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
-modelled!(PlacementSub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
 
 trait PlacementMul<C: Context, T, U> {
     type Output;
@@ -660,11 +657,6 @@ trait PlacementMulSetup<C: Context, S, T, U> {
     }
 }
 
-modelled!(PlacementMul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
-modelled!(PlacementMul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
-
 trait PlacementShare<C: Context, T> {
     type Output;
 
@@ -674,9 +666,6 @@ trait PlacementShare<C: Context, T> {
         self.apply(ctx, x)
     }
 }
-
-modelled!(PlacementShare, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
-modelled!(PlacementShare, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
 
 pub trait Context {
     type Value;
@@ -1342,14 +1331,6 @@ pub struct RepSetupOp {
     plc: Placement,
 }
 
-hybrid_kernel! {
-    RepSetupOp,
-    [
-        (ReplicatedPlacement, () -> ReplicatedSetup)
-    ],
-    Self::kernel
-}
-
 impl RepSetupOp {
     fn kernel<C: Context, K: Clone>(
         ctx: &C,
@@ -1358,15 +1339,7 @@ impl RepSetupOp {
     where
         HostPlacement: PlacementKeyGen<C, K>,
     {
-        let player0 = HostPlacement {
-            player: rep.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: rep.players[1].clone(),
-        };
-        let player2 = HostPlacement {
-            player: rep.players[2].clone(),
-        };
+        let (player0, player1, player2) = rep.host_placements();
 
         let k0 = player0.keygen(ctx);
         let k1 = player1.keygen(ctx);
@@ -1382,19 +1355,18 @@ impl RepSetupOp {
     }
 }
 
+hybrid_kernel! {
+    RepSetupOp,
+    [
+        (ReplicatedPlacement, () -> ReplicatedSetup)
+    ],
+    Self::kernel
+}
+
 #[derive(Clone, Debug)]
 pub struct RepAddOp {
     sig: Signature,
     plc: Placement,
-}
-
-hybrid_kernel! {
-    RepAddOp,
-    [
-        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor),
-        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor)
-    ],
-    Self::kernel
 }
 
 impl RepAddOp {
@@ -1414,15 +1386,7 @@ impl RepAddOp {
     where
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
-        let player0 = HostPlacement {
-            player: rep.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: rep.players[1].clone(),
-        };
-        let player2 = HostPlacement {
-            player: rep.players[2].clone(),
-        };
+        let (player0, player1, player2) = rep.host_placements();
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -1432,7 +1396,7 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        // this could be turned into something like `let z00 = player0.with(|x00, y00| { x00 + y00 }, x00, y00)`
+        // NOTE this could be turned into something like `let z00 = player0.with(|x00, y00| { x00 + y00 }, x00, y00)`
         let z00 = player0.add(ctx, x00, y00);
         let z10 = player0.add(ctx, x10, y10);
 
@@ -1446,6 +1410,18 @@ impl RepAddOp {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
+}
+
+modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+
+hybrid_kernel! {
+    RepAddOp,
+    [
+        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor),
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor)
+    ],
+    Self::kernel
 }
 
 #[derive(Clone, Debug)]
@@ -1476,15 +1452,7 @@ impl RepMulOp {
         HostPlacement: PlacementMul<C, R, R, Output = R>,
         ReplicatedPlacement: PlacementZeroShare<C, K, R>,
     {
-        let player0 = HostPlacement {
-            player: rep.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: rep.players[1].clone(),
-        };
-        let player2 = HostPlacement {
-            player: rep.players[2].clone(),
-        };
+        let (player0, player1, player2) = rep.host_placements();
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -1494,7 +1462,7 @@ impl RepMulOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        // TODO improve syntax
+        // NOTE syntax could be significantly improved using eg `with` pattern
         let t0 = player0.add(
             ctx,
             &player0.add(
@@ -1541,6 +1509,9 @@ impl RepMulOp {
     }
 }
 
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+
 hybrid_kernel! {
     RepMulOp,
     [
@@ -1554,29 +1525,21 @@ trait PlacementZeroShare<C: Context, K, R> {
     fn zero_share(&self, ctx: &C, setup: &AbstractReplicatedSetup<K>) -> ReplicatedZeroShare<R>;
 }
 
-// NOTE this is an un-modelled operation (as opposed to the modelled operation that have a representation in computations)
-// TODO should we have a macro for this as well?
+// NOTE this is an un-modelled operation (as opposed to the modelled! operations that have
+// a representation in computations); should we have a macro for this as well?
 impl<C: Context, K, R> PlacementZeroShare<C, K, R> for ReplicatedPlacement
 where
     HostPlacement: PlacementSample<C, R>,
     HostPlacement: PlacementSub<C, R, R, Output = R>,
 {
     fn zero_share(&self, ctx: &C, s: &AbstractReplicatedSetup<K>) -> ReplicatedZeroShare<R> {
+        let (player0, player1, player2) = self.host_placements();
+
         let AbstractReplicatedSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = s;
 
-        let player0 = HostPlacement {
-            player: self.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: self.players[1].clone(),
-        };
-        let player2 = HostPlacement {
-            player: self.players[2].clone(),
-        };
-
-        // TODO use keys when sampling below!
+        // TODO use keys when sampling!
 
         let r00 = player0.sample(ctx);
         let r10 = player0.sample(ctx);
@@ -1596,36 +1559,10 @@ where
     }
 }
 
-// struct Placed<T> {
-//     plc: Placement,
-//     val: T,
-// }
-
-// impl<T> Add<Placed<T>> for Placed<T>
-// where
-//     T: Add<T, Output=T>,
-// {
-//     type Output = Placed<T>;
-
-//     fn add(self, other: Placed<T>) -> Placed<T> {
-//         // assert_eq!(self.plc, other.plc); // TODO
-//         self.plc.add()
-//     }
-// }
-
 #[derive(Clone, Debug)]
 pub struct RepShareOp {
     sig: Signature,
     plc: Placement,
-}
-
-abstract_kernel! {
-    RepShareOp,
-    [
-        (ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor),
-        (ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor)
-    ],
-    Self::kernel
 }
 
 impl RepShareOp {
@@ -1643,15 +1580,7 @@ impl RepShareOp {
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         HostPlacement: PlacementSub<C, R, R, Output = R>,
     {
-        let player0 = HostPlacement {
-            player: rep.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: rep.players[1].clone(),
-        };
-        let player2 = HostPlacement {
-            player: rep.players[2].clone(),
-        };
+        let (player0, player1, player2) = rep.host_placements();
 
         // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
         let x0 = player0.sample(ctx);
@@ -1666,6 +1595,18 @@ impl RepShareOp {
             ],
         }
     }
+}
+
+modelled!(PlacementShare, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
+modelled!(PlacementShare, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
+
+abstract_kernel! {
+    RepShareOp,
+    [
+        (ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor),
+        (ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor)
+    ],
+    Self::kernel
 }
 
 #[derive(Clone, Debug)]
@@ -1700,15 +1641,7 @@ impl RepRevealOp {
         R: Clone,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
-        let player0 = HostPlacement {
-            player: rep.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: rep.players[1].clone(),
-        };
-        let player2 = HostPlacement {
-            player: rep.players[2].clone(),
-        };
+        let (player0, player1, player2) = rep.host_placements();
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -1747,6 +1680,12 @@ impl RingAddOp {
     }
 }
 
+// NOTE uncomment the next line to see the kernel check system in action
+// modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
+// NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
+modelled!(PlacementAdd, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
+modelled!(PlacementAdd, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
+
 kernel! {
     RingAddOp,
     [
@@ -1783,6 +1722,9 @@ impl RingSubOp {
     }
 }
 
+modelled!(PlacementSub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
+modelled!(PlacementSub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
+
 kernel! {
     RingSubOp,
     [
@@ -1818,6 +1760,9 @@ impl RingMulOp {
         x * y
     }
 }
+
+modelled!(PlacementMul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
+modelled!(PlacementMul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
 
 kernel! {
     RingMulOp,
