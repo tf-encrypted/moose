@@ -45,8 +45,9 @@ impl NetworkingPass {
                     // We only operate on edges that jump from a host to a different host
                     (Some(src), Some(dst)) if src != dst => {
                         // Create a jump, if we never jumped from host `src` to host `dst`
-                        let receive_op_name =
-                            created_cache.entry((src, dst)).or_insert_with(|| {
+                        let receive_op_name = created_cache
+                            .entry((src, dst, src_op.name.clone()))
+                            .or_insert_with(|| {
                                 pass.create_networking_jump(src_op, dst_op, src, dst)
                             });
 
@@ -142,16 +143,15 @@ mod tests {
         dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
 
-        let comp = NetworkingPass::pass(&source.try_into()?)?;
+        let comp = NetworkingPass::pass(&source.try_into()?)?.to_textual();
         // Networking should not introduce any changes to such a computation
-        assert!(comp.to_textual().contains(
+        assert!(comp.contains(
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp.to_textual().contains(
+        assert!(comp.contains(
             "dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
-            .to_textual()
             .contains("mean = StdMean: (Float32TensorTy) -> Float32TensorTy (dot) @Host(alice)"));
         Ok(())
     }
@@ -163,19 +163,40 @@ mod tests {
         mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
         mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
+        let comp = NetworkingPass::pass(&source.try_into()?)?.to_textual();
 
-        let comp = NetworkingPass::pass(&source.try_into()?)?;
-        // println!("\n\n\n{}\n\n\n", comp.to_textual());
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
-        assert!(comp.to_textual().contains(
+        assert!(comp.contains(
             r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="alice"} (y) @Host(bob)"#
         ));
-        assert!(comp.to_textual().contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Unknown () @Host(alice)"#));
-        assert!(comp.to_textual().contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
-        assert!(comp.to_textual().contains("dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
+        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Unknown () @Host(alice)"#));
+        assert!(comp.contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
+        assert!(comp.contains("dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp
-            .to_textual()
             .contains("mean = StdMean: (Float32TensorTy) -> Float32TensorTy (dot) @Host(alice)"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_jumps_cache() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(bob)
+        add = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(bob)"#;
+        let comp = NetworkingPass::pass(&source.try_into()?)?.to_textual();
+
+        // Should have one send/receive pair per each variable being sent
+        assert!(comp.contains(
+            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="bob"} (x) @Host(alice)"#
+        ));
+        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="alice"} : () -> Unknown () @Host(bob)"#));
+        assert!(comp.contains(
+            r#"send_1 = Send {rendezvous_key="rendezvous_key_1", receiver="bob"} (y) @Host(alice)"#
+        ));
+        assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key="rendezvous_key_1", sender="alice"} : () -> Unknown () @Host(bob)"#));
+        // Should use the same pair of operators for both computations on both (asserting for no extra jumps)
+        assert!(comp.contains(r#"add = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
+        assert!(comp.contains(r#"mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
         Ok(())
     }
 
@@ -185,9 +206,9 @@ mod tests {
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(bob)
         mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, charlie)"#;
 
-        let comp = NetworkingPass::pass(&source.try_into()?)?;
+        let comp = NetworkingPass::pass(&source.try_into()?)?.to_textual();
         // Networking should not make any changes to the replicated placement (should probably never see it in real life)
-        assert!(comp.to_textual().contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, charlie)"));
+        assert!(comp.contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, charlie)"));
         Ok(())
     }
 }
