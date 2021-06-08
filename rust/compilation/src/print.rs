@@ -1,4 +1,5 @@
-use moose::computation::{Computation, HostPlacement, Operation, Operator, Placement};
+use moose::computation::{Computation, Operation, Operator, ReceiveOp};
+use moose::text_computation::ToTextual;
 use petgraph::dot::Dot;
 use petgraph::graph::{EdgeIndex, Graph};
 
@@ -65,18 +66,21 @@ fn pretty(op: &Operation) -> String {
         Operator::FixedpointRingDecode(_) => "FixedpointRingDecode",
         Operator::FixedpointRingMean(_) => "FixedpointRingMean",
     };
-    format!("{}, {}", op.name, op_kind)
+    format!("{} = {}\n{}", op.name, op_kind, op.placement.to_textual())
 }
 
 fn pretty_edge(g: &Graph<(String, usize), ()>, comp: &Computation, e: EdgeIndex) -> String {
     let edge = &g.raw_edges()[e.index()];
     let source = &comp.operations[g[edge.source()].1];
     let target = &comp.operations[g[edge.target()].1];
-    match (&source.placement, &target.placement) {
+    match (&source.kind, &target.kind) {
         (
-            Placement::Host(HostPlacement { owner: host_a }),
-            Placement::Host(HostPlacement { owner: host_b }),
-        ) if host_a != host_b => format!("net {} to {}", host_a, host_b),
+            Operator::Send(_),
+            Operator::Receive(ReceiveOp {
+                rendezvous_key: key,
+                ..
+            }),
+        ) => key.into(),
         _ => "".into(),
     }
 }
