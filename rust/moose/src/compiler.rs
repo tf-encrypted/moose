@@ -1504,6 +1504,12 @@ pub struct RepAddOp {
     plc: Placement,
 }
 
+macro_rules! with_player {
+    ($player:ident, $context:ident { $( $var:tt = $method:tt($( $param:expr ),*) )* }  ) => {
+        $( let $var = $player.$method( $context, $($param),* ); )*
+    }
+}
+
 impl RepAddOp {
     fn from_placement_signature(plc: &ReplicatedPlacement, sig: BinarySignature) -> Self {
         RepAddOp {
@@ -1532,6 +1538,22 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
+        with_player!( player0, ctx {
+            z00 = add(x00, y00)
+            z10 = add(x10, y10)
+        });
+
+        with_player!( player1, ctx {
+            z11 = add(x11, y11)
+            z21 = add(x21, y21)
+        });
+
+        with_player!( player2, ctx {
+            z22 = add(x22, y22)
+            z02 = add(x02, y02)
+        });
+
+        /* Produces code identical to this one:
         let z00 = player0.add(ctx, x00, y00);
         let z10 = player0.add(ctx, x10, y10);
 
@@ -1540,6 +1562,7 @@ impl RepAddOp {
 
         let z22 = player2.add(ctx, x22, y22);
         let z02 = player2.add(ctx, x02, y02);
+        */
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
