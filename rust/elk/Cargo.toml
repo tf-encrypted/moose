@@ -8,6 +8,5 @@ authors = ["Cape Privacy <support@capeprivacy.com>"]
 
 [dependencies]
 anyhow = "~1.0"
-compilation = { path = "../compilation" }
 moose = { path = "../moose" }
 structopt = "~0.3"

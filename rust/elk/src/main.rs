@@ -1,5 +1,5 @@
-use compilation::networking::NetworkingPass;
-use compilation::print::print_graph;
+use moose::compilation::networking::NetworkingPass;
+use moose::compilation::print::print_graph;
 use moose::computation::Computation;
 use moose::text_computation::verbose_parse_computation;
 use moose::text_computation::ToTextual;

@@ -1,5 +1,5 @@
-use moose::computation::{Computation, Operation, Operator, ReceiveOp};
-use moose::text_computation::ToTextual;
+use crate::computation::{Computation, Operation, Operator, ReceiveOp};
+use crate::text_computation::ToTextual;
 use petgraph::dot::Config::{EdgeNoLabel, NodeNoLabel};
 use petgraph::dot::Dot;
 use petgraph::visit::EdgeRef;

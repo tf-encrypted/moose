@@ -1,4 +1,4 @@
-use moose::computation::*;
+use crate::computation::*;
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
 
@@ -119,7 +119,7 @@ fn placement_discrimnator<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use moose::text_computation::ToTextual;
+    use crate::text_computation::ToTextual;
     use std::convert::TryInto;
 
     #[test]
