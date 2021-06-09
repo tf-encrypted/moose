@@ -889,7 +889,7 @@ impl Compile<SyncKernel> for SaveOp {
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
             check_type(&val, expected_ty)?;
-            sess.storage.save(&key, &val)?;
+            sess.storage.save(&key, &sess.sid, &val)?;
             Ok(Value::Unit)
         })))
     }
@@ -907,7 +907,7 @@ impl Compile<AsyncKernel> for SaveOp {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
-                    sess.storage.save(&key, &val).await?;
+                    sess.storage.save(&key, &sess.sid, &val).await?;
                     map_send_result(sender.send(Value::Unit))
                 })
             },
@@ -922,7 +922,9 @@ impl Compile<SyncKernel> for LoadOp {
         Ok(SyncKernel::Binary(Box::new(move |sess, key, query| {
             let key = String::try_from(key)?;
             let _query = String::try_from(query)?;
-            let val = sess.storage.load(&key, Some(expected_ty), &_query)?;
+            let val = sess
+                .storage
+                .load(&key, &sess.sid, Some(expected_ty), &_query)?;
             check_type(&val, expected_ty)?;
             Ok(val)
         })))
@@ -940,7 +942,10 @@ impl Compile<AsyncKernel> for LoadOp {
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let _query = String::try_from(query.await.map_err(map_receive_error)?)?;
-                    let val = sess.storage.load(&key, Some(expected_ty), &_query).await?;
+                    let val = sess
+                        .storage
+                        .load(&key, &sess.sid, Some(expected_ty), &_query)
+                        .await?;
                     check_type(&val, expected_ty)?;
                     map_send_result(sender.send(val))
                 })
