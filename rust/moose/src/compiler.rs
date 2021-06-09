@@ -1320,6 +1320,523 @@ trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> {
     fn check(ctx: &C, plc: &P, x0: X0, x1: X1, x2: X2) -> Y;
 }
 
+
+macro_rules! apply {
+
+    ($plc:ident, $ctx:ident, $f:expr, $($x:expr),+) => {
+        {
+            let y = $f(
+                $(
+                    &$plc.place($ctx, $x)
+                ),+
+            );
+            y.val.to_owned()
+        }
+    };
+
+    // ($plc:ident, $ctx:ident, $f:expr, $x0:expr, $x1:expr) => {
+    //     {
+    //         let f = $f;
+    //         let x0 = $plc.place($ctx, $x0);
+    //         let x1 = $plc.place($ctx, $x1);
+    //         let y = $f(&x0, &x1);
+    //         y.val.to_owned()
+    //     }
+    // };
+
+    // ($plc:ident, $ctx:ident, $f:expr, $x0:expr, $x1:expr, $x2:expr) => {
+    //     {
+    //         let y = $f(
+    //             &$plc.place($ctx, $x0),
+    //             &$plc.place($ctx, $x1),
+    //             &$plc.place($ctx, $x2),
+    //         );
+    //         y.val.to_owned()
+    //     }
+    // };
+
+    // ($plc:ident, $ctx:ident, $f:expr, $x0:expr, $x1:expr, $x2:expr, $x3:expr) => {
+    //     {
+    //         let y = $f(
+    //             &$plc.place($ctx, $x0),
+    //             &$plc.place($ctx, $x1),
+    //             &$plc.place($ctx, $x2),
+    //             &$plc.place($ctx, $x3),
+    //         );
+    //         y.val.to_owned()
+    //     }
+    // };
+
+}
+
+enum PlacedValue<'v, V: Clone> {
+    Borrowed(&'v V),
+    Owned(V),
+}
+
+impl<'v, V: Clone> PlacedValue<'v, V> {
+    // TODO use ToOwned trait?
+    fn to_owned(self) -> V {
+        match self {
+            PlacedValue::Borrowed(r) => r.clone(),
+            PlacedValue::Owned(v) => v,
+        }
+    }
+
+    // TODO use AsRef trait?
+    // TODO loosen lifetime bounds?
+    fn as_ref(&'v self) -> &'v V {
+        match self {
+            PlacedValue::Borrowed(r) => *r,
+            PlacedValue::Owned(v) => v,
+        }
+    }
+}
+
+struct Placed<'v, 'p, 'c, V: Clone, P, C> {
+    val: PlacedValue<'v, V>,
+    plc: &'p P,
+    ctx: &'c C,
+}
+
+impl HostPlacement {
+    fn place<'v, 'p, 'c, C: Context, V: Clone>(&'p self, ctx: &'c C, val: &'v V) -> Placed<'v, 'p, 'c, V, HostPlacement, C> {
+        Placed {
+            val: PlacedValue::Borrowed(val),
+            plc: self,
+            ctx,
+        }
+    }
+}
+
+macro_rules! foo {
+    ($t:ident, $f:ident, $pt:ident) => {
+        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<Placed<'y, 'p, 'c, V, P, C>> for Placed<'x, 'p, 'c, V, P, C>
+        where
+            V: Clone,
+            V: 'static,
+            P: PartialEq + std::fmt::Debug,
+            P: $pt<C, V, V, Output = V>,
+        {
+            type Output = Placed<'static, 'p, 'c, V, P, C>;
+
+            fn $f(self, other: Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
+                let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+                let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+                let plc = *x_plc;
+                let ctx = *x_ctx;
+
+                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
+                Placed { 
+                    val: PlacedValue::Owned(y),
+                    plc: plc,
+                    ctx: ctx,
+                }
+            }
+        }
+
+        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<&Placed<'y, 'p, 'c, V, P, C>> for Placed<'x, 'p, 'c, V, P, C>
+        where
+            V: Clone,
+            V: 'static,
+            P: PartialEq + std::fmt::Debug,
+            P: $pt<C, V, V, Output = V>,
+        {
+            type Output = Placed<'static, 'p, 'c, V, P, C>;
+
+            fn $f(self, other: &Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
+                let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+                let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+                let plc = *x_plc;
+                let ctx = *x_ctx;
+
+                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
+                Placed { 
+                    val: PlacedValue::Owned(y),
+                    plc: plc,
+                    ctx: ctx,
+                }
+            }
+        }
+
+        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<Placed<'y, 'p, 'c, V, P, C>> for &Placed<'x, 'p, 'c, V, P, C>
+        where
+            V: Clone,
+            V: 'static,
+            P: PartialEq + std::fmt::Debug,
+            P: $pt<C, V, V, Output = V>,
+        {
+            type Output = Placed<'static, 'p, 'c, V, P, C>;
+
+            fn $f(self, other: Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
+                let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+                let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+                let plc = *x_plc;
+                let ctx = *x_ctx;
+
+                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
+                Placed { 
+                    val: PlacedValue::Owned(y),
+                    plc: plc,
+                    ctx: ctx,
+                }
+            }
+        }
+
+        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<&Placed<'y, 'p, 'c, V, P, C>> for &Placed<'x, 'p, 'c, V, P, C>
+        where
+            V: Clone,
+            V: 'static,
+            P: PartialEq + std::fmt::Debug,
+            P: $pt<C, V, V, Output = V>,
+        {
+            type Output = Placed<'static, 'p, 'c, V, P, C>;
+
+            fn $f(self, other: &Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
+                let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+                let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+                let plc = *x_plc;
+                let ctx = *x_ctx;
+
+                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
+                Placed { 
+                    val: PlacedValue::Owned(y),
+                    plc: plc,
+                    ctx: ctx,
+                }
+            }
+        }
+        
+    };
+}
+
+foo!(Add, add, PlacementAdd);
+foo!(Sub, sub, PlacementSub);
+foo!(Mul, mul, PlacementMul);
+
+// impl<'x, 'y, 'p, 'c, V, P, C: Context> Add<&Placed<'y, 'p, 'c, V, P, C>> for Placed<'x, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     V: 'c,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementAdd<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'c, 'p, 'c, V, P, C>;
+
+//     fn add(self, other: &Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.add(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'x, 'y, 'p, 'c, V, P, C: Context> Add<&Placed<'y, 'p, 'c, V, P, C>> for Placed<'x, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     V: 'c,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementAdd<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'c, 'p, 'c, V, P, C>;
+
+//     fn add(self, other: &Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.add(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Add<&Placed<'v, 'p, 'c, V, P, C>> for &Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     V: 'c,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementAdd<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'c, 'p, 'c, V, P, C>;
+
+//     fn add(self, other: &Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.add(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Add<Placed<'v, 'p, 'c, V, P, C>> for Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     V: 'c,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementAdd<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'c, 'p, 'c, V, P, C>;
+
+//     fn add(self, other: Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.add(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Add<Placed<'v, 'p, 'c, V, P, C>> for &Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     V: 'c,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementAdd<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'c, 'p, 'c, V, P, C>;
+
+//     fn add(self, other: Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.add(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Sub<Placed<'v, 'p, 'c, V, P, C>> for &Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     V: 'c,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementSub<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'c, 'p, 'c, V, P, C>;
+
+//     fn sub(self, other: Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.sub(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Sub<&Placed<'v, 'p, 'c, V, P, C>> for &Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     V: 'c,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementSub<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'c, 'p, 'c, V, P, C>;
+
+//     fn sub(self, other: &Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.sub(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Sub<Placed<'v, 'p, 'c, V, P, C>> for Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementSub<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'v, 'p, 'c, V, P, C>;
+
+//     fn sub(self, other: Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.sub(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Sub<&Placed<'v, 'p, 'c, V, P, C>> for Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementSub<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'v, 'p, 'c, V, P, C>;
+
+//     fn sub(self, other: &Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.sub(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Mul<Placed<'v, 'p, 'c, V, P, C>> for &Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementMul<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'v, 'p, 'c, V, P, C>;
+
+//     fn mul(self, other: Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.mul(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Mul<&Placed<'v, 'p, 'c, V, P, C>> for &Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementMul<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'v, 'p, 'c, V, P, C>;
+
+//     fn mul(self, other: &Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.mul(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Mul<Placed<'v, 'p, 'c, V, P, C>> for Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementMul<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'v, 'p, 'c, V, P, C>;
+
+//     fn mul(self, other: Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = &other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.mul(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
+// impl<'v, 'p, 'c, V, P, C: Context> Mul<&Placed<'v, 'p, 'c, V, P, C>> for Placed<'v, 'p, 'c, V, P, C>
+// where
+//     V: Clone,
+//     P: PartialEq + std::fmt::Debug,
+//     P: PlacementMul<C, V, V, Output = V>,
+// {
+//     type Output = Placed<'v, 'p, 'c, V, P, C>;
+
+//     fn mul(self, other: &Placed<'v, 'p, 'c, V, P, C>) -> Self::Output {
+//         let Placed { val: x, plc: x_plc, ctx: x_ctx } = &self;
+//         let Placed { val: y, plc: y_plc, ctx: y_ctx } = other;
+//         assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
+//         let plc = *x_plc;
+//         let ctx = *x_ctx;
+
+//         let y = plc.mul(ctx, x.as_ref(), y.as_ref());
+//         Placed { 
+//             val: PlacedValue::Owned(y),
+//             plc: plc,
+//             ctx: ctx,
+//         }
+//     }
+// }
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepSetupOp {
     sig: Signature,
@@ -1375,6 +1892,7 @@ impl RepAddOp {
         y: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
     where
+        R: Clone,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -1387,7 +1905,6 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        // NOTE this could be turned into something like `let z00 = player0.with(|x00, y00| { x00 + y00 }, x00, y00)`
         let z00 = player0.add(ctx, x00, y00);
         let z10 = player0.add(ctx, x10, y10);
 
@@ -1437,7 +1954,7 @@ impl RepMulOp {
         y: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
     where
-        R: Clone + Into<C::Value> + TryFrom<C::Value>,
+        R: Clone + Into<C::Value> + TryFrom<C::Value> + 'static,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         HostPlacement: PlacementMul<C, R, R, Output = R>,
@@ -1453,42 +1970,17 @@ impl RepMulOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        // NOTE syntax could be significantly improved using eg `with` pattern
-        let t0 = player0.add(
-            ctx,
-            &player0.add(
-                ctx,
-                &player0.mul(ctx, x00, y00),
-                &player0.mul(ctx, x00, y10),
-            ),
-            &player0.mul(ctx, x10, y00),
-        );
-        let t1 = player1.add(
-            ctx,
-            &player1.add(
-                ctx,
-                &player1.mul(ctx, x11, y11),
-                &player1.mul(ctx, x11, y21),
-            ),
-            &player1.mul(ctx, x21, y11),
-        );
-        let t2 = player2.add(
-            ctx,
-            &player2.add(
-                ctx,
-                &player2.mul(ctx, x22, y22),
-                &player2.mul(ctx, x22, y02),
-            ),
-            &player2.mul(ctx, x02, y22),
-        );
-
         let ReplicatedZeroShare {
             alphas: [a0, a1, a2],
         } = rep.zero_share(ctx, &s);
 
-        let z0 = player0.add(ctx, &t0, &a0);
-        let z1 = player1.add(ctx, &t1, &a1);
-        let z2 = player2.add(ctx, &t2, &a2);
+        // TODO because of Rust's let polymorphism and lifetimes we cannot use the same f in all apply! below
+        // let f = |xii, yii, xji, yji| { 
+        //     xii * yii + xii * yji + xji * yii
+        // };
+        let z0 = apply!(player0, ctx, |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai}, x00, y00, x10, y10, &a0);
+        let z1 = apply!(player1, ctx, |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai}, x11, y11, x21, y21, &a1);
+        let z2 = apply!(player2, ctx, |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai}, x22, y22, x02, y02, &a2);
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
@@ -1516,6 +2008,7 @@ trait PlacementZeroShare<C: Context, K, R> {
 // a representation in computations); should we have a macro for this as well?
 impl<C: Context, K, R> PlacementZeroShare<C, K, R> for ReplicatedPlacement
 where
+    R: Clone + 'static,
     HostPlacement: PlacementSample<C, R>,
     HostPlacement: PlacementSub<C, R, R, Output = R>,
 {
@@ -1530,15 +2023,18 @@ where
 
         let r00 = player0.sample(ctx);
         let r10 = player0.sample(ctx);
-        let alpha0 = player0.sub(ctx, &r00, &r10);
+        // let alpha1 = player0.sub(ctx, &r00, &r10);
+        let alpha0 = apply!(player0, ctx, |x, y| { x - y }, &r00, &r10);
 
         let r11 = player1.sample(ctx);
         let r21 = player1.sample(ctx);
-        let alpha1 = player0.sub(ctx, &r11, &r21);
+        // let alpha1 = player1.sub(ctx, &r11, &r21);
+        let alpha1 = apply!(player1, ctx, |x, y| { x - y }, &r11, &r21);
 
         let r22 = player2.sample(ctx);
         let r02 = player2.sample(ctx);
-        let alpha2 = player0.sub(ctx, &r22, &r02);
+        // let alpha2 = player2.sub(ctx, &r22, &r02);
+        let alpha2 = apply!(player2, ctx, |x, y| { x - y }, &r22, &r02);
 
         ReplicatedZeroShare {
             alphas: [alpha0, alpha1, alpha2],
@@ -1562,7 +2058,7 @@ impl RepShareOp {
 
     fn kernel<C: Context, R: Clone>(ctx: &C, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
     where
-        R: Into<C::Value> + TryFrom<C::Value>,
+        R: Into<C::Value> + TryFrom<C::Value> + 'static,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         HostPlacement: PlacementSub<C, R, R, Output = R>,
@@ -1572,7 +2068,7 @@ impl RepShareOp {
         // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
         let x0 = player0.sample(ctx);
         let x1 = player0.sample(ctx);
-        let x2 = player0.sub(ctx, &x, &player0.add(ctx, &x0, &x1));
+        let x2 = apply!(player0, ctx, |x, x0, x1| { x - (x0 + x1) }, &x, &x0, &x1);
 
         ReplicatedTensor {
             shares: [[x0.clone(), x1.clone()], [x1, x2.clone()], [x2, x0]],
@@ -1621,7 +2117,7 @@ impl RepRevealOp {
         xe: ReplicatedTensor<R>,
     ) -> R
     where
-        R: Clone,
+        R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -1631,7 +2127,8 @@ impl RepRevealOp {
         } = &xe;
 
         // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        player0.add(ctx, &player0.add(ctx, x00, x10), x21)
+        // player0.add(ctx, &player0.add(ctx, x00, x10), x21)
+        apply!(player0, ctx, |x0, x1, x2| { x0 + x1 + x2 }, x00, x10, x21)
     }
 }
 
