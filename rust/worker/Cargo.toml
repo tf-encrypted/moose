@@ -1,0 +1,22 @@
+[package]
+name = "worker"
+version = "0.1.0"
+authors = []
+edition = "2018"
+default-run = "worker"
+
+[lib]
+name = "grpc"
+path = "src/lib.rs"
+
+[[bin]]
+name = "worker"
+path = "src/worker.rs"
+
+[dependencies]
+tonic = "0.4"
+prost = "0.7"
+tokio = { version = "1.0", features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+tonic-build = "0.4"
