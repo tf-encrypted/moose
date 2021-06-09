@@ -34,9 +34,9 @@ impl NetworkingPass {
             match placement_discrimnator(src_op, dst_op) {
                 // We only operate on edges that jump from a host to a different host
                 (Some(src), Some(dst)) if src != dst => {
-                    // Create a jump, if we never jumped from host `src` to host `dst`
+                    // Create a jump or use the existing one, if already passed `src_op` to host `dst`
                     let receive_op_name = created_cache
-                        .entry((src, dst, src_op.name.clone()))
+                        .entry((dst, &src_op.name))
                         .or_insert_with(|| pass.create_networking_jump(src_op, dst_op, src, dst));
 
                     // Update target operation's input to the receive operation's name
