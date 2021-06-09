@@ -1628,36 +1628,64 @@ impl RepMulOp {
         // let f = |xii, yii, xji, yji| {
         //     xii * yii + xii * yji + xji * yii
         // };
-        let z0 = apply!(
-            player0,
-            ctx,
-            |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
-            x00,
-            y00,
-            x10,
-            y10,
-            &a0
-        );
-        let z1 = apply!(
-            player1,
-            ctx,
-            |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
-            x11,
-            y11,
-            x21,
-            y21,
-            &a1
-        );
-        let z2 = apply!(
-            player2,
-            ctx,
-            |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
-            x22,
-            y22,
-            x02,
-            y02,
-            &a2
-        );
+        // let z0 = apply!(
+        //     player0,
+        //     ctx,
+        //     |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
+        //     x00,
+        //     y00,
+        //     x10,
+        //     y10,
+        //     &a0
+        // );
+        // let z1 = apply!(
+        //     player1,
+        //     ctx,
+        //     |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
+        //     x11,
+        //     y11,
+        //     x21,
+        //     y21,
+        //     &a1
+        // );
+        // let z2 = apply!(
+        //     player2,
+        //     ctx,
+        //     |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
+        //     x22,
+        //     y22,
+        //     x02,
+        //     y02,
+        //     &a2
+        // );
+
+        with_player!(player0, ctx {
+         t01 = mul(x00, y00)
+         t02 = mul(x00, y10)
+         t03 = mul(x10, y00)
+         t04 = add(&t01, &t02)
+         t05 = add(&t03, &a0)
+         z0 = add(&t04, &t05)
+        });
+        
+        with_player!(player1, ctx {
+         t11 = mul(x11, y11)
+         t12 = mul(x11, y21)
+         t13 = mul(x21, y11)
+         t14 = add(&t11, &t12)
+         t15 = add(&t13, &a1)
+         z1 = add(&t14, &t15)
+        });
+        
+        with_player!(player2, ctx {
+         t21 = mul(x22, y22)
+         t22 = mul(x22, y02)
+         t23 = mul(x02, y22)
+         t24 = add(&t21, &t22)
+         t25 = add(&t23, &a2)
+         z2 = add(&t24, &t25)
+        });
+        
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
