@@ -1378,7 +1378,7 @@ impl HostPlacement {
 }
 
 macro_rules! placed_op_impl {
-    ($t:ident, $f:ident, $pt:ident) => {
+    ($t:ident::$f:ident, $pt:ident) => {
         impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<Placed<'y, 'p, 'c, V, P, C>>
             for Placed<'x, 'p, 'c, V, P, C>
         where
@@ -1390,26 +1390,7 @@ macro_rules! placed_op_impl {
             type Output = Placed<'static, 'p, 'c, V, P, C>;
 
             fn $f(self, other: Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
-                let Placed {
-                    val: x,
-                    plc: x_plc,
-                    ctx: x_ctx,
-                } = &self;
-                let Placed {
-                    val: y,
-                    plc: y_plc,
-                    ctx: y_ctx,
-                } = &other;
-                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
-                let plc = *x_plc;
-                let ctx = *x_ctx;
-
-                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
-                Placed {
-                    val: PlacedValue::Owned(y),
-                    plc,
-                    ctx,
-                }
+                $t::$f(&self, &other)
             }
         }
 
@@ -1424,26 +1405,7 @@ macro_rules! placed_op_impl {
             type Output = Placed<'static, 'p, 'c, V, P, C>;
 
             fn $f(self, other: &Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
-                let Placed {
-                    val: x,
-                    plc: x_plc,
-                    ctx: x_ctx,
-                } = &self;
-                let Placed {
-                    val: y,
-                    plc: y_plc,
-                    ctx: y_ctx,
-                } = other;
-                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
-                let plc = *x_plc;
-                let ctx = *x_ctx;
-
-                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
-                Placed {
-                    val: PlacedValue::Owned(y),
-                    plc,
-                    ctx,
-                }
+                $t::$f(&self, other)
             }
         }
 
@@ -1458,26 +1420,7 @@ macro_rules! placed_op_impl {
             type Output = Placed<'static, 'p, 'c, V, P, C>;
 
             fn $f(self, other: Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
-                let Placed {
-                    val: x,
-                    plc: x_plc,
-                    ctx: x_ctx,
-                } = self;
-                let Placed {
-                    val: y,
-                    plc: y_plc,
-                    ctx: y_ctx,
-                } = &other;
-                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
-                let plc = *x_plc;
-                let ctx = *x_ctx;
-
-                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
-                Placed {
-                    val: PlacedValue::Owned(y),
-                    plc,
-                    ctx,
-                }
+                $t::$f(self, &other)
             }
         }
 
@@ -1517,9 +1460,9 @@ macro_rules! placed_op_impl {
     };
 }
 
-placed_op_impl!(Add, add, PlacementAdd);
-placed_op_impl!(Sub, sub, PlacementSub);
-placed_op_impl!(Mul, mul, PlacementMul);
+placed_op_impl!(Add::add, PlacementAdd);
+placed_op_impl!(Sub::sub, PlacementSub);
+placed_op_impl!(Mul::mul, PlacementMul);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepSetupOp {
