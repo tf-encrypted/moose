@@ -2,4 +2,5 @@
 members = [
   "moose",
   "pymoose",
+  "elk",
 ]

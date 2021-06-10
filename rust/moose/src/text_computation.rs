@@ -54,7 +54,7 @@ impl FromStr for Value {
 }
 
 /// Parses the computation and returns a verbose error description if it fails.
-fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
+pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
     match parse_computation::<VerboseError<&str>>(source) {
         Err(Failure(e)) => Err(anyhow::anyhow!(
             "Failed to parse computation\n{}",
@@ -753,6 +753,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Uint16Tensor" => Ok((i, Ty::Uint16TensorTy)),
         "Uint32Tensor" => Ok((i, Ty::Uint32TensorTy)),
         "Uint64Tensor" => Ok((i, Ty::Uint64TensorTy)),
+        "Unknown" => Ok((i, Ty::UnknownTy)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
 }
@@ -1348,8 +1349,30 @@ impl ToTextual for RingSampleOp {
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
+            Ty::UnitTy => "Unit".to_string(),
+            Ty::StringTy => "String".to_string(),
+            Ty::Float32Ty => "Float32".to_string(),
+            Ty::Float64Ty => "Float64".to_string(),
+            Ty::Ring64Ty => "Ring64".to_string(),
+            Ty::Ring128Ty => "Ring128".to_string(),
+            Ty::Ring64TensorTy => "Ring64Tensor".to_string(),
+            Ty::Ring128TensorTy => "Ring128Tensor".to_string(),
+            Ty::BitTensorTy => "BitTensor".to_string(),
+            Ty::ShapeTy => "Shape".to_string(),
+            Ty::SeedTy => "Seed".to_string(),
+            Ty::PrfKeyTy => "PrfKey".to_string(),
+            Ty::NonceTy => "Nonce".to_string(),
             Ty::Float32TensorTy => "Float32Tensor".to_string(),
-            _ => unimplemented!(),
+            Ty::Float64TensorTy => "Float64Tensor".to_string(),
+            Ty::Int8TensorTy => "Int8Tensor".to_string(),
+            Ty::Int16TensorTy => "Int16Tensor".to_string(),
+            Ty::Int32TensorTy => "Int32Tensor".to_string(),
+            Ty::Int64TensorTy => "Int64Tensor".to_string(),
+            Ty::Uint8TensorTy => "Uint8Tensor".to_string(),
+            Ty::Uint16TensorTy => "Uint16Tensor".to_string(),
+            Ty::Uint32TensorTy => "Uint32Tensor".to_string(),
+            Ty::Uint64TensorTy => "Uint64Tensor".to_string(),
+            Ty::UnknownTy => "Unknown".to_string(),
         }
     }
 }

@@ -612,11 +612,10 @@ impl Operation {
 }
 
 impl Computation {
-    pub fn toposort(&self) -> Result<Computation> {
-        let mut graph = Graph::<String, ()>::new();
+    pub fn as_graph(&self) -> Graph<(String, usize), ()> {
+        let mut graph = Graph::new();
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
-        let mut inv_map: HashMap<NodeIndex, usize> = HashMap::new();
 
         let mut send_nodes: HashMap<&str, NodeIndex> = HashMap::new();
         let mut recv_nodes: HashMap<&str, NodeIndex> = HashMap::new();
@@ -624,7 +623,7 @@ impl Computation {
         let mut rdv_keys: HashSet<&str> = HashSet::new();
 
         for (i, op) in self.operations.iter().enumerate() {
-            let vertex = graph.add_node(op.name.clone());
+            let vertex = graph.add_node((op.name.clone(), i));
             match op.kind {
                 Operator::Send(ref op) => {
                     let key = op.rendezvous_key.as_ref();
@@ -655,7 +654,6 @@ impl Computation {
                 _ => {}
             }
             vertex_map.insert(&op.name, vertex);
-            inv_map.insert(vertex, i);
         }
 
         for op in self.operations.iter() {
@@ -675,13 +673,18 @@ impl Computation {
             graph.add_edge(send_nodes[key], recv_nodes[key], ());
         }
 
+        graph
+    }
+
+    pub fn toposort(&self) -> Result<Computation> {
+        let graph = self.as_graph();
         let toposort = toposort(&graph, None).map_err(|_| {
             Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
         })?;
 
         let operations = toposort
             .iter()
-            .map(|node| self.operations[inv_map[node]].clone())
+            .map(|node| self.operations[graph[*node].1].clone())
             .collect();
 
         Ok(Computation { operations })
