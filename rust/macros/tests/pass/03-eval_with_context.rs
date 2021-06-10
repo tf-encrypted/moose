@@ -21,5 +21,5 @@ fn main() {
     let y = 646;
     let z = -465465;
     let res = eval_with_context!(player, ctx, x + y * z);
-    assert_eq!(res, -300690345);
+    assert_eq!(res, x + y * z);
 }

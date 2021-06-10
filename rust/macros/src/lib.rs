@@ -1,13 +1,10 @@
 extern crate proc_macro;
 use proc_macro::TokenStream;
-use quote::quote;
-use quote::quote_spanned;
+use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
-use syn::parse_quote;
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::BinOp;
-use syn::{parse_macro_input, Expr, ExprBinary, Ident, Token};
+use syn::{parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, Ident, Token};
 
 /// Macros to convert expression into player/context invocations.
 ///
