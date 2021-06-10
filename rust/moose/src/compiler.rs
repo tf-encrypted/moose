@@ -1504,10 +1504,39 @@ pub struct RepAddOp {
     plc: Placement,
 }
 
+// Fairly simple macros, but doing the "with" for us.
 macro_rules! with_player {
     ($player:ident, $context:ident { $( $var:tt = $method:tt($( $param:expr ),*) )* }  ) => {
         $( let $var = $player.$method( $context, $($param),* ); )*
-    }
+    };
+}
+
+// More complicated macros, that parses the syntax. But requires a lot of brackets :( in the expressions
+macro_rules! with_player2 {
+    // Top level, the assignments block
+    ($player:ident, $context:ident { $( $var:tt = [$($right:tt)*])* }  ) => {
+        $( let $var = with_player2!($player, $context, $($right)*); )*
+    };
+    // Right side of the assignment
+    ($player:ident, $context:ident, $method:tt($([$($params:tt)*]),*) ) => {
+        $player.$method( $context, $( &with_player2!($player, $context, $($params)*)     ),*)
+    };
+    // Arguments are other calls
+    ($player:ident, $context:ident, $method:tt($([$($params:tt)*]),*)) => {
+        $player.$method( $context, $( &with_player2!($player, $context, $($params)*)     ),*)
+    };
+    // Syntacic sugar for addition
+    ($player:ident, $context:ident, [$($left:tt)*] + [$($right:tt)*] ) => {
+        $player.add( $context, &with_player2!($player, $context, $($left)*), &with_player2!($player, $context, $($right)*))
+    };
+    // Syntacic sugar for multiplication
+    ($player:ident, $context:ident, [$($left:tt)*] * [$($right:tt)*] ) => {
+        $player.mul( $context, &with_player2!($player, $context, $($left)*), &with_player2!($player, $context, $($right)*))
+    };
+    // Arguments are ready to use expressions
+    ($_player:ident, $_context:ident, $e:expr) => {
+        $e
+    };
 }
 
 impl RepAddOp {
@@ -1538,9 +1567,10 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        with_player!( player0, ctx {
-            z00 = add(x00, y00)
-            z10 = add(x10, y10)
+        with_player2!( player0, ctx {
+            z00 = [[x00] + [y00]]
+            // We can still use the method call syntax
+            z10 = [add([x10], [y10])]
         });
 
         with_player!( player1, ctx {
@@ -1659,15 +1689,10 @@ impl RepMulOp {
         //     &a2
         // );
 
-        with_player!(player0, ctx {
-         t01 = mul(x00, y00)
-         t02 = mul(x00, y10)
-         t03 = mul(x10, y00)
-         t04 = add(&t01, &t02)
-         t05 = add(&t03, &a0)
-         z0 = add(&t04, &t05)
+        with_player2!(player0, ctx {
+          z0 = [[[[[x00] * [y00]] + [[x00] * [y10]]] + [[x10] * [y00]]] + [a0]]
         });
-        
+
         with_player!(player1, ctx {
          t11 = mul(x11, y11)
          t12 = mul(x11, y21)
@@ -1676,7 +1701,7 @@ impl RepMulOp {
          t15 = add(&t13, &a1)
          z1 = add(&t14, &t15)
         });
-        
+
         with_player!(player2, ctx {
          t21 = mul(x22, y22)
          t22 = mul(x22, y02)
@@ -1685,7 +1710,6 @@ impl RepMulOp {
          t25 = add(&t23, &a2)
          z2 = add(&t24, &t25)
         });
-        
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
@@ -2480,7 +2504,7 @@ mod tests {
             env.insert(op.name.clone(), res);
         }
 
-        println!("{:?}", env);
+        println!("{:?}\n\n", env);
 
         let ctx = ConcreteContext::default();
         let mut env: HashMap<String, Value> = HashMap::default();
