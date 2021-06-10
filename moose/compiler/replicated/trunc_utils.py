@@ -3,6 +3,7 @@ from moose.compiler.primitives import sample_key
 from moose.compiler.replicated.types import ReplicatedRingTensor
 from moose.compiler.replicated.types import ReplicatedSetup
 from moose.compiler.ring import RingTensor
+from moose.compiler.ring import fill_tensor
 from moose.compiler.ring import ring_add
 from moose.compiler.ring import ring_mul
 from moose.compiler.ring import ring_sample
@@ -57,7 +58,7 @@ def bit_compose(bits, placement_name):
 
 # assume x, r, r_top, r_msb is a two entry array where each entry corresponds
 # to a share
-def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players, R):
+def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players, R, signed=True):
     assert isinstance(x_rep, ReplicatedRingTensor)
 
     def reconstruct(x0: RingTensor, x1: RingTensor):
@@ -71,6 +72,15 @@ def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players, R):
         ring_add(x_rep.shares0[0], x_rep.shares0[1], placement_name=players[0]),
         x_rep.shares1[1],
     ]
+
+    k = R - 1  # maximum bitlength
+
+    if signed:
+        x[0] = ring_add(
+            x[0],
+            fill_tensor(x[0].shape, 2 ** (k - 1), players[0]),
+            placement_name=players[0],
+        )
 
     masked = [None] * 2
     for i in range(len(players)):
@@ -100,6 +110,13 @@ def _two_party_trunc_pr(x_rep, m, r, r_top, r_msb, players, R):
     for i in range(2):
         output[i] = ring_sub(shift_msb[i], r_top[i], placement_name=players[i])
     output[0] = ring_add(output[0], opened_masked_tr[0], placement_name=players[0])
+
+    if signed:
+        output[0] = ring_sub(
+            output[0],
+            fill_tensor(output[0].shape, 2 ** (k - 1 - m), players[0]),
+            placement_name=players[0],
+        )
 
     return output
 
