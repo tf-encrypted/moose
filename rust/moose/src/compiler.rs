@@ -107,6 +107,40 @@ pub enum Ty {
     PrfKey,
 }
 
+impl Ty {
+    pub fn synthesize_symbolic_value<S: Into<String>>(&self, op_name: S) -> SymbolicValue {
+        match &self {
+            Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+            })),
+            Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+            })),
+            Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+            })),
+            Ty::Replicated64Tensor => {
+                SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                }))
+            }
+            Ty::Replicated128Tensor => {
+                SymbolicValue::Replicated128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                }))
+            }
+            Ty::ReplicatedSetup => {
+                SymbolicValue::ReplicatedSetup(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                }))
+            }
+            Ty::PrfKey => {
+                SymbolicValue::PrfKey(Symbolic::Symbolic(SymbolicHandle { op: op_name.into() }))
+            }
+        }
+    }
+}
+
 pub trait KnownType {
     type Symbolic;
     const TY: Ty;
@@ -121,6 +155,20 @@ pub enum Value {
     Replicated128Tensor(Replicated128Tensor),
     ReplicatedSetup(ReplicatedSetup),
     PrfKey(PrfKey),
+}
+
+impl Value {
+    pub fn ty(&self) -> Ty {
+        match self {
+            Value::Ring32Tensor(_) => Ty::Ring32Tensor,
+            Value::Ring64Tensor(_) => Ty::Ring64Tensor,
+            Value::Ring128Tensor(_) => Ty::Ring128Tensor,
+            Value::Replicated64Tensor(_) => Ty::Replicated64Tensor,
+            Value::Replicated128Tensor(_) => Ty::Replicated128Tensor,
+            Value::ReplicatedSetup(_) => Ty::ReplicatedSetup,
+            Value::PrfKey(_) => Ty::PrfKey,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2012,41 +2060,7 @@ impl ConstantOp {
         match &self.plc {
             Placement::HostPlacement(_) => {
                 let op_name = ctx.add_operation(self, &[]);
-                match self.val {
-                    Value::Ring32Tensor(_) => {
-                        SymbolicValue::Ring32Tensor(Symbolic::Symbolic(SymbolicHandle {
-                            op: op_name,
-                        }))
-                    }
-                    Value::Ring64Tensor(_) => {
-                        SymbolicValue::Ring64Tensor(Symbolic::Symbolic(SymbolicHandle {
-                            op: op_name,
-                        }))
-                    }
-                    Value::Ring128Tensor(_) => {
-                        SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
-                            op: op_name,
-                        }))
-                    }
-                    Value::Replicated64Tensor(_) => {
-                        SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
-                            op: op_name,
-                        }))
-                    }
-                    Value::Replicated128Tensor(_) => {
-                        SymbolicValue::Replicated128Tensor(Symbolic::Symbolic(SymbolicHandle {
-                            op: op_name,
-                        }))
-                    }
-                    Value::ReplicatedSetup(_) => {
-                        SymbolicValue::ReplicatedSetup(Symbolic::Symbolic(SymbolicHandle {
-                            op: op_name,
-                        }))
-                    }
-                    Value::PrfKey(_) => {
-                        SymbolicValue::PrfKey(Symbolic::Symbolic(SymbolicHandle { op: op_name }))
-                    }
-                }
+                self.val.ty().synthesize_symbolic_value(op_name)
             }
             _ => unimplemented!(), // ok
         }
