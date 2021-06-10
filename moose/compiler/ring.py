@@ -19,6 +19,7 @@ from moose.computation.ring import RingShlOperation
 from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
+from moose.computation.standard import UnitType
 
 
 @dataclass
@@ -50,6 +51,7 @@ def print_ring_tensor(tensor: RingTensor, prefix, suffix, placement_name, chain=
             name=tensor.context.get_fresh_name("chain_print"),
             inputs={"value": print_op.name},
             placement_name=placement_name,
+            output_type=UnitType(),
         )
     )
     return print_op
