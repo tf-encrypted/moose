@@ -89,3 +89,12 @@ fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
     let mut visitor = Visitor { player, context };
     visitor.visit_expr_mut(expr)
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_normal() {
+        let t = trybuild::TestCases::new();
+        t.pass("tests/pass/*.rs");
+    }
+}

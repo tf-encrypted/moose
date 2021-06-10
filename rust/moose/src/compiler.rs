@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use macros::eval_with_context;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
-use macros::eval_with_context;
 
 #[derive(Debug, Clone, PartialEq)]
 enum Placement {
