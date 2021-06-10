@@ -3,6 +3,7 @@
 
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
+use macros::eval_with_context;
 
 #[derive(Debug, Clone, PartialEq)]
 enum Placement {
@@ -1504,38 +1505,10 @@ pub struct RepAddOp {
     plc: Placement,
 }
 
-// Fairly simple macros, but doing the "with" for us.
 macro_rules! with_player {
-    ($player:ident, $context:ident { $( $var:tt = $method:tt($( $param:expr ),*) )* }  ) => {
-        $( let $var = $player.$method( $context, $($param),* ); )*
-    };
-}
-
-// More complicated macros, that parses the syntax. But requires a lot of brackets :( in the expressions
-macro_rules! with_player2 {
-    // Top level, the assignments block
+    // Collection of assignment blocks
     ($player:ident, $context:ident { $( $var:tt = [$($right:tt)*])* }  ) => {
-        $( let $var = with_player2!($player, $context, $($right)*); )*
-    };
-    // Right side of the assignment
-    ($player:ident, $context:ident, $method:tt($([$($params:tt)*]),*) ) => {
-        $player.$method( $context, $( &with_player2!($player, $context, $($params)*)     ),*)
-    };
-    // Arguments are other calls
-    ($player:ident, $context:ident, $method:tt($([$($params:tt)*]),*)) => {
-        $player.$method( $context, $( &with_player2!($player, $context, $($params)*)     ),*)
-    };
-    // Syntacic sugar for addition
-    ($player:ident, $context:ident, [$($left:tt)*] + [$($right:tt)*] ) => {
-        $player.add( $context, &with_player2!($player, $context, $($left)*), &with_player2!($player, $context, $($right)*))
-    };
-    // Syntacic sugar for multiplication
-    ($player:ident, $context:ident, [$($left:tt)*] * [$($right:tt)*] ) => {
-        $player.mul( $context, &with_player2!($player, $context, $($left)*), &with_player2!($player, $context, $($right)*))
-    };
-    // Arguments are ready to use expressions
-    ($_player:ident, $_context:ident, $e:expr) => {
-        $e
+        $( let $var = eval_with_context!($player, $context, $($right)*); )*
     };
 }
 
@@ -1567,20 +1540,19 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        with_player2!( player0, ctx {
-            z00 = [[x00] + [y00]]
-            // We can still use the method call syntax
-            z10 = [add([x10], [y10])]
+        with_player!( player0, ctx {
+            z00 = [x00 + y00]
+            z10 = [x10 + y10]
         });
 
         with_player!( player1, ctx {
-            z11 = add(x11, y11)
-            z21 = add(x21, y21)
+            z11 = [x11 + y11]
+            z21 = [x21 + y21]
         });
 
         with_player!( player2, ctx {
-            z22 = add(x22, y22)
-            z02 = add(x02, y02)
+            z22 = [x22 + y22]
+            z02 = [x02 + y02]
         });
 
         /* Produces code identical to this one:
@@ -1689,26 +1661,14 @@ impl RepMulOp {
         //     &a2
         // );
 
-        with_player2!(player0, ctx {
-          z0 = [[[[[x00] * [y00]] + [[x00] * [y10]]] + [[x10] * [y00]]] + [a0]]
+        with_player!(player0, ctx {
+          z0 = [x00 * y00 + x00 * y10 + x10 * y00 + a0]
         });
-
         with_player!(player1, ctx {
-         t11 = mul(x11, y11)
-         t12 = mul(x11, y21)
-         t13 = mul(x21, y11)
-         t14 = add(&t11, &t12)
-         t15 = add(&t13, &a1)
-         z1 = add(&t14, &t15)
+          z1 = [x11 * y11 + x11 * y21 + x21 * y11 + a1]
         });
-
         with_player!(player2, ctx {
-         t21 = mul(x22, y22)
-         t22 = mul(x22, y02)
-         t23 = mul(x02, y22)
-         t24 = add(&t21, &t22)
-         t25 = add(&t23, &a2)
-         z2 = add(&t24, &t25)
+          z2 = [x22 * y22 + x22 * y02 + x02 * y22 + a2]
         });
 
         ReplicatedTensor {
