@@ -1583,6 +1583,36 @@ pub struct RepAddOp {
     plc: Placement,
 }
 
+// TODO
+// problem with ring/rep mixed kernels is that eg hybrid_kernel will only call the kernel function
+// if both inputs are concrete, so we can end up with
+//   add(Concrete(RingTensor), ReplicatedTensor(Symbolic(RingTensor)))
+// which in turn leads to
+//   add(Concrete(RingTensor), Symbolic(RingTensor))
+// which we should of course not support at this point.
+// we could use abstract_kernel here instead, but then we would have to match on the replicated 
+// tensor, which is what we where trying to avoid with the harness.
+// maybe we can get around this by introducing proper FixedHostTensor and FixedReplicatedTensor??
+
+modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
+
+hybrid_kernel! {
+    RepAddOp,
+    [
+        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel), // hybrid_kernel
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel) // hybrid_kernel
+        // (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel) // semi_abstract_kernel?
+        // (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        // (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        // (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel)
+    ]
+}
+
 impl RepAddOp {
     fn from_placement_signature(plc: &ReplicatedPlacement, sig: BinarySignature) -> Self {
         RepAddOp {
@@ -1688,25 +1718,6 @@ impl RepAddOp {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
-}
-
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
-
-hybrid_kernel! {
-    RepAddOp,
-    [
-        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel), // hybrid_kernel
-        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel) // hybrid_kernel
-        // (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel) // semi_abstract_kernel?
-        // (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
-        // (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
-        // (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel)
-    ]
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1896,6 +1907,9 @@ pub struct RepRevealOp {
     plc: Placement,
 }
 
+// NOTE
+// revealing on ReplicatedPlacements should reveal to all three players, but we're currently
+// missing a type to represent this (eg PublicReplicatedTensor vs PrivateReplicatedTensors)
 modelled!(PlacementReveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
 modelled!(PlacementReveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
 
