@@ -288,6 +288,7 @@ pub enum Operator {
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
     ConstantOp(ConstantOp),
+    FixedAddOp(FixedAddOp),
     FixedMulOp(FixedMulOp),
 }
 
@@ -314,6 +315,7 @@ operator!(RepMulOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
 operator!(ConstantOp);
+operator!(FixedAddOp);
 operator!(FixedMulOp);
 
 #[derive(Clone, Debug, PartialEq)]
@@ -744,6 +746,16 @@ trait PlacementShare<C: Context, T> {
     }
 }
 
+trait PlacementReveal<C: Context, T> {
+    type Output;
+
+    fn apply(&self, ctx: &C, x: &T) -> Self::Output;
+
+    fn reveal(&self, ctx: &C, x: &T) -> Self::Output {
+        self.apply(ctx, x)
+    }
+}
+
 pub trait Context {
     type Value;
     fn execute(&self, op: Operator, operands: Vec<Self::Value>) -> Self::Value;
@@ -768,6 +780,7 @@ impl Context for ConcreteContext {
             Operator::RepAddOp(op) => op.compile(self)(operands),
             Operator::RepMulOp(op) => op.compile(self)(operands),
             Operator::ConstantOp(op) => op.compile(self)(operands),
+            Operator::FixedAddOp(op) => op.compile(self)(operands),
             Operator::FixedMulOp(op) => op.compile(self)(operands),
         }
     }
@@ -796,6 +809,7 @@ impl Context for SymbolicContext {
             Operator::RepAddOp(op) => op.execute_symbolic(self, operands),
             Operator::RepMulOp(op) => op.execute_symbolic(self, operands),
             Operator::ConstantOp(op) => op.execute_symbolic(self, operands),
+            Operator::FixedAddOp(op) => op.execute_symbolic(self, operands),
             Operator::FixedMulOp(op) => op.execute_symbolic(self, operands),
         }
     }
@@ -1882,16 +1896,19 @@ pub struct RepRevealOp {
     plc: Placement,
 }
 
+modelled!(PlacementReveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
+modelled!(PlacementReveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
+
 hybrid_kernel! {
     RepRevealOp,
     [
-        (ReplicatedPlacement, (Replicated64Tensor) -> Ring64Tensor => Self::kernel),
-        (ReplicatedPlacement, (Replicated128Tensor) -> Ring128Tensor => Self::kernel)
+        (HostPlacement, (Replicated64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Replicated128Tensor) -> Ring128Tensor => Self::kernel)
     ]
 }
 
 impl RepRevealOp {
-    fn from_placement_signature(plc: &ReplicatedPlacement, sig: UnarySignature) -> Self {
+    fn from_placement_signature(plc: &HostPlacement, sig: UnarySignature) -> Self {
         RepRevealOp {
             sig: sig.into(),
             plc: plc.clone().into(),
@@ -1900,22 +1917,18 @@ impl RepRevealOp {
 
     fn kernel<C: Context, R: Clone>(
         ctx: &C,
-        rep: &ReplicatedPlacement,
+        plc: &HostPlacement,
         xe: ReplicatedTensor<R>,
     ) -> R
     where
         R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
-
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
-        // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        // player0.add(ctx, &player0.add(ctx, x00, x10), x21)
-        apply!(player0, ctx, |x0, x1, x2| { x0 + x1 + x2 }, x00, x10, x21)
+        apply!(plc, ctx, |x0, x1, x2| { x0 + x1 + x2 }, x00, x10, x21)
     }
 }
 
@@ -2154,13 +2167,13 @@ pub struct FixedMulOp {
 }
 
 modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
-// modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
 
 hybrid_kernel! {
     FixedMulOp,
     [
-        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rename_me_to_kernel)
-        // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor)
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel)
     ]
 }
 
@@ -2172,38 +2185,198 @@ impl FixedMulOp {
         }
     }
     
-    fn rename_me_to_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
+    // NOTE
+    // we inherently need different kernel functions since 
+    // the behaviour on placements differs (share vs reveal)!
+
+    fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
         ctx: &C,
         plc: &HostPlacement, 
         x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
+        HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
         HostPlacement: PlacementMul<C, RingTensorT, RingTensorT, Output = RingTensorT>,
-        // HostPlacement: PlacementMul<C, RingTensorT, ReplicatedTensorT, Output = RingTensorT>,
-    //     P: PlacementMul<C, ReplicatedTensorT, RingTensorT>,
-    //     P: PlacementMul<C, ReplicatedTensorT, ReplicatedTensorT>,
     {
+        // TODO don't like that we have to do the matching here since it's ignoring some of the
+        // benefits we have from types kernels
+
+        // TODO how to deal with wrapping types like FixedTensor? subtyping?
+
         match (x, y) {
             (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
                 let z: RingTensorT = plc.mul(ctx, &x, &y);
                 FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
-                // unimplemented!()
             }
             (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(ye)) => {
-                // let y = plc.reveal(ctx, &ye);
-                // let z = plc.mul(ctx, &x, &y);
-                // FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
-                unimplemented!()
+                let y = plc.reveal(ctx, &ye);
+                let z = plc.mul(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
             }
-            (FixedTensor::ReplicatedTensor(x), FixedTensor::RingTensor(y)) => {
-                unimplemented!()
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::RingTensor(y)) => {
+                let x = plc.reveal(ctx, &xe);
+                let z = plc.mul(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
             }
-            (FixedTensor::ReplicatedTensor(x), FixedTensor::ReplicatedTensor(y)) => {
-                unimplemented!()
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::ReplicatedTensor(ye)) => {
+                let x = plc.reveal(ctx, &xe);
+                let y = plc.reveal(ctx, &ye);
+                let z = plc.mul(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
             }
         }
-        // unimplemented!()
+    }
+
+    fn rep_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
+        ctx: &C,
+        plc: &ReplicatedPlacement, 
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        y: FixedTensor<RingTensorT, ReplicatedTensorT>,
+    ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
+    where
+        ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
+        // ReplicatedPlacement: PlacementMulSetup<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement: PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+    {
+        // TODO don't like that we have to do the matching here since it's ignoring some of the
+        // benefits we have from types kernels
+
+        // TODO how to deal with wrapping types like FixedTensor? subtyping?
+
+        // TODO if we want to do `mul` instead of `add` here but we need to get setup from somewhere!
+
+        match (x, y) {
+            (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
+                let xe = plc.share(ctx, &x);
+                let ye = plc.share(ctx, &y);
+                // let ze = plc.mul(ctx, &xe, &ye);
+                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+            (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(ye)) => {
+                let xe = plc.share(ctx, &x);
+                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::RingTensor(y)) => {
+                let ye = plc.share(ctx, &y);
+                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::ReplicatedTensor(ye)) => {
+                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FixedAddOp {
+    sig: Signature,
+    plc: Placement,
+}
+
+modelled!(PlacementAdd, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
+
+hybrid_kernel! {
+    FixedAddOp,
+    [
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel)
+    ]
+}
+
+impl FixedAddOp {
+    fn from_placement_signature<P: Clone + Into<Placement>>(plc: &P, sig: BinarySignature) -> Self {
+        FixedAddOp {
+            sig: sig.into(),
+            plc: plc.clone().into(),
+        }
+    }
+    
+    // NOTE
+    // we inherently need different kernel functions since 
+    // the behaviour on placements differs (share vs reveal)!
+
+    fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
+        ctx: &C,
+        plc: &HostPlacement, 
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        y: FixedTensor<RingTensorT, ReplicatedTensorT>,
+    ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
+    where
+        HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
+        HostPlacement: PlacementAdd<C, RingTensorT, RingTensorT, Output = RingTensorT>,
+    {
+        // TODO don't like that we have to do the matching here since it's ignoring some of the
+        // benefits we have from types kernels
+
+        // TODO how to deal with wrapping types like FixedTensor? subtyping?
+
+        match (x, y) {
+            (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
+                let z: RingTensorT = plc.add(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
+            }
+            (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(ye)) => {
+                let y = plc.reveal(ctx, &ye);
+                let z = plc.add(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
+            }
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::RingTensor(y)) => {
+                let x = plc.reveal(ctx, &xe);
+                let z = plc.add(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
+            }
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::ReplicatedTensor(ye)) => {
+                let x = plc.reveal(ctx, &xe);
+                let y = plc.reveal(ctx, &ye);
+                let z = plc.add(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
+            }
+        }
+    }
+
+    fn rep_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
+        ctx: &C,
+        plc: &ReplicatedPlacement, 
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        y: FixedTensor<RingTensorT, ReplicatedTensorT>,
+    ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
+    where
+        ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement: PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+    {
+        // TODO don't like that we have to do the matching here since it's ignoring some of the
+        // benefits we have from types kernels
+
+        // TODO how to deal with wrapping types like FixedTensor? subtyping?
+
+        match (x, y) {
+            (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
+                let xe = plc.share(ctx, &x);
+                let ye = plc.share(ctx, &y);
+                let ze = plc.add(ctx, &xe, &ye);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+            (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(ye)) => {
+                let xe = plc.share(ctx, &x);
+                let ze = plc.add(ctx, &xe, &ye);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::RingTensor(y)) => {
+                let ye = plc.share(ctx, &y);
+                let ze = plc.add(ctx, &xe, &ye);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+            (FixedTensor::ReplicatedTensor(xe), FixedTensor::ReplicatedTensor(ye)) => {
+                let ze = plc.add(ctx, &xe, &ye);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
+            }
+        }
     }
 }
 
