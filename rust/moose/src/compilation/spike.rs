@@ -98,6 +98,7 @@ placement!(ReplicatedPlacement);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Ty {
+    Fixed64Tensor,
     Ring32Tensor,
     Ring64Tensor,
     Ring128Tensor,
@@ -109,34 +110,18 @@ pub enum Ty {
 
 impl Ty {
     pub fn synthesize_symbolic_value<S: Into<String>>(&self, op_name: S) -> SymbolicValue {
+        let h = SymbolicHandle {
+            op: op_name.into(),
+        };
         match &self {
-            Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(Symbolic::Symbolic(SymbolicHandle {
-                op: op_name.into(),
-            })),
-            Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(Symbolic::Symbolic(SymbolicHandle {
-                op: op_name.into(),
-            })),
-            Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
-                op: op_name.into(),
-            })),
-            Ty::Replicated64Tensor => {
-                SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
-                    op: op_name.into(),
-                }))
-            }
-            Ty::Replicated128Tensor => {
-                SymbolicValue::Replicated128Tensor(Symbolic::Symbolic(SymbolicHandle {
-                    op: op_name.into(),
-                }))
-            }
-            Ty::ReplicatedSetup => {
-                SymbolicValue::ReplicatedSetup(Symbolic::Symbolic(SymbolicHandle {
-                    op: op_name.into(),
-                }))
-            }
-            Ty::PrfKey => {
-                SymbolicValue::PrfKey(Symbolic::Symbolic(SymbolicHandle { op: op_name.into() }))
-            }
+            Ty::Fixed64Tensor => SymbolicValue::Fixed64Tensor(h.into()),
+            Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(h.into()),
+            Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(h.into()),
+            Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(h.into()),
+            Ty::Replicated64Tensor => SymbolicValue::Replicated64Tensor(h.into()),
+            Ty::Replicated128Tensor => SymbolicValue::Replicated128Tensor(h.into()),
+            Ty::ReplicatedSetup => SymbolicValue::ReplicatedSetup(h.into()),
+            Ty::PrfKey => SymbolicValue::PrfKey(h.into()),
         }
     }
 }
@@ -148,6 +133,7 @@ pub trait KnownType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
+    Fixed64Tensor(Fixed64Tensor),
     Ring32Tensor(Ring32Tensor),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
@@ -160,6 +146,7 @@ pub enum Value {
 impl Value {
     pub fn ty(&self) -> Ty {
         match self {
+            Value::Fixed64Tensor(_) => Ty::Fixed64Tensor,
             Value::Ring32Tensor(_) => Ty::Ring32Tensor,
             Value::Ring64Tensor(_) => Ty::Ring64Tensor,
             Value::Ring128Tensor(_) => Ty::Ring128Tensor,
@@ -173,6 +160,7 @@ impl Value {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SymbolicValue {
+    Fixed64Tensor(<Fixed64Tensor as KnownType>::Symbolic),
     Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
     Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
     Ring128Tensor(<Ring128Tensor as KnownType>::Symbolic),
@@ -241,6 +229,7 @@ macro_rules! value {
 // `enum SymbolicValue` and maybe even `enum Ty`.
 // one thing to be careful about here is to still make room for manual
 // constructions during development.
+value!(Fixed64Tensor, Symbolic<Fixed64Tensor>);
 value!(Ring32Tensor, Symbolic<Ring32Tensor>);
 value!(Ring64Tensor, Symbolic<Ring64Tensor>);
 value!(Ring128Tensor, Symbolic<Ring128Tensor>);
@@ -459,6 +448,12 @@ pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
 pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Fixed64Tensor {
+    Ring64Tensor(Ring64Tensor),
+    Replicated64Tensor(Replicated64Tensor),
+}
 
 macro_rules! modelled {
     /*
