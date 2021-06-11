@@ -46,6 +46,7 @@ pub enum Ty {
     Uint16TensorTy,
     Uint32TensorTy,
     Uint64TensorTy,
+    UnknownTy,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -512,7 +513,7 @@ impl From<ReplicatedPlacement> for Placement {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Operation {
     pub name: String,
     pub kind: Operator,

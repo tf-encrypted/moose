@@ -73,7 +73,130 @@ def _compile_and_run(comp, alice, bob, carole):
     return run_test_computation(comp, [alice, bob, carole])
 
 
+def compile(comp, alice, bob, carole):
+    compiler = Compiler()
+    comp = compiler.run_passes(comp)
+    return comp
+
+
+def run(comp, alice, bob, carole):
+    return run_test_computation(comp, [alice, bob, carole])
+
+
 class ReplicatedProtocolsTest(parameterized.TestCase):
+    @parameterized.parameters(
+        (lambda x, y: x * y, standard_dialect.MulOperation, 28),
+        (lambda x, y: x * y, standard_dialect.MulOperation, 29),
+        (lambda x, y: x * y, standard_dialect.MulOperation, 30),
+        (lambda x, y: x * y, standard_dialect.MulOperation, 31),
+    )
+    def test_trunc(self, numpy_lmbd, replicated_std_op, frac_precision):
+        comp = Computation(operations={}, placements={})
+        alice, bob, carole, rep = _setup_replicated_computation(comp)
+
+        x = np.array([-1], dtype=np.float64)
+        y = np.array([1], dtype=np.float64)
+
+        z = numpy_lmbd(x, y)
+
+        fp_dtype = dtypes.fixed(8, frac_precision)
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="alice_input",
+                value=TensorConstant(value=x),
+                placement_name=alice.name,
+                inputs={},
+                output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_alice",
+                inputs={"value": "alice_input"},
+                placement_name="alice",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="bob_input",
+                value=TensorConstant(value=y),
+                placement_name=bob.name,
+                inputs={},
+                output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+
+        comp.add_operation(
+            fixedpoint_ops.EncodeOperation(
+                name="encode_bob",
+                inputs={"value": "bob_input"},
+                placement_name="bob",
+                output_type=fixedpoint_ops.EncodedTensorType(
+                    dtype=fp_dtype, precision=fp_dtype.fractional_precision
+                ),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        op_name = "rep_op"
+
+        comp.add_operation(
+            replicated_std_op(
+                name="rep_op",
+                placement_name=rep.name,
+                inputs={"lhs": "encode_alice", "rhs": "encode_bob"},
+                output_type=TensorType(dtype=dtypes.float64),
+            )
+        )
+        comp.add_operation(
+            standard_dialect.ConstantOperation(
+                name="save_key",
+                inputs={},
+                placement_name=carole.name,
+                value=StringConstant(value="result"),
+                output_type=standard_dialect.StringType(),
+            )
+        )
+
+        comp.add_operation(
+            fixedpoint_ops.DecodeOperation(
+                name="decode_carole",
+                inputs={"value": op_name},
+                placement_name=carole.name,
+                output_type=TensorType(dtype=dtypes.float64),
+                precision=fp_dtype.fractional_precision,
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.SaveOperation(
+                name="save",
+                inputs={"key": "save_key", "value": "decode_carole"},
+                placement_name=carole.name,
+            )
+        )
+
+        comp.add_operation(
+            standard_dialect.OutputOperation(
+                name="output",
+                placement_name=carole.name,
+                inputs={"value": "save"},
+                output_type=UnitType(),
+            )
+        )
+
+        compiled_computation = compile(comp, alice, bob, carole)
+        for i in range(100):
+            results = run(compiled_computation, alice, bob, carole)
+            np.testing.assert_array_equal(z, results[carole]["result"])
+
     @parameterized.parameters(
         (lambda x, y: x + y, False, standard_dialect.AddOperation),
         (lambda x, y: x - y, False, standard_dialect.SubOperation),

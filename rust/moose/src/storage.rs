@@ -4,14 +4,26 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 pub trait SyncStorage {
-    fn save(&self, key: &str, val: &Value) -> Result<()>;
-    fn load(&self, key: &str, type_hint: Option<Ty>) -> Result<Value>;
+    fn save(&self, key: &str, session_id: &SessionId, val: &Value) -> Result<()>;
+    fn load(
+        &self,
+        key: &str,
+        session_id: &SessionId,
+        type_hint: Option<Ty>,
+        query: &str,
+    ) -> Result<Value>;
 }
 
 #[async_trait]
 pub trait AsyncStorage {
-    async fn save(&self, key: &str, val: &Value) -> Result<()>;
-    async fn load(&self, key: &str, type_hint: Option<Ty>) -> Result<Value>;
+    async fn save(&self, key: &str, session_id: &SessionId, val: &Value) -> Result<()>;
+    async fn load(
+        &self,
+        key: &str,
+        session_id: &SessionId,
+        type_hint: Option<Ty>,
+        query: &str,
+    ) -> Result<Value>;
 }
 
 #[derive(Default)]
@@ -28,7 +40,7 @@ impl LocalSyncStorage {
 }
 
 impl SyncStorage for LocalSyncStorage {
-    fn save(&self, key: &str, val: &Value) -> Result<()> {
+    fn save(&self, key: &str, _session_id: &SessionId, val: &Value) -> Result<()> {
         let mut store = self.store.write().map_err(|e| {
             tracing::error!("failed to get write lock: {:?}", e);
             Error::Unexpected
@@ -37,15 +49,29 @@ impl SyncStorage for LocalSyncStorage {
         Ok(())
     }
 
-    fn load(&self, key: &str, _type_hint: Option<Ty>) -> Result<Value> {
+    fn load(
+        &self,
+        key: &str,
+        _session_id: &SessionId,
+        type_hint: Option<Ty>,
+        query: &str,
+    ) -> Result<Value> {
+        match query {
+            "" => Ok(()),
+            _ => Err(Error::Storage(
+                "query is not allowed for local storage".into(),
+            )),
+        }?;
         let store = self.store.read().map_err(|e| {
             tracing::error!("failed to get read lock: {:?}", e);
             Error::Unexpected
         })?;
-        store
+        let item = store
             .get(key)
             .cloned()
-            .ok_or_else(|| Error::Storage("key not found in store".into()))
+            .ok_or_else(|| Error::Storage("key not found in store".into()))?;
+        check_types(&item, &type_hint)?;
+        Ok(item)
     }
 }
 
@@ -64,19 +90,50 @@ impl LocalAsyncStorage {
 
 #[async_trait]
 impl AsyncStorage for LocalAsyncStorage {
-    async fn save(&self, key: &str, val: &Value) -> Result<()> {
+    async fn save(&self, key: &str, _session_id: &SessionId, val: &Value) -> Result<()> {
         tracing::debug!("Async storage saving; key:'{}'", key);
         let mut store = self.store.write().await;
         store.insert(key.to_string(), val.clone());
         Ok(())
     }
 
-    async fn load(&self, key: &str, _type_hint: Option<Ty>) -> Result<Value> {
-        tracing::debug!("Async storage loading; key:'{}'", key,);
+    async fn load(
+        &self,
+        key: &str,
+        _session_id: &SessionId,
+        type_hint: Option<Ty>,
+        query: &str,
+    ) -> Result<Value> {
+        tracing::debug!("Async storage loading; key:'{}'", key);
+        match query {
+            "" => Ok(()),
+            _ => Err(Error::Storage(
+                "query is not allowed for local storage".into(),
+            )),
+        }?;
         let store = self.store.read().await;
-        store
+        let item = store
             .get(key)
             .cloned()
-            .ok_or_else(|| Error::Storage("key not found in store".into()))
+            .ok_or_else(|| Error::Storage("key not found in store".into()))?;
+        check_types(&item, &type_hint)?;
+        Ok(item)
+    }
+}
+
+fn check_types(item: &Value, type_hint: &Option<Ty>) -> Result<()> {
+    let item_ty = item.ty();
+    match type_hint {
+        Some(ty) => {
+            if item_ty == *ty {
+                Ok(())
+            } else {
+                Err(Error::Storage(format!(
+                    "type hint does not match type of item: type_hint: {:?} type of item: {:?}",
+                    type_hint, item_ty
+                )))
+            }
+        }
+        None => Ok(()),
     }
 }

@@ -889,7 +889,7 @@ impl Compile<SyncKernel> for SaveOp {
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
             check_type(&val, expected_ty)?;
-            sess.storage.save(&key, &val)?;
+            sess.storage.save(&key, &sess.sid, &val)?;
             Ok(Value::Unit)
         })))
     }
@@ -907,7 +907,7 @@ impl Compile<AsyncKernel> for SaveOp {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
-                    sess.storage.save(&key, &val).await?;
+                    sess.storage.save(&key, &sess.sid, &val).await?;
                     map_send_result(sender.send(Value::Unit))
                 })
             },
@@ -922,7 +922,9 @@ impl Compile<SyncKernel> for LoadOp {
         Ok(SyncKernel::Binary(Box::new(move |sess, key, query| {
             let key = String::try_from(key)?;
             let _query = String::try_from(query)?;
-            let val = sess.storage.load(&key, Some(expected_ty))?;
+            let val = sess
+                .storage
+                .load(&key, &sess.sid, Some(expected_ty), &_query)?;
             check_type(&val, expected_ty)?;
             Ok(val)
         })))
@@ -940,7 +942,10 @@ impl Compile<AsyncKernel> for LoadOp {
                 tokio::spawn(async move {
                     let key = String::try_from(key.await.map_err(map_receive_error)?)?;
                     let _query = String::try_from(query.await.map_err(map_receive_error)?)?;
-                    let val = sess.storage.load(&key, Some(expected_ty)).await?;
+                    let val = sess
+                        .storage
+                        .load(&key, &sess.sid, Some(expected_ty), &_query)
+                        .await?;
                     check_type(&val, expected_ty)?;
                     map_send_result(sender.send(val))
                 })
@@ -956,10 +961,10 @@ mod tests {
 
     #[test]
     fn test_standard_shape_ops() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
-        shape = StdShape(x): (Float32Tensor) -> Float32Tensor @Host(alice)
-        expand_dims = StdExpandDims(x) {axis = 2}: (Float32Tensor) -> Float32Tensor @Host(alice)
-        transpose = StdTranspose(x) : (Float32Tensor) -> Float32Tensor @Host(alice)"#;
+        let source = r#"x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        shape = StdShape: (Float32Tensor) -> Float32Tensor (x) @Host(alice)
+        expand_dims = StdExpandDims {axis = 2}: (Float32Tensor) -> Float32Tensor (x) @Host(alice)
+        transpose = StdTranspose : (Float32Tensor) -> Float32Tensor (x) @Host(alice)"#;
 
         let exec = TestExecutor::default();
         let _outputs = exec.run_computation(&source.try_into()?, SyncArgs::new())?;

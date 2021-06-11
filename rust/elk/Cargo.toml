@@ -1,0 +1,10 @@
+[package]
+name = "elk"
+version = "0.1.0"
+edition = "2018"
+authors = []
+
+[dependencies]
+anyhow = "~1.0"
+moose = { path = "../moose" }
+structopt = "~0.3"

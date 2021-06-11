@@ -612,11 +612,10 @@ impl Operation {
 }
 
 impl Computation {
-    pub fn toposort(&self) -> Result<Computation> {
-        let mut graph = Graph::<String, ()>::new();
+    pub fn as_graph(&self) -> Graph<(String, usize), ()> {
+        let mut graph = Graph::new();
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
-        let mut inv_map: HashMap<NodeIndex, usize> = HashMap::new();
 
         let mut send_nodes: HashMap<&str, NodeIndex> = HashMap::new();
         let mut recv_nodes: HashMap<&str, NodeIndex> = HashMap::new();
@@ -624,7 +623,7 @@ impl Computation {
         let mut rdv_keys: HashSet<&str> = HashSet::new();
 
         for (i, op) in self.operations.iter().enumerate() {
-            let vertex = graph.add_node(op.name.clone());
+            let vertex = graph.add_node((op.name.clone(), i));
             match op.kind {
                 Operator::Send(ref op) => {
                     let key = op.rendezvous_key.as_ref();
@@ -655,7 +654,6 @@ impl Computation {
                 _ => {}
             }
             vertex_map.insert(&op.name, vertex);
-            inv_map.insert(vertex, i);
         }
 
         for op in self.operations.iter() {
@@ -675,13 +673,18 @@ impl Computation {
             graph.add_edge(send_nodes[key], recv_nodes[key], ());
         }
 
+        graph
+    }
+
+    pub fn toposort(&self) -> Result<Computation> {
+        let graph = self.as_graph();
         let toposort = toposort(&graph, None).map_err(|_| {
             Error::MalformedComputation("There is a cycle detected in the runtime graph".into())
         })?;
 
         let operations = toposort
             .iter()
-            .map(|node| self.operations[inv_map[node]].clone())
+            .map(|node| self.operations[graph[*node].1].clone())
             .collect();
 
         Ok(Computation { operations })
@@ -1066,15 +1069,16 @@ impl AsyncExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ndarray::prelude::*;
     use std::convert::TryInto;
 
     #[test]
     fn test_standard_prod_ops() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
-        y = Constant([[1.0, 2.0], [3.0, 4.0]] : Float32Tensor) @Host(alice)
-        mul = StdMul(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
-        dot = StdDot(x, y): (Float32Tensor, Float32Tensor) -> Float32Tensor @Host(alice)
-        mean = StdMean(dot): (Float32Tensor) -> Float32Tensor @Host(alice)"#;
+        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
         TestExecutor::default().run_computation(&source.try_into()?, SyncArgs::new())?;
         Ok(())
     }
@@ -1084,24 +1088,474 @@ mod tests {
         use itertools::Itertools;
         let mut definition = String::from(
             r#"key = PrimGenPrfKey() @Host(alice)
-        seed = PrimDeriveSeed(key) {nonce = [1, 2, 3]} @Host(alice)
-        shape = Constant([2, 3] : Shape) @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
         );
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = RingSample(shape, seed): (Shape, Seed) -> Ring64Tensor @Host(alice)",
+                    "x{} = RingSample: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
             .join("\n");
         definition.push_str(&body);
-        definition.push_str("\nz = Output(x0): (Ring64Tensor) -> Unit @Host(alice)");
+        definition.push_str("\nz = Output: (Ring64Tensor) -> Unit (x0) @Host(alice)");
         let comp: Computation = definition.try_into().unwrap();
 
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
         assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+    }
+
+    #[test]
+    fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
+        let comp: Computation = source.try_into()?;
+
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        use crate::prim::{Nonce, PrfKey, Seed};
+
+        let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(
+            seed,
+            Seed::from_prf(&PrfKey([0; 16]), &Nonce(vec![1, 2, 3]))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_primitives_sample_ring() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)} @Host(alice)
+        xshape = Constant{value=Shape([2, 2])} @Host(alice)
+        sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
+        output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
+        "#;
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        use crate::ring::Ring64Tensor;
+        use crate::standard::Shape;
+
+        let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(x_sampled.shape(), Shape(vec![2, 2]));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_standard_input() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(Alice)
+        y = Input {arg_name = "y"}: () -> Int64Tensor @Host(Alice)
+        z = StdAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(Alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(Alice)
+        "#;
+
+        use maplit::hashmap;
+        let mut args: HashMap<String, Value> = hashmap!();
+
+        let x: Value = "Int64Tensor([5])".try_into()?;
+        let y: Value = "Int64Tensor([10])".try_into()?;
+
+        args.insert("x".to_string(), x);
+        args.insert("y".to_string(), y);
+
+        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::from_storage(&storage);
+        let outputs = exec.run_computation(&comp, args)?;
+
+        let z: crate::standard::Int64Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+
+        let expected: Value = "Int64Tensor([15])".try_into()?;
+
+        assert_eq!(expected, z.into());
+
+        Ok(())
+    }
+    use rstest::rstest;
+    #[rstest]
+    #[case("0", "Int64Tensor([[1, 2], [3, 4], [5, 6], [7, 8]])")]
+    #[case("1", "Int64Tensor([[1, 2, 5, 6], [3, 4, 7, 8]])")]
+    fn test_standard_concatenate(
+        #[case] axis: usize,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source_template = r#"x_0 = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
+        x_1 = Constant{value=Int64Tensor([[5, 6], [7,8]])} @Host(alice)
+        concatenated = StdConcatenate {axis=test_axis}: (Int64Tensor, Int64Tensor) -> Int64Tensor (x_0, x_1) @Host(alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (concatenated) @Host(alice)
+        "#;
+        let source = source_template.replace("test_axis", &axis.to_string());
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let concatenated: crate::standard::Int64Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(expected_result, concatenated.into());
+        Ok(())
+    }
+
+    #[rstest]
+    #[case("StdAdd", "Int64Tensor([8])")]
+    #[case("StdSub", "Int64Tensor([2])")]
+    #[case("StdMul", "Int64Tensor([15])")]
+    #[case("StdDiv", "Int64Tensor([1])")]
+    fn test_standard_op(
+        #[case] test_op: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source_template = r#"x0 = Constant{value=Int64Tensor([5])} @Host(alice)
+        x1 = Constant{value=Int64Tensor([3])} @Host(bob)
+        res = StdOp: (Int64Tensor, Int64Tensor) -> Int64Tensor (x0, x1) @Host(alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
+        "#;
+        let source = source_template.replace("StdOp", &test_op);
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let res: crate::standard::Int64Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+
+        assert_eq!(expected_result, res.into());
+        Ok(())
+    }
+
+    #[test]
+    fn test_standard_inverse() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value=Float32Tensor([[3.0, 2.0], [2.0, 3.0]])} : () -> Float32Tensor @Host(alice)
+        x_inv = StdInverse : (Float32Tensor) -> Float32Tensor (x) @Host(alice)
+        output = Output: (Float32Tensor) -> Float32Tensor (x_inv) @Host(alice)
+        "#;
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let expected_output = crate::standard::Float32Tensor::from(
+            array![[0.6, -0.40000004], [-0.40000004, 0.6]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let x_inv: crate::standard::Float32Tensor =
+            (outputs.get("output").unwrap().clone()).try_into()?;
+
+        assert_eq!(expected_output, x_inv);
+
+        Ok(())
+    }
+
+    use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor};
+    #[rstest]
+    #[case("Float32Tensor")]
+    #[case("Float64Tensor")]
+    #[case("Int64Tensor")]
+    fn test_standard_ones(#[case] dtype: String) -> std::result::Result<(), anyhow::Error> {
+        let template = r#"s = Constant{value=Shape([2, 2])} @Host(alice)
+        r = StdOnes : (Shape) -> dtype (s) @Host(alice)
+        output = Output : (dtype) -> dtype (r) @Host(alice)
+        "#;
+        let source = template.replace("dtype", &dtype);
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        match dtype.as_str() {
+            "Float32Tensor" => {
+                let r: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(
+                    r,
+                    Float32Tensor::from(
+                        array![[1.0, 1.0], [1.0, 1.0]]
+                            .into_dimensionality::<IxDyn>()
+                            .unwrap(),
+                    )
+                );
+                Ok(())
+            }
+            "Float64Tensor" => {
+                let r: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(
+                    r,
+                    Float64Tensor::from(
+                        array![[1.0, 1.0], [1.0, 1.0]]
+                            .into_dimensionality::<IxDyn>()
+                            .unwrap(),
+                    )
+                );
+                Ok(())
+            }
+            "Int64Tensor" => {
+                let r: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(
+                    r,
+                    Int64Tensor::from(
+                        array![[1, 1], [1, 1]]
+                            .into_dimensionality::<IxDyn>()
+                            .unwrap(),
+                    )
+                );
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case")),
+        }
+    }
+
+    #[rstest]
+    #[case("StdSum", None, "Float32(10.0)", true)]
+    #[case("StdSum", Some(0), "Float32Tensor([4.0, 6.0])", false)]
+    #[case("StdSum", Some(1), "Float32Tensor([3.0, 7.0])", false)]
+    #[case("StdMean", None, "Float32(2.5)", true)]
+    #[case("StdMean", Some(0), "Float32Tensor([2.0, 3.0])", false)]
+    #[case("StdMean", Some(1), "Float32Tensor([1.5, 3.5])", false)]
+    fn test_standard_reduce_op(
+        #[case] reduce_op_test: String,
+        #[case] axis_test: Option<usize>,
+        #[case] expected_result: Value,
+        #[case] unwrap_flag: bool,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let axis_str: String =
+            axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
+
+        let source = format!(
+            r#"s = Constant{{value=Float32Tensor([[1,2], [3, 4]])}} @Host(alice)
+            r = {} {}: (Float32Tensor) -> Float32Tensor (s) @Host(alice)
+            output = Output : (Float32Tensor) -> Float32Tensor (r) @Host(alice)
+        "#,
+            reduce_op_test, axis_str
+        );
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+
+        if unwrap_flag {
+            let shaped_result = comp_result.reshape(crate::standard::Shape(vec![1]));
+            assert_eq!(expected_result, Value::Float32(shaped_result.0[0]));
+        } else {
+            assert_eq!(expected_result, comp_result.into());
+        }
+        Ok(())
+    }
+    #[rstest]
+    #[case("Int64Tensor([[1, 3], [2, 4]])")]
+    fn test_standard_transpose(
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"s = Constant{value=Int64Tensor([[1,2], [3, 4]])} @Host(alice)
+        r = StdTranspose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
+        output = Output : (Int64Tensor) -> Int64Tensor (r) @Host(alice)
+        "#;
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+
+        assert_eq!(expected_result, comp_result.into());
+        Ok(())
+    }
+
+    #[rstest]
+    #[case(true, "Float64Tensor([[1.0], [1.0], [1.0]])")]
+    #[case(false, "Float64Tensor([[1.0, 1.0, 1.0]])")]
+    fn test_standard_atleast_2d(
+        #[case] to_column_vector: bool,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"x =  Constant{{value=Float64Tensor([1.0, 1.0, 1.0])}} @Host(alice)
+        res = StdAtLeast2D {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor (x) @Host(alice)
+        output = Output : (Float64Tensor) -> Float64Tensor (res) @Host(alice)
+        "#,
+            to_column_vector
+        );
+
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(expected_result, comp_result.into());
+
+        Ok(())
+    }
+
+    use crate::ring::{Ring128Tensor, Ring64Tensor};
+    #[rstest]
+    #[case("RingAdd", "Ring64Tensor([5])")]
+    #[case("RingMul", "Ring64Tensor([6])")]
+    #[case("RingSub", "Ring64Tensor([1])")]
+    fn test_ring_binop_invocation(
+        #[case] test_op: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"x =  Constant{{value=Ring64Tensor([3])}} @Host(alice)
+        y = Constant{{value=Ring64Tensor([2])}} @Host(alice)
+        res = {} : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
+        output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
+        "#,
+            test_op
+        );
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(expected_result, comp_result.into());
+        Ok(())
+    }
+
+    #[rstest]
+    #[case(
+        "Ring64Tensor",
+        "Ring64Tensor([[1, 2], [3, 4]])",
+        "Ring64Tensor([[1, 0], [0, 1]])",
+        "Ring64Tensor([[1, 2], [3, 4]])"
+    )]
+    #[case(
+        "Ring64Tensor",
+        "Ring64Tensor([[1, 2], [3, 4]])",
+        "Ring64Tensor([1, 1])",
+        "Ring64Tensor([3, 7])"
+    )]
+    #[case(
+        "Ring64Tensor",
+        "Ring64Tensor([1, 1])",
+        "Ring64Tensor([[1, 2], [3, 4]])",
+        "Ring64Tensor([4, 6])"
+    )]
+    fn test_ring_dot_invocation(
+        #[case] type_str: String,
+        #[case] x_str: String,
+        #[case] y_str: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"x = Constant{{value={}}} @Host(alice)
+        y = Constant{{value={}}} @Host(alice)
+        res = RingDot : (Ring64Tensor, Ring64Tensor) -> Ring64Tensor (x, y) @Host(alice)
+        output = Output : (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
+        "#,
+            x_str, y_str
+        );
+
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        match type_str.as_str() {
+            "Ring64Tensor" => {
+                let comp_result: Ring64Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            "Ring128Tensor" => {
+                let comp_result: Ring128Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case type")),
+        }
+    }
+
+    #[rstest]
+    #[case("Ring64", "2", "Ring64Tensor([1, 1])")]
+    #[case("Ring128", "2", "Ring128Tensor([1, 1])")]
+    #[case("Ring64", "2, 1", "Ring64Tensor([[1], [1]])")]
+    #[case("Ring64", "2, 2", "Ring64Tensor([[1, 1], [1, 1]])")]
+    #[case("Ring64", "1, 2", "Ring64Tensor([[1, 1]])")]
+    #[case("Ring128", "2, 3", "Ring128Tensor([[1, 1, 1], [1, 1, 1]])")]
+    fn test_ring_fill(
+        #[case] type_str: String,
+        #[case] shape_str: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = format!(
+            r#"shape = Constant{{value=Shape([{shape}])}} @Host(alice)
+        res = RingFill {{value = {t}(1) }} : (Shape) -> {t}Tensor (shape) @Host(alice)
+        output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
+        "#,
+            t = type_str,
+            shape = shape_str,
+        );
+
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+
+        match type_str.as_str() {
+            "Ring64" => {
+                let comp_result: Ring64Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            "Ring128" => {
+                let comp_result: Ring128Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case type")),
+        }
+    }
+
+    #[rstest]
+    #[case("Ring64Tensor([4, 6])")]
+    fn test_ring_sum(#[case] expected_result: Value) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])} @Host(alice)
+        r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
+        output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
+        "#;
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        assert_eq!(expected_result, comp_result.into());
+        Ok(())
+    }
+
+    #[rstest]
+    #[case("Ring64Tensor", "Ring64Tensor([2, 2])")]
+    #[case("Ring128Tensor", "Ring128Tensor([2, 2])")]
+    fn test_ring_bitwise_ops(
+        #[case] type_str: String,
+        #[case] expected_result: Value,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let template_source = r#"x = Constant{value=Ring64Tensor([4, 4])} @Host(alice)
+        res = RingShr {amount = 1}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
+        output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
+        "#;
+        let source = template_source.replace("Ring64Tensor", &type_str.as_str());
+        let comp: Computation = source.try_into()?;
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        match type_str.as_str() {
+            "Ring64Tensor" => {
+                let comp_result: Ring64Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            "Ring128Tensor" => {
+                let comp_result: Ring128Tensor =
+                    (outputs.get("output").unwrap().clone()).try_into()?;
+                assert_eq!(expected_result, comp_result.into());
+                Ok(())
+            }
+            _ => Err(anyhow::anyhow!("Failed to parse test case")),
+        }
     }
 }
