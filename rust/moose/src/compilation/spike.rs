@@ -277,6 +277,7 @@ pub enum Operator {
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
     ConstantOp(ConstantOp),
+    FixedMulOp(FixedMulOp),
 }
 
 macro_rules! operator {
@@ -302,6 +303,7 @@ operator!(RepMulOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
 operator!(ConstantOp);
+operator!(FixedMulOp);
 
 #[derive(Clone, Debug, PartialEq)]
 struct Operation {
@@ -729,6 +731,7 @@ impl Context for ConcreteContext {
             Operator::RepAddOp(op) => op.compile(self)(operands),
             Operator::RepMulOp(op) => op.compile(self)(operands),
             Operator::ConstantOp(op) => op.compile(self)(operands),
+            Operator::FixedMulOp(op) => op.compile(self)(operands),
         }
     }
 }
@@ -756,6 +759,7 @@ impl Context for SymbolicContext {
             Operator::RepAddOp(op) => op.execute_symbolic(self, operands),
             Operator::RepMulOp(op) => op.execute_symbolic(self, operands),
             Operator::ConstantOp(op) => op.execute_symbolic(self, operands),
+            Operator::FixedMulOp(op) => op.execute_symbolic(self, operands),
         }
     }
 }
@@ -2059,6 +2063,38 @@ impl ConstantOp {
             }
             _ => unimplemented!(), // ok
         }
+    }
+}
+
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FixedMulOp {
+    sig: Signature,
+    plc: Placement,
+}
+
+modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+
+kernel! {
+    FixedMulOp,
+    [
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor)
+    ],
+    Self::rename_me_to_kernel
+}
+
+impl FixedMulOp {
+    fn from_placement_signature<P: Clone + Into<Placement>>(plc: &P, sig: BinarySignature) -> Self {
+        FixedMulOp {
+            sig: sig.into(),
+            plc: plc.clone().into(),
+        }
+    }
+    
+    fn rename_me_to_kernel<C, P>(ctx: &C, plc: &P, x: Fixed64Tensor, y: Fixed64Tensor) -> Fixed64Tensor {
+        unimplemented!() // TODO
     }
 }
 
