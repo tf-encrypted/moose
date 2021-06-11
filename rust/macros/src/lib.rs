@@ -89,9 +89,58 @@ fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use trim_margin::MarginTrimmable;
+
     #[test]
     fn test_normal() {
         let t = trybuild::TestCases::new();
         t.pass("tests/pass/*.rs");
+    }
+
+    /// Utility function to return a pretty-printed token stream, if it is valid enough Rust code.
+    fn format_tokenstream(code: proc_macro2::TokenStream) -> String {
+        use std::io::{Read, Write};
+        use std::process::{Command, Stdio};
+        fn format(input: &str) -> Option<String> {
+            let mut rustfmt = Command::new("rustfmt")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()
+                .ok()?;
+            match rustfmt.stdin.take().unwrap() {
+                ref mut stdin => {
+                    Write::write_all(stdin, input.as_bytes()).ok()?;
+                }
+            }
+            let mut stdout = String::new();
+            Read::read_to_string(&mut rustfmt.stdout.take().unwrap(), &mut stdout).ok()?;
+            if rustfmt.wait().ok()?.success() {
+                Some(stdout)
+            } else {
+                None
+            }
+        }
+        let string_code = code.to_string();
+        format(&string_code).unwrap_or(string_code)
+    }
+
+    #[test]
+    fn test_direct() {
+        let player: Ident = parse_quote!(p);
+        let context: Ident = parse_quote!(q);
+        let mut e: Expr = parse_quote!(a + b * c);
+        unsugar(player, context.into(), &mut e);
+        let result = format_tokenstream(quote!(fn main() {let z = #e;}));
+        
+        // Make sure the produced code matches the expectation
+        let expected = r#"
+        |fn main() {
+        |    let z = p.add(q, &a, &p.mul(q, &b, &c));
+        |}
+        |"#
+        .trim_margin()
+        .unwrap();
+        assert_eq!(expected, result);
     }
 }

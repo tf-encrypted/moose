@@ -1626,13 +1626,6 @@ pub struct RepAddOp {
     plc: Placement,
 }
 
-macro_rules! with_player {
-    // Collection of assignment blocks
-    ($player:ident, $context:ident { $( $var:tt = [$($right:tt)*])* }  ) => {
-        $( let $var = eval_with_context!($player, $context, $($right)*); )*
-    };
-}
-
 impl RepAddOp {
     fn from_placement_signature(plc: &ReplicatedPlacement, sig: BinarySignature) -> Self {
         RepAddOp {
@@ -1661,31 +1654,14 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        with_player!( player0, ctx {
-            z00 = [x00 + y00]
-            z10 = [x10 + y10]
-        });
+        let z00 = eval_with_context!(player0, ctx, x00 + y00);
+        let z10 = eval_with_context!(player0, ctx, x10 + y10);
 
-        with_player!( player1, ctx {
-            z11 = [x11 + y11]
-            z21 = [x21 + y21]
-        });
+        let z11 = eval_with_context!(player1, ctx, x11 + y11);
+        let z21 = eval_with_context!(player1, ctx, x21 + y21);
 
-        with_player!( player2, ctx {
-            z22 = [x22 + y22]
-            z02 = [x02 + y02]
-        });
-
-        /* Produces code identical to this one:
-        let z00 = player0.add(ctx, x00, y00);
-        let z10 = player0.add(ctx, x10, y10);
-
-        let z11 = player1.add(ctx, x11, y11);
-        let z21 = player1.add(ctx, x21, y21);
-
-        let z22 = player2.add(ctx, x22, y22);
-        let z02 = player2.add(ctx, x02, y02);
-        */
+        let z22 = eval_with_context!(player2, ctx, x22 + y22);
+        let z02 = eval_with_context!(player2, ctx, x02 + y02);
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1749,50 +1725,9 @@ impl RepMulOp {
             alphas: [a0, a1, a2],
         } = rep.zero_share(ctx, &s);
 
-        // TODO because of Rust's let polymorphism and lifetimes we cannot use the same f in all apply! below
-        // let f = |xii, yii, xji, yji| {
-        //     xii * yii + xii * yji + xji * yii
-        // };
-        // let z0 = apply!(
-        //     player0,
-        //     ctx,
-        //     |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
-        //     x00,
-        //     y00,
-        //     x10,
-        //     y10,
-        //     &a0
-        // );
-        // let z1 = apply!(
-        //     player1,
-        //     ctx,
-        //     |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
-        //     x11,
-        //     y11,
-        //     x21,
-        //     y21,
-        //     &a1
-        // );
-        // let z2 = apply!(
-        //     player2,
-        //     ctx,
-        //     |xii, yii, xji, yji, ai| { xii * yii + xii * yji + xji * yii + ai },
-        //     x22,
-        //     y22,
-        //     x02,
-        //     y02,
-        //     &a2
-        // );
-
-        with_player!(player0, ctx {
-          z0 = [x00 * y00 + x00 * y10 + x10 * y00 + a0]
-        });
-        with_player!(player1, ctx {
-          z1 = [x11 * y11 + x11 * y21 + x21 * y11 + a1]
-        });
-        with_player!(player2, ctx {
-          z2 = [x22 * y22 + x22 * y02 + x02 * y22 + a2]
-        });
+        let z0 = eval_with_context!(player0, ctx, x00 * y00 + x00 * y10 + x10 * y00 + a0);
+        let z1 = eval_with_context!(player1, ctx, x11 * y11 + x11 * y21 + x21 * y11 + a1);
+        let z2 = eval_with_context!(player2, ctx, x22 * y22 + x22 * y02 + x02 * y22 + a2);
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],

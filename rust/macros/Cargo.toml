@@ -14,3 +14,4 @@ syn.features = ["full", "visit-mut"]
 
 [dev-dependencies]
 trybuild = "~1.0"
+trim-margin = "~0.1"
