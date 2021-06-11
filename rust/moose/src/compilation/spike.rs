@@ -1577,6 +1577,102 @@ hybrid_kernel! {
     ]
 }
 
+
+
+
+
+
+
+/*
+
+
+trait KnownType<C> {
+    type Type;
+}
+
+struct RingTensor;
+
+struct RepTensor<T>(T, T, T);
+
+struct ConcreteContext;
+
+struct SymbolicContext;
+
+struct Symbolic<T>(T);
+
+impl KnownType<ConcreteContext> for RingTensor {
+    type Type = Self;
+}
+
+impl KnownType<ConcreteContext> for RepTensor<RingTensor> {
+    type Type = Self;
+}
+
+impl KnownType<SymbolicContext> for RingTensor {
+    type Type = Symbolic<RingTensor>;
+}
+
+impl KnownType<SymbolicContext> for RepTensor<RingTensor> {
+    type Type = RepTensor<Symbolic<RingTensor>>;
+}
+
+trait Context {}
+
+impl Context for ConcreteContext {}
+
+impl Context for SymbolicContext {}
+
+trait Decompose {
+    type Output;
+    fn decompose(self) -> Self::Output;
+}
+
+impl Decompose for RepTensor<RingTensor> {
+    type Output = (RingTensor, RingTensor, RingTensor);
+    fn decompose(self) -> Self::Output {
+        (self.0, self.1, self.2)
+    }
+}
+
+impl Decompose for RepTensor<Symbolic<RingTensor>> {
+    type Output = (Symbolic<RingTensor>, Symbolic<RingTensor>, Symbolic<RingTensor>);
+    fn decompose(self) -> Self::Output {
+        (self.0, self.1, self.2)
+    }
+}
+
+fn foo<C: Context>(ctx: C, x: <RepTensor<RingTensor> as KnownType<C>>::Type)
+where
+    RingTensor: KnownType<C>,
+    RepTensor<RingTensor>: KnownType<C>,
+    <RepTensor<RingTensor> as KnownType<C>>::Type: Decompose<Output=(
+        <RingTensor as KnownType<C>>::Type,
+        <RingTensor as KnownType<C>>::Type,
+        <RingTensor as KnownType<C>>::Type,
+    )>,
+{
+    let (x0, x1, x2) = x.decompose();
+}
+
+fn main() {
+    let ctx = ConcreteContext {};
+    let x = RepTensor(RingTensor{}, RingTensor{}, RingTensor{});
+    foo(ctx, x);
+    
+    let ctx = SymbolicContext {};
+    let y = RepTensor(Symbolic(RingTensor{}), Symbolic(RingTensor{}), Symbolic(RingTensor{}));
+    foo(ctx, y);
+}
+
+*/
+
+
+
+
+
+
+
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepAddOp {
     sig: Signature,
@@ -1604,9 +1700,9 @@ modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128
 hybrid_kernel! {
     RepAddOp,
     [
-        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel), // hybrid_kernel
-        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel) // hybrid_kernel
-        // (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel) // semi_abstract_kernel?
+        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel), // should be hybrid_kernel
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel) // should be hybrid_kernel
+        // (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel) // TODO semi_abstract_kernel?
         // (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
         // (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
         // (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel)
@@ -1655,6 +1751,7 @@ impl RepAddOp {
         }
     }
 
+    // TODO this kernel looks right for both concrete and symbolic contexts point of view!
     fn ring_rep_kernel<C: Context, R: KnownType>(
         ctx: &C,
         rep: &ReplicatedPlacement,
