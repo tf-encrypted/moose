@@ -2092,13 +2092,13 @@ pub struct FixedMulOp {
 }
 
 modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
-modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+// modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
 
 hybrid_kernel! {
     FixedMulOp,
     [
-        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor)
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor)
+        // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor)
     ],
     Self::rename_me_to_kernel
 }
@@ -2111,25 +2111,28 @@ impl FixedMulOp {
         }
     }
     
-    fn rename_me_to_kernel<C: Context, P, RingTensorT, ReplicatedTensorT>(
-        ctx: &C, 
-        plc: &P, 
+    fn rename_me_to_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
+        ctx: &C,
+        plc: &HostPlacement, 
         x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
-    // where
-    //     P: PlacementMul<C, RingTensorT, RingTensorT, Output = RingTensorT>,
-    //     P: PlacementMul<C, RingTensorT, ReplicatedTensorT>,
+    where
+        HostPlacement: PlacementMul<C, RingTensorT, RingTensorT, Output = RingTensorT>,
+        // HostPlacement: PlacementMul<C, RingTensorT, ReplicatedTensorT, Output = RingTensorT>,
     //     P: PlacementMul<C, ReplicatedTensorT, RingTensorT>,
     //     P: PlacementMul<C, ReplicatedTensorT, ReplicatedTensorT>,
     {
         match (x, y) {
             (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
+                let z: RingTensorT = plc.mul(ctx, &x, &y);
+                FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
+                // unimplemented!()
+            }
+            (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(ye)) => {
+                // let y = plc.reveal(ctx, &ye);
                 // let z = plc.mul(ctx, &x, &y);
                 // FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
-                unimplemented!()
-            }
-            (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(y)) => {
                 unimplemented!()
             }
             (FixedTensor::ReplicatedTensor(x), FixedTensor::RingTensor(y)) => {
