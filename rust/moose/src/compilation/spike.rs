@@ -1577,7 +1577,7 @@ impl RepAddOp {
         }
     }
 
-    fn kernel<C: Context, R>(
+    fn rep_rep_kernel<C: Context, R>(
         ctx: &C,
         rep: &ReplicatedPlacement,
         x: ReplicatedTensor<R>,
@@ -1610,16 +1610,88 @@ impl RepAddOp {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
+
+    fn ring_rep_kernel<C: Context, R: KnownType>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        x: R,
+        y: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let ReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = y;
+
+        // TODO decide which y shares to use based on placement of x
+
+        let z00 = player0.add(ctx, &x, &y00);
+        let z10 = y10;
+
+        let z11 = y11;
+        let z21 = y21;
+
+        let z22 = y22;
+        let z02 = player2.add(ctx, &x, &y02);
+
+        ReplicatedTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+
+    fn rep_ring_kernel<C: Context, R>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        x: ReplicatedTensor<R>,
+        y: R,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        // TODO decide which x shares to use based on placement of y
+
+        let z00 = player0.add(ctx, &x00, &y);
+        let z10 = x10;
+
+        let z11 = x11;
+        let z21 = x21;
+
+        let z22 = x22;
+        let z02 = player2.add(ctx, &x02, &y);
+
+        ReplicatedTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
 }
 
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
+// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
 
 hybrid_kernel! {
     RepAddOp,
     [
-        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::kernel)
+        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel), // hybrid_kernel
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel) // hybrid_kernel
+        // (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel) // semi_abstract_kernel?
+        // (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        // (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        // (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel)
     ]
 }
 
