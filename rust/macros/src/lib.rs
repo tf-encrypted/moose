@@ -139,4 +139,44 @@ mod tests {
         .unwrap();
         assert_eq!(expected, result);
     }
+
+    #[test]
+    /// Making sure the expression can have anything at all and not mess up our macros
+    fn test_sub_expr() {
+        let player: Ident = parse_quote!(p);
+        let context: Ident = parse_quote!(q);
+        let mut e: Expr = parse_quote!(a::new(d) + b.member * func(c));
+        unsugar(player, context, &mut e);
+        let result = format_tokenstream(quote!(fn main() {let z = #e;}));
+
+        // Make sure the produced code matches the expectation
+        let expected = r#"
+        |fn main() {
+        |    let z = p.add(q, &a::new(d), &p.mul(q, &b.member, &func(c)));
+        |}
+        |"#
+        .trim_margin()
+        .unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    /// Making sure the expression can have anything at all and not mess up our macros
+    fn test_sub_expr_inside() {
+        let player: Ident = parse_quote!(p);
+        let context: Ident = parse_quote!(q);
+        let mut e: Expr = parse_quote!(a + func(b + c));
+        unsugar(player, context, &mut e);
+        let result = format_tokenstream(quote!(fn main() {let z = #e;}));
+
+        // Make sure the produced code matches the expectation
+        let expected = r#"
+        |fn main() {
+        |    let z = p.add(q, &a, &func(p.add(q, &b, &c)));
+        |}
+        |"#
+        .trim_margin()
+        .unwrap();
+        assert_eq!(expected, result);
+    }
 }
