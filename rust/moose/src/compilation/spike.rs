@@ -2091,8 +2091,8 @@ pub struct FixedMulOp {
     plc: Placement,
 }
 
-// modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
-// modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
 
 hybrid_kernel! {
     FixedMulOp,
@@ -2123,23 +2123,23 @@ impl FixedMulOp {
     //     P: PlacementMul<C, ReplicatedTensorT, RingTensorT>,
     //     P: PlacementMul<C, ReplicatedTensorT, ReplicatedTensorT>,
     {
-        // match (x, y) {
-        //     (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
-        //         // let z = plc.mul(ctx, &x, &y);
-        //         // FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
-        //         unimplemented!()
-        //     }
-        //     (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(y)) => {
-        //         unimplemented!()
-        //     }
-        //     (FixedTensor::ReplicatedTensor(x), FixedTensor::RingTensor(y)) => {
-        //         unimplemented!()
-        //     }
-        //     (FixedTensor::ReplicatedTensor(x), FixedTensor::ReplicatedTensor(y)) => {
-        //         unimplemented!()
-        //     }
-        // }
-        unimplemented!()
+        match (x, y) {
+            (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
+                // let z = plc.mul(ctx, &x, &y);
+                // FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
+                unimplemented!()
+            }
+            (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(y)) => {
+                unimplemented!()
+            }
+            (FixedTensor::ReplicatedTensor(x), FixedTensor::RingTensor(y)) => {
+                unimplemented!()
+            }
+            (FixedTensor::ReplicatedTensor(x), FixedTensor::ReplicatedTensor(y)) => {
+                unimplemented!()
+            }
+        }
+        // unimplemented!()
     }
 }
 
