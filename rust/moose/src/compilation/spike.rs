@@ -229,21 +229,32 @@ macro_rules! value {
 // `enum SymbolicValue` and maybe even `enum Ty`.
 // one thing to be careful about here is to still make room for manual
 // constructions during development.
-value!(Fixed64Tensor, Symbolic<Fixed64Tensor>);
+value!(Fixed64Tensor, Symbolic<
+    FixedTensor<
+        <Ring64Tensor as KnownType>::Symbolic,
+        <Replicated64Tensor as KnownType>::Symbolic,
+    >
+>);
 value!(Ring32Tensor, Symbolic<Ring32Tensor>);
 value!(Ring64Tensor, Symbolic<Ring64Tensor>);
 value!(Ring128Tensor, Symbolic<Ring128Tensor>);
 value!(
     Replicated64Tensor,
-    Symbolic<ReplicatedTensor<Symbolic<Ring64Tensor>>>
+    Symbolic<ReplicatedTensor<
+        <Ring64Tensor as KnownType>::Symbolic>
+    >
 );
 value!(
     Replicated128Tensor,
-    Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>
+    Symbolic<ReplicatedTensor<
+        <Ring128Tensor as KnownType>::Symbolic>
+    >
 );
 value!(
     ReplicatedSetup,
-    Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>
+    Symbolic<AbstractReplicatedSetup<
+        <PrfKey as KnownType>::Symbolic>
+    >
 );
 value!(PrfKey, Symbolic<PrfKey>);
 
@@ -451,10 +462,36 @@ pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
+pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
+
 #[derive(Clone, Debug, PartialEq)]
-pub enum Fixed64Tensor {
-    Ring64Tensor(Ring64Tensor),
-    Replicated64Tensor(Replicated64Tensor),
+pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
+    RingTensor(RingTensorT),
+    ReplicatedTensor(ReplicatedTensorT),
+}
+
+impl<RingTensorT, ReplicatedTensorT> From<FixedTensor<RingTensorT, ReplicatedTensorT>> for Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>> {
+    fn from(x: FixedTensor<RingTensorT, ReplicatedTensorT>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<T> From<RingTensor<T>> for Symbolic<RingTensor<T>> {
+    fn from(x: RingTensor<T>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> From<ReplicatedTensor<R>> for Symbolic<ReplicatedTensor<R>> {
+    fn from(x: ReplicatedTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>> {
+    fn from(x: AbstractReplicatedSetup<K>) -> Self {
+        Symbolic::Concrete(x)
+    }
 }
 
 macro_rules! modelled {
@@ -779,24 +816,6 @@ impl SymbolicContext {
         };
         ops.push(op);
         op_name
-    }
-}
-
-impl<T> From<RingTensor<T>> for Symbolic<RingTensor<T>> {
-    fn from(x: RingTensor<T>) -> Symbolic<RingTensor<T>> {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<R> From<ReplicatedTensor<R>> for Symbolic<ReplicatedTensor<R>> {
-    fn from(x: ReplicatedTensor<R>) -> Symbolic<ReplicatedTensor<R>> {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>> {
-    fn from(x: AbstractReplicatedSetup<K>) -> Symbolic<AbstractReplicatedSetup<K>> {
-        Symbolic::Concrete(x)
     }
 }
 
@@ -2066,17 +2085,16 @@ impl ConstantOp {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct FixedMulOp {
     sig: Signature,
     plc: Placement,
 }
 
-modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
-modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+// modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+// modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
 
-kernel! {
+hybrid_kernel! {
     FixedMulOp,
     [
         (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor),
@@ -2093,8 +2111,35 @@ impl FixedMulOp {
         }
     }
     
-    fn rename_me_to_kernel<C, P>(ctx: &C, plc: &P, x: Fixed64Tensor, y: Fixed64Tensor) -> Fixed64Tensor {
-        unimplemented!() // TODO
+    fn rename_me_to_kernel<C: Context, P, RingTensorT, ReplicatedTensorT>(
+        ctx: &C, 
+        plc: &P, 
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        y: FixedTensor<RingTensorT, ReplicatedTensorT>,
+    ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
+    // where
+    //     P: PlacementMul<C, RingTensorT, RingTensorT, Output = RingTensorT>,
+    //     P: PlacementMul<C, RingTensorT, ReplicatedTensorT>,
+    //     P: PlacementMul<C, ReplicatedTensorT, RingTensorT>,
+    //     P: PlacementMul<C, ReplicatedTensorT, ReplicatedTensorT>,
+    {
+        // match (x, y) {
+        //     (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
+        //         // let z = plc.mul(ctx, &x, &y);
+        //         // FixedTensor::<RingTensorT, ReplicatedTensorT>::RingTensor(z)
+        //         unimplemented!()
+        //     }
+        //     (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(y)) => {
+        //         unimplemented!()
+        //     }
+        //     (FixedTensor::ReplicatedTensor(x), FixedTensor::RingTensor(y)) => {
+        //         unimplemented!()
+        //     }
+        //     (FixedTensor::ReplicatedTensor(x), FixedTensor::ReplicatedTensor(y)) => {
+        //         unimplemented!()
+        //     }
+        // }
+        unimplemented!()
     }
 }
 
