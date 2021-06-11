@@ -825,7 +825,7 @@ macro_rules! runtime_kernel {
     Nullaray
     */
 
-    ($op:ty, [$(($plc:ty, () -> $u:ty)),+], $k:expr) => {
+    ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr) ),+]) => {
         $(
         impl NullaryKernel<ConcreteContext, $plc, $u> for $op {
             fn kernel(ctx: &ConcreteContext, plc: &$plc) -> $u {
@@ -862,7 +862,7 @@ macro_rules! runtime_kernel {
     Unary
     */
 
-    ($op:ty, [$(($plc:ty, ($t0:ty) -> $u:ty)),+], $k:expr) => {
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr) ),+]) => {
         $(
         impl UnaryKernel<ConcreteContext, $plc, $t0, $u> for $op {
             fn kernel(ctx: &ConcreteContext, plc: &$plc, x0: $t0) -> $u {
@@ -902,7 +902,7 @@ macro_rules! runtime_kernel {
     Binary
     */
 
-    ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty) -> $u:ty)),+], $k:expr) => {
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr) ),+]) => {
         $(
         impl BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u> for $op {
             fn kernel(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1) -> $u {
@@ -945,7 +945,7 @@ macro_rules! runtime_kernel {
     Ternary
     */
 
-    ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty)),+], $k:expr) => {
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr) ),+]) => {
         $(
         impl TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
             fn kernel(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1, x2: $t2) -> $u {
@@ -1157,8 +1157,8 @@ macro_rules! kernel {
     Nullary
     */
 
-    ($op:ty, [$(($plc:ty, () -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, () -> $u)),+], $k);
+    ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr) ),+]) => {
+        runtime_kernel!($op, [$( ($plc, () -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, () -> $u)),+], |op, ctx, _plc| {
             let op_name = ctx.add_operation(op, &[]);
             Symbolic::Symbolic(SymbolicHandle { op: op_name })
@@ -1169,8 +1169,8 @@ macro_rules! kernel {
     Unary
     */
 
-    ($op:ty, [$(($plc:ty, ($t0:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0) -> $u)),+], $k);
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr) ),+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0) -> $u)),+], |op, ctx, _plc, x0| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
@@ -1186,8 +1186,8 @@ macro_rules! kernel {
     Binary
     */
 
-    ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0, $t1) -> $u)),+], $k);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr) ),+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0, $t1) -> $u)),+], |op, ctx, _plc, x0, x1| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
@@ -1208,8 +1208,8 @@ macro_rules! kernel {
     Ternary
     */
 
-    ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0, $t1, $t2) -> $u)),+], $k);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr) ),+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0, $t1, $t2) -> $u)),+], |op, ctx, _plc, x0, x1, x2| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
@@ -1240,7 +1240,7 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$(($plc:ty, () -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, () -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, () -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, () -> $u)),+], |_op, ctx, plc| {
             $k(ctx, &plc).into()
         });
@@ -1251,7 +1251,7 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$(($plc:ty, ($t0:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0) -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0) -> $u)),+], |op, ctx, plc, x0| {
             match x0 {
                 Symbolic::Concrete(x0) => {
@@ -1270,7 +1270,7 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0, $t1) -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0, $t1) -> $u)),+], |op, ctx, plc, x0, x1| {
             match (x0, x1) {
                 (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
@@ -1290,7 +1290,7 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0, $t1, $t2) -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0, $t1, $t2) -> $u)),+], |op, ctx, plc, x0, x1, x2| {
             match (x0, x1, x2) {
                 (Symbolic::Concrete(x0), Symbolic::Concrete(x1), Symbolic::Concrete(x2)) => {
@@ -1314,7 +1314,7 @@ macro_rules! abstract_kernel {
     */
 
     ($op:ty, [$(($plc:ty, () -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, () -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, () -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, () -> $u)),+], |_op, ctx, plc| {
             $k(ctx, &plc).into()
         });
@@ -1325,7 +1325,7 @@ macro_rules! abstract_kernel {
     */
 
     ($op:ty, [$(($plc:ty, ($t0:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0) -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0) -> $u)),+], |_op, ctx, plc, x0| {
             $k(ctx, &plc, x0).into()
         });
@@ -1336,7 +1336,7 @@ macro_rules! abstract_kernel {
     */
 
     ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0, $t1) -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0, $t1) -> $u)),+], |_op, ctx, plc, x0, x1| {
             $k(ctx, &plc, x0, x1).into()
         });
@@ -1347,7 +1347,7 @@ macro_rules! abstract_kernel {
     */
 
     ($op:ty, [$(($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty)),+], $k:expr) => {
-        runtime_kernel!($op, [$(($plc, ($t0, $t1, $t2) -> $u)),+], $k);
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$(($plc, ($t0, $t1, $t2) -> $u)),+], |_op, ctx, plc, x0, x1, x2| {
             $k(ctx, &plc, x0, x1, x2).into()
         });
@@ -1888,10 +1888,9 @@ modelled!(PlacementAdd, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128
 kernel! {
     RingAddOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor)
-    ],
-    Self::kernel
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel)
+    ]
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1927,10 +1926,9 @@ modelled!(PlacementSub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128
 kernel! {
     RingSubOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor)
-    ],
-    Self::kernel
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel)
+    ]
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -1966,10 +1964,9 @@ modelled!(PlacementMul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128
 kernel! {
     RingMulOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor)
-    ],
-    Self::kernel
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel)
+    ]
 }
 
 trait PlacementKeyGen<C: Context, K> {
@@ -1991,9 +1988,8 @@ modelled!(PlacementKeyGen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
 kernel! {
     PrfKeyGenOp,
     [
-        (HostPlacement, () -> PrfKey)
-    ],
-    Self::kernel
+        (HostPlacement, () -> PrfKey => Self::kernel)
+    ]
 }
 
 impl PrfKeyGenOp {
@@ -2024,10 +2020,8 @@ modelled!(PlacementSample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
 kernel! {
     RingSampleOp,
     [
-        (HostPlacement, () -> Ring64Tensor),
-        (HostPlacement, () -> Ring128Tensor)
-    ],
-    Self::kernel
+        (HostPlacement, () -> Ring64Tensor => Self::kernel)
+    ]
 }
 
 #[derive(Clone, Debug, PartialEq)]
