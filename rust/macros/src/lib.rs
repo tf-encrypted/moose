@@ -100,7 +100,7 @@ mod tests {
 
     /// Utility function to return a pretty-printed token stream, if it is valid enough Rust code.
     fn format_tokenstream(code: proc_macro2::TokenStream) -> String {
-        use std::io::{Read, Write};
+        use std::io::Write;
         use std::process::{Command, Stdio};
         fn format(input: &str) -> Option<String> {
             let mut rustfmt = Command::new("rustfmt")
@@ -108,15 +108,11 @@ mod tests {
                 .stdout(Stdio::piped())
                 .spawn()
                 .ok()?;
-            match rustfmt.stdin.take().unwrap() {
-                ref mut stdin => {
-                    Write::write_all(stdin, input.as_bytes()).ok()?;
-                }
-            }
-            let mut stdout = String::new();
-            Read::read_to_string(&mut rustfmt.stdout.take().unwrap(), &mut stdout).ok()?;
-            if rustfmt.wait().ok()?.success() {
-                Some(stdout)
+            let child_stdin = rustfmt.stdin.as_mut()?;
+            child_stdin.write_all(input.as_bytes()).ok()?;
+            let output = rustfmt.wait_with_output().ok()?;
+            if output.status.success() {
+                String::from_utf8(output.stdout).ok()
             } else {
                 None
             }
@@ -130,9 +126,9 @@ mod tests {
         let player: Ident = parse_quote!(p);
         let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a + b * c);
-        unsugar(player, context.into(), &mut e);
+        unsugar(player, context, &mut e);
         let result = format_tokenstream(quote!(fn main() {let z = #e;}));
-        
+
         // Make sure the produced code matches the expectation
         let expected = r#"
         |fn main() {
