@@ -275,6 +275,40 @@ impl<T> From<SymbolicHandle> for Symbolic<T> {
     }
 }
 
+impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K> {
+    type Error = Symbolic<Self>;
+
+    fn try_from(x: Symbolic<AbstractReplicatedSetup<K>>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(cx) => Ok(cx),
+            Symbolic::Symbolic(_) => Err(x),
+        }
+    }
+}
+
+impl<R> TryFrom<Symbolic<ReplicatedTensor<R>>> for ReplicatedTensor<R> {
+    type Error = Symbolic<Self>;
+
+    fn try_from(x: Symbolic<ReplicatedTensor<R>>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(cx) => Ok(cx),
+            Symbolic::Symbolic(_) => Err(x),
+        }
+    }
+}
+
+impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>> for FixedTensor<RingTensorT, ReplicatedTensorT> {
+    type Error = Symbolic<Self>;
+
+    fn try_from(x: Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(cx) => Ok(cx),
+            Symbolic::Symbolic(_) => Err(x),
+        }
+    }
+}
+
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
@@ -1246,40 +1280,7 @@ macro_rules! kernel {
     };
 }
 
-impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K> {
-    type Error = ();
-
-    fn try_from(x: Symbolic<AbstractReplicatedSetup<K>>) -> Result<Self, Self::Error> {
-        match x {
-            Symbolic::Concrete(x) => Ok(x),
-            Symbolic::Symbolic(_) => Err(()),
-        }
-    }
-}
-
-impl<R> TryFrom<Symbolic<ReplicatedTensor<R>>> for ReplicatedTensor<R> {
-    type Error = ();
-
-    fn try_from(x: Symbolic<ReplicatedTensor<R>>) -> Result<Self, Self::Error> {
-        match x {
-            Symbolic::Concrete(x) => Ok(x),
-            Symbolic::Symbolic(_) => Err(()),
-        }
-    }
-}
-
-impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>> for FixedTensor<RingTensorT, ReplicatedTensorT> {
-    type Error = ();
-
-    fn try_from(x: Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>) -> Result<Self, Self::Error> {
-        match x {
-            Symbolic::Concrete(x) => Ok(x),
-            Symbolic::Symbolic(_) => Err(()),
-        }
-    }
-}
-
-/// Kernel function is used to map Symbolic::Concrete to Into<Symbolic> in symbolic contexts
+/// Kernel function maybe be evaluated in symbolic contexts
 macro_rules! hybrid_kernel {
 
     /*
@@ -1301,19 +1302,21 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr) ),+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |op, ctx, plc, x0| {
-            let x0 = x0.try_into().unwrap(); // TODO unwrap
-            let y = $k(ctx, &plc, x0);
-            y.into()
+            let v0 = x0.clone().try_into();
 
-            // match x0 {
-            //     Symbolic::Concrete(x0) => {
-            //         $k(ctx, &plc, x0).into()
-            //     }
-            //     Symbolic::Symbolic(h0) => {
-            //         let op_name = ctx.add_operation(op, &[&h0.op]);
-            //         Symbolic::Symbolic(SymbolicHandle { op: op_name })
-            //     }
-            // }
+            match v0 {
+                Ok(v0) => {
+                    let y = $k(ctx, &plc, v0);
+                    y.into()
+                }
+                _ => match x0 {
+                    Symbolic::Symbolic(h0) => {
+                        let op_name = ctx.add_operation(op, &[&h0.op]);
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    }
+                    _ => unimplemented!() // ok
+                }
+            }
         }) ),+]);
     };
 
@@ -1324,21 +1327,22 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr) ),+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, plc, x0, x1| {
-            let x0 = x0.try_into().unwrap(); // TODO unwrap
-            let x1 = x1.try_into().unwrap(); // TODO unwrap
-            let y = $k(ctx, &plc, x0, x1);
-            y.into()
+            let v0 = x0.clone().try_into();
+            let v1 = x1.clone().try_into();
 
-            // match (x0, x1) {
-            //     (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
-            //         $k(ctx, &plc, x0, x1).into()
-            //     }
-            //     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-            //         let op_name = ctx.add_operation(op, &[&h0.op, &h1.op]);
-            //         Symbolic::Symbolic(SymbolicHandle { op: op_name })
-            //     }
-            //     _ => unimplemented!(), // ok
-            // }
+            match (v0, v1) {
+                (Ok(v0), Ok(v1)) => {
+                    let y = $k(ctx, &plc, v0, v1);
+                    y.into()
+                }
+                _ => match (x0, x1) {
+                    (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op]);
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    }
+                    _ => unimplemented!() // ok
+                }
+            }
         }) ),+]);
     };
 
@@ -1349,70 +1353,23 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr) ),+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |op, ctx, plc, x0, x1, x2| {
-            let x0 = x0.try_into().unwrap(); // TODO unwrap
-            let x1 = x1.try_into().unwrap(); // TODO unwrap
-            let x2 = x2.try_into().unwrap(); // TODO unwrap
-            let y = $k(ctx, &plc, x0, x1, x2);
-            y.into()
+            let v0 = x0.clone().try_into();
+            let v1 = x1.clone().try_into();
+            let v2 = x2.clone().try_into();
 
-            // match (x0, x1, x2) {
-            //     (Symbolic::Concrete(x0), Symbolic::Concrete(x1), Symbolic::Concrete(x2)) => {
-            //         $k(ctx, &plc, x0, x1, x2).into()
-            //     }
-            //     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-            //         let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op]);
-            //         Symbolic::Symbolic(SymbolicHandle { op: op_name })
-            //     }
-            //     _ => unimplemented!(), // ok
-            // }
-        }) ),+]);
-    };
-}
-
-/// Kernel function is used to map Symbolic to Into<Symbolic> in symbolic contexts
-macro_rules! abstract_kernel {
-
-    /*
-    Nullary
-    */
-
-    ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr) ),+]) => {
-        runtime_kernel!($op, [$( ($plc, () -> $u => $k) ),+]);
-        compiletime_kernel!($op, [$( ($plc, () -> $u => |_op, ctx, plc| {
-            $k(ctx, &plc).into()
-        }) ),+]);
-    };
-
-    /*
-    Unary
-    */
-
-    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr) ),+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k) ),+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |_op, ctx, plc, x0| {
-            $k(ctx, &plc, x0).into()
-        }) ),+]);
-    };
-
-    /*
-    Binary
-    */
-
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr) ),+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k) ),+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |_op, ctx, plc, x0, x1| {
-            $k(ctx, &plc, x0, x1).into()
-        }) ),+]);
-    };
-
-    /*
-    Ternary
-    */
-
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr) ),+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k) ),+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |_op, ctx, plc, x0, x1, x2| {
-            $k(ctx, &plc, x0, x1, x2).into()
+            match (v0, v1, v2) {
+                (Ok(v0), Ok(v1), Ok(v2)) => {
+                    let y = $k(ctx, &plc, v0, v1, v2);
+                    y.into()
+                }
+                _ => match (x0, x1, x2) {
+                    (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
+                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op]);
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    }
+                    _ => unimplemented!() // ok
+                }
+            }
         }) ),+]);
     };
 }
@@ -2038,7 +1995,7 @@ impl RepShareOp {
 modelled!(PlacementShare, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
 modelled!(PlacementShare, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
 
-abstract_kernel! {
+hybrid_kernel! {
     RepShareOp,
     [
         (ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor => Self::kernel),
