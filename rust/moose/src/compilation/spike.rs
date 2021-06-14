@@ -1246,6 +1246,39 @@ macro_rules! kernel {
     };
 }
 
+impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K> {
+    type Error = ();
+
+    fn try_from(x: Symbolic<AbstractReplicatedSetup<K>>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(x) => Ok(x),
+            Symbolic::Symbolic(_) => Err(()),
+        }
+    }
+}
+
+impl<R> TryFrom<Symbolic<ReplicatedTensor<R>>> for ReplicatedTensor<R> {
+    type Error = ();
+
+    fn try_from(x: Symbolic<ReplicatedTensor<R>>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(x) => Ok(x),
+            Symbolic::Symbolic(_) => Err(()),
+        }
+    }
+}
+
+impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>> for FixedTensor<RingTensorT, ReplicatedTensorT> {
+    type Error = ();
+
+    fn try_from(x: Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(x) => Ok(x),
+            Symbolic::Symbolic(_) => Err(()),
+        }
+    }
+}
+
 /// Kernel function is used to map Symbolic::Concrete to Into<Symbolic> in symbolic contexts
 macro_rules! hybrid_kernel {
 
@@ -1256,7 +1289,8 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr) ),+]) => {
         runtime_kernel!($op, [$( ($plc, () -> $u => $k) ),+]);
         compiletime_kernel!($op, [$( ($plc, () -> $u => |_op, ctx, plc| {
-            $k(ctx, &plc).into()
+            let y = $k(ctx, &plc);
+            y.into()
         }) ),+]);
     };
 
@@ -1267,15 +1301,19 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr) ),+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |op, ctx, plc, x0| {
-            match x0 {
-                Symbolic::Concrete(x0) => {
-                    $k(ctx, &plc, x0).into()
-                }
-                Symbolic::Symbolic(h0) => {
-                    let op_name = ctx.add_operation(op, &[&h0.op]);
-                    Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                }
-            }
+            let x0 = x0.try_into().unwrap(); // TODO unwrap
+            let y = $k(ctx, &plc, x0);
+            y.into()
+
+            // match x0 {
+            //     Symbolic::Concrete(x0) => {
+            //         $k(ctx, &plc, x0).into()
+            //     }
+            //     Symbolic::Symbolic(h0) => {
+            //         let op_name = ctx.add_operation(op, &[&h0.op]);
+            //         Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            //     }
+            // }
         }) ),+]);
     };
 
@@ -1286,16 +1324,21 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr) ),+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, plc, x0, x1| {
-            match (x0, x1) {
-                (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
-                    $k(ctx, &plc, x0, x1).into()
-                }
-                (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                    let op_name = ctx.add_operation(op, &[&h0.op, &h1.op]);
-                    Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                }
-                _ => unimplemented!(), // ok
-            }
+            let x0 = x0.try_into().unwrap(); // TODO unwrap
+            let x1 = x1.try_into().unwrap(); // TODO unwrap
+            let y = $k(ctx, &plc, x0, x1);
+            y.into()
+
+            // match (x0, x1) {
+            //     (Symbolic::Concrete(x0), Symbolic::Concrete(x1)) => {
+            //         $k(ctx, &plc, x0, x1).into()
+            //     }
+            //     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+            //         let op_name = ctx.add_operation(op, &[&h0.op, &h1.op]);
+            //         Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            //     }
+            //     _ => unimplemented!(), // ok
+            // }
         }) ),+]);
     };
 
@@ -1306,16 +1349,22 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr) ),+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k) ),+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |op, ctx, plc, x0, x1, x2| {
-            match (x0, x1, x2) {
-                (Symbolic::Concrete(x0), Symbolic::Concrete(x1), Symbolic::Concrete(x2)) => {
-                    $k(ctx, &plc, x0, x1, x2).into()
-                }
-                (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                    let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op]);
-                    Symbolic::Symbolic(SymbolicHandle { op: op_name })
-                }
-                _ => unimplemented!(), // ok
-            }
+            let x0 = x0.try_into().unwrap(); // TODO unwrap
+            let x1 = x1.try_into().unwrap(); // TODO unwrap
+            let x2 = x2.try_into().unwrap(); // TODO unwrap
+            let y = $k(ctx, &plc, x0, x1, x2);
+            y.into()
+
+            // match (x0, x1, x2) {
+            //     (Symbolic::Concrete(x0), Symbolic::Concrete(x1), Symbolic::Concrete(x2)) => {
+            //         $k(ctx, &plc, x0, x1, x2).into()
+            //     }
+            //     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
+            //         let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op]);
+            //         Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            //     }
+            //     _ => unimplemented!(), // ok
+            // }
         }) ),+]);
     };
 }
@@ -1692,20 +1741,20 @@ pub struct RepAddOp {
 
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
 
 hybrid_kernel! {
     RepAddOp,
     [
-        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel), // should be hybrid_kernel
-        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel) // should be hybrid_kernel
-        // (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel) // TODO semi_abstract_kernel?
-        // (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
-        // (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
-        // (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel)
+        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel)
     ]
 }
 
@@ -1751,7 +1800,6 @@ impl RepAddOp {
         }
     }
 
-    // TODO this kernel looks right for both concrete and symbolic contexts point of view!
     fn ring_rep_kernel<C: Context, R: KnownType>(
         ctx: &C,
         rep: &ReplicatedPlacement,
@@ -2739,6 +2787,26 @@ mod tests {
         let xe = rep_plc.share(&ctx, &x);
         let ye = rep_plc.share(&ctx, &y);
         let ze = rep_plc.add(&ctx, &xe, &ye);
+        println!("SYMBOLIC {:?}", ze);
+    }
+
+    #[test]
+    fn test_rep_addsymbolic() {
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let ctx = SymbolicContext::default();
+        let x: Symbolic<Ring64Tensor> = alice_plc.sample(&ctx);
+        let y: Symbolic<Ring64Tensor> = bob_plc.sample(&ctx);
+        let xe = rep_plc.share(&ctx, &x);
+        let ze = rep_plc.add(&ctx, &y, &xe);
         println!("SYMBOLIC {:?}", ze);
     }
 
