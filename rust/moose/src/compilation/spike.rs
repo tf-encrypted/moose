@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
 
@@ -20,12 +21,12 @@ impl Placement {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct HostPlacement {
+pub struct HostPlacement {
     player: String,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-struct ReplicatedPlacement {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct ReplicatedPlacement {
     players: [String; 3],
 }
 
@@ -110,9 +111,7 @@ pub enum Ty {
 
 impl Ty {
     pub fn synthesize_symbolic_value<S: Into<String>>(&self, op_name: S) -> SymbolicValue {
-        let h = SymbolicHandle {
-            op: op_name.into(),
-        };
+        let h = SymbolicHandle { op: op_name.into() };
         match &self {
             Ty::Fixed64Tensor => SymbolicValue::Fixed64Tensor(h.into()),
             Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(h.into()),
@@ -229,32 +228,29 @@ macro_rules! value {
 // `enum SymbolicValue` and maybe even `enum Ty`.
 // one thing to be careful about here is to still make room for manual
 // constructions during development.
-value!(Fixed64Tensor, Symbolic<
-    FixedTensor<
-        <Ring64Tensor as KnownType>::Symbolic,
-        <Replicated64Tensor as KnownType>::Symbolic,
+value!(
+    Fixed64Tensor,
+    Symbolic<
+        FixedTensor<
+            <Ring64Tensor as KnownType>::Symbolic,
+            <Replicated64Tensor as KnownType>::Symbolic,
+        >,
     >
->);
+);
 value!(Ring32Tensor, Symbolic<Ring32Tensor>);
 value!(Ring64Tensor, Symbolic<Ring64Tensor>);
 value!(Ring128Tensor, Symbolic<Ring128Tensor>);
 value!(
     Replicated64Tensor,
-    Symbolic<ReplicatedTensor<
-        <Ring64Tensor as KnownType>::Symbolic>
-    >
+    Symbolic<ReplicatedTensor<<Ring64Tensor as KnownType>::Symbolic>>
 );
 value!(
     Replicated128Tensor,
-    Symbolic<ReplicatedTensor<
-        <Ring128Tensor as KnownType>::Symbolic>
-    >
+    Symbolic<ReplicatedTensor<<Ring128Tensor as KnownType>::Symbolic>>
 );
 value!(
     ReplicatedSetup,
-    Symbolic<AbstractReplicatedSetup<
-        <PrfKey as KnownType>::Symbolic>
-    >
+    Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 );
 value!(PrfKey, Symbolic<PrfKey>);
 
@@ -297,17 +293,20 @@ impl<R> TryFrom<Symbolic<ReplicatedTensor<R>>> for ReplicatedTensor<R> {
     }
 }
 
-impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>> for FixedTensor<RingTensorT, ReplicatedTensorT> {
+impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>>
+    for FixedTensor<RingTensorT, ReplicatedTensorT>
+{
     type Error = Symbolic<Self>;
 
-    fn try_from(x: Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>) -> Result<Self, Self::Error> {
+    fn try_from(
+        x: Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>,
+    ) -> Result<Self, Self::Error> {
         match x {
             Symbolic::Concrete(cx) => Ok(cx),
             Symbolic::Symbolic(_) => Err(x),
         }
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
@@ -506,7 +505,9 @@ pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
     ReplicatedTensor(ReplicatedTensorT),
 }
 
-impl<RingTensorT, ReplicatedTensorT> From<FixedTensor<RingTensorT, ReplicatedTensorT>> for Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>> {
+impl<RingTensorT, ReplicatedTensorT> From<FixedTensor<RingTensorT, ReplicatedTensorT>>
+    for Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>
+{
     fn from(x: FixedTensor<RingTensorT, ReplicatedTensorT>) -> Self {
         Symbolic::Concrete(x)
     }
@@ -793,10 +794,15 @@ trait PlacementReveal<C: Context, T> {
 pub trait Context {
     type Value;
     fn execute(&self, op: Operator, operands: Vec<Self::Value>) -> Self::Value;
+
+    type ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
 }
 
-#[derive(Clone, Debug, Default)]
-pub struct ConcreteContext {}
+#[derive(Clone, Debug)]
+pub struct ConcreteContext {
+    replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+}
 
 impl Context for ConcreteContext {
     type Value = Value;
@@ -818,6 +824,11 @@ impl Context for ConcreteContext {
             Operator::FixedMulOp(op) => op.compile(self)(operands),
         }
     }
+
+    type ReplicatedSetup = ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+        self.replicated_keys.get(plc).unwrap()
+    }
 }
 
 use std::sync::{Arc, RwLock};
@@ -825,6 +836,8 @@ use std::sync::{Arc, RwLock};
 #[derive(Clone, Debug, Default)]
 pub struct SymbolicContext {
     ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
+    replicated_keys:
+        HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
 }
 
 impl Context for SymbolicContext {
@@ -846,6 +859,11 @@ impl Context for SymbolicContext {
             Operator::FixedAddOp(op) => op.execute_symbolic(self, operands),
             Operator::FixedMulOp(op) => op.execute_symbolic(self, operands),
         }
+    }
+
+    type ReplicatedSetup = <ReplicatedSetup as KnownType>::Symbolic;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+        self.replicated_keys.get(plc).unwrap()
     }
 }
 
@@ -1583,12 +1601,6 @@ hybrid_kernel! {
     ]
 }
 
-
-
-
-
-
-
 /*
 
 
@@ -1664,20 +1676,13 @@ fn main() {
     let ctx = ConcreteContext {};
     let x = RepTensor(RingTensor{}, RingTensor{}, RingTensor{});
     foo(ctx, x);
-    
+
     let ctx = SymbolicContext {};
     let y = RepTensor(Symbolic(RingTensor{}), Symbolic(RingTensor{}), Symbolic(RingTensor{}));
     foo(ctx, y);
 }
 
 */
-
-
-
-
-
-
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepAddOp {
@@ -2088,11 +2093,7 @@ impl RepRevealOp {
         }
     }
 
-    fn kernel<C: Context, R: Clone>(
-        ctx: &C,
-        plc: &HostPlacement,
-        xe: ReplicatedTensor<R>,
-    ) -> R
+    fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: ReplicatedTensor<R>) -> R
     where
         R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
@@ -2357,25 +2358,19 @@ impl FixedMulOp {
             plc: plc.clone().into(),
         }
     }
-    
-    // NOTE
-    // we inherently need different kernel functions since 
-    // the behaviour on placements differs (share vs reveal)!
 
     fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
         ctx: &C,
-        plc: &HostPlacement, 
-        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        plc: &HostPlacement,
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>,
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
         HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
         HostPlacement: PlacementMul<C, RingTensorT, RingTensorT, Output = RingTensorT>,
     {
-        // TODO don't like that we have to do the matching here since it's ignoring some of the
-        // benefits we have from types kernels
-
-        // TODO how to deal with wrapping types like FixedTensor? subtyping?
+        // NOTE: if one day we have branches that are not supported then we should
+        // consider promoting matching to the macros and introduce proper intermediate types
 
         match (x, y) {
             (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
@@ -2403,42 +2398,48 @@ impl FixedMulOp {
 
     fn rep_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
         ctx: &C,
-        plc: &ReplicatedPlacement, 
-        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>,
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
         ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
-        // ReplicatedPlacement: PlacementMulSetup<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
-        ReplicatedPlacement: PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement: PlacementMulSetup<
+            C,
+            C::ReplicatedSetup,
+            ReplicatedTensorT,
+            ReplicatedTensorT,
+            Output = ReplicatedTensorT,
+        >,
+        ReplicatedPlacement:
+            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
     {
-        // TODO don't like that we have to do the matching here since it's ignoring some of the
-        // benefits we have from types kernels
-
-        // TODO how to deal with wrapping types like FixedTensor? subtyping?
-
-        // TODO if we want to do `mul` instead of `add` here but we need to get setup from somewhere!
+        // NOTE: if one day we have branches that are not supported then we should
+        // consider promoting matching to the macros and introduce proper intermediate types
 
         match (x, y) {
             (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
+                let setup = ctx.replicated_setup(plc);
                 let xe = plc.share(ctx, &x);
                 let ye = plc.share(ctx, &y);
-                // let ze = plc.mul(ctx, &xe, &ye);
-                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                let ze = PlacementMulSetup::mul(plc, ctx, setup, &xe, &ye);
                 FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
             }
             (FixedTensor::RingTensor(x), FixedTensor::ReplicatedTensor(ye)) => {
+                let setup = ctx.replicated_setup(plc);
                 let xe = plc.share(ctx, &x);
-                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                let ze = PlacementMulSetup::mul(plc, ctx, setup, &xe, &ye);
                 FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
             }
             (FixedTensor::ReplicatedTensor(xe), FixedTensor::RingTensor(y)) => {
+                let setup = ctx.replicated_setup(plc);
                 let ye = plc.share(ctx, &y);
-                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                let ze = PlacementMulSetup::mul(plc, ctx, setup, &xe, &ye);
                 FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
             }
             (FixedTensor::ReplicatedTensor(xe), FixedTensor::ReplicatedTensor(ye)) => {
-                let ze = plc.add(ctx, &xe, &ye); // TODO should be mul
+                let setup = ctx.replicated_setup(plc);
+                let ze = PlacementMulSetup::mul(plc, ctx, setup, &xe, &ye);
                 FixedTensor::<RingTensorT, ReplicatedTensorT>::ReplicatedTensor(ze)
             }
         }
@@ -2469,25 +2470,19 @@ impl FixedAddOp {
             plc: plc.clone().into(),
         }
     }
-    
-    // NOTE
-    // we inherently need different kernel functions since 
-    // the behaviour on placements differs (share vs reveal)!
 
     fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
         ctx: &C,
-        plc: &HostPlacement, 
-        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        plc: &HostPlacement,
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>,
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
         HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
         HostPlacement: PlacementAdd<C, RingTensorT, RingTensorT, Output = RingTensorT>,
     {
-        // TODO don't like that we have to do the matching here since it's ignoring some of the
-        // benefits we have from types kernels
-
-        // TODO how to deal with wrapping types like FixedTensor? subtyping?
+        // NOTE: if one day we have branches that are not supported then we should
+        // consider promoting matching to the macros and introduce proper intermediate types
 
         match (x, y) {
             (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
@@ -2515,18 +2510,17 @@ impl FixedAddOp {
 
     fn rep_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
         ctx: &C,
-        plc: &ReplicatedPlacement, 
-        x: FixedTensor<RingTensorT, ReplicatedTensorT>, 
+        plc: &ReplicatedPlacement,
+        x: FixedTensor<RingTensorT, ReplicatedTensorT>,
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
         ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
-        ReplicatedPlacement: PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement:
+            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
     {
-        // TODO don't like that we have to do the matching here since it's ignoring some of the
-        // benefits we have from types kernels
-
-        // TODO how to deal with wrapping types like FixedTensor? subtyping?
+        // NOTE: if one day we have branches that are not supported then we should
+        // consider promoting matching to the macros and introduce proper intermediate types
 
         match (x, y) {
             (FixedTensor::RingTensor(x), FixedTensor::RingTensor(y)) => {
@@ -2559,7 +2553,8 @@ mod tests {
 
     #[test]
     fn test_rep_add_concrete() {
-        let ctx = ConcreteContext::default();
+        let replicated_keys = HashMap::new();
+        let ctx = ConcreteContext { replicated_keys };
 
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
@@ -2777,7 +2772,8 @@ mod tests {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let ctx = ConcreteContext::default();
+        let replicated_keys = HashMap::new();
+        let ctx = ConcreteContext { replicated_keys };
 
         let x: Ring64Tensor = RingTensor(5);
         let xe = rep.share(&ctx, &x);
@@ -2822,6 +2818,28 @@ mod tests {
         let xe = rep_plc.share(&ctx, &x);
         let ze = rep_plc.add(&ctx, &y, &xe);
         println!("SYMBOLIC {:?}", ze);
+    }
+
+    #[test]
+    fn test_fixed_add() {
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = Fixed64Tensor::RingTensor(RingTensor(5 * 256));
+        let y = Fixed64Tensor::RingTensor(RingTensor(7 * 256));
+
+        let replicated_keys = HashMap::new();
+        let ctx = ConcreteContext { replicated_keys };
+        let z = rep_plc.add(&ctx, &x, &y);
+
+        println!("{:?}", z);
     }
 
     #[test]
@@ -2951,7 +2969,9 @@ mod tests {
 
         println!("{:?}", env);
 
-        let ctx = ConcreteContext::default();
+        let replicated_keys = HashMap::new();
+        let ctx = ConcreteContext { replicated_keys };
+
         let mut env: HashMap<String, Value> = HashMap::default();
 
         for op in ops.iter() {
