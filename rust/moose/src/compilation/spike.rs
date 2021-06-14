@@ -100,6 +100,7 @@ placement!(ReplicatedPlacement);
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Ty {
     Fixed64Tensor,
+    Fixed128Tensor,
     Ring32Tensor,
     Ring64Tensor,
     Ring128Tensor,
@@ -114,6 +115,7 @@ impl Ty {
         let h = SymbolicHandle { op: op_name.into() };
         match &self {
             Ty::Fixed64Tensor => SymbolicValue::Fixed64Tensor(h.into()),
+            Ty::Fixed128Tensor => SymbolicValue::Fixed128Tensor(h.into()),
             Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(h.into()),
             Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(h.into()),
             Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(h.into()),
@@ -133,6 +135,7 @@ pub trait KnownType {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Fixed64Tensor(Fixed64Tensor),
+    Fixed128Tensor(Fixed128Tensor),
     Ring32Tensor(Ring32Tensor),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
@@ -146,6 +149,7 @@ impl Value {
     pub fn ty(&self) -> Ty {
         match self {
             Value::Fixed64Tensor(_) => Ty::Fixed64Tensor,
+            Value::Fixed128Tensor(_) => Ty::Fixed128Tensor,
             Value::Ring32Tensor(_) => Ty::Ring32Tensor,
             Value::Ring64Tensor(_) => Ty::Ring64Tensor,
             Value::Ring128Tensor(_) => Ty::Ring128Tensor,
@@ -160,6 +164,7 @@ impl Value {
 #[derive(Clone, Debug, PartialEq)]
 pub enum SymbolicValue {
     Fixed64Tensor(<Fixed64Tensor as KnownType>::Symbolic),
+    Fixed128Tensor(<Fixed128Tensor as KnownType>::Symbolic),
     Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
     Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
     Ring128Tensor(<Ring128Tensor as KnownType>::Symbolic),
@@ -234,6 +239,15 @@ value!(
         FixedTensor<
             <Ring64Tensor as KnownType>::Symbolic,
             <Replicated64Tensor as KnownType>::Symbolic,
+        >,
+    >
+);
+value!(
+    Fixed128Tensor,
+    Symbolic<
+        FixedTensor<
+            <Ring128Tensor as KnownType>::Symbolic,
+            <Replicated128Tensor as KnownType>::Symbolic,
         >,
     >
 );
@@ -498,6 +512,8 @@ pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
 pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
+
+pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
@@ -771,7 +787,7 @@ pub trait Context {
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct ConcreteContext {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
@@ -2222,13 +2238,17 @@ pub struct FixedMulOp {
 }
 
 modelled!(PlacementMul::mul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedMulOp);
 
 hybrid_kernel! {
     FixedMulOp,
     [
         (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel)
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel)
     ]
 }
 
@@ -2334,13 +2354,17 @@ pub struct FixedAddOp {
 }
 
 modelled!(PlacementAdd::add, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedAddOp);
 
 hybrid_kernel! {
     FixedAddOp,
     [
         (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel)
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel)
     ]
 }
 
@@ -2434,8 +2458,7 @@ mod tests {
 
     #[test]
     fn test_rep_add_concrete() {
-        let replicated_keys = HashMap::new();
-        let ctx = ConcreteContext { replicated_keys };
+        let ctx = ConcreteContext::default();
 
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
@@ -2716,11 +2739,68 @@ mod tests {
         let x = Fixed64Tensor::RingTensor(RingTensor(5 * 256));
         let y = Fixed64Tensor::RingTensor(RingTensor(7 * 256));
 
-        let replicated_keys = HashMap::new();
-        let ctx = ConcreteContext { replicated_keys };
+        let ctx = ConcreteContext::default();
         let z = rep_plc.add(&ctx, &x, &y);
 
         println!("{:?}", z);
+    }
+
+    #[test]
+    fn test_fixed_add_symb() {
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x: <Fixed128Tensor as KnownType>::Symbolic =
+            Symbolic::Symbolic(SymbolicHandle { op: "x".into() });
+        let y: <Fixed128Tensor as KnownType>::Symbolic =
+            Symbolic::Symbolic(SymbolicHandle { op: "y".into() });
+
+        let ctx = SymbolicContext::default();
+        let z = rep_plc.add(&ctx, &x, &y);
+
+        println!("{:?}", z);
+
+        let ops = ctx.ops.read().unwrap();
+        for op in ops.iter() {
+            println!("  {:?}", op);
+        }
+    }
+
+    #[test]
+    fn test_fixed_add_symb_lower() {
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x: <Fixed64Tensor as KnownType>::Symbolic = Symbolic::Concrete(
+            FixedTensor::RingTensor(Symbolic::Symbolic(SymbolicHandle { op: "x".into() })),
+        );
+        let y: <Fixed64Tensor as KnownType>::Symbolic = Symbolic::Concrete(
+            FixedTensor::RingTensor(Symbolic::Symbolic(SymbolicHandle { op: "y".into() })),
+        );
+
+        let ctx = SymbolicContext::default();
+        let z = rep_plc.add(&ctx, &x, &y);
+
+        println!("{:?}", z);
+
+        let ops = ctx.ops.read().unwrap();
+        for op in ops.iter() {
+            println!("  {:?}", op);
+        }
     }
 
     #[test]
