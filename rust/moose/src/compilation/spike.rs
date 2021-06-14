@@ -2235,7 +2235,6 @@ where {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConstantOp {
     sig: Signature,
-    plc: Placement,
     val: Value,
 }
 
@@ -2243,11 +2242,11 @@ impl ConstantOp {
     pub fn compile(
         &self,
         _ctx: &ConcreteContext,
-        _plc: &Placement,
+        plc: &Placement,
     ) -> Box<dyn Fn(Vec<Value>) -> Value> {
         let val = self.val.clone();
 
-        match &self.plc {
+        match plc {
             Placement::HostPlacement(_) => Box::new(move |_operands| -> Value { val.clone() }),
             _ => unimplemented!(), // ok
         }
@@ -2259,7 +2258,7 @@ impl ConstantOp {
         plc: &Placement,
         _operands: Vec<SymbolicValue>,
     ) -> SymbolicValue {
-        match &self.plc {
+        match plc {
             Placement::HostPlacement(_) => {
                 let op_name = ctx.add_operation(self, &[], plc);
                 self.val.ty().synthesize_symbolic_value(op_name)
