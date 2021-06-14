@@ -535,7 +535,7 @@ macro_rules! modelled {
     /*
     Nullary
     */
-    ($t:ident, $plc:ty, () -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, () -> $u:ty, $op:ident) => {
         impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc) -> $u {
                 // NOTE we shouldn't do anything here, the kernel call is simply to check
@@ -547,7 +547,7 @@ macro_rules! modelled {
         }
 
         impl $t<ConcreteContext, $u> for $plc {
-            fn apply(&self, ctx: &ConcreteContext) -> $u {
+            fn $f(&self, ctx: &ConcreteContext) -> $u {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
@@ -557,7 +557,7 @@ macro_rules! modelled {
         }
 
         impl $t<SymbolicContext, <$u as KnownType>::Symbolic> for $plc {
-            fn apply(&self, ctx: &SymbolicContext) -> <$u as KnownType>::Symbolic {
+            fn $f(&self, ctx: &SymbolicContext) -> <$u as KnownType>::Symbolic {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
@@ -570,7 +570,7 @@ macro_rules! modelled {
     /*
     Unary
     */
-    ($t:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0) -> $u {
                 <Self as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::kernel(ctx, plc, x0)
@@ -580,7 +580,7 @@ macro_rules! modelled {
         impl $t<ConcreteContext, $t0> for $plc {
             type Output = $u;
 
-            fn apply(&self, ctx: &ConcreteContext, x0: &$t0) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0) -> Self::Output {
                 let sig = UnarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
@@ -595,11 +595,7 @@ macro_rules! modelled {
         impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
             type Output = <$u as KnownType>::Symbolic;
 
-            fn apply(
-                &self,
-                ctx: &SymbolicContext,
-                x0: &<$t0 as KnownType>::Symbolic,
-            ) -> Self::Output {
+            fn $f(&self, ctx: &SymbolicContext, x0: &<$t0 as KnownType>::Symbolic) -> Self::Output {
                 let sig = UnarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
@@ -615,7 +611,7 @@ macro_rules! modelled {
     /*
     Binary
     */
-    ($t:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
         impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1) -> $u {
                 <Self as BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u>>::kernel(
@@ -627,7 +623,7 @@ macro_rules! modelled {
         impl $t<ConcreteContext, $t0, $t1> for $plc {
             type Output = $u;
 
-            fn apply(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
                 let sig = BinarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
@@ -645,7 +641,7 @@ macro_rules! modelled {
         {
             type Output = <$u as KnownType>::Symbolic;
 
-            fn apply(
+            fn $f(
                 &self,
                 ctx: &SymbolicContext,
                 x0: &<$t0 as KnownType>::Symbolic,
@@ -667,7 +663,7 @@ macro_rules! modelled {
     /*
     Ternary
     */
-    ($t:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
         impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
             fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1, x2: $t2) -> $u {
                 <Self as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::kernel(
@@ -679,7 +675,7 @@ macro_rules! modelled {
         impl $t<ConcreteContext, $t0, $t1, $t2> for $plc {
             type Output = $u;
 
-            fn apply(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, x2: &$t2) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, x2: &$t2) -> Self::Output {
                 let sig = TernarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
@@ -706,7 +702,7 @@ macro_rules! modelled {
         {
             type Output = <$u as KnownType>::Symbolic;
 
-            fn apply(
+            fn $f(
                 &self,
                 ctx: &SymbolicContext,
                 x0: &<$t0 as KnownType>::Symbolic,
@@ -734,61 +730,37 @@ macro_rules! modelled {
 trait PlacementAdd<C: Context, T, U> {
     type Output;
 
-    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
-
-    fn add(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
-        self.apply(ctx, x, y)
-    }
+    fn add(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
 trait PlacementSub<C: Context, T, U> {
     type Output;
 
-    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
-
-    fn sub(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
-        self.apply(ctx, x, y)
-    }
+    fn sub(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
 trait PlacementMul<C: Context, T, U> {
     type Output;
 
-    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
-
-    fn mul(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
-        self.apply(ctx, x, y)
-    }
+    fn mul(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
 trait PlacementMulSetup<C: Context, S, T, U> {
     type Output;
 
-    fn apply(&self, ctx: &C, s: &S, x: &T, y: &U) -> Self::Output;
-
-    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> Self::Output {
-        self.apply(ctx, s, x, y)
-    }
+    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> Self::Output;
 }
 
 trait PlacementShare<C: Context, T> {
     type Output;
 
-    fn apply(&self, ctx: &C, x: &T) -> Self::Output;
-
-    fn share(&self, ctx: &C, x: &T) -> Self::Output {
-        self.apply(ctx, x)
-    }
+    fn share(&self, ctx: &C, x: &T) -> Self::Output;
 }
 
 trait PlacementReveal<C: Context, T> {
     type Output;
 
-    fn apply(&self, ctx: &C, x: &T) -> Self::Output;
-
-    fn reveal(&self, ctx: &C, x: &T) -> Self::Output {
-        self.apply(ctx, x)
-    }
+    fn reveal(&self, ctx: &C, x: &T) -> Self::Output;
 }
 
 pub trait Context {
@@ -1607,12 +1579,12 @@ pub struct RepAddOp {
     plc: Placement,
 }
 
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
 
 hybrid_kernel! {
     RepAddOp,
@@ -1739,12 +1711,12 @@ pub struct RepMulOp {
     plc: Placement,
 }
 
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepMulOp);
 
 hybrid_kernel! {
     RepMulOp,
@@ -1971,8 +1943,8 @@ impl RepShareOp {
     }
 }
 
-modelled!(PlacementShare, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
-modelled!(PlacementShare, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
 
 hybrid_kernel! {
     RepShareOp,
@@ -1991,8 +1963,8 @@ pub struct RepRevealOp {
 // NOTE
 // revealing on ReplicatedPlacements should reveal to all three players, but we're currently
 // missing a type to represent this (eg PublicReplicatedTensor vs PrivateReplicatedTensors)
-modelled!(PlacementReveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
-modelled!(PlacementReveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
 
 hybrid_kernel! {
     RepRevealOp,
@@ -2053,8 +2025,8 @@ impl RingAddOp {
 // NOTE uncomment the next line to see the kernel check system in action
 // modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
 // NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
-modelled!(PlacementAdd, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
-modelled!(PlacementAdd, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
 
 kernel! {
     RingAddOp,
@@ -2091,8 +2063,8 @@ impl RingSubOp {
     }
 }
 
-modelled!(PlacementSub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
-modelled!(PlacementSub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
 
 kernel! {
     RingSubOp,
@@ -2129,8 +2101,8 @@ impl RingMulOp {
     }
 }
 
-modelled!(PlacementMul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
-modelled!(PlacementMul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
 
 kernel! {
     RingMulOp,
@@ -2141,11 +2113,7 @@ kernel! {
 }
 
 trait PlacementKeyGen<C: Context, K> {
-    fn apply(&self, ctx: &C) -> K;
-
-    fn keygen(&self, ctx: &C) -> K {
-        self.apply(ctx)
-    }
+    fn keygen(&self, ctx: &C) -> K;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2154,7 +2122,7 @@ pub struct PrfKeyGenOp {
     plc: Placement,
 }
 
-modelled!(PlacementKeyGen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
+modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
 
 kernel! {
     PrfKeyGenOp,
@@ -2178,15 +2146,11 @@ impl PrfKeyGenOp {
 }
 
 trait PlacementSample<C: Context, O> {
-    fn apply(&self, ctx: &C) -> O;
-
-    fn sample(&self, ctx: &C) -> O {
-        self.apply(ctx)
-    }
+    fn sample(&self, ctx: &C) -> O;
 }
 
-modelled!(PlacementSample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
-modelled!(PlacementSample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,
@@ -2257,8 +2221,8 @@ pub struct FixedMulOp {
     plc: Placement,
 }
 
-modelled!(PlacementMul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
-modelled!(PlacementMul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
+modelled!(PlacementMul::mul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
 
 hybrid_kernel! {
     FixedMulOp,
@@ -2369,8 +2333,8 @@ pub struct FixedAddOp {
     plc: Placement,
 }
 
-modelled!(PlacementAdd, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
-modelled!(PlacementAdd, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
 
 hybrid_kernel! {
     FixedAddOp,
