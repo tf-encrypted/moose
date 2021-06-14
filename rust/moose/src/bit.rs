@@ -5,7 +5,6 @@ use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{BitAnd, BitXor};
-use std::ops::{Add, Mul, Sub};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>);
@@ -72,30 +71,6 @@ impl BitAnd for BitTensor {
         BitTensor(self.0 & other.0)
     }
 }
-
-
-// Compatibility with new compiler (need to have add/sub/mul operator)
-impl Add<BitTensor> for BitTensor {
-    type Output = BitTensor;
-    fn add(self, other: BitTensor) -> Self::Output {
-        BitTensor(self.0 ^ other.0)
-    }
-}
-
-impl Sub<BitTensor> for BitTensor {
-    type Output = BitTensor;
-    fn sub(self, other: BitTensor) -> Self::Output {
-        BitTensor(self.0 ^ other.0)
-    }
-}
-
-impl Mul<BitTensor> for BitTensor {
-    type Output = BitTensor;
-    fn mul(self, other: BitTensor) -> Self::Output {
-        BitTensor(self.0 & other.0)
-    }
-}
-
 
 #[cfg(test)]
 mod tests {
