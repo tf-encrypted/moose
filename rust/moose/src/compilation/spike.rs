@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use macros::with_context;
+use macros::with;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
 use std::ops::{BitAnd, BitXor};
@@ -43,6 +43,39 @@ impl ReplicatedPlacement {
             player: self.players[2].clone(),
         };
         (player0, player1, player2)
+    }
+
+    pub fn placed_context<'a, C: Context>(
+        &self,
+        ctx: &'a C,
+    ) -> (
+        PlacedContext<'a, C>,
+        PlacedContext<'a, C>,
+        PlacedContext<'a, C>,
+    ) {
+        let player0 = HostPlacement {
+            player: self.players[0].clone(),
+        };
+        let player1 = HostPlacement {
+            player: self.players[1].clone(),
+        };
+        let player2 = HostPlacement {
+            player: self.players[2].clone(),
+        };
+        (
+            PlacedContext {
+                player: player0,
+                ctx,
+            },
+            PlacedContext {
+                player: player1,
+                ctx,
+            },
+            PlacedContext {
+                player: player2,
+                ctx,
+            },
+        )
     }
 }
 
@@ -97,6 +130,33 @@ macro_rules! placement {
 
 placement!(HostPlacement);
 placement!(ReplicatedPlacement);
+
+/// A pass-through wrapper for a player/context pair to allow arithmetic operations
+struct PlacedContext<'a, C: Context> {
+    player: HostPlacement,
+    ctx: &'a C,
+}
+
+impl<'a, C: Context> PlacedContext<'a, C> {
+    fn add<T, U, O>(&self, x: &T, y: &U) -> O
+    where
+        HostPlacement: PlacementAdd<C, T, U, Output = O>,
+    {
+        self.player.add(self.ctx, x, y)
+    }
+    fn mul<T, U, O>(&self, x: &T, y: &U) -> O
+    where
+        HostPlacement: PlacementMul<C, T, U, Output = O>,
+    {
+        self.player.mul(self.ctx, x, y)
+    }
+    fn sub<T, U, O>(&self, x: &T, y: &U) -> O
+    where
+        HostPlacement: PlacementSub<C, T, U, Output = O>,
+    {
+        self.player.sub(self.ctx, x, y)
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Ty {
@@ -1644,7 +1704,7 @@ impl RepAddOp {
         R: Clone,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
+        let (player0, player1, player2) = rep.placed_context(ctx);
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -1654,14 +1714,14 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        let z00 = with_context!(player0, ctx, x00 + y00);
-        let z10 = with_context!(player0, ctx, x10 + y10);
+        let z00 = with!(player0, x00 + y00);
+        let z10 = with!(player0, x10 + y10);
 
-        let z11 = with_context!(player1, ctx, x11 + y11);
-        let z21 = with_context!(player1, ctx, x21 + y21);
+        let z11 = with!(player1, x11 + y11);
+        let z21 = with!(player1, x21 + y21);
 
-        let z22 = with_context!(player2, ctx, x22 + y22);
-        let z02 = with_context!(player2, ctx, x02 + y02);
+        let z22 = with!(player2, x22 + y22);
+        let z02 = with!(player2, x02 + y02);
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1711,7 +1771,7 @@ impl RepMulOp {
         HostPlacement: PlacementMul<C, R, R, Output = R>,
         ReplicatedPlacement: PlacementZeroShare<C, K, R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
+        let (player0, player1, player2) = rep.placed_context(ctx);
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -1725,9 +1785,9 @@ impl RepMulOp {
             alphas: [a0, a1, a2],
         } = rep.zero_share(ctx, &s);
 
-        let z0 = with_context!(player0, ctx, x00 * y00 + x00 * y10 + x10 * y00 + a0);
-        let z1 = with_context!(player1, ctx, x11 * y11 + x11 * y21 + x21 * y11 + a1);
-        let z2 = with_context!(player2, ctx, x22 * y22 + x22 * y02 + x02 * y22 + a2);
+        let z0 = with!(player0, x00 * y00 + x00 * y10 + x10 * y00 + a0);
+        let z1 = with!(player1, x11 * y11 + x11 * y21 + x21 * y11 + a1);
+        let z2 = with!(player2, x22 * y22 + x22 * y02 + x02 * y22 + a2);
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],

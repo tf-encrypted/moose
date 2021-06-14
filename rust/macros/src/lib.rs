@@ -19,7 +19,7 @@ pub fn with_context(input: TokenStream) -> TokenStream {
         context,
         mut expr,
     } = parse_macro_input!(input as EvalWithContext);
-    unsugar(player, context, &mut expr);
+    EvalWithContext::unsugar(player, context, &mut expr);
     TokenStream::from(quote!(#expr))
 }
 
@@ -45,47 +45,120 @@ impl Parse for EvalWithContext {
     }
 }
 
-/// The main function for the with_context macros.
-///
-/// Parses the expression and replaced binary operations with calls to the player/context methods.
-fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
-    struct Visitor {
-        player: Ident,
-        context: Ident,
-    }
-    impl VisitMut for Visitor {
-        fn visit_expr_mut(self: &mut Visitor, expr: &mut Expr) {
-            // 1: subrecruse
-            syn::visit_mut::visit_expr_mut(self, expr);
-            // 2: process the outermost layer
-            let player = &self.player;
-            let context = &self.context;
-
-            let (left, op, right) = match *expr {
-                Expr::Binary(ExprBinary {
-                    ref mut left,
-                    op,
-                    ref mut right,
-                    ..
-                }) => (left, op, right),
-                _ => {
-                    return;
-                }
-            };
-            let span = op.span();
-            let bin_fun = match op {
-                BinOp::Add(_) => quote_spanned!(span=>#player.add),
-                BinOp::Sub(_) => quote_spanned!(span=>#player.sub),
-                BinOp::Mul(_) => quote_spanned!(span=>#player.mul),
-                _ => return,
-            };
-
-            *expr = parse_quote!( #bin_fun(#context,  &#left, &#right) );
+impl EvalWithContext {
+    /// The main function for the with_context macros.
+    ///
+    /// Parses the expression and replaced binary operations with calls to the player/context methods.
+    fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
+        struct Visitor {
+            player: Ident,
+            context: Ident,
         }
-    }
+        impl VisitMut for Visitor {
+            fn visit_expr_mut(self: &mut Visitor, expr: &mut Expr) {
+                // 1: subrecruse
+                syn::visit_mut::visit_expr_mut(self, expr);
+                // 2: process the outermost layer
+                let player = &self.player;
+                let context = &self.context;
 
-    let mut visitor = Visitor { player, context };
-    visitor.visit_expr_mut(expr)
+                let (left, op, right) = match *expr {
+                    Expr::Binary(ExprBinary {
+                        ref mut left,
+                        op,
+                        ref mut right,
+                        ..
+                    }) => (left, op, right),
+                    _ => {
+                        return;
+                    }
+                };
+                let span = op.span();
+                let bin_fun = match op {
+                    BinOp::Add(_) => quote_spanned!(span=>#player.add),
+                    BinOp::Sub(_) => quote_spanned!(span=>#player.sub),
+                    BinOp::Mul(_) => quote_spanned!(span=>#player.mul),
+                    _ => return,
+                };
+
+                *expr = parse_quote!( #bin_fun(#context,  &#left, &#right) );
+            }
+        }
+
+        let mut visitor = Visitor { player, context };
+        visitor.visit_expr_mut(expr)
+    }
+}
+
+/// Macros to convert expression into player invocations.
+///
+/// For example, converts
+/// with!(a, x + y * z)
+/// into
+/// a.add(&x, a.mul(&y, &z))
+#[proc_macro]
+pub fn with(input: TokenStream) -> TokenStream {
+    let EvalWith { player, mut expr } = parse_macro_input!(input as EvalWith);
+    EvalWith::unsugar(player, &mut expr);
+    TokenStream::from(quote!(#expr))
+}
+
+/// Input members of the macros signature
+struct EvalWith {
+    player: Ident,
+    expr: Expr,
+}
+
+impl Parse for EvalWith {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let player: Ident = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let expr: Expr = input.parse()?;
+        Ok(EvalWith { player, expr })
+    }
+}
+
+impl EvalWith {
+    /// The main function for the with_context macros.
+    ///
+    /// Parses the expression and replaced binary operations with calls to the player/context methods.
+    fn unsugar(player: Ident, expr: &'_ mut Expr) {
+        struct Visitor {
+            player: Ident,
+        }
+        impl VisitMut for Visitor {
+            fn visit_expr_mut(self: &mut Visitor, expr: &mut Expr) {
+                // 1: subrecruse
+                syn::visit_mut::visit_expr_mut(self, expr);
+                // 2: process the outermost layer
+                let player = &self.player;
+
+                let (left, op, right) = match *expr {
+                    Expr::Binary(ExprBinary {
+                        ref mut left,
+                        op,
+                        ref mut right,
+                        ..
+                    }) => (left, op, right),
+                    _ => {
+                        return;
+                    }
+                };
+                let span = op.span();
+                let bin_fun = match op {
+                    BinOp::Add(_) => quote_spanned!(span=>#player.add),
+                    BinOp::Sub(_) => quote_spanned!(span=>#player.sub),
+                    BinOp::Mul(_) => quote_spanned!(span=>#player.mul),
+                    _ => return,
+                };
+
+                *expr = parse_quote!( #bin_fun(&#left, &#right) );
+            }
+        }
+
+        let mut visitor = Visitor { player };
+        visitor.visit_expr_mut(expr)
+    }
 }
 
 #[cfg(test)]
@@ -127,7 +200,7 @@ mod tests {
         let player: Ident = parse_quote!(p);
         let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a + b * c);
-        unsugar(player, context, &mut e);
+        EvalWithContext::unsugar(player, context, &mut e);
         let result = format_tokenstream(quote!(fn main() {let z = #e;}));
 
         // Make sure the produced code matches the expectation
@@ -147,7 +220,7 @@ mod tests {
         let player: Ident = parse_quote!(p);
         let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a::new(d) + b.member * func(c));
-        unsugar(player, context, &mut e);
+        EvalWithContext::unsugar(player, context, &mut e);
         let result = format_tokenstream(quote!(fn main() {let z = #e;}));
 
         // Make sure the produced code matches the expectation
@@ -167,7 +240,7 @@ mod tests {
         let player: Ident = parse_quote!(p);
         let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a + func(b + c));
-        unsugar(player, context, &mut e);
+        EvalWithContext::unsugar(player, context, &mut e);
         let result = format_tokenstream(quote!(fn main() {let z = #e;}));
 
         // Make sure the produced code matches the expectation
