@@ -264,9 +264,56 @@ pub enum Symbolic<T> {
     Concrete(T),
 }
 
+trait PlacedFOO {
+    fn placement(&self) -> Placement;
+}
+
+impl<T: PlacedFOO> PlacedFOO for Symbolic<T> {
+    fn placement(&self) -> Placement {
+        match self {
+            Symbolic::Symbolic(x) => {
+                HostPlacement { player: "alice".into() }.into() // TODO return actual placement
+            }
+            Symbolic::Concrete(x) => {
+                x.placement()
+            }
+        }
+    }
+}
+
+impl<T> PlacedFOO for RingTensor<T> {
+    fn placement(&self) -> Placement {
+        HostPlacement { player: "alice".into() }.into() // TODO return actual placement
+    }
+}
+
+impl<R: PlacedFOO> PlacedFOO for ReplicatedTensor<R> {
+    fn placement(&self) -> Placement {
+        let ReplicatedTensor {
+            shares: [ [x00, x10], [x11, x21], [x22, x02] ],
+        } = self;
+
+        assert_eq!(x00.placement(), x10.placement());
+        assert_eq!(x11.placement(), x21.placement());
+        assert_eq!(x22.placement(), x02.placement());
+
+        let player0: HostPlacement = x00.placement().try_into().unwrap(); // TODO unwrap
+        let player1: HostPlacement = x11.placement().try_into().unwrap(); // TODO unwrap
+        let player2: HostPlacement = x22.placement().try_into().unwrap(); // TODO unwrap
+
+        let players = [
+            player0.player.clone(),
+            player1.player.clone(),
+            player2.player.clone(),
+        ];
+        ReplicatedPlacement { players }.into()
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SymbolicHandle {
     op: String,
+    // plc: Placement, // TODO
 }
 
 impl<T> From<SymbolicHandle> for Symbolic<T> {
@@ -1761,16 +1808,18 @@ impl RepShareOp {
     fn kernel<C: Context, R: Clone>(ctx: &C, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
     where
         R: Into<C::Value> + TryFrom<C::Value> + 'static,
+        R: PlacedFOO,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         HostPlacement: PlacementSub<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        let x0 = player0.sample(ctx);
-        let x1 = player0.sample(ctx);
-        let x2 = apply!(player0, ctx, |x, x0, x1| { x - (x0 + x1) }, &x, &x0, &x1);
+        let owner: HostPlacement = x.placement().try_into().unwrap(); // TODO unwrap
+
+        let x0 = owner.sample(ctx);
+        let x1 = owner.sample(ctx);
+        let x2 = apply!(owner, ctx, |x, x0, x1| { x - (x0 + x1) }, &x, &x0, &x1);
 
         ReplicatedTensor {
             shares: [[x0.clone(), x1.clone()], [x1, x2.clone()], [x2, x0]],
