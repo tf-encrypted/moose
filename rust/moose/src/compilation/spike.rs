@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use crate::bit::BitTensor;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
 use std::ops::{BitAnd, BitXor};
@@ -456,6 +455,23 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
 
     fn mul(self, other: RingTensor<u128>) -> Self::Output {
         RingTensor(self.0.wrapping_mul(other.0))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct BitTensor(u8);
+
+impl BitXor for BitTensor {
+    type Output = BitTensor;
+    fn bitxor(self, other: Self) -> Self::Output {
+        BitTensor(self.0 ^ other.0)
+    }
+}
+
+impl BitAnd for BitTensor {
+    type Output = BitTensor;
+    fn bitand(self, other: Self) -> Self::Output {
+        BitTensor(self.0 & other.0)
     }
 }
 
@@ -2267,7 +2283,7 @@ impl BitSampleOp {
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor
 where {
         // TODO
-        BitTensor::from(vec![0])
+        BitTensor(0)
     }
 }
 
