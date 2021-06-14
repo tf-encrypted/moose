@@ -18,7 +18,7 @@ crate-type = ["cdylib"]
 anyhow = "~1.0"
 approx = "~0.4"
 maplit = "~1.0"
-numpy = "~0.13"
+numpy = "=0.13.1"
 ndarray = "~0.14"
 moose = { path = "../moose" }
 pyo3 = "~0.13"
