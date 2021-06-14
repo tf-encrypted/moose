@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
-use macros::eval_with_context;
+use macros::with_context;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
 use std::ops::{BitAnd, BitXor};
@@ -1654,14 +1654,14 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        let z00 = eval_with_context!(player0, ctx, x00 + y00);
-        let z10 = eval_with_context!(player0, ctx, x10 + y10);
+        let z00 = with_context!(player0, ctx, x00 + y00);
+        let z10 = with_context!(player0, ctx, x10 + y10);
 
-        let z11 = eval_with_context!(player1, ctx, x11 + y11);
-        let z21 = eval_with_context!(player1, ctx, x21 + y21);
+        let z11 = with_context!(player1, ctx, x11 + y11);
+        let z21 = with_context!(player1, ctx, x21 + y21);
 
-        let z22 = eval_with_context!(player2, ctx, x22 + y22);
-        let z02 = eval_with_context!(player2, ctx, x02 + y02);
+        let z22 = with_context!(player2, ctx, x22 + y22);
+        let z02 = with_context!(player2, ctx, x02 + y02);
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1725,9 +1725,9 @@ impl RepMulOp {
             alphas: [a0, a1, a2],
         } = rep.zero_share(ctx, &s);
 
-        let z0 = eval_with_context!(player0, ctx, x00 * y00 + x00 * y10 + x10 * y00 + a0);
-        let z1 = eval_with_context!(player1, ctx, x11 * y11 + x11 * y21 + x21 * y11 + a1);
-        let z2 = eval_with_context!(player2, ctx, x22 * y22 + x22 * y02 + x02 * y22 + a2);
+        let z0 = with_context!(player0, ctx, x00 * y00 + x00 * y10 + x10 * y00 + a0);
+        let z1 = with_context!(player1, ctx, x11 * y11 + x11 * y21 + x21 * y11 + a1);
+        let z2 = with_context!(player2, ctx, x22 * y22 + x22 * y02 + x02 * y22 + a2);
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],

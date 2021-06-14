@@ -9,11 +9,11 @@ use syn::{parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, Ident, Token}
 /// Macros to convert expression into player/context invocations.
 ///
 /// For example, converts
-/// eval_with_context!(a, b, x + y * z)
+/// with_context!(a, b, x + y * z)
 /// into
 /// a.add(b, &x, a.mul(b, &y, &z))
 #[proc_macro]
-pub fn eval_with_context(input: TokenStream) -> TokenStream {
+pub fn with_context(input: TokenStream) -> TokenStream {
     let EvalWithContext {
         player,
         context,
@@ -45,7 +45,7 @@ impl Parse for EvalWithContext {
     }
 }
 
-/// The main function for the eval_with_context macros.
+/// The main function for the with_context macros.
 ///
 /// Parses the expression and replaced binary operations with calls to the player/context methods.
 fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
@@ -75,6 +75,7 @@ fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
             let span = op.span();
             let bin_fun = match op {
                 BinOp::Add(_) => quote_spanned!(span=>#player.add),
+                BinOp::Sub(_) => quote_spanned!(span=>#player.sub),
                 BinOp::Mul(_) => quote_spanned!(span=>#player.mul),
                 _ => return,
             };

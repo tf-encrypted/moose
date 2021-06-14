@@ -1,4 +1,4 @@
-use macros::eval_with_context;
+use macros::with_context;
 
 struct Player;
 
@@ -20,6 +20,6 @@ fn main() {
     let x = 45;
     let y = 646;
     let z = -465465;
-    let res = eval_with_context!(player, ctx, x + y * z);
-    assert_eq!(res, x + y * z);
+    let res = with_context!(player, ctx, (x + y) * z * (x + z) + (x * (y + z)));
+    assert_eq!(res, (x + y) * z * (x + z) + (x * (y + z)));
 }
