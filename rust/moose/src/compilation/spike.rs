@@ -2267,7 +2267,7 @@ impl BitSampleOp {
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor
 where {
         // TODO
-        BitTensor::from(vec![0, 1, 1, 0, 0])
+        BitTensor::from(vec![0])
     }
 }
 
@@ -2709,4 +2709,150 @@ mod tests {
         // let exec = SymbolicExecutor;
         // exec.eval(comp);
     }
+
+    #[test]
+    fn test_rep_bin_exec() {
+        #![allow(clippy::redundant_clone)]
+
+        use std::collections::HashMap;
+
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let ops: Vec<Operation> = vec![
+            Operation {
+                name: "x".into(),
+                operator: BitSampleOp {
+                    sig: NullarySignature {
+                        ret: Ty::BitTensor,
+                    }
+                    .into(),
+                    plc: alice_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "xe".into(),
+                operator: RepShareOp {
+                    sig: UnarySignature {
+                        arg0: Ty::BitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["x".into()],
+            },
+            Operation {
+                name: "y".into(),
+                operator: BitSampleOp {
+                    sig: NullarySignature {
+                        ret: Ty::BitTensor,
+                    }
+                    .into(),
+                    plc: bob_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "ye".into(),
+                operator: RepShareOp {
+                    sig: UnarySignature {
+                        arg0: Ty::BitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["y".into()],
+            },
+            Operation {
+                name: "s".into(),
+                operator: RepSetupOp {
+                    sig: NullarySignature {
+                        ret: Ty::ReplicatedSetup,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "ze".into(),
+                operator: RepMulOp {
+                    sig: TernarySignature {
+                        arg0: Ty::ReplicatedSetup,
+                        arg1: Ty::ReplicatedBitTensor,
+                        arg2: Ty::ReplicatedBitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["s".into(), "xe".into(), "ye".into()],
+            },
+            Operation {
+                name: "ve".into(),
+                operator: RepMulOp {
+                    sig: TernarySignature {
+                        arg0: Ty::ReplicatedSetup,
+                        arg1: Ty::ReplicatedBitTensor,
+                        arg2: Ty::ReplicatedBitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["s".into(), "xe".into(), "ye".into()],
+            },
+        ];
+
+        let ctx = SymbolicContext::default();
+        let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+
+        for op in ops.iter() {
+            let operator = op.operator.clone();
+            let operands = op
+                .operands
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = ctx.execute(operator, operands);
+            env.insert(op.name.clone(), res);
+        }
+
+        println!("{:?}", env);
+
+        let ctx = ConcreteContext::default();
+        let mut env: HashMap<String, Value> = HashMap::default();
+
+        for op in ops.iter() {
+            let operator = op.operator.clone();
+            let operands = op
+                .operands
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = ctx.execute(operator, operands);
+            env.insert(op.name.clone(), res);
+        }
+
+        println!("{:?}", env);
+
+    }
+
 }
