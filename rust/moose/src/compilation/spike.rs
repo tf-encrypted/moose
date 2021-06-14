@@ -3,6 +3,7 @@
 
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
+use std::ops::{BitAnd, BitXor};
 
 #[derive(Debug, Clone, PartialEq)]
 enum Placement {
@@ -98,11 +99,13 @@ placement!(ReplicatedPlacement);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Ty {
+    BitTensor,
     Ring32Tensor,
     Ring64Tensor,
     Ring128Tensor,
     Replicated64Tensor,
     Replicated128Tensor,
+    ReplicatedBitTensor,
     ReplicatedSetup,
     PrfKey,
 }
@@ -110,6 +113,9 @@ pub enum Ty {
 impl Ty {
     pub fn synthesize_symbolic_value<S: Into<String>>(&self, op_name: S) -> SymbolicValue {
         match &self {
+            Ty::BitTensor => {
+                SymbolicValue::BitTensor(Symbolic::Symbolic(SymbolicHandle { op: op_name.into() }))
+            }
             Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
             })),
@@ -126,6 +132,11 @@ impl Ty {
             }
             Ty::Replicated128Tensor => {
                 SymbolicValue::Replicated128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                }))
+            }
+            Ty::ReplicatedBitTensor => {
+                SymbolicValue::ReplicatedBitTensor(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
                 }))
             }
@@ -148,11 +159,13 @@ pub trait KnownType {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
+    BitTensor(BitTensor),
     Ring32Tensor(Ring32Tensor),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Replicated64Tensor(Replicated64Tensor),
     Replicated128Tensor(Replicated128Tensor),
+    ReplicatedBitTensor(ReplicatedBitTensor),
     ReplicatedSetup(ReplicatedSetup),
     PrfKey(PrfKey),
 }
@@ -160,11 +173,13 @@ pub enum Value {
 impl Value {
     pub fn ty(&self) -> Ty {
         match self {
+            Value::BitTensor(_) => Ty::BitTensor,
             Value::Ring32Tensor(_) => Ty::Ring32Tensor,
             Value::Ring64Tensor(_) => Ty::Ring64Tensor,
             Value::Ring128Tensor(_) => Ty::Ring128Tensor,
             Value::Replicated64Tensor(_) => Ty::Replicated64Tensor,
             Value::Replicated128Tensor(_) => Ty::Replicated128Tensor,
+            Value::ReplicatedBitTensor(_) => Ty::ReplicatedBitTensor,
             Value::ReplicatedSetup(_) => Ty::ReplicatedSetup,
             Value::PrfKey(_) => Ty::PrfKey,
         }
@@ -173,11 +188,13 @@ impl Value {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SymbolicValue {
+    BitTensor(<BitTensor as KnownType>::Symbolic),
     Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
     Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
     Ring128Tensor(<Ring128Tensor as KnownType>::Symbolic),
     Replicated64Tensor(<Replicated64Tensor as KnownType>::Symbolic),
     Replicated128Tensor(<Replicated128Tensor as KnownType>::Symbolic),
+    ReplicatedBitTensor(<ReplicatedBitTensor as KnownType>::Symbolic),
     ReplicatedSetup(<ReplicatedSetup as KnownType>::Symbolic),
     PrfKey(<PrfKey as KnownType>::Symbolic),
 }
@@ -241,6 +258,7 @@ macro_rules! value {
 // `enum SymbolicValue` and maybe even `enum Ty`.
 // one thing to be careful about here is to still make room for manual
 // constructions during development.
+value!(BitTensor, Symbolic<BitTensor>);
 value!(Ring32Tensor, Symbolic<Ring32Tensor>);
 value!(Ring64Tensor, Symbolic<Ring64Tensor>);
 value!(Ring128Tensor, Symbolic<Ring128Tensor>);
@@ -251,6 +269,10 @@ value!(
 value!(
     Replicated128Tensor,
     Symbolic<ReplicatedTensor<Symbolic<Ring128Tensor>>>
+);
+value!(
+    ReplicatedBitTensor,
+    Symbolic<ReplicatedTensor<Symbolic<BitTensor>>>
 );
 value!(
     ReplicatedSetup,
@@ -279,9 +301,12 @@ impl<T> From<SymbolicHandle> for Symbolic<T> {
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
     RingAddOp(RingAddOp),
+    BitXorOp(BitXorOp),
+    BitAndOp(BitAndOp),
     RingSubOp(RingSubOp),
     RingMulOp(RingMulOp),
     RingSampleOp(RingSampleOp),
+    BitSampleOp(BitSampleOp),
     RepSetupOp(RepSetupOp),
     RepAddOp(RepAddOp),
     RepMulOp(RepMulOp),
@@ -304,9 +329,12 @@ macro_rules! operator {
 // that takes care of everything, including generating `enum Operator`.
 operator!(PrfKeyGenOp);
 operator!(RingAddOp);
+operator!(BitXorOp);
+operator!(BitAndOp);
 operator!(RingSubOp);
 operator!(RingMulOp);
 operator!(RingSampleOp);
+operator!(BitSampleOp);
 operator!(RepSetupOp);
 operator!(RepAddOp);
 operator!(RepMulOp);
@@ -431,6 +459,23 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct BitTensor(u8);
+
+impl BitXor for BitTensor {
+    type Output = BitTensor;
+    fn bitxor(self, other: Self) -> Self::Output {
+        BitTensor(self.0 ^ other.0)
+    }
+}
+
+impl BitAnd for BitTensor {
+    type Output = BitTensor;
+    fn bitand(self, other: Self) -> Self::Output {
+        BitTensor(self.0 & other.0)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct ReplicatedTensor<R> {
     shares: [[R; 2]; 3],
 }
@@ -457,6 +502,8 @@ pub type Ring128Tensor = RingTensor<u128>;
 pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
 
 pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
+
+pub type ReplicatedBitTensor = ReplicatedTensor<BitTensor>;
 
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
@@ -690,6 +737,26 @@ trait PlacementMul<C: Context, T, U> {
     }
 }
 
+trait PlacementXor<C: Context, T, U> {
+    type Output;
+
+    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+
+    fn xor(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
+        self.apply(ctx, x, y)
+    }
+}
+
+trait PlacementAnd<C: Context, T, U> {
+    type Output;
+
+    fn apply(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+
+    fn and(&self, ctx: &C, x: &T, y: &U) -> Self::Output {
+        self.apply(ctx, x, y)
+    }
+}
+
 trait PlacementMulSetup<C: Context, S, T, U> {
     type Output;
 
@@ -725,7 +792,10 @@ impl Context for ConcreteContext {
         match op {
             Operator::PrfKeyGenOp(op) => op.compile(self)(operands),
             Operator::RingSampleOp(op) => op.compile(self)(operands),
+            Operator::BitSampleOp(op) => op.compile(self)(operands),
             Operator::RingAddOp(op) => op.compile(self)(operands),
+            Operator::BitXorOp(op) => op.compile(self)(operands),
+            Operator::BitAndOp(op) => op.compile(self)(operands),
             Operator::RingSubOp(op) => op.compile(self)(operands),
             Operator::RingMulOp(op) => op.compile(self)(operands),
             Operator::RepSetupOp(op) => op.compile(self)(operands),
@@ -752,7 +822,10 @@ impl Context for SymbolicContext {
         match op {
             Operator::PrfKeyGenOp(op) => op.execute_symbolic(self, operands),
             Operator::RingSampleOp(op) => op.execute_symbolic(self, operands),
+            Operator::BitSampleOp(op) => op.execute_symbolic(self, operands),
             Operator::RingAddOp(op) => op.execute_symbolic(self, operands),
+            Operator::BitXorOp(op) => op.execute_symbolic(self, operands),
+            Operator::BitAndOp(op) => op.execute_symbolic(self, operands),
             Operator::RingSubOp(op) => op.execute_symbolic(self, operands),
             Operator::RingMulOp(op) => op.execute_symbolic(self, operands),
             Operator::RepSetupOp(op) => op.execute_symbolic(self, operands),
@@ -1597,12 +1670,14 @@ impl RepAddOp {
 
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
 
 hybrid_kernel! {
     RepAddOp,
     [
         (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor),
-        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor)
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor)
     ],
     Self::kernel
 }
@@ -1692,12 +1767,14 @@ impl RepMulOp {
 
 modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
 modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
 
 hybrid_kernel! {
     RepMulOp,
     [
         (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor),
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor)
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor)
     ],
     Self::kernel
 }
@@ -1780,12 +1857,14 @@ impl RepShareOp {
 
 modelled!(PlacementShare, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
 modelled!(PlacementShare, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
+modelled!(PlacementShare, ReplicatedPlacement, (BitTensor) -> ReplicatedBitTensor, RepShareOp);
 
 abstract_kernel! {
     RepShareOp,
     [
         (ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor),
-        (ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor)
+        (ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor),
+        (ReplicatedPlacement, (BitTensor) -> ReplicatedBitTensor)
     ],
     Self::kernel
 }
@@ -1861,17 +1940,75 @@ impl RingAddOp {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct BitXorOp {
+    sig: Signature,
+    plc: Placement, // TODO placement should be on Operation!
+}
+
+impl BitXorOp {
+    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
+        BitXorOp {
+            sig: sig.into(),
+            plc: plc.clone().into(),
+        }
+    }
+
+    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
+    where
+        BitTensor: BitXor<BitTensor, Output = BitTensor>,
+    {
+        x ^ y
+    }
+}
+
 // NOTE uncomment the next line to see the kernel check system in action
 // modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
 // NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
 modelled!(PlacementAdd, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
 modelled!(PlacementAdd, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
+modelled!(PlacementXor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
+
+impl PlacementAdd<ConcreteContext, BitTensor, BitTensor> for HostPlacement {
+    type Output = BitTensor;
+    fn apply(&self, ctx: &ConcreteContext, x: &BitTensor, y: &BitTensor) -> BitTensor {
+        // NOTE: xor = add when in Z2
+        self.xor(ctx, x, y)
+    }
+}
+
+impl
+    PlacementAdd<
+        SymbolicContext,
+        <BitTensor as KnownType>::Symbolic,
+        <BitTensor as KnownType>::Symbolic,
+    > for HostPlacement
+{
+    type Output = <BitTensor as KnownType>::Symbolic;
+    fn apply(
+        &self,
+        ctx: &SymbolicContext,
+        x: &<BitTensor as KnownType>::Symbolic,
+        y: &<BitTensor as KnownType>::Symbolic,
+    ) -> Self::Output {
+        // NOTE: xor = add when in Z2
+        self.xor(ctx, x, y)
+    }
+}
 
 kernel! {
     RingAddOp,
     [
         (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor),
         (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor)
+    ],
+    Self::kernel
+}
+
+kernel! {
+    BitXorOp,
+    [
+        (HostPlacement, (BitTensor, BitTensor) -> BitTensor)
     ],
     Self::kernel
 }
@@ -1915,6 +2052,33 @@ kernel! {
     Self::kernel
 }
 
+impl PlacementSub<ConcreteContext, BitTensor, BitTensor> for HostPlacement {
+    type Output = BitTensor;
+    fn apply(&self, ctx: &ConcreteContext, x: &BitTensor, y: &BitTensor) -> BitTensor {
+        // NOTE: xor = sub when in Z2
+        self.xor(ctx, x, y)
+    }
+}
+
+impl
+    PlacementSub<
+        SymbolicContext,
+        <BitTensor as KnownType>::Symbolic,
+        <BitTensor as KnownType>::Symbolic,
+    > for HostPlacement
+{
+    type Output = <BitTensor as KnownType>::Symbolic;
+    fn apply(
+        &self,
+        ctx: &SymbolicContext,
+        x: &<BitTensor as KnownType>::Symbolic,
+        y: &<BitTensor as KnownType>::Symbolic,
+    ) -> Self::Output {
+        // NOTE: xor = sub when in Z2
+        self.xor(ctx, x, y)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingMulOp {
     sig: Signature,
@@ -1942,8 +2106,31 @@ impl RingMulOp {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct BitAndOp {
+    sig: Signature,
+    plc: Placement, // TODO placement should be on Operation!
+}
+
+impl BitAndOp {
+    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
+        BitAndOp {
+            sig: sig.into(),
+            plc: plc.clone().into(),
+        }
+    }
+
+    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
+    where
+        BitTensor: BitAnd<BitTensor, Output = BitTensor>,
+    {
+        x & y
+    }
+}
+
 modelled!(PlacementMul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
 modelled!(PlacementMul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
+modelled!(PlacementAnd, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
 
 kernel! {
     RingMulOp,
@@ -1952,6 +2139,41 @@ kernel! {
         (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor)
     ],
     Self::kernel
+}
+
+kernel! {
+    BitAndOp,
+    [
+        (HostPlacement, (BitTensor, BitTensor) -> BitTensor)
+    ],
+    Self::kernel
+}
+
+impl PlacementMul<ConcreteContext, BitTensor, BitTensor> for HostPlacement {
+    type Output = BitTensor;
+    fn apply(&self, ctx: &ConcreteContext, x: &BitTensor, y: &BitTensor) -> BitTensor {
+        // NOTE: mul = and when in Z2
+        self.and(ctx, x, y)
+    }
+}
+
+impl
+    PlacementMul<
+        SymbolicContext,
+        <BitTensor as KnownType>::Symbolic,
+        <BitTensor as KnownType>::Symbolic,
+    > for HostPlacement
+{
+    type Output = <BitTensor as KnownType>::Symbolic;
+    fn apply(
+        &self,
+        ctx: &SymbolicContext,
+        x: &<BitTensor as KnownType>::Symbolic,
+        y: &<BitTensor as KnownType>::Symbolic,
+    ) -> Self::Output {
+        // NOTE: mul = and when in Z2
+        self.and(ctx, x, y)
+    }
 }
 
 trait PlacementKeyGen<C: Context, K> {
@@ -2002,12 +2224,21 @@ trait PlacementSample<C: Context, O> {
 
 modelled!(PlacementSample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
 modelled!(PlacementSample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
+modelled!(PlacementSample, HostPlacement, () -> BitTensor, BitSampleOp);
 
 kernel! {
     RingSampleOp,
     [
         (HostPlacement, () -> Ring64Tensor),
         (HostPlacement, () -> Ring128Tensor)
+    ],
+    Self::kernel
+}
+
+kernel! {
+    BitSampleOp,
+    [
+        (HostPlacement, () -> BitTensor)
     ],
     Self::kernel
 }
@@ -2032,6 +2263,27 @@ impl RingSampleOp {
     {
         // TODO
         RingTensor::<T>(T::from(987654321))
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct BitSampleOp {
+    sig: Signature,
+    plc: Placement,
+}
+
+impl BitSampleOp {
+    fn from_placement_signature(plc: &HostPlacement, sig: NullarySignature) -> Self {
+        BitSampleOp {
+            sig: sig.into(),
+            plc: plc.clone().into(),
+        }
+    }
+
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor
+where {
+        // TODO
+        BitTensor(0)
     }
 }
 
@@ -2472,5 +2724,143 @@ mod tests {
 
         // let exec = SymbolicExecutor;
         // exec.eval(comp);
+    }
+
+    #[test]
+    fn test_rep_bin_exec() {
+        #![allow(clippy::redundant_clone)]
+
+        use std::collections::HashMap;
+
+        let alice_plc = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob_plc = HostPlacement {
+            player: "bob".into(),
+        };
+        let rep_plc = ReplicatedPlacement {
+            players: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let ops: Vec<Operation> = vec![
+            Operation {
+                name: "x".into(),
+                operator: BitSampleOp {
+                    sig: NullarySignature { ret: Ty::BitTensor }.into(),
+                    plc: alice_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "xe".into(),
+                operator: RepShareOp {
+                    sig: UnarySignature {
+                        arg0: Ty::BitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["x".into()],
+            },
+            Operation {
+                name: "y".into(),
+                operator: BitSampleOp {
+                    sig: NullarySignature { ret: Ty::BitTensor }.into(),
+                    plc: bob_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "ye".into(),
+                operator: RepShareOp {
+                    sig: UnarySignature {
+                        arg0: Ty::BitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["y".into()],
+            },
+            Operation {
+                name: "s".into(),
+                operator: RepSetupOp {
+                    sig: NullarySignature {
+                        ret: Ty::ReplicatedSetup,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec![],
+            },
+            Operation {
+                name: "ze".into(),
+                operator: RepMulOp {
+                    sig: TernarySignature {
+                        arg0: Ty::ReplicatedSetup,
+                        arg1: Ty::ReplicatedBitTensor,
+                        arg2: Ty::ReplicatedBitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["s".into(), "xe".into(), "ye".into()],
+            },
+            Operation {
+                name: "ve".into(),
+                operator: RepMulOp {
+                    sig: TernarySignature {
+                        arg0: Ty::ReplicatedSetup,
+                        arg1: Ty::ReplicatedBitTensor,
+                        arg2: Ty::ReplicatedBitTensor,
+                        ret: Ty::ReplicatedBitTensor,
+                    }
+                    .into(),
+                    plc: rep_plc.clone().into(),
+                }
+                .into(),
+                operands: vec!["s".into(), "xe".into(), "ye".into()],
+            },
+        ];
+
+        let ctx = SymbolicContext::default();
+        let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+
+        for op in ops.iter() {
+            let operator = op.operator.clone();
+            let operands = op
+                .operands
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = ctx.execute(operator, operands);
+            env.insert(op.name.clone(), res);
+        }
+
+        println!("{:?}", env);
+
+        let ctx = ConcreteContext::default();
+        let mut env: HashMap<String, Value> = HashMap::default();
+
+        for op in ops.iter() {
+            let operator = op.operator.clone();
+            let operands = op
+                .operands
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = ctx.execute(operator, operands);
+            env.insert(op.name.clone(), res);
+        }
+
+        println!("{:?}", env);
     }
 }
