@@ -1685,17 +1685,6 @@ pub struct RepAddOp {
     plc: Placement,
 }
 
-// TODO
-// problem with ring/rep mixed kernels is that eg hybrid_kernel will only call the kernel function
-// if both inputs are concrete, so we can end up with
-//   add(Concrete(RingTensor), ReplicatedTensor(Symbolic(RingTensor)))
-// which in turn leads to
-//   add(Concrete(RingTensor), Symbolic(RingTensor))
-// which we should of course not support at this point.
-// we could use abstract_kernel here instead, but then we would have to match on the replicated 
-// tensor, which is what we where trying to avoid with the harness.
-// maybe we can get around this by introducing proper FixedHostTensor and FixedReplicatedTensor??
-
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
 modelled!(PlacementAdd, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
@@ -1828,6 +1817,25 @@ pub struct RepMulOp {
     plc: Placement,
 }
 
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepMulOp);
+
+hybrid_kernel! {
+    RepMulOp,
+    [
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel)
+    ]
+}
+
 impl RepMulOp {
     fn from_placement_signature(plc: &ReplicatedPlacement, sig: TernarySignature) -> Self {
         RepMulOp {
@@ -1836,10 +1844,10 @@ impl RepMulOp {
         }
     }
 
-    fn kernel<C: Context, R, K>(
+    fn rep_rep_kernel<C: Context, R, K>(
         ctx: &C,
         rep: &ReplicatedPlacement,
-        s: AbstractReplicatedSetup<K>,
+        setup: AbstractReplicatedSetup<K>,
         x: ReplicatedTensor<R>,
         y: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
@@ -1862,7 +1870,7 @@ impl RepMulOp {
 
         let ReplicatedZeroShare {
             alphas: [a0, a1, a2],
-        } = rep.zero_share(ctx, &s);
+        } = rep.zero_share(ctx, &setup);
 
         // TODO because of Rust's let polymorphism and lifetimes we cannot use the same f in all apply! below
         // let f = |xii, yii, xji, yji| {
@@ -1903,17 +1911,66 @@ impl RepMulOp {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
         }
     }
-}
 
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
-modelled!(PlacementMulSetup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+    fn ring_rep_kernel<C: Context, R, K>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        _setup: AbstractReplicatedSetup<K>,
+        x: R,
+        y: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        HostPlacement: PlacementMul<C, R, R, Output = R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
 
-hybrid_kernel! {
-    RepMulOp,
-    [
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::kernel)
-    ]
+        let ReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = &y;
+
+        let z00 = player0.mul(ctx, &x, y00);
+        let z10 = player0.mul(ctx, &x, y10);
+
+        let z11 = player1.mul(ctx, &x, y11);
+        let z21 = player1.mul(ctx, &x, y21);
+
+        let z22 = player2.mul(ctx, &x, y22);
+        let z02 = player2.mul(ctx, &x, y02);
+
+        ReplicatedTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+
+    fn rep_ring_kernel<C: Context, R, K>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        _setup: AbstractReplicatedSetup<K>,
+        x: ReplicatedTensor<R>,
+        y: R,
+    ) -> ReplicatedTensor<R>
+    where
+        HostPlacement: PlacementMul<C, R, R, Output = R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.mul(ctx, x00, &y);
+        let z10 = player0.mul(ctx, x10, &y);
+
+        let z11 = player1.mul(ctx, x11, &y);
+        let z21 = player1.mul(ctx, x21, &y);
+
+        let z22 = player2.mul(ctx, x22, &y);
+        let z02 = player2.mul(ctx, x02, &y);
+
+        ReplicatedTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
 }
 
 trait PlacementZeroShare<C: Context, K, R> {
