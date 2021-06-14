@@ -2730,10 +2730,7 @@ mod tests {
             Operation {
                 name: "x".into(),
                 operator: BitSampleOp {
-                    sig: NullarySignature {
-                        ret: Ty::BitTensor,
-                    }
-                    .into(),
+                    sig: NullarySignature { ret: Ty::BitTensor }.into(),
                     plc: alice_plc.clone().into(),
                 }
                 .into(),
@@ -2755,10 +2752,7 @@ mod tests {
             Operation {
                 name: "y".into(),
                 operator: BitSampleOp {
-                    sig: NullarySignature {
-                        ret: Ty::BitTensor,
-                    }
-                    .into(),
+                    sig: NullarySignature { ret: Ty::BitTensor }.into(),
                     plc: bob_plc.clone().into(),
                 }
                 .into(),
@@ -2852,7 +2846,5 @@ mod tests {
         }
 
         println!("{:?}", env);
-
     }
-
 }
