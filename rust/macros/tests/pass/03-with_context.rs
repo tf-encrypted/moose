@@ -20,6 +20,6 @@ fn main() {
     let x = 45;
     let y = 646;
     let z = -465465;
-    let res = with_context!(player, ctx, x + y * z);
+    let res = with_context!(player, x + y * z);
     assert_eq!(res, x + y * z);
 }

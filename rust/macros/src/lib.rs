@@ -16,17 +16,15 @@ use syn::{parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, Ident, Token}
 pub fn with_context(input: TokenStream) -> TokenStream {
     let EvalWithContext {
         player,
-        context,
         mut expr,
     } = parse_macro_input!(input as EvalWithContext);
-    unsugar(player, context, &mut expr);
+    unsugar(player, &mut expr);
     TokenStream::from(quote!(#expr))
 }
 
 /// Input members of the macros signature
 struct EvalWithContext {
     player: Ident,
-    context: Ident,
     expr: Expr,
 }
 
@@ -34,12 +32,9 @@ impl Parse for EvalWithContext {
     fn parse(input: ParseStream) -> Result<Self> {
         let player: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
-        let context: Ident = input.parse()?;
-        input.parse::<Token![,]>()?;
         let expr: Expr = input.parse()?;
         Ok(EvalWithContext {
             player,
-            context,
             expr,
         })
     }
@@ -48,10 +43,9 @@ impl Parse for EvalWithContext {
 /// The main function for the with_context macros.
 ///
 /// Parses the expression and replaced binary operations with calls to the player/context methods.
-fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
+fn unsugar(player: Ident, expr: &'_ mut Expr) {
     struct Visitor {
         player: Ident,
-        context: Ident,
     }
     impl VisitMut for Visitor {
         fn visit_expr_mut(self: &mut Visitor, expr: &mut Expr) {
@@ -59,7 +53,6 @@ fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
             syn::visit_mut::visit_expr_mut(self, expr);
             // 2: process the outermost layer
             let player = &self.player;
-            let context = &self.context;
 
             let (left, op, right) = match *expr {
                 Expr::Binary(ExprBinary {
@@ -80,11 +73,11 @@ fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
                 _ => return,
             };
 
-            *expr = parse_quote!( #bin_fun(#context,  &#left, &#right) );
+            *expr = parse_quote!( #bin_fun(ctx, &#left, &#right) );
         }
     }
 
-    let mut visitor = Visitor { player, context };
+    let mut visitor = Visitor { player };
     visitor.visit_expr_mut(expr)
 }
 
@@ -125,15 +118,14 @@ mod tests {
     #[test]
     fn test_direct() {
         let player: Ident = parse_quote!(p);
-        let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a + b * c);
-        unsugar(player, context, &mut e);
+        unsugar(player, &mut e);
         let result = format_tokenstream(quote!(fn main() {let z = #e;}));
 
         // Make sure the produced code matches the expectation
         let expected = r#"
         |fn main() {
-        |    let z = p.add(q, &a, &p.mul(q, &b, &c));
+        |    let z = p.add(ctx, &a, &p.mul(ctx, &b, &c));
         |}
         |"#
         .trim_margin()
@@ -145,15 +137,14 @@ mod tests {
     /// Making sure the expression can have anything at all and not mess up our macros
     fn test_sub_expr() {
         let player: Ident = parse_quote!(p);
-        let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a::new(d) + b.member * func(c));
-        unsugar(player, context, &mut e);
+        unsugar(player, &mut e);
         let result = format_tokenstream(quote!(fn main() {let z = #e;}));
 
         // Make sure the produced code matches the expectation
         let expected = r#"
         |fn main() {
-        |    let z = p.add(q, &a::new(d), &p.mul(q, &b.member, &func(c)));
+        |    let z = p.add(ctx, &a::new(d), &p.mul(ctx, &b.member, &func(c)));
         |}
         |"#
         .trim_margin()
@@ -165,15 +156,14 @@ mod tests {
     /// Making sure the expression can have anything at all and not mess up our macros
     fn test_sub_expr_inside() {
         let player: Ident = parse_quote!(p);
-        let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a + func(b + c));
-        unsugar(player, context, &mut e);
+        unsugar(player, &mut e);
         let result = format_tokenstream(quote!(fn main() {let z = #e;}));
 
         // Make sure the produced code matches the expectation
         let expected = r#"
         |fn main() {
-        |    let z = p.add(q, &a, &func(p.add(q, &b, &c)));
+        |    let z = p.add(ctx, &a, &func(p.add(ctx, &b, &c)));
         |}
         |"#
         .trim_margin()

@@ -25,6 +25,6 @@ fn main() {
     let x = 0;
     let y = 1;
     let z = 2;
-    let res = with_context!(player, ctx, x - y * z);
+    let res = with_context!(player, x - y * z);
     assert_eq!(res, 2*x - 4*y*z);
 }
