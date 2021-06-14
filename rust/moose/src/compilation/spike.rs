@@ -1670,14 +1670,14 @@ impl RepAddOp {
 
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-// modelled!(PlacementAdd, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
+modelled!(PlacementAdd, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
 
 hybrid_kernel! {
     RepAddOp,
     [
         (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor),
-        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor)
-        // (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor)
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor)
     ],
     Self::kernel
 }
@@ -2152,7 +2152,7 @@ kernel! {
 impl PlacementMul<ConcreteContext, BitTensor, BitTensor> for HostPlacement {
     type Output = BitTensor;
     fn apply(&self, ctx: &ConcreteContext, x: &BitTensor, y: &BitTensor) -> BitTensor {
-        // NOTE: xor = sub when in Z2
+        // NOTE: mul = and when in Z2
         self.and(ctx, x, y)
     }
 }
@@ -2171,7 +2171,7 @@ impl
         x: &<BitTensor as KnownType>::Symbolic,
         y: &<BitTensor as KnownType>::Symbolic,
     ) -> Self::Output {
-        // NOTE: xor = sub when in Z2
+        // NOTE: mul = and when in Z2
         self.and(ctx, x, y)
     }
 }
