@@ -304,6 +304,12 @@ impl<T: PlacedFOO> PlacedFOO for Symbolic<T> {
     }
 }
 
+impl PlacedFOO for BitTensor {
+    fn placement(&self) -> Placement {
+        HostPlacement { player: "alice".into() }.into() // TODO return actual placement
+    }
+}
+
 impl<T> PlacedFOO for RingTensor<T> {
     fn placement(&self) -> Placement {
         HostPlacement { player: "alice".into() }.into() // TODO return actual placement
