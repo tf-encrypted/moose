@@ -1736,15 +1736,9 @@ impl RepMulOp {
             alphas: [a0, a1, a2],
         } = rep.zero_share(ctx, &setup);
 
-        let z0 = with_context!(player0, ctx, {
-            x00 * y00 + x00 * y10 + x10 * y00 + a0
-        });
-        let z1 = with_context!(player1, ctx, {
-            x11 * y11 + x11 * y21 + x21 * y11 + a1
-        });
-        let z2 = with_context!(player2, ctx, {
-            x22 * y22 + x22 * y02 + x02 * y22 + a2
-        });
+        let z0 = with_context!(player0, ctx, { x00 * y00 + x00 * y10 + x10 * y00 + a0 });
+        let z1 = with_context!(player1, ctx, { x11 * y11 + x11 * y21 + x21 * y11 + a1 });
+        let z2 = with_context!(player2, ctx, { x22 * y22 + x22 * y02 + x02 * y22 + a2 });
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
@@ -1892,9 +1886,7 @@ impl RepShareOp {
 
         let x0 = owner.sample(ctx);
         let x1 = owner.sample(ctx);
-        let x2 = with_context!(owner, ctx, {
-            x - (x0 + x1)
-        });
+        let x2 = with_context!(owner, ctx, x - (x0 + x1));
 
         ReplicatedTensor {
             shares: [[x0.clone(), x1.clone()], [x1, x2.clone()], [x2, x0]],
