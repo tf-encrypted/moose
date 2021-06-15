@@ -532,7 +532,6 @@ impl Add<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn add(self, other: RingTensor<u64>) -> Self::Output {
-        assert_eq!(self.1, other.1);
         RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
@@ -541,7 +540,6 @@ impl Add<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn add(self, other: RingTensor<u128>) -> Self::Output {
-        assert_eq!(self.1, other.1);
         RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
@@ -550,7 +548,6 @@ impl Sub<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn sub(self, other: RingTensor<u64>) -> Self::Output {
-        assert_eq!(self.1, other.1);
         RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
@@ -559,7 +556,6 @@ impl Sub<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn sub(self, other: RingTensor<u128>) -> Self::Output {
-        assert_eq!(self.1, other.1);
         RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
@@ -568,7 +564,6 @@ impl Mul<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn mul(self, other: RingTensor<u64>) -> Self::Output {
-        assert_eq!(self.1, other.1);
         RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
@@ -577,7 +572,6 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn mul(self, other: RingTensor<u128>) -> Self::Output {
-        assert_eq!(self.1, other.1);
         RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
@@ -588,7 +582,6 @@ pub struct BitTensor(u8, HostPlacement);
 impl BitXor for BitTensor {
     type Output = BitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
-        assert_eq!(self.1, other.1);
         BitTensor(self.0 ^ other.0, self.1)
     }
 }
@@ -596,7 +589,6 @@ impl BitXor for BitTensor {
 impl BitAnd for BitTensor {
     type Output = BitTensor;
     fn bitand(self, other: Self) -> Self::Output {
-        assert_eq!(self.1, other.1);
         BitTensor(self.0 & other.0, self.1)
     }
 }
