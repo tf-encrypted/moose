@@ -112,43 +112,56 @@ pub enum Ty {
 }
 
 impl Ty {
-    pub fn synthesize_symbolic_value<S: Into<String>>(&self, op_name: S) -> SymbolicValue {
+    pub fn synthesize_symbolic_value<S: Into<String>>(
+        &self,
+        op_name: S,
+        plc: Placement,
+    ) -> SymbolicValue {
         match &self {
-            Ty::BitTensor => {
-                SymbolicValue::BitTensor(Symbolic::Symbolic(SymbolicHandle { op: op_name.into() }))
-            }
+            Ty::BitTensor => SymbolicValue::BitTensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
             Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
+                plc: plc.try_into().unwrap(),
             })),
             Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
+                plc: plc.try_into().unwrap(),
             })),
             Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
+                plc: plc.try_into().unwrap(),
             })),
             Ty::Replicated64Tensor => {
                 SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
                 }))
             }
             Ty::Replicated128Tensor => {
                 SymbolicValue::Replicated128Tensor(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
                 }))
             }
             Ty::ReplicatedBitTensor => {
                 SymbolicValue::ReplicatedBitTensor(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
                 }))
             }
             Ty::ReplicatedSetup => {
                 SymbolicValue::ReplicatedSetup(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
                 }))
             }
-            Ty::PrfKey => {
-                SymbolicValue::PrfKey(Symbolic::Symbolic(SymbolicHandle { op: op_name.into() }))
-            }
+            Ty::PrfKey => SymbolicValue::PrfKey(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
         }
     }
 }
@@ -282,29 +295,27 @@ value!(
 value!(PrfKey, Symbolic<PrfKey>);
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Symbolic<T> {
-    Symbolic(SymbolicHandle),
+pub enum Symbolic<T: PlacedFOO> {
+    Symbolic(SymbolicHandle<T::Placement>),
     Concrete(T),
 }
 
-trait PlacedFOO {
+pub trait PlacedFOO {
     type Placement;
 
     fn placement(&self) -> Self::Placement;
 }
 
-impl<T: PlacedFOO> PlacedFOO for Symbolic<T> {
+impl<T: PlacedFOO> PlacedFOO for Symbolic<T>
+where
+    T::Placement: Clone,
+{
     type Placement = T::Placement;
 
     fn placement(&self) -> Self::Placement {
         match self {
-            Symbolic::Symbolic(x) => {
-                // HostPlacement { player: "alice".into() }.into() // TODO return actual placement
-                unimplemented!()
-            }
-            Symbolic::Concrete(x) => {
-                x.placement()
-            }
+            Symbolic::Symbolic(x) => x.plc.clone(),
+            Symbolic::Concrete(x) => x.placement(),
         }
     }
 }
@@ -313,7 +324,9 @@ impl PlacedFOO for BitTensor {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
-        HostPlacement { player: "alice".into() } // TODO return actual placement
+        HostPlacement {
+            player: "alice".into(),
+        } // TODO return actual placement
     }
 }
 
@@ -321,7 +334,9 @@ impl<T> PlacedFOO for RingTensor<T> {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
-        HostPlacement { player: "alice".into() } // TODO return actual placement
+        HostPlacement {
+            player: "alice".into(),
+        } // TODO return actual placement
     }
 }
 
@@ -333,7 +348,46 @@ where
 
     fn placement(&self) -> Self::Placement {
         let ReplicatedTensor {
-            shares: [ [x00, x10], [x11, x21], [x22, x02] ],
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = self;
+
+        let player0 = x00.placement();
+        assert_eq!(x10.placement(), player0);
+
+        let player1 = x11.placement();
+        assert_eq!(x21.placement(), player1);
+
+        let player2 = x22.placement();
+        assert_eq!(x02.placement(), player2);
+
+        let players = [
+            player0.player.clone(),
+            player1.player.clone(),
+            player2.player.clone(),
+        ];
+        ReplicatedPlacement { players }
+    }
+}
+
+impl PlacedFOO for PrfKey {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        HostPlacement {
+            player: "alice".into(),
+        } // TODO return actual placement
+    }
+}
+
+impl<K> PlacedFOO for AbstractReplicatedSetup<K>
+where
+    K: PlacedFOO<Placement = HostPlacement>,
+{
+    type Placement = ReplicatedPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        let AbstractReplicatedSetup {
+            keys: [[x00, x10], [x11, x21], [x22, x02]],
         } = self;
 
         let player0 = x00.placement();
@@ -355,13 +409,13 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct SymbolicHandle {
+pub struct SymbolicHandle<P> {
     op: String,
-    // plc: P, // TODO
+    plc: P, // TODO
 }
 
-impl<T> From<SymbolicHandle> for Symbolic<T> {
-    fn from(x: SymbolicHandle) -> Symbolic<T> {
+impl<T: PlacedFOO> From<SymbolicHandle<T::Placement>> for Symbolic<T> {
+    fn from(x: SymbolicHandle<T::Placement>) -> Symbolic<T> {
         Symbolic::Symbolic(x)
     }
 }
@@ -963,13 +1017,17 @@ impl<T> From<RingTensor<T>> for Symbolic<RingTensor<T>> {
     }
 }
 
-impl<R> From<ReplicatedTensor<R>> for Symbolic<ReplicatedTensor<R>> {
+impl<R: PlacedFOO<Placement = HostPlacement>> From<ReplicatedTensor<R>>
+    for Symbolic<ReplicatedTensor<R>>
+{
     fn from(x: ReplicatedTensor<R>) -> Symbolic<ReplicatedTensor<R>> {
         Symbolic::Concrete(x)
     }
 }
 
-impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>> {
+impl<K: PlacedFOO<Placement = HostPlacement>> From<AbstractReplicatedSetup<K>>
+    for Symbolic<AbstractReplicatedSetup<K>>
+{
     fn from(x: AbstractReplicatedSetup<K>) -> Symbolic<AbstractReplicatedSetup<K>> {
         Symbolic::Concrete(x)
     }
@@ -1318,8 +1376,8 @@ macro_rules! kernel {
     ($op:ty, [$(($plc:ty, () -> $u:ty)),+], $k:expr) => {
         runtime_kernel!($op, [$(($plc, () -> $u)),+], $k);
         compiletime_kernel!($op, [$(($plc, () -> $u)),+], |op, ctx, plc| {
-            let op_name = ctx.add_operation(op, &[], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc })
         });
     };
 
@@ -1335,8 +1393,8 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[&x0_op], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc })
         });
     };
 
@@ -1357,8 +1415,8 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc })
         });
     };
 
@@ -1384,8 +1442,8 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op, &x2_op], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op, &x2_op], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc })
         });
     };
 }
@@ -1416,8 +1474,8 @@ macro_rules! hybrid_kernel {
                     $k(ctx, &plc, x0).into()
                 }
                 Symbolic::Symbolic(h0) => {
-                    let op_name = ctx.add_operation(op, &[&h0.op], &plc.into());
-                    Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    let op_name = ctx.add_operation(op, &[&h0.op], &plc.clone().into());
+                    Symbolic::Symbolic(SymbolicHandle { op: op_name, plc })
                 }
             }
         });
@@ -1435,8 +1493,8 @@ macro_rules! hybrid_kernel {
                     $k(ctx, &plc, x0, x1).into()
                 }
                 (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                    let op_name = ctx.add_operation(op, &[&h0.op, &h1.op], &plc.into());
-                    Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    let op_name = ctx.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                    Symbolic::Symbolic(SymbolicHandle { op: op_name, plc })
                 }
                 _ => unimplemented!(), // ok
             }
@@ -1455,8 +1513,8 @@ macro_rules! hybrid_kernel {
                     $k(ctx, &plc, x0, x1, x2).into()
                 }
                 (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                    let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.into());
-                    Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                    let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                    Symbolic::Symbolic(SymbolicHandle { op: op_name, plc })
                 }
                 _ => unimplemented!(), // ok
             }
@@ -1952,11 +2010,7 @@ impl RepRevealOp {
         RepRevealOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context, R: Clone>(
-        ctx: &C,
-        plc: &HostPlacement,
-        xe: ReplicatedTensor<R>,
-    ) -> R
+    fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: ReplicatedTensor<R>) -> R
     where
         R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
@@ -2340,7 +2394,9 @@ impl ConstantOp {
         match plc {
             Placement::HostPlacement(_) => {
                 let op_name = ctx.add_operation(self, &[], plc);
-                self.val.ty().synthesize_symbolic_value(op_name)
+                self.val
+                    .ty()
+                    .synthesize_symbolic_value(op_name, plc.clone())
             }
             _ => unimplemented!(), // ok
         }
@@ -2393,6 +2449,9 @@ mod tests {
     fn test_rep_add_symbolic() {
         let ctx = SymbolicContext::default();
 
+        let alice = HostPlacement { player: "alice".into() };
+        let bob = HostPlacement { player: "bob".into() };
+        let carole = HostPlacement { player: "carole".into() };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
@@ -2401,16 +2460,16 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        SymbolicHandle { op: "x00".into() }.into(),
-                        SymbolicHandle { op: "x10".into() }.into(),
+                        SymbolicHandle { op: "x00".into(), plc: alice.clone() }.into(),
+                        SymbolicHandle { op: "x10".into(), plc: alice.clone() }.into(),
                     ],
                     [
-                        SymbolicHandle { op: "x11".into() }.into(),
-                        SymbolicHandle { op: "x21".into() }.into(),
+                        SymbolicHandle { op: "x11".into(), plc: bob.clone() }.into(),
+                        SymbolicHandle { op: "x21".into(), plc: bob.clone() }.into(),
                     ],
                     [
-                        SymbolicHandle { op: "x22".into() }.into(),
-                        SymbolicHandle { op: "x02".into() }.into(),
+                        SymbolicHandle { op: "x22".into(), plc: carole.clone() }.into(),
+                        SymbolicHandle { op: "x02".into(), plc: carole.clone() }.into(),
                     ],
                 ],
             });
@@ -2419,16 +2478,16 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        SymbolicHandle { op: "y00".into() }.into(),
-                        SymbolicHandle { op: "y10".into() }.into(),
+                        SymbolicHandle { op: "y00".into(), plc: alice.clone() }.into(),
+                        SymbolicHandle { op: "y10".into(), plc: alice.clone() }.into(),
                     ],
                     [
-                        SymbolicHandle { op: "y11".into() }.into(),
-                        SymbolicHandle { op: "y21".into() }.into(),
+                        SymbolicHandle { op: "y11".into(), plc: bob.clone() }.into(),
+                        SymbolicHandle { op: "y21".into(), plc: bob.clone() }.into(),
                     ],
                     [
-                        SymbolicHandle { op: "y22".into() }.into(),
-                        SymbolicHandle { op: "y02".into() }.into(),
+                        SymbolicHandle { op: "y22".into(), plc: carole.clone() }.into(),
+                        SymbolicHandle { op: "y02".into(), plc: carole.clone() }.into(),
                     ],
                 ],
             });
@@ -2440,16 +2499,16 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_0".into() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_1".into() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_0".into(), plc: alice.clone() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_1".into(), plc: alice.clone() }),
                     ],
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_2".into() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_3".into() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_2".into(), plc: bob.clone() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_3".into(), plc: bob.clone() }),
                     ],
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_4".into() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_5".into() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_4".into(), plc: carole.clone() }),
+                        Symbolic::Symbolic(SymbolicHandle { op: "op_5".into(), plc: carole.clone() }),
                     ],
                 ]
             })
