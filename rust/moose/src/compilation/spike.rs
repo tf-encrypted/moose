@@ -8,7 +8,7 @@ use std::ops::{Add, Mul, Sub};
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Debug, Clone, PartialEq)]
-enum Placement {
+pub enum Placement {
     HostPlacement(HostPlacement),
     ReplicatedPlacement(ReplicatedPlacement),
 }
@@ -48,7 +48,7 @@ impl ReplicatedPlacement {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum PlacementTy {
+pub enum PlacementTy {
     HostTy,
     ReplicatedTy,
 }
@@ -393,6 +393,7 @@ struct Operation {
     name: String,
     operator: Operator,
     operands: Vec<String>,
+    plc: Placement,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -609,8 +610,10 @@ macro_rules! modelled {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
-                ctx.execute(op.into(), vec![]).try_into().unwrap()
+                let op = $op::from_signature(sig);
+                ctx.execute(op.into(), &self.into(), vec![])
+                    .try_into()
+                    .unwrap()
             }
         }
 
@@ -619,8 +622,10 @@ macro_rules! modelled {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
-                ctx.execute(op.into(), vec![]).try_into().unwrap()
+                let op = $op::from_signature(sig);
+                ctx.execute(op.into(), &self.into(), vec![])
+                    .try_into()
+                    .unwrap()
             }
         }
     };
@@ -643,8 +648,8 @@ macro_rules! modelled {
                     arg0: <$t0 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
-                ctx.execute(op.into(), vec![x0.clone().into()])
+                let op = $op::from_signature(sig);
+                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
                     .unwrap()
             }
@@ -658,8 +663,8 @@ macro_rules! modelled {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
-                ctx.execute(op.into(), vec![x0.clone().into()])
+                let op = $op::from_signature(sig);
+                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
                     .unwrap()
             }
@@ -687,10 +692,14 @@ macro_rules! modelled {
                     arg1: <$t1 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
-                ctx.execute(op.into(), vec![x0.clone().into(), x1.clone().into()])
-                    .try_into()
-                    .unwrap()
+                let op = $op::from_signature(sig);
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    vec![x0.clone().into(), x1.clone().into()],
+                )
+                .try_into()
+                .unwrap()
             }
         }
 
@@ -710,10 +719,14 @@ macro_rules! modelled {
                     arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
-                ctx.execute(op.into(), vec![x0.clone().into(), x1.clone().into()])
-                    .try_into()
-                    .unwrap()
+                let op = $op::from_signature(sig);
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    vec![x0.clone().into(), x1.clone().into()],
+                )
+                .try_into()
+                .unwrap()
             }
         }
     };
@@ -740,9 +753,10 @@ macro_rules! modelled {
                     arg2: <$t2 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
+                let op = $op::from_signature(sig);
                 ctx.execute(
                     op.into(),
+                    &self.into(),
                     vec![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                 )
                 .try_into()
@@ -773,9 +787,10 @@ macro_rules! modelled {
                     arg2: <<$t2 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op::from_placement_signature(&self, sig);
+                let op = $op::from_signature(sig);
                 ctx.execute(
                     op.into(),
+                    &self.into(),
                     vec![x0.clone().into(), x1.clone().into(), x2.clone().into()],
                 )
                 .try_into()
@@ -869,7 +884,7 @@ trait PlacementSample<C: Context, O> {
 
 pub trait Context {
     type Value;
-    fn execute(&self, op: Operator, operands: Vec<Self::Value>) -> Self::Value;
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
 
     type ReplicatedSetup;
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
@@ -883,24 +898,24 @@ pub struct ConcreteContext {
 impl Context for ConcreteContext {
     type Value = Value;
 
-    fn execute(&self, op: Operator, operands: Vec<Value>) -> Value {
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
-            Operator::PrfKeyGenOp(op) => op.compile(self)(operands),
-            Operator::RingSampleOp(op) => op.compile(self)(operands),
-            Operator::BitSampleOp(op) => op.compile(self)(operands),
-            Operator::RingAddOp(op) => op.compile(self)(operands),
-            Operator::BitXorOp(op) => op.compile(self)(operands),
-            Operator::BitAndOp(op) => op.compile(self)(operands),
-            Operator::RingSubOp(op) => op.compile(self)(operands),
-            Operator::RingMulOp(op) => op.compile(self)(operands),
-            Operator::RepSetupOp(op) => op.compile(self)(operands),
-            Operator::RepShareOp(op) => op.compile(self)(operands),
-            Operator::RepRevealOp(op) => op.compile(self)(operands),
-            Operator::RepAddOp(op) => op.compile(self)(operands),
-            Operator::RepMulOp(op) => op.compile(self)(operands),
-            Operator::ConstantOp(op) => op.compile(self)(operands),
-            Operator::FixedAddOp(op) => op.compile(self)(operands),
-            Operator::FixedMulOp(op) => op.compile(self)(operands),
+            Operator::PrfKeyGenOp(op) => op.compile(self, plc)(operands),
+            Operator::RingSampleOp(op) => op.compile(self, plc)(operands),
+            Operator::BitSampleOp(op) => op.compile(self, plc)(operands),
+            Operator::RingAddOp(op) => op.compile(self, plc)(operands),
+            Operator::BitXorOp(op) => op.compile(self, plc)(operands),
+            Operator::BitAndOp(op) => op.compile(self, plc)(operands),
+            Operator::RingSubOp(op) => op.compile(self, plc)(operands),
+            Operator::RingMulOp(op) => op.compile(self, plc)(operands),
+            Operator::RepSetupOp(op) => op.compile(self, plc)(operands),
+            Operator::RepShareOp(op) => op.compile(self, plc)(operands),
+            Operator::RepRevealOp(op) => op.compile(self, plc)(operands),
+            Operator::RepAddOp(op) => op.compile(self, plc)(operands),
+            Operator::RepMulOp(op) => op.compile(self, plc)(operands),
+            Operator::ConstantOp(op) => op.compile(self, plc)(operands),
+            Operator::FixedAddOp(op) => op.compile(self, plc)(operands),
+            Operator::FixedMulOp(op) => op.compile(self, plc)(operands),
         }
     }
 
@@ -922,24 +937,29 @@ pub struct SymbolicContext {
 impl Context for SymbolicContext {
     type Value = SymbolicValue;
 
-    fn execute(&self, op: Operator, operands: Vec<SymbolicValue>) -> SymbolicValue {
+    fn execute(
+        &self,
+        op: Operator,
+        plc: &Placement,
+        operands: Vec<SymbolicValue>,
+    ) -> SymbolicValue {
         match op {
-            Operator::PrfKeyGenOp(op) => op.execute_symbolic(self, operands),
-            Operator::RingSampleOp(op) => op.execute_symbolic(self, operands),
-            Operator::BitSampleOp(op) => op.execute_symbolic(self, operands),
-            Operator::RingAddOp(op) => op.execute_symbolic(self, operands),
-            Operator::BitXorOp(op) => op.execute_symbolic(self, operands),
-            Operator::BitAndOp(op) => op.execute_symbolic(self, operands),
-            Operator::RingSubOp(op) => op.execute_symbolic(self, operands),
-            Operator::RingMulOp(op) => op.execute_symbolic(self, operands),
-            Operator::RepSetupOp(op) => op.execute_symbolic(self, operands),
-            Operator::RepShareOp(op) => op.execute_symbolic(self, operands),
-            Operator::RepRevealOp(op) => op.execute_symbolic(self, operands),
-            Operator::RepAddOp(op) => op.execute_symbolic(self, operands),
-            Operator::RepMulOp(op) => op.execute_symbolic(self, operands),
-            Operator::ConstantOp(op) => op.execute_symbolic(self, operands),
-            Operator::FixedAddOp(op) => op.execute_symbolic(self, operands),
-            Operator::FixedMulOp(op) => op.execute_symbolic(self, operands),
+            Operator::PrfKeyGenOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RingSampleOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::BitSampleOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RingAddOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::BitXorOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::BitAndOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RingSubOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RingMulOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RepSetupOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RepShareOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RepRevealOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RepAddOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RepMulOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::ConstantOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::FixedAddOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::FixedMulOp(op) => op.execute_symbolic(self, plc, operands),
         }
     }
 
@@ -954,6 +974,7 @@ impl SymbolicContext {
         &'s self,
         operator: &O,
         operands: &[&str],
+        plc: &Placement,
     ) -> String {
         let mut ops = self.ops.write().unwrap(); // TODO unwrap
         let op_name: String = format!("op_{}", ops.len());
@@ -961,6 +982,7 @@ impl SymbolicContext {
             name: op_name.clone(),
             operator: operator.clone().into(),
             operands: operands.iter().map(|op| op.to_string()).collect(),
+            plc: plc.clone(),
         };
         ops.push(op);
         op_name
@@ -983,8 +1005,8 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-                match (self.plc.ty(), self.sig) {
+            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -992,7 +1014,7 @@ macro_rules! runtime_kernel {
                                 ret: <$u>::TY,
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             Box::new(move |_operands: Vec<Value>| {
                                 let y: $u = $k(&ctx, &plc);
@@ -1020,8 +1042,8 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-                match (self.plc.ty(), self.sig) {
+            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -1030,7 +1052,7 @@ macro_rules! runtime_kernel {
                                 ret: <$u>::TY,
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             Box::new(move |operands: Vec<Value>| {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
@@ -1060,8 +1082,8 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-                match (self.plc.ty(), self.sig) {
+            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -1071,7 +1093,7 @@ macro_rules! runtime_kernel {
                                 ret: <$u>::TY,
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             let op = self.clone();
                             Box::new(move |operands| -> Value {
@@ -1103,8 +1125,8 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
-                match (self.plc.ty(), self.sig) {
+            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -1115,7 +1137,7 @@ macro_rules! runtime_kernel {
                                 ret: <$u>::TY,
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             let op = self.clone();
                             Box::new(move |operands: Vec<Value>| -> Value {
@@ -1144,8 +1166,8 @@ macro_rules! compiletime_kernel {
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr), )+]) => {
         impl $op {
-            pub fn execute_symbolic(&self, ctx: &SymbolicContext, _operands: Vec<SymbolicValue>) -> SymbolicValue {
-                match (self.plc.ty(), self.sig) {
+            pub fn execute_symbolic(&self, ctx: &SymbolicContext, plc: &Placement,  _operands: Vec<SymbolicValue>) -> SymbolicValue {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -1153,7 +1175,7 @@ macro_rules! compiletime_kernel {
                                 ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
 
                             let k: fn(&Self, &SymbolicContext, $plc) -> <$u as KnownType>::Symbolic = $k;
 
@@ -1173,8 +1195,8 @@ macro_rules! compiletime_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr), )+]) => {
         impl $op {
-            pub fn execute_symbolic(&self, ctx: &SymbolicContext, operands: Vec<SymbolicValue>) -> SymbolicValue {
-                match (self.plc.ty(), self.sig) {
+            pub fn execute_symbolic(&self, ctx: &SymbolicContext, plc: &Placement, operands: Vec<SymbolicValue>) -> SymbolicValue {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -1183,7 +1205,7 @@ macro_rules! compiletime_kernel {
                                 ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
 
                             let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
 
@@ -1213,9 +1235,10 @@ macro_rules! compiletime_kernel {
             pub fn execute_symbolic(
                 &self,
                 ctx: &SymbolicContext,
+                plc: &Placement,
                 operands: Vec<SymbolicValue>,
             ) -> SymbolicValue {
-                match (self.plc.ty(), self.sig) {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -1225,7 +1248,7 @@ macro_rules! compiletime_kernel {
                                 ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
 
                             let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
                             let x1: <$t1 as KnownType>::Symbolic = operands.get(1).unwrap().clone().try_into().unwrap();
@@ -1258,9 +1281,10 @@ macro_rules! compiletime_kernel {
             pub fn execute_symbolic(
                 &self,
                 ctx: &SymbolicContext,
+                plc: &Placement,
                 operands: Vec<SymbolicValue>,
             ) -> SymbolicValue {
-                match (self.plc.ty(), self.sig) {
+                match (plc.ty(), self.sig) {
                     $(
                         (
                             <$plc>::TY,
@@ -1271,7 +1295,7 @@ macro_rules! compiletime_kernel {
                                 ret: <<$u as KnownType>::Symbolic as KnownType>::TY
                             })
                         ) => {
-                            let plc: $plc = self.plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into().unwrap();
 
                             let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
                             let x1: <$t1 as KnownType>::Symbolic = operands.get(1).unwrap().clone().try_into().unwrap();
@@ -1307,8 +1331,8 @@ macro_rules! kernel {
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr), )+]) => {
         runtime_kernel!($op, [$( ($plc, () -> $u => $k), )+]);
-        compiletime_kernel!($op, [$( ($plc, () -> $u => |op, ctx, _plc| {
-            let op_name = ctx.add_operation(op, &[]);
+        compiletime_kernel!($op, [$( ($plc, () -> $u => |op, ctx, plc| {
+            let op_name = ctx.add_operation(op, &[], &plc.into());
             Symbolic::Symbolic(SymbolicHandle { op: op_name })
         }), )+]);
     };
@@ -1319,13 +1343,13 @@ macro_rules! kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr), )+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |op, ctx, _plc, x0| {
+        compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |op, ctx, plc, x0| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op]);
+            let op_name = ctx.add_operation(op, &[&x0_op], &plc.into());
             Symbolic::Symbolic(SymbolicHandle { op: op_name })
         }), )+]);
     };
@@ -1336,7 +1360,7 @@ macro_rules! kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr), )+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, _plc, x0, x1| {
+        compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, plc, x0, x1| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
                 Symbolic::Concrete(_) => unimplemented!(),
@@ -1347,7 +1371,7 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op]);
+            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op], &plc.into());
             Symbolic::Symbolic(SymbolicHandle { op: op_name })
         }), )+]);
     };
@@ -1358,7 +1382,7 @@ macro_rules! kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |op, ctx, _plc, x0, x1, x2| {
+        compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |op, ctx, plc, x0, x1, x2| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
                 Symbolic::Concrete(_) => unimplemented!(),
@@ -1374,7 +1398,7 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op, &x2_op]);
+            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op, &x2_op], &plc.into());
             Symbolic::Symbolic(SymbolicHandle { op: op_name })
         }), )+]);
     };
@@ -1411,7 +1435,7 @@ macro_rules! hybrid_kernel {
                 }
                 _ => match x0 {
                     Symbolic::Symbolic(h0) => {
-                        let op_name = ctx.add_operation(op, &[&h0.op]);
+                        let op_name = ctx.add_operation(op, &[&h0.op], &plc.into());
                         Symbolic::Symbolic(SymbolicHandle { op: op_name })
                     }
                     _ => unimplemented!() // ok
@@ -1437,7 +1461,7 @@ macro_rules! hybrid_kernel {
                 }
                 _ => match (x0, x1) {
                     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op]);
+                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op], &plc.into());
                         Symbolic::Symbolic(SymbolicHandle { op: op_name })
                     }
                     _ => unimplemented!() // ok
@@ -1464,7 +1488,7 @@ macro_rules! hybrid_kernel {
                 }
                 _ => match (x0, x1, x2) {
                     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op]);
+                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.into());
                         Symbolic::Symbolic(SymbolicHandle { op: op_name })
                     }
                     _ => unimplemented!() // ok
@@ -1509,7 +1533,6 @@ trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepSetupOp {
     sig: Signature,
-    plc: Placement,
 }
 
 impl RepSetupOp {
@@ -1542,7 +1565,6 @@ hybrid_kernel! {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepAddOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
@@ -1567,11 +1589,8 @@ hybrid_kernel! {
 }
 
 impl RepAddOp {
-    fn from_placement_signature(plc: &ReplicatedPlacement, sig: BinarySignature) -> Self {
-        RepAddOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        RepAddOp { sig: sig.into() }
     }
 
     fn rep_rep_kernel<C: Context, R>(
@@ -1676,7 +1695,6 @@ impl RepAddOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepMulOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
@@ -1701,11 +1719,8 @@ hybrid_kernel! {
 }
 
 impl RepMulOp {
-    fn from_placement_signature(plc: &ReplicatedPlacement, sig: TernarySignature) -> Self {
-        RepMulOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: TernarySignature) -> Self {
+        RepMulOp { sig: sig.into() }
     }
 
     fn rep_rep_kernel<C: Context, R, K>(
@@ -1848,7 +1863,6 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepShareOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementShare::share, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
@@ -1865,11 +1879,8 @@ hybrid_kernel! {
 }
 
 impl RepShareOp {
-    fn from_placement_signature(plc: &ReplicatedPlacement, sig: UnarySignature) -> Self {
-        RepShareOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: UnarySignature) -> Self {
+        RepShareOp { sig: sig.into() }
     }
 
     fn kernel<C: Context, R: Clone>(ctx: &C, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
@@ -1897,7 +1908,6 @@ impl RepShareOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepRevealOp {
     sig: Signature,
-    plc: Placement,
 }
 
 // NOTE
@@ -1917,11 +1927,8 @@ hybrid_kernel! {
 }
 
 impl RepRevealOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: UnarySignature) -> Self {
-        RepRevealOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: UnarySignature) -> Self {
+        RepRevealOp { sig: sig.into() }
     }
 
     fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: ReplicatedTensor<R>) -> R
@@ -1940,7 +1947,6 @@ impl RepRevealOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingAddOp {
     sig: Signature,
-    plc: Placement, // TODO placement should be on Operation!
 }
 
 // NOTE uncomment the next line to see the kernel check system in action
@@ -1958,11 +1964,8 @@ kernel! {
 }
 
 impl RingAddOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
-        RingAddOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        RingAddOp { sig: sig.into() }
     }
 
     fn kernel<C: Context, T>(
@@ -1981,7 +1984,6 @@ impl RingAddOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingSubOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
@@ -1996,11 +1998,8 @@ kernel! {
 }
 
 impl RingSubOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
-        RingSubOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        RingSubOp { sig: sig.into() }
     }
 
     fn kernel<C: Context, T>(
@@ -2019,7 +2018,6 @@ impl RingSubOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingMulOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
@@ -2034,11 +2032,8 @@ kernel! {
 }
 
 impl RingMulOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
-        RingMulOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        RingMulOp { sig: sig.into() }
     }
 
     fn kernel<C: Context, T>(
@@ -2057,7 +2052,6 @@ impl RingMulOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitXorOp {
     sig: Signature,
-    plc: Placement, // TODO placement should be on Operation!
 }
 
 modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
@@ -2072,11 +2066,8 @@ kernel! {
 }
 
 impl BitXorOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
-        BitXorOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        BitXorOp { sig: sig.into() }
     }
 
     fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
@@ -2090,15 +2081,11 @@ impl BitXorOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitAndOp {
     sig: Signature,
-    plc: Placement, // TODO placement should be on Operation!
 }
 
 impl BitAndOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
-        BitAndOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        BitAndOp { sig: sig.into() }
     }
 
     fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
@@ -2126,7 +2113,6 @@ trait PlacementKeyGen<C: Context, K> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrfKeyGenOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
@@ -2139,11 +2125,8 @@ kernel! {
 }
 
 impl PrfKeyGenOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: NullarySignature) -> Self {
-        PrfKeyGenOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: NullarySignature) -> Self {
+        PrfKeyGenOp { sig: sig.into() }
     }
 
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
@@ -2155,7 +2138,6 @@ impl PrfKeyGenOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingSampleOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
@@ -2170,11 +2152,8 @@ kernel! {
 }
 
 impl RingSampleOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: NullarySignature) -> Self {
-        RingSampleOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: NullarySignature) -> Self {
+        RingSampleOp { sig: sig.into() }
     }
 
     fn kernel<T>(ctx: &ConcreteContext, plc: &HostPlacement) -> RingTensor<T>
@@ -2189,7 +2168,6 @@ impl RingSampleOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitSampleOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementSample::sample, HostPlacement, () -> BitTensor, BitSampleOp);
@@ -2202,11 +2180,8 @@ kernel! {
 }
 
 impl BitSampleOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: NullarySignature) -> Self {
-        BitSampleOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: NullarySignature) -> Self {
+        BitSampleOp { sig: sig.into() }
     }
 
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor
@@ -2219,15 +2194,18 @@ where {
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConstantOp {
     sig: Signature,
-    plc: Placement,
     val: Value,
 }
 
 impl ConstantOp {
-    pub fn compile(&self, _ctx: &ConcreteContext) -> Box<dyn Fn(Vec<Value>) -> Value> {
+    pub fn compile(
+        &self,
+        _ctx: &ConcreteContext,
+        plc: &Placement,
+    ) -> Box<dyn Fn(Vec<Value>) -> Value> {
         let val = self.val.clone();
 
-        match &self.plc {
+        match plc {
             Placement::HostPlacement(_) => Box::new(move |_operands| -> Value { val.clone() }),
             _ => unimplemented!(), // ok
         }
@@ -2236,11 +2214,12 @@ impl ConstantOp {
     pub fn execute_symbolic(
         &self,
         ctx: &SymbolicContext,
+        plc: &Placement,
         _operands: Vec<SymbolicValue>,
     ) -> SymbolicValue {
-        match &self.plc {
+        match plc {
             Placement::HostPlacement(_) => {
-                let op_name = ctx.add_operation(self, &[]);
+                let op_name = ctx.add_operation(self, &[], plc);
                 self.val.ty().synthesize_symbolic_value(op_name)
             }
             _ => unimplemented!(), // ok
@@ -2251,7 +2230,6 @@ impl ConstantOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FixedMulOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementMul::mul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
@@ -2270,11 +2248,8 @@ hybrid_kernel! {
 }
 
 impl FixedMulOp {
-    fn from_placement_signature<P: Clone + Into<Placement>>(plc: &P, sig: BinarySignature) -> Self {
-        FixedMulOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        FixedMulOp { sig: sig.into() }
     }
 
     fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
@@ -2367,7 +2342,6 @@ impl FixedMulOp {
 #[derive(Clone, Debug, PartialEq)]
 pub struct FixedAddOp {
     sig: Signature,
-    plc: Placement,
 }
 
 modelled!(PlacementAdd::add, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
@@ -2386,11 +2360,8 @@ hybrid_kernel! {
 }
 
 impl FixedAddOp {
-    fn from_placement_signature<P: Clone + Into<Placement>>(plc: &P, sig: BinarySignature) -> Self {
-        FixedAddOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
+    fn from_signature(sig: BinarySignature) -> Self {
+        FixedAddOp { sig: sig.into() }
     }
 
     fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
@@ -2590,13 +2561,13 @@ mod tests {
                             ret: Ty::Ring64Tensor
                         }
                         .into(),
-                        plc: HostPlacement {
-                            player: "alice".into()
-                        }
-                        .into(),
                     }
                     .into(),
                     operands: vec!["x00".into(), "y00".into()],
+                    plc: HostPlacement {
+                        player: "alice".into()
+                    }
+                    .into(),
                 },
                 Operation {
                     name: "op_1".into(),
@@ -2607,13 +2578,13 @@ mod tests {
                             ret: Ty::Ring64Tensor
                         }
                         .into(),
-                        plc: HostPlacement {
-                            player: "alice".into()
-                        }
-                        .into(),
                     }
                     .into(),
                     operands: vec!["x10".into(), "y10".into()],
+                    plc: HostPlacement {
+                        player: "alice".into()
+                    }
+                    .into(),
                 },
                 Operation {
                     name: "op_2".into(),
@@ -2624,13 +2595,13 @@ mod tests {
                             ret: Ty::Ring64Tensor
                         }
                         .into(),
-                        plc: HostPlacement {
-                            player: "bob".into()
-                        }
-                        .into(),
                     }
                     .into(),
                     operands: vec!["x11".into(), "y11".into()],
+                    plc: HostPlacement {
+                        player: "bob".into()
+                    }
+                    .into(),
                 },
                 Operation {
                     name: "op_3".into(),
@@ -2641,13 +2612,13 @@ mod tests {
                             ret: Ty::Ring64Tensor
                         }
                         .into(),
-                        plc: HostPlacement {
-                            player: "bob".into()
-                        }
-                        .into(),
                     }
                     .into(),
                     operands: vec!["x21".into(), "y21".into()],
+                    plc: HostPlacement {
+                        player: "bob".into()
+                    }
+                    .into(),
                 },
                 Operation {
                     name: "op_4".into(),
@@ -2658,13 +2629,13 @@ mod tests {
                             ret: Ty::Ring64Tensor
                         }
                         .into(),
-                        plc: HostPlacement {
-                            player: "carole".into()
-                        }
-                        .into(),
                     }
                     .into(),
                     operands: vec!["x22".into(), "y22".into()],
+                    plc: HostPlacement {
+                        player: "carole".into()
+                    }
+                    .into(),
                 },
                 Operation {
                     name: "op_5".into(),
@@ -2675,13 +2646,13 @@ mod tests {
                             ret: Ty::Ring64Tensor
                         }
                         .into(),
-                        plc: HostPlacement {
-                            player: "carole".into()
-                        }
-                        .into(),
                     }
                     .into(),
                     operands: vec!["x02".into(), "y02".into()],
+                    plc: HostPlacement {
+                        player: "carole".into()
+                    }
+                    .into(),
                 },
             ]
         );
@@ -2844,10 +2815,10 @@ mod tests {
                         ret: Ty::Ring128Tensor,
                     }
                     .into(),
-                    plc: alice_plc.clone().into(),
                 }
                 .into(),
                 operands: vec![],
+                plc: alice_plc.clone().into(),
             },
             Operation {
                 name: "xe".into(),
@@ -2857,10 +2828,10 @@ mod tests {
                         ret: Ty::Replicated128Tensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["x".into()],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "y".into(),
@@ -2869,10 +2840,10 @@ mod tests {
                         ret: Ty::Ring128Tensor,
                     }
                     .into(),
-                    plc: bob_plc.clone().into(),
                 }
                 .into(),
                 operands: vec![],
+                plc: bob_plc.clone().into(),
             },
             Operation {
                 name: "ye".into(),
@@ -2882,10 +2853,10 @@ mod tests {
                         ret: Ty::Replicated128Tensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["y".into()],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "s".into(),
@@ -2894,10 +2865,10 @@ mod tests {
                         ret: Ty::ReplicatedSetup,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec![],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "ze".into(),
@@ -2909,10 +2880,10 @@ mod tests {
                         ret: Ty::Replicated128Tensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["s".into(), "xe".into(), "ye".into()],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "ve".into(),
@@ -2924,10 +2895,10 @@ mod tests {
                         ret: Ty::Replicated128Tensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["s".into(), "xe".into(), "ye".into()],
+                plc: rep_plc.clone().into(),
             },
         ];
 
@@ -2941,7 +2912,7 @@ mod tests {
                 .iter()
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
-            let res = ctx.execute(operator, operands);
+            let res = ctx.execute(operator, &op.plc, operands);
             env.insert(op.name.clone(), res);
         }
 
@@ -2959,7 +2930,7 @@ mod tests {
                 .iter()
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
-            let res = ctx.execute(operator, operands);
+            let res = ctx.execute(operator, &op.plc, operands);
             env.insert(op.name.clone(), res);
         }
 
@@ -2999,10 +2970,10 @@ mod tests {
                 name: "x".into(),
                 operator: BitSampleOp {
                     sig: NullarySignature { ret: Ty::BitTensor }.into(),
-                    plc: alice_plc.clone().into(),
                 }
                 .into(),
                 operands: vec![],
+                plc: alice_plc.clone().into(),
             },
             Operation {
                 name: "xe".into(),
@@ -3012,19 +2983,19 @@ mod tests {
                         ret: Ty::ReplicatedBitTensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["x".into()],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "y".into(),
                 operator: BitSampleOp {
                     sig: NullarySignature { ret: Ty::BitTensor }.into(),
-                    plc: bob_plc.clone().into(),
                 }
                 .into(),
                 operands: vec![],
+                plc: bob_plc.clone().into(),
             },
             Operation {
                 name: "ye".into(),
@@ -3034,10 +3005,10 @@ mod tests {
                         ret: Ty::ReplicatedBitTensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["y".into()],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "s".into(),
@@ -3046,10 +3017,10 @@ mod tests {
                         ret: Ty::ReplicatedSetup,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec![],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "ze".into(),
@@ -3061,10 +3032,10 @@ mod tests {
                         ret: Ty::ReplicatedBitTensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["s".into(), "xe".into(), "ye".into()],
+                plc: rep_plc.clone().into(),
             },
             Operation {
                 name: "ve".into(),
@@ -3076,10 +3047,10 @@ mod tests {
                         ret: Ty::ReplicatedBitTensor,
                     }
                     .into(),
-                    plc: rep_plc.clone().into(),
                 }
                 .into(),
                 operands: vec!["s".into(), "xe".into(), "ye".into()],
+                plc: rep_plc.clone().into(),
             },
         ];
 
@@ -3093,7 +3064,7 @@ mod tests {
                 .iter()
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
-            let res = ctx.execute(operator, operands);
+            let res = ctx.execute(operator, &op.plc, operands);
             env.insert(op.name.clone(), res);
         }
 
@@ -3109,7 +3080,7 @@ mod tests {
                 .iter()
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
-            let res = ctx.execute(operator, operands);
+            let res = ctx.execute(operator, &op.plc, operands);
             env.insert(op.name.clone(), res);
         }
 
