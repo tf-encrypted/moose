@@ -356,11 +356,7 @@ where
         let player2 = x22.placement();
         assert_eq!(x02.placement(), player2);
 
-        let players = [
-            player0.player.clone(),
-            player1.player.clone(),
-            player2.player.clone(),
-        ];
+        let players = [player0.player, player1.player, player2.player];
         ReplicatedPlacement { players }
     }
 }
@@ -393,11 +389,7 @@ where
         let player2 = x22.placement();
         assert_eq!(x02.placement(), player2);
 
-        let players = [
-            player0.player.clone(),
-            player1.player.clone(),
-            player2.player.clone(),
-        ];
+        let players = [player0.player, player1.player, player2.player];
         ReplicatedPlacement { players }
     }
 }
@@ -414,6 +406,7 @@ impl<T: PlacedFOO> From<SymbolicHandle<T::Placement>> for Symbolic<T> {
     }
 }
 
+#[allow(clippy::large_enum_variant)] // TODO
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
@@ -2288,7 +2281,10 @@ impl PrfKeyGenOp {
 
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
         // TODO
-        PrfKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], plc.clone())
+        PrfKey(
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            plc.clone(),
+        )
     }
 }
 
@@ -2396,15 +2392,23 @@ impl ConstantOp {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::redundant_clone)]
+
     use super::*;
 
     #[test]
     fn test_rep_add_concrete() {
         let ctx = ConcreteContext::default();
 
-        let alice = HostPlacement { player: "alice".into() };
-        let bob = HostPlacement { player: "bob".into() };
-        let carole = HostPlacement { player: "carole".into() };
+        let alice = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob = HostPlacement {
+            player: "bob".into(),
+        };
+        let carole = HostPlacement {
+            player: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
@@ -2443,9 +2447,15 @@ mod tests {
     fn test_rep_add_symbolic() {
         let ctx = SymbolicContext::default();
 
-        let alice = HostPlacement { player: "alice".into() };
-        let bob = HostPlacement { player: "bob".into() };
-        let carole = HostPlacement { player: "carole".into() };
+        let alice = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob = HostPlacement {
+            player: "bob".into(),
+        };
+        let carole = HostPlacement {
+            player: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
@@ -2454,16 +2464,40 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        SymbolicHandle { op: "x00".into(), plc: alice.clone() }.into(),
-                        SymbolicHandle { op: "x10".into(), plc: alice.clone() }.into(),
+                        SymbolicHandle {
+                            op: "x00".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "x10".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "x11".into(), plc: bob.clone() }.into(),
-                        SymbolicHandle { op: "x21".into(), plc: bob.clone() }.into(),
+                        SymbolicHandle {
+                            op: "x11".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "x21".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "x22".into(), plc: carole.clone() }.into(),
-                        SymbolicHandle { op: "x02".into(), plc: carole.clone() }.into(),
+                        SymbolicHandle {
+                            op: "x22".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "x02".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
                     ],
                 ],
             });
@@ -2472,16 +2506,40 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        SymbolicHandle { op: "y00".into(), plc: alice.clone() }.into(),
-                        SymbolicHandle { op: "y10".into(), plc: alice.clone() }.into(),
+                        SymbolicHandle {
+                            op: "y00".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "y10".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "y11".into(), plc: bob.clone() }.into(),
-                        SymbolicHandle { op: "y21".into(), plc: bob.clone() }.into(),
+                        SymbolicHandle {
+                            op: "y11".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "y21".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "y22".into(), plc: carole.clone() }.into(),
-                        SymbolicHandle { op: "y02".into(), plc: carole.clone() }.into(),
+                        SymbolicHandle {
+                            op: "y22".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "y02".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
                     ],
                 ],
             });
@@ -2493,16 +2551,34 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_0".into(), plc: alice.clone() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_1".into(), plc: alice.clone() }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_0".into(),
+                            plc: alice.clone()
+                        }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_1".into(),
+                            plc: alice.clone()
+                        }),
                     ],
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_2".into(), plc: bob.clone() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_3".into(), plc: bob.clone() }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_2".into(),
+                            plc: bob.clone()
+                        }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_3".into(),
+                            plc: bob.clone()
+                        }),
                     ],
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_4".into(), plc: carole.clone() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_5".into(), plc: carole.clone() }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_4".into(),
+                            plc: carole.clone()
+                        }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_5".into(),
+                            plc: carole.clone()
+                        }),
                     ],
                 ]
             })
@@ -2620,9 +2696,15 @@ mod tests {
 
     #[test]
     fn test_rep_share_concrete() {
-        let alice = HostPlacement { player: "alice".into() };
-        let bob = HostPlacement { player: "bob".into() };
-        let carole = HostPlacement { player: "carole".into() };
+        let alice = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob = HostPlacement {
+            player: "bob".into(),
+        };
+        let carole = HostPlacement {
+            player: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
