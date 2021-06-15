@@ -785,6 +785,36 @@ macro_rules! modelled {
     };
 }
 
+macro_rules! modelled_alias {
+    /*
+    Binary
+    */
+    ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
+        impl $src_t<ConcreteContext, $t0, $t1> for $plc {
+            type Output = $u;
+
+            fn $src_f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
+                $dst_t::$dst_f(self, ctx, x0, x1)
+            }
+        }
+
+        impl $src_t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic>
+            for $plc
+        {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn $src_f(
+                &self,
+                ctx: &SymbolicContext,
+                x0: &<$t0 as KnownType>::Symbolic,
+                x1: &<$t1 as KnownType>::Symbolic,
+            ) -> Self::Output {
+                $dst_t::$dst_f(self, ctx, x0, x1)
+            }
+        }
+    };
+}
+
 trait PlacementAdd<C: Context, T, U> {
     type Output;
 
@@ -831,6 +861,10 @@ trait PlacementReveal<C: Context, T> {
     type Output;
 
     fn reveal(&self, ctx: &C, x: &T) -> Self::Output;
+}
+
+trait PlacementSample<C: Context, O> {
+    fn sample(&self, ctx: &C) -> O;
 }
 
 pub trait Context {
@@ -1472,150 +1506,6 @@ trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> {
     fn check(ctx: &C, plc: &P, x0: X0, x1: X1, x2: X2) -> Y;
 }
 
-macro_rules! apply {
-    ($plc:ident, $ctx:ident, $f:expr, $($x:expr),+) => {
-        {
-            let y = $f(
-                $(
-                    &$plc.place($ctx, $x)
-                ),+
-            );
-            y.val.unwrap()
-        }
-    };
-}
-
-enum PlacedValue<'v, V: Clone> {
-    Borrowed(&'v V),
-    Owned(V),
-}
-
-impl<'v, V: Clone> PlacedValue<'v, V> {
-    // TODO use ToOwned trait?
-    fn unwrap(self) -> V {
-        match self {
-            PlacedValue::Borrowed(r) => r.clone(),
-            PlacedValue::Owned(v) => v,
-        }
-    }
-
-    // TODO use AsRef trait?
-    // TODO loosen lifetime bounds?
-    fn as_ref(&'v self) -> &'v V {
-        match self {
-            PlacedValue::Borrowed(r) => *r,
-            PlacedValue::Owned(v) => v,
-        }
-    }
-}
-
-struct Placed<'v, 'p, 'c, V: Clone, P, C> {
-    val: PlacedValue<'v, V>,
-    plc: &'p P,
-    ctx: &'c C,
-}
-
-impl HostPlacement {
-    fn place<'v, 'p, 'c, C: Context, V: Clone>(
-        &'p self,
-        ctx: &'c C,
-        val: &'v V,
-    ) -> Placed<'v, 'p, 'c, V, HostPlacement, C> {
-        Placed {
-            val: PlacedValue::Borrowed(val),
-            plc: self,
-            ctx,
-        }
-    }
-}
-
-macro_rules! placed_op_impl {
-    ($t:ident::$f:ident, $pt:ident) => {
-        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<Placed<'y, 'p, 'c, V, P, C>>
-            for Placed<'x, 'p, 'c, V, P, C>
-        where
-            V: Clone,
-            V: 'static,
-            P: PartialEq + std::fmt::Debug,
-            P: $pt<C, V, V, Output = V>,
-        {
-            type Output = Placed<'static, 'p, 'c, V, P, C>;
-
-            fn $f(self, other: Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
-                $t::$f(&self, &other)
-            }
-        }
-
-        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<&Placed<'y, 'p, 'c, V, P, C>>
-            for Placed<'x, 'p, 'c, V, P, C>
-        where
-            V: Clone,
-            V: 'static,
-            P: PartialEq + std::fmt::Debug,
-            P: $pt<C, V, V, Output = V>,
-        {
-            type Output = Placed<'static, 'p, 'c, V, P, C>;
-
-            fn $f(self, other: &Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
-                $t::$f(&self, other)
-            }
-        }
-
-        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<Placed<'y, 'p, 'c, V, P, C>>
-            for &Placed<'x, 'p, 'c, V, P, C>
-        where
-            V: Clone,
-            V: 'static,
-            P: PartialEq + std::fmt::Debug,
-            P: $pt<C, V, V, Output = V>,
-        {
-            type Output = Placed<'static, 'p, 'c, V, P, C>;
-
-            fn $f(self, other: Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
-                $t::$f(self, &other)
-            }
-        }
-
-        impl<'x, 'y, 'p, 'c, V, P, C: Context> $t<&Placed<'y, 'p, 'c, V, P, C>>
-            for &Placed<'x, 'p, 'c, V, P, C>
-        where
-            V: Clone,
-            V: 'static,
-            P: PartialEq + std::fmt::Debug,
-            P: $pt<C, V, V, Output = V>,
-        {
-            type Output = Placed<'static, 'p, 'c, V, P, C>;
-
-            fn $f(self, other: &Placed<'y, 'p, 'c, V, P, C>) -> Self::Output {
-                let Placed {
-                    val: x,
-                    plc: x_plc,
-                    ctx: x_ctx,
-                } = self;
-                let Placed {
-                    val: y,
-                    plc: y_plc,
-                    ctx: y_ctx,
-                } = other;
-                assert_eq!(x_plc, y_plc); // TODO if we do this properly we could get rid of this check
-                let plc = *x_plc;
-                let ctx = *x_ctx;
-
-                let y = plc.$f(ctx, x.as_ref(), y.as_ref());
-                Placed {
-                    val: PlacedValue::Owned(y),
-                    plc,
-                    ctx,
-                }
-            }
-        }
-    };
-}
-
-placed_op_impl!(Add::add, PlacementAdd);
-placed_op_impl!(Sub::sub, PlacementSub);
-placed_op_impl!(Mul::mul, PlacementMul);
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepSetupOp {
     sig: Signature,
@@ -1736,14 +1626,14 @@ impl RepAddOp {
 
         // TODO decide which y shares to use based on placement of x
 
-        let z00 = player0.add(ctx, &x, &y00);
+        let z00 = with_context!(player0, ctx, x + y00);
         let z10 = y10;
 
         let z11 = y11;
         let z21 = y21;
 
         let z22 = y22;
-        let z02 = player2.add(ctx, &x, &y02);
+        let z02 = with_context!(player2, ctx, x + y02);
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1768,14 +1658,14 @@ impl RepAddOp {
 
         // TODO decide which x shares to use based on placement of y
 
-        let z00 = player0.add(ctx, &x00, &y);
+        let z00 = with_context!(player0, ctx, x00 + y);
         let z10 = x10;
 
         let z11 = x11;
         let z21 = x21;
 
         let z22 = x22;
-        let z02 = player2.add(ctx, &x02, &y);
+        let z02 = with_context!(player2, ctx, x02 + y);
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1796,7 +1686,6 @@ modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Ring128
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
-
 
 hybrid_kernel! {
     RepMulOp,
@@ -1847,9 +1736,15 @@ impl RepMulOp {
             alphas: [a0, a1, a2],
         } = rep.zero_share(ctx, &setup);
 
-        let z0 = with_context!(player0, ctx, x00 * y00 + x00 * y10 + x10 * y00 + a0);
-        let z1 = with_context!(player1, ctx, x11 * y11 + x11 * y21 + x21 * y11 + a1);
-        let z2 = with_context!(player2, ctx, x22 * y22 + x22 * y02 + x02 * y22 + a2);
+        let z0 = with_context!(player0, ctx, {
+            x00 * y00 + x00 * y10 + x10 * y00 + a0
+        });
+        let z1 = with_context!(player1, ctx, {
+            x11 * y11 + x11 * y21 + x21 * y11 + a1
+        });
+        let z2 = with_context!(player2, ctx, {
+            x22 * y22 + x22 * y02 + x02 * y22 + a2
+        });
 
         ReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
@@ -1872,14 +1767,14 @@ impl RepMulOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        let z00 = player0.mul(ctx, &x, y00);
-        let z10 = player0.mul(ctx, &x, y10);
+        let z00 = with_context!(player0, ctx, x * y00);
+        let z10 = with_context!(player0, ctx, x * y10);
 
-        let z11 = player1.mul(ctx, &x, y11);
-        let z21 = player1.mul(ctx, &x, y21);
+        let z11 = with_context!(player1, ctx, x * y11);
+        let z21 = with_context!(player1, ctx, x * y21);
 
-        let z22 = player2.mul(ctx, &x, y22);
-        let z02 = player2.mul(ctx, &x, y02);
+        let z22 = with_context!(player2, ctx, x * y22);
+        let z02 = with_context!(player2, ctx, x * y02);
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1902,14 +1797,14 @@ impl RepMulOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let z00 = player0.mul(ctx, x00, &y);
-        let z10 = player0.mul(ctx, x10, &y);
+        let z00 = with_context!(player0, ctx, x00 * y);
+        let z10 = with_context!(player0, ctx, x10 * y);
 
-        let z11 = player1.mul(ctx, x11, &y);
-        let z21 = player1.mul(ctx, x21, &y);
+        let z11 = with_context!(player1, ctx, x11 * y);
+        let z21 = with_context!(player1, ctx, x21 * y);
 
-        let z22 = player2.mul(ctx, x22, &y);
-        let z02 = player2.mul(ctx, x02, &y);
+        let z22 = with_context!(player2, ctx, x22 * y);
+        let z02 = with_context!(player2, ctx, x02 * y);
 
         ReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1940,18 +1835,15 @@ where
 
         let r00 = player0.sample(ctx);
         let r10 = player0.sample(ctx);
-        // let alpha1 = player0.sub(ctx, &r00, &r10);
-        let alpha0 = apply!(player0, ctx, |x, y| { x - y }, &r00, &r10);
+        let alpha0 = with_context!(player0, ctx, r00 - r10);
 
         let r11 = player1.sample(ctx);
         let r21 = player1.sample(ctx);
-        // let alpha1 = player1.sub(ctx, &r11, &r21);
-        let alpha1 = apply!(player1, ctx, |x, y| { x - y }, &r11, &r21);
+        let alpha1 = with_context!(player1, ctx, r11 - r21);
 
         let r22 = player2.sample(ctx);
         let r02 = player2.sample(ctx);
-        // let alpha2 = player2.sub(ctx, &r22, &r02);
-        let alpha2 = apply!(player2, ctx, |x, y| { x - y }, &r22, &r02);
+        let alpha2 = with_context!(player2, ctx, r22 - r02);
 
         ReplicatedZeroShare {
             alphas: [alpha0, alpha1, alpha2],
@@ -1963,6 +1855,19 @@ where
 pub struct RepShareOp {
     sig: Signature,
     plc: Placement,
+}
+
+modelled!(PlacementShare::share, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
+modelled!(PlacementShare::share, ReplicatedPlacement, (BitTensor) -> ReplicatedBitTensor, RepShareOp);
+
+hybrid_kernel! {
+    RepShareOp,
+    [
+        (ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor => Self::kernel),
+        (ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor => Self::kernel),
+        (ReplicatedPlacement, (BitTensor) -> ReplicatedBitTensor => Self::kernel),
+    ]
 }
 
 impl RepShareOp {
@@ -1983,27 +1888,18 @@ impl RepShareOp {
         let (player0, player1, player2) = rep.host_placements();
 
         // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        let x0 = player0.sample(ctx);
-        let x1 = player0.sample(ctx);
-        let x2 = apply!(player0, ctx, |x, x0, x1| { x - (x0 + x1) }, &x, &x0, &x1);
+        let owner = player0;
+
+        let x0 = owner.sample(ctx);
+        let x1 = owner.sample(ctx);
+        let x2 = with_context!(owner, ctx, {
+            x - (x0 + x1)
+        });
 
         ReplicatedTensor {
             shares: [[x0.clone(), x1.clone()], [x1, x2.clone()], [x2, x0]],
         }
     }
-}
-
-modelled!(PlacementShare::share, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
-modelled!(PlacementShare::share, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
-modelled!(PlacementShare::share, ReplicatedPlacement, (BitTensor) -> ReplicatedBitTensor, RepShareOp);
-
-hybrid_kernel! {
-    RepShareOp,
-    [
-        (ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor => Self::kernel),
-        (ReplicatedPlacement, (BitTensor) -> ReplicatedBitTensor => Self::kernel),
-    ]
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2017,12 +1913,14 @@ pub struct RepRevealOp {
 // missing a type to represent this (eg PublicReplicatedTensor vs PrivateReplicatedTensors)
 modelled!(PlacementReveal::reveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> BitTensor, RepRevealOp);
 
 hybrid_kernel! {
     RepRevealOp,
     [
         (HostPlacement, (Replicated64Tensor) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (Replicated128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (ReplicatedBitTensor) -> BitTensor => Self::kernel),
     ]
 }
 
@@ -2043,7 +1941,7 @@ impl RepRevealOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
-        apply!(plc, ctx, |x0, x1, x2| { x0 + x1 + x2 }, x00, x10, x21)
+        with_context!(plc, ctx, x00 + x10 + x21)
     }
 }
 
@@ -2051,6 +1949,20 @@ impl RepRevealOp {
 pub struct RingAddOp {
     sig: Signature,
     plc: Placement, // TODO placement should be on Operation!
+}
+
+// NOTE uncomment the next line to see the kernel check system in action
+// modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
+// NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
+modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
+
+kernel! {
+    RingAddOp,
+    [
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
 }
 
 impl RingAddOp {
@@ -2075,81 +1987,20 @@ impl RingAddOp {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct BitXorOp {
+pub struct RingSubOp {
     sig: Signature,
-    plc: Placement, // TODO placement should be on Operation!
+    plc: Placement,
 }
 
-impl BitXorOp {
-    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
-        BitXorOp {
-            sig: sig.into(),
-            plc: plc.clone().into(),
-        }
-    }
-
-    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
-    where
-        BitTensor: BitXor<BitTensor, Output = BitTensor>,
-    {
-        x ^ y
-    }
-}
-
-// NOTE uncomment the next line to see the kernel check system in action
-// modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
-// NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
-modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
-modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
-
-modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
-
-impl PlacementAdd<ConcreteContext, BitTensor, BitTensor> for HostPlacement {
-    type Output = BitTensor;
-    fn add(&self, ctx: &ConcreteContext, x: &BitTensor, y: &BitTensor) -> BitTensor {
-        // NOTE: xor = add when in Z2
-        self.xor(ctx, x, y)
-    }
-}
-
-impl
-    PlacementAdd<
-        SymbolicContext,
-        <BitTensor as KnownType>::Symbolic,
-        <BitTensor as KnownType>::Symbolic,
-    > for HostPlacement
-{
-    type Output = <BitTensor as KnownType>::Symbolic;
-    fn add(
-        &self,
-        ctx: &SymbolicContext,
-        x: &<BitTensor as KnownType>::Symbolic,
-        y: &<BitTensor as KnownType>::Symbolic,
-    ) -> Self::Output {
-        // NOTE: xor = add when in Z2
-        self.xor(ctx, x, y)
-    }
-}
+modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
 
 kernel! {
-    RingAddOp,
+    RingSubOp,
     [
         (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
     ]
-}
-
-kernel! {
-    BitXorOp,
-    [
-        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
-    ]
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingSubOp {
-    sig: Signature,
-    plc: Placement,
 }
 
 impl RingSubOp {
@@ -2173,48 +2024,21 @@ impl RingSubOp {
     }
 }
 
-modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
-modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
-
-kernel! {
-    RingSubOp,
-    [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
-    ]
-}
-
-impl PlacementSub<ConcreteContext, BitTensor, BitTensor> for HostPlacement {
-    type Output = BitTensor;
-    fn sub(&self, ctx: &ConcreteContext, x: &BitTensor, y: &BitTensor) -> BitTensor {
-        // NOTE: xor = sub when in Z2
-        self.xor(ctx, x, y)
-    }
-}
-
-impl
-    PlacementSub<
-        SymbolicContext,
-        <BitTensor as KnownType>::Symbolic,
-        <BitTensor as KnownType>::Symbolic,
-    > for HostPlacement
-{
-    type Output = <BitTensor as KnownType>::Symbolic;
-    fn sub(
-        &self,
-        ctx: &SymbolicContext,
-        x: &<BitTensor as KnownType>::Symbolic,
-        y: &<BitTensor as KnownType>::Symbolic,
-    ) -> Self::Output {
-        // NOTE: xor = sub when in Z2
-        self.xor(ctx, x, y)
-    }
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingMulOp {
     sig: Signature,
     plc: Placement,
+}
+
+modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
+
+kernel! {
+    RingMulOp,
+    [
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
 }
 
 impl RingMulOp {
@@ -2238,8 +2062,38 @@ impl RingMulOp {
     }
 }
 
-modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
-modelled!(PlacementMul::mul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
+#[derive(Clone, Debug, PartialEq)]
+pub struct BitXorOp {
+    sig: Signature,
+    plc: Placement, // TODO placement should be on Operation!
+}
+
+modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
+modelled_alias!(PlacementAdd::add, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // add = xor in Z2
+modelled_alias!(PlacementSub::sub, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // sub = xor in Z2
+
+kernel! {
+    BitXorOp,
+    [
+        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+    ]
+}
+
+impl BitXorOp {
+    fn from_placement_signature(plc: &HostPlacement, sig: BinarySignature) -> Self {
+        BitXorOp {
+            sig: sig.into(),
+            plc: plc.clone().into(),
+        }
+    }
+
+    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
+    where
+        BitTensor: BitXor<BitTensor, Output = BitTensor>,
+    {
+        x ^ y
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitAndOp {
@@ -2264,47 +2118,13 @@ impl BitAndOp {
 }
 
 modelled!(PlacementAnd::and, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
-
-kernel! {
-    RingMulOp,
-    [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
-    ]
-}
+modelled_alias!(PlacementMul::mul, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementAnd::and); // mul = and in Z2
 
 kernel! {
     BitAndOp,
     [
         (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
     ]
-}
-
-impl PlacementMul<ConcreteContext, BitTensor, BitTensor> for HostPlacement {
-    type Output = BitTensor;
-    fn mul(&self, ctx: &ConcreteContext, x: &BitTensor, y: &BitTensor) -> BitTensor {
-        // NOTE: mul = and when in Z2
-        self.and(ctx, x, y)
-    }
-}
-
-impl
-    PlacementMul<
-        SymbolicContext,
-        <BitTensor as KnownType>::Symbolic,
-        <BitTensor as KnownType>::Symbolic,
-    > for HostPlacement
-{
-    type Output = <BitTensor as KnownType>::Symbolic;
-    fn mul(
-        &self,
-        ctx: &SymbolicContext,
-        x: &<BitTensor as KnownType>::Symbolic,
-        y: &<BitTensor as KnownType>::Symbolic,
-    ) -> Self::Output {
-        // NOTE: mul = and when in Z2
-        self.and(ctx, x, y)
-    }
 }
 
 trait PlacementKeyGen<C: Context, K> {
@@ -2340,13 +2160,14 @@ impl PrfKeyGenOp {
     }
 }
 
-trait PlacementSample<C: Context, O> {
-    fn sample(&self, ctx: &C) -> O;
+#[derive(Clone, Debug, PartialEq)]
+pub struct RingSampleOp {
+    sig: Signature,
+    plc: Placement,
 }
 
 modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
 modelled!(PlacementSample::sample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, () -> BitTensor, BitSampleOp);
 
 kernel! {
     RingSampleOp,
@@ -2354,19 +2175,6 @@ kernel! {
         (HostPlacement, () -> Ring64Tensor => Self::kernel),
         (HostPlacement, () -> Ring128Tensor => Self::kernel),
     ]
-}
-
-kernel! {
-    BitSampleOp,
-    [
-        (HostPlacement, () -> BitTensor => Self::kernel),
-    ]
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingSampleOp {
-    sig: Signature,
-    plc: Placement,
 }
 
 impl RingSampleOp {
@@ -2390,6 +2198,15 @@ impl RingSampleOp {
 pub struct BitSampleOp {
     sig: Signature,
     plc: Placement,
+}
+
+modelled!(PlacementSample::sample, HostPlacement, () -> BitTensor, BitSampleOp);
+
+kernel! {
+    BitSampleOp,
+    [
+        (HostPlacement, () -> BitTensor => Self::kernel),
+    ]
 }
 
 impl BitSampleOp {
