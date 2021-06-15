@@ -288,14 +288,19 @@ pub enum Symbolic<T> {
 }
 
 trait PlacedFOO {
-    fn placement(&self) -> Placement;
+    type Placement;
+
+    fn placement(&self) -> Self::Placement;
 }
 
 impl<T: PlacedFOO> PlacedFOO for Symbolic<T> {
-    fn placement(&self) -> Placement {
+    type Placement = T::Placement;
+
+    fn placement(&self) -> Self::Placement {
         match self {
             Symbolic::Symbolic(x) => {
-                HostPlacement { player: "alice".into() }.into() // TODO return actual placement
+                // HostPlacement { player: "alice".into() }.into() // TODO return actual placement
+                unimplemented!()
             }
             Symbolic::Concrete(x) => {
                 x.placement()
@@ -305,44 +310,54 @@ impl<T: PlacedFOO> PlacedFOO for Symbolic<T> {
 }
 
 impl PlacedFOO for BitTensor {
-    fn placement(&self) -> Placement {
-        HostPlacement { player: "alice".into() }.into() // TODO return actual placement
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        HostPlacement { player: "alice".into() } // TODO return actual placement
     }
 }
 
 impl<T> PlacedFOO for RingTensor<T> {
-    fn placement(&self) -> Placement {
-        HostPlacement { player: "alice".into() }.into() // TODO return actual placement
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        HostPlacement { player: "alice".into() } // TODO return actual placement
     }
 }
 
-impl<R: PlacedFOO> PlacedFOO for ReplicatedTensor<R> {
-    fn placement(&self) -> Placement {
+impl<R> PlacedFOO for ReplicatedTensor<R>
+where
+    R: PlacedFOO<Placement = HostPlacement>,
+{
+    type Placement = ReplicatedPlacement;
+
+    fn placement(&self) -> Self::Placement {
         let ReplicatedTensor {
             shares: [ [x00, x10], [x11, x21], [x22, x02] ],
         } = self;
 
-        assert_eq!(x00.placement(), x10.placement());
-        assert_eq!(x11.placement(), x21.placement());
-        assert_eq!(x22.placement(), x02.placement());
+        let player0 = x00.placement();
+        assert_eq!(x10.placement(), player0);
 
-        let player0: HostPlacement = x00.placement().try_into().unwrap(); // TODO unwrap
-        let player1: HostPlacement = x11.placement().try_into().unwrap(); // TODO unwrap
-        let player2: HostPlacement = x22.placement().try_into().unwrap(); // TODO unwrap
+        let player1 = x11.placement();
+        assert_eq!(x21.placement(), player1);
+
+        let player2 = x22.placement();
+        assert_eq!(x02.placement(), player2);
 
         let players = [
             player0.player.clone(),
             player1.player.clone(),
             player2.player.clone(),
         ];
-        ReplicatedPlacement { players }.into()
+        ReplicatedPlacement { players }
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct SymbolicHandle {
     op: String,
-    // plc: Placement, // TODO
+    // plc: P, // TODO
 }
 
 impl<T> From<SymbolicHandle> for Symbolic<T> {
@@ -842,6 +857,16 @@ trait PlacementShare<C: Context, T> {
     fn apply(&self, ctx: &C, x: &T) -> Self::Output;
 
     fn share(&self, ctx: &C, x: &T) -> Self::Output {
+        self.apply(ctx, x)
+    }
+}
+
+trait PlacementReveal<C: Context, T> {
+    type Output;
+
+    fn apply(&self, ctx: &C, x: &T) -> Self::Output;
+
+    fn reveal(&self, ctx: &C, x: &T) -> Self::Output {
         self.apply(ctx, x)
     }
 }
@@ -1872,14 +1897,14 @@ impl RepShareOp {
     fn kernel<C: Context, R: Clone>(ctx: &C, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
     where
         R: Into<C::Value> + TryFrom<C::Value> + 'static,
-        R: PlacedFOO,
+        R: PlacedFOO<Placement = HostPlacement>,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         HostPlacement: PlacementSub<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let owner: HostPlacement = x.placement().try_into().unwrap(); // TODO unwrap
+        let owner: HostPlacement = x.placement(); //.try_into().unwrap(); // TODO unwrap
 
         let x0 = owner.sample(ctx);
         let x1 = owner.sample(ctx);
@@ -1910,11 +1935,14 @@ pub struct RepRevealOp {
     sig: Signature,
 }
 
+modelled!(PlacementReveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
+modelled!(PlacementReveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
+
 hybrid_kernel! {
     RepRevealOp,
     [
-        (ReplicatedPlacement, (Replicated64Tensor) -> Ring64Tensor),
-        (ReplicatedPlacement, (Replicated128Tensor) -> Ring128Tensor)
+        (HostPlacement, (Replicated64Tensor) -> Ring64Tensor),
+        (HostPlacement, (Replicated128Tensor) -> Ring128Tensor)
     ],
     Self::kernel
 }
@@ -1926,22 +1954,18 @@ impl RepRevealOp {
 
     fn kernel<C: Context, R: Clone>(
         ctx: &C,
-        rep: &ReplicatedPlacement,
+        plc: &HostPlacement,
         xe: ReplicatedTensor<R>,
     ) -> R
     where
         R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
-
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
-        // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        // player0.add(ctx, &player0.add(ctx, x00, x10), x21)
-        apply!(player0, ctx, |x0, x1, x2| { x0 + x1 + x2 }, x00, x10, x21)
+        apply!(plc, ctx, |x0, x1, x2| { x0 + x1 + x2 }, x00, x10, x21)
     }
 }
 
@@ -2571,7 +2595,8 @@ mod tests {
         let xe = rep_plc.share(&ctx, &x);
         let ye = rep_plc.share(&ctx, &y);
         let ze = rep_plc.add(&ctx, &xe, &ye);
-        println!("SYMBOLIC {:?}", ze);
+        let z = bob_plc.reveal(&ctx, &ze);
+        println!("SYMBOLIC {:?}", z);
     }
 
     #[test]
