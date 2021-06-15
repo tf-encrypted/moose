@@ -1,5 +1,6 @@
 use moose::compilation::networking::NetworkingPass;
 use moose::compilation::print::print_graph;
+use moose::compilation::pruning::prune_graph;
 use moose::computation::Computation;
 use moose::text_computation::verbose_parse_computation;
 use moose::text_computation::ToTextual;
@@ -45,13 +46,14 @@ fn main() -> anyhow::Result<()> {
 /// Finds all the passes and the proper order for them
 fn all_passes() -> Vec<String> {
     // Currently is not doing any magical discover and sorting, just returns a hard-coded list.
-    vec!["networking".into()]
+    vec!["networking".into(), "prune".into()]
 }
 
 fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
     match pass {
         "networking" => NetworkingPass::pass(comp),
         "print" => print_graph(comp),
+        "prune" => prune_graph(comp),
         missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
     }
 }
