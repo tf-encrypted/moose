@@ -324,9 +324,7 @@ impl PlacedFOO for BitTensor {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
-        HostPlacement {
-            player: "alice".into(),
-        } // TODO return actual placement
+        self.1.clone()
     }
 }
 
@@ -334,9 +332,7 @@ impl<T> PlacedFOO for RingTensor<T> {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
-        HostPlacement {
-            player: "alice".into(),
-        } // TODO return actual placement
+        self.1.clone()
     }
 }
 
@@ -373,9 +369,7 @@ impl PlacedFOO for PrfKey {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
-        HostPlacement {
-            player: "alice".into(),
-        } // TODO return actual placement
+        self.1.clone()
     }
 }
 
@@ -411,7 +405,7 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct SymbolicHandle<P> {
     op: String,
-    plc: P, // TODO
+    plc: P,
 }
 
 impl<T: PlacedFOO> From<SymbolicHandle<T::Placement>> for Symbolic<T> {
@@ -532,13 +526,14 @@ impl From<TernarySignature> for Signature {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct RingTensor<T>(T);
+pub struct RingTensor<T>(T, HostPlacement);
 
 impl Add<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn add(self, other: RingTensor<u64>) -> Self::Output {
-        RingTensor(self.0.wrapping_add(other.0))
+        assert_eq!(self.1, other.1);
+        RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
 
@@ -546,7 +541,8 @@ impl Add<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn add(self, other: RingTensor<u128>) -> Self::Output {
-        RingTensor(self.0.wrapping_add(other.0))
+        assert_eq!(self.1, other.1);
+        RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
 
@@ -554,7 +550,8 @@ impl Sub<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn sub(self, other: RingTensor<u64>) -> Self::Output {
-        RingTensor(self.0.wrapping_sub(other.0))
+        assert_eq!(self.1, other.1);
+        RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
 
@@ -562,7 +559,8 @@ impl Sub<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn sub(self, other: RingTensor<u128>) -> Self::Output {
-        RingTensor(self.0.wrapping_sub(other.0))
+        assert_eq!(self.1, other.1);
+        RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
 
@@ -570,7 +568,8 @@ impl Mul<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn mul(self, other: RingTensor<u64>) -> Self::Output {
-        RingTensor(self.0.wrapping_mul(other.0))
+        assert_eq!(self.1, other.1);
+        RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
 
@@ -578,24 +577,27 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn mul(self, other: RingTensor<u128>) -> Self::Output {
-        RingTensor(self.0.wrapping_mul(other.0))
+        assert_eq!(self.1, other.1);
+        RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct BitTensor(u8);
+pub struct BitTensor(u8, HostPlacement);
 
 impl BitXor for BitTensor {
     type Output = BitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
-        BitTensor(self.0 ^ other.0)
+        assert_eq!(self.1, other.1);
+        BitTensor(self.0 ^ other.0, self.1)
     }
 }
 
 impl BitAnd for BitTensor {
     type Output = BitTensor;
     fn bitand(self, other: Self) -> Self::Output {
-        BitTensor(self.0 & other.0)
+        assert_eq!(self.1, other.1);
+        BitTensor(self.0 & other.0, self.1)
     }
 }
 
@@ -605,7 +607,7 @@ pub struct ReplicatedTensor<R> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct PrfKey([u8; 16]);
+pub struct PrfKey([u8; 16], HostPlacement);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedSetup<K> {
@@ -1960,9 +1962,7 @@ impl RepShareOp {
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         HostPlacement: PlacementSub<C, R, R, Output = R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
-
-        let owner: HostPlacement = x.placement(); //.try_into().unwrap(); // TODO unwrap
+        let owner = x.placement();
 
         let x0 = owner.sample(ctx);
         let x1 = owner.sample(ctx);
@@ -2296,7 +2296,7 @@ impl PrfKeyGenOp {
 
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
         // TODO
-        PrfKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        PrfKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], plc.clone())
     }
 }
 
@@ -2344,7 +2344,7 @@ impl RingSampleOp {
         T: From<u32>,
     {
         // TODO
-        RingTensor::<T>(T::from(987654321))
+        RingTensor::<T>(T::from(987654321), plc.clone())
     }
 }
 
@@ -2358,10 +2358,9 @@ impl BitSampleOp {
         BitSampleOp { sig: sig.into() }
     }
 
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor
-where {
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor {
         // TODO
-        BitTensor(0)
+        BitTensor(0, plc.clone())
     }
 }
 
@@ -2411,23 +2410,26 @@ mod tests {
     fn test_rep_add_concrete() {
         let ctx = ConcreteContext::default();
 
+        let alice = HostPlacement { player: "alice".into() };
+        let bob = HostPlacement { player: "bob".into() };
+        let carole = HostPlacement { player: "carole".into() };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
 
         let xe: Replicated64Tensor = ReplicatedTensor {
             shares: [
-                [RingTensor(1), RingTensor(2)],
-                [RingTensor(2), RingTensor(3)],
-                [RingTensor(3), RingTensor(1)],
+                [RingTensor(1, alice.clone()), RingTensor(2, alice.clone())],
+                [RingTensor(2, bob.clone()), RingTensor(3, bob.clone())],
+                [RingTensor(3, carole.clone()), RingTensor(1, carole.clone())],
             ],
         };
 
         let ye = ReplicatedTensor {
             shares: [
-                [RingTensor(1), RingTensor(2)],
-                [RingTensor(2), RingTensor(3)],
-                [RingTensor(3), RingTensor(1)],
+                [RingTensor(1, alice.clone()), RingTensor(2, alice.clone())],
+                [RingTensor(2, bob.clone()), RingTensor(3, bob.clone())],
+                [RingTensor(3, carole.clone()), RingTensor(1, carole.clone())],
             ],
         };
 
@@ -2437,9 +2439,9 @@ mod tests {
             ze,
             ReplicatedTensor {
                 shares: [
-                    [RingTensor(2), RingTensor(4)],
-                    [RingTensor(4), RingTensor(6)],
-                    [RingTensor(6), RingTensor(2)],
+                    [RingTensor(2, alice.clone()), RingTensor(4, alice.clone())],
+                    [RingTensor(4, bob.clone()), RingTensor(6, bob.clone())],
+                    [RingTensor(6, carole.clone()), RingTensor(2, carole.clone())],
                 ],
             }
         );
@@ -2626,13 +2628,16 @@ mod tests {
 
     #[test]
     fn test_rep_share_concrete() {
+        let alice = HostPlacement { player: "alice".into() };
+        let bob = HostPlacement { player: "bob".into() };
+        let carole = HostPlacement { player: "carole".into() };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
 
         let ctx = ConcreteContext::default();
 
-        let x: Ring64Tensor = RingTensor(5);
+        let x: Ring64Tensor = RingTensor(5, alice);
         let xe = rep.share(&ctx, &x);
     }
 
