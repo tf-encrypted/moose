@@ -1,0 +1,17 @@
+[package]
+name = "macros"
+version = "0.1.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "~1.0"
+quote = "~1.0"
+syn.version = "~1.0"
+syn.features = ["full", "visit-mut"]
+
+[dev-dependencies]
+trybuild = "~1.0"
+trim-margin = "~0.1"
