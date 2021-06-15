@@ -50,7 +50,7 @@ mod tests {
         assert!(comp.contains(
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp.contains("z = Output (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"));
+        assert!(comp.contains("z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"));
         Ok(())
     }
 
@@ -76,7 +76,7 @@ mod tests {
         assert!(comp.contains(
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp.contains("z = Output (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"));
+        assert!(comp.contains("z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"));
         Ok(())
     }
 
@@ -103,11 +103,11 @@ mod tests {
         assert!(comp.contains(
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp.contains("z = Output (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"));
+        assert!(comp.contains("z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"));
         assert!(comp.contains(
             "add = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp.contains("z2 = Output (Float32Tensor) -> Float32Tensor (add) @Host(alice)"));
+        assert!(comp.contains("z2 = Output: (Float32Tensor) -> Float32Tensor (add) @Host(alice)"));
         Ok(())
     }
 }
