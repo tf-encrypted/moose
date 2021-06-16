@@ -7,7 +7,7 @@ pub fn prune_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     let mut graph = comp.as_graph();
     graph.reverse();
     // Operations to keep
-    let mut keep = Vec::new();
+    let mut keep = Vec::with_capacity(comp.operations.len());
     // Identify all the output nodes
     let outputs = graph
         .node_indices()

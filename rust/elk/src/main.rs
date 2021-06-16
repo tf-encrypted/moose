@@ -36,6 +36,8 @@ fn main() -> anyhow::Result<()> {
             comp = new_comp;
         }
     }
+    // After all the passes are done, ensure the computation is a DAG and sort it.
+    comp = comp.toposort()?;
     match opt.output {
         Some(path) => write(path, comp.to_textual())?,
         None => println!("{}", comp.to_textual()),
