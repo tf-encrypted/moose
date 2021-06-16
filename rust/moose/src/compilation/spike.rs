@@ -541,7 +541,6 @@ where
     }
 }
 
-#[allow(clippy::large_enum_variant)] // TODO
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
@@ -1153,7 +1152,7 @@ impl SymbolicContext {
         operands: &[&str],
         plc: &Placement,
     ) -> String {
-        let mut ops = self.ops.write().unwrap(); // TODO unwrap
+        let mut ops = self.ops.write().unwrap();
         let op_name: String = format!("op_{}", ops.len());
         let op = Operation {
             name: op_name.clone(),
@@ -1812,28 +1811,52 @@ impl RepAddOp {
     ) -> ReplicatedTensor<R>
     where
         R: Clone,
+        R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
+        let x_plc = x.placement();
 
         let ReplicatedTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = y;
 
-        // TODO decide which y shares to use based on placement of x
+        let shares = match x_plc {
+            _ if x_plc == player0 => {
+                // add x to y0
+                [
+                    [with_context!(player0, ctx, x + y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, ctx, x + y02)],
+                ]
+            }
+            _ if x_plc == player1 => {
+                // add x to y1
+                [
+                    [y00, with_context!(player0, ctx, x + y10)],
+                    [with_context!(player1, ctx, x + y11), y21],
+                    [y22, y02],
+                ]
+            }
+            _ if x_plc == player2 => {
+                // add x to y2
+                [
+                    [y00, y10],
+                    [y11, with_context!(player1, ctx, x + y21)],
+                    [with_context!(player2, ctx, x + y22), y02],
+                ]
+            }
+            _ => {
+                // add x to y0; we could randomize this
+                [
+                    [with_context!(player0, ctx, x + y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, ctx, x + y02)],
+                ]
+            }
+        };
 
-        let z00 = with_context!(player0, ctx, x + y00);
-        let z10 = y10;
-
-        let z11 = y11;
-        let z21 = y21;
-
-        let z22 = y22;
-        let z02 = with_context!(player2, ctx, x + y02);
-
-        ReplicatedTensor {
-            shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        ReplicatedTensor { shares }
     }
 
     fn rep_ring_kernel<C: Context, R>(
@@ -1844,28 +1867,52 @@ impl RepAddOp {
     ) -> ReplicatedTensor<R>
     where
         R: Clone,
+        R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
+        let y_plc = y.placement();
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
-        // TODO decide which x shares to use based on placement of y
+        let shares = match y_plc {
+            _ if y_plc == player0 => {
+                // add y to x0
+                [
+                    [with_context!(player0, ctx, x00 + y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, ctx, x02 + y)],
+                ]
+            }
+            _ if y_plc == player1 => {
+                // add y to x1
+                [
+                    [x00, with_context!(player0, ctx, x10 + y)],
+                    [with_context!(player1, ctx, x11 + y), x21],
+                    [x22, x02],
+                ]
+            }
+            _ if y_plc == player2 => {
+                // add y to x2
+                [
+                    [x00, x10],
+                    [x11, with_context!(player1, ctx, x21 + y)],
+                    [with_context!(player2, ctx, x22 + y), x02],
+                ]
+            }
+            _ => {
+                // add y to x0; we could randomize this
+                [
+                    [with_context!(player0, ctx, x00 + y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, ctx, x02 + y)],
+                ]
+            }
+        };
 
-        let z00 = with_context!(player0, ctx, x00 + y);
-        let z10 = x10;
-
-        let z11 = x11;
-        let z21 = x21;
-
-        let z22 = x22;
-        let z02 = with_context!(player2, ctx, x02 + y);
-
-        ReplicatedTensor {
-            shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        ReplicatedTensor { shares }
     }
 }
 
@@ -2368,10 +2415,13 @@ impl BitSampleOp {
     }
 }
 
+// TODO clippy complains if ConstantOp holds a Value but not
+// sure where to introduce eg a Box: here or in Value itself?
+// leaning towards Value
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConstantOp {
     sig: Signature,
-    val: Value,
+    val: Box<Value>,
 }
 
 impl ConstantOp {
@@ -2383,7 +2433,7 @@ impl ConstantOp {
         let val = self.val.clone();
 
         match plc {
-            Placement::HostPlacement(_) => Box::new(move |_operands| -> Value { val.clone() }),
+            Placement::HostPlacement(_) => Box::new(move |_operands| -> Value { *val.clone() }),
             _ => unimplemented!(), // ok
         }
     }
