@@ -81,6 +81,44 @@ mod tests {
     }
 
     #[test]
+    fn test_network_prune() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        y = Constant {value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(bob)
+        send_mul = Send {rendezvous_key="rdv_mul", receiver="alice"} (y) @Host(bob)
+        recv_mul = Receive {rendezvous_key="rdv_mul", sender="bob"} : () -> Float32Tensor () @Host(alice)
+        send_add = Send {rendezvous_key="rdv_add", receiver="alice"} (y) @Host(bob)
+        recv_add = Receive {rendezvous_key="rdv_add", sender="bob"} : () -> Float32Tensor () @Host(alice)
+        mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)
+        add = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_add) @Host(alice)
+        z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"#;
+
+        let comp = prune_graph(&source.try_into()?)?.unwrap();
+
+        assert_eq!(comp.operations.len(), 6);
+        let comp = comp.to_textual();
+        assert!(comp.contains(
+            "x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(alice)"
+        ));
+        assert!(comp.contains(
+            "y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} () @Host(bob)"
+        ));
+        assert!(comp.contains(
+            "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
+        ));
+        assert!(comp.contains(
+            r#"send_mul = Send {rendezvous_key="rdv_mul", receiver="alice"} (y) @Host(bob)"#
+        ));
+        assert!(comp.contains(
+            r#"recv_mul = Receive {rendezvous_key="rdv_mul", sender="bob"} : () -> Float32Tensor () @Host(alice)"#
+        ));
+        assert!(comp.contains(
+            "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
+        ));
+        assert!(comp.contains("z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"));
+        Ok(())
+    }
+
+    #[test]
     fn test_multiple_output_prune() -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
