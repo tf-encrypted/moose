@@ -4,7 +4,7 @@
 use macros::with_context;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
-use std::ops::{Add, Mul, Sub};
+use std::ops::{Add, Mul, Shl, Shr, Sub};
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -547,6 +547,8 @@ where
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
     RingAddOp(RingAddOp),
+    RingShlOp(RingShlOp),
+    RingShrOp(RingShrOp),
     BitXorOp(BitXorOp),
     BitAndOp(BitAndOp),
     RingSubOp(RingSubOp),
@@ -578,6 +580,8 @@ macro_rules! operator {
 // that takes care of everything, including generating `enum Operator`.
 operator!(PrfKeyGenOp);
 operator!(RingAddOp);
+operator!(RingShlOp);
+operator!(RingShrOp);
 operator!(BitXorOp);
 operator!(BitAndOp);
 operator!(RingSubOp);
@@ -708,6 +712,34 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
 
     fn mul(self, other: RingTensor<u128>) -> Self::Output {
         RingTensor(self.0.wrapping_mul(other.0), self.1)
+    }
+}
+
+impl Shl<usize> for RingTensor<u64> {
+    type Output = RingTensor<u64>;
+    fn shl(self, other: usize) -> Self::Output {
+        RingTensor(self.0.wrapping_shl(other as u32), self.1)
+    }
+}
+
+impl Shl<usize> for RingTensor<u128> {
+    type Output = RingTensor<u128>;
+    fn shl(self, other: usize) -> Self::Output {
+        RingTensor(self.0.wrapping_shl(other as u32), self.1)
+    }
+}
+
+impl Shr<usize> for RingTensor<u64> {
+    type Output = RingTensor<u64>;
+    fn shr(self, other: usize) -> Self::Output {
+        RingTensor(self.0.wrapping_shr(other as u32), self.1)
+    }
+}
+
+impl Shr<usize> for RingTensor<u128> {
+    type Output = RingTensor<u128>;
+    fn shr(self, other: usize) -> Self::Output {
+        RingTensor(self.0.wrapping_shr(other as u32), self.1)
     }
 }
 
@@ -1027,6 +1059,17 @@ trait PlacementMul<C: Context, T, U> {
 
     fn mul(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
+trait PlacementShl<C: Context, T> {
+    type Output;
+
+    fn shl(&self, ctx: &C, x: &T) -> Self::Output;
+}
+
+trait PlacementShr<C: Context, T> {
+    type Output;
+
+    fn shr(&self, ctx: &C, x: &T) -> Self::Output;
+}
 
 trait PlacementXor<C: Context, T, U> {
     type Output;
@@ -1084,6 +1127,8 @@ impl Context for ConcreteContext {
             Operator::RingSampleOp(op) => op.compile(self, plc)(operands),
             Operator::BitSampleOp(op) => op.compile(self, plc)(operands),
             Operator::RingAddOp(op) => op.compile(self, plc)(operands),
+            Operator::RingShlOp(op) => op.compile(self, plc)(operands),
+            Operator::RingShrOp(op) => op.compile(self, plc)(operands),
             Operator::BitXorOp(op) => op.compile(self, plc)(operands),
             Operator::BitAndOp(op) => op.compile(self, plc)(operands),
             Operator::RingSubOp(op) => op.compile(self, plc)(operands),
@@ -1129,6 +1174,8 @@ impl Context for SymbolicContext {
             Operator::RingSampleOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::BitSampleOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::RingAddOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RingShlOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RingShrOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::BitXorOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::BitAndOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::RingSubOp(op) => op.execute_symbolic(self, plc, operands),
@@ -2179,7 +2226,7 @@ pub struct RepTruncPrOp {
 hybrid_kernel! {
     RepTruncPrOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => |ctx, rep, s, x| Self::kernel(ctx, rep, s, x, op.amount) ),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => Self::kernel ),
         (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
     ]
 }
@@ -2202,7 +2249,6 @@ impl Ring for Symbolic<Ring128Tensor> {
     const SIZE: usize = 128;
 }
 
-
 impl RepTruncPrOp {
     fn from_placement_signature(plc: &ReplicatedPlacement, sig: BinarySignature) -> Self {
         RepTruncPrOp { sig: sig.into() }
@@ -2218,6 +2264,8 @@ impl RepTruncPrOp {
         R: Clone + Into<C::Value> + TryFrom<C::Value> + 'static + Ring,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementKeyGen<C, K>,
+        HostPlacement: PlacementShl<C, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         // TODO: m is an attribute passed to the kernel
         // Need to fix when we have kernel closures.
@@ -2231,8 +2279,13 @@ impl RepTruncPrOp {
 
         let k2 = player2.keygen(ctx);
 
-        let mut r_bits: Vec<_> = (0..R::SIZE).map(|_| player2.sample(ctx)).collect();
-        let r = bit_compose(r_bits);
+        let r_bits: Vec<_> = (0..R::SIZE).map(|_| player2.sample(ctx)).collect();
+        let r = RepTruncPrOp::bit_compose(ctx, &r_bits, &player2);
+
+        let r_top_bits: Vec<_> = (m..R::SIZE-1).map(|i| r_bits[i].clone()).collect();
+        let r_top_ring = RepTruncPrOp::bit_compose(ctx, &r_top_bits, &player2);
+        let r_msb = r_bits[R::SIZE-1].clone();
+
 
         ReplicatedTensor {
             shares: [
@@ -2242,11 +2295,38 @@ impl RepTruncPrOp {
             ],
         }
     }
-    fn bit_compose<C, R>(bits: Vec<R>, plc: HostPlacement) -> R
-    where HostPlacement: PlacementShl<C, R>,
-    HostPlacement: PlacementAdd<C, R>,
+    fn bit_compose<C: Context, R>(ctx: &C, bits: &Vec<R>, plc: &HostPlacement) -> R
+    where
+        R: Clone,
+        HostPlacement: PlacementShl<C, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
-        let shifted_bits: Vec<_> = (0..bits.len()).map(|i| plc.ring_shl(bits[i], i)).collect();
+        let shifted_bits: Vec<_> = (0..bits.len()).map(|i| plc.shl(ctx, &bits[i])).collect();
+        RepTruncPrOp::tree_reduce(ctx, &shifted_bits, plc)
+    }
+
+    fn tree_reduce<C: Context, R>(ctx: &C, sequence: &Vec<R>, plc: &HostPlacement) -> R
+    where
+        R: Clone,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let n = sequence.len();
+        if n == 1 {
+            sequence[0].clone()
+        } else {
+            let mut reduced: Vec<_> = (0..n / 2)
+                .map(|i| {
+                    let x0: &R = &sequence[2 * i];
+                    let x1: &R = &sequence[2 * i + 1];
+                    let z = with_context!(plc, ctx, x0 + x1);
+                    z
+                })
+                .collect();
+            if n % 2 == 1 {
+                reduced.push(sequence[n - 1].clone());
+            }
+            RepTruncPrOp::tree_reduce(ctx, &reduced, plc)
+        }
     }
 }
 
@@ -2352,6 +2432,64 @@ impl RingMulOp {
         RingTensor<T>: Mul<RingTensor<T>, Output = RingTensor<T>>,
     {
         x * y
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RingShlOp {
+    sig: Signature,
+}
+
+modelled!(PlacementShl::shl, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingShlOp);
+
+kernel! {
+    RingShlOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl RingShlOp {
+    fn from_signature(sig: UnarySignature) -> Self {
+        RingShlOp { sig: sig.into() }
+    }
+
+    fn kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: RingTensor<T>) -> RingTensor<T>
+    where
+        RingTensor<T>: Shl<usize, Output = RingTensor<T>>,
+    {
+        x << 1 // TODO: Fix when having closures
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RingShrOp {
+    sig: Signature,
+}
+
+modelled!(PlacementShr::shr, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingShrOp);
+
+kernel! {
+    RingShrOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl RingShrOp {
+    fn from_signature(sig: UnarySignature) -> Self {
+        RingShrOp { sig: sig.into() }
+    }
+
+    fn kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: RingTensor<T>) -> RingTensor<T>
+    where
+        RingTensor<T>: Shr<usize, Output = RingTensor<T>>,
+    {
+        x >> 1 // TODO: Fix when having closures
     }
 }
 
