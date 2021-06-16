@@ -69,12 +69,14 @@ pub fn verbose_parse_computation(source: &str) -> anyhow::Result<Computation> {
 fn parse_computation<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Computation, E> {
-    all_consuming(map(
+    let body = all_consuming(map(
         separated_list0(many1(multispace1), cut(parse_line)),
         |operations| Computation {
             operations: operations.into_iter().flatten().collect(),
         },
-    ))(input)
+    ));
+    // Allow any number of empty lines around the body
+    delimited(many0(multispace1), body, many0(multispace1))(input)
 }
 
 /// Parses a single logical line of the textual IR
@@ -1878,6 +1880,20 @@ mod tests {
         use std::convert::TryInto;
         let v: Value = "Float32Tensor([1.0, 2.0, 3.0])".try_into()?;
         assert_eq!(v, Value::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
+        Ok(())
+    }
+
+    #[test]
+    fn test_whitespace() -> Result<(), anyhow::Error> {
+        use std::convert::TryInto;
+        let source = r#"
+        x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+
+        y = Constant {value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(bob)
+
+        "#;
+        let comp: Computation = source.try_into()?;
+        assert_eq!(comp.operations.len(), 2);
         Ok(())
     }
 
