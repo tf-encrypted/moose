@@ -49,8 +49,9 @@ pub fn print_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
             // Node formatter.
             &|_, (_, n)| {
                 format!(
-                    "label = \"{}\" shape = rectangle color = \"{}\"",
+                    "label = \"{}\" shape = {} color = \"{}\"",
                     pretty(&comp.operations[n.1]),
+                    shape(&comp.operations[n.1]),
                     color_cache[&comp.operations[n.1].placement.to_textual()]
                 )
             }
@@ -109,4 +110,14 @@ fn pretty(op: &Operation) -> String {
         Operator::FixedpointRingMean(_) => "FixedpointRingMean",
     };
     format!("{} = {}\\l{}", op.name, op_kind, op.placement.to_textual())
+}
+
+fn shape(op: &Operation) -> String {
+    match op.kind {
+        Operator::Input(_) => "invhouse".into(),
+        Operator::Output(_) => "house".into(),
+        Operator::Send(_) => "rarrow".into(),
+        Operator::Receive(_) => "larrow".into(),
+        _ => "rectangle".into(),
+    }
 }
