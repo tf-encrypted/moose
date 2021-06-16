@@ -115,20 +115,66 @@ pub enum Ty {
 }
 
 impl Ty {
-    pub fn synthesize_symbolic_value<S: Into<String>>(&self, op_name: S) -> SymbolicValue {
-        let h = SymbolicHandle { op: op_name.into() };
-        match &self {
-            Ty::Fixed64Tensor => SymbolicValue::Fixed64Tensor(h.into()),
-            Ty::Fixed128Tensor => SymbolicValue::Fixed128Tensor(h.into()),
-            Ty::BitTensor => SymbolicValue::BitTensor(h.into()),
-            Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(h.into()),
-            Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(h.into()),
-            Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(h.into()),
-            Ty::Replicated64Tensor => SymbolicValue::Replicated64Tensor(h.into()),
-            Ty::Replicated128Tensor => SymbolicValue::Replicated128Tensor(h.into()),
-            Ty::ReplicatedBitTensor => SymbolicValue::ReplicatedBitTensor(h.into()),
-            Ty::ReplicatedSetup => SymbolicValue::ReplicatedSetup(h.into()),
-            Ty::PrfKey => SymbolicValue::PrfKey(h.into()),
+    pub fn synthesize_symbolic_value<S: Into<String>>(
+        &self,
+        op_name: S,
+        plc: Placement,
+    ) -> SymbolicValue {
+        match self {
+            Ty::Fixed64Tensor => SymbolicValue::Fixed64Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc,
+            })),
+            Ty::Fixed128Tensor => {
+                SymbolicValue::Fixed128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc,
+                }))
+            }
+            Ty::BitTensor => SymbolicValue::BitTensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+            Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+            Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+            Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+            Ty::Replicated64Tensor => {
+                SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            }
+            Ty::Replicated128Tensor => {
+                SymbolicValue::Replicated128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            }
+            Ty::ReplicatedBitTensor => {
+                SymbolicValue::ReplicatedBitTensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            }
+            Ty::ReplicatedSetup => {
+                SymbolicValue::ReplicatedSetup(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            }
+            Ty::PrfKey => SymbolicValue::PrfKey(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
         }
     }
 }
@@ -286,23 +332,140 @@ value!(
 value!(PrfKey, Symbolic<PrfKey>);
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Symbolic<T> {
-    Symbolic(SymbolicHandle),
+pub enum Symbolic<T: Placed> {
+    Symbolic(SymbolicHandle<T::Placement>),
     Concrete(T),
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct SymbolicHandle {
-    op: String,
+pub trait Placed {
+    type Placement;
+
+    fn placement(&self) -> Self::Placement;
 }
 
-impl<T> From<SymbolicHandle> for Symbolic<T> {
-    fn from(x: SymbolicHandle) -> Symbolic<T> {
+impl Placed for BitTensor {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+impl<T> Placed for RingTensor<T> {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+impl<R> Placed for ReplicatedTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Placement = ReplicatedPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = self;
+
+        let player0 = x00.placement();
+        assert_eq!(x10.placement(), player0);
+
+        let player1 = x11.placement();
+        assert_eq!(x21.placement(), player1);
+
+        let player2 = x22.placement();
+        assert_eq!(x02.placement(), player2);
+
+        let players = [player0.player, player1.player, player2.player];
+        ReplicatedPlacement { players }
+    }
+}
+
+impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
+where
+    RingTensorT: Placed,
+    RingTensorT::Placement: Into<Placement>,
+    ReplicatedTensorT: Placed,
+    ReplicatedTensorT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        match self {
+            FixedTensor::RingTensor(x) => x.placement().into(),
+            FixedTensor::ReplicatedTensor(x) => x.placement().into(),
+        }
+    }
+}
+
+impl Placed for PrfKey {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+impl<K> Placed for AbstractReplicatedSetup<K>
+where
+    K: Placed<Placement = HostPlacement>,
+{
+    type Placement = ReplicatedPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        let AbstractReplicatedSetup {
+            keys: [[x00, x10], [x11, x21], [x22, x02]],
+        } = self;
+
+        let player0 = x00.placement();
+        assert_eq!(x10.placement(), player0);
+
+        let player1 = x11.placement();
+        assert_eq!(x21.placement(), player1);
+
+        let player2 = x22.placement();
+        assert_eq!(x02.placement(), player2);
+
+        let players = [player0.player, player1.player, player2.player];
+        ReplicatedPlacement { players }
+    }
+}
+
+impl<T: Placed> Placed for Symbolic<T>
+where
+    T::Placement: Clone,
+{
+    type Placement = T::Placement;
+
+    fn placement(&self) -> Self::Placement {
+        match self {
+            Symbolic::Symbolic(x) => x.plc.clone(),
+            Symbolic::Concrete(x) => x.placement(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SymbolicHandle<P> {
+    op: String,
+    // NOTE if we had a handle to the graph we
+    // could perhaps derive the placement instead
+    plc: P,
+}
+
+impl<T: Placed> From<SymbolicHandle<T::Placement>> for Symbolic<T> {
+    fn from(x: SymbolicHandle<T::Placement>) -> Symbolic<T> {
         Symbolic::Symbolic(x)
     }
 }
 
-impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K> {
+impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K>
+where
+    K: Placed<Placement = HostPlacement>,
+{
     type Error = Symbolic<Self>;
 
     fn try_from(x: Symbolic<AbstractReplicatedSetup<K>>) -> Result<Self, Self::Error> {
@@ -313,7 +476,10 @@ impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetu
     }
 }
 
-impl<R> TryFrom<Symbolic<ReplicatedTensor<R>>> for ReplicatedTensor<R> {
+impl<R> TryFrom<Symbolic<ReplicatedTensor<R>>> for ReplicatedTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
     type Error = Symbolic<Self>;
 
     fn try_from(x: Symbolic<ReplicatedTensor<R>>) -> Result<Self, Self::Error> {
@@ -326,6 +492,9 @@ impl<R> TryFrom<Symbolic<ReplicatedTensor<R>>> for ReplicatedTensor<R> {
 
 impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>>
     for FixedTensor<RingTensorT, ReplicatedTensorT>
+where
+    RingTensorT: Placed<Placement = HostPlacement>,
+    ReplicatedTensorT: Placed<Placement = ReplicatedPlacement>,
 {
     type Error = Symbolic<Self>;
 
@@ -336,6 +505,41 @@ impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, R
             Symbolic::Concrete(cx) => Ok(cx),
             Symbolic::Symbolic(_) => Err(x),
         }
+    }
+}
+
+impl<RingTensorT, ReplicatedTensorT> From<FixedTensor<RingTensorT, ReplicatedTensorT>>
+    for Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>
+where
+    RingTensorT: Placed<Placement = HostPlacement>,
+    ReplicatedTensorT: Placed<Placement = ReplicatedPlacement>,
+{
+    fn from(x: FixedTensor<RingTensorT, ReplicatedTensorT>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<T> From<RingTensor<T>> for Symbolic<RingTensor<T>> {
+    fn from(x: RingTensor<T>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> From<ReplicatedTensor<R>> for Symbolic<ReplicatedTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: ReplicatedTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
+where
+    K: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedSetup<K>) -> Self {
+        Symbolic::Concrete(x)
     }
 }
 
@@ -455,13 +659,13 @@ impl From<TernarySignature> for Signature {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct RingTensor<T>(T);
+pub struct RingTensor<T>(T, HostPlacement);
 
 impl Add<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn add(self, other: RingTensor<u64>) -> Self::Output {
-        RingTensor(self.0.wrapping_add(other.0))
+        RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
 
@@ -469,7 +673,7 @@ impl Add<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn add(self, other: RingTensor<u128>) -> Self::Output {
-        RingTensor(self.0.wrapping_add(other.0))
+        RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
 
@@ -477,7 +681,7 @@ impl Sub<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn sub(self, other: RingTensor<u64>) -> Self::Output {
-        RingTensor(self.0.wrapping_sub(other.0))
+        RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
 
@@ -485,7 +689,7 @@ impl Sub<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn sub(self, other: RingTensor<u128>) -> Self::Output {
-        RingTensor(self.0.wrapping_sub(other.0))
+        RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
 
@@ -493,7 +697,7 @@ impl Mul<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn mul(self, other: RingTensor<u64>) -> Self::Output {
-        RingTensor(self.0.wrapping_mul(other.0))
+        RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
 
@@ -501,24 +705,24 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn mul(self, other: RingTensor<u128>) -> Self::Output {
-        RingTensor(self.0.wrapping_mul(other.0))
+        RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct BitTensor(u8);
+pub struct BitTensor(u8, HostPlacement);
 
 impl BitXor for BitTensor {
     type Output = BitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
-        BitTensor(self.0 ^ other.0)
+        BitTensor(self.0 ^ other.0, self.1)
     }
 }
 
 impl BitAnd for BitTensor {
     type Output = BitTensor;
     fn bitand(self, other: Self) -> Self::Output {
-        BitTensor(self.0 & other.0)
+        BitTensor(self.0 & other.0, self.1)
     }
 }
 
@@ -528,7 +732,7 @@ pub struct ReplicatedTensor<R> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct PrfKey([u8; 16]);
+pub struct PrfKey([u8; 16], HostPlacement);
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedSetup<K> {
@@ -562,32 +766,6 @@ pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
 pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
     RingTensor(RingTensorT),
     ReplicatedTensor(ReplicatedTensorT),
-}
-
-impl<RingTensorT, ReplicatedTensorT> From<FixedTensor<RingTensorT, ReplicatedTensorT>>
-    for Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>
-{
-    fn from(x: FixedTensor<RingTensorT, ReplicatedTensorT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<T> From<RingTensor<T>> for Symbolic<RingTensor<T>> {
-    fn from(x: RingTensor<T>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<R> From<ReplicatedTensor<R>> for Symbolic<ReplicatedTensor<R>> {
-    fn from(x: ReplicatedTensor<R>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>> {
-    fn from(x: AbstractReplicatedSetup<K>) -> Self {
-        Symbolic::Concrete(x)
-    }
 }
 
 macro_rules! modelled {
@@ -976,7 +1154,7 @@ impl SymbolicContext {
         operands: &[&str],
         plc: &Placement,
     ) -> String {
-        let mut ops = self.ops.write().unwrap(); // TODO unwrap
+        let mut ops = self.ops.write().unwrap();
         let op_name: String = format!("op_{}", ops.len());
         let op = Operation {
             name: op_name.clone(),
@@ -1332,8 +1510,8 @@ macro_rules! kernel {
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr), )+]) => {
         runtime_kernel!($op, [$( ($plc, () -> $u => $k), )+]);
         compiletime_kernel!($op, [$( ($plc, () -> $u => |op, ctx, plc| {
-            let op_name = ctx.add_operation(op, &[], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
         }), )+]);
     };
 
@@ -1349,8 +1527,8 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[&x0_op], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
         }), )+]);
     };
 
@@ -1371,8 +1549,8 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
         }), )+]);
     };
 
@@ -1398,8 +1576,8 @@ macro_rules! kernel {
                 Symbolic::Concrete(_) => unimplemented!(),
             };
 
-            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op, &x2_op], &plc.into());
-            Symbolic::Symbolic(SymbolicHandle { op: op_name })
+            let op_name = ctx.add_operation(op, &[&x0_op, &x1_op, &x2_op], &plc.clone().into());
+            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
         }), )+]);
     };
 }
@@ -1435,8 +1613,8 @@ macro_rules! hybrid_kernel {
                 }
                 _ => match x0 {
                     Symbolic::Symbolic(h0) => {
-                        let op_name = ctx.add_operation(op, &[&h0.op], &plc.into());
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                        let op_name = ctx.add_operation(op, &[&h0.op], &plc.clone().into());
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
                     }
                     _ => unimplemented!() // ok
                 }
@@ -1461,8 +1639,8 @@ macro_rules! hybrid_kernel {
                 }
                 _ => match (x0, x1) {
                     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op], &plc.into());
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
                     }
                     _ => unimplemented!() // ok
                 }
@@ -1488,8 +1666,8 @@ macro_rules! hybrid_kernel {
                 }
                 _ => match (x0, x1, x2) {
                     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
-                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.into());
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name })
+                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
                     }
                     _ => unimplemented!() // ok
                 }
@@ -1635,28 +1813,52 @@ impl RepAddOp {
     ) -> ReplicatedTensor<R>
     where
         R: Clone,
+        R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
+        let x_plc = x.placement();
 
         let ReplicatedTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = y;
 
-        // TODO decide which y shares to use based on placement of x
+        let shares = match x_plc {
+            _ if x_plc == player0 => {
+                // add x to y0
+                [
+                    [with_context!(player0, ctx, x + y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, ctx, x + y02)],
+                ]
+            }
+            _ if x_plc == player1 => {
+                // add x to y1
+                [
+                    [y00, with_context!(player0, ctx, x + y10)],
+                    [with_context!(player1, ctx, x + y11), y21],
+                    [y22, y02],
+                ]
+            }
+            _ if x_plc == player2 => {
+                // add x to y2
+                [
+                    [y00, y10],
+                    [y11, with_context!(player1, ctx, x + y21)],
+                    [with_context!(player2, ctx, x + y22), y02],
+                ]
+            }
+            _ => {
+                // add x to y0; we could randomize this
+                [
+                    [with_context!(player0, ctx, x + y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, ctx, x + y02)],
+                ]
+            }
+        };
 
-        let z00 = with_context!(player0, ctx, x + y00);
-        let z10 = y10;
-
-        let z11 = y11;
-        let z21 = y21;
-
-        let z22 = y22;
-        let z02 = with_context!(player2, ctx, x + y02);
-
-        ReplicatedTensor {
-            shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        ReplicatedTensor { shares }
     }
 
     fn rep_ring_kernel<C: Context, R>(
@@ -1667,28 +1869,52 @@ impl RepAddOp {
     ) -> ReplicatedTensor<R>
     where
         R: Clone,
+        R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let (player0, player1, player2) = rep.host_placements();
+        let y_plc = y.placement();
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
-        // TODO decide which x shares to use based on placement of y
+        let shares = match y_plc {
+            _ if y_plc == player0 => {
+                // add y to x0
+                [
+                    [with_context!(player0, ctx, x00 + y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, ctx, x02 + y)],
+                ]
+            }
+            _ if y_plc == player1 => {
+                // add y to x1
+                [
+                    [x00, with_context!(player0, ctx, x10 + y)],
+                    [with_context!(player1, ctx, x11 + y), x21],
+                    [x22, x02],
+                ]
+            }
+            _ if y_plc == player2 => {
+                // add y to x2
+                [
+                    [x00, x10],
+                    [x11, with_context!(player1, ctx, x21 + y)],
+                    [with_context!(player2, ctx, x22 + y), x02],
+                ]
+            }
+            _ => {
+                // add y to x0; we could randomize this
+                [
+                    [with_context!(player0, ctx, x00 + y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, ctx, x02 + y)],
+                ]
+            }
+        };
 
-        let z00 = with_context!(player0, ctx, x00 + y);
-        let z10 = x10;
-
-        let z11 = x11;
-        let z21 = x21;
-
-        let z22 = x22;
-        let z02 = with_context!(player2, ctx, x02 + y);
-
-        ReplicatedTensor {
-            shares: [[z00, z10], [z11, z21], [z22, z02]],
-        }
+        ReplicatedTensor { shares }
     }
 }
 
@@ -1886,14 +2112,12 @@ impl RepShareOp {
     fn kernel<C: Context, R: Clone>(ctx: &C, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
     where
         R: Into<C::Value> + TryFrom<C::Value> + 'static,
+        R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         HostPlacement: PlacementSub<C, R, R, Output = R>,
     {
-        let (player0, player1, player2) = rep.host_placements();
-
-        // TODO we should not use player0 here, but rather the placement of `x` (which is currently not implemented)
-        let owner = player0;
+        let owner = x.placement();
 
         let x0 = owner.sample(ctx);
         let x1 = owner.sample(ctx);
@@ -2131,7 +2355,10 @@ impl PrfKeyGenOp {
 
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
         // TODO
-        PrfKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        PrfKey(
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            plc.clone(),
+        )
     }
 }
 
@@ -2161,7 +2388,7 @@ impl RingSampleOp {
         T: From<u32>,
     {
         // TODO
-        RingTensor::<T>(T::from(987654321))
+        RingTensor::<T>(T::from(987654321), plc.clone())
     }
 }
 
@@ -2184,17 +2411,19 @@ impl BitSampleOp {
         BitSampleOp { sig: sig.into() }
     }
 
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor
-where {
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor {
         // TODO
-        BitTensor(0)
+        BitTensor(0, plc.clone())
     }
 }
 
+// TODO clippy complains if ConstantOp holds a Value but not
+// sure where to introduce eg a Box: here or in Value itself?
+// leaning towards Value
 #[derive(Clone, Debug, PartialEq)]
 pub struct ConstantOp {
     sig: Signature,
-    val: Value,
+    val: Box<Value>,
 }
 
 impl ConstantOp {
@@ -2206,7 +2435,7 @@ impl ConstantOp {
         let val = self.val.clone();
 
         match plc {
-            Placement::HostPlacement(_) => Box::new(move |_operands| -> Value { val.clone() }),
+            Placement::HostPlacement(_) => Box::new(move |_operands| -> Value { *val.clone() }),
             _ => unimplemented!(), // ok
         }
     }
@@ -2220,7 +2449,9 @@ impl ConstantOp {
         match plc {
             Placement::HostPlacement(_) => {
                 let op_name = ctx.add_operation(self, &[], plc);
-                self.val.ty().synthesize_symbolic_value(op_name)
+                self.val
+                    .ty()
+                    .synthesize_symbolic_value(op_name, plc.clone())
             }
             _ => unimplemented!(), // ok
         }
@@ -2442,29 +2673,40 @@ impl FixedAddOp {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::redundant_clone)]
+
     use super::*;
 
     #[test]
     fn test_rep_add_concrete() {
         let ctx = ConcreteContext::default();
 
+        let alice = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob = HostPlacement {
+            player: "bob".into(),
+        };
+        let carole = HostPlacement {
+            player: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
 
         let xe: Replicated64Tensor = ReplicatedTensor {
             shares: [
-                [RingTensor(1), RingTensor(2)],
-                [RingTensor(2), RingTensor(3)],
-                [RingTensor(3), RingTensor(1)],
+                [RingTensor(1, alice.clone()), RingTensor(2, alice.clone())],
+                [RingTensor(2, bob.clone()), RingTensor(3, bob.clone())],
+                [RingTensor(3, carole.clone()), RingTensor(1, carole.clone())],
             ],
         };
 
         let ye = ReplicatedTensor {
             shares: [
-                [RingTensor(1), RingTensor(2)],
-                [RingTensor(2), RingTensor(3)],
-                [RingTensor(3), RingTensor(1)],
+                [RingTensor(1, alice.clone()), RingTensor(2, alice.clone())],
+                [RingTensor(2, bob.clone()), RingTensor(3, bob.clone())],
+                [RingTensor(3, carole.clone()), RingTensor(1, carole.clone())],
             ],
         };
 
@@ -2474,9 +2716,9 @@ mod tests {
             ze,
             ReplicatedTensor {
                 shares: [
-                    [RingTensor(2), RingTensor(4)],
-                    [RingTensor(4), RingTensor(6)],
-                    [RingTensor(6), RingTensor(2)],
+                    [RingTensor(2, alice.clone()), RingTensor(4, alice.clone())],
+                    [RingTensor(4, bob.clone()), RingTensor(6, bob.clone())],
+                    [RingTensor(6, carole.clone()), RingTensor(2, carole.clone())],
                 ],
             }
         );
@@ -2486,6 +2728,15 @@ mod tests {
     fn test_rep_add_symbolic() {
         let ctx = SymbolicContext::default();
 
+        let alice = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob = HostPlacement {
+            player: "bob".into(),
+        };
+        let carole = HostPlacement {
+            player: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
@@ -2494,16 +2745,40 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        SymbolicHandle { op: "x00".into() }.into(),
-                        SymbolicHandle { op: "x10".into() }.into(),
+                        SymbolicHandle {
+                            op: "x00".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "x10".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "x11".into() }.into(),
-                        SymbolicHandle { op: "x21".into() }.into(),
+                        SymbolicHandle {
+                            op: "x11".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "x21".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "x22".into() }.into(),
-                        SymbolicHandle { op: "x02".into() }.into(),
+                        SymbolicHandle {
+                            op: "x22".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "x02".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
                     ],
                 ],
             });
@@ -2512,16 +2787,40 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        SymbolicHandle { op: "y00".into() }.into(),
-                        SymbolicHandle { op: "y10".into() }.into(),
+                        SymbolicHandle {
+                            op: "y00".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "y10".into(),
+                            plc: alice.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "y11".into() }.into(),
-                        SymbolicHandle { op: "y21".into() }.into(),
+                        SymbolicHandle {
+                            op: "y11".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "y21".into(),
+                            plc: bob.clone(),
+                        }
+                        .into(),
                     ],
                     [
-                        SymbolicHandle { op: "y22".into() }.into(),
-                        SymbolicHandle { op: "y02".into() }.into(),
+                        SymbolicHandle {
+                            op: "y22".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
+                        SymbolicHandle {
+                            op: "y02".into(),
+                            plc: carole.clone(),
+                        }
+                        .into(),
                     ],
                 ],
             });
@@ -2533,16 +2832,34 @@ mod tests {
             Symbolic::Concrete(ReplicatedTensor {
                 shares: [
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_0".into() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_1".into() }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_0".into(),
+                            plc: alice.clone()
+                        }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_1".into(),
+                            plc: alice.clone()
+                        }),
                     ],
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_2".into() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_3".into() }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_2".into(),
+                            plc: bob.clone()
+                        }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_3".into(),
+                            plc: bob.clone()
+                        }),
                     ],
                     [
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_4".into() }),
-                        Symbolic::Symbolic(SymbolicHandle { op: "op_5".into() }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_4".into(),
+                            plc: carole.clone()
+                        }),
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op: "op_5".into(),
+                            plc: carole.clone()
+                        }),
                     ],
                 ]
             })
@@ -2660,6 +2977,15 @@ mod tests {
 
     #[test]
     fn test_rep_share_concrete() {
+        let alice = HostPlacement {
+            player: "alice".into(),
+        };
+        let bob = HostPlacement {
+            player: "bob".into(),
+        };
+        let carole = HostPlacement {
+            player: "carole".into(),
+        };
         let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
@@ -2667,7 +2993,7 @@ mod tests {
         let replicated_keys = HashMap::new();
         let ctx = ConcreteContext { replicated_keys };
 
-        let x: Ring64Tensor = RingTensor(5);
+        let x: Ring64Tensor = RingTensor(5, alice);
         let xe = rep.share(&ctx, &x);
     }
 
@@ -2689,7 +3015,8 @@ mod tests {
         let xe = rep_plc.share(&ctx, &x);
         let ye = rep_plc.share(&ctx, &y);
         let ze = rep_plc.add(&ctx, &xe, &ye);
-        println!("SYMBOLIC {:?}", ze);
+        let z = bob_plc.reveal(&ctx, &ze);
+        println!("SYMBOLIC {:?}", z);
     }
 
     #[test]
@@ -2714,44 +3041,48 @@ mod tests {
 
     #[test]
     fn test_fixed_add() {
-        let alice_plc = HostPlacement {
+        let alice = HostPlacement {
             player: "alice".into(),
         };
-        let bob_plc = HostPlacement {
+        let bob = HostPlacement {
             player: "bob".into(),
         };
-        let rep_plc = ReplicatedPlacement {
+        let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = Fixed64Tensor::RingTensor(RingTensor(5 * 256));
-        let y = Fixed64Tensor::RingTensor(RingTensor(7 * 256));
+        let x = Fixed64Tensor::RingTensor(RingTensor(5 * 256, alice.clone()));
+        let y = Fixed64Tensor::RingTensor(RingTensor(7 * 256, bob.clone()));
 
         let ctx = ConcreteContext::default();
-        let z = rep_plc.add(&ctx, &x, &y);
+        let z = rep.add(&ctx, &x, &y);
 
         println!("{:?}", z);
     }
 
     #[test]
     fn test_fixed_add_symb() {
-        let alice_plc = HostPlacement {
+        let alice = HostPlacement {
             player: "alice".into(),
         };
-        let bob_plc = HostPlacement {
+        let bob = HostPlacement {
             player: "bob".into(),
         };
-        let rep_plc = ReplicatedPlacement {
+        let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x: <Fixed128Tensor as KnownType>::Symbolic =
-            Symbolic::Symbolic(SymbolicHandle { op: "x".into() });
-        let y: <Fixed128Tensor as KnownType>::Symbolic =
-            Symbolic::Symbolic(SymbolicHandle { op: "y".into() });
+        let x: <Fixed128Tensor as KnownType>::Symbolic = Symbolic::Symbolic(SymbolicHandle {
+            op: "x".into(),
+            plc: alice.clone().into(),
+        });
+        let y: <Fixed128Tensor as KnownType>::Symbolic = Symbolic::Symbolic(SymbolicHandle {
+            op: "y".into(),
+            plc: bob.clone().into(),
+        });
 
         let ctx = SymbolicContext::default();
-        let z = rep_plc.add(&ctx, &x, &y);
+        let z = rep.add(&ctx, &x, &y);
 
         println!("{:?}", z);
 
@@ -2763,25 +3094,31 @@ mod tests {
 
     #[test]
     fn test_fixed_add_symb_lower() {
-        let alice_plc = HostPlacement {
+        let alice = HostPlacement {
             player: "alice".into(),
         };
-        let bob_plc = HostPlacement {
+        let bob = HostPlacement {
             player: "bob".into(),
         };
-        let rep_plc = ReplicatedPlacement {
+        let rep = ReplicatedPlacement {
             players: ["alice".into(), "bob".into(), "carole".into()],
         };
 
         let x: <Fixed64Tensor as KnownType>::Symbolic = Symbolic::Concrete(
-            FixedTensor::RingTensor(Symbolic::Symbolic(SymbolicHandle { op: "x".into() })),
+            FixedTensor::RingTensor(Symbolic::Symbolic(SymbolicHandle {
+                op: "x".into(),
+                plc: alice.clone(),
+            })),
         );
         let y: <Fixed64Tensor as KnownType>::Symbolic = Symbolic::Concrete(
-            FixedTensor::RingTensor(Symbolic::Symbolic(SymbolicHandle { op: "y".into() })),
+            FixedTensor::RingTensor(Symbolic::Symbolic(SymbolicHandle {
+                op: "y".into(),
+                plc: bob.clone(),
+            })),
         );
 
         let ctx = SymbolicContext::default();
-        let z = rep_plc.add(&ctx, &x, &y);
+        let z = rep.add(&ctx, &x, &y);
 
         println!("{:?}", z);
 
