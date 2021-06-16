@@ -773,15 +773,7 @@ macro_rules! modelled {
     Nullary
     */
     ($t:ident::$f:ident, $plc:ty, () -> $u:ty, $op:ident) => {
-        impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {
-            fn check(ctx: &ConcreteContext, plc: &$plc) -> $u {
-                // NOTE we shouldn't do anything here, the kernel call is simply to check
-
-                // NOTE not sure whether to add `unimplemented!`. it might be better to
-                // simply make sure the Check traits are private.
-                <Self as NullaryKernel<ConcreteContext, $plc, $u>>::kernel(ctx, plc)
-            }
-        }
+        impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {}
 
         impl $t<ConcreteContext, $u> for $plc {
             fn $f(&self, ctx: &ConcreteContext) -> $u {
@@ -812,11 +804,7 @@ macro_rules! modelled {
     Unary
     */
     ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
-        impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {
-            fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0) -> $u {
-                <Self as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::kernel(ctx, plc, x0)
-            }
-        }
+        impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
 
         impl $t<ConcreteContext, $t0> for $plc {
             type Output = $u;
@@ -853,13 +841,7 @@ macro_rules! modelled {
     Binary
     */
     ($t:ident::$f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
-        impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {
-            fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1) -> $u {
-                <Self as BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u>>::kernel(
-                    ctx, plc, x0, x1,
-                )
-            }
-        }
+        impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1> for $plc {
             type Output = $u;
@@ -913,13 +895,7 @@ macro_rules! modelled {
     Ternary
     */
     ($t:ident::$f:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
-        impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
-            fn check(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1, x2: $t2) -> $u {
-                <Self as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::kernel(
-                    ctx, plc, x0, x1, x2,
-                )
-            }
-        }
+        impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1, $t2> for $plc {
             type Output = $u;
@@ -1692,21 +1668,13 @@ pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
     fn kernel(ctx: &C, plc: &P, x0: X0, x1: X1, x2: X2) -> Y;
 }
 
-trait NullaryKernelCheck<C: Context, P, Y> {
-    fn check(ctx: &C, plc: &P) -> Y;
-}
+trait NullaryKernelCheck<C: Context, P, Y> where Self: NullaryKernel<C, P, Y> {}
 
-trait UnaryKernelCheck<C: Context, P, X0, Y> {
-    fn check(ctx: &C, plc: &P, x0: X0) -> Y;
-}
+trait UnaryKernelCheck<C: Context, P, X0, Y> where Self: UnaryKernel<C, P, X0, Y> {}
 
-trait BinaryKernelCheck<C: Context, P, X0, X1, Y> {
-    fn check(ctx: &C, plc: &P, x0: X0, x1: X1) -> Y;
-}
+trait BinaryKernelCheck<C: Context, P, X0, X1, Y> where Self: BinaryKernel<C, P, X0, X1, Y> {}
 
-trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> {
-    fn check(ctx: &C, plc: &P, x0: X0, x1: X1, x2: X2) -> Y;
-}
+trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> where Self: TernaryKernel<C, P, X0, X1, X2, Y> {}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepSetupOp {
@@ -2174,7 +2142,7 @@ pub struct RingAddOp {
 }
 
 // NOTE uncomment the next line to see the kernel check system in action
-// modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
+// modelled!(PlacementAdd::add, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
 // NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
 modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
 modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
