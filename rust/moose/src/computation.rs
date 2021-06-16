@@ -49,6 +49,64 @@ pub enum Ty {
     UnknownTy,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum Signature {
+    Nullary(NullarySignature),
+    Unary(UnarySignature),
+    Binary(BinarySignature),
+    Ternary(TernarySignature),
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct NullarySignature {
+    ret: Ty,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct UnarySignature {
+    arg0: Ty,
+    ret: Ty,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct BinarySignature {
+    arg0: Ty,
+    arg1: Ty,
+    ret: Ty,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct TernarySignature {
+    arg0: Ty,
+    arg1: Ty,
+    arg2: Ty,
+    ret: Ty,
+}
+
+impl From<NullarySignature> for Signature {
+    fn from(s: NullarySignature) -> Signature {
+        Signature::Nullary(s)
+    }
+}
+
+impl From<UnarySignature> for Signature {
+    fn from(s: UnarySignature) -> Signature {
+        Signature::Unary(s)
+    }
+}
+
+impl From<BinarySignature> for Signature {
+    fn from(s: BinarySignature) -> Signature {
+        Signature::Binary(s)
+    }
+}
+
+impl From<TernarySignature> for Signature {
+    fn from(s: TernarySignature) -> Signature {
+        Signature::Ternary(s)
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
@@ -354,24 +412,23 @@ pub struct PrimDeriveSeedOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct PrimGenPrfKeyOp;
+pub struct PrimGenPrfKeyOp {
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingAddOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSubOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingMulOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -399,7 +456,7 @@ pub struct RingFillOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSampleOp {
-    pub output: Ty,
+    pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
@@ -428,7 +485,9 @@ pub struct BitExtractOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitSampleOp;
+pub struct BitSampleOp {
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitFillOp {
@@ -436,10 +495,14 @@ pub struct BitFillOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitXorOp;
+pub struct BitXorOp{
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitAndOp;
+pub struct BitAndOp {
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {
@@ -513,6 +576,29 @@ impl From<ReplicatedPlacement> for Placement {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum PlacementTy {
+    HostTy,
+    ReplicatedTy,
+}
+
+trait KnownPlacement {
+    const TY: PlacementTy;
+
+    fn ty(&self) -> PlacementTy {
+        Self::TY
+    }
+}
+
+impl KnownPlacement for HostPlacement {
+    const TY: PlacementTy = PlacementTy::HostTy;
+}
+
+impl KnownPlacement for ReplicatedPlacement {
+    const TY: PlacementTy = PlacementTy::ReplicatedTy;
+}
+
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Operation {
     pub name: String,
@@ -527,3 +613,4 @@ pub struct Computation {
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
 }
+

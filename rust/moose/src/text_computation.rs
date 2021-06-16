@@ -213,6 +213,21 @@ macro_rules! std_binary {
 }
 
 /// Constructs a parser for a simple binary operation.
+macro_rules! sig_binary {
+    ($typ:expr, $sub:ident) => {
+        |input: &'a str| {
+            let (input, (args_types, result_type)) = type_definition(2)(input)?;
+            Ok((
+                input,
+                $typ($sub {
+                    sig: Signature::Binary(BinarySignature{arg0: args_types[0], arg1: args_types[1], ret: result_type})
+                }),
+            ))
+        }
+    };
+}
+
+/// Constructs a parser for a simple binary operation.
 macro_rules! operation_on_axis {
     ($typ:expr, $sub:ident) => {
         |input: &'a str| {
@@ -286,15 +301,15 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         ),
         preceded(
             tag("RingAdd"),
-            cut(std_binary!(Operator::RingAdd, RingAddOp)),
+            cut(sig_binary!(Operator::RingAdd, RingAddOp)),
         ),
         preceded(
             tag("RingSub"),
-            cut(std_binary!(Operator::RingSub, RingSubOp)),
+            cut(sig_binary!(Operator::RingSub, RingSubOp)),
         ),
         preceded(
             tag("RingMul"),
-            cut(std_binary!(Operator::RingMul, RingMulOp)),
+            cut(sig_binary!(Operator::RingMul, RingMulOp)),
         ),
         preceded(
             tag("RingDot"),
@@ -463,7 +478,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((
         input,
         Operator::RingSample(RingSampleOp {
-            output: result_type,
+            sig: Signature::Nullary(NullarySignature{ret: result_type}),
             max_value: opt_max_value,
         }),
     ))
@@ -518,7 +533,10 @@ fn ring_shr<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    Ok((input, Operator::PrimGenPrfKey(PrimGenPrfKeyOp)))
+    let (input, (_, ret)) = type_definition(0)(input)?;
+    Ok((input, Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
+        sig: Signature::Nullary(NullarySignature{ret})
+    })))
 }
 
 /// Parses a PrimDeriveSeed operator.
@@ -632,8 +650,10 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, _opt_args) = opt(type_definition(0))(input)?;
-    Ok((input, Operator::BitSample(BitSampleOp {})))
+    let (input, (_, ret)) = type_definition(0)(input)?;
+    Ok((input, Operator::BitSample(BitSampleOp {
+        sig: Signature::Nullary(NullarySignature{ret})
+    })))
 }
 
 /// Parses a BitFill operator.
@@ -649,8 +669,10 @@ fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, _opt_args) = opt(type_definition(0))(input)?;
-    Ok((input, Operator::BitXor(BitXorOp {})))
+    let (input, (_, ret)) = type_definition(0)(input)?;
+    Ok((input, Operator::BitXor(BitXorOp {
+        sig: Signature::Nullary(NullarySignature{ret})
+    })))
 }
 
 /// Parses list of arguments.
@@ -783,7 +805,8 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Value, E> {
     alt((
         value_literal_helper("Seed", parse_hex, |v| Value::Seed(Seed(v))),
-        value_literal_helper("PrfKey", parse_hex, |v| Value::PrfKey(PrfKey(v))),
+        // TODO: Need to figure out placed values
+        value_literal_helper("PrfKey", parse_hex, |v| Value::PrfKey(PrfKey(v, HostPlacement{owner: "TODO".into()}))),
         value_literal_helper("Float32", float, Value::Float32),
         value_literal_helper("Float64", double, Value::Float64),
         value_literal_helper("String", string, Value::String),
@@ -1259,9 +1282,9 @@ standard_op_to_textual!(
 );
 standard_op_to_textual!(StdTransposeOp, "StdTranspose: ({}) -> {}", ty, ty);
 standard_op_to_textual!(StdInverseOp, "StdInverse: ({}) -> {}", ty, ty);
-standard_op_to_textual!(RingAddOp, "RingAdd: ({}, {}) -> {}", lhs, rhs, lhs);
-standard_op_to_textual!(RingSubOp, "RingSub: ({}, {}) -> {}", lhs, rhs, lhs);
-standard_op_to_textual!(RingMulOp, "RingMul: ({}, {}) -> {}", lhs, rhs, lhs);
+standard_op_to_textual!(RingAddOp, "RingAdd: {}", sig);
+standard_op_to_textual!(RingSubOp, "RingSub: {}", sig);
+standard_op_to_textual!(RingMulOp, "RingMul: {}", sig);
 standard_op_to_textual!(RingDotOp, "RingDot: ({}, {}) -> {}", lhs, rhs, lhs);
 standard_op_to_textual!(RingShapeOp, "RingShape: ({}) -> {}", ty, ty);
 standard_op_to_textual!(RingFillOp, "RingFill{{value={}}}: () -> {}", value, ty);
@@ -1332,16 +1355,29 @@ impl ToTextual for RingSampleOp {
     fn to_textual(&self) -> String {
         match self {
             RingSampleOp {
-                output,
+                sig: Signature::Nullary(NullarySignature{ret}),
                 max_value: Some(a),
             } => format!(
                 "RingSample{{max_value = {}}}: ({}) -> {}",
-                a, output, output
+                a, ret, ret
             ),
             RingSampleOp {
-                output,
+                sig: Signature::Nullary(NullarySignature{ret}),
                 max_value: None,
-            } => format!("RingSample: ({}) -> {}", output, output),
+            } => format!("RingSample: ({}) -> {}", ret, ret),
+            _ => unimplemented!(),
+        }
+    }
+}
+
+impl ToTextual for Signature {
+    fn to_textual(&self) -> String {
+        match self {
+            Signature::Nullary(NullarySignature{ret}) => format!("() -> {}", ret.to_textual()),
+            Signature::Unary(UnarySignature{arg0, ret}) => format!("({}) -> {}", arg0.to_textual(), ret.to_textual()),
+            Signature::Binary(BinarySignature{arg0, arg1, ret}) => format!("({}, {}) -> {}", arg0.to_textual(), arg1.to_textual(), ret.to_textual()),
+            Signature::Ternary(TernarySignature{arg0, arg1, arg2, ret}) => format!("({}, {}, {}) -> {}", arg0.to_textual(), arg1.to_textual(), arg2.to_textual(), ret.to_textual()),
+            _ => unimplemented!(),
         }
     }
 }
@@ -1400,7 +1436,7 @@ impl ToTextual for Value {
             Value::Shape(Shape(x)) => format!("Shape({:?})", x),
             Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
             Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
-            Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
+            Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.to_textual()),
             _ => unimplemented!(),
         }
     }

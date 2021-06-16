@@ -417,19 +417,21 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
 
 impl Compile<Kernel> for PrimGenPrfKeyOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(PrfKey::generate)
+        // function_kernel!(PrfKey::generate)
+        // TODO pass localhost
+        unimplemented!()
     }
 }
 
 impl Compile<Kernel> for RingAddOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match self.sig {
+            Signature::Binary(BinarySignature{arg0: Ty::Ring64TensorTy, arg1: Ty::Ring64TensorTy, ..}) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x + y)
-            }
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            },
+            Signature::Binary(BinarySignature{arg0: Ty::Ring128TensorTy, arg1: Ty::Ring128TensorTy, ..}) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x + y)
-            }
+            },
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -437,13 +439,13 @@ impl Compile<Kernel> for RingAddOp {
 
 impl Compile<Kernel> for RingSubOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match self.sig {
+            Signature::Binary(BinarySignature{arg0: Ty::Ring64TensorTy, arg1: Ty::Ring64TensorTy, ..}) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x - y)
-            }
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            },
+            Signature::Binary(BinarySignature{arg0: Ty::Ring128TensorTy, arg1: Ty::Ring128TensorTy, ..}) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x - y)
-            }
+            },
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -451,13 +453,13 @@ impl Compile<Kernel> for RingSubOp {
 
 impl Compile<Kernel> for RingMulOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match self.sig {
+            Signature::Binary(BinarySignature{arg0: Ty::Ring64TensorTy, arg1: Ty::Ring64TensorTy, ..}) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
-            }
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            },
+            Signature::Binary(BinarySignature{arg0: Ty::Ring128TensorTy, arg1: Ty::Ring128TensorTy, ..}) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x * y)
-            }
+            },
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -514,23 +516,23 @@ impl Compile<Kernel> for RingFillOp {
 
 impl Compile<Kernel> for RingSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.output, self.max_value) {
-            (Ty::Ring64TensorTy, None) => {
+        match (self.sig, self.max_value) {
+            (Signature::Nullary(NullarySignature{ret:Ty::Ring64TensorTy}), None) => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
                     &shape, &seed
                 ))
             }
-            (Ty::Ring64TensorTy, Some(max_value)) if max_value == 1 => {
+            (Signature::Nullary(NullarySignature{ret:Ty::Ring64TensorTy}), Some(max_value)) if max_value == 1 => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_bits(
                     &shape, &seed
                 ))
             }
-            (Ty::Ring128TensorTy, None) => {
+            (Signature::Nullary(NullarySignature{ret:Ty::Ring128TensorTy}), None) => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_uniform(
                     &shape, &seed
                 ))
             }
-            (Ty::Ring128TensorTy, Some(max_value)) if max_value == 1 => {
+            (Signature::Nullary(NullarySignature{ret:Ty::Ring128TensorTy}), Some(max_value)) if max_value == 1 => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_bits(
                     &shape, &seed
                 ))
