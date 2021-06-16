@@ -451,6 +451,8 @@ where
 #[derive(Clone, Debug, PartialEq)]
 pub struct SymbolicHandle<P> {
     op: String,
+     // NOTE if we had a handle to the graph we
+     // could perhaps derive the placement instead
     plc: P,
 }
 
