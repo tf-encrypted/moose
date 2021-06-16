@@ -352,6 +352,7 @@ pub enum Operator {
     RepSetupOp(RepSetupOp),
     RepAddOp(RepAddOp),
     RepMulOp(RepMulOp),
+    RepTruncPrOp(RepTruncPrOp),
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
     ConstantOp(ConstantOp),
@@ -382,6 +383,7 @@ operator!(BitSampleOp);
 operator!(RepSetupOp);
 operator!(RepAddOp);
 operator!(RepMulOp);
+operator!(RepTruncPrOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
 operator!(ConstantOp);
@@ -913,6 +915,7 @@ impl Context for ConcreteContext {
             Operator::RepRevealOp(op) => op.compile(self, plc)(operands),
             Operator::RepAddOp(op) => op.compile(self, plc)(operands),
             Operator::RepMulOp(op) => op.compile(self, plc)(operands),
+            Operator::RepTruncPrOp(op) => op.compile(self, plc)(operands),
             Operator::ConstantOp(op) => op.compile(self, plc)(operands),
             Operator::FixedAddOp(op) => op.compile(self, plc)(operands),
             Operator::FixedMulOp(op) => op.compile(self, plc)(operands),
@@ -957,6 +960,7 @@ impl Context for SymbolicContext {
             Operator::RepRevealOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::RepAddOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::RepMulOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::RepTruncPrOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::ConstantOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::FixedAddOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::FixedMulOp(op) => op.execute_symbolic(self, plc, operands),
@@ -1941,6 +1945,84 @@ impl RepRevealOp {
         } = &xe;
 
         with_context!(plc, ctx, x00 + x10 + x21)
+    }
+}
+#[derive(Clone, Debug, PartialEq)]
+pub struct RepTruncPrOp {
+    sig: Signature,
+}
+
+hybrid_kernel! {
+    RepTruncPrOp,
+    [
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => |ctx, rep, s, x| Self::kernel(ctx, rep, s, x, op.amount) ),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
+    ]
+}
+
+trait Ring {
+    const SIZE: usize;
+}
+impl Ring for Ring128Tensor {
+    const SIZE: usize = 128;
+}
+impl Ring for Symbolic<Ring64Tensor> {
+    const SIZE: usize = 128;
+}
+
+impl Ring for Ring64Tensor {
+    const SIZE: usize = 64;
+}
+
+impl Ring for Symbolic<Ring128Tensor> {
+    const SIZE: usize = 128;
+}
+
+
+impl RepTruncPrOp {
+    fn from_placement_signature(plc: &ReplicatedPlacement, sig: BinarySignature) -> Self {
+        RepTruncPrOp { sig: sig.into() }
+    }
+
+    fn kernel<C: Context, R, K>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        s: AbstractReplicatedSetup<K>,
+        xe: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone + Into<C::Value> + TryFrom<C::Value> + 'static + Ring,
+        HostPlacement: PlacementSample<C, R>,
+        HostPlacement: PlacementKeyGen<C, K>,
+    {
+        // TODO: m is an attribute passed to the kernel
+        // Need to fix when we have kernel closures.
+        let m: usize = 30;
+
+        let (player0, player1, player2) = rep.host_placements();
+
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &xe;
+
+        let k2 = player2.keygen(ctx);
+
+        let mut r_bits: Vec<_> = (0..R::SIZE).map(|_| player2.sample(ctx)).collect();
+        let r = bit_compose(r_bits);
+
+        ReplicatedTensor {
+            shares: [
+                [x00.clone(), x10.clone()],
+                [x11.clone(), x21.clone()],
+                [x22.clone(), x02.clone()],
+            ],
+        }
+    }
+    fn bit_compose<C, R>(bits: Vec<R>, plc: HostPlacement) -> R
+    where HostPlacement: PlacementShl<C, R>,
+    HostPlacement: PlacementAdd<C, R>,
+    {
+        let shifted_bits: Vec<_> = (0..bits.len()).map(|i| plc.ring_shl(bits[i], i)).collect();
     }
 }
 
