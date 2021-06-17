@@ -2239,20 +2239,19 @@ hybrid_kernel! {
 trait Ring {
     const SIZE: usize;
 }
-impl Ring for Ring128Tensor {
-    const SIZE: usize = 128;
-}
-impl Ring for Symbolic<Ring64Tensor> {
-    const SIZE: usize = 128;
-}
 
+impl<R: Ring> Ring for Symbolic<RingTensor<R>> {
+    const SIZE: usize = <R as Ring>::SIZE;
+}
 impl Ring for Ring64Tensor {
     const SIZE: usize = 64;
 }
 
-impl Ring for Symbolic<Ring128Tensor> {
+impl Ring for Ring128Tensor {
     const SIZE: usize = 128;
 }
+
+
 
 impl RepTruncPrOp {
     fn from_placement_signature(plc: &ReplicatedPlacement, sig: BinarySignature) -> Self {
@@ -2266,7 +2265,7 @@ impl RepTruncPrOp {
         xe: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
     where
-        R: Clone + Into<C::Value> + TryFrom<C::Value> + 'static + Ring,
+        R: Clone + Into<C::Value> + TryFrom<C::Value> + Ring,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementKeyGen<C, K>,
         HostPlacement: PlacementShl<C, R, Output = R>,
@@ -2289,7 +2288,7 @@ impl RepTruncPrOp {
         let r = RepTruncPrOp::bit_compose(ctx, &r_bits, &player2);
 
         let r_top_bits: Vec<_> = (m..R::SIZE - 1).map(|i| r_bits[i].clone()).collect();
-        let r_top_ring = RepTruncPrOp::bit_compose(ctx, &r_top_bits, &player2);
+        let r_top_ring = RepTruncPrOp::bit_compose(ctx, &r_bits[m..R::SIZE-1], &player2);
         let r_msb = r_bits[R::SIZE - 1].clone();
 
         let tmp: [R; 3] = [r, r_top_ring, r_msb];
@@ -2310,7 +2309,7 @@ impl RepTruncPrOp {
             ],
         }
     }
-    fn bit_compose<C: Context, R>(ctx: &C, bits: &Vec<R>, plc: &HostPlacement) -> R
+    fn bit_compose<C: Context, R>(ctx: &C, bits: &[R], plc: &HostPlacement) -> R
     where
         R: Clone,
         HostPlacement: PlacementShl<C, R, Output = R>,
@@ -2320,7 +2319,7 @@ impl RepTruncPrOp {
         RepTruncPrOp::tree_reduce(ctx, &shifted_bits, plc)
     }
 
-    fn tree_reduce<C: Context, R>(ctx: &C, sequence: &Vec<R>, plc: &HostPlacement) -> R
+    fn tree_reduce<C: Context, R>(ctx: &C, sequence: &[R], plc: &HostPlacement) -> R
     where
         R: Clone,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
