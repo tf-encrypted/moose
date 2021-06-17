@@ -1,4 +1,3 @@
-use crate::computation::HostPlacement;
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
 
@@ -6,7 +5,7 @@ use serde::{Deserialize, Serialize};
 pub struct Seed(pub [u8; 16]);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct PrfKey(pub [u8; 16], pub HostPlacement);
+pub struct PrfKey(pub [u8; 16]);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Nonce(pub Vec<u8>);
@@ -19,8 +18,8 @@ impl Seed {
 }
 
 impl PrfKey {
-    pub fn generate(plc: &HostPlacement) -> PrfKey {
+    pub fn generate() -> PrfKey {
         let raw_key = AesRng::generate_random_key();
-        PrfKey(raw_key, plc.clone())
+        PrfKey(raw_key)
     }
 }

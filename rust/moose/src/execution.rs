@@ -1124,15 +1124,7 @@ mod tests {
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed,
-            Seed::from_prf(
-                &PrfKey(
-                    [0; 16],
-                    HostPlacement {
-                        owner: "alice".into(),
-                    }
-                ),
-                &Nonce(vec![1, 2, 3])
-            )
+            Seed::from_prf(&PrfKey([0; 16]), &Nonce(vec![1, 2, 3]))
         );
         Ok(())
     }

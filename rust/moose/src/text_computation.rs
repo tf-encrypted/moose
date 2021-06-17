@@ -820,14 +820,7 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     alt((
         value_literal_helper("Seed", parse_hex, |v| Value::Seed(Seed(v))),
         // TODO: Need to figure out placed values
-        value_literal_helper("PrfKey", parse_hex, |v| {
-            Value::PrfKey(PrfKey(
-                v,
-                HostPlacement {
-                    owner: "TODO".into(),
-                },
-            ))
-        }),
+        value_literal_helper("PrfKey", parse_hex, |v| Value::PrfKey(PrfKey(v))),
         value_literal_helper("Float32", float, Value::Float32),
         value_literal_helper("Float64", double, Value::Float64),
         value_literal_helper("String", string, Value::String),
@@ -1471,7 +1464,7 @@ impl ToTextual for Value {
             Value::Shape(Shape(x)) => format!("Shape({:?})", x),
             Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
             Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
-            Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.to_textual()),
+            Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
             _ => unimplemented!(),
         }
     }

@@ -1,13 +1,14 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::bit::BitTensor;
 use crate::computation::{
     BinarySignature, BitAndOp, BitSampleOp, BitXorOp, ConstantOp, HostPlacement, NullarySignature,
     Operator, Placement, PlacementTy, PrimGenPrfKeyOp, ReplicatedPlacement, RingAddOp, RingMulOp,
     RingSampleOp, RingSubOp, Signature, TernarySignature, Ty, UnarySignature, Value,
 };
 use crate::prim::PrfKey;
-use crate::ring::ConcreteRingTensor;
+use crate::ring::{ConcreteRingTensor, Ring128Tensor, Ring64Tensor};
 use macros::with_context;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
@@ -163,11 +164,14 @@ pub enum SymbolicValue {
     // Replicated128Tensor(<Replicated128Tensor as KnownType>::Symbolic),
     // ReplicatedBitTensor(<ReplicatedBitTensor as KnownType>::Symbolic),
     // ReplicatedSetup(<ReplicatedSetup as KnownType>::Symbolic),
-    PrfKey(<PrfKey as KnownType>::Symbolic),
+    PrfKey(<PlacedPrfKey as KnownType>::Symbolic),
 }
 
 macro_rules! value {
     ($t:ident, $o:ident, $ty:ident, $st:ty) => {
+        #[derive(Clone, Debug, PartialEq)]
+        pub struct $t($o, HostPlacement);
+
         impl From<$t> for Value {
             fn from(x: $t) -> Value {
                 Value::$o(x.0.clone())
@@ -223,62 +227,17 @@ macro_rules! value {
             type Symbolic = Self;
             const TY: Ty = Ty::$ty;
         }
+
+        impl Placed for $t {
+            type Placement = HostPlacement;
+
+            fn placement(&self) -> Self::Placement {
+                self.1.clone()
+            }
+        }
     };
 }
 
-macro_rules! value2 {
-    ($t:ident, $o:ident, $ty:ident, $st:ty) => {
-        impl From<&$t> for Value {
-            fn from(x: &$t) -> Value {
-                Value::$o(x.clone())
-            }
-        }
-
-        impl From<<$t as KnownType>::Symbolic> for SymbolicValue {
-            fn from(x: <$t as KnownType>::Symbolic) -> SymbolicValue {
-                SymbolicValue::$o(x)
-            }
-        }
-
-        impl TryFrom<SymbolicValue> for <$t as KnownType>::Symbolic {
-            type Error = ();
-
-            fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
-                match x {
-                    SymbolicValue::$o(x) => Ok(x),
-                    _ => Err(()),
-                }
-            }
-        }
-
-        impl TryFrom<PlacedValue> for $t {
-            type Error = ();
-
-            fn try_from(x: PlacedValue) -> Result<Self, Self::Error> {
-                match x {
-                    PlacedValue(Value::$o(x), plc) => Ok($t { 0: x.0, 1: plc }),
-                    _ => Err(()),
-                }
-            }
-        }
-
-        impl From<$t> for PlacedValue {
-            fn from(x: $t) -> PlacedValue {
-                PlacedValue(x.clone().into(), x.1.clone())
-            }
-        }
-
-        impl KnownType for $t {
-            type Symbolic = $st;
-            const TY: Ty = Ty::$ty;
-        }
-
-        impl KnownType for $st {
-            type Symbolic = Self;
-            const TY: Ty = Ty::$ty;
-        }
-    };
-}
 // NOTE a future improvement might be to have a single `values!` macro
 // that takes care of everything, including generating `enum Value` and
 // `enum SymbolicValue` and maybe even `enum Ty`.
@@ -337,7 +296,7 @@ value!(
 //     ReplicatedSetup,
 //     Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 // );
-value2!(PrfKey, PrfKey, PrfKeyTy, Symbolic<PrfKey>);
+value!(PlacedPrfKey, PrfKey, PrfKeyTy, Symbolic<PlacedPrfKey>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -349,22 +308,6 @@ pub trait Placed {
     type Placement;
 
     fn placement(&self) -> Self::Placement;
-}
-
-impl Placed for PlacedBitTensor {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
-    }
-}
-
-impl<T> Placed for PlacedRingTensor<T> {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
-    }
 }
 
 impl<R> Placed for ReplicatedTensor<R>
@@ -406,14 +349,6 @@ where
             FixedTensor::RingTensor(x) => x.placement().into(),
             FixedTensor::ReplicatedTensor(x) => x.placement().into(),
         }
-    }
-}
-
-impl Placed for PrfKey {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
     }
 }
 
@@ -527,8 +462,20 @@ where
     }
 }
 
-impl<T> From<PlacedRingTensor<T>> for Symbolic<PlacedRingTensor<T>> {
-    fn from(x: PlacedRingTensor<T>) -> Self {
+impl From<PlacedRing64Tensor> for Symbolic<PlacedRing64Tensor>
+where
+    PlacedRing64Tensor: Placed,
+{
+    fn from(x: PlacedRing64Tensor) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl From<PlacedRing128Tensor> for Symbolic<PlacedRing128Tensor>
+where
+    PlacedRing128Tensor: Placed,
+{
+    fn from(x: PlacedRing128Tensor) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -590,59 +537,53 @@ struct Operation {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PlacedValue(Value, HostPlacement);
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct PlacedRingTensor<T>(ConcreteRingTensor<T>, HostPlacement);
+impl Add<PlacedRing64Tensor> for PlacedRing64Tensor {
+    type Output = PlacedRing64Tensor;
 
-impl Add<PlacedRingTensor<u64>> for PlacedRingTensor<u64> {
-    type Output = PlacedRingTensor<u64>;
-
-    fn add(self, other: PlacedRingTensor<u64>) -> Self::Output {
-        PlacedRingTensor(self.0 + other.0, self.1)
+    fn add(self, other: PlacedRing64Tensor) -> Self::Output {
+        PlacedRing64Tensor(self.0 + other.0, self.1)
     }
 }
 
-impl Add<PlacedRingTensor<u128>> for PlacedRingTensor<u128> {
-    type Output = PlacedRingTensor<u128>;
+impl Add<PlacedRing128Tensor> for PlacedRing128Tensor {
+    type Output = PlacedRing128Tensor;
 
-    fn add(self, other: PlacedRingTensor<u128>) -> Self::Output {
-        PlacedRingTensor(self.0 + other.0, self.1)
+    fn add(self, other: PlacedRing128Tensor) -> Self::Output {
+        PlacedRing128Tensor(self.0 + other.0, self.1)
     }
 }
 
-impl Sub<PlacedRingTensor<u64>> for PlacedRingTensor<u64> {
-    type Output = PlacedRingTensor<u64>;
+impl Sub<PlacedRing64Tensor> for PlacedRing64Tensor {
+    type Output = PlacedRing64Tensor;
 
-    fn sub(self, other: PlacedRingTensor<u64>) -> Self::Output {
-        PlacedRingTensor(self.0 - other.0, self.1)
+    fn sub(self, other: PlacedRing64Tensor) -> Self::Output {
+        PlacedRing64Tensor(self.0 - other.0, self.1)
     }
 }
 
-impl Sub<PlacedRingTensor<u128>> for PlacedRingTensor<u128> {
-    type Output = PlacedRingTensor<u128>;
+impl Sub<PlacedRing128Tensor> for PlacedRing128Tensor {
+    type Output = PlacedRing128Tensor;
 
-    fn sub(self, other: PlacedRingTensor<u128>) -> Self::Output {
-        PlacedRingTensor(self.0 - other.0, self.1)
+    fn sub(self, other: PlacedRing128Tensor) -> Self::Output {
+        PlacedRing128Tensor(self.0 - other.0, self.1)
     }
 }
 
-impl Mul<PlacedRingTensor<u64>> for PlacedRingTensor<u64> {
-    type Output = PlacedRingTensor<u64>;
+impl Mul<PlacedRing64Tensor> for PlacedRing64Tensor {
+    type Output = PlacedRing64Tensor;
 
-    fn mul(self, other: PlacedRingTensor<u64>) -> Self::Output {
-        PlacedRingTensor(self.0 * other.0, self.1)
+    fn mul(self, other: PlacedRing64Tensor) -> Self::Output {
+        PlacedRing64Tensor(self.0 * other.0, self.1)
     }
 }
 
-impl Mul<PlacedRingTensor<u128>> for PlacedRingTensor<u128> {
-    type Output = PlacedRingTensor<u128>;
+impl Mul<PlacedRing128Tensor> for PlacedRing128Tensor {
+    type Output = PlacedRing128Tensor;
 
-    fn mul(self, other: PlacedRingTensor<u128>) -> Self::Output {
-        PlacedRingTensor(self.0 * other.0, self.1)
+    fn mul(self, other: PlacedRing128Tensor) -> Self::Output {
+        PlacedRing128Tensor(self.0 * other.0, self.1)
     }
 }
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct PlacedBitTensor(crate::bit::BitTensor, HostPlacement);
 
 impl BitXor for PlacedBitTensor {
     type Output = PlacedBitTensor;
@@ -675,10 +616,6 @@ struct ReplicatedZeroShare<R> {
 
 // pub type Ring32Tensor = RingTensor<u32>;
 
-pub type PlacedRing64Tensor = PlacedRingTensor<u64>;
-
-pub type PlacedRing128Tensor = PlacedRingTensor<u128>;
-
 // pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
 
 // pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
@@ -697,7 +634,6 @@ pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
     ReplicatedTensor(ReplicatedTensorT),
 }
 
-// modelled!(PlacementAdd::add, HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor, RingAddOp);
 macro_rules! modelled {
     /*
     Nullary
@@ -1040,7 +976,7 @@ use std::sync::{Arc, RwLock};
 pub struct SymbolicContext {
     ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
     replicated_keys:
-        HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
+        HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PlacedPrfKey>>>>,
 }
 
 impl Context for SymbolicContext {
@@ -1640,30 +1576,32 @@ trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> {
     fn check(ctx: &C, plc: &P, x0: X0, x1: X1, x2: X2) -> Y;
 }
 
-// #[derive(Clone, Debug, PartialEq)]
-// pub struct RepSetupOp {
-//     sig: Signature,
-// }
+#[derive(Clone, Debug, PartialEq)]
+pub struct RepSetupOp {
+    sig: Signature,
+}
 
-// impl RepSetupOp {
-//     fn kernel<C: Context, K: Clone>(
-//         ctx: &C,
-//         rep: &ReplicatedPlacement,
-//     ) -> AbstractReplicatedSetup<K>
-//     where
-//         HostPlacement: PlacementKeyGen<C, K>,
-//     {
-//         let (player0, player1, player2) = rep.host_placements();
+impl RepSetupOp {
+    fn kernel<C: Context, K: Clone>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+    ) -> AbstractReplicatedSetup<K>
+    where
+        HostPlacement: PlacementKeyGen<C, K>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let (a, b) = (1, 2);
+        let (a, b) = if a > b {(a, b)} else {(b, a)};
 
-//         let k0 = player0.keygen(ctx);
-//         let k1 = player1.keygen(ctx);
-//         let k2 = player2.keygen(ctx);
+        let k0 = player0.keygen(ctx);
+        let k1 = player1.keygen(ctx);
+        let k2 = player2.keygen(ctx);
 
-//         AbstractReplicatedSetup {
-//             keys: [[k0.clone(), k1.clone()], [k1, k2.clone()], [k2, k0]],
-//         }
-//     }
-// }
+        AbstractReplicatedSetup {
+            keys: [[k0.clone(), k1.clone()], [k1, k2.clone()], [k2, k0]],
+        }
+    }
+}
 
 // hybrid_kernel! {
 //     RepSetupOp,
@@ -2119,14 +2057,9 @@ impl RingAddOp {
         RingAddOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        x: PlacedRingTensor<T>,
-        y: PlacedRingTensor<T>,
-    ) -> PlacedRingTensor<T>
+    fn kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: T, y: T) -> T
     where
-        PlacedRingTensor<T>: Add<PlacedRingTensor<T>, Output = PlacedRingTensor<T>>,
+        T: Add<T, Output = T>,
     {
         x + y
     }
@@ -2148,14 +2081,9 @@ impl RingSubOp {
         RingSubOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        x: PlacedRingTensor<T>,
-        y: PlacedRingTensor<T>,
-    ) -> PlacedRingTensor<T>
+    fn kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: T, y: T) -> T
     where
-        PlacedRingTensor<T>: Sub<PlacedRingTensor<T>, Output = PlacedRingTensor<T>>,
+        T: Sub<T, Output = T>,
     {
         x - y
     }
@@ -2177,14 +2105,9 @@ impl RingMulOp {
         RingMulOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        x: PlacedRingTensor<T>,
-        y: PlacedRingTensor<T>,
-    ) -> PlacedRingTensor<T>
+    fn kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: T, y: T) -> T
     where
-        PlacedRingTensor<T>: Mul<PlacedRingTensor<T>, Output = PlacedRingTensor<T>>,
+        T: Mul<T, Output = T>,
     {
         x * y
     }
@@ -2251,12 +2174,12 @@ trait PlacementKeyGen<C: Context, K> {
     fn keygen(&self, ctx: &C) -> K;
 }
 
-modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrimGenPrfKeyOp);
+modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PlacedPrfKey, PrimGenPrfKeyOp);
 
 kernel! {
     PrimGenPrfKeyOp,
     [
-        (HostPlacement, () -> PrfKey => Self::kernel),
+        (HostPlacement, () -> PlacedPrfKey => Self::kernel),
     ]
 }
 
@@ -2265,8 +2188,8 @@ impl PrimGenPrfKeyOp {
         PrimGenPrfKeyOp { sig: sig.into() }
     }
 
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
-        PrfKey::generate(plc)
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PlacedPrfKey {
+        PlacedPrfKey(PrfKey::generate(), plc.clone())
     }
 }
 
@@ -2281,6 +2204,24 @@ kernel! {
     ]
 }
 
+trait Sample {
+    fn sample(plc: &HostPlacement) -> Self;
+}
+
+impl Sample for PlacedRing64Tensor {
+    fn sample(plc: &HostPlacement) -> PlacedRing64Tensor {
+        // TODO
+        PlacedRing64Tensor(ConcreteRingTensor::from(vec![1, 2]), plc.clone())
+    }
+}
+
+impl Sample for PlacedRing128Tensor {
+    fn sample(plc: &HostPlacement) -> PlacedRing128Tensor {
+        // TODO
+        PlacedRing128Tensor(ConcreteRingTensor::from(vec![1, 2]), plc.clone())
+    }
+}
+
 impl RingSampleOp {
     fn from_signature(sig: NullarySignature) -> Self {
         RingSampleOp {
@@ -2289,12 +2230,11 @@ impl RingSampleOp {
         }
     }
 
-    fn kernel<T>(ctx: &ConcreteContext, plc: &HostPlacement) -> PlacedRingTensor<T>
+    fn kernel<T>(ctx: &ConcreteContext, plc: &HostPlacement) -> T
     where
-        ConcreteRingTensor<T>: From<Vec<T>>,
+        T: Sample,
     {
-        // TODO
-        PlacedRingTensor::<T>(ConcreteRingTensor::<T>::from(vec![]), plc.clone())
+        T::sample(plc)
     }
 }
 
