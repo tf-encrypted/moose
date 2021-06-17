@@ -417,7 +417,9 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
 
 impl Compile<Kernel> for PrimGenPrfKeyOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(|| PrfKey::generate(&HostPlacement{owner: "localhost".into()}))
+        function_kernel!(|| PrfKey::generate(&HostPlacement {
+            owner: "localhost".into()
+        }))
     }
 }
 
