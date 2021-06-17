@@ -11,6 +11,7 @@ use std::ops::{BitAnd, BitXor};
 pub enum Placement {
     HostPlacement(HostPlacement),
     ReplicatedPlacement(ReplicatedPlacement),
+    AdditivePlacement(AdditivePlacement),
 }
 
 impl Placement {
@@ -18,6 +19,7 @@ impl Placement {
         match self {
             Placement::HostPlacement(plc) => plc.ty(),
             Placement::ReplicatedPlacement(plc) => plc.ty(),
+            Placement::AdditivePlacement(plc) => plc.ty(),
         }
     }
 }
@@ -30,6 +32,11 @@ pub struct HostPlacement {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ReplicatedPlacement {
     players: [String; 3],
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct AdditivePlacement {
+    players: [String; 2],
 }
 
 impl ReplicatedPlacement {
@@ -47,10 +54,24 @@ impl ReplicatedPlacement {
     }
 }
 
+impl AdditivePlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            player: self.players[0].clone(),
+        };
+        let player1 = HostPlacement {
+            player: self.players[1].clone(),
+        };
+        (player0, player1)
+    }
+}
+
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum PlacementTy {
     HostTy,
     ReplicatedTy,
+    AdditiveTy,
 }
 
 trait KnownPlacement {
@@ -68,6 +89,11 @@ impl KnownPlacement for HostPlacement {
 impl KnownPlacement for ReplicatedPlacement {
     const TY: PlacementTy = PlacementTy::ReplicatedTy;
 }
+
+impl KnownPlacement for AdditivePlacement {
+    const TY: PlacementTy = PlacementTy::AdditiveTy;
+}
+
 
 macro_rules! placement {
     ($t:ident) => {
@@ -98,6 +124,7 @@ macro_rules! placement {
 
 placement!(HostPlacement);
 placement!(ReplicatedPlacement);
+placement!(AdditivePlacement);
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Ty {
@@ -110,6 +137,8 @@ pub enum Ty {
     Replicated64Tensor,
     Replicated128Tensor,
     ReplicatedBitTensor,
+    Additive64Tensor,
+    Additive128Tensor,
     ReplicatedSetup,
     PrfKey,
 }
@@ -164,7 +193,19 @@ impl Ty {
                     op: op_name.into(),
                     plc: plc.try_into().unwrap(),
                 }))
-            }
+            },
+            Ty::Additive64Tensor => {
+                SymbolicValue::Additive64Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            },
+            Ty::Additive128Tensor => {
+                SymbolicValue::Additive128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            },
             Ty::ReplicatedSetup => {
                 SymbolicValue::ReplicatedSetup(Symbolic::Symbolic(SymbolicHandle {
                     op: op_name.into(),
@@ -195,6 +236,8 @@ pub enum Value {
     Replicated64Tensor(Replicated64Tensor),
     Replicated128Tensor(Replicated128Tensor),
     ReplicatedBitTensor(ReplicatedBitTensor),
+    Additive64Tensor(Additive64Tensor),
+    Additive128Tensor(Additive128Tensor),
     ReplicatedSetup(ReplicatedSetup),
     PrfKey(PrfKey),
 }
@@ -211,6 +254,8 @@ impl Value {
             Value::Replicated64Tensor(_) => Ty::Replicated64Tensor,
             Value::Replicated128Tensor(_) => Ty::Replicated128Tensor,
             Value::ReplicatedBitTensor(_) => Ty::ReplicatedBitTensor,
+            Value::Additive64Tensor(_) => Ty::Additive64Tensor,
+            Value::Additive128Tensor(_) => Ty::Additive128Tensor,
             Value::ReplicatedSetup(_) => Ty::ReplicatedSetup,
             Value::PrfKey(_) => Ty::PrfKey,
         }
@@ -228,6 +273,8 @@ pub enum SymbolicValue {
     Replicated64Tensor(<Replicated64Tensor as KnownType>::Symbolic),
     Replicated128Tensor(<Replicated128Tensor as KnownType>::Symbolic),
     ReplicatedBitTensor(<ReplicatedBitTensor as KnownType>::Symbolic),
+    Additive64Tensor(<Additive64Tensor as KnownType>::Symbolic),
+    Additive128Tensor(<Additive128Tensor as KnownType>::Symbolic),
     ReplicatedSetup(<ReplicatedSetup as KnownType>::Symbolic),
     PrfKey(<PrfKey as KnownType>::Symbolic),
 }
@@ -326,6 +373,14 @@ value!(
     Symbolic<ReplicatedTensor<Symbolic<BitTensor>>>
 );
 value!(
+    Additive64Tensor,
+    Symbolic<AdditiveTensor<<Ring64Tensor as KnownType>::Symbolic>>
+);
+value!(
+    Additive128Tensor,
+    Symbolic<AdditiveTensor<<Ring128Tensor as KnownType>::Symbolic>>
+);
+value!(
     ReplicatedSetup,
     Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 );
@@ -383,6 +438,26 @@ where
         ReplicatedPlacement { players }
     }
 }
+
+impl<R> Placed for AdditiveTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Placement = AdditivePlacement;
+
+    fn placement(&self) -> Self::Placement {
+        let AdditiveTensor {
+            shares: [x0, x1],
+        } = self;
+
+        let player0 = x0.placement();
+        let player1 = x1.placement();
+
+        let players = [player0.player, player1.player];
+        AdditivePlacement { players }
+    }
+}
+
 
 impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
 where
@@ -543,6 +618,17 @@ where
     }
 }
 
+impl<R> From<AdditiveTensor<R>> for Symbolic<AdditiveTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AdditiveTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
@@ -558,6 +644,7 @@ pub enum Operator {
     RepSetupOp(RepSetupOp),
     RepAddOp(RepAddOp),
     RepMulOp(RepMulOp),
+    ConvertOp(ConvertOp),
     RepTruncPrOp(RepTruncPrOp),
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
@@ -591,6 +678,7 @@ operator!(BitSampleOp);
 operator!(RepSetupOp);
 operator!(RepAddOp);
 operator!(RepMulOp);
+operator!(ConvertOp);
 operator!(RepTruncPrOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
@@ -792,6 +880,10 @@ pub type Ring128Tensor = RingTensor<u128>;
 pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
 
 pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
+
+pub type Additive64Tensor = AdditiveTensor<Ring64Tensor>;
+
+pub type Additive128Tensor = AdditiveTensor<Ring128Tensor>;
 
 pub type ReplicatedBitTensor = ReplicatedTensor<BitTensor>;
 
@@ -1110,6 +1202,12 @@ trait PlacementSample<C: Context, O> {
     fn sample(&self, ctx: &C) -> O;
 }
 
+trait PlacementConvert<C: Context, T> {
+    type Output;
+
+    fn convert(&self, ctx: &C, x: &T) -> Self::Output;
+}
+
 pub trait Context {
     type Value;
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
@@ -1143,6 +1241,7 @@ impl Context for ConcreteContext {
             Operator::RepRevealOp(op) => op.compile(self, plc)(operands),
             Operator::RepAddOp(op) => op.compile(self, plc)(operands),
             Operator::RepMulOp(op) => op.compile(self, plc)(operands),
+            Operator::ConvertOp(op) => op.compile(self, plc)(operands),
             Operator::RepTruncPrOp(op) => op.compile(self, plc)(operands),
             Operator::ConstantOp(op) => op.compile(self, plc)(operands),
             Operator::FixedAddOp(op) => op.compile(self, plc)(operands),
@@ -1190,6 +1289,7 @@ impl Context for SymbolicContext {
             Operator::RepRevealOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::RepAddOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::RepMulOp(op) => op.execute_symbolic(self, plc, operands),
+            Operator::ConvertOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::RepTruncPrOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::ConstantOp(op) => op.execute_symbolic(self, plc, operands),
             Operator::FixedAddOp(op) => op.execute_symbolic(self, plc, operands),
@@ -1795,6 +1895,81 @@ hybrid_kernel! {
         (ReplicatedPlacement, () -> ReplicatedSetup => Self::kernel),
     ]
 }
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConvertOp {
+    sig: Signature,
+}
+
+modelled!(PlacementConvert::convert, AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor, ConvertOp);
+modelled!(PlacementConvert::convert, AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor, ConvertOp);
+// modelled!(PlacementConvert::convert, AdditivePlacement, (Additive64Tensor) -> Replicated64Tensor, ConvertOp);
+// modelled!(PlacementConvert::convert, AdditivePlacement, (Additive128Tensor) -> Replicated128Tensor, ConvertOp);
+
+hybrid_kernel! {
+    ConvertOp,
+    [
+        (AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor => Self::rep_to_add_kernel),
+        (AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor => Self::rep_to_add_kernel),
+    ]
+}
+
+impl ConvertOp {
+    fn from_signature(sig: UnarySignature) -> Self {
+        ConvertOp {sig: sig.into()}
+    }
+
+    fn rep_to_add_kernel<C: Context, R> (
+        ctx: &C,
+        add: &AdditivePlacement,
+        x: ReplicatedTensor<R>,
+    ) -> AdditiveTensor<R>
+    where HostPlacement: PlacementAdd<C, R, R, Output=R>,
+    R: Placed<Placement=HostPlacement>, {
+
+        let (player_add0, player_add1)= add.host_placements();
+
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x01, x11], [x02, x12]],
+        } = x;
+
+
+        let players = [x00.placement(), x01.placement(), x02.placement()];
+
+        for i in 0..3 {
+            if player_add0 == players[i] {
+                indices[0] = i;
+            }
+            if player_add1 == players[i] {
+                indices[1] = i;
+            }
+        }
+
+        let (indices[0], in) = if a > b (a, b) else (b, a);
+
+        let mut swap = false;
+        if indices[0] > indices[1] {
+            swap = true;
+            let
+        }
+        if swap == true {
+        }
+        let x0 = with_context!(indices[0], ctx, );
+        AdditiveTensor {
+            shares: [x0, x21],
+        }
+    }
+
+    // fn add_to_rep<C: Context, R> (
+    //     ctx: &C,
+    //     add: &AdditivePlacement,
+    //     x: AdditiveTensor<R>,
+    // ) -> ReplicatedTensor<R>
+    // where HostPlacement: PlacementAdd<C, R, R, Output=R>, {
+    // }
+
+
+
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepAddOp {
@@ -2231,7 +2406,7 @@ pub struct RepTruncPrOp {
 hybrid_kernel! {
     RepTruncPrOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => Self::kernel ),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
         (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
     ]
 }
@@ -2240,7 +2415,7 @@ trait Ring {
     const SIZE: usize;
 }
 
-impl<R: Ring> Ring for Symbolic<RingTensor<R>> {
+impl<R: Ring+Placed> Ring for Symbolic<R> {
     const SIZE: usize = <R as Ring>::SIZE;
 }
 impl Ring for Ring64Tensor {
@@ -2250,7 +2425,6 @@ impl Ring for Ring64Tensor {
 impl Ring for Ring128Tensor {
     const SIZE: usize = 128;
 }
-
 
 
 impl RepTruncPrOp {
