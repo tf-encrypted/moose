@@ -1,14 +1,18 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
 
+use crate::computation::{
+    BinarySignature, BitAndOp, BitSampleOp, BitXorOp, ConstantOp, HostPlacement, NullarySignature,
+    Operator, Placement, PlacementTy, PrimGenPrfKeyOp, ReplicatedPlacement, RingAddOp, RingMulOp,
+    RingSampleOp, RingSubOp, Signature, TernarySignature, Ty, UnarySignature, Value,
+};
+use crate::prim::PrfKey;
+use crate::ring::ConcreteRingTensor;
 use macros::with_context;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
 use std::ops::{BitAnd, BitXor};
-use crate::computation::{Operator, RingAddOp, PrimGenPrfKeyOp, BitXorOp, BitAndOp, RingSubOp, RingMulOp, RingSampleOp, BitSampleOp, ConstantOp, Signature, NullarySignature, UnarySignature, BinarySignature, TernarySignature, Ty, Value, Placement, PlacementTy, HostPlacement, ReplicatedPlacement};
-use crate::prim::PrfKey;
-use crate::ring::{Ring64Tensor, Ring128Tensor};
 
 impl Placement {
     pub fn ty(&self) -> PlacementTy {
@@ -103,10 +107,12 @@ impl Ty {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
-            Ty::Ring128TensorTy => SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
-                op: op_name.into(),
-                plc: plc.try_into().unwrap(),
-            })),
+            Ty::Ring128TensorTy => {
+                SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            }
             // Ty::Replicated64Tensor => {
             //     SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
             //         op: op_name.into(),
@@ -149,10 +155,10 @@ pub trait KnownType {
 pub enum SymbolicValue {
     // Fixed64Tensor(<Fixed64Tensor as KnownType>::Symbolic),
     // Fixed128Tensor(<Fixed128Tensor as KnownType>::Symbolic),
-    BitTensor(<BitTensor as KnownType>::Symbolic),
+    BitTensor(<PlacedBitTensor as KnownType>::Symbolic),
     // Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
-    Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
-    Ring128Tensor(<Ring128Tensor as KnownType>::Symbolic),
+    Ring64Tensor(<PlacedRing64Tensor as KnownType>::Symbolic),
+    Ring128Tensor(<PlacedRing128Tensor as KnownType>::Symbolic),
     // Replicated64Tensor(<Replicated64Tensor as KnownType>::Symbolic),
     // Replicated128Tensor(<Replicated128Tensor as KnownType>::Symbolic),
     // ReplicatedBitTensor(<ReplicatedBitTensor as KnownType>::Symbolic),
@@ -161,16 +167,22 @@ pub enum SymbolicValue {
 }
 
 macro_rules! value {
-    ($t:ident, $ty:ident, $st:ty) => {
+    ($t:ident, $o:ident, $ty:ident, $st:ty) => {
+        impl From<$t> for Value {
+            fn from(x: $t) -> Value {
+                Value::$o(x.0.clone())
+            }
+        }
+
         impl From<&$t> for Value {
             fn from(x: &$t) -> Value {
-                Value::$t(x.clone())
+                Value::$o(x.0.clone())
             }
         }
 
         impl From<<$t as KnownType>::Symbolic> for SymbolicValue {
             fn from(x: <$t as KnownType>::Symbolic) -> SymbolicValue {
-                SymbolicValue::$t(x)
+                SymbolicValue::$o(x)
             }
         }
 
@@ -179,9 +191,26 @@ macro_rules! value {
 
             fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
                 match x {
-                    SymbolicValue::$t(x) => Ok(x),
+                    SymbolicValue::$o(x) => Ok(x),
                     _ => Err(()),
                 }
+            }
+        }
+
+        impl TryFrom<PlacedValue> for $t {
+            type Error = ();
+
+            fn try_from(x: PlacedValue) -> Result<Self, Self::Error> {
+                match x {
+                    PlacedValue(Value::$o(x), plc) => Ok($t { 0: x, 1: plc }),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl From<$t> for PlacedValue {
+            fn from(x: $t) -> PlacedValue {
+                PlacedValue(x.0.into(), x.1)
             }
         }
 
@@ -197,6 +226,59 @@ macro_rules! value {
     };
 }
 
+macro_rules! value2 {
+    ($t:ident, $o:ident, $ty:ident, $st:ty) => {
+        impl From<&$t> for Value {
+            fn from(x: &$t) -> Value {
+                Value::$o(x.clone())
+            }
+        }
+
+        impl From<<$t as KnownType>::Symbolic> for SymbolicValue {
+            fn from(x: <$t as KnownType>::Symbolic) -> SymbolicValue {
+                SymbolicValue::$o(x)
+            }
+        }
+
+        impl TryFrom<SymbolicValue> for <$t as KnownType>::Symbolic {
+            type Error = ();
+
+            fn try_from(x: SymbolicValue) -> Result<Self, Self::Error> {
+                match x {
+                    SymbolicValue::$o(x) => Ok(x),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl TryFrom<PlacedValue> for $t {
+            type Error = ();
+
+            fn try_from(x: PlacedValue) -> Result<Self, Self::Error> {
+                match x {
+                    PlacedValue(Value::$o(x), plc) => Ok($t { 0: x.0, 1: plc }),
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl From<$t> for PlacedValue {
+            fn from(x: $t) -> PlacedValue {
+                PlacedValue(x.clone().into(), x.1.clone())
+            }
+        }
+
+        impl KnownType for $t {
+            type Symbolic = $st;
+            const TY: Ty = Ty::$ty;
+        }
+
+        impl KnownType for $st {
+            type Symbolic = Self;
+            const TY: Ty = Ty::$ty;
+        }
+    };
+}
 // NOTE a future improvement might be to have a single `values!` macro
 // that takes care of everything, including generating `enum Value` and
 // `enum SymbolicValue` and maybe even `enum Ty`.
@@ -220,10 +302,25 @@ macro_rules! value {
 //         >,
 //     >
 // );
-value!(BitTensor, BitTensorTy, Symbolic<BitTensor>);
+value!(
+    PlacedBitTensor,
+    BitTensor,
+    BitTensorTy,
+    Symbolic<PlacedBitTensor>
+);
 // value!(Ring32Tensor, Symbolic<Ring32Tensor>);
-value!(Ring64Tensor, Ring64TensorTy, Symbolic<Ring64Tensor>);
-value!(Ring128Tensor, Ring128TensorTy, Symbolic<Ring128Tensor>);
+value!(
+    PlacedRing64Tensor,
+    Ring64Tensor,
+    Ring64TensorTy,
+    Symbolic<PlacedRing64Tensor>
+);
+value!(
+    PlacedRing128Tensor,
+    Ring128Tensor,
+    Ring128TensorTy,
+    Symbolic<PlacedRing128Tensor>
+);
 // value!(
 //     Replicated64Tensor,
 //     Symbolic<ReplicatedTensor<<Ring64Tensor as KnownType>::Symbolic>>
@@ -240,7 +337,7 @@ value!(Ring128Tensor, Ring128TensorTy, Symbolic<Ring128Tensor>);
 //     ReplicatedSetup,
 //     Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 // );
-value!(PrfKey, PrfKeyTy, Symbolic<PrfKey>);
+value2!(PrfKey, PrfKey, PrfKeyTy, Symbolic<PrfKey>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -254,7 +351,7 @@ pub trait Placed {
     fn placement(&self) -> Self::Placement;
 }
 
-impl Placed for BitTensor {
+impl Placed for PlacedBitTensor {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
@@ -262,7 +359,7 @@ impl Placed for BitTensor {
     }
 }
 
-impl<T> Placed for crate::ring::ConcreteRingTensor<T> {
+impl<T> Placed for PlacedRingTensor<T> {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
@@ -430,8 +527,8 @@ where
     }
 }
 
-impl<T> From<RingTensor<T>> for Symbolic<RingTensor<T>> {
-    fn from(x: RingTensor<T>) -> Self {
+impl<T> From<PlacedRingTensor<T>> for Symbolic<PlacedRingTensor<T>> {
+    fn from(x: PlacedRingTensor<T>) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -491,19 +588,73 @@ struct Operation {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct BitTensor(u8, HostPlacement);
+pub struct PlacedValue(Value, HostPlacement);
 
-impl BitXor for BitTensor {
-    type Output = BitTensor;
-    fn bitxor(self, other: Self) -> Self::Output {
-        BitTensor(self.0 ^ other.0, self.1)
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlacedRingTensor<T>(ConcreteRingTensor<T>, HostPlacement);
+
+impl Add<PlacedRingTensor<u64>> for PlacedRingTensor<u64> {
+    type Output = PlacedRingTensor<u64>;
+
+    fn add(self, other: PlacedRingTensor<u64>) -> Self::Output {
+        PlacedRingTensor(self.0 + other.0, self.1)
     }
 }
 
-impl BitAnd for BitTensor {
-    type Output = BitTensor;
+impl Add<PlacedRingTensor<u128>> for PlacedRingTensor<u128> {
+    type Output = PlacedRingTensor<u128>;
+
+    fn add(self, other: PlacedRingTensor<u128>) -> Self::Output {
+        PlacedRingTensor(self.0 + other.0, self.1)
+    }
+}
+
+impl Sub<PlacedRingTensor<u64>> for PlacedRingTensor<u64> {
+    type Output = PlacedRingTensor<u64>;
+
+    fn sub(self, other: PlacedRingTensor<u64>) -> Self::Output {
+        PlacedRingTensor(self.0 - other.0, self.1)
+    }
+}
+
+impl Sub<PlacedRingTensor<u128>> for PlacedRingTensor<u128> {
+    type Output = PlacedRingTensor<u128>;
+
+    fn sub(self, other: PlacedRingTensor<u128>) -> Self::Output {
+        PlacedRingTensor(self.0 - other.0, self.1)
+    }
+}
+
+impl Mul<PlacedRingTensor<u64>> for PlacedRingTensor<u64> {
+    type Output = PlacedRingTensor<u64>;
+
+    fn mul(self, other: PlacedRingTensor<u64>) -> Self::Output {
+        PlacedRingTensor(self.0 * other.0, self.1)
+    }
+}
+
+impl Mul<PlacedRingTensor<u128>> for PlacedRingTensor<u128> {
+    type Output = PlacedRingTensor<u128>;
+
+    fn mul(self, other: PlacedRingTensor<u128>) -> Self::Output {
+        PlacedRingTensor(self.0 * other.0, self.1)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlacedBitTensor(crate::bit::BitTensor, HostPlacement);
+
+impl BitXor for PlacedBitTensor {
+    type Output = PlacedBitTensor;
+    fn bitxor(self, other: Self) -> Self::Output {
+        PlacedBitTensor(self.0 ^ other.0, self.1)
+    }
+}
+
+impl BitAnd for PlacedBitTensor {
+    type Output = PlacedBitTensor;
     fn bitand(self, other: Self) -> Self::Output {
-        BitTensor(self.0 & other.0, self.1)
+        PlacedBitTensor(self.0 & other.0, self.1)
     }
 }
 
@@ -524,6 +675,10 @@ struct ReplicatedZeroShare<R> {
 
 // pub type Ring32Tensor = RingTensor<u32>;
 
+pub type PlacedRing64Tensor = PlacedRingTensor<u64>;
+
+pub type PlacedRing128Tensor = PlacedRingTensor<u128>;
+
 // pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
 
 // pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
@@ -542,6 +697,7 @@ pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
     ReplicatedTensor(ReplicatedTensorT),
 }
 
+// modelled!(PlacementAdd::add, HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor, RingAddOp);
 macro_rules! modelled {
     /*
     Nullary
@@ -848,9 +1004,9 @@ pub struct ConcreteContext {
 }
 
 impl Context for ConcreteContext {
-    type Value = Value;
+    type Value = PlacedValue;
 
-    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<PlacedValue>) -> PlacedValue {
         match op {
             Operator::PrimGenPrfKey(op) => op.spike_compile(self, plc)(operands),
             Operator::RingSample(op) => op.spike_compile(self, plc)(operands),
@@ -959,7 +1115,7 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -970,7 +1126,7 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
-                            Box::new(move |_operands: Vec<Value>| {
+                            Box::new(move |_operands: Vec<PlacedValue>| {
                                 let y: $u = $k(&ctx, &plc);
                                 y.into()
                             })
@@ -996,7 +1152,7 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1008,7 +1164,7 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
-                            Box::new(move |operands: Vec<Value>| {
+                            Box::new(move |operands: Vec<PlacedValue>| {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
 
                                 let y: $u = $k(&ctx, &plc, x0);
@@ -1036,7 +1192,7 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1050,7 +1206,7 @@ macro_rules! runtime_kernel {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             let op = self.clone();
-                            Box::new(move |operands| -> Value {
+                            Box::new(move |operands| -> PlacedValue {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
 
@@ -1947,14 +2103,14 @@ trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> {
 // NOTE uncomment the next line to see the kernel check system in action
 // modelled!(PlacementAdd, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
 // NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
-modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
-modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (PlacedRing128Tensor, PlacedRing128Tensor) -> PlacedRing128Tensor, RingAddOp);
 
 kernel! {
     RingAddOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor => Self::kernel),
+        (HostPlacement, (PlacedRing128Tensor, PlacedRing128Tensor) -> PlacedRing128Tensor => Self::kernel),
     ]
 }
 
@@ -1966,24 +2122,24 @@ impl RingAddOp {
     fn kernel<C: Context, T>(
         _ctx: &C,
         _plc: &HostPlacement,
-        x: RingTensor<T>,
-        y: RingTensor<T>,
-    ) -> RingTensor<T>
+        x: PlacedRingTensor<T>,
+        y: PlacedRingTensor<T>,
+    ) -> PlacedRingTensor<T>
     where
-        RingTensor<T>: Add<RingTensor<T>, Output = RingTensor<T>>,
+        PlacedRingTensor<T>: Add<PlacedRingTensor<T>, Output = PlacedRingTensor<T>>,
     {
         x + y
     }
 }
 
-modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
-modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (PlacedRing128Tensor, PlacedRing128Tensor) -> PlacedRing128Tensor, RingSubOp);
 
 kernel! {
     RingSubOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor => Self::kernel),
+        (HostPlacement, (PlacedRing128Tensor, PlacedRing128Tensor) -> PlacedRing128Tensor => Self::kernel),
     ]
 }
 
@@ -1995,24 +2151,24 @@ impl RingSubOp {
     fn kernel<C: Context, T>(
         _ctx: &C,
         _plc: &HostPlacement,
-        x: RingTensor<T>,
-        y: RingTensor<T>,
-    ) -> RingTensor<T>
+        x: PlacedRingTensor<T>,
+        y: PlacedRingTensor<T>,
+    ) -> PlacedRingTensor<T>
     where
-        RingTensor<T>: Sub<RingTensor<T>, Output = RingTensor<T>>,
+        PlacedRingTensor<T>: Sub<PlacedRingTensor<T>, Output = PlacedRingTensor<T>>,
     {
         x - y
     }
 }
 
-modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
-modelled!(PlacementMul::mul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (PlacedRing128Tensor, PlacedRing128Tensor) -> PlacedRing128Tensor, RingMulOp);
 
 kernel! {
     RingMulOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (PlacedRing64Tensor, PlacedRing64Tensor) -> PlacedRing64Tensor => Self::kernel),
+        (HostPlacement, (PlacedRing128Tensor, PlacedRing128Tensor) -> PlacedRing128Tensor => Self::kernel),
     ]
 }
 
@@ -2024,24 +2180,24 @@ impl RingMulOp {
     fn kernel<C: Context, T>(
         _ctx: &C,
         _plc: &HostPlacement,
-        x: RingTensor<T>,
-        y: RingTensor<T>,
-    ) -> RingTensor<T>
+        x: PlacedRingTensor<T>,
+        y: PlacedRingTensor<T>,
+    ) -> PlacedRingTensor<T>
     where
-        RingTensor<T>: Mul<RingTensor<T>, Output = RingTensor<T>>,
+        PlacedRingTensor<T>: Mul<PlacedRingTensor<T>, Output = PlacedRingTensor<T>>,
     {
         x * y
     }
 }
 
-modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
-modelled_alias!(PlacementAdd::add, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // add = xor in Z2
-modelled_alias!(PlacementSub::sub, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // sub = xor in Z2
+modelled!(PlacementXor::xor, HostPlacement, (PlacedBitTensor, PlacedBitTensor) -> PlacedBitTensor, BitXorOp);
+modelled_alias!(PlacementAdd::add, HostPlacement, (PlacedBitTensor, PlacedBitTensor) -> PlacedBitTensor => PlacementXor::xor); // add = xor in Z2
+modelled_alias!(PlacementSub::sub, HostPlacement, (PlacedBitTensor, PlacedBitTensor) -> PlacedBitTensor => PlacementXor::xor); // sub = xor in Z2
 
 kernel! {
     BitXorOp,
     [
-        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+        (HostPlacement, (PlacedBitTensor, PlacedBitTensor) -> PlacedBitTensor => Self::kernel),
     ]
 }
 
@@ -2050,9 +2206,14 @@ impl BitXorOp {
         BitXorOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
+    fn kernel<C: Context>(
+        _ctx: &C,
+        _plc: &HostPlacement,
+        x: PlacedBitTensor,
+        y: PlacedBitTensor,
+    ) -> PlacedBitTensor
     where
-        BitTensor: BitXor<BitTensor, Output = BitTensor>,
+        PlacedBitTensor: BitXor<PlacedBitTensor, Output = PlacedBitTensor>,
     {
         x ^ y
     }
@@ -2063,21 +2224,26 @@ impl BitAndOp {
         BitAndOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
+    fn kernel<C: Context>(
+        _ctx: &C,
+        _plc: &HostPlacement,
+        x: PlacedBitTensor,
+        y: PlacedBitTensor,
+    ) -> PlacedBitTensor
     where
-        BitTensor: BitAnd<BitTensor, Output = BitTensor>,
+        PlacedBitTensor: BitAnd<PlacedBitTensor, Output = PlacedBitTensor>,
     {
         x & y
     }
 }
 
-modelled!(PlacementAnd::and, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
-modelled_alias!(PlacementMul::mul, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementAnd::and); // mul = and in Z2
+modelled!(PlacementAnd::and, HostPlacement, (PlacedBitTensor, PlacedBitTensor) -> PlacedBitTensor, BitAndOp);
+modelled_alias!(PlacementMul::mul, HostPlacement, (PlacedBitTensor, PlacedBitTensor) -> PlacedBitTensor => PlacementAnd::and); // mul = and in Z2
 
 kernel! {
     BitAndOp,
     [
-        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+        (HostPlacement, (PlacedBitTensor, PlacedBitTensor) -> PlacedBitTensor => Self::kernel),
     ]
 }
 
@@ -2104,14 +2270,14 @@ impl PrimGenPrfKeyOp {
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, () -> PlacedRing64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, () -> PlacedRing128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,
     [
-        (HostPlacement, () -> Ring64Tensor => Self::kernel),
-        (HostPlacement, () -> Ring128Tensor => Self::kernel),
+        (HostPlacement, () -> PlacedRing64Tensor => Self::kernel),
+        (HostPlacement, () -> PlacedRing128Tensor => Self::kernel),
     ]
 }
 
@@ -2119,25 +2285,25 @@ impl RingSampleOp {
     fn from_signature(sig: NullarySignature) -> Self {
         RingSampleOp {
             sig: sig.into(),
-            max_value: None // TODO! we should have a value here.
+            max_value: None, // TODO! we should have a value here.
         }
     }
 
-    fn kernel<T>(ctx: &ConcreteContext, plc: &HostPlacement) -> RingTensor<T>
+    fn kernel<T>(ctx: &ConcreteContext, plc: &HostPlacement) -> PlacedRingTensor<T>
     where
-        T: From<u32>,
+        ConcreteRingTensor<T>: From<Vec<T>>,
     {
         // TODO
-        RingTensor::<T>(T::from(987654321), plc.clone())
+        PlacedRingTensor::<T>(ConcreteRingTensor::<T>::from(vec![]), plc.clone())
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, () -> BitTensor, BitSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, () -> PlacedBitTensor, BitSampleOp);
 
 kernel! {
     BitSampleOp,
     [
-        (HostPlacement, () -> BitTensor => Self::kernel),
+        (HostPlacement, () -> PlacedBitTensor => Self::kernel),
     ]
 }
 
@@ -2146,9 +2312,12 @@ impl BitSampleOp {
         BitSampleOp { sig: sig.into() }
     }
 
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor {
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PlacedBitTensor {
         // TODO
-        BitTensor(0, plc.clone())
+        PlacedBitTensor(
+            crate::bit::BitTensor::from(vec![0, 1, 1, 0, 0]),
+            plc.clone(),
+        )
     }
 }
 
@@ -2157,11 +2326,15 @@ impl ConstantOp {
         &self,
         _ctx: &ConcreteContext,
         plc: &Placement,
-    ) -> Box<dyn Fn(Vec<Value>) -> Value> {
-        let val = self.value.clone();
+    ) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
+        // TODO: There should be an utility to place values
+        let val = match plc {
+            Placement::Host(host) => PlacedValue(self.value.clone(), host.clone()),
+            _ => panic!(),
+        };
 
         match plc {
-            Placement::Host(_) => Box::new(move |_operands| -> Value { val.clone() }),
+            Placement::Host(_) => Box::new(move |_operands| -> PlacedValue { val.clone() }),
             _ => unimplemented!(), // ok
         }
     }

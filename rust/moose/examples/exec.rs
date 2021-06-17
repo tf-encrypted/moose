@@ -6,7 +6,9 @@ use moose::standard::Shape;
 fn main() {
     let key_op = Operation {
         name: "key".into(),
-        kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp),
+        kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
+            sig: Signature::Nullary(NullarySignature { ret: Ty::PrfKeyTy }),
+        }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -38,7 +40,9 @@ fn main() {
     let x_op = Operation {
         name: "x".into(),
         kind: Operator::RingSample(RingSampleOp {
-            output: Ty::Ring64TensorTy,
+            sig: Signature::Nullary(NullarySignature {
+                ret: Ty::Ring64TensorTy,
+            }),
             max_value: None,
         }),
         inputs: vec!["x_shape".into(), "x_seed".into()],
@@ -52,8 +56,11 @@ fn main() {
         operations.push(Operation {
             name: format!("y{}", i),
             kind: Operator::RingMul(RingMulOp {
-                lhs: Ty::Ring64TensorTy,
-                rhs: Ty::Ring64TensorTy,
+                sig: Signature::Binary(BinarySignature {
+                    arg0: Ty::Ring64TensorTy,
+                    arg1: Ty::Ring64TensorTy,
+                    ret: Ty::Ring64TensorTy,
+                }),
             }),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {

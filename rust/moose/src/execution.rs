@@ -1087,7 +1087,7 @@ mod tests {
     fn test_eager_executor() {
         use itertools::Itertools;
         let mut definition = String::from(
-            r#"key = PrimGenPrfKey() @Host(alice)
+            r#"key = PrimGenPrfKey: () -> PrfKey () @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
@@ -1124,9 +1124,15 @@ mod tests {
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed,
-            Seed::from_prf(&PrfKey([0; 16], HostPlacement {
-                owner: "alice".into(),
-            }), &Nonce(vec![1, 2, 3]))
+            Seed::from_prf(
+                &PrfKey(
+                    [0; 16],
+                    HostPlacement {
+                        owner: "alice".into(),
+                    }
+                ),
+                &Nonce(vec![1, 2, 3])
+            )
         );
         Ok(())
     }

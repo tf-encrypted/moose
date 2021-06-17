@@ -1,6 +1,6 @@
+use crate::computation::HostPlacement;
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
-use crate::computation::HostPlacement;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Seed(pub [u8; 16]);

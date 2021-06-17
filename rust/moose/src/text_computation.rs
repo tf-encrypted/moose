@@ -220,7 +220,11 @@ macro_rules! sig_binary {
             Ok((
                 input,
                 $typ($sub {
-                    sig: Signature::Binary(BinarySignature{arg0: args_types[0], arg1: args_types[1], ret: result_type})
+                    sig: Signature::Binary(BinarySignature {
+                        arg0: args_types[0],
+                        arg1: args_types[1],
+                        ret: result_type,
+                    }),
                 }),
             ))
         }
@@ -478,7 +482,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((
         input,
         Operator::RingSample(RingSampleOp {
-            sig: Signature::Nullary(NullarySignature{ret: result_type}),
+            sig: Signature::Nullary(NullarySignature { ret: result_type }),
             max_value: opt_max_value,
         }),
     ))
@@ -534,9 +538,12 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (_, ret)) = type_definition(0)(input)?;
-    Ok((input, Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
-        sig: Signature::Nullary(NullarySignature{ret})
-    })))
+    Ok((
+        input,
+        Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
+            sig: Signature::Nullary(NullarySignature { ret }),
+        }),
+    ))
 }
 
 /// Parses a PrimDeriveSeed operator.
@@ -651,9 +658,12 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (_, ret)) = type_definition(0)(input)?;
-    Ok((input, Operator::BitSample(BitSampleOp {
-        sig: Signature::Nullary(NullarySignature{ret})
-    })))
+    Ok((
+        input,
+        Operator::BitSample(BitSampleOp {
+            sig: Signature::Nullary(NullarySignature { ret }),
+        }),
+    ))
 }
 
 /// Parses a BitFill operator.
@@ -670,9 +680,12 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (_, ret)) = type_definition(0)(input)?;
-    Ok((input, Operator::BitXor(BitXorOp {
-        sig: Signature::Nullary(NullarySignature{ret})
-    })))
+    Ok((
+        input,
+        Operator::BitXor(BitXorOp {
+            sig: Signature::Nullary(NullarySignature { ret }),
+        }),
+    ))
 }
 
 /// Parses list of arguments.
@@ -775,6 +788,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Uint16Tensor" => Ok((i, Ty::Uint16TensorTy)),
         "Uint32Tensor" => Ok((i, Ty::Uint32TensorTy)),
         "Uint64Tensor" => Ok((i, Ty::Uint64TensorTy)),
+        "BitTensor" => Ok((i, Ty::BitTensorTy)),
         "Unknown" => Ok((i, Ty::UnknownTy)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
@@ -806,7 +820,14 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     alt((
         value_literal_helper("Seed", parse_hex, |v| Value::Seed(Seed(v))),
         // TODO: Need to figure out placed values
-        value_literal_helper("PrfKey", parse_hex, |v| Value::PrfKey(PrfKey(v, HostPlacement{owner: "TODO".into()}))),
+        value_literal_helper("PrfKey", parse_hex, |v| {
+            Value::PrfKey(PrfKey(
+                v,
+                HostPlacement {
+                    owner: "TODO".into(),
+                },
+            ))
+        }),
         value_literal_helper("Float32", float, Value::Float32),
         value_literal_helper("Float64", double, Value::Float64),
         value_literal_helper("String", string, Value::String),
@@ -1355,14 +1376,11 @@ impl ToTextual for RingSampleOp {
     fn to_textual(&self) -> String {
         match self {
             RingSampleOp {
-                sig: Signature::Nullary(NullarySignature{ret}),
+                sig: Signature::Nullary(NullarySignature { ret }),
                 max_value: Some(a),
-            } => format!(
-                "RingSample{{max_value = {}}}: ({}) -> {}",
-                a, ret, ret
-            ),
+            } => format!("RingSample{{max_value = {}}}: ({}) -> {}", a, ret, ret),
             RingSampleOp {
-                sig: Signature::Nullary(NullarySignature{ret}),
+                sig: Signature::Nullary(NullarySignature { ret }),
                 max_value: None,
             } => format!("RingSample: ({}) -> {}", ret, ret),
             _ => unimplemented!(),
@@ -1373,11 +1391,28 @@ impl ToTextual for RingSampleOp {
 impl ToTextual for Signature {
     fn to_textual(&self) -> String {
         match self {
-            Signature::Nullary(NullarySignature{ret}) => format!("() -> {}", ret.to_textual()),
-            Signature::Unary(UnarySignature{arg0, ret}) => format!("({}) -> {}", arg0.to_textual(), ret.to_textual()),
-            Signature::Binary(BinarySignature{arg0, arg1, ret}) => format!("({}, {}) -> {}", arg0.to_textual(), arg1.to_textual(), ret.to_textual()),
-            Signature::Ternary(TernarySignature{arg0, arg1, arg2, ret}) => format!("({}, {}, {}) -> {}", arg0.to_textual(), arg1.to_textual(), arg2.to_textual(), ret.to_textual()),
-            _ => unimplemented!(),
+            Signature::Nullary(NullarySignature { ret }) => format!("() -> {}", ret.to_textual()),
+            Signature::Unary(UnarySignature { arg0, ret }) => {
+                format!("({}) -> {}", arg0.to_textual(), ret.to_textual())
+            }
+            Signature::Binary(BinarySignature { arg0, arg1, ret }) => format!(
+                "({}, {}) -> {}",
+                arg0.to_textual(),
+                arg1.to_textual(),
+                ret.to_textual()
+            ),
+            Signature::Ternary(TernarySignature {
+                arg0,
+                arg1,
+                arg2,
+                ret,
+            }) => format!(
+                "({}, {}, {}) -> {}",
+                arg0.to_textual(),
+                arg1.to_textual(),
+                arg2.to_textual(),
+                ret.to_textual()
+            ),
         }
     }
 }
@@ -1684,7 +1719,9 @@ mod tests {
 
     #[test]
     fn test_primgenprfkey() -> Result<(), anyhow::Error> {
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimGenPrfKey() @Host(alice)")?;
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>(
+            "key = PrimGenPrfKey: () -> PrfKey () @Host(alice)",
+        )?;
         assert_eq!(op.name, "key");
         Ok(())
     }
@@ -1840,9 +1877,9 @@ mod tests {
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitExtract {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitSample() @Host(alice)")?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitFill { value = 42 } () @Host(alice)")?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitSample : () -> BitTensor @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitFill { value = 42 } @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitXor : () -> BitTensor  @Host(alice)")?;
 
         Ok(())
     }

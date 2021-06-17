@@ -21,7 +21,7 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
 pub enum Ty {
     UnitTy,
     StringTy,
@@ -59,28 +59,28 @@ pub enum Signature {
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct NullarySignature {
-    ret: Ty,
+    pub ret: Ty,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct UnarySignature {
-    arg0: Ty,
-    ret: Ty,
+    pub arg0: Ty,
+    pub ret: Ty,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BinarySignature {
-    arg0: Ty,
-    arg1: Ty,
-    ret: Ty,
+    pub arg0: Ty,
+    pub arg1: Ty,
+    pub ret: Ty,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TernarySignature {
-    arg0: Ty,
-    arg1: Ty,
-    arg2: Ty,
-    ret: Ty,
+    pub arg0: Ty,
+    pub arg1: Ty,
+    pub arg2: Ty,
+    pub ret: Ty,
 }
 
 impl From<NullarySignature> for Signature {
@@ -495,7 +495,7 @@ pub struct BitFillOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitXorOp{
+pub struct BitXorOp {
     pub sig: Signature,
 }
 
@@ -598,7 +598,6 @@ impl KnownPlacement for ReplicatedPlacement {
     const TY: PlacementTy = PlacementTy::ReplicatedTy;
 }
 
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Operation {
     pub name: String,
@@ -613,4 +612,3 @@ pub struct Computation {
     // pub operators: Vec<Operator>,
     pub operations: Vec<Operation>,
 }
-
