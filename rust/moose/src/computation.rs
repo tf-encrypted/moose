@@ -1,4 +1,5 @@
 use crate::bit::BitTensor;
+use crate::compilation::spike::Replicated64Tensor;
 use crate::error::{Error, Result};
 use crate::prim::{Nonce, PrfKey, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -47,6 +48,7 @@ pub enum Ty {
     Uint32TensorTy,
     Uint64TensorTy,
     UnknownTy,
+    Replicated64TensorTy,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -132,6 +134,7 @@ pub enum Value {
     Uint16Tensor(Uint16Tensor),
     Uint32Tensor(Uint32Tensor),
     Uint64Tensor(Uint64Tensor),
+    Replicated64Tensor(Replicated64Tensor),
 }
 
 impl Value {
@@ -162,6 +165,7 @@ impl Value {
             Uint16Tensor(_) => Uint16TensorTy,
             Uint32Tensor(_) => Uint32TensorTy,
             Uint64Tensor(_) => Uint64TensorTy,
+            Replicated64Tensor(_) => Replicated64TensorTy,
         }
     }
 }
@@ -220,6 +224,7 @@ value!(Uint8Tensor);
 value!(Uint16Tensor);
 value!(Uint32Tensor);
 value!(Uint64Tensor);
+value!(Replicated64Tensor);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Operator {
@@ -268,6 +273,7 @@ pub enum Operator {
     FixedpointRingEncode(FixedpointRingEncodeOp),
     FixedpointRingDecode(FixedpointRingDecodeOp),
     FixedpointRingMean(FixedpointRingMeanOp),
+    RepAdd(RepAddOp),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -525,6 +531,11 @@ pub struct FixedpointRingMeanOp {
     pub axis: Option<usize>,
     pub scaling_base: u64,
     pub scaling_exp: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepAddOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

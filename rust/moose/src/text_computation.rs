@@ -1437,6 +1437,7 @@ impl ToTextual for Ty {
             Ty::Uint32TensorTy => "Uint32Tensor".to_string(),
             Ty::Uint64TensorTy => "Uint64Tensor".to_string(),
             Ty::UnknownTy => "Unknown".to_string(),
+            Ty::Replicated64TensorTy => "Replicated64Tensor".to_string(),
         }
     }
 }

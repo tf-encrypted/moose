@@ -74,6 +74,7 @@ impl Compile<SyncKernel> for Operator {
             FixedpointRingEncode(op) => op.compile(ctx),
             FixedpointRingDecode(op) => op.compile(ctx),
             FixedpointRingMean(op) => op.compile(ctx),
+            _ => todo!(),
         }
     }
 }
@@ -127,6 +128,7 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointRingEncode(op) => op.compile(ctx),
             FixedpointRingDecode(op) => op.compile(ctx),
             FixedpointRingMean(op) => op.compile(ctx),
+            _ => todo!(),
         }
     }
 }

@@ -4,12 +4,13 @@
 use crate::bit::BitTensor;
 use crate::computation::{
     BinarySignature, BitAndOp, BitSampleOp, BitXorOp, ConstantOp, HostPlacement, NullarySignature,
-    Operator, Placement, PlacementTy, PrimGenPrfKeyOp, ReplicatedPlacement, RingAddOp, RingMulOp,
-    RingSampleOp, RingSubOp, Signature, TernarySignature, Ty, UnarySignature, Value,
+    Operator, Placement, PlacementTy, PrimGenPrfKeyOp, RepAddOp, ReplicatedPlacement, RingAddOp,
+    RingMulOp, RingSampleOp, RingSubOp, Signature, Ty, Value,
 };
 use crate::prim::PrfKey;
 use crate::ring::{ConcreteRingTensor, Ring128Tensor, Ring64Tensor};
 use macros::with_context;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Sub};
@@ -114,12 +115,12 @@ impl Ty {
                     plc: plc.try_into().unwrap(),
                 }))
             }
-            // Ty::Replicated64Tensor => {
-            //     SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
-            //         op: op_name.into(),
-            //         plc: plc.try_into().unwrap(),
-            //     }))
-            // }
+            Ty::Replicated64TensorTy => {
+                SymbolicValue::Replicated64Tensor(Symbolic::Symbolic(SymbolicHandle {
+                    op: op_name.into(),
+                    plc: plc.try_into().unwrap(),
+                }))
+            }
             // Ty::Replicated128Tensor => {
             //     SymbolicValue::Replicated128Tensor(Symbolic::Symbolic(SymbolicHandle {
             //         op: op_name.into(),
@@ -160,7 +161,7 @@ pub enum SymbolicValue {
     // Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
     Ring64Tensor(<PlacedRing64Tensor as KnownType>::Symbolic),
     Ring128Tensor(<PlacedRing128Tensor as KnownType>::Symbolic),
-    // Replicated64Tensor(<Replicated64Tensor as KnownType>::Symbolic),
+    Replicated64Tensor(<PlacedReplicated64Tensor as KnownType>::Symbolic),
     // Replicated128Tensor(<Replicated128Tensor as KnownType>::Symbolic),
     // ReplicatedBitTensor(<ReplicatedBitTensor as KnownType>::Symbolic),
     // ReplicatedSetup(<ReplicatedSetup as KnownType>::Symbolic),
@@ -169,7 +170,7 @@ pub enum SymbolicValue {
 
 macro_rules! value {
     ($t:ident, $o:ident, $ty:ident, $st:ty) => {
-        #[derive(Clone, Debug, PartialEq)]
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
         pub struct $t($o, HostPlacement);
 
         impl From<$t> for Value {
@@ -201,20 +202,20 @@ macro_rules! value {
             }
         }
 
-        impl TryFrom<PlacedValue> for $t {
+        impl TryFrom<ConcreteValue> for $t {
             type Error = ();
 
-            fn try_from(x: PlacedValue) -> Result<Self, Self::Error> {
+            fn try_from(x: ConcreteValue) -> Result<Self, Self::Error> {
                 match x {
-                    PlacedValue(Value::$o(x), plc) => Ok($t { 0: x, 1: plc }),
+                    ConcreteValue(Value::$o(x), plc) => Ok($t { 0: x, 1: plc }),
                     _ => Err(()),
                 }
             }
         }
 
-        impl From<$t> for PlacedValue {
-            fn from(x: $t) -> PlacedValue {
-                PlacedValue(x.0.into(), x.1)
+        impl From<$t> for ConcreteValue {
+            fn from(x: $t) -> ConcreteValue {
+                ConcreteValue(x.0.into(), x.1)
             }
         }
 
@@ -280,10 +281,13 @@ value!(
     Ring128TensorTy,
     Symbolic<PlacedRing128Tensor>
 );
-// value!(
-//     Replicated64Tensor,
-//     Symbolic<ReplicatedTensor<<Ring64Tensor as KnownType>::Symbolic>>
-// );
+value!(
+    PlacedReplicated64Tensor,
+    Replicated64Tensor,
+    Replicated64TensorTy,
+    Symbolic<ReplicatedTensor<<PlacedRing64Tensor as KnownType>::Symbolic>>
+);
+
 // value!(
 //     Replicated128Tensor,
 //     Symbolic<ReplicatedTensor<<Ring128Tensor as KnownType>::Symbolic>>
@@ -519,7 +523,7 @@ operator!(RingSample, RingSampleOp);
 operator!(BitSample, BitSampleOp);
 operator!(Constant, ConstantOp);
 // operator!(RepSetup, RepSetupOp);
-// operator!(RepAdd, RepAddOp);
+operator!(RepAdd, RepAddOp);
 // operator!(RepMul, RepMulOp);
 // operator!(RepShare, RepShareOp);
 // operator!(RepReveal, RepRevealOp);
@@ -535,7 +539,7 @@ struct Operation {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct PlacedValue(Value, HostPlacement);
+pub struct ConcreteValue(Value, HostPlacement);
 
 impl Add<PlacedRing64Tensor> for PlacedRing64Tensor {
     type Output = PlacedRing64Tensor;
@@ -599,7 +603,7 @@ impl BitAnd for PlacedBitTensor {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ReplicatedTensor<R> {
     shares: [[R; 2]; 3],
 }
@@ -616,7 +620,7 @@ struct ReplicatedZeroShare<R> {
 
 // pub type Ring32Tensor = RingTensor<u32>;
 
-// pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
+pub type Replicated64Tensor = ReplicatedTensor<PlacedRing64Tensor>;
 
 // pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
 
@@ -940,9 +944,9 @@ pub struct ConcreteContext {
 }
 
 impl Context for ConcreteContext {
-    type Value = PlacedValue;
+    type Value = ConcreteValue;
 
-    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<PlacedValue>) -> PlacedValue {
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<ConcreteValue>) -> ConcreteValue {
         match op {
             Operator::PrimGenPrfKey(op) => op.spike_compile(self, plc)(operands),
             Operator::RingSample(op) => op.spike_compile(self, plc)(operands),
@@ -955,7 +959,7 @@ impl Context for ConcreteContext {
             // Operator::RepSetup(op) => op.spike_compile(self, plc)(operands),
             // Operator::RepShare(op) => op.spike_compile(self, plc)(operands),
             // Operator::RepReveap(op) => op.spike_compile(self, plc)(operands),
-            // Operator::RepAdd(op) => op.spike_compile(self, plc)(operands),
+            Operator::RepAdd(op) => op.spike_compile(self, plc)(operands),
             // Operator::RepMul(op) => op.spike_compile(self, plc)(operands),
             Operator::Constant(op) => op.spike_compile(self, plc)(operands),
             // Operator::FixedAdd(op) => op.spike_compile(self, plc)(operands),
@@ -1051,7 +1055,7 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
+            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<ConcreteValue>) -> ConcreteValue> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1062,7 +1066,7 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
-                            Box::new(move |_operands: Vec<PlacedValue>| {
+                            Box::new(move |_operands: Vec<ConcreteValue>| {
                                 let y: $u = $k(&ctx, &plc);
                                 y.into()
                             })
@@ -1088,7 +1092,7 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
+            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<ConcreteValue>) -> ConcreteValue> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1100,7 +1104,7 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
-                            Box::new(move |operands: Vec<PlacedValue>| {
+                            Box::new(move |operands: Vec<ConcreteValue>| {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
 
                                 let y: $u = $k(&ctx, &plc, x0);
@@ -1128,7 +1132,7 @@ macro_rules! runtime_kernel {
         )+
 
         impl $op {
-            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
+            pub fn spike_compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<ConcreteValue>) -> ConcreteValue> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1142,7 +1146,7 @@ macro_rules! runtime_kernel {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
                             let op = self.clone();
-                            Box::new(move |operands| -> PlacedValue {
+                            Box::new(move |operands| -> ConcreteValue {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
 
@@ -1497,22 +1501,23 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr), )+]) => {
         runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, plc, x0, x1| {
-            let v0 = x0.clone().try_into();
-            let v1 = x1.clone().try_into();
+            todo!()
+            // let v0 = x0.clone().try_into();
+            // let v1 = x1.clone().try_into();
 
-            match (v0, v1) {
-                (Ok(v0), Ok(v1)) => {
-                    let y = $k(ctx, &plc, v0, v1);
-                    y.into()
-                }
-                _ => match (x0, x1) {
-                    (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-                        let op_name = ctx.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
-                    }
-                    _ => unimplemented!() // ok
-                }
-            }
+            // match (v0, v1) {
+            //     (Ok(v0), Ok(v1)) => {
+            //         let y = $k(ctx, &plc, v0, v1);
+            //         y.into()
+            //     }
+            //     _ => match (x0, x1) {
+            //         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+            //             let op_name = ctx.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
+            //             Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
+            //         }
+            //         _ => unimplemented!() // ok
+            //     }
+            // }
         }), )+]);
     };
 
@@ -1591,7 +1596,7 @@ impl RepSetupOp {
     {
         let (player0, player1, player2) = rep.host_placements();
         let (a, b) = (1, 2);
-        let (a, b) = if a > b {(a, b)} else {(b, a)};
+        let (a, b) = if a > b { (a, b) } else { (b, a) };
 
         let k0 = player0.keygen(ctx);
         let k1 = player1.keygen(ctx);
@@ -1610,12 +1615,7 @@ impl RepSetupOp {
 //     ]
 // }
 
-// #[derive(Clone, Debug, PartialEq)]
-// pub struct RepAddOp {
-//     sig: Signature,
-// }
-
-// modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (PlacedReplicated64Tensor, PlacedReplicated64Tensor) -> PlacedReplicated64Tensor, RepAddOp);
 // modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
 // modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 // modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
@@ -1623,170 +1623,173 @@ impl RepSetupOp {
 // modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
 // modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
 
-// hybrid_kernel! {
-//     RepAddOp,
-//     [
-//         (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
-//         (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
-//         (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
-//         (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
-//         (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
-//         (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
-//         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
-//     ]
-// }
+hybrid_kernel! {
+    RepAddOp,
+    [
+        (ReplicatedPlacement, (PlacedReplicated64Tensor, PlacedReplicated64Tensor) -> PlacedReplicated64Tensor => Self::rep_rep_kernel),
+        // (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
+        // (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        // (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        // (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        // (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
+        // (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
+    ]
+}
 
-// impl RepAddOp {
-//     fn from_signature(sig: BinarySignature) -> Self {
-//         RepAddOp { sig: sig.into() }
-//     }
+impl RepAddOp {
+    fn from_signature(sig: BinarySignature) -> Self {
+        RepAddOp { sig: sig.into() }
+    }
 
-//     fn rep_rep_kernel<C: Context, R>(
-//         ctx: &C,
-//         rep: &ReplicatedPlacement,
-//         x: ReplicatedTensor<R>,
-//         y: ReplicatedTensor<R>,
-//     ) -> ReplicatedTensor<R>
-//     where
-//         R: Clone,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//     {
-//         let (player0, player1, player2) = rep.host_placements();
+    fn rep_rep_kernel<C: Context>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        x: PlacedReplicated64Tensor,
+        y: PlacedReplicated64Tensor,
+    ) -> PlacedReplicated64Tensor
+    where
+        HostPlacement:
+            PlacementAdd<C, PlacedRing64Tensor, PlacedRing64Tensor, Output = PlacedRing64Tensor>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
 
-//         let ReplicatedTensor {
-//             shares: [[x00, x10], [x11, x21], [x22, x02]],
-//         } = &x;
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x.0;
 
-//         let ReplicatedTensor {
-//             shares: [[y00, y10], [y11, y21], [y22, y02]],
-//         } = &y;
+        let ReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = &y.0;
 
-//         let z00 = with_context!(player0, ctx, x00 + y00);
-//         let z10 = with_context!(player0, ctx, x10 + y10);
+        let z00 = with_context!(player0, ctx, x00 + y00);
+        let z10 = with_context!(player0, ctx, x10 + y10);
 
-//         let z11 = with_context!(player1, ctx, x11 + y11);
-//         let z21 = with_context!(player1, ctx, x21 + y21);
+        let z11 = with_context!(player1, ctx, x11 + y11);
+        let z21 = with_context!(player1, ctx, x21 + y21);
 
-//         let z22 = with_context!(player2, ctx, x22 + y22);
-//         let z02 = with_context!(player2, ctx, x02 + y02);
+        let z22 = with_context!(player2, ctx, x22 + y22);
+        let z02 = with_context!(player2, ctx, x02 + y02);
 
-//         ReplicatedTensor {
-//             shares: [[z00, z10], [z11, z21], [z22, z02]],
-//         }
-//     }
+        PlacedReplicated64Tensor(
+            ReplicatedTensor {
+                shares: [[z00, z10], [z11, z21], [z22, z02]],
+            },
+            x.1.clone(),
+        )
+    }
 
-//     fn ring_rep_kernel<C: Context, R: KnownType>(
-//         ctx: &C,
-//         rep: &ReplicatedPlacement,
-//         x: R,
-//         y: ReplicatedTensor<R>,
-//     ) -> ReplicatedTensor<R>
-//     where
-//         R: Clone,
-//         R: Placed<Placement = HostPlacement>,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//     {
-//         let (player0, player1, player2) = rep.host_placements();
-//         let x_plc = x.placement();
+    fn ring_rep_kernel<C: Context, R: KnownType>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        x: R,
+        y: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone,
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let x_plc = x.placement();
 
-//         let ReplicatedTensor {
-//             shares: [[y00, y10], [y11, y21], [y22, y02]],
-//         } = y;
+        let ReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = y;
 
-//         let shares = match x_plc {
-//             _ if x_plc == player0 => {
-//                 // add x to y0
-//                 [
-//                     [with_context!(player0, ctx, x + y00), y10],
-//                     [y11, y21],
-//                     [y22, with_context!(player2, ctx, x + y02)],
-//                 ]
-//             }
-//             _ if x_plc == player1 => {
-//                 // add x to y1
-//                 [
-//                     [y00, with_context!(player0, ctx, x + y10)],
-//                     [with_context!(player1, ctx, x + y11), y21],
-//                     [y22, y02],
-//                 ]
-//             }
-//             _ if x_plc == player2 => {
-//                 // add x to y2
-//                 [
-//                     [y00, y10],
-//                     [y11, with_context!(player1, ctx, x + y21)],
-//                     [with_context!(player2, ctx, x + y22), y02],
-//                 ]
-//             }
-//             _ => {
-//                 // add x to y0; we could randomize this
-//                 [
-//                     [with_context!(player0, ctx, x + y00), y10],
-//                     [y11, y21],
-//                     [y22, with_context!(player2, ctx, x + y02)],
-//                 ]
-//             }
-//         };
+        let shares = match x_plc {
+            _ if x_plc == player0 => {
+                // add x to y0
+                [
+                    [with_context!(player0, ctx, x + y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, ctx, x + y02)],
+                ]
+            }
+            _ if x_plc == player1 => {
+                // add x to y1
+                [
+                    [y00, with_context!(player0, ctx, x + y10)],
+                    [with_context!(player1, ctx, x + y11), y21],
+                    [y22, y02],
+                ]
+            }
+            _ if x_plc == player2 => {
+                // add x to y2
+                [
+                    [y00, y10],
+                    [y11, with_context!(player1, ctx, x + y21)],
+                    [with_context!(player2, ctx, x + y22), y02],
+                ]
+            }
+            _ => {
+                // add x to y0; we could randomize this
+                [
+                    [with_context!(player0, ctx, x + y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, ctx, x + y02)],
+                ]
+            }
+        };
 
-//         ReplicatedTensor { shares }
-//     }
+        ReplicatedTensor { shares }
+    }
 
-//     fn rep_ring_kernel<C: Context, R>(
-//         ctx: &C,
-//         rep: &ReplicatedPlacement,
-//         x: ReplicatedTensor<R>,
-//         y: R,
-//     ) -> ReplicatedTensor<R>
-//     where
-//         R: Clone,
-//         R: Placed<Placement = HostPlacement>,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//     {
-//         let (player0, player1, player2) = rep.host_placements();
-//         let y_plc = y.placement();
+    fn rep_ring_kernel<C: Context, R>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        x: ReplicatedTensor<R>,
+        y: R,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone,
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let y_plc = y.placement();
 
-//         let ReplicatedTensor {
-//             shares: [[x00, x10], [x11, x21], [x22, x02]],
-//         } = x;
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
 
-//         let shares = match y_plc {
-//             _ if y_plc == player0 => {
-//                 // add y to x0
-//                 [
-//                     [with_context!(player0, ctx, x00 + y), x10],
-//                     [x11, x21],
-//                     [x22, with_context!(player2, ctx, x02 + y)],
-//                 ]
-//             }
-//             _ if y_plc == player1 => {
-//                 // add y to x1
-//                 [
-//                     [x00, with_context!(player0, ctx, x10 + y)],
-//                     [with_context!(player1, ctx, x11 + y), x21],
-//                     [x22, x02],
-//                 ]
-//             }
-//             _ if y_plc == player2 => {
-//                 // add y to x2
-//                 [
-//                     [x00, x10],
-//                     [x11, with_context!(player1, ctx, x21 + y)],
-//                     [with_context!(player2, ctx, x22 + y), x02],
-//                 ]
-//             }
-//             _ => {
-//                 // add y to x0; we could randomize this
-//                 [
-//                     [with_context!(player0, ctx, x00 + y), x10],
-//                     [x11, x21],
-//                     [x22, with_context!(player2, ctx, x02 + y)],
-//                 ]
-//             }
-//         };
+        let shares = match y_plc {
+            _ if y_plc == player0 => {
+                // add y to x0
+                [
+                    [with_context!(player0, ctx, x00 + y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, ctx, x02 + y)],
+                ]
+            }
+            _ if y_plc == player1 => {
+                // add y to x1
+                [
+                    [x00, with_context!(player0, ctx, x10 + y)],
+                    [with_context!(player1, ctx, x11 + y), x21],
+                    [x22, x02],
+                ]
+            }
+            _ if y_plc == player2 => {
+                // add y to x2
+                [
+                    [x00, x10],
+                    [x11, with_context!(player1, ctx, x21 + y)],
+                    [with_context!(player2, ctx, x22 + y), x02],
+                ]
+            }
+            _ => {
+                // add y to x0; we could randomize this
+                [
+                    [with_context!(player0, ctx, x00 + y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, ctx, x02 + y)],
+                ]
+            }
+        };
 
-//         ReplicatedTensor { shares }
-//     }
-// }
+        ReplicatedTensor { shares }
+    }
+}
 
 // #[derive(Clone, Debug, PartialEq)]
 // pub struct RepMulOp {
@@ -2266,15 +2269,15 @@ impl ConstantOp {
         &self,
         _ctx: &ConcreteContext,
         plc: &Placement,
-    ) -> Box<dyn Fn(Vec<PlacedValue>) -> PlacedValue> {
+    ) -> Box<dyn Fn(Vec<ConcreteValue>) -> ConcreteValue> {
         // TODO: There should be an utility to place values
         let val = match plc {
-            Placement::Host(host) => PlacedValue(self.value.clone(), host.clone()),
+            Placement::Host(host) => ConcreteValue(self.value.clone(), host.clone()),
             _ => panic!(),
         };
 
         match plc {
-            Placement::Host(_) => Box::new(move |_operands| -> PlacedValue { val.clone() }),
+            Placement::Host(_) => Box::new(move |_operands| -> ConcreteValue { val.clone() }),
             _ => unimplemented!(), // ok
         }
     }
@@ -2516,52 +2519,95 @@ mod tests {
 
     use super::*;
 
-    // #[test]
-    // fn test_rep_add_concrete() {
-    //     let ctx = ConcreteContext::default();
+    #[test]
+    fn test_rep_add_concrete() {
+        let ctx = ConcreteContext::default();
 
-    //     let alice = HostPlacement {
-    //         player: "alice".into(),
-    //     };
-    //     let bob = HostPlacement {
-    //         player: "bob".into(),
-    //     };
-    //     let carole = HostPlacement {
-    //         player: "carole".into(),
-    //     };
-    //     let rep = ReplicatedPlacement {
-    //         players: ["alice".into(), "bob".into(), "carole".into()],
-    //     };
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
 
-    //     let xe: Replicated64Tensor = ReplicatedTensor {
-    //         shares: [
-    //             [RingTensor(1, alice.clone()), RingTensor(2, alice.clone())],
-    //             [RingTensor(2, bob.clone()), RingTensor(3, bob.clone())],
-    //             [RingTensor(3, carole.clone()), RingTensor(1, carole.clone())],
-    //         ],
-    //     };
+        let xe: PlacedReplicated64Tensor = PlacedReplicated64Tensor(
+            ReplicatedTensor {
+                shares: [
+                    [
+                        PlacedRing64Tensor(vec![1].into(), alice.clone()),
+                        PlacedRing64Tensor(vec![2].into(), alice.clone()),
+                    ],
+                    [
+                        PlacedRing64Tensor(vec![2].into(), bob.clone()),
+                        PlacedRing64Tensor(vec![3].into(), bob.clone()),
+                    ],
+                    [
+                        PlacedRing64Tensor(vec![3].into(), carole.clone()),
+                        PlacedRing64Tensor(vec![1].into(), carole.clone()),
+                    ],
+                ],
+            },
+            // TODO: need to actually place that on replicated placement
+            HostPlacement {
+                owner: "alice".into(),
+            },
+        );
 
-    //     let ye = ReplicatedTensor {
-    //         shares: [
-    //             [RingTensor(1, alice.clone()), RingTensor(2, alice.clone())],
-    //             [RingTensor(2, bob.clone()), RingTensor(3, bob.clone())],
-    //             [RingTensor(3, carole.clone()), RingTensor(1, carole.clone())],
-    //         ],
-    //     };
+        let ye = PlacedReplicated64Tensor(
+            ReplicatedTensor {
+                shares: [
+                    [
+                        PlacedRing64Tensor(vec![1].into(), alice.clone()),
+                        PlacedRing64Tensor(vec![2].into(), alice.clone()),
+                    ],
+                    [
+                        PlacedRing64Tensor(vec![2].into(), bob.clone()),
+                        PlacedRing64Tensor(vec![3].into(), bob.clone()),
+                    ],
+                    [
+                        PlacedRing64Tensor(vec![3].into(), carole.clone()),
+                        PlacedRing64Tensor(vec![1].into(), carole.clone()),
+                    ],
+                ],
+            },
+            HostPlacement {
+                owner: "alice".into(),
+            },
+        );
 
-    //     let ze: ReplicatedTensor<_> = rep.add(&ctx, &xe, &ye);
+        let ze = rep.add(&ctx, &xe, &ye);
 
-    //     assert_eq!(
-    //         ze,
-    //         ReplicatedTensor {
-    //             shares: [
-    //                 [RingTensor(2, alice.clone()), RingTensor(4, alice.clone())],
-    //                 [RingTensor(4, bob.clone()), RingTensor(6, bob.clone())],
-    //                 [RingTensor(6, carole.clone()), RingTensor(2, carole.clone())],
-    //             ],
-    //         }
-    //     );
-    // }
+        assert_eq!(
+            ze,
+            PlacedReplicated64Tensor(
+                ReplicatedTensor {
+                    shares: [
+                        [
+                            PlacedRing64Tensor(vec![2].into(), alice.clone()),
+                            PlacedRing64Tensor(vec![4].into(), alice.clone())
+                        ],
+                        [
+                            PlacedRing64Tensor(vec![4].into(), bob.clone()),
+                            PlacedRing64Tensor(vec![6].into(), bob.clone())
+                        ],
+                        [
+                            PlacedRing64Tensor(vec![6].into(), carole.clone()),
+                            PlacedRing64Tensor(vec![2].into(), carole.clone())
+                        ],
+                    ],
+                },
+                HostPlacement {
+                    owner: "alice".into()
+                }
+            )
+        );
+    }
 
     // #[test]
     // fn test_rep_add_symbolic() {

@@ -108,6 +108,7 @@ fn pretty(op: &Operation) -> String {
         Operator::FixedpointRingEncode(_) => "FixedpointRingEncode",
         Operator::FixedpointRingDecode(_) => "FixedpointRingDecode",
         Operator::FixedpointRingMean(_) => "FixedpointRingMean",
+        Operator::RepAdd(_) => "RepAdd",
     };
     format!("{} = {}\\l{}", op.name, op_kind, op.placement.to_textual())
 }
