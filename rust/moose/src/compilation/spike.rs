@@ -766,6 +766,11 @@ pub struct ReplicatedTensor<R> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct AdditiveTensor<R> {
+    shares: [R; 2],
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct PrfKey([u8; 16], HostPlacement);
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2266,6 +2271,7 @@ impl RepTruncPrOp {
         HostPlacement: PlacementKeyGen<C, K>,
         HostPlacement: PlacementShl<C, R, Output = R>,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementSub<C, R, R, Output = R>,
     {
         // TODO: m is an attribute passed to the kernel
         // Need to fix when we have kernel closures.
@@ -2282,10 +2288,19 @@ impl RepTruncPrOp {
         let r_bits: Vec<_> = (0..R::SIZE).map(|_| player2.sample(ctx)).collect();
         let r = RepTruncPrOp::bit_compose(ctx, &r_bits, &player2);
 
-        let r_top_bits: Vec<_> = (m..R::SIZE-1).map(|i| r_bits[i].clone()).collect();
+        let r_top_bits: Vec<_> = (m..R::SIZE - 1).map(|i| r_bits[i].clone()).collect();
         let r_top_ring = RepTruncPrOp::bit_compose(ctx, &r_top_bits, &player2);
-        let r_msb = r_bits[R::SIZE-1].clone();
+        let r_msb = r_bits[R::SIZE - 1].clone();
 
+        let tmp: [R; 3] = [r, r_top_ring, r_msb];
+        let prep_shares: Vec<_> = tmp
+            .iter()
+            .map(|x| RepTruncPrOp::generate_additive_share(ctx, x, &player2))
+            .collect();
+
+        let signed = true;
+        // y_prime =
+        //     RepTruncPrOp::two_party_trunc_pr(ctx, &xe, m, &r, &r_top, [&player0, &player1], signed);
 
         ReplicatedTensor {
             shares: [
@@ -2328,6 +2343,20 @@ impl RepTruncPrOp {
             RepTruncPrOp::tree_reduce(ctx, &reduced, plc)
         }
     }
+    fn generate_additive_share<C: Context, R, K>(ctx: &C, x: &R, plc: &HostPlacement) -> (R, R)
+    where
+        R: Clone,
+        HostPlacement: PlacementKeyGen<C, K>,
+        HostPlacement: PlacementSub<C, R, R, Output = R>,
+        HostPlacement: PlacementSample<C, R>,
+    {
+        let k = plc.keygen(ctx);
+        let share0 = plc.sample(ctx);
+        // derive seed(k)
+        let share1 = with_context!(plc, ctx, x - share0);
+        (share0, share1)
+    }
+    // fn two_party_trunc_pr<C: Context, R, K>(ctx: &C, x: )
 }
 
 #[derive(Clone, Debug, PartialEq)]
