@@ -1152,8 +1152,8 @@ macro_rules! runtime_kernel {
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr), )+]) => {
         $(
         impl NullaryKernel<ConcreteContext, $plc, $u> for $op {
-            fn kernel(ctx: &ConcreteContext, plc: &$plc) -> $u {
-                $k(ctx, plc)
+            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
+                Box::new($k)
             }
         }
         )+
@@ -1170,8 +1170,11 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
+
+                            let k = <$op as NullaryKernel<ConcreteContext, $plc, $u>>::compile(self, &ctx, &plc);
+
                             Box::new(move |_operands: Vec<Value>| {
-                                let y: $u = $k(&ctx, &plc);
+                                let y: $u = k(&ctx, &plc);
                                 y.into()
                             })
                         }
@@ -1189,8 +1192,8 @@ macro_rules! runtime_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr), )+]) => {
         $(
         impl UnaryKernel<ConcreteContext, $plc, $t0, $u> for $op {
-            fn kernel(ctx: &ConcreteContext, plc: &$plc, x0: $t0) -> $u {
-                $k(ctx, plc, x0)
+            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0) -> $u> {
+                Box::new($k)
             }
         }
         )+
@@ -1208,10 +1211,13 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
+
+                            let k = <$op as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
+
                             Box::new(move |operands: Vec<Value>| {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = $k(&ctx, &plc, x0);
+                                let y: $u = k(&ctx, &plc, x0);
                                 y.into()
                             })
                         }
@@ -1229,8 +1235,8 @@ macro_rules! runtime_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr), )+]) => {
         $(
         impl BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u> for $op {
-            fn kernel(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1) -> $u {
-                $k(ctx, plc, x0, x1)
+            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                Box::new($k)
             }
         }
         )+
@@ -1249,12 +1255,14 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
-                            let op = self.clone();
+
+                            let k = <$op as BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u>>::compile(self, &ctx, &plc);
+
                             Box::new(move |operands| -> Value {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = $k(&ctx, &plc, x0, x1);
+                                let y: $u = k(&ctx, &plc, x0, x1);
                                 y.into()
                             })
                         }
@@ -1272,8 +1280,8 @@ macro_rules! runtime_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
         $(
         impl TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
-            fn kernel(ctx: &ConcreteContext, plc: &$plc, x0: $t0, x1: $t1, x2: $t2) -> $u {
-                $k(ctx, plc, x0, x1, x2)
+            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                Box::new($k)
             }
         }
         )+
@@ -1293,13 +1301,15 @@ macro_rules! runtime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
-                            let op = self.clone();
+
+                            let k = <$op as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
+
                             Box::new(move |operands: Vec<Value>| -> Value {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
 
-                                let y = $k(&ctx, &plc, x0, x1, x2);
+                                let y: $u = k(&ctx, &plc, x0, x1, x2);
                                 y.into()
                             })
                         }
@@ -1431,6 +1441,21 @@ macro_rules! compiletime_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
+        // $(
+        // impl TernaryKernel<
+        //     SymbolicContext, 
+        //     $plc,
+        //     <$t0 as KnownType>::Symbolic,
+        //     <$t1 as KnownType>::Symbolic,
+        //     <$t2 as KnownType>::Symbolic,
+        //     <$u as KnownType>::Symbolic,
+        // > for $op {
+        //     fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(&SymbolicContext, &$plc, $t0, $t1, $t2) -> $u> {
+        //         Box::new($k)
+        //     }
+        // }
+        // )+
+
         impl $op {
             pub fn execute_symbolic(
                 &self,
@@ -1652,20 +1677,24 @@ macro_rules! hybrid_kernel {
     };
 }
 
+// TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
+// function kernels then we could consider returning an enum over
+// fn.. and Box<dyn Fn...> in the traits below instead
+
 pub trait NullaryKernel<C: Context, P, Y> {
-    fn kernel(ctx: &C, plc: &P) -> Y;
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P) -> Y>;
 }
 
 pub trait UnaryKernel<C: Context, P, X0, Y> {
-    fn kernel(ctx: &C, plc: &P, x0: X0) -> Y;
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0) -> Y>;
 }
 
 pub trait BinaryKernel<C: Context, P, X0, X1, Y> {
-    fn kernel(ctx: &C, plc: &P, x0: X0, x1: X1) -> Y;
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1) -> Y>;
 }
 
 pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
-    fn kernel(ctx: &C, plc: &P, x0: X0, x1: X1, x2: X2) -> Y;
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
 }
 
 trait NullaryKernelCheck<C: Context, P, Y> where Self: NullaryKernel<C, P, Y> {}
