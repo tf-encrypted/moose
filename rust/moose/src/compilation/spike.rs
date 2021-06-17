@@ -1583,6 +1583,15 @@ macro_rules! kernel {
     };
 }
 
+macro_rules! derive_runtime_kernel {
+    ($foo:expr, $k:expr) => {
+        $k
+    };
+    ($k:expr) => {
+        $k
+    };
+}
+
 /// Kernel function maybe be evaluated in symbolic contexts
 macro_rules! hybrid_kernel {
 
@@ -1590,10 +1599,11 @@ macro_rules! hybrid_kernel {
     Nullary
     */
 
-    ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, () -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, () -> $u:ty => $($k:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, () -> $u => derive_runtime_kernel![$($k)+]), )+]);
         compiletime_kernel!($op, [$( ($plc, () -> $u => |_op, ctx, plc| {
-            let y = $k(ctx, &plc);
+            let k = derive_runtime_kernel![$($k)+];
+            let y = k(ctx, &plc);
             y.into()
         }), )+]);
     };
@@ -1602,14 +1612,15 @@ macro_rules! hybrid_kernel {
     Unary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($k:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => derive_runtime_kernel![$($k)+]), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |op, ctx, plc, x0| {
             let v0 = x0.clone().try_into();
 
             match v0 {
                 Ok(v0) => {
-                    let y = $k(ctx, &plc, v0);
+                    let k = derive_runtime_kernel![$($k)+];
+                    let y = k(ctx, &plc, v0);
                     y.into()
                 }
                 _ => match x0 {
@@ -1627,15 +1638,16 @@ macro_rules! hybrid_kernel {
     Binary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($k:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => derive_runtime_kernel![$($k)+]), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, plc, x0, x1| {
             let v0 = x0.clone().try_into();
             let v1 = x1.clone().try_into();
 
             match (v0, v1) {
                 (Ok(v0), Ok(v1)) => {
-                    let y = $k(ctx, &plc, v0, v1);
+                    let k = derive_runtime_kernel![$($k)+];
+                    let y = k(ctx, &plc, v0, v1);
                     y.into()
                 }
                 _ => match (x0, x1) {
@@ -1653,8 +1665,8 @@ macro_rules! hybrid_kernel {
     Ternary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($k:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => derive_runtime_kernel![$($k)+]), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |op, ctx, plc, x0, x1, x2| {
             let v0 = x0.clone().try_into();
             let v1 = x1.clone().try_into();
@@ -1662,7 +1674,8 @@ macro_rules! hybrid_kernel {
 
             match (v0, v1, v2) {
                 (Ok(v0), Ok(v1), Ok(v2)) => {
-                    let y = $k(ctx, &plc, v0, v1, v2);
+                    let k = derive_runtime_kernel![$($k)+];
+                    let y = k(ctx, &plc, v0, v1, v2);
                     y.into()
                 }
                 _ => match (x0, x1, x2) {
