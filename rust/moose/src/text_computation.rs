@@ -1219,7 +1219,7 @@ standard_op_to_textual!(
     ty
 );
 standard_op_to_textual!(InputOp, "Input {{arg_name={}}}: () -> {}", arg_name, ty);
-standard_op_to_textual!(OutputOp, "Output ({}) -> {}", ty, ty);
+standard_op_to_textual!(OutputOp, "Output: ({}) -> {}", ty, ty);
 standard_op_to_textual!(StdAddOp, "StdAdd: ({}, {}) -> {}", lhs, rhs, lhs);
 standard_op_to_textual!(StdSubOp, "StdSub: ({}, {}) -> {}", lhs, rhs, lhs);
 standard_op_to_textual!(StdMulOp, "StdMul: ({}, {}) -> {}", lhs, rhs, lhs);
@@ -1888,7 +1888,8 @@ mod tests {
             y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
             z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)
-            seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)} @Host(alice)"
+            seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)} @Host(alice)
+            o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"
             .try_into()?;
         let textual = comp.to_textual();
         // After serializing it into the textual IR we need to make sure it parses back the same

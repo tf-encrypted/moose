@@ -53,12 +53,9 @@ impl NetworkingPass {
         }
 
         pass.operations.extend(pass.extra_ops);
-        Computation {
+        Ok(Some(Computation {
             operations: pass.operations,
-        }
-        .toposort()
-        .map(Some)
-        .map_err(|e| anyhow::anyhow!("Failed to sort the ops {}", e))
+        }))
     }
 
     /// Create operations necessary for a networking jump between two hosts
