@@ -164,6 +164,105 @@ value!(Uint32Tensor);
 value!(Uint64Tensor);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub enum Signature {
+    Nullary(NullarySignature),
+    Unary(UnarySignature),
+    Binary(BinarySignature),
+    Ternary(TernarySignature),
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct NullarySignature {
+    pub ret: Ty,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct UnarySignature {
+    pub arg0: Ty,
+    pub ret: Ty,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct BinarySignature {
+    pub arg0: Ty,
+    pub arg1: Ty,
+    pub ret: Ty,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct TernarySignature {
+    pub arg0: Ty,
+    pub arg1: Ty,
+    pub arg2: Ty,
+    pub ret: Ty,
+}
+
+impl From<NullarySignature> for Signature {
+    fn from(s: NullarySignature) -> Signature {
+        Signature::Nullary(s)
+    }
+}
+
+impl From<UnarySignature> for Signature {
+    fn from(s: UnarySignature) -> Signature {
+        Signature::Unary(s)
+    }
+}
+
+impl From<BinarySignature> for Signature {
+    fn from(s: BinarySignature) -> Signature {
+        Signature::Binary(s)
+    }
+}
+
+impl From<TernarySignature> for Signature {
+    fn from(s: TernarySignature) -> Signature {
+        Signature::Ternary(s)
+    }
+}
+
+impl Signature {
+    pub fn nullary(ret: Ty) -> Signature {
+        NullarySignature { ret }.into()
+    }
+    pub fn unary(arg0: Ty, ret: Ty) -> Signature {
+        UnarySignature { arg0, ret }.into()
+    }
+    pub fn binary(arg0: Ty, arg1: Ty, ret: Ty) -> Signature {
+        BinarySignature { arg0, arg1, ret }.into()
+    }
+    pub fn ternary(arg0: Ty, arg1: Ty, arg2: Ty, ret: Ty) -> Signature {
+        TernarySignature {
+            arg0,
+            arg1,
+            arg2,
+            ret,
+        }
+        .into()
+    }
+    pub fn ret(&self) -> Ty {
+        match self {
+            Signature::Nullary(s) => s.ret,
+            Signature::Unary(s) => s.ret,
+            Signature::Binary(s) => s.ret,
+            Signature::Ternary(s) => s.ret,
+        }
+    }
+
+    pub fn arg(&self, arg: usize) -> Result<Ty> {
+        match (self, arg) {
+            (Signature::Unary(s), 0) => Ok(s.arg0),
+            (Signature::Binary(s), 0) => Ok(s.arg0),
+            (Signature::Binary(s), 1) => Ok(s.arg1),
+            (Signature::Ternary(s), 0) => Ok(s.arg0),
+            (Signature::Ternary(s), 1) => Ok(s.arg1),
+            (Signature::Ternary(s), 2) => Ok(s.arg2),
+            _ => Err(Error::OperandUnavailable),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Operator {
     Identity(IdentityOp),
     Load(LoadOp),
@@ -212,253 +311,307 @@ pub enum Operator {
     FixedpointRingMean(FixedpointRingMeanOp),
 }
 
+impl Operator {
+    pub fn sig(&self) -> &Signature {
+        match self {
+            Operator::Identity(op) => &op.sig,
+            Operator::Load(op) => &op.sig,
+            Operator::Save(op) => &op.sig,
+            Operator::Send(op) => &op.sig,
+            Operator::Receive(op) => &op.sig,
+            Operator::Input(op) => &op.sig,
+            Operator::Output(op) => &op.sig,
+            Operator::Constant(op) => &op.sig,
+            Operator::StdAdd(op) => &op.sig,
+            Operator::StdSub(op) => &op.sig,
+            Operator::StdMul(op) => &op.sig,
+            Operator::StdDiv(op) => &op.sig,
+            Operator::StdDot(op) => &op.sig,
+            Operator::StdMean(op) => &op.sig,
+            Operator::StdExpandDims(op) => &op.sig,
+            Operator::StdReshape(op) => &op.sig,
+            Operator::StdAtLeast2D(op) => &op.sig,
+            Operator::StdShape(op) => &op.sig,
+            Operator::StdSlice(op) => &op.sig,
+            Operator::StdSum(op) => &op.sig,
+            Operator::StdOnes(op) => &op.sig,
+            Operator::StdConcatenate(op) => &op.sig,
+            Operator::StdTranspose(op) => &op.sig,
+            Operator::StdInverse(op) => &op.sig,
+            Operator::RingAdd(op) => &op.sig,
+            Operator::RingSub(op) => &op.sig,
+            Operator::RingMul(op) => &op.sig,
+            Operator::RingDot(op) => &op.sig,
+            Operator::RingSum(op) => &op.sig,
+            Operator::RingShape(op) => &op.sig,
+            Operator::RingSample(op) => &op.sig,
+            Operator::RingFill(op) => &op.sig,
+            Operator::RingShl(op) => &op.sig,
+            Operator::RingShr(op) => &op.sig,
+            Operator::RingInject(op) => &op.sig,
+            Operator::BitExtract(op) => &op.sig,
+            Operator::BitSample(op) => &op.sig,
+            Operator::BitFill(op) => &op.sig,
+            Operator::BitXor(op) => &op.sig,
+            Operator::BitAnd(op) => &op.sig,
+            Operator::PrimDeriveSeed(op) => &op.sig,
+            Operator::PrimGenPrfKey(op) => &op.sig,
+            Operator::FixedpointRingEncode(op) => &op.sig,
+            Operator::FixedpointRingDecode(op) => &op.sig,
+            Operator::FixedpointRingMean(op) => &op.sig,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SendOp {
+    pub sig: Signature,
     pub rendezvous_key: String,
     pub receiver: Role,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct IdentityOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ReceiveOp {
+    pub sig: Signature,
     pub rendezvous_key: String,
     pub sender: Role,
-    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct InputOp {
+    pub sig: Signature,
     pub arg_name: String,
-    pub ty: Ty,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct OutputOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct LoadOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SaveOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ConstantOp {
+    pub sig: Signature,
     pub value: Value,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdAddOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdSubOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdMulOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdDivOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdDotOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdMeanOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdOnesOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdConcatenateOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdAtLeast2DOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub to_column_vector: bool,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdExpandDimsOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdReshapeOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdShapeOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdSliceOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub start: u32,
     pub end: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdSumOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdTransposeOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdInverseOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrimDeriveSeedOp {
+    pub sig: Signature,
     pub nonce: Nonce,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct PrimGenPrfKeyOp;
+pub struct PrimGenPrfKeyOp {
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingAddOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSubOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingMulOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingDotOp {
-    pub lhs: Ty,
-    pub rhs: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSumOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShapeOp {
-    pub ty: Ty,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingFillOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub value: Value,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSampleOp {
-    pub output: Ty,
+    pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShlOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub amount: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingShrOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub amount: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingInjectOp {
-    pub output: Ty,
+    pub sig: Signature,
     pub bit_idx: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitExtractOp {
-    pub ring_type: Ty,
+    pub sig: Signature,
     pub bit_idx: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitSampleOp;
+pub struct BitSampleOp {
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitFillOp {
+    pub sig: Signature,
     pub value: u8,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitXorOp;
+pub struct BitXorOp {
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitAndOp;
+pub struct BitAndOp {
+    pub sig: Signature,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingDecodeOp {
-    pub input_ty: Ty,
-    pub ty: Ty,
+    pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingMeanOp {
-    pub ty: Ty,
+    pub sig: Signature,
     pub axis: Option<usize>,
     pub scaling_base: u64,
     pub scaling_exp: u32,

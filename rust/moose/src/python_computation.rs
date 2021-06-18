@@ -650,13 +650,16 @@ impl TryFrom<PyComputation> for Computation {
                 use PyOperation::*;
                 match op {
                     prim_SampleKeyOperation(op) => Ok(Operation {
-                        kind: PrimGenPrfKey(PrimGenPrfKeyOp {}),
+                        kind: PrimGenPrfKey(PrimGenPrfKeyOp {
+                            sig: Signature::nullary(Ty::PrfKeyTy),
+                        }),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     prim_DeriveSeedOperation(op) => Ok(Operation {
                         kind: PrimDeriveSeed(PrimDeriveSeedOp {
+                            sig: Signature::nullary(Ty::NonceTy),
                             nonce: prim::Nonce(op.nonce.clone()),
                         }),
                         name: op.name.clone(),
@@ -666,8 +669,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingAddOperation(op) => Ok(Operation {
                         kind: RingAdd(RingAddOp {
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -676,8 +682,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSubOperation(op) => Ok(Operation {
                         kind: RingSub(RingSubOp {
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -686,8 +695,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingMulOperation(op) => Ok(Operation {
                         kind: RingMul(RingMulOp {
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -696,8 +708,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingDotOperation(op) => Ok(Operation {
                         kind: RingDot(RingDotOp {
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -706,7 +721,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: RingShape(RingShapeOp {
-                            ty: Ty::Ring128TensorTy,
+                            sig: Signature::unary(Ty::Ring128TensorTy, Ty::Ring128TensorTy),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
@@ -715,7 +730,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSample(RingSampleOp {
-                            output: map_type(&op.output_type)?,
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                             max_value: op.max_value,
                         }),
                         name: op.name.clone(),
@@ -725,7 +740,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSumOperation(op) => Ok(Operation {
                         kind: RingSum(RingSumOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             axis: op.axis,
                         }),
                         name: op.name.clone(),
@@ -738,7 +756,7 @@ impl TryFrom<PyComputation> for Computation {
                     }
                     ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFill(RingFillOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                             value: Value::Ring128(u128::from_str(&op.value)?),
                         }),
                         name: op.name.clone(),
@@ -748,7 +766,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShlOperation(op) => Ok(Operation {
                         kind: RingShl(RingShlOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             amount: op.amount as usize,
                         }),
                         name: op.name.clone(),
@@ -758,7 +779,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShrOperation(op) => Ok(Operation {
                         kind: RingShr(RingShrOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             amount: op.amount as usize,
                         }),
                         name: op.name.clone(),
@@ -768,7 +792,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitExtractOperation(op) => Ok(Operation {
                         kind: BitExtract(BitExtractOp {
-                            ring_type: map_type(&op.ring_type)?,
+                            sig: Signature::unary(map_type(&op.ring_type)?, Ty::BitTensorTy),
                             bit_idx: op.bit_idx as usize,
                         }),
                         name: op.name.clone(),
@@ -777,28 +801,45 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitSampleOperation(op) => Ok(Operation {
-                        kind: BitSample(BitSampleOp {}),
+                        kind: BitSample(BitSampleOp {
+                            sig: Signature::nullary(Ty::BitTensorTy),
+                        }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitFillTensorOperation(op) => Ok(Operation {
-                        kind: BitFill(BitFillOp { value: op.value }),
+                        kind: BitFill(BitFillOp {
+                            sig: Signature::nullary(Ty::BitTensorTy),
+                            value: op.value,
+                        }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
-                        kind: BitXor(BitXorOp {}),
+                        kind: BitXor(BitXorOp {
+                            sig: Signature::binary(
+                                Ty::BitTensorTy,
+                                Ty::BitTensorTy,
+                                Ty::BitTensorTy,
+                            ),
+                        }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
-                        kind: BitAnd(BitAndOp {}),
+                        kind: BitAnd(BitAndOp {
+                            sig: Signature::binary(
+                                Ty::BitTensorTy,
+                                Ty::BitTensorTy,
+                                Ty::BitTensorTy,
+                            ),
+                        }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -806,7 +847,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_RingInjectOperation(op) => Ok(Operation {
                         kind: RingInject(RingInjectOp {
-                            output: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             bit_idx: op.bit_idx as usize,
                         }),
                         name: op.name.clone(),
@@ -816,6 +860,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ConstantOperation(op) => Ok(Operation {
                         kind: Constant(ConstantOp {
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                             value: map_constant_value(&op.value)?,
                         }),
                         name: op.name.clone(),
@@ -825,8 +870,11 @@ impl TryFrom<PyComputation> for Computation {
                     std_AddOperation(op) => Ok(Operation {
                         kind: StdAdd(StdAddOp {
                             // we can use output type type to determine input type
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -836,8 +884,11 @@ impl TryFrom<PyComputation> for Computation {
                     std_SubOperation(op) => Ok(Operation {
                         kind: StdSub(StdSubOp {
                             // we can use output type type to determine input type
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -847,8 +898,11 @@ impl TryFrom<PyComputation> for Computation {
                     std_MulOperation(op) => Ok(Operation {
                         kind: StdMul(StdMulOp {
                             // we can use output type type to determine input type
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -858,8 +912,11 @@ impl TryFrom<PyComputation> for Computation {
                     std_DotOperation(op) => Ok(Operation {
                         kind: StdDot(StdDotOp {
                             // we can use output type type to determine input type
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -869,7 +926,10 @@ impl TryFrom<PyComputation> for Computation {
                     std_AtLeast2DOperation(op) => Ok(Operation {
                         kind: StdAtLeast2D(StdAtLeast2DOp {
                             // we can use output type type to determine input type
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             to_column_vector: op.to_column_vector,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -879,7 +939,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: StdShape(StdShapeOp {
-                            ty: Ty::Float64TensorTy,
+                            sig: Signature::unary(Ty::Float64TensorTy, map_type(&op.output_type)?),
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -888,7 +948,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SliceOperation(op) => Ok(Operation {
                         kind: StdSlice(StdSliceOp {
-                            ty: Ty::ShapeTy,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             start: op.begin,
                             end: op.end,
                         }),
@@ -900,7 +963,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_OnesOperation(op) => Ok(Operation {
                         kind: StdOnes(StdOnesOp {
                             // we can use output type type to determine input type
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                         }),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -910,7 +973,10 @@ impl TryFrom<PyComputation> for Computation {
                     std_ExpandDimsOperation(op) => Ok(Operation {
                         kind: StdExpandDims(StdExpandDimsOp {
                             // assume input type is the same as the output type
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             axis: op.axis,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -926,7 +992,11 @@ impl TryFrom<PyComputation> for Computation {
                         Ok(Operation {
                             kind: StdConcatenate(StdConcatenateOp {
                                 // assume input type is the same as output type
-                                ty: map_type(&op.output_type)?,
+                                sig: Signature::binary(
+                                    map_type(&op.output_type)?,
+                                    map_type(&op.output_type)?,
+                                    map_type(&op.output_type)?,
+                                ),
                                 axis: op.axis,
                             }),
                             inputs: sorted_input_names,
@@ -937,7 +1007,10 @@ impl TryFrom<PyComputation> for Computation {
                     std_TransposeOperation(op) => Ok(Operation {
                         kind: StdTranspose(StdTransposeOp {
                             // we can use output type type to determine input type
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -948,7 +1021,10 @@ impl TryFrom<PyComputation> for Computation {
                     std_InverseOperation(op) => Ok(Operation {
                         kind: StdInverse(StdInverseOp {
                             // we can use output type type to determine input type
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -958,7 +1034,10 @@ impl TryFrom<PyComputation> for Computation {
                     std_MeanOperation(op) => Ok(Operation {
                         kind: StdMean(StdMeanOp {
                             // we can use output type type to determine input type
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             axis: op.axis,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -969,7 +1048,10 @@ impl TryFrom<PyComputation> for Computation {
                     std_SumOperation(op) => Ok(Operation {
                         kind: StdSum(StdSumOp {
                             // we can use output type type to determine input type
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             axis: op.axis,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -980,8 +1062,11 @@ impl TryFrom<PyComputation> for Computation {
                     std_DivOperation(op) => Ok(Operation {
                         kind: StdDiv(StdDivOp {
                             // we can use output type type to determine input type
-                            lhs: map_type(&op.output_type)?,
-                            rhs: map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -990,6 +1075,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SendOperation(op) => Ok(Operation {
                         kind: Send(SendOp {
+                            sig: Signature::unary(Ty::UnknownTy, Ty::UnknownTy),
                             rendezvous_key: op.rendezvous_key.clone(),
                             receiver: Role::from(&op.receiver),
                         }),
@@ -1000,9 +1086,9 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ReceiveOperation(op) => Ok(Operation {
                         kind: Receive(ReceiveOp {
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                             rendezvous_key: op.rendezvous_key.clone(),
                             sender: Role::from(&op.sender),
-                            ty: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: Vec::new(),
@@ -1010,7 +1096,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SerializeOperation(op) => Ok(Operation {
                         kind: Identity(IdentityOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -1019,7 +1108,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_DeserializeOperation(op) => Ok(Operation {
                         kind: Identity(IdentityOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -1028,8 +1120,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_InputOperation(op) => Ok(Operation {
                         kind: Input(InputOp {
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                             arg_name: op.name.clone(),
-                            ty: map_type(&op.output_type)?,
                         }),
                         name: op.name.clone(),
                         inputs: Vec::new(),
@@ -1037,7 +1129,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_OutputOperation(op) => Ok(Operation {
                         kind: Output(OutputOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
@@ -1047,7 +1142,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_SaveOperation(op) => Ok(Operation {
                         kind: Save(SaveOp {
                             // TODO replace with `UnknownTy` as soon as we have type inference
-                            ty: Ty::Float64TensorTy,
+                            sig: Signature::unary(Ty::Float64TensorTy, map_type(&op.output_type)?),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])
@@ -1056,7 +1151,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_LoadOperation(op) => Ok(Operation {
                         kind: Load(LoadOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])
@@ -1065,7 +1160,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingEncode(FixedpointRingEncodeOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::nullary(map_type(&op.output_type)?),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
                         }),
@@ -1076,8 +1171,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingDecodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingDecode(FixedpointRingDecodeOp {
-                            ty: map_type(&op.output_type)?,
-                            input_ty: map_type(&op.input_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.input_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
                         }),
@@ -1088,7 +1185,10 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingMeanOperation(op) => Ok(Operation {
                         kind: FixedpointRingMean(FixedpointRingMeanOp {
-                            ty: map_type(&op.output_type)?,
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             axis: op.axis.map(|x| x as usize),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,

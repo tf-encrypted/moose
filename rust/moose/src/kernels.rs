@@ -131,27 +131,51 @@ impl Compile<AsyncKernel> for Operator {
     }
 }
 
+macro_rules! signature {
+    () => {
+        Signature::Nullary(NullarySignature { .. })
+    };
+    ($t0: pat) => {
+        Signature::Unary(UnarySignature { arg0: $t0, .. })
+    };
+    ($t0: pat, $t1: pat) => {
+        Signature::Binary(BinarySignature {
+            arg0: $t0,
+            arg1: $t1,
+            ..
+        })
+    };
+    ($t0: pat, $t1: pat, $t2: pat) => {
+        Signature::Ternary(TernarySignature {
+            arg0: $t0,
+            arg1: $t1,
+            arg2: $t2,
+            ..
+        })
+    };
+}
+
 macro_rules! std_unary_kernel {
     ($op:ty, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-                match self.ty {
-                    Ty::Float32TensorTy => {
+                match self.sig {
+                    signature!(Ty::Float32TensorTy) => {
                         function_kernel!(Float32Tensor, $k)
                     }
-                    Ty::Float64TensorTy => {
+                    signature!(Ty::Float64TensorTy) => {
                         function_kernel!(Float64Tensor, $k)
                     }
-                    Ty::Int32TensorTy => {
+                    signature!(Ty::Int32TensorTy) => {
                         function_kernel!(Int32Tensor, $k)
                     }
-                    Ty::Int64TensorTy => {
+                    signature!(Ty::Int64TensorTy) => {
                         function_kernel!(Int64Tensor, $k)
                     }
-                    Ty::Uint32TensorTy => {
+                    signature!(Ty::Uint32TensorTy) => {
                         function_kernel!(Uint32Tensor, $k)
                     }
-                    Ty::Uint64TensorTy => {
+                    signature!(Ty::Uint64TensorTy) => {
                         function_kernel!(Uint64Tensor, $k)
                     }
                     _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -165,23 +189,23 @@ macro_rules! std_binary_kernel {
     ($op:ty, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-                match (self.lhs, self.rhs) {
-                    (Ty::Float32TensorTy, Ty::Float32TensorTy) => {
+                match (self.sig) {
+                    signature!(Ty::Float32TensorTy, Ty::Float32TensorTy) => {
                         function_kernel!(Float32Tensor, Float32Tensor, $k)
                     }
-                    (Ty::Float64TensorTy, Ty::Float64TensorTy) => {
+                    signature!(Ty::Float64TensorTy, Ty::Float64TensorTy) => {
                         function_kernel!(Float64Tensor, Float64Tensor, $k)
                     }
-                    (Ty::Int32TensorTy, Ty::Int32TensorTy) => {
+                    signature!(Ty::Int32TensorTy, Ty::Int32TensorTy) => {
                         function_kernel!(Int32Tensor, Int32Tensor, $k)
                     }
-                    (Ty::Int64TensorTy, Ty::Int64TensorTy) => {
+                    signature!(Ty::Int64TensorTy, Ty::Int64TensorTy) => {
                         function_kernel!(Int64Tensor, Int64Tensor, $k)
                     }
-                    (Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
+                    signature!(Ty::Uint32TensorTy, Ty::Uint32TensorTy) => {
                         function_kernel!(Uint32Tensor, Uint32Tensor, $k)
                     }
-                    (Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
+                    signature!(Ty::Uint64TensorTy, Ty::Uint64TensorTy) => {
                         function_kernel!(Uint64Tensor, Uint64Tensor, $k)
                     }
                     _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -201,7 +225,7 @@ std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for StdInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 closure_kernel!(Float32Tensor, |x| x.inv())
             }
@@ -216,7 +240,7 @@ impl Compile<Kernel> for StdInverseOp {
 impl Compile<Kernel> for StdMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|x| x as usize);
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 closure_kernel!(Float32Tensor, |x| x.mean(axis))
             }
@@ -242,7 +266,7 @@ impl Compile<Kernel> for StdMeanOp {
 
 impl Compile<Kernel> for StdOnesOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 function_kernel!(Shape, |shape| Float32Tensor::ones(shape))
             }
@@ -270,7 +294,7 @@ impl Compile<Kernel> for StdConcatenateOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::standard::concatenate;
         let axis = self.axis as usize;
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 closure_kernel!(vec[Float32Tensor], |xs| concatenate(axis, &xs))
             }
@@ -293,7 +317,7 @@ impl Compile<Kernel> for StdConcatenateOp {
 impl Compile<Kernel> for StdExpandDimsOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis as usize;
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 closure_kernel!(Float32Tensor, |x| x.expand_dims(axis))
             }
@@ -319,7 +343,7 @@ impl Compile<Kernel> for StdExpandDimsOp {
 
 impl Compile<Kernel> for StdReshapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 function_kernel!(Float32Tensor, Shape, |x, newshape| x.reshape(newshape))
             }
@@ -346,7 +370,7 @@ impl Compile<Kernel> for StdReshapeOp {
 impl Compile<Kernel> for StdAtLeast2DOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let tcv = self.to_column_vector;
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
             }
@@ -374,7 +398,7 @@ impl Compile<Kernel> for StdSliceOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let start = self.start as usize;
         let end = self.end as usize;
-        match self.ty {
+        match self.sig.ret() {
             Ty::ShapeTy => closure_kernel!(Shape, |x| x.slice(start, end)),
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -384,7 +408,7 @@ impl Compile<Kernel> for StdSliceOp {
 impl Compile<Kernel> for StdSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
-        match self.ty {
+        match self.sig.ret() {
             Ty::Float32TensorTy => {
                 closure_kernel!(Float32Tensor, |x| x.sum(axis))
             }
@@ -423,11 +447,11 @@ impl Compile<Kernel> for PrimGenPrfKeyOp {
 
 impl Compile<Kernel> for RingAddOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match self.sig {
+            signature!(Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x + y)
             }
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            signature!(Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x + y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -437,11 +461,11 @@ impl Compile<Kernel> for RingAddOp {
 
 impl Compile<Kernel> for RingSubOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match self.sig {
+            signature!(Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x - y)
             }
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            signature!(Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x - y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -451,11 +475,11 @@ impl Compile<Kernel> for RingSubOp {
 
 impl Compile<Kernel> for RingMulOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match self.sig {
+            signature!(Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
             }
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            signature!(Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x * y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -465,11 +489,11 @@ impl Compile<Kernel> for RingMulOp {
 
 impl Compile<Kernel> for RingDotOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.lhs, self.rhs) {
-            (Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
+        match self.sig {
+            signature!(Ty::Ring64TensorTy, Ty::Ring64TensorTy) => {
                 function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
             }
-            (Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
+            signature!(Ty::Ring128TensorTy, Ty::Ring128TensorTy) => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x.dot(y))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -480,7 +504,7 @@ impl Compile<Kernel> for RingDotOp {
 impl Compile<Kernel> for RingSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
-        match self.ty {
+        match self.sig.ret() {
             Ty::Ring64TensorTy => closure_kernel!(Ring64Tensor, |x| x.sum(axis)),
             Ty::Ring128TensorTy => closure_kernel!(Ring128Tensor, |x| x.sum(axis)),
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -490,7 +514,7 @@ impl Compile<Kernel> for RingSumOp {
 
 impl Compile<Kernel> for RingShapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.ty {
+        match self.sig.ret() {
             Ty::Ring64TensorTy => function_kernel!(Ring64Tensor, |x| x.shape()),
             Ty::Ring128TensorTy => function_kernel!(Ring128Tensor, |x| x.shape()),
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -500,7 +524,7 @@ impl Compile<Kernel> for RingShapeOp {
 
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.ty, self.value.clone()) {
+        match (self.sig.ret(), self.value.clone()) {
             (Ty::Ring64TensorTy, Value::Ring64(value)) => {
                 closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape, value))
             }
@@ -514,7 +538,7 @@ impl Compile<Kernel> for RingFillOp {
 
 impl Compile<Kernel> for RingSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (self.output, self.max_value) {
+        match (self.sig.ret(), self.max_value) {
             (Ty::Ring64TensorTy, None) => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
                     &shape, &seed
@@ -543,7 +567,7 @@ impl Compile<Kernel> for RingSampleOp {
 impl Compile<Kernel> for RingShlOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
-        match self.ty {
+        match self.sig.ret() {
             Ty::Ring64TensorTy => {
                 closure_kernel!(Ring64Tensor, |x| x << amount)
             }
@@ -558,7 +582,7 @@ impl Compile<Kernel> for RingShlOp {
 impl Compile<Kernel> for RingShrOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
-        match self.ty {
+        match self.sig.ret() {
             Ty::Ring64TensorTy => {
                 closure_kernel!(Ring64Tensor, |x| x >> amount)
             }
@@ -573,7 +597,7 @@ impl Compile<Kernel> for RingShrOp {
 impl Compile<Kernel> for RingInjectOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
-        match self.output {
+        match self.sig.ret() {
             Ty::Ring64TensorTy => {
                 closure_kernel!(BitTensor, |x| Ring64Tensor::from(x) << bit_idx)
             }
@@ -588,11 +612,11 @@ impl Compile<Kernel> for RingInjectOp {
 impl Compile<Kernel> for BitExtractOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
-        match self.ring_type {
-            Ty::Ring64TensorTy => {
+        match self.sig {
+            signature!(Ty::Ring64TensorTy) => {
                 closure_kernel!(Ring64Tensor, |x| x.bit_extract(bit_idx))
             }
-            Ty::Ring128TensorTy => {
+            signature!(Ty::Ring128TensorTy) => {
                 closure_kernel!(Ring128Tensor, |x| x.bit_extract(bit_idx))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -630,7 +654,7 @@ impl Compile<Kernel> for BitAndOp {
 impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
-        match self.ty {
+        match self.sig.ret() {
             Ty::Ring64TensorTy => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
                 closure_kernel!(Float64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
@@ -647,12 +671,12 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
 impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
-        match self.input_ty {
-            Ty::Ring64TensorTy => {
+        match self.sig {
+            signature!(Ty::Ring64TensorTy) => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
                 closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
             }
-            Ty::Ring128TensorTy => {
+            signature!(Ty::Ring128TensorTy) => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
                 closure_kernel!(Ring128Tensor, |x| Ring128Tensor::decode(&x, scaling_factor))
             }
@@ -664,7 +688,7 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
 impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis;
-        match self.ty {
+        match self.sig.ret() {
             Ty::Ring64TensorTy => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
                 closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(
@@ -748,7 +772,7 @@ impl Compile<AsyncKernel> for SendOp {
 
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
         let rendezvous_key = self.rendezvous_key.clone();
         let sender_id = ctx
             .role_assignment
@@ -773,7 +797,7 @@ impl Compile<SyncKernel> for ReceiveOp {
 
 impl Compile<AsyncKernel> for ReceiveOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
         let rendezvous_key = Arc::new(self.rendezvous_key.clone());
         let sender_id = Arc::new(ctx.role_assignment.get(&self.sender).cloned().ok_or_else(
             || {
@@ -803,7 +827,7 @@ impl Compile<AsyncKernel> for ReceiveOp {
 
 impl Compile<SyncKernel> for IdentityOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
 
         Ok(SyncKernel::Unary(Box::new(move |_sess, v| {
             check_type(&v, expected_ty)?;
@@ -814,7 +838,7 @@ impl Compile<SyncKernel> for IdentityOp {
 
 impl Compile<AsyncKernel> for IdentityOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
 
         Ok(AsyncKernel::Unary(Box::new(move |_sess, v, sender| {
             tokio::spawn(async move {
@@ -829,7 +853,7 @@ impl Compile<AsyncKernel> for IdentityOp {
 impl Compile<SyncKernel> for InputOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let arg_name = self.arg_name.clone();
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
 
         Ok(SyncKernel::Nullary(Box::new(move |sess| {
             let arg = sess
@@ -845,7 +869,7 @@ impl Compile<SyncKernel> for InputOp {
 
 impl Compile<AsyncKernel> for InputOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
         let arg_name = Arc::new(self.arg_name.clone());
 
         Ok(AsyncKernel::Nullary(Box::new(move |sess, sender| {
@@ -884,7 +908,7 @@ impl Compile<AsyncKernel> for OutputOp {
 
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.arg(0)?;
 
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
@@ -897,7 +921,7 @@ impl Compile<SyncKernel> for SaveOp {
 
 impl Compile<AsyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
 
         Ok(AsyncKernel::Binary(Box::new(
             move |sess, key, val, sender| {
@@ -917,7 +941,7 @@ impl Compile<AsyncKernel> for SaveOp {
 
 impl Compile<SyncKernel> for LoadOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
 
         Ok(SyncKernel::Binary(Box::new(move |sess, key, query| {
             let key = String::try_from(key)?;
@@ -933,7 +957,7 @@ impl Compile<SyncKernel> for LoadOp {
 
 impl Compile<AsyncKernel> for LoadOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.ty;
+        let expected_ty = self.sig.ret();
 
         Ok(AsyncKernel::Binary(Box::new(
             move |sess, key, query, sender| {
