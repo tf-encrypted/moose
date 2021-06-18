@@ -1939,52 +1939,23 @@ impl ConvertOp {
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         R: Placed<Placement = HostPlacement>,
     {
-        let (player_add0, player_add1) = add.host_placements();
+        let (pa, pb) = add.host_placements();
+        let (player0, player1, player2) = x.placement().host_placements();
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x01, x11], [x02, x12]],
-        } = &x;
+        } = x;
 
-        let players = [x00.placement(), x01.placement(), x02.placement()];
-
-        let mut vi: [usize; 2] = [0; 2];
-        // this takes care of
-        for i in 0..3 {
-            if player_add0 == players[i] {
-                vi[0] = i;
-            }
-            if player_add1 == players[i] {
-                vi[1] = i;
-            }
-        }
-
-        let mut swap = false;
-        if vi[0] > vi[1] {
-            swap = true;
-            let aux = vi[0];
-            vi[0] = vi[1];
-            vi[1] = vi[0];
-        }
-
-        let x0 = players[vi[0]].add(ctx, &x.shares[vi[0]][0], &x.shares[vi[0]][1]);
-        if swap == true {
-            AdditiveTensor {
-                shares: [x.shares[vi[1]][1].clone(), x0],
-            }
-        } else {
-            AdditiveTensor {
-                shares: [x0, x.shares[vi[1]][1].clone()],
-            }
-        }
+        let shares = match (pa.clone(), pb.clone()) {
+            _ if pa == player0 && pb == player1 => [with_context!(player0, ctx, x00 + x10), x11],
+            _ if pa == player0 && pb == player2 => [x10, with_context!(player2, ctx, x02 + x12)],
+            _ if pa == player1 && pb == player2 => [with_context!(player1, ctx, x01 + x11), x12],
+            _ if pa == player1 && pb == player0 => [x11, with_context!(player0, ctx, x00 + x10)],
+            _ if pa == player2 && pb == player0 => [x10, with_context!(player2, ctx, x02 + x12)],
+            _ => [with_context!(pa, ctx, x00 + x10), x11],
+        };
+        AdditiveTensor { shares }
     }
-
-    // fn add_to_rep<C: Context, R> (
-    //     ctx: &C,
-    //     add: &AdditivePlacement,
-    //     x: AdditiveTensor<R>,
-    // ) -> ReplicatedTensor<R>
-    // where HostPlacement: PlacementAdd<C, R, R, Output=R>, {
-    // }
 }
 
 #[derive(Clone, Debug, PartialEq)]
