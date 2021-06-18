@@ -1143,17 +1143,189 @@ impl SymbolicContext {
     }
 }
 
+
+macro_rules! derive_runtime_kernel {
+    (nullary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (nullary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc| {
+                $k(ctx, plc, $($attr),+)
+            })
+        }
+    };
+    (nullary, $k:expr) => {
+        |_op: &Self| {
+            Box::new(|ctx, plc| {
+                $k(ctx, plc)
+            })
+        }
+    };
+
+    (unary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (unary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc, x0| {
+                $k(ctx, plc, $($attr),+, x0)
+            })
+        }
+    };
+    (unary, $k:expr) => {
+        |_op: &Self| { 
+            Box::new(|ctx, plc, x0| {
+                $k(ctx, plc, x0)
+            })
+        }
+    };
+
+    (binary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (binary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc, x0, x1| {
+                $k(ctx, plc, $($attr),+, x0, x1)
+            })
+        }
+    };
+    (binary, $k:expr) => {
+        |_op: &Self| { 
+            Box::new($k)
+        }
+    };
+
+    (ternary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (ternary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc, x0, x1, x2| {
+                $k(ctx, plc, $($attr),+), x0, x1, x2
+            })
+        }
+    };
+    (ternary, $k:expr) => {
+        |_op: &Self| { 
+            Box::new(|ctx, plc, x0, x1, x2| {
+                $k(ctx, plc, x0, x1, x2)
+            })
+        }
+    };
+}
+
+macro_rules! derive_compiletime_kernel {
+    (nullary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (nullary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc| {
+                $k(ctx, plc, $($attr),+)
+            })
+        }
+    };
+    (nullary, $k:expr) => {
+        |_op: &Self| {
+            Box::new(|ctx, plc| {
+                $k(ctx, plc)
+            })
+        }
+    };
+
+    (unary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (unary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc, x0| {
+                $k(ctx, plc, $($attr),+, x0)
+            })
+        }
+    };
+    (unary, $k:expr) => {
+        |_op: &Self| { 
+            Box::new(|ctx, plc, x0| {
+                $k(ctx, plc, x0)
+            })
+        }
+    };
+
+    (binary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (binary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc, x0, x1| {
+                $k(ctx, plc, $($attr),+, x0, x1)
+            })
+        }
+    };
+    (binary, $k:expr) => {
+        |_op: &Self| { 
+            Box::new(|ctx, plc, x0, x1| {
+                $k
+            })
+        }
+    };
+
+    (ternary, closure |$op:ident| $kf:expr) => {
+        |$op: &Self| $kf
+    };
+    (ternary, attributes[$($attr:ident)+] $k:expr) => {
+        |op: &Self| {
+            $(
+            let $attr = op.$attr.clone();
+            )+
+            Box::new(move |ctx, plc, x0, x1, x2| {
+                $k(ctx, plc, $($attr),+), x0, x1, x2
+            })
+        }
+    };
+    (ternary, $k:expr) => {
+        |_op: &Self| {
+            Box::new(|ctx, plc, x0, x1, x2| {
+                $k(ctx, plc, x0, x1, x2)
+            })
+        }
+    };
+}
+
 macro_rules! runtime_kernel {
 
     /*
     Nullaray
     */
 
-    ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr), )+]) => {
+    ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
         $(
         impl NullaryKernel<ConcreteContext, $plc, $u> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
-                Box::new($k)
+                let k = derive_runtime_kernel![nullary, $($kp)+](self);
+                k
             }
         }
         )+
@@ -1189,11 +1361,12 @@ macro_rules! runtime_kernel {
     Unary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr), )+]) => {
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
         $(
         impl UnaryKernel<ConcreteContext, $plc, $t0, $u> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0) -> $u> {
-                Box::new($k)
+                let k = derive_runtime_kernel![unary, $($kp)+](self);
+                k
             }
         }
         )+
@@ -1232,11 +1405,12 @@ macro_rules! runtime_kernel {
     Binary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr), )+]) => {
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
         $(
         impl BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
-                Box::new($k)
+                let k = derive_runtime_kernel![binary, $($kp)+](self);
+                k
             }
         }
         )+
@@ -1277,11 +1451,12 @@ macro_rules! runtime_kernel {
     Ternary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
         $(
         impl TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
-                Box::new($k)
+                let k = derive_runtime_kernel![ternary, $($kp)+](self);
+                k
             }
         }
         )+
@@ -1319,7 +1494,6 @@ macro_rules! runtime_kernel {
             }
         }
     };
-
 }
 
 macro_rules! compiletime_kernel {
@@ -1508,8 +1682,8 @@ macro_rules! kernel {
     Nullary
     */
 
-    ($op:ty, [$( ($plc:ty, () -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, () -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, () -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, () -> $u => |op, ctx, plc| {
             let op_name = ctx.add_operation(op, &[], &plc.clone().into());
             Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.into() })
@@ -1520,8 +1694,8 @@ macro_rules! kernel {
     Unary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |op, ctx, plc, x0| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
@@ -1537,8 +1711,8 @@ macro_rules! kernel {
     Binary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, plc, x0, x1| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
@@ -1559,8 +1733,8 @@ macro_rules! kernel {
     Ternary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $k), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |op, ctx, plc, x0, x1, x2| {
             let x0_op = match x0 {
                 Symbolic::Symbolic(h) => h.op,
@@ -1583,15 +1757,6 @@ macro_rules! kernel {
     };
 }
 
-macro_rules! derive_runtime_kernel {
-    ($foo:expr, $k:expr) => {
-        $k
-    };
-    ($k:expr) => {
-        $k
-    };
-}
-
 /// Kernel function maybe be evaluated in symbolic contexts
 macro_rules! hybrid_kernel {
 
@@ -1599,10 +1764,10 @@ macro_rules! hybrid_kernel {
     Nullary
     */
 
-    ($op:ty, [$( ($plc:ty, () -> $u:ty => $($k:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, () -> $u => derive_runtime_kernel![$($k)+]), )+]);
-        compiletime_kernel!($op, [$( ($plc, () -> $u => |_op, ctx, plc| {
-            let k = derive_runtime_kernel![$($k)+];
+    ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, () -> $u => $($kp)+), )+]);
+        compiletime_kernel!($op, [$( ($plc, () -> $u => |op, ctx, plc| {
+            let k = derive_compiletime_kernel![nullary, $($kp)+](op);
             let y = k(ctx, &plc);
             y.into()
         }), )+]);
@@ -1612,14 +1777,14 @@ macro_rules! hybrid_kernel {
     Unary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($k:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => derive_runtime_kernel![$($k)+]), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0) -> $u => |op, ctx, plc, x0| {
             let v0 = x0.clone().try_into();
 
             match v0 {
                 Ok(v0) => {
-                    let k = derive_runtime_kernel![$($k)+];
+                    let k = derive_compiletime_kernel![unary, $($kp)+](op);
                     let y = k(ctx, &plc, v0);
                     y.into()
                 }
@@ -1638,15 +1803,15 @@ macro_rules! hybrid_kernel {
     Binary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($k:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => derive_runtime_kernel![$($k)+]), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => |op, ctx, plc, x0, x1| {
             let v0 = x0.clone().try_into();
             let v1 = x1.clone().try_into();
 
             match (v0, v1) {
                 (Ok(v0), Ok(v1)) => {
-                    let k = derive_runtime_kernel![$($k)+];
+                    let k = derive_compiletime_kernel![binary, $($kp)+](op);
                     let y = k(ctx, &plc, v0, v1);
                     y.into()
                 }
@@ -1665,8 +1830,8 @@ macro_rules! hybrid_kernel {
     Ternary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($k:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => derive_runtime_kernel![$($k)+]), )+]);
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => |op, ctx, plc, x0, x1, x2| {
             let v0 = x0.clone().try_into();
             let v1 = x1.clone().try_into();
@@ -1674,7 +1839,7 @@ macro_rules! hybrid_kernel {
 
             match (v0, v1, v2) {
                 (Ok(v0), Ok(v1), Ok(v2)) => {
-                    let k = derive_runtime_kernel![$($k)+];
+                    let k = derive_compiletime_kernel![ternary, $($kp)+](op);
                     let y = k(ctx, &plc, v0, v1, v2);
                     y.into()
                 }
@@ -2347,6 +2512,7 @@ trait PlacementKeyGen<C: Context, K> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrfKeyGenOp {
     sig: Signature,
+    foo: usize,
 }
 
 modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
@@ -2354,16 +2520,16 @@ modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
 kernel! {
     PrfKeyGenOp,
     [
-        (HostPlacement, () -> PrfKey => Self::kernel),
+        (HostPlacement, () -> PrfKey => attributes[foo] Self::kernel),
     ]
 }
 
 impl PrfKeyGenOp {
     fn from_signature(sig: NullarySignature) -> Self {
-        PrfKeyGenOp { sig: sig.into() }
+        PrfKeyGenOp { sig: sig.into(), foo: 0 }
     }
 
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement, bar: usize) -> PrfKey {
         // TODO
         PrfKey(
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
