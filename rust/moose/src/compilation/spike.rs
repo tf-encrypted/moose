@@ -1143,22 +1143,30 @@ impl SymbolicContext {
     }
 }
 
-
 macro_rules! derive_runtime_kernel {
-    (nullary, closure |$op:ident| $kf:expr, $self:ident) => {
-        (|$op &Self| $kf)(&$self.clone())
-    };
-    (unary, closure |$op:ident| $kf:expr, $self:ident) => {
-        (|$op &Self| $kf)(&$self.clone())
-    };
-    (binary, closure |$op:ident| $kf:expr, $self:ident) => {
+    (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&ConcreteContext, &_, _, _) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_,) -> _> = &|$op| $kf;
             kf($self)
         }
     };
-    (ternary, closure |$op:ident| $kf:expr, $self:ident) => {
-        (|$op &Self| $kf)(&$self.clone())
+    (unary, custom |$op:ident| $kf:expr, $self:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _) -> _> = &|$op| $kf;
+            kf($self)
+        }
+    };
+    (binary, custom |$op:ident| $kf:expr, $self:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _, _) -> _> = &|$op| $kf;
+            kf($self)
+        }
+    };
+    (ternary, custom |$op:ident| $kf:expr, $self:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _, _, _) -> _> = &|$op| $kf;
+            kf($self)
+        }
     };
 
     (nullary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
@@ -1180,73 +1188,6 @@ macro_rules! derive_runtime_kernel {
                 $k(ctx, plc, $($attr),+, x0)
             })
         }
-    };
-    (binary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
-        {
-            $(
-            let $attr = $self.$attr.clone();
-            )+
-            Box::new(move |ctx, plc, x0, x1| {
-                $k(ctx, plc, $($attr),+, x0, x1)
-            })
-        }
-    };
-    (ternary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
-        {
-            $(
-            let $attr = $self.$attr.clone();
-            )+
-            Box::new(move |ctx, plc, x0, x1, x2| {
-                $k(ctx, plc, $($attr),+), x0, x1, x2
-            })
-        }
-    };
-
-    (nullary, $k:expr, $self:ident) => {
-        Box::new($k)
-    };
-    (unary, $k:expr, $self:ident) => {
-        Box::new($k)
-    };
-    (binary, $k:expr, $self:ident) => {
-        Box::new($k)
-    };
-    (ternary, $k:expr, $self:ident) => {
-        Box::new($k)
-    };
-}
-
-macro_rules! derive_compiletime_kernel {
-    (nullary, closure |$op:ident| $kf:expr, $self:ident) => {
-        (|$op: &Self| $kf)(&$self.clone())
-    };
-    (unary, closure |$op:ident| $kf:expr, $self:ident) => {
-        (|$op: &Self| $kf)(&$self.clone())
-    };
-    (binary, closure |$op:ident| $kf:expr, $self:ident) => {
-        (|$op: &Self| $kf)(&$self.clone())
-    };
-    (ternary, closure |$op:ident| $kf:expr, $self:ident) => {
-        (|$op: &Self| $kf)(&$self.clone())
-    };
-
-    (nullary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
-        {
-            $(
-            let $attr = $self.$attr.clone();
-            )+
-            Box::new(move |ctx, plc| {
-                $k(ctx, plc, $($attr),+)
-            })
-        }
-    };
-    (unary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
-        $(
-        let $attr = $self.$attr.clone();
-        )+
-        Box::new(move |ctx, plc, x0| {
-            $k(ctx, plc, $($attr),+, x0)
-        })
     };
     (binary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
         {
@@ -1732,7 +1673,7 @@ macro_rules! hybrid_kernel {
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
         runtime_kernel!($op, [$( ($plc, () -> $u => $($kp)+), )+]);
         compiletime_kernel!($op, [$( ($plc, () -> $u => |op, ctx, plc| {
-            let k = derive_compiletime_kernel![nullary, $($kp)+, op];
+            let k = derive_runtime_kernel![nullary, $($kp)+, op];
             let y = k(ctx, &plc);
             y.into()
         }), )+]);
@@ -1749,7 +1690,7 @@ macro_rules! hybrid_kernel {
 
             match v0 {
                 Ok(v0) => {
-                    let k = derive_compiletime_kernel![unary, $($kp)+, op];
+                    let k = derive_runtime_kernel![unary, $($kp)+, op];
                     let y = k(ctx, &plc, v0);
                     y.into()
                 }
@@ -1776,7 +1717,7 @@ macro_rules! hybrid_kernel {
 
             match (v0, v1) {
                 (Ok(v0), Ok(v1)) => {
-                    let k = derive_compiletime_kernel![binary, $($kp)+, op];
+                    let k = derive_runtime_kernel![binary, $($kp)+, op];
                     let y = k(ctx, &plc, v0, v1);
                     y.into()
                 }
@@ -1804,7 +1745,7 @@ macro_rules! hybrid_kernel {
 
             match (v0, v1, v2) {
                 (Ok(v0), Ok(v1), Ok(v2)) => {
-                    let k = derive_compiletime_kernel![ternary, $($kp)+, op];
+                    let k = derive_runtime_kernel![ternary, $($kp)+, op];
                     let y = k(ctx, &plc, v0, v1, v2);
                     y.into()
                 }
@@ -1896,13 +1837,7 @@ modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, Replicat
 hybrid_kernel! {
     RepAddOp,
     [
-        // (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
-        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => closure |op| {
-            let foo = op.clone();
-            Box::new(|ctx, plc, x0, x1| {
-            Self::rep_rep_kernel(ctx, plc, x0, x1)
-            })
-        }),
+        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
         (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
         (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
         (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
@@ -2483,7 +2418,6 @@ trait PlacementKeyGen<C: Context, K> {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrfKeyGenOp {
     sig: Signature,
-    foo: usize,
 }
 
 modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
@@ -2491,18 +2425,16 @@ modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
 kernel! {
     PrfKeyGenOp,
     [
-        (HostPlacement, () -> PrfKey => attributes[foo] Self::kernel),
-        // (HostPlacement, () -> PrfKey => Self::kernel),
+        (HostPlacement, () -> PrfKey => Self::kernel),
     ]
 }
 
 impl PrfKeyGenOp {
     fn from_signature(sig: NullarySignature) -> Self {
-        PrfKeyGenOp { sig: sig.into(), foo: 0 }
+        PrfKeyGenOp { sig: sig.into() }
     }
 
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement, bar: usize) -> PrfKey {
-    // fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
         // TODO
         PrfKey(
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
