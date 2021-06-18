@@ -1523,7 +1523,7 @@ macro_rules! compiletime_kernel {
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
         // $(
         // impl TernaryKernel<
-        //     SymbolicContext, 
+        //     SymbolicContext,
         //     $plc,
         //     <$t0 as KnownType>::Symbolic,
         //     <$t1 as KnownType>::Symbolic,
@@ -1781,13 +1781,29 @@ pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
     fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
 }
 
-trait NullaryKernelCheck<C: Context, P, Y> where Self: NullaryKernel<C, P, Y> {}
+trait NullaryKernelCheck<C: Context, P, Y>
+where
+    Self: NullaryKernel<C, P, Y>,
+{
+}
 
-trait UnaryKernelCheck<C: Context, P, X0, Y> where Self: UnaryKernel<C, P, X0, Y> {}
+trait UnaryKernelCheck<C: Context, P, X0, Y>
+where
+    Self: UnaryKernel<C, P, X0, Y>,
+{
+}
 
-trait BinaryKernelCheck<C: Context, P, X0, X1, Y> where Self: BinaryKernel<C, P, X0, X1, Y> {}
+trait BinaryKernelCheck<C: Context, P, X0, X1, Y>
+where
+    Self: BinaryKernel<C, P, X0, X1, Y>,
+{
+}
 
-trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y> where Self: TernaryKernel<C, P, X0, X1, X2, Y> {}
+trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y>
+where
+    Self: TernaryKernel<C, P, X0, X1, X2, Y>,
+{
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepSetupOp {
