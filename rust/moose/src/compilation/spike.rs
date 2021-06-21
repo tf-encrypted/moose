@@ -1662,13 +1662,13 @@ macro_rules! kernel {
                         plc: &$plc,
                         x0: <$t0 as KnownType>::Symbolic,
                     | {
-                        let x0_op = match x0 {
-                            Symbolic::Symbolic(h) => h.op,
-                            Symbolic::Concrete(_) => unimplemented!(),
-                        };
-
-                        let op_name = ctx.add_operation(&op, &[&x0_op, &x1_op], &plc.clone().into());
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                        match x0 {
+                            Symbolic::Symbolic(h0) => {
+                                let op_name = ctx.add_operation(&op, &[&h0.op], &plc.clone().into());
+                                Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            }
+                            _ => unimplemented!()
+                        }
                     })
                 }
             }
@@ -1721,18 +1721,13 @@ macro_rules! kernel {
                         x0: <$t0 as KnownType>::Symbolic,
                         x1: <$t1 as KnownType>::Symbolic,
                     | {
-                        let x0_op = match x0 {
-                            Symbolic::Symbolic(h) => h.op,
-                            Symbolic::Concrete(_) => unimplemented!(),
-                        };
-
-                        let x1_op = match x1 {
-                            Symbolic::Symbolic(h) => h.op,
-                            Symbolic::Concrete(_) => unimplemented!(),
-                        };
-
-                        let op_name = ctx.add_operation(&op, &[&x0_op, &x1_op], &plc.clone().into());
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                        match (x0, x1) {
+                            (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+                                let op_name = ctx.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                                Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            }
+                            _ => unimplemented!()
+                        }
                     })
                 }
             }
@@ -1789,23 +1784,13 @@ macro_rules! kernel {
                         x1: <$t1 as KnownType>::Symbolic,
                         x2: <$t2 as KnownType>::Symbolic,
                     | {
-                        let x0_op = match x0 {
-                            Symbolic::Symbolic(h) => h.op,
-                            Symbolic::Concrete(_) => unimplemented!(),
-                        };
-
-                        let x1_op = match x1 {
-                            Symbolic::Symbolic(h) => h.op,
-                            Symbolic::Concrete(_) => unimplemented!(),
-                        };
-
-                        let x2_op = match x2 {
-                            Symbolic::Symbolic(h) => h.op,
-                            Symbolic::Concrete(_) => unimplemented!(),
-                        };
-
-                        let op_name = ctx.add_operation(&op, &[&x0_op, &x1_op, &x2_op], &plc.clone().into());
-                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                        match (x0, x1, x2) {
+                            (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
+                                let op_name = ctx.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+                                Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            }
+                            _ => unimplemented!()
+                        }
                     })
                 }
             }
@@ -1853,12 +1838,12 @@ macro_rules! hybrid_kernel {
                     &$plc)
                     -> <$u as KnownType>::Symbolic>
                 {
-                    let op = self.clone();
+                    let k = derive_runtime_kernel![nullary, $($kp)+, self];
+
                     Box::new(move |
                         ctx: &SymbolicContext,
                         plc: &$plc,
                     | {
-                        let k = derive_runtime_kernel![nullary, $($kp)+, op];
                         let y = k(ctx, &plc);
                         y.into()
                     })
@@ -1903,6 +1888,8 @@ macro_rules! hybrid_kernel {
                     <$t0 as KnownType>::Symbolic)
                     -> <$u as KnownType>::Symbolic>
                 {
+                    let k = derive_runtime_kernel![unary, $($kp)+, self];
+
                     let op = self.clone();
                     Box::new(move |
                         ctx: &SymbolicContext,
@@ -1913,7 +1900,6 @@ macro_rules! hybrid_kernel {
 
                         match v0 {
                             Ok(v0) => {
-                                let k = derive_runtime_kernel![unary, $($kp)+, op];
                                 let y = k(ctx, &plc, v0);
                                 y.into()
                             }
@@ -1970,6 +1956,8 @@ macro_rules! hybrid_kernel {
                     <$t1 as KnownType>::Symbolic)
                     -> <$u as KnownType>::Symbolic>
                 {
+                    let k = derive_runtime_kernel![binary, $($kp)+, self];
+
                     let op = self.clone();
                     Box::new(move |
                         ctx: &SymbolicContext,
@@ -1982,7 +1970,6 @@ macro_rules! hybrid_kernel {
 
                         match (v0, v1) {
                             (Ok(v0), Ok(v1)) => {
-                                let k = derive_runtime_kernel![binary, $($kp)+, op];
                                 let y = k(ctx, &plc, v0, v1);
                                 y.into()
                             }
@@ -2042,6 +2029,8 @@ macro_rules! hybrid_kernel {
                     <$t2 as KnownType>::Symbolic)
                     -> <$u as KnownType>::Symbolic>
                 {
+                    let k = derive_runtime_kernel![ternary, $($kp)+, self];
+
                     let op = self.clone();
                     Box::new(move |
                         ctx: &SymbolicContext,
@@ -2056,7 +2045,6 @@ macro_rules! hybrid_kernel {
 
                         match (v0, v1, v2) {
                             (Ok(v0), Ok(v1), Ok(v2)) => {
-                                let k = derive_runtime_kernel![ternary, $($kp)+, op];
                                 let y = k(ctx, &plc, v0, v1, v2);
                                 y.into()
                             }
