@@ -1224,21 +1224,13 @@ macro_rules! derive_runtime_kernel {
     };
 }
 
-macro_rules! runtime_kernel {
+macro_rules! concrete_dispatch_kernel {
 
     /*
     Nullaray
     */
 
-    ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
-        $(
-        impl NullaryKernel<ConcreteContext, $plc, $u> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
-                derive_runtime_kernel![nullary, $($kp)+, self]
-            }
-        }
-        )+
-
+    ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
@@ -1254,7 +1246,9 @@ macro_rules! runtime_kernel {
 
                             let k = <$op as NullaryKernel<ConcreteContext, $plc, $u>>::compile(self, &ctx, &plc);
 
-                            Box::new(move |_operands: Vec<Value>| {
+                            Box::new(move |operands: Vec<Value>| {
+                                assert_eq!(operands.len(), 0);
+
                                 let y: $u = k(&ctx, &plc);
                                 y.into()
                             })
@@ -1270,15 +1264,7 @@ macro_rules! runtime_kernel {
     Unary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        $(
-        impl UnaryKernel<ConcreteContext, $plc, $t0, $u> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0) -> $u> {
-                derive_runtime_kernel![unary, $($kp)+, self]
-            }
-        }
-        )+
-
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
@@ -1296,6 +1282,8 @@ macro_rules! runtime_kernel {
                             let k = <$op as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
 
                             Box::new(move |operands: Vec<Value>| {
+                                assert_eq!(operands.len(), 1);
+
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
 
                                 let y: $u = k(&ctx, &plc, x0);
@@ -1313,15 +1301,7 @@ macro_rules! runtime_kernel {
     Binary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        $(
-        impl BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
-                derive_runtime_kernel![binary, $($kp)+, self]
-            }
-        }
-        )+
-
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
@@ -1346,6 +1326,8 @@ macro_rules! runtime_kernel {
                             >>::compile(self, &ctx, &plc);
 
                             Box::new(move |operands| -> Value {
+                                assert_eq!(operands.len(), 2);
+
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
 
@@ -1364,15 +1346,7 @@ macro_rules! runtime_kernel {
     Ternary
     */
 
-    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        $(
-        impl TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
-                derive_runtime_kernel![ternary, $($kp)+, self]
-            }
-        }
-        )+
-
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
             fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
@@ -1392,6 +1366,8 @@ macro_rules! runtime_kernel {
                             let k = <$op as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
 
                             Box::new(move |operands: Vec<Value>| -> Value {
+                                assert_eq!(operands.len(), 3);
+
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
@@ -1408,7 +1384,7 @@ macro_rules! runtime_kernel {
     };
 }
 
-macro_rules! compiletime_kernel {
+macro_rules! symbolic_dispatch_kernel {
 
     /*
     Nullary
@@ -1603,15 +1579,29 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, () -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, () -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+
+        $(
+            impl NullaryKernel<
+                ConcreteContext,
+                $plc,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
+                    derive_runtime_kernel![nullary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl NullaryKernel<
                 SymbolicContext,
                 $plc,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc)
@@ -1635,8 +1625,22 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+
+        $(
+            impl UnaryKernel<
+                ConcreteContext,
+                $plc,
+                $t0,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0) -> $u> {
+                    derive_runtime_kernel![unary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl UnaryKernel<
@@ -1644,7 +1648,8 @@ macro_rules! kernel {
                 $plc,
                 <$t0 as KnownType>::Symbolic,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc,
@@ -1675,8 +1680,23 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+
+        $(
+            impl BinaryKernel<
+                ConcreteContext,
+                $plc,
+                $t0,
+                $t1,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                    derive_runtime_kernel![binary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl BinaryKernel<
@@ -1685,7 +1705,8 @@ macro_rules! kernel {
                 <$t0 as KnownType>::Symbolic,
                 <$t1 as KnownType>::Symbolic,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc,
@@ -1723,8 +1744,24 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+
+        $(
+            impl TernaryKernel<
+                ConcreteContext,
+                $plc,
+                $t0,
+                $t1,
+                $t2,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                    derive_runtime_kernel![ternary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl TernaryKernel<
@@ -1734,7 +1771,8 @@ macro_rules! kernel {
                 <$t1 as KnownType>::Symbolic,
                 <$t2 as KnownType>::Symbolic,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc,
@@ -1783,15 +1821,33 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, () -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, () -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+
+        $(
+            impl NullaryKernel<
+                ConcreteContext,
+                $plc,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(
+                    &ConcreteContext,
+                    &$plc)
+                    -> $u>
+                {
+                    derive_runtime_kernel![nullary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl NullaryKernel<
                 SymbolicContext,
                 $plc,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc)
@@ -1816,8 +1872,22 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0) -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+
+        $(
+            impl UnaryKernel<
+                ConcreteContext,
+                $plc,
+                $t0,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0) -> $u> {
+                    derive_runtime_kernel![unary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl UnaryKernel<
@@ -1825,7 +1895,8 @@ macro_rules! hybrid_kernel {
                 $plc,
                 <$t0 as KnownType>::Symbolic,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc,
@@ -1865,8 +1936,23 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+
+        $(
+            impl BinaryKernel<
+                ConcreteContext,
+                $plc,
+                $t0,
+                $t1,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                    derive_runtime_kernel![binary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl BinaryKernel<
@@ -1875,7 +1961,8 @@ macro_rules! hybrid_kernel {
                 <$t0 as KnownType>::Symbolic,
                 <$t1 as KnownType>::Symbolic,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc,
@@ -1918,8 +2005,24 @@ macro_rules! hybrid_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        runtime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u => $($kp)+), )+]);
-        compiletime_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+
+        $(
+            impl TernaryKernel<
+                ConcreteContext,
+                $plc,
+                $t0,
+                $t1,
+                $t2,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                    derive_runtime_kernel![ternary, $($kp)+, self]
+                }
+            }
+        )+
 
         $(
             impl TernaryKernel<
@@ -1929,7 +2032,8 @@ macro_rules! hybrid_kernel {
                 <$t1 as KnownType>::Symbolic,
                 <$t2 as KnownType>::Symbolic,
                 <$u as KnownType>::Symbolic
-            > for $op {
+            > for $op
+            {
                 fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
                     &SymbolicContext,
                     &$plc,
