@@ -1,6 +1,7 @@
 import asyncio
 import random
 from typing import Dict
+from typing_extensions import runtime
 
 from moose.computation.base import Computation
 from moose.executor.executor import AsyncExecutor
@@ -71,3 +72,14 @@ def run_test_computation(computation, players, arguments={}):
     return {
         player: runtime.get_executor(player.name).storage.store for player in players
     }
+
+
+from moose_kernels import run_py_computation
+
+class RustRuntime:
+    def __init__(self, storage: dict=None):
+        self.storage = storage
+    
+    def evaluate_computation(self, computation, arguments={}):
+         output = run_py_computation(self.storage, computation, arguments)
+         return output

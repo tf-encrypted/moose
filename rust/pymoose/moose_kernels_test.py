@@ -20,6 +20,10 @@ from moose_kernels import ring_sub
 from moose_kernels import ring_sum
 from moose_kernels import sample_key
 
+from moose_kernels import run_py_computation
+
+from moose import computation, edsl
+
 
 class BinaryOp(parameterized.TestCase):
     @parameterized.parameters(
@@ -139,6 +143,44 @@ class BitTensorOps(parameterized.TestCase):
     def test_shape(self):
         a = np.array([1, 2, 3], dtype=np.uint8)
         assert bit_shape(a) == [3]
+
+class RunComputation(parameterized.TestCase):
+    def test_run_computation(self):
+
+        def _buil_computation():
+            x_owner = edsl.host_placement(name="x_owner")
+            y_owner = edsl.host_placement(name="y_owner")
+            output_owner = edsl.host_placement("output_owner")
+
+            @edsl.computation
+            def add_comp():
+
+                with x_owner:
+                    x = edsl.load("x_data", dtype=edsl.float32)
+
+                with y_owner:
+                    y = edsl.load("y_data", dtype=edsl.float32)
+
+                with output_owner:
+                    out = edsl.add(x, y)
+                    res = edsl.save("output", out)
+
+                return res
+
+            concrete_comp = edsl.trace_and_compile(add_comp, ring=128)
+            return concrete_comp
+
+        comp = _buil_computation()
+        # TODO implement_serialize computation
+        comp_ser = serialize_computation(comp)
+        storage = {"x_data": np.array([1.]), "y_data": np.array([2.])}
+        args = {}
+        results = run_py_computation(storage, comp_ser, args)
+        np.testing.assert_array_equal(results["output"], np.array([3.]))
+
+
+
+
 
 
 if __name__ == "__main__":

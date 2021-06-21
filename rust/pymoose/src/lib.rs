@@ -1,16 +1,29 @@
 use moose::bit::BitTensor;
+use moose::computation::Computation;
+use moose::computation::SessionId;
+use moose::computation::Value;
+use moose::execution::SyncArgs;
+use moose::execution::TestExecutor;
 use moose::fixedpoint::Convert;
 use moose::prim::Seed;
 use moose::prng::AesRng;
+use moose::python_computation::PyComputation;
 use moose::ring::Ring64Tensor;
 use moose::standard::{Float64Tensor, Shape};
 use moose::utils;
-use ndarray::ArrayD;
+use ndarray::IxDyn;
+use ndarray::{array, ArrayD};
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
-use pyo3::{prelude::*, types::PyBytes, types::PyList};
+use pyo3::types::IntoPyDict;
+use pyo3::{prelude::*, types::PyBytes, types::PyDict, types::PyList};
+use std::ascii::AsciiExt;
+use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
 pub mod python_computation;
+use moose::storage::{LocalSyncStorage, SyncStorage};
+use std::convert::TryFrom;
+use std::rc::Rc;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
@@ -21,6 +34,13 @@ fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
     let inner_arr = r.0;
     let shape = inner_arr.shape();
     let unwrapped = inner_arr.mapv(|x| x.0);
+    unwrapped.into_shape(shape).unwrap()
+}
+
+fn float64_to_array(r: Float64Tensor) -> ArrayD<f64> {
+    let inner_arr = r.0;
+    let shape = inner_arr.shape();
+    let unwrapped = inner_arr.mapv(|x| x);
     unwrapped.into_shape(shape).unwrap()
 }
 
@@ -35,6 +55,22 @@ fn binary_pyfn<'py>(
     let res = binary_op(x_ring, y_ring);
     let res_array = ring64_to_array(res);
     res_array.to_pyarray(py)
+}
+
+fn dynarray_to_value(arr: &PyReadonlyArrayDyn<f64>) -> Value {
+    let arr_wrap = arr
+        .as_array()
+        .to_owned()
+        .into_dimensionality::<IxDyn>()
+        .unwrap();
+    let v = Value::from(Float64Tensor::from(arr_wrap));
+    v
+}
+
+fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
+    let comp: PyComputation = rmp_serde::from_read_ref(&computation).unwrap();
+    let rust_comp: Computation = comp.try_into().unwrap();
+    rust_comp.toposort().unwrap()
 }
 
 #[pymodule]
@@ -269,6 +305,50 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let x_ring = dynarray_to_ring64(&x);
         let y = Ring64Tensor::ring_mean(x_ring, axis, 2u64.pow(precision));
         ring64_to_array(y).to_pyarray(py)
+    }
+
+    // Note: Can we avoid resintantiating the LocalSyncStorage and TestExecutor
+    // everytime we evaludate a computation?
+    // What argument type can we expect?
+    #[pyfn(m, "run_py_computation")]
+    fn run_py_computation<'py>(
+        py: Python<'py>,
+        storage: HashMap<String, PyReadonlyArrayDyn<f64>>,
+        computation: Vec<u8>,
+        arguments: HashMap<String, String>,
+        // ) -> &'py HashMap<String, PyArrayDyn<f64>> {
+    ) -> &'py PyDict {
+        let comp = create_computation_graph_from_py_bytes(computation);
+
+        let storage_inputs = storage
+            .iter()
+            .map(|arg| (arg.0.to_owned(), dynarray_to_value(arg.1)))
+            .collect::<HashMap<String, Value>>();
+
+        let arguments = arguments
+            .iter()
+            .map(|arg| (arg.0.to_owned(), Value::from(arg.1.to_owned())))
+            .collect::<HashMap<String, moose::computation::Value>>();
+
+        // Extract ouput keys from saved ops directly from the graph or should be passed as an input the func
+        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(storage_inputs));
+        let exec = TestExecutor::from_storage(&storage);
+        exec.run_computation(&comp, arguments).unwrap();
+
+        let output_keys = vec!["output"];
+        let mut outputs: HashMap<String, &PyArrayDyn<f64>> = HashMap::new();
+        for key in output_keys {
+            let mut value = Float64Tensor::try_from(
+                storage
+                    .load(key, &SessionId::from("foobar"), None, "")
+                    .unwrap(),
+            )
+            .unwrap();
+            outputs.insert(key.to_string(), float64_to_array(value).to_pyarray(py));
+        }
+
+        // outputs.into()
+        outputs.into_py_dict(py)
     }
 
     Ok(())
