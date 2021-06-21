@@ -1337,7 +1337,13 @@ macro_rules! runtime_kernel {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
 
-                            let k = <$op as BinaryKernel<ConcreteContext, $plc, $t0, $t1, $u>>::compile(self, &ctx, &plc);
+                            let k = <$op as BinaryKernel<
+                                ConcreteContext,
+                                $plc,
+                                $t0,
+                                $t1,
+                                $u
+                            >>::compile(self, &ctx, &plc);
 
                             Box::new(move |operands| -> Value {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
@@ -1505,15 +1511,14 @@ macro_rules! compiletime_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
                             let ctx = ctx.clone();
-                            let op = self.clone();
 
-                            let k: fn(
-                                &Self,
-                                &SymbolicContext,
-                                &$plc,
+                            let k = <$op as BinaryKernel<
+                                SymbolicContext,
+                                $plc,
                                 <$t0 as KnownType>::Symbolic,
-                                <$t1 as KnownType>::Symbolic
-                            ) -> <$u as KnownType>::Symbolic = $k;
+                                <$t1 as KnownType>::Symbolic,
+                                <$u as KnownType>::Symbolic,
+                            >>::compile(self, &ctx, &plc);
 
                             Box::new(move |operands| {
                                 assert_eq!(operands.len(), 2);
@@ -1521,8 +1526,8 @@ macro_rules! compiletime_kernel {
                                 let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: <$t1 as KnownType>::Symbolic = operands.get(1).unwrap().clone().try_into().unwrap();
 
-                                let y: <$u as KnownType>::Symbolic = k(&op, &ctx, &plc, x0, x1);
-                                SymbolicValue::from(y)
+                                let y: <$u as KnownType>::Symbolic = k(&ctx, &plc, x0, x1);
+                                y.into()
                             })
                         }
                     )+
@@ -1538,21 +1543,6 @@ macro_rules! compiletime_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $k:expr), )+]) => {
-        // $(
-        // impl TernaryKernel<
-        //     SymbolicContext,
-        //     $plc,
-        //     <$t0 as KnownType>::Symbolic,
-        //     <$t1 as KnownType>::Symbolic,
-        //     <$t2 as KnownType>::Symbolic,
-        //     <$u as KnownType>::Symbolic,
-        // > for $op {
-        //     fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(&SymbolicContext, &$plc, $t0, $t1, $t2) -> $u> {
-        //         Box::new($k)
-        //     }
-        // }
-        // )+
-
         impl DispatchKernel<SymbolicContext> for $op {
             fn compile(
                 &self,
@@ -1655,6 +1645,45 @@ macro_rules! kernel {
             let op_name = ctx.add_operation(op, &[&x0_op, &x1_op], &plc.clone().into());
             Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
         }), )+]);
+
+        $(
+            impl BinaryKernel<
+                SymbolicContext,
+                $plc,
+                <$t0 as KnownType>::Symbolic,
+                <$t1 as KnownType>::Symbolic,
+                <$u as KnownType>::Symbolic
+            > for $op {
+                fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+                    &SymbolicContext,
+                    &$plc,
+                    <$t0 as KnownType>::Symbolic,
+                    <$t1 as KnownType>::Symbolic) 
+                    -> <$u as KnownType>::Symbolic>
+                {
+                    let op = self.clone();
+                    Box::new(move |
+                        ctx: &SymbolicContext,
+                        plc: &$plc,
+                        x0: <$t0 as KnownType>::Symbolic,
+                        x1: <$t1 as KnownType>::Symbolic,
+                    | {
+                        let x0_op = match x0 {
+                            Symbolic::Symbolic(h) => h.op,
+                            Symbolic::Concrete(_) => unimplemented!(),
+                        };
+            
+                        let x1_op = match x1 {
+                            Symbolic::Symbolic(h) => h.op,
+                            Symbolic::Concrete(_) => unimplemented!(),
+                        };
+            
+                        let op_name = ctx.add_operation(&op, &[&x0_op, &x1_op], &plc.clone().into());
+                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                    })
+                }
+            }
+        )+
     };
 
     /*
@@ -1752,6 +1781,50 @@ macro_rules! hybrid_kernel {
                 }
             }
         }), )+]);
+
+        $(
+            impl BinaryKernel<
+                SymbolicContext,
+                $plc,
+                <$t0 as KnownType>::Symbolic,
+                <$t1 as KnownType>::Symbolic,
+                <$u as KnownType>::Symbolic
+            > for $op {
+                fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+                    &SymbolicContext,
+                    &$plc,
+                    <$t0 as KnownType>::Symbolic,
+                    <$t1 as KnownType>::Symbolic) 
+                    -> <$u as KnownType>::Symbolic>
+                {
+                    let op = self.clone();
+                    Box::new(move |
+                        ctx: &SymbolicContext,
+                        plc: &$plc,
+                        x0: <$t0 as KnownType>::Symbolic,
+                        x1: <$t1 as KnownType>::Symbolic,
+                    | {
+                        let v0 = x0.clone().try_into();
+                        let v1 = x1.clone().try_into();
+
+                        match (v0, v1) {
+                            (Ok(v0), Ok(v1)) => {
+                                let k = derive_runtime_kernel![binary, $($kp)+, op];
+                                let y = k(ctx, &plc, v0, v1);
+                                y.into()
+                            }
+                            _ => match (x0, x1) {
+                                (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+                                    let op_name = ctx.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+                                    Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                                }
+                                _ => unimplemented!() // ok
+                            }
+                        }
+                    })
+                }
+            }
+        )+
     };
 
     /*
