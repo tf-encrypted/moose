@@ -1520,7 +1520,7 @@ macro_rules! compiletime_kernel {
 
                                 let x0: <$t0 as KnownType>::Symbolic = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: <$t1 as KnownType>::Symbolic = operands.get(1).unwrap().clone().try_into().unwrap();
-    
+
                                 let y: <$u as KnownType>::Symbolic = k(&op, &ctx, &plc, x0, x1);
                                 SymbolicValue::from(y)
                             })
@@ -2550,11 +2550,7 @@ pub struct ConstantOp {
 }
 
 impl DispatchKernel<ConcreteContext> for ConstantOp {
-    fn compile(
-        &self,
-        _ctx: &ConcreteContext,
-        plc: &Placement,
-    ) -> Box<dyn Fn(Vec<Value>) -> Value> {
+    fn compile(&self, _ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
         let val = self.val.clone();
 
         match plc {
@@ -2581,9 +2577,7 @@ impl DispatchKernel<SymbolicContext> for ConstantOp {
                     assert_eq!(operands.len(), 0);
 
                     let op_name = ctx.add_operation(&op, &[], &plc);
-                    op.val
-                        .ty()
-                        .synthesize_symbolic_value(op_name, plc.clone())
+                    op.val.ty().synthesize_symbolic_value(op_name, plc.clone())
                 })
             }
             _ => unimplemented!(), // ok
