@@ -1054,22 +1054,22 @@ impl Context for ConcreteContext {
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
-            Operator::PrfKeyGenOp(op) => op.compile(self, plc)(operands),
-            Operator::RingSampleOp(op) => op.compile(self, plc)(operands),
-            Operator::BitSampleOp(op) => op.compile(self, plc)(operands),
-            Operator::RingAddOp(op) => op.compile(self, plc)(operands),
-            Operator::BitXorOp(op) => op.compile(self, plc)(operands),
-            Operator::BitAndOp(op) => op.compile(self, plc)(operands),
-            Operator::RingSubOp(op) => op.compile(self, plc)(operands),
-            Operator::RingMulOp(op) => op.compile(self, plc)(operands),
-            Operator::RepSetupOp(op) => op.compile(self, plc)(operands),
-            Operator::RepShareOp(op) => op.compile(self, plc)(operands),
-            Operator::RepRevealOp(op) => op.compile(self, plc)(operands),
-            Operator::RepAddOp(op) => op.compile(self, plc)(operands),
-            Operator::RepMulOp(op) => op.compile(self, plc)(operands),
-            Operator::ConstantOp(op) => op.compile(self, plc)(operands),
-            Operator::FixedAddOp(op) => op.compile(self, plc)(operands),
-            Operator::FixedMulOp(op) => op.compile(self, plc)(operands),
+            Operator::PrfKeyGenOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitXorOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitAndOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingSubOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepSetupOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepShareOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
     }
 
@@ -1239,8 +1239,8 @@ macro_rules! runtime_kernel {
         }
         )+
 
-        impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+        impl DispatchKernel<ConcreteContext> for $op {
+            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1279,8 +1279,8 @@ macro_rules! runtime_kernel {
         }
         )+
 
-        impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+        impl DispatchKernel<ConcreteContext> for $op {
+            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1322,8 +1322,8 @@ macro_rules! runtime_kernel {
         }
         )+
 
-        impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+        impl DispatchKernel<ConcreteContext> for $op {
+            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1367,8 +1367,8 @@ macro_rules! runtime_kernel {
         }
         )+
 
-        impl $op {
-            pub fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+        impl DispatchKernel<ConcreteContext> for $op {
+            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1803,6 +1803,10 @@ trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y>
 where
     Self: TernaryKernel<C, P, X0, X1, X2, Y>,
 {
+}
+
+trait DispatchKernel<C: Context> {
+    fn compile(&self, ctx: &C, plc: &Placement) -> Box<dyn Fn(Vec<C::Value>) -> C::Value>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2523,8 +2527,8 @@ pub struct ConstantOp {
     val: Box<Value>,
 }
 
-impl ConstantOp {
-    pub fn compile(
+impl DispatchKernel<ConcreteContext> for ConstantOp {
+    fn compile(
         &self,
         _ctx: &ConcreteContext,
         plc: &Placement,
@@ -2536,7 +2540,9 @@ impl ConstantOp {
             _ => unimplemented!(), // ok
         }
     }
+}
 
+impl ConstantOp {
     pub fn execute_symbolic(
         &self,
         ctx: &SymbolicContext,
