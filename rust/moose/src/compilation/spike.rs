@@ -462,6 +462,19 @@ impl<T: Placed> From<SymbolicHandle<T::Placement>> for Symbolic<T> {
     }
 }
 
+// TODO added so ConcatenateOp could be a hybrid_kernel,
+// but maybe we shouldn't to prevent compile-time ring evaluations..?
+impl<T> TryFrom<Symbolic<RingTensor<T>>> for RingTensor<T> {
+    type Error = Symbolic<Self>;
+
+    fn try_from(x: Symbolic<RingTensor<T>>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(cx) => Ok(cx),
+            Symbolic::Symbolic(_) => Err(x),
+        }
+    }
+}
+
 impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K>
 where
     K: Placed<Placement = HostPlacement>,
@@ -559,6 +572,7 @@ pub enum Operator {
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
     ConstantOp(ConstantOp),
+    ConcatenateOp(ConcatenateOp),
     FixedAddOp(FixedAddOp),
     FixedMulOp(FixedMulOp),
 }
@@ -589,6 +603,7 @@ operator!(RepMulOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
 operator!(ConstantOp);
+operator!(ConcatenateOp);
 operator!(FixedAddOp);
 operator!(FixedMulOp);
 
@@ -606,6 +621,7 @@ pub enum Signature {
     Unary(UnarySignature),
     Binary(BinarySignature),
     Ternary(TernarySignature),
+    Variadic(VariadicSignature),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -634,6 +650,12 @@ pub struct TernarySignature {
     ret: Ty,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct VariadicSignature {
+    args: Ty,
+    ret: Ty,
+}
+
 impl From<NullarySignature> for Signature {
     fn from(s: NullarySignature) -> Signature {
         Signature::Nullary(s)
@@ -655,6 +677,12 @@ impl From<BinarySignature> for Signature {
 impl From<TernarySignature> for Signature {
     fn from(s: TernarySignature) -> Signature {
         Signature::Ternary(s)
+    }
+}
+
+impl From<VariadicSignature> for Signature {
+    fn from(s: VariadicSignature) -> Signature {
+        Signature::Variadic(s)
     }
 }
 
@@ -952,6 +980,55 @@ macro_rules! modelled {
             }
         }
     };
+
+    /*
+    Variadic
+    */
+    ($t:ident::$f:ident, $plc:ty, vec[$ts:ty] -> $u:ty, $op:ident) => {
+        impl VariadicKernelCheck<ConcreteContext, $plc, $ts, $u> for $op {}
+
+        impl $t<ConcreteContext, $ts> for $plc {
+            type Output = $u;
+
+            fn $f(&self, ctx: &ConcreteContext, xs: &[$ts]) -> Self::Output {
+                let sig = VariadicSignature {
+                    args: <$ts as KnownType>::TY,
+                    ret: <$u as KnownType>::TY,
+                };
+                let op = $op::from_signature(sig);
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    xs.iter().map(|xi| xi.clone().into()).collect(),
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+        impl $t<SymbolicContext, <$ts as KnownType>::Symbolic> for $plc {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn $f(
+                &self,
+                ctx: &SymbolicContext,
+                xs: &[<$ts as KnownType>::Symbolic],
+            ) -> Self::Output {
+                let sig = VariadicSignature {
+                    args: <<$ts as KnownType>::Symbolic as KnownType>::TY,
+                    ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+                };
+                let op = $op::from_signature(sig);
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    xs.iter().map(|xi| xi.clone().into()).collect(),
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+    };
 }
 
 macro_rules! modelled_alias {
@@ -1036,6 +1113,12 @@ trait PlacementSample<C: Context, O> {
     fn sample(&self, ctx: &C) -> O;
 }
 
+trait PlacementConcatenate<C: Context, T> {
+    type Output;
+
+    fn concatenate(&self, ctx: &C, xs: &[T]) -> Self::Output;
+}
+
 pub trait Context {
     type Value;
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
@@ -1068,6 +1151,7 @@ impl Context for ConcreteContext {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::ConcatenateOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
@@ -1112,6 +1196,7 @@ impl Context for SymbolicContext {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::ConcatenateOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
@@ -1168,6 +1253,12 @@ macro_rules! derive_runtime_kernel {
             kf($self)
         }
     };
+    (variadic, custom |$op:ident| $kf:expr, $self:ident) => {
+        {
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _) -> _> = &|$op| $kf;
+            kf($self)
+        }
+    };
 
     (nullary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
         {
@@ -1209,6 +1300,16 @@ macro_rules! derive_runtime_kernel {
             })
         }
     };
+    (variadic, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
+        {
+            $(
+            let $attr = $self.$attr.clone();
+            )+
+            Box::new(move |ctx, plc, xs| {
+                $k(ctx, plc, $($attr),+), xs
+            })
+        }
+    };
 
     (nullary, $k:expr, $self:ident) => {
         Box::new($k)
@@ -1220,6 +1321,9 @@ macro_rules! derive_runtime_kernel {
         Box::new($k)
     };
     (ternary, $k:expr, $self:ident) => {
+        Box::new($k)
+    };
+    (variadic, $k:expr, $self:ident) => {
         Box::new($k)
     };
 }
@@ -1373,6 +1477,41 @@ macro_rules! concrete_dispatch_kernel {
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
 
                                 let y: $u = k(&ctx, &plc, x0, x1, x2);
+                                y.into()
+                            })
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+        }
+    };
+
+    /*
+    Variadic
+    */
+
+    ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
+        impl DispatchKernel<ConcreteContext> for $op {
+            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+                match (plc.ty(), self.sig) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature{
+                                args: <$ts>::TY,
+                                ret: <$u>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let ctx = ctx.clone();
+
+                            let k = <$op as VariadicKernel<ConcreteContext, $plc, $ts, $u>>::compile(self, &ctx, &plc);
+
+                            Box::new(move |operands: Vec<Value>| -> Value {
+                                let xs: Vec<$ts> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
+
+                                let y: $u = k(&ctx, &plc, xs);
                                 y.into()
                             })
                         }
@@ -1559,7 +1698,53 @@ macro_rules! symbolic_dispatch_kernel {
                                 let x2: <$t2 as KnownType>::Symbolic = operands.get(2).unwrap().clone().try_into().unwrap();
 
                                 let y: <$u as KnownType>::Symbolic = k(&ctx, &plc, x0, x1, x2);
-                                SymbolicValue::from(y)
+                                y.into()
+                            })
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+
+        }
+    };
+
+    /*
+    Variadic
+    */
+
+    ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty), )+]) => {
+        impl DispatchKernel<SymbolicContext> for $op {
+            fn compile(
+                &self,
+                ctx: &SymbolicContext,
+                plc: &Placement,
+            ) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue> {
+                match (plc.ty(), self.sig) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Variadic(VariadicSignature{
+                                args: <<$ts as KnownType>::Symbolic as KnownType>::TY,
+                                ret: <<$u as KnownType>::Symbolic as KnownType>::TY
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let ctx = ctx.clone();
+                            let op = self.clone();
+
+                            let k = <$op as VariadicKernel<
+                                SymbolicContext,
+                                $plc,
+                                <$ts as KnownType>::Symbolic,
+                                <$u as KnownType>::Symbolic,
+                            >>::compile(self, &ctx, &plc);
+
+                            Box::new(move |operands| {
+                                let xs: Vec<<$ts as KnownType>::Symbolic> = operands.into_iter().map(|xi| xi.try_into().unwrap()).collect();
+
+                                let y: <$u as KnownType>::Symbolic = k(&ctx, &plc, xs);
+                                y.into()
                             })
                         }
                     )+
@@ -1790,6 +1975,67 @@ macro_rules! kernel {
                                 Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
                             }
                             _ => unimplemented!()
+                        }
+                    })
+                }
+            }
+        )+
+    };
+
+    /*
+    Variadic
+    */
+
+    ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+), )+]) => {
+        concrete_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
+
+        $(
+            impl VariadicKernel<
+                ConcreteContext,
+                $plc,
+                $ts,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, Vec<$ts>) -> $u> {
+                    derive_runtime_kernel![ternary, $($kp)+, self]
+                }
+            }
+        )+
+
+        $(
+            impl VariadicKernel<
+                SymbolicContext,
+                $plc,
+                <$ts as KnownType>::Symbolic,
+                <$u as KnownType>::Symbolic
+            > for $op
+            {
+                fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+                    &SymbolicContext,
+                    &$plc,
+                    Vec<<$ts as KnownType>::Symbolic>)
+                    -> <$u as KnownType>::Symbolic>
+                {
+                    let op = self.clone();
+                    Box::new(move |
+                        ctx: &SymbolicContext,
+                        plc: &$plc,
+                        xs: Vec<<$ts as KnownType>::Symbolic>,
+                    | {
+                        let handles: Result<Vec<_>, _> = xs.iter().map(|xi| match xi {
+                            Symbolic::Symbolic(hi) => Ok(hi),
+                            _ => Err(()),
+                        }).collect();
+
+                        match handles {
+                            Ok(hs) => {
+                                let op_names: Vec<&str> = hs.iter().map(|hi| hi.op.as_ref()).collect();
+                                let op_name = ctx.add_operation(&op, op_names.as_slice(), &plc.clone().into());
+                                Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                            }
+                            _ => unimplemented!() // ok
                         }
                     })
                 }
@@ -2061,6 +2307,79 @@ macro_rules! hybrid_kernel {
             }
         )+
     };
+
+    /*
+    Variadic
+    */
+
+    ($op:ty, [$( ($plc:ty, vec[$ts:ty] -> $u:ty => $($kp:tt)+), )+]) => {
+        concrete_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
+        symbolic_dispatch_kernel!($op, [$( ($plc, vec[$ts] -> $u), )+]);
+
+        $(
+            impl VariadicKernel<
+                ConcreteContext,
+                $plc,
+                $ts,
+                $u
+            > for $op
+            {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, Vec<$ts>) -> $u> {
+                    derive_runtime_kernel![variadic, $($kp)+, self]
+                }
+            }
+        )+
+
+        $(
+            impl VariadicKernel<
+                SymbolicContext,
+                $plc,
+                <$ts as KnownType>::Symbolic,
+                <$u as KnownType>::Symbolic
+            > for $op
+            {
+                fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+                    &SymbolicContext,
+                    &$plc,
+                    Vec<<$ts as KnownType>::Symbolic>)
+                    -> <$u as KnownType>::Symbolic>
+                {
+                    let k = derive_runtime_kernel![variadic, $($kp)+, self];
+
+                    let op = self.clone();
+                    Box::new(move |
+                        ctx: &SymbolicContext,
+                        plc: &$plc,
+                        xs: Vec<<$ts as KnownType>::Symbolic>,
+                    | {
+                        let vs: Result<Vec<_>, _> = xs.iter().map(|xi| xi.clone().try_into()).collect();
+
+                        match vs {
+                            Ok(vs) => {
+                                let y = k(ctx, &plc, vs);
+                                y.into()
+                            }
+                            _ => {
+                                let handles: Result<Vec<_>, _> = xs.iter().map(|xi| match xi {
+                                    Symbolic::Symbolic(hi) => Ok(hi),
+                                    _ => Err(()),
+                                }).collect();
+
+                                match handles {
+                                    Ok(hs) => {
+                                        let op_names: Vec<&str> = hs.iter().map(|hi| hi.op.as_ref()).collect();
+                                        let op_name = ctx.add_operation(&op, op_names.as_slice(), &plc.clone().into());
+                                        Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                                    }
+                                    _ => unimplemented!() // ok
+                                }
+                            }
+                        }
+                    })
+                }
+            }
+        )+
+    };
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
@@ -2081,6 +2400,10 @@ pub trait BinaryKernel<C: Context, P, X0, X1, Y> {
 
 pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
     fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
+}
+
+pub trait VariadicKernel<C: Context, P, X, Y> {
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, Vec<X>) -> Y>;
 }
 
 trait NullaryKernelCheck<C: Context, P, Y>
@@ -2104,6 +2427,12 @@ where
 trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y>
 where
     Self: TernaryKernel<C, P, X0, X1, X2, Y>,
+{
+}
+
+trait VariadicKernelCheck<C: Context, P, X, Y>
+where
+    Self: VariadicKernel<C, P, X, Y>,
 {
 }
 
@@ -2861,6 +3190,84 @@ impl DispatchKernel<SymbolicContext> for ConstantOp {
                 })
             }
             _ => unimplemented!(), // ok
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ConcatenateOp {
+    sig: Signature,
+}
+
+modelled!(PlacementConcatenate::concatenate, HostPlacement, vec[Ring64Tensor] -> Ring64Tensor, ConcatenateOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, vec[Ring128Tensor] -> Ring128Tensor, ConcatenateOp);
+
+// TODO should this op be split into several ops (ring, rep, add, etc)?
+hybrid_kernel! {
+    ConcatenateOp,
+    [
+        (HostPlacement, vec[Ring64Tensor] -> Ring64Tensor => Self::ring_kernel), // TODO these should probably be "kernel", not "hybrid_kernel"
+        (HostPlacement, vec[Ring128Tensor] -> Ring128Tensor => Self::ring_kernel), // TODO these should probably be "kernel", not "hybrid_kernel"
+        (ReplicatedPlacement, vec[Replicated64Tensor] -> Replicated64Tensor => Self::rep_kernel), // TODO these should be "hybrid_kernel"
+        (ReplicatedPlacement, vec[Replicated128Tensor] -> Replicated128Tensor => Self::rep_kernel), // TODO these should be "hybrid_kernel"
+    ]
+}
+
+impl ConcatenateOp {
+    fn from_signature(sig: VariadicSignature) -> Self {
+        ConcatenateOp { sig: sig.into() }
+    }
+
+    fn ring_kernel<C: Context, T>(
+        ctx: &C,
+        plc: &HostPlacement,
+        xs: Vec<RingTensor<T>>,
+    ) -> RingTensor<T>
+    where
+        T: Clone,
+    {
+        // TODO implement properly
+        let y = xs.get(0).unwrap().clone();
+        y
+    }
+
+    fn rep_kernel<C: Context, R>(
+        ctx: &C,
+        plc: &ReplicatedPlacement,
+        xs: Vec<ReplicatedTensor<R>>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone,
+        HostPlacement: PlacementConcatenate<C, R, Output = R>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+
+        // TODO avoid cloning
+        // TODO consider rewriting using loop
+
+        let xs00: Vec<_> = xs.iter().map(|xi| xi.shares[0][0].clone()).collect();
+
+        let xs10: Vec<_> = xs.iter().map(|xi| xi.shares[0][1].clone()).collect();
+
+        let xs11: Vec<_> = xs.iter().map(|xi| xi.shares[1][0].clone()).collect();
+
+        let xs21: Vec<_> = xs.iter().map(|xi| xi.shares[1][1].clone()).collect();
+
+        let xs22: Vec<_> = xs.iter().map(|xi| xi.shares[2][0].clone()).collect();
+
+        let xs02: Vec<_> = xs.iter().map(|xi| xi.shares[2][1].clone()).collect();
+
+        let y00 = player0.concatenate(ctx, &xs00);
+        let y10 = player0.concatenate(ctx, &xs10);
+
+        let y11 = player1.concatenate(ctx, &xs11);
+        let y21 = player1.concatenate(ctx, &xs21);
+
+        let y22 = player2.concatenate(ctx, &xs22);
+        let y02 = player2.concatenate(ctx, &xs02);
+
+        ReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
         }
     }
 }
