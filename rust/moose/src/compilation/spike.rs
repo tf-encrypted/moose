@@ -1044,7 +1044,7 @@ pub trait Context {
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug, Default)]
 pub struct ConcreteContext {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
@@ -1093,7 +1093,8 @@ impl Default for SymbolicContext {
     fn default() -> Self {
         SymbolicContext {
             strategy: DefaultSymbolicStrategy,
-            .. Default::default()
+            ops: Arc::default(),
+            replicated_keys: HashMap::default(),
         }
     }
 }
@@ -1267,7 +1268,7 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1277,7 +1278,6 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
 
                             let k = <$op as NullaryKernel<ConcreteContext, $plc, $u>>::compile(self, &ctx, &plc);
 
@@ -1301,7 +1301,7 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1312,7 +1312,6 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
 
                             let k = <$op as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
 
@@ -1338,7 +1337,7 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1350,7 +1349,6 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
 
                             let k = <$op as BinaryKernel<
                                 ConcreteContext,
@@ -1383,7 +1381,7 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<ConcreteContext> for $op {
-            fn compile(&self, ctx: &ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value> {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1396,7 +1394,6 @@ macro_rules! concrete_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
 
                             let k = <$op as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
 
@@ -1427,7 +1424,7 @@ macro_rules! symbolic_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
         impl DispatchKernel<SymbolicContext> for $op {
-            fn compile(&self, ctx: &SymbolicContext, plc: &Placement) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue> {
+            fn compile<'c>(&self, ctx: &'c SymbolicContext, plc: &Placement) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1437,7 +1434,6 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
 
                             let k = <$op as NullaryKernel<
                                 SymbolicContext,
@@ -1465,7 +1461,7 @@ macro_rules! symbolic_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<SymbolicContext> for $op {
-            fn compile(&self, ctx: &SymbolicContext, plc: &Placement) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue> {
+            fn compile<'c>(&self, ctx: &'c SymbolicContext, plc: &Placement) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1476,7 +1472,6 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
 
                             let k = <$op as UnaryKernel<
                                 SymbolicContext,
@@ -1507,11 +1502,11 @@ macro_rules! symbolic_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<SymbolicContext> for $op {
-            fn compile(
+            fn compile<'c>(
                 &self,
-                ctx: &SymbolicContext,
+                ctx: &'c SymbolicContext,
                 plc: &Placement,
-            ) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue> {
+            ) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1523,7 +1518,6 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
 
                             let k = <$op as BinaryKernel<
                                 SymbolicContext,
@@ -1557,11 +1551,11 @@ macro_rules! symbolic_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
         impl DispatchKernel<SymbolicContext> for $op {
-            fn compile(
+            fn compile<'c>(
                 &self,
-                ctx: &SymbolicContext,
+                ctx: &'c SymbolicContext,
                 plc: &Placement,
-            ) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue> {
+            ) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue + 'c> {
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -1574,7 +1568,6 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
-                            let ctx = ctx.clone();
                             let op = self.clone();
 
                             let k = <$op as TernaryKernel<
@@ -2143,7 +2136,7 @@ where
 }
 
 trait DispatchKernel<C: Context> {
-    fn compile(&self, ctx: &C, plc: &Placement) -> Box<dyn Fn(Vec<C::Value>) -> C::Value>;
+    fn compile<'c>(&self, ctx: &'c C, plc: &Placement) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -2876,15 +2869,14 @@ impl DispatchKernel<ConcreteContext> for ConstantOp {
 }
 
 impl DispatchKernel<SymbolicContext> for ConstantOp {
-    fn compile(
+    fn compile<'c>(
         &self,
-        ctx: &SymbolicContext,
+        ctx: &'c SymbolicContext,
         plc: &Placement,
-    ) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue> {
+    ) -> Box<dyn Fn(Vec<SymbolicValue>) -> SymbolicValue + 'c> {
         match plc {
             Placement::HostPlacement(_) => {
                 // TODO
-                let ctx = ctx.clone();
                 let plc = plc.clone();
                 let op = self.clone();
 
