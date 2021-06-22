@@ -1081,11 +1081,21 @@ impl Context for ConcreteContext {
 
 use std::sync::{Arc, RwLock};
 
-#[derive(Clone, Debug, Default)]
+#[derive(Debug)]
 pub struct SymbolicContext {
+    strategy: DefaultSymbolicStrategy, // TODO replace with Box<dyn >
     ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
     replicated_keys:
         HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
+}
+
+impl Default for SymbolicContext {
+    fn default() -> Self {
+        SymbolicContext {
+            strategy: DefaultSymbolicStrategy,
+            .. Default::default()
+        }
+    }
 }
 
 impl Context for SymbolicContext {
@@ -1097,24 +1107,7 @@ impl Context for SymbolicContext {
         plc: &Placement,
         operands: Vec<SymbolicValue>,
     ) -> SymbolicValue {
-        match op {
-            Operator::PrfKeyGenOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::BitSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::BitXorOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::BitAndOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingSubOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepSetupOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepShareOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-        }
+        self.strategy.execute(self, op, plc, operands)
     }
 
     type ReplicatedSetup = <ReplicatedSetup as KnownType>::Symbolic;
@@ -1140,6 +1133,48 @@ impl SymbolicContext {
         };
         ops.push(op);
         op_name
+    }
+}
+
+trait SymbolicStrategy {
+    fn execute(
+        &self,
+        ctx: &SymbolicContext,
+        op: Operator,
+        plc: &Placement,
+        operands: Vec<SymbolicValue>,
+    ) -> SymbolicValue;
+}
+
+#[derive(Clone, Copy, Debug)]
+struct DefaultSymbolicStrategy;
+
+impl SymbolicStrategy for DefaultSymbolicStrategy {
+    fn execute(
+        &self,
+        ctx: &SymbolicContext,
+        op: Operator,
+        plc: &Placement,
+        operands: Vec<SymbolicValue>,
+    ) -> SymbolicValue {
+        match op {
+            Operator::PrfKeyGenOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RingSampleOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::BitSampleOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RingAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::BitXorOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::BitAndOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RingSubOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RingMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RepSetupOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RepShareOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RepRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RepAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RepMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::ConstantOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::FixedAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::FixedMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+        }
     }
 }
 
