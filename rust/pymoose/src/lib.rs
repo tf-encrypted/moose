@@ -1,11 +1,11 @@
 use moose::bit::BitTensor;
-use moose::computation::Computation;
 use moose::computation::SessionId;
 use moose::computation::Value;
-use moose::execution::{AsyncExecutor, SyncArgs};
+use moose::computation::{Computation, Role};
+use moose::execution::{AsyncExecutor, Identity};
 use moose::execution::{AsyncSession, TestExecutor};
 use moose::fixedpoint::Convert;
-use moose::networking::{LocalAsyncNetworking, LocalSyncNetworking};
+use moose::networking::LocalAsyncNetworking;
 use moose::prim::Seed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
@@ -20,13 +20,11 @@ use pyo3::{prelude::*, types::PyBytes, types::PyDict, types::PyList};
 use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::convert::TryInto;
-use std::hash::Hash;
 use std::num::Wrapping;
 use std::sync::Arc;
 pub mod python_computation;
-use moose::storage::{LocalAsyncStorage, LocalSyncStorage, SyncStorage};
+use moose::storage::{LocalAsyncStorage, LocalSyncStorage};
 use std::convert::TryFrom;
-use std::rc::Rc;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
@@ -399,13 +397,29 @@ impl TestRuntime {
             .map(|arg| (arg.0.clone(), Value::from(arg.1.clone())))
             .collect::<HashMap<String, Value>>();
 
-        for (placement, _) in &self.executors {
+        let role_assignment = &self
+            .executors
+            .keys()
+            .into_iter()
+            .map(|arg| (Role::from(arg), Identity::from(arg)))
+            .collect::<HashMap<Role, Identity>>();
+
+        for (placement, executor) in &self.executors {
             let mut moose_session = AsyncSession {
                 sid: SessionId::from("foo"),
                 arguments: arguments.clone(),
                 networking: Arc::new(self.networking),
                 storage: Arc::new(self.storages[placement]),
             };
+
+            let own_identity = Identity::from(placement);
+            let computation = create_computation_graph_from_py_bytes(computation.clone());
+
+            let (mut moose_session_handle, _outputs) = executor
+                .run_computation(&computation, &role_assignment, &own_identity, moose_session)
+                .unwrap();
+
+            moose_session_handle.join();
         }
     }
 
