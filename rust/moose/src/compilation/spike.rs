@@ -1044,9 +1044,16 @@ pub trait Context {
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
 }
 
-#[derive(Debug, Default)]
 pub struct ConcreteContext {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+}
+
+impl Default for ConcreteContext {
+    fn default() -> Self {
+        ConcreteContext {
+            replicated_keys: Default::default(),
+        }
+    }
 }
 
 impl Context for ConcreteContext {
@@ -1081,9 +1088,8 @@ impl Context for ConcreteContext {
 
 use std::sync::{Arc, RwLock};
 
-#[derive(Debug)]
 pub struct SymbolicContext {
-    strategy: DefaultSymbolicStrategy, // TODO replace with Box<dyn >
+    strategy: Box<dyn SymbolicStrategy>,
     ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
     replicated_keys:
         HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
@@ -1092,9 +1098,9 @@ pub struct SymbolicContext {
 impl Default for SymbolicContext {
     fn default() -> Self {
         SymbolicContext {
-            strategy: DefaultSymbolicStrategy,
-            ops: Arc::default(),
-            replicated_keys: HashMap::default(),
+            strategy: Box::new(DefaultSymbolicStrategy),
+            ops: Default::default(),
+            replicated_keys: Default::default(),
         }
     }
 }
@@ -2135,8 +2141,12 @@ where
 {
 }
 
-trait DispatchKernel<C: Context> {
-    fn compile<'c>(&self, ctx: &'c C, plc: &Placement) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
+pub trait DispatchKernel<C: Context> {
+    fn compile<'c>(
+        &self,
+        ctx: &'c C,
+        plc: &Placement,
+    ) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
