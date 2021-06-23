@@ -24,6 +24,7 @@ use std::sync::Arc;
 pub mod python_computation;
 use moose::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage};
 use std::convert::TryFrom;
+use tokio::runtime::Runtime;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
@@ -364,7 +365,7 @@ impl TestRuntime {
 
         for (placement, executor) in &self.executors {
             let mut moose_session = AsyncSession {
-                sid: SessionId::from("foo"),
+                sid: SessionId::from("foobar"),
                 arguments: arguments.clone(),
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.storages[placement]),
@@ -382,7 +383,21 @@ impl TestRuntime {
         }
     }
 
-    fn get_value_from_storage(&self, key: String, placement: String) {}
+    // Can we use a block_on approach or do we wan to use pyo3-asyncio
+    // to await an async rust in python? https://pyo3.rs/v0.13.2/ecosystem/async-await.html
+    fn get_value_from_storage(&self, key: String, placement: String) {
+        // If we use this Tokio runtime, it should be moved the class
+        let mut rt = Runtime::new().unwrap();
+        let val = rt.block_on(async {
+            let val = self.storages[&placement]
+                .load(&key, &SessionId::from("foobar"), None, "")
+                .await
+                .unwrap();
+            val
+        });
+
+        // Return value
+    }
 }
 
 #[pymodule]
