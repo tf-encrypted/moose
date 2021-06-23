@@ -1109,6 +1109,48 @@ mod tests {
         assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
     }
 
+    #[tokio::test]
+    async fn test_async_executor() {
+        use itertools::Itertools;
+        use maplit::hashmap;
+        use crate::networking::LocalAsyncNetworking;
+        use crate::storage::LocalAsyncStorage;
+
+        let mut definition = String::from(
+            r#"key = PrimGenPrfKey() @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        shape = Constant{value = Shape([2, 3])} @Host(alice)
+        "#,
+        );
+        let body = (0..100)
+            .map(|i| {
+                format!(
+                    "x{} = RingSample: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+                    i
+                )
+            })
+            .join("\n");
+        definition.push_str(&body);
+        definition.push_str("\nz = Output: (Ring64Tensor) -> Unit (x99) @Host(alice)");
+        let comp: Computation = definition.try_into().unwrap();
+
+        let exec = AsyncExecutor::default();
+        let (mut join_handle, outputs) = exec.run_computation(
+            &comp,
+            &hashmap! { "alice".into() => "me".into() },
+            &Identity::from("me"),
+            AsyncSession {
+                sid: SessionId::from("abc"),
+                arguments: hashmap! {},
+                networking: Arc::new(LocalAsyncNetworking::default()),
+                storage: Arc::new(LocalAsyncStorage::default()),
+            }).unwrap();
+        join_handle.join().await;
+        for (_output_name, output) in outputs {
+            assert!(output.await.is_ok());
+        }
+    }
+
     #[test]
     fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
