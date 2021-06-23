@@ -2,8 +2,8 @@ use moose::bit::BitTensor;
 use moose::computation::SessionId;
 use moose::computation::Value;
 use moose::computation::{Computation, Role};
-use moose::execution::{AsyncExecutor, Identity};
-use moose::execution::{AsyncSession, TestExecutor};
+use moose::execution::AsyncSession;
+use moose::execution::{AsyncExecutor, AsyncNetworkingImpl, Identity};
 use moose::fixedpoint::Convert;
 use moose::networking::{AsyncNetworking, LocalAsyncNetworking};
 use moose::prim::Seed;
@@ -15,10 +15,8 @@ use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{array, ArrayD};
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
-use pyo3::ffi::newfunc;
-use pyo3::types::IntoPyDict;
+
 use pyo3::{prelude::*, types::PyBytes, types::PyDict, types::PyList};
-use std::ascii::AsciiExt;
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
@@ -309,58 +307,14 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ring64_to_array(y).to_pyarray(py)
     }
 
-    // Note: Can we avoid resintantiating the LocalSyncStorage and TestExecutor
-    // everytime we evaludate a computation?
-    // What argument type can we expect?
-    // #[pyfn(m, "run_py_computation")]
-    // fn run_py_computation<'py>(
-    //     py: Python<'py>,
-    //     storage: HashMap<String, PyReadonlyArrayDyn<f64>>,
-    //     computation: Vec<u8>,
-    //     arguments: HashMap<String, String>,
-    //     // ) -> &'py HashMap<String, PyArrayDyn<f64>> {
-    // ) -> &'py PyDict {
-    //     let comp = create_computation_graph_from_py_bytes(computation);
-
-    //     let storage_inputs = storage
-    //         .iter()
-    //         .map(|arg| (arg.0.to_owned(), dynarray_to_value(arg.1)))
-    //         .collect::<HashMap<String, Value>>();
-
-    //     let arguments = arguments
-    //         .iter()
-    //         .map(|arg| (arg.0.to_owned(), Value::from(arg.1.to_owned())))
-    //         .collect::<HashMap<String, moose::computation::Value>>();
-
-    //     // Extract ouput keys from saved ops directly from the graph or should be passed as an input the func
-    //     let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(storage_inputs));
-    //     let exec = TestExecutor::from_storage(&storage);
-    //     exec.run_computation(&comp, arguments).unwrap();
-
-    //     let output_keys = vec!["output"];
-    //     let mut outputs: HashMap<String, &PyArrayDyn<f64>> = HashMap::new();
-    //     for key in output_keys {
-    //         let mut value = Float64Tensor::try_from(
-    //             storage
-    //                 .load(key, &SessionId::from("foobar"), None, "")
-    //                 .unwrap(),
-    //         )
-    //         .unwrap();
-    //         outputs.insert(key.to_string(), float64_to_array(value).to_pyarray(py));
-    //     }
-
-    //     // outputs.into()
-    //     outputs.into_py_dict(py)
-    // }
-
     Ok(())
 }
 
 #[pyclass]
 pub struct TestRuntime {
     executors: HashMap<String, AsyncExecutor>,
-    networking: Arc<dyn AsyncNetworking>,
-    storages: HashMap<String, Arc<dyn AsyncStorage>>,
+    networking: AsyncNetworkingImpl,
+    storages: HashMap<String, Arc<dyn Send + Sync + AsyncStorage>>,
 }
 
 #[pymethods]
@@ -368,8 +322,10 @@ impl TestRuntime {
     #[new]
     fn new(storages: HashMap<String, HashMap<String, PyReadonlyArrayDyn<f64>>>) -> Self {
         let mut executors: HashMap<String, AsyncExecutor> = HashMap::new();
-        let networking = LocalAsyncNetworking::default();
-        let mut runtime_storages: HashMap<String, LocalAsyncStorage> = HashMap::new();
+        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+            Arc::new(LocalAsyncNetworking::default());
+        let mut runtime_storages: HashMap<String, Arc<dyn Send + Sync + AsyncStorage>> =
+            HashMap::new();
 
         for (placement, storage) in storages {
             let storage = storage
@@ -377,7 +333,8 @@ impl TestRuntime {
                 .map(|arg| (arg.0.to_owned(), dynarray_to_value(arg.1)))
                 .collect::<HashMap<String, Value>>();
 
-            let exec_storage = LocalAsyncStorage::from_hashmap(storage);
+            let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
+                Arc::new(LocalAsyncStorage::from_hashmap(storage));
             runtime_storages.insert(placement.clone(), exec_storage);
 
             let executor = AsyncExecutor::default();
@@ -409,8 +366,8 @@ impl TestRuntime {
             let mut moose_session = AsyncSession {
                 sid: SessionId::from("foo"),
                 arguments: arguments.clone(),
-                networking: Arc::clone(self.networking),
-                storage: Arc::clone(self.storages[placement]),
+                networking: Arc::clone(&self.networking),
+                storage: Arc::clone(&self.storages[placement]),
             };
 
             let own_identity = Identity::from(placement);
