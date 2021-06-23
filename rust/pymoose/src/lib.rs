@@ -5,7 +5,7 @@ use moose::computation::{Computation, Role};
 use moose::execution::{AsyncExecutor, Identity};
 use moose::execution::{AsyncSession, TestExecutor};
 use moose::fixedpoint::Convert;
-use moose::networking::LocalAsyncNetworking;
+use moose::networking::{AsyncNetworking, LocalAsyncNetworking};
 use moose::prim::Seed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
@@ -15,6 +15,7 @@ use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{array, ArrayD};
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
+use pyo3::ffi::newfunc;
 use pyo3::types::IntoPyDict;
 use pyo3::{prelude::*, types::PyBytes, types::PyDict, types::PyList};
 use std::ascii::AsciiExt;
@@ -23,7 +24,7 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 use std::sync::Arc;
 pub mod python_computation;
-use moose::storage::{LocalAsyncStorage, LocalSyncStorage};
+use moose::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage};
 use std::convert::TryFrom;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -358,8 +359,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 #[pyclass]
 pub struct TestRuntime {
     executors: HashMap<String, AsyncExecutor>,
-    networking: LocalAsyncNetworking,
-    storages: HashMap<String, LocalAsyncStorage>,
+    networking: Arc<dyn AsyncNetworking>,
+    storages: HashMap<String, Arc<dyn AsyncStorage>>,
 }
 
 #[pymethods]
@@ -408,8 +409,8 @@ impl TestRuntime {
             let mut moose_session = AsyncSession {
                 sid: SessionId::from("foo"),
                 arguments: arguments.clone(),
-                networking: Arc::new(self.networking),
-                storage: Arc::new(self.storages[placement]),
+                networking: Arc::clone(self.networking),
+                storage: Arc::clone(self.storages[placement]),
             };
 
             let own_identity = Identity::from(placement);
@@ -420,10 +421,11 @@ impl TestRuntime {
                 .unwrap();
 
             moose_session_handle.join();
+            // Then await and output and filter units.
         }
     }
 
-    fn get_value_from_storage(&self, key: String) {}
+    fn get_value_from_storage(&self, key: String, placement: String) {}
 }
 
 #[pymodule]
