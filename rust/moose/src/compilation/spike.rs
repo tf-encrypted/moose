@@ -181,6 +181,7 @@ impl Ty {
 
 pub trait KnownType {
     type Symbolic;
+    type Async;
     const TY: Ty;
 }
 
@@ -232,8 +233,23 @@ pub enum SymbolicValue {
     PrfKey(<PrfKey as KnownType>::Symbolic),
 }
 
+#[derive(Clone, Debug)]
+pub enum AsyncValue {
+    Fixed64Tensor(<Fixed64Tensor as KnownType>::Async),
+    Fixed128Tensor(<Fixed128Tensor as KnownType>::Async),
+    BitTensor(<BitTensor as KnownType>::Async),
+    Ring32Tensor(<Ring32Tensor as KnownType>::Async),
+    Ring64Tensor(<Ring64Tensor as KnownType>::Async),
+    Ring128Tensor(<Ring128Tensor as KnownType>::Async),
+    Replicated64Tensor(<Replicated64Tensor as KnownType>::Async),
+    Replicated128Tensor(<Replicated128Tensor as KnownType>::Async),
+    ReplicatedBitTensor(<ReplicatedBitTensor as KnownType>::Async),
+    ReplicatedSetup(<ReplicatedSetup as KnownType>::Async),
+    PrfKey(<PrfKey as KnownType>::Async),
+}
+
 macro_rules! value {
-    ($t:ident, $st:ty) => {
+    ($t:ident, $at:ty, $st:ty) => {
         impl From<$t> for Value {
             fn from(x: $t) -> Value {
                 Value::$t(x)
@@ -276,11 +292,19 @@ macro_rules! value {
 
         impl KnownType for $t {
             type Symbolic = $st;
+            type Async = $at;
+            const TY: Ty = Ty::$t;
+        }
+
+        impl KnownType for $at {
+            type Symbolic = Self; // TODO err this is weird
+            type Async = Self;
             const TY: Ty = Ty::$t;
         }
 
         impl KnownType for $st {
             type Symbolic = Self;
+            type Async = Self; // TODO err this is weird
             const TY: Ty = Ty::$t;
         }
     };
@@ -293,6 +317,12 @@ macro_rules! value {
 // constructions during development.
 value!(
     Fixed64Tensor,
+    Async<
+        FixedTensor<
+            <Ring64Tensor as KnownType>::Async,
+            <Replicated64Tensor as KnownType>::Async,
+        >,
+    >,
     Symbolic<
         FixedTensor<
             <Ring64Tensor as KnownType>::Symbolic,
@@ -302,6 +332,12 @@ value!(
 );
 value!(
     Fixed128Tensor,
+    Async<
+        FixedTensor<
+            <Ring128Tensor as KnownType>::Async,
+            <Replicated128Tensor as KnownType>::Async,
+        >,
+    >,
     Symbolic<
         FixedTensor<
             <Ring128Tensor as KnownType>::Symbolic,
@@ -309,27 +345,31 @@ value!(
         >,
     >
 );
-value!(BitTensor, Symbolic<BitTensor>);
-value!(Ring32Tensor, Symbolic<Ring32Tensor>);
-value!(Ring64Tensor, Symbolic<Ring64Tensor>);
-value!(Ring128Tensor, Symbolic<Ring128Tensor>);
+value!(BitTensor, Async<BitTensor>, Symbolic<BitTensor>);
+value!(Ring32Tensor, Async<Ring32Tensor>, Symbolic<Ring32Tensor>);
+value!(Ring64Tensor, Async<Ring64Tensor>, Symbolic<Ring64Tensor>);
+value!(Ring128Tensor, Async<Ring128Tensor>, Symbolic<Ring128Tensor>);
 value!(
     Replicated64Tensor,
+    Async<ReplicatedTensor<<Ring64Tensor as KnownType>::Async>>,
     Symbolic<ReplicatedTensor<<Ring64Tensor as KnownType>::Symbolic>>
 );
 value!(
     Replicated128Tensor,
+    Async<ReplicatedTensor<<Ring128Tensor as KnownType>::Async>>,
     Symbolic<ReplicatedTensor<<Ring128Tensor as KnownType>::Symbolic>>
 );
 value!(
     ReplicatedBitTensor,
-    Symbolic<ReplicatedTensor<Symbolic<BitTensor>>>
+    Async<ReplicatedTensor<<BitTensor as KnownType>::Async>>,
+    Symbolic<ReplicatedTensor<<BitTensor as KnownType>::Symbolic>>
 );
 value!(
     ReplicatedSetup,
+    Async<AbstractReplicatedSetup<<PrfKey as KnownType>::Async>>,
     Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 );
-value!(PrfKey, Symbolic<PrfKey>);
+value!(PrfKey, Async<PrfKey>, Symbolic<PrfKey>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -1079,6 +1119,54 @@ impl Context for ConcreteContext {
     }
 }
 
+pub struct AsyncContext {
+
+}
+
+use futures::future::{Map, Shared};
+use tokio::sync::oneshot;
+
+#[derive(Clone, Debug)]
+pub struct Async<T>(
+    Shared<
+        Map<
+            oneshot::Receiver<T>,
+            fn(anyhow::Result<T, oneshot::error::RecvError>) -> anyhow::Result<T, ()>,
+        >,
+    >
+);
+
+impl Context for AsyncContext {
+    type Value = AsyncValue;
+
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value {
+        unimplemented!()
+        // match op {
+        //     Operator::PrfKeyGenOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RingSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::BitSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RingAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::BitXorOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::BitAndOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RingSubOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RingMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RepSetupOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RepShareOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RepRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        //     Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+        // }
+    }
+
+    type ReplicatedSetup = ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+        unimplemented!()
+    }
+}
+
 use std::sync::{Arc, RwLock};
 
 #[derive(Clone, Debug, Default)]
@@ -1384,6 +1472,166 @@ macro_rules! concrete_dispatch_kernel {
     };
 }
 
+// macro_rules! async_dispatch_kernel {
+
+//     /*
+//     Nullaray
+//     */
+
+//     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
+//         impl DispatchKernel<AsyncContext> for $op {
+//             fn compile(&self, ctx: &AsyncContext, plc: &Placement) -> Box<dyn Fn(Vec<AsyncValue>) -> AsyncValue> {
+//                 match (plc.ty(), self.sig) {
+//                     $(
+//                         (
+//                             <$plc>::TY,
+//                             Signature::Nullary(NullarySignature{
+//                                 ret: <$u>::TY,
+//                             })
+//                         ) => {
+//                             let plc: $plc = plc.clone().try_into().unwrap();
+//                             let ctx = ctx.clone();
+
+//                             let k = <$op as NullaryKernel<AsyncContext, $plc, $u>>::compile(self, &ctx, &plc);
+
+//                             Box::new(move |operands: Vec<AsyncValue>| {
+//                                 assert_eq!(operands.len(), 0);
+
+//                                 let y: $u = k(&ctx, &plc);
+//                                 y.into()
+//                             })
+//                         }
+//                     )+
+//                     _ => unimplemented!(), // ok
+//                 }
+//             }
+//         }
+//     };
+
+//     /*
+//     Unary
+//     */
+
+//     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
+//         impl DispatchKernel<AsyncContext> for $op {
+//             fn compile(&self, ctx: &AsyncContext, plc: &Placement) -> Box<dyn Fn(Vec<AsyncValue>) -> AsyncValue> {
+//                 match (plc.ty(), self.sig) {
+//                     $(
+//                         (
+//                             <$plc>::TY,
+//                             Signature::Unary(UnarySignature{
+//                                 arg0: <$t0>::TY,
+//                                 ret: <$u>::TY,
+//                             })
+//                         ) => {
+//                             let plc: $plc = plc.clone().try_into().unwrap();
+//                             let ctx = ctx.clone();
+
+//                             let k = <$op as UnaryKernel<AsyncContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
+
+//                             Box::new(move |operands: Vec<AsyncValue>| {
+//                                 assert_eq!(operands.len(), 1);
+
+//                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
+
+//                                 let y: $u = k(&ctx, &plc, x0);
+//                                 y.into()
+//                             })
+//                         }
+//                     )+
+//                     _ => unimplemented!(), // ok
+//                 }
+//             }
+//         }
+//     };
+
+//     /*
+//     Binary
+//     */
+
+//     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
+//         impl DispatchKernel<AsyncContext> for $op {
+//             fn compile(&self, ctx: &AsyncContext, plc: &Placement) -> Box<dyn Fn(Vec<AsyncValue>) -> AsyncValue> {
+//                 match (plc.ty(), self.sig) {
+//                     $(
+//                         (
+//                             <$plc>::TY,
+//                             Signature::Binary(BinarySignature{
+//                                 arg0: <$t0>::TY,
+//                                 arg1: <$t1>::TY,
+//                                 ret: <$u>::TY,
+//                             })
+//                         ) => {
+//                             let plc: $plc = plc.clone().try_into().unwrap();
+//                             let ctx = ctx.clone();
+
+//                             let k = <$op as BinaryKernel<
+//                                 AsyncContext,
+//                                 $plc,
+//                                 $t0,
+//                                 $t1,
+//                                 $u
+//                             >>::compile(self, &ctx, &plc);
+
+//                             Box::new(move |operands| -> AsyncValue {
+//                                 assert_eq!(operands.len(), 2);
+
+//                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
+//                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
+
+//                                 let y: $u = k(&ctx, &plc, x0, x1);
+//                                 y.into()
+//                             })
+//                         }
+//                     )+
+//                     _ => unimplemented!(), // ok
+//                 }
+//             }
+//         }
+//     };
+
+//     // /*
+//     // Ternary
+//     // */
+
+//     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
+//         impl DispatchKernel<AsyncContext> for $op {
+//             fn compile(&self, ctx: &AsyncContext, plc: &Placement) -> Box<dyn Fn(Vec<AsyncValue>) -> AsyncValue> {
+//                 match (plc.ty(), self.sig) {
+//                     $(
+//                         (
+//                             <$plc>::TY,
+//                             Signature::Ternary(TernarySignature{
+//                                 arg0: <$t0>::TY,
+//                                 arg1: <$t1>::TY,
+//                                 arg2: <$t2>::TY,
+//                                 ret: <$u>::TY,
+//                             })
+//                         ) => {
+//                             let plc: $plc = plc.clone().try_into().unwrap();
+//                             let ctx = ctx.clone();
+
+//                             let k = <$op as TernaryKernel<AsyncContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
+
+//                             Box::new(move |operands: Vec<AsyncValue>| -> AsyncValue {
+//                                 assert_eq!(operands.len(), 3);
+
+//                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
+//                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
+//                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
+
+//                                 let y: $u = k(&ctx, &plc, x0, x1, x2);
+//                                 y.into()
+//                             })
+//                         }
+//                     )+
+//                     _ => unimplemented!(), // ok
+//                 }
+//             }
+//         }
+//     };
+// }
+
 macro_rules! symbolic_dispatch_kernel {
 
     /*
@@ -1580,6 +1828,7 @@ macro_rules! kernel {
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
         concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+        // async_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
         symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
 
         $(
@@ -1641,6 +1890,25 @@ macro_rules! kernel {
                 }
             }
         )+
+
+        // $(
+        //     impl UnaryKernel<
+        //         AsyncContext,
+        //         $plc,
+        //         <$t0 as KnownType>::Async,
+        //         <$u as KnownType>::Async,
+        //     > for $op
+        //     {
+        //         fn compile(&self, ctx: &AsyncContext, plc: &$plc) -> Box<dyn Fn(
+        //             &AsyncContext,
+        //             &$plc,
+        //             <$t0 as KnownType>::Async)
+        //             -> <$u as KnownType>::Async>
+        //         {
+        //             derive_runtime_kernel![unary, $($kp)+, self]
+        //         }
+        //     }
+        // )+
 
         $(
             impl UnaryKernel<
@@ -1868,8 +2136,44 @@ macro_rules! hybrid_kernel {
                 $u
             > for $op
             {
-                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0) -> $u> {
+                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(
+                    &ConcreteContext,
+                    &$plc,
+                    $t0)
+                    -> $u>
+                {
                     derive_runtime_kernel![unary, $($kp)+, self]
+                }
+            }
+        )+
+
+        $(
+            impl UnaryKernel<
+                AsyncContext,
+                $plc,
+                <$t0 as KnownType>::Async,
+                <$u as KnownType>::Async,
+            > for $op
+            {
+                fn compile(&self, ctx: &AsyncContext, plc: &$plc) -> Box<dyn Fn(
+                    &AsyncContext,
+                    &$plc,
+                    <$t0 as KnownType>::Async)
+                    -> <$u as KnownType>::Async>
+                {
+                    let k = derive_runtime_kernel![unary, $($kp)+, self];
+
+                    Box::new(move |
+                        ctx: &AsyncContext,
+                        plc: &$plc,
+                        x0: <$t0 as KnownType>::Async,
+                    | {
+                        tokio::spawn(async move {
+                            let x0 = x0.0.await.unwrap();
+                            let y = k(x0);
+                            unimplemented!()
+                        })
+                    })
                 }
             }
         )+
