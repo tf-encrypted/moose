@@ -3093,7 +3093,12 @@ kernel! {
 }
 
 impl RingShrOp {
-    fn kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, amount: usize, x: RingTensor<T>) -> RingTensor<T>
+    fn kernel<C: Context, T>(
+        _ctx: &C,
+        _plc: &HostPlacement,
+        amount: usize,
+        x: RingTensor<T>,
+    ) -> RingTensor<T>
     where
         RingTensor<T>: Shr<usize, Output = RingTensor<T>>,
     {
