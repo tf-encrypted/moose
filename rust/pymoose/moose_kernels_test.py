@@ -1,3 +1,4 @@
+import msgpack
 import random
 
 import numpy as np
@@ -20,9 +21,10 @@ from moose_kernels import ring_sub
 from moose_kernels import ring_sum
 from moose_kernels import sample_key
 
-from moose_kernels import run_py_computation
+from moose_kernels_test import TestRuntime
 
 from moose import computation, edsl
+from moose.computation.utils import serialize_computation
 
 
 class BinaryOp(parameterized.TestCase):
@@ -169,14 +171,16 @@ class RunComputation(parameterized.TestCase):
 
             concrete_comp = edsl.trace_and_compile(add_comp, ring=128)
             return concrete_comp
+    
+        comp = _buil_computation()
+        comp_bin = serialize_computation(comp)
+        storages = {"x_onwer": {"x_data": np.array([1.])}, "y_owner": {"y_data": np.array([2.])}, "output_owner": {}}
+        args = {"": ""}
 
-        # storage = {"x_data": np.array([1.]), "y_data": np.array([2.])}
-        # args = {}
-        # results = run_py_computation(storage, comp_ser, args)
-        # np.testing.assert_array_equal(results["output"], np.array([3.]))
-
-
-
+        runtime = TestRuntime(storages)
+        runtime.evaluate_computation(comp_bin, args)
+        result = runtime.get_value_from_storage("output", "output_owner")
+        np.testing.assert_array_equal(result, np.array([3.]))
 
 
 
