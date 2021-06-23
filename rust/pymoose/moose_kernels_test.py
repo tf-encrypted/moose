@@ -21,7 +21,7 @@ from moose_kernels import ring_sub
 from moose_kernels import ring_sum
 from moose_kernels import sample_key
 
-from moose_kernels_test import TestRuntime
+from moose_test_runtime import TestRuntime
 
 from moose import computation, edsl
 from moose.computation.utils import serialize_computation
