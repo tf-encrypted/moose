@@ -651,6 +651,8 @@ pub enum Operator {
     RepSetupOp(RepSetupOp),
     RepAddOp(RepAddOp),
     AdditiveAddOp(AdditiveAddOp),
+    AdditiveMulOp(AdditiveMulOp),
+    AdditiveRevealOp(AdditiveRevealOp),
     RepMulOp(RepMulOp),
     RepToAddOp(RepToAddOp),
     RepShareOp(RepShareOp),
@@ -685,6 +687,8 @@ operator!(BitSampleOp);
 operator!(RepSetupOp);
 operator!(RepAddOp);
 operator!(AdditiveAddOp);
+operator!(AdditiveMulOp);
+operator!(AdditiveRevealOp);
 operator!(RepMulOp);
 operator!(RepToAddOp);
 operator!(RepShareOp);
@@ -1229,6 +1233,8 @@ impl Context for ConcreteContext {
             Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
     }
 
@@ -1277,6 +1283,8 @@ impl Context for SymbolicContext {
             Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
     }
 
@@ -2336,20 +2344,30 @@ impl RepToAddOp {
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
         R: Placed<Placement = HostPlacement>,
     {
-        let (pa, pb) = add.host_placements();
+        let (player_a, player_b) = add.host_placements();
         let (player0, player1, player2) = x.placement().host_placements();
 
         let ReplicatedTensor {
             shares: [[x00, x10], [x01, x11], [x02, x12]],
         } = x;
 
-        let shares = match (pa.clone(), pb.clone()) {
-            _ if pa == player0 && pb == player1 => [with_context!(player0, ctx, x00 + x10), x11],
-            _ if pa == player0 && pb == player2 => [x10, with_context!(player2, ctx, x02 + x12)],
-            _ if pa == player1 && pb == player2 => [with_context!(player1, ctx, x01 + x11), x12],
-            _ if pa == player1 && pb == player0 => [x11, with_context!(player0, ctx, x00 + x10)],
-            _ if pa == player2 && pb == player0 => [x10, with_context!(player2, ctx, x02 + x12)],
-            _ => [with_context!(pa, ctx, x00 + x10), x11],
+        let shares = match () {
+            _ if player_a == player0 && player_b == player1 => {
+                [with_context!(player0, ctx, x00 + x10), x11]
+            }
+            _ if player_a == player0 && player_b == player2 => {
+                [x10, with_context!(player2, ctx, x02 + x12)]
+            }
+            _ if player_a == player1 && player_b == player2 => {
+                [with_context!(player1, ctx, x01 + x11), x12]
+            }
+            _ if player_a == player1 && player_b == player0 => {
+                [x11, with_context!(player0, ctx, x00 + x10)]
+            }
+            _ if player_a == player2 && player_b == player0 => {
+                [x10, with_context!(player2, ctx, x02 + x12)]
+            }
+            _ => [with_context!(player_a, ctx, x00 + x10), x11],
         };
         AdditiveTensor { shares }
     }
@@ -2360,11 +2378,6 @@ pub struct RepAddOp {
     sig: Signature,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct AdditiveAddOp {
-    sig: Signature,
-}
-
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
@@ -2372,8 +2385,6 @@ modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring128Tensor, Replicated128T
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
-modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveAddOp);
-modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveAddOp);
 
 hybrid_kernel! {
     RepAddOp,
@@ -2385,18 +2396,6 @@ hybrid_kernel! {
         (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
         (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
-    ]
-}
-
-hybrid_kernel! {
-    AdditiveAddOp,
-    [
-        (AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor => Self::add_add_kernel),
-        (AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor => Self::add_add_kernel),
-        (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::add_add_ring_kernel),
-        (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::add_add_ring_kernel),
-        (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::add_ring_add_kernel),
-        (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::add_ring_add_kernel),
     ]
 }
 
@@ -2550,6 +2549,26 @@ impl RepAddOp {
 
         ReplicatedTensor { shares }
     }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AdditiveAddOp {
+    sig: Signature,
+}
+
+modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveAddOp);
+
+hybrid_kernel! {
+    AdditiveAddOp,
+    [
+        (AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor => Self::add_add_kernel),
+        (AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor => Self::add_add_kernel),
+        (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::add_add_ring_kernel),
+        (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::add_add_ring_kernel),
+        (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::add_ring_add_kernel),
+        (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::add_ring_add_kernel),
+    ]
 }
 
 impl AdditiveAddOp {
@@ -2757,6 +2776,74 @@ impl RepMulOp {
     }
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct AdditiveMulOp {
+    sig: Signature,
+}
+
+modelled!(PlacementMul::mul, AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor, AdditiveMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor, AdditiveMulOp);
+
+hybrid_kernel! {
+    AdditiveMulOp,
+    [
+        (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::ring_add_kernel),
+        (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::add_ring_kernel),
+        (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::add_ring_kernel),
+        (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::ring_add_kernel),
+    ]
+}
+
+impl AdditiveMulOp {
+    fn from_signature(sig: BinarySignature) -> Self {
+        AdditiveMulOp { sig: sig.into() }
+    }
+
+    fn ring_add_kernel<C: Context, R>(
+        ctx: &C,
+        add: &AdditivePlacement,
+        x: R,
+        y: AdditiveTensor<R>,
+    ) -> AdditiveTensor<R>
+    where
+        R: Clone,
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementMul<C, R, R, Output = R>,
+    {
+        let (player0, player1) = add.host_placements();
+
+        let AdditiveTensor { shares: [y0, y1] } = &y;
+
+        let z0 = with_context!(player0, ctx, x * y0);
+        let z1 = with_context!(player1, ctx, x * y1);
+
+        AdditiveTensor { shares: [z0, z1] }
+    }
+
+    fn add_ring_kernel<C: Context, R>(
+        ctx: &C,
+        add: &AdditivePlacement,
+        x: AdditiveTensor<R>,
+        y: R,
+    ) -> AdditiveTensor<R>
+    where
+        R: Clone,
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementMul<C, R, R, Output = R>,
+    {
+        let (player0, player1) = add.host_placements();
+
+        let AdditiveTensor { shares: [x0, x1] } = &x;
+
+        let z0 = with_context!(player0, ctx, x0 * y);
+        let z1 = with_context!(player1, ctx, x1 * y);
+
+        AdditiveTensor { shares: [z0, z1] }
+    }
+}
+
 trait PlacementZeroShare<C: Context, K, R> {
     fn zero_share(&self, ctx: &C, setup: &AbstractReplicatedSetup<K>) -> ReplicatedZeroShare<R>;
 }
@@ -2875,6 +2962,38 @@ impl RepRevealOp {
         } = &xe;
 
         with_context!(plc, ctx, x00 + x10 + x21)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AdditiveRevealOp {
+    sig: Signature,
+}
+
+modelled!(PlacementReveal::reveal, HostPlacement, (Additive64Tensor) -> Ring64Tensor, AdditiveRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (Additive128Tensor) -> Ring128Tensor, AdditiveRevealOp);
+
+hybrid_kernel! {
+    AdditiveRevealOp,
+    [
+        (HostPlacement, (Additive64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Additive128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl AdditiveRevealOp {
+    fn from_signature(sig: UnarySignature) -> Self {
+        AdditiveRevealOp { sig: sig.into() }
+    }
+
+    fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: AdditiveTensor<R>) -> R
+    where
+        R: Clone + 'static,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let AdditiveTensor { shares: [x0, x1] } = &xe;
+
+        with_context!(plc, ctx, x0 + x1)
     }
 }
 
