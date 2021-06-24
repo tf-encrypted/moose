@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_variables)]
+#![allow(clippy::enum_variant_names)]
 
 use macros::with_context;
 use std::collections::HashMap;

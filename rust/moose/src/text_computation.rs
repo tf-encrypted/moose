@@ -868,7 +868,7 @@ where
         let mut nrows = 0;
 
         for row in &vec2 {
-            data.extend_from_slice(&row);
+            data.extend_from_slice(row);
             nrows += 1;
         }
 
@@ -1391,18 +1391,18 @@ impl<T: std::fmt::Debug> ToTextual for ndarray::ArrayD<T> {
                 let mut first_row = true;
                 for r in 0..*rows {
                     if !first_row {
-                        buffer.push_str(&", ");
+                        buffer.push_str(", ");
                     }
                     let mut first_col = true;
                     buffer.push('[');
                     for c in 0..*cols {
                         if !first_col {
-                            buffer.push_str(&", ");
+                            buffer.push_str(", ");
                         }
                         buffer += &format!("{:?}", self[[r, c]]);
                         first_col = false;
                     }
-                    buffer.push_str(&"]");
+                    buffer.push(']');
                     first_row = false;
                 }
                 buffer.push(']');
