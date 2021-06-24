@@ -441,7 +441,7 @@ where
                 (FixedTensor::ReplicatedTensor(x), Placement::ReplicatedPlacement(plc)) => {
                     FixedTensor::ReplicatedTensor(x.place(plc))
                 }
-                // TODO this hints that perhaps FixedTensors should be more strongly typed
+                // TODO this hints that perhaps FixedTensors should have separate Moose types
                 _ => unimplemented!(),
             }
         }
@@ -2668,7 +2668,6 @@ impl RepRevealOp {
 
     fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: ReplicatedTensor<R>) -> R
     where
-        // R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let ReplicatedTensor {
