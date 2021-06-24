@@ -4,7 +4,7 @@ use crate::prng::{RngSeed, SEED_SIZE};
 
 pub fn derive_seed(key: &[u8], nonce: &[u8]) -> RngSeed {
     let _ = sodiumoxide::init();
-    let mut hasher = generichash::State::new(SEED_SIZE, Some(key)).unwrap();
+    let mut hasher = generichash::State::new(Some(SEED_SIZE), Some(key)).unwrap();
     hasher.update(nonce).unwrap();
     let h = hasher.finalize().unwrap();
 
