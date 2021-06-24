@@ -441,7 +441,8 @@ where
                 (FixedTensor::ReplicatedTensor(x), Placement::ReplicatedPlacement(plc)) => {
                     FixedTensor::ReplicatedTensor(x.place(plc))
                 }
-                _ => unimplemented!(), // TODO
+                // TODO this hints that perhaps FixedTensors should be more strongly typed
+                _ => unimplemented!(),
             }
         }
     }
