@@ -2990,10 +2990,10 @@ impl AdditiveRevealOp {
     where
         R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        R: Placed<Placement = HostPlacement>,
     {
         let AdditiveTensor { shares: [x0, x1] } = &xe;
-
-        with_context!(plc, ctx, x0 + x1)
+        with_context!(plc, ctx, x1 + x0)
     }
 }
 
@@ -4382,25 +4382,31 @@ mod tests {
 
     #[test]
     fn test_add_exec() {
-        let alice= HostPlacement {
+        let alice = HostPlacement {
             player: "alice".into(),
         };
-        let bob= HostPlacement {
+        let bob = HostPlacement {
             player: "bob".into(),
         };
         let add_plc = AdditivePlacement {
             players: ["alice".into(), "bob".into()],
         };
 
-        let x = Additive64Tensor { shares: [RingTensor(1, alice.clone()), RingTensor(2, bob.clone())]};
-        let y = Additive64Tensor { shares: [RingTensor(1, alice.clone()), RingTensor(2, bob.clone())]};
+        let x = Additive64Tensor {
+            shares: [RingTensor(1, alice.clone()), RingTensor(2, bob.clone())],
+        };
+        let y = Additive64Tensor {
+            shares: [RingTensor(1, alice.clone()), RingTensor(2, bob.clone())],
+        };
 
         let ctx = ConcreteContext::default();
         let z = add_plc.add(&ctx, &x, &y);
         let z_reveal = alice.reveal(&ctx, &z);
-        println!("{:?}", z);
-        println!("{:?}", z_reveal);
+        assert_eq!(z_reveal, RingTensor(6, alice.clone()));
 
+        let z2 = add_plc.mul(&ctx, &x, &RingTensor(10, bob.clone()));
+        let z2_reveal = bob.reveal(&ctx, &z2);
+
+        assert_eq!(z2_reveal, RingTensor(30, bob.clone()));
     }
-
 }
