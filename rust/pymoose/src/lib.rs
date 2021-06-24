@@ -401,7 +401,7 @@ impl TestRuntime {
 }
 
 #[pymodule]
-fn moose_test_runtime(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn moose_runtime(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     m.add_class::<TestRuntime>();
     Ok(())
 }
