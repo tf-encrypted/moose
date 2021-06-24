@@ -131,7 +131,6 @@ mod tests {
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();
-        println!("{}\n\n\n", comp);
         // Networking should not introduce any changes to such a computation
         assert!(comp.contains(
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"

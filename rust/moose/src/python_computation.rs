@@ -730,7 +730,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSample(RingSampleOp {
-                            sig: Signature::nullary(map_type(&op.output_type)?),
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
                             max_value: op.max_value,
                         }),
                         name: op.name.clone(),
@@ -756,7 +760,7 @@ impl TryFrom<PyComputation> for Computation {
                     }
                     ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFill(RingFillOp {
-                            sig: Signature::nullary(map_type(&op.output_type)?),
+                            sig: Signature::unary(Ty::ShapeTy, map_type(&op.output_type)?),
                             value: Value::Ring128(u128::from_str(&op.value)?),
                         }),
                         name: op.name.clone(),
@@ -963,7 +967,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_OnesOperation(op) => Ok(Operation {
                         kind: StdOnes(StdOnesOp {
                             // we can use output type type to determine input type
-                            sig: Signature::nullary(map_type(&op.output_type)?),
+                            sig: Signature::unary(Ty::ShapeTy, map_type(&op.output_type)?),
                         }),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
