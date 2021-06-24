@@ -340,11 +340,20 @@ pub enum Symbolic<T: Placed> {
 pub trait Placed {
     type Placement;
 
+    fn place(self, plc: &Self::Placement) -> Self;
     fn placement(&self) -> Self::Placement;
 }
 
 impl Placed for BitTensor {
     type Placement = HostPlacement;
+
+    fn place(self, plc: &Self::Placement) -> Self {
+        if plc == &self.placement() {
+            self
+        } else {
+            BitTensor(self.0, plc.clone())
+        }
+    }
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
@@ -353,6 +362,14 @@ impl Placed for BitTensor {
 
 impl<T> Placed for RingTensor<T> {
     type Placement = HostPlacement;
+
+    fn place(self, plc: &Self::Placement) -> Self {
+        if plc == &self.placement() {
+            self
+        } else {
+            RingTensor(self.0, plc.clone())
+        }
+    }
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
@@ -364,6 +381,26 @@ where
     R: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
+
+    fn place(self, plc: &Self::Placement) -> Self {
+        if plc == &self.placement() {
+            self
+        } else {
+            let ReplicatedTensor {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = self;
+
+            let (player0, player1, player2) = plc.host_placements();
+
+            ReplicatedTensor {
+                shares: [
+                    [x00.place(&player0), x10.place(&player0)],
+                    [x11.place(&player1), x21.place(&player1)],
+                    [x22.place(&player2), x02.place(&player2)],
+                ],
+            }
+        }
+    }
 
     fn placement(&self) -> Self::Placement {
         let ReplicatedTensor {
@@ -386,12 +423,28 @@ where
 
 impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
 where
-    RingTensorT: Placed,
+    RingTensorT: Placed<Placement = HostPlacement>,
     RingTensorT::Placement: Into<Placement>,
-    ReplicatedTensorT: Placed,
+    ReplicatedTensorT: Placed<Placement = ReplicatedPlacement>,
     ReplicatedTensorT::Placement: Into<Placement>,
 {
     type Placement = Placement;
+
+    fn place(self, plc: &Self::Placement) -> Self {
+        if plc == &self.placement() {
+            self
+        } else {
+            match (self, plc) {
+                (FixedTensor::RingTensor(x), Placement::HostPlacement(plc)) => {
+                    FixedTensor::RingTensor(x.place(plc))
+                }
+                (FixedTensor::ReplicatedTensor(x), Placement::ReplicatedPlacement(plc)) => {
+                    FixedTensor::ReplicatedTensor(x.place(plc))
+                }
+                _ => unimplemented!(), // TODO
+            }
+        }
+    }
 
     fn placement(&self) -> Self::Placement {
         match self {
@@ -404,6 +457,14 @@ where
 impl Placed for PrfKey {
     type Placement = HostPlacement;
 
+    fn place(self, plc: &Self::Placement) -> Self {
+        if plc == &self.placement() {
+            self
+        } else {
+            PrfKey(self.0, plc.clone())
+        }
+    }
+
     fn placement(&self) -> Self::Placement {
         self.1.clone()
     }
@@ -414,6 +475,26 @@ where
     K: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
+
+    fn place(self, plc: &Self::Placement) -> Self {
+        if plc == &self.placement() {
+            self
+        } else {
+            let AbstractReplicatedSetup {
+                keys: [[k00, k10], [k11, k21], [k22, k02]],
+            } = self;
+
+            let (player0, player1, player2) = plc.host_placements();
+
+            AbstractReplicatedSetup {
+                keys: [
+                    [k00.place(&player0), k10.place(&player0)],
+                    [k11.place(&player1), k21.place(&player1)],
+                    [k22.place(&player2), k02.place(&player2)],
+                ],
+            }
+        }
+    }
 
     fn placement(&self) -> Self::Placement {
         let AbstractReplicatedSetup {
@@ -436,9 +517,27 @@ where
 
 impl<T: Placed> Placed for Symbolic<T>
 where
-    T::Placement: Clone,
+    T::Placement: Clone + PartialEq,
 {
     type Placement = T::Placement;
+
+    fn place(self, plc: &Self::Placement) -> Self {
+        if plc == &self.placement() {
+            self
+        } else {
+            match self {
+                Symbolic::Concrete(x) => Symbolic::Concrete(x.place(plc)),
+                Symbolic::Symbolic(SymbolicHandle { op, .. }) => {
+                    // NOTE we use the same underlying operation in the graph;
+                    // alternatively we could insert eg `Identity` or `Place` operations here
+                    Symbolic::Symbolic(SymbolicHandle {
+                        op,
+                        plc: plc.clone(),
+                    })
+                }
+            }
+        }
+    }
 
     fn placement(&self) -> Self::Placement {
         match self {
@@ -665,6 +764,7 @@ impl Add<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn add(self, other: RingTensor<u64>) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
@@ -673,6 +773,7 @@ impl Add<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn add(self, other: RingTensor<u128>) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         RingTensor(self.0.wrapping_add(other.0), self.1)
     }
 }
@@ -681,6 +782,7 @@ impl Sub<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn sub(self, other: RingTensor<u64>) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
@@ -689,6 +791,7 @@ impl Sub<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn sub(self, other: RingTensor<u128>) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         RingTensor(self.0.wrapping_sub(other.0), self.1)
     }
 }
@@ -697,6 +800,7 @@ impl Mul<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
     fn mul(self, other: RingTensor<u64>) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
@@ -705,6 +809,7 @@ impl Mul<RingTensor<u128>> for RingTensor<u128> {
     type Output = RingTensor<u128>;
 
     fn mul(self, other: RingTensor<u128>) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         RingTensor(self.0.wrapping_mul(other.0), self.1)
     }
 }
@@ -715,6 +820,7 @@ pub struct BitTensor(u8, HostPlacement);
 impl BitXor for BitTensor {
     type Output = BitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         BitTensor(self.0 ^ other.0, self.1)
     }
 }
@@ -722,6 +828,7 @@ impl BitXor for BitTensor {
 impl BitAnd for BitTensor {
     type Output = BitTensor;
     fn bitand(self, other: Self) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
         BitTensor(self.0 & other.0, self.1)
     }
 }
@@ -2226,7 +2333,7 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = y;
 
-        let shares = match x_plc {
+        let shares = match () {
             _ if x_plc == player0 => {
                 // add x to y0
                 [
@@ -2282,7 +2389,7 @@ impl RepAddOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
-        let shares = match y_plc {
+        let shares = match () {
             _ if y_plc == player0 => {
                 // add y to x0
                 [
@@ -2560,7 +2667,7 @@ impl RepRevealOp {
 
     fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: ReplicatedTensor<R>) -> R
     where
-        R: Clone + 'static,
+        // R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
     {
         let ReplicatedTensor {
@@ -2597,14 +2704,14 @@ impl RingAddOp {
 
     fn kernel<C: Context, T>(
         _ctx: &C,
-        _plc: &HostPlacement,
+        plc: &HostPlacement,
         x: RingTensor<T>,
         y: RingTensor<T>,
     ) -> RingTensor<T>
     where
         RingTensor<T>: Add<RingTensor<T>, Output = RingTensor<T>>,
     {
-        x + y
+        x.place(plc) + y.place(plc)
     }
 }
 
@@ -2631,14 +2738,14 @@ impl RingSubOp {
 
     fn kernel<C: Context, T>(
         _ctx: &C,
-        _plc: &HostPlacement,
+        plc: &HostPlacement,
         x: RingTensor<T>,
         y: RingTensor<T>,
     ) -> RingTensor<T>
     where
         RingTensor<T>: Sub<RingTensor<T>, Output = RingTensor<T>>,
     {
-        x - y
+        x.place(plc) - y.place(plc)
     }
 }
 
@@ -2665,14 +2772,14 @@ impl RingMulOp {
 
     fn kernel<C: Context, T>(
         _ctx: &C,
-        _plc: &HostPlacement,
+        plc: &HostPlacement,
         x: RingTensor<T>,
         y: RingTensor<T>,
     ) -> RingTensor<T>
     where
         RingTensor<T>: Mul<RingTensor<T>, Output = RingTensor<T>>,
     {
-        x * y
+        x.place(plc) * y.place(plc)
     }
 }
 
@@ -2697,11 +2804,11 @@ impl BitXorOp {
         BitXorOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
+    fn kernel<C: Context>(_ctx: &C, plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
     where
         BitTensor: BitXor<BitTensor, Output = BitTensor>,
     {
-        x ^ y
+        x.place(plc) ^ y.place(plc)
     }
 }
 
@@ -2715,11 +2822,11 @@ impl BitAndOp {
         BitAndOp { sig: sig.into() }
     }
 
-    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
+    fn kernel<C: Context>(_ctx: &C, plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
     where
         BitTensor: BitAnd<BitTensor, Output = BitTensor>,
     {
-        x & y
+        x.place(plc) & y.place(plc)
     }
 }
 
