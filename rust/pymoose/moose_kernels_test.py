@@ -3,7 +3,7 @@ import random
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
-from pymoose import TestRuntime
+from pymoose import MooseRuntime
 from pymoose import moose_kernels as mkls
 
 from moose import edsl
@@ -166,9 +166,9 @@ class RunComputation(parameterized.TestCase):
         }
         args = {"": ""}
 
-        runtime = TestRuntime(storages)
+        runtime = MooseRuntime(storages)
         runtime.evaluate_computation(comp_bin, args)
-        result = runtime.get_value_from_storage("output", "output_owner")
+        result = runtime.get_value_from_storage("output_owner", "output")
         np.testing.assert_array_equal(result, np.array([3.0]))
 
 

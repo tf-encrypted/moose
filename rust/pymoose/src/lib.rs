@@ -2,7 +2,7 @@ use moose::bit::BitTensor;
 use moose::computation::SessionId;
 use moose::computation::Value;
 use moose::computation::{Computation, Role};
-use moose::execution::AsyncSession;
+use moose::execution::{AsyncSession, AsyncSessionHandle};
 use moose::execution::{AsyncExecutor, AsyncNetworkingImpl, Identity};
 use moose::fixedpoint::Convert;
 use moose::networking::{AsyncNetworking, LocalAsyncNetworking};
@@ -312,14 +312,14 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 }
 
 #[pyclass]
-pub struct TestRuntime {
+pub struct MooseRuntime {
     executors: HashMap<String, AsyncExecutor>,
     networking: AsyncNetworkingImpl,
     storages: HashMap<String, Arc<dyn Send + Sync + AsyncStorage>>,
 }
 
 #[pymethods]
-impl TestRuntime {
+impl MooseRuntime {
     #[new]
     fn new(storages: HashMap<String, HashMap<String, PyReadonlyArrayDyn<f64>>>) -> Self {
         let mut executors: HashMap<String, AsyncExecutor> = HashMap::new();
@@ -341,14 +341,14 @@ impl TestRuntime {
             let executor = AsyncExecutor::default();
             executors.insert(placement, executor);
         }
-        TestRuntime {
+        MooseRuntime {
             executors,
             networking,
             storages: runtime_storages,
         }
     }
 
-    fn evaluate_computation(&self, computation: Vec<u8>, arguments: HashMap<String, String>) {
+    fn evaluate_computation(&self, computation: Vec<u8>, arguments: HashMap<String, String>) -> PyResult<()> {
         let moose_sessions: HashMap<String, AsyncSession> = HashMap::new();
 
         let arguments = arguments
@@ -363,7 +363,8 @@ impl TestRuntime {
             .map(|arg| (Role::from(arg), Identity::from(arg)))
             .collect::<HashMap<Role, Identity>>();
 
-        for (placement, executor) in &self.executors {
+        let session_handles: Vec<AsyncSessionHandle>;
+        for (placement, executor) in self.executors.iter() {
             let mut moose_session = AsyncSession {
                 sid: SessionId::from("foobar"),
                 arguments: arguments.clone(),
@@ -378,14 +379,22 @@ impl TestRuntime {
                 .run_computation(&computation, &role_assignment, &own_identity, moose_session)
                 .unwrap();
 
-            moose_session_handle.join();
+            session_handles.push(moose_session_handle)
             // Then await and output and filter units.
+        };
+        let (_, errors): (Vec<_>, Vec<anyhow::Error>) = session_handles.iter()
+            .map(|handle| handle.block_on())
+            .partition(|errs| errs.is_empty());
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
         }
     }
 
     // Can we use a block_on approach or do we wan to use pyo3-asyncio
     // to await an async rust in python? https://pyo3.rs/v0.13.2/ecosystem/async-await.html
-    fn get_value_from_storage(&self, key: String, placement: String) {
+    fn get_value_from_storage(&self, placement: String, key: String) {
         // If we use this Tokio runtime, it should be moved the class
         let mut rt = Runtime::new().unwrap();
         let val = rt.block_on(async {
@@ -402,6 +411,6 @@ impl TestRuntime {
 
 #[pymodule]
 fn moose_runtime(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_class::<TestRuntime>();
+    m.add_class::<MooseRuntime>();
     Ok(())
 }
