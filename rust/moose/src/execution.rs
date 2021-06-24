@@ -1018,6 +1018,7 @@ impl AsyncSessionHandle {
             let res = task.await;
             if let Some(e) = AsyncSessionHandle::process_task_result(res) {
                 errors.push(e);
+                return errors;
             }
         }
         errors
