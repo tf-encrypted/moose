@@ -2990,7 +2990,6 @@ impl AdditiveRevealOp {
     where
         R: Clone + 'static,
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-        R: Placed<Placement = HostPlacement>,
     {
         let AdditiveTensor { shares: [x0, x1] } = &xe;
         with_context!(plc, ctx, x1 + x0)
