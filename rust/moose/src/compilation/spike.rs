@@ -2990,7 +2990,6 @@ impl AdditiveRevealOp {
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingAddOp {
     sig: Signature,
