@@ -2356,7 +2356,7 @@ impl RepToAddOp {
                 [with_context!(player0, ctx, x00 + x10), x21]
             }
             _ if player_a == player0 && player_b == player2 => {
-                [x00, with_context!(player2, ctx, x11 + x21)]
+                [with_context!(player0, ctx, x00 + x10), x22]
             }
             _ if player_a == player1 && player_b == player2 => {
                 [with_context!(player1, ctx, x11 + x21), x02]
