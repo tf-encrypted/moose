@@ -10,11 +10,11 @@ use moose::prim::Seed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
 use moose::ring::Ring64Tensor;
-use moose::standard::{Float64Tensor, Shape};
+use moose::standard::{Float64Tensor, Shape, StandardTensor};
 use moose::utils;
 use ndarray::IxDyn;
-use ndarray::{ArrayD};
-use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
+use ndarray::{ArrayD, LinalgScalar};
+use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
 use pyo3::{prelude::*, types::PyBytes, types::PyList, exceptions::PyTypeError};
 use std::collections::HashMap;
@@ -22,7 +22,7 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 use std::sync::Arc;
 pub mod python_computation;
-use moose::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage};
+use moose::storage::{AsyncStorage, LocalAsyncStorage};
 use tokio::runtime::Runtime;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -48,15 +48,6 @@ fn binary_pyfn<'py>(
     let res = binary_op(x_ring, y_ring);
     let res_array = ring64_to_array(res);
     res_array.to_pyarray(py)
-}
-
-fn dynarray_to_value(arr: &PyReadonlyArrayDyn<f64>) -> Value {
-    let arr_wrap = arr
-        .as_array()
-        .to_owned()
-        .into_dimensionality::<IxDyn>()
-        .unwrap();
-    Value::from(Float64Tensor::from(arr_wrap))
 }
 
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
@@ -302,6 +293,33 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     Ok(())
 }
 
+fn pyobj_to_tensor<T>(py: Python, obj: &PyObject) -> StandardTensor<T> where T: Element + LinalgScalar {
+    let pyarray = obj.cast_as::<PyArrayDyn<T>>(py).unwrap();
+    StandardTensor::from(
+        pyarray.to_owned_array().into_dimensionality::<IxDyn>().unwrap()
+    )
+}
+
+fn pyobj_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Error> {
+    let dtype_obj = obj.getattr(py, "dtype")?;
+    let dtype: &PyArrayDescr = dtype_obj.cast_as(py).unwrap();
+    let np_dtype = dtype.get_datatype().unwrap();
+    match np_dtype {
+        numpy::DataType::Float32 => Ok(Value::from(pyobj_to_tensor::<f32>(py, obj))),
+        numpy::DataType::Float64 => Ok(Value::from(pyobj_to_tensor::<f64>(py, obj))),
+        numpy::DataType::Int8 => Ok(Value::from(pyobj_to_tensor::<i8>(py, obj))),
+        numpy::DataType::Int16 => Ok(Value::from(pyobj_to_tensor::<i16>(py, obj))),
+        numpy::DataType::Int32 => Ok(Value::from(pyobj_to_tensor::<i32>(py, obj))),
+        numpy::DataType::Int64 => Ok(Value::from(pyobj_to_tensor::<i64>(py, obj))),
+        numpy::DataType::Uint8 => Ok(Value::from(pyobj_to_tensor::<u8>(py, obj))),
+        numpy::DataType::Uint16 => Ok(Value::from(pyobj_to_tensor::<u16>(py, obj))),
+        numpy::DataType::Uint32 => Ok(Value::from(pyobj_to_tensor::<u32>(py, obj))),
+        numpy::DataType::Uint64 => Ok(Value::from(pyobj_to_tensor::<u64>(py, obj))),
+        otherwise => Err(anyhow::Error::msg(format!("Unsupported numpy datatype {:?}", otherwise))),
+    }
+}
+
+
 #[pyclass]
 pub struct MooseRuntime {
     executors: HashMap<String, AsyncExecutor>,
@@ -312,7 +330,7 @@ pub struct MooseRuntime {
 #[pymethods]
 impl MooseRuntime {
     #[new]
-    fn new(storages: HashMap<String, HashMap<String, PyReadonlyArrayDyn<f64>>>) -> Self {
+    fn new(py: Python, storages: HashMap<String, HashMap<String, PyObject>>) -> Self {
         let mut executors: HashMap<String, AsyncExecutor> = HashMap::new();
         let networking: Arc<dyn Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
@@ -320,9 +338,10 @@ impl MooseRuntime {
             HashMap::new();
 
         for (placement, storage) in storages {
+            // TODO handle Result in map predicate instead of `unwrap`
             let storage = storage
                 .iter()
-                .map(|arg| (arg.0.to_owned(), dynarray_to_value(arg.1)))
+                .map(|arg| (arg.0.to_owned(), pyobj_to_value(py, arg.1).unwrap()))
                 .collect::<HashMap<String, Value>>();
 
             let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
@@ -409,7 +428,7 @@ impl MooseRuntime {
         // Return value
         match val {
             Value::Float64Tensor(tensor) => Ok(tensor.0.to_pyarray(py)),
-            _otherwise => Err(PyTypeError::new_err("Value type in storage is not handled: {}."))
+            _otherwise => Err(PyTypeError::new_err(r#"Value type in storage is not handled: {}."#))
         }
     }
 }
