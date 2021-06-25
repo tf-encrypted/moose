@@ -192,7 +192,7 @@ macro_rules! std_binary_kernel {
     ($op:ty, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-                match (self.sig) {
+                match self.sig {
                     signature![(Ty::Float32TensorTy, Ty::Float32TensorTy) -> _] => {
                         function_kernel!(Float32Tensor, Float32Tensor, $k)
                     }
@@ -524,8 +524,10 @@ impl Compile<Kernel> for RingSumOp {
 impl Compile<Kernel> for RingShapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(_) -> Ty::Ring64TensorTy] => function_kernel!(Ring64Tensor, |x| x.shape()),
-            signature![(_) -> Ty::Ring128TensorTy] => {
+            signature![(Ty::Ring64TensorTy) -> Ty::ShapeTy] => {
+                function_kernel!(Ring64Tensor, |x| x.shape())
+            }
+            signature![(Ty::Ring128TensorTy) -> Ty::ShapeTy] => {
                 function_kernel!(Ring128Tensor, |x| x.shape())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
