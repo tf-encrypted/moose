@@ -2,8 +2,8 @@ use moose::bit::BitTensor;
 use moose::computation::SessionId;
 use moose::computation::Value;
 use moose::computation::{Computation, Role};
-use moose::execution::{AsyncSession, AsyncSessionHandle};
 use moose::execution::{AsyncExecutor, AsyncNetworkingImpl, Identity};
+use moose::execution::{AsyncSession, AsyncSessionHandle};
 use moose::fixedpoint::Convert;
 use moose::networking::{AsyncNetworking, LocalAsyncNetworking};
 use moose::prim::Seed;
@@ -348,7 +348,11 @@ impl MooseRuntime {
         }
     }
 
-    fn evaluate_computation(&self, computation: Vec<u8>, arguments: HashMap<String, String>) -> PyResult<()> {
+    fn evaluate_computation(
+        &self,
+        computation: Vec<u8>,
+        arguments: HashMap<String, String>,
+    ) -> PyResult<()> {
         let moose_sessions: HashMap<String, AsyncSession> = HashMap::new();
 
         let arguments = arguments
@@ -363,7 +367,7 @@ impl MooseRuntime {
             .map(|arg| (Role::from(arg), Identity::from(arg)))
             .collect::<HashMap<Role, Identity>>();
 
-        let session_handles: Vec<AsyncSessionHandle>;
+        let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
         for (placement, executor) in self.executors.iter() {
             let mut moose_session = AsyncSession {
                 sid: SessionId::from("foobar"),
@@ -381,15 +385,29 @@ impl MooseRuntime {
 
             session_handles.push(moose_session_handle)
             // Then await and output and filter units.
-        };
-        let (_, errors): (Vec<_>, Vec<anyhow::Error>) = session_handles.iter()
-            .map(|handle| handle.block_on())
-            .partition(|errs| errs.is_empty());
-        if errors.is_empty() {
-            Ok(())
-        } else {
-            Err(errors)
         }
+        // let (_, errors): (Vec<_>, Vec<anyhow::Error>) = session_handles
+        //     .iter()
+        //     .map(|handle| handle.block_on())
+        //     .partition(|errs| errs.is_empty());
+        // if errors.is_empty() {
+        //     Ok(())
+        // } else {
+        //     Err(errors)
+        // }
+
+        let mut rt = Runtime::new().unwrap();
+        for mut handle in session_handles {
+            let errors = rt.block_on(handle.join());
+        }
+
+        // for mut handle in session_handles {
+        //     tokio::spawn(async move {
+        //         let errors = handle.join();
+        //     });
+        // }
+
+        Ok(())
     }
 
     // Can we use a block_on approach or do we wan to use pyo3-asyncio
