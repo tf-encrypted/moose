@@ -911,24 +911,20 @@ pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
 }
 
 macro_rules! modelled {
-    // Helper rule to make attributes optional
-    ($t:ident::$f:ident, $plc:ty, ($($args:tt)*) -> $u:ty, $op:ident) => {
-        modelled!($t::$f, $plc, {} ($($args)*) -> $u, $op);
-    };
     /*
     Nullary
     */
-    ($t:ident::$f:ident, $plc:ty, {$($attr_id:ident : $attr_ty:ty),*} () -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $({$($attr_id:ident : $attr_ty:ty),*})? () -> $u:ty, $op:ident) => {
         impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {}
 
         impl $t<ConcreteContext, $u> for $plc {
-            fn $f(&self, ctx: &ConcreteContext, $($attr_id:$attr_ty),*) -> $u {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*)?) -> $u {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(op.into(), &self.into(), vec![])
                     .try_into()
@@ -937,13 +933,13 @@ macro_rules! modelled {
         }
 
         impl $t<SymbolicContext, <$u as KnownType>::Symbolic> for $plc {
-            fn $f(&self, ctx: &SymbolicContext, $($attr_id:$attr_ty),*) -> <$u as KnownType>::Symbolic {
+            fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*)?) -> <$u as KnownType>::Symbolic {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(op.into(), &self.into(), vec![])
                     .try_into()
@@ -958,20 +954,20 @@ macro_rules! modelled {
     ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
         modelled!($t::$f, $plc, {} ($t0) -> $u, $op);
     };
-    ($t:ident::$f:ident, $plc:ty, {$($attr_id:ident : $attr_ty:ty),*} ($t0:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $({$($attr_id:ident : $attr_ty:ty),*})? ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
 
         impl $t<ConcreteContext, $t0> for $plc {
             type Output = $u;
 
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, $($attr_id:$attr_ty),*) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, $($($attr_id:$attr_ty),*)?) -> Self::Output {
                 let sig = UnarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
@@ -982,14 +978,14 @@ macro_rules! modelled {
         impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
             type Output = <$u as KnownType>::Symbolic;
 
-            fn $f(&self, ctx: &SymbolicContext, x0: &<$t0 as KnownType>::Symbolic, $($attr_id:$attr_ty),*) -> Self::Output {
+            fn $f(&self, ctx: &SymbolicContext, x0: &<$t0 as KnownType>::Symbolic, $($($attr_id:$attr_ty),*)?) -> Self::Output {
                 let sig = UnarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
@@ -1001,13 +997,13 @@ macro_rules! modelled {
     /*
     Binary
     */
-    ($t:ident::$f:ident, $plc:ty, {$($attr_id:ident : $attr_ty:ty),*} ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $({$($attr_id:ident : $attr_ty:ty),*})? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
         impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1> for $plc {
             type Output = $u;
 
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, $($attr_id:$attr_ty),*) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, $($($attr_id:$attr_ty),*)?) -> Self::Output {
                 let sig = BinarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
@@ -1015,7 +1011,7 @@ macro_rules! modelled {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(
                     op.into(),
@@ -1037,7 +1033,7 @@ macro_rules! modelled {
                 ctx: &SymbolicContext,
                 x0: &<$t0 as KnownType>::Symbolic,
                 x1: &<$t1 as KnownType>::Symbolic,
-                $($attr_id:$attr_ty),*
+                $($($attr_id:$attr_ty),*)?
             ) -> Self::Output {
                 let sig = BinarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
@@ -1046,7 +1042,7 @@ macro_rules! modelled {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(
                     op.into(),
@@ -1062,13 +1058,13 @@ macro_rules! modelled {
     /*
     Ternary
     */
-    ($t:ident::$f:ident, $plc:ty, {$($attr_id:ident : $attr_ty:ty),*} ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $({$($attr_id:ident : $attr_ty:ty),*})? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
         impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1, $t2> for $plc {
             type Output = $u;
 
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, x2: &$t2, $($attr_id:$attr_ty),*) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, x2: &$t2, $($($attr_id:$attr_ty),*)?) -> Self::Output {
                 let sig = TernarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
@@ -1077,7 +1073,7 @@ macro_rules! modelled {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(
                     op.into(),
@@ -1105,7 +1101,7 @@ macro_rules! modelled {
                 x0: &<$t0 as KnownType>::Symbolic,
                 x1: &<$t1 as KnownType>::Symbolic,
                 x2: &<$t2 as KnownType>::Symbolic,
-                $($attr_id:$attr_ty),*
+                $($($attr_id:$attr_ty),*)?
             ) -> Self::Output {
                 let sig = TernarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
@@ -1115,7 +1111,7 @@ macro_rules! modelled {
                 };
                 let op = $op {
                     sig: sig.into(),
-                    $($attr_id),*
+                    $($($attr_id),*)?
                 };
                 ctx.execute(
                     op.into(),
