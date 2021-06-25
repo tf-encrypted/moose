@@ -16,7 +16,7 @@ use ndarray::IxDyn;
 use ndarray::{ArrayD};
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
-use pyo3::{prelude::*, types::PyBytes, types::PyList};
+use pyo3::{prelude::*, types::PyBytes, types::PyList, exceptions::PyTypeError};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
@@ -34,13 +34,6 @@ fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
     let inner_arr = r.0;
     let shape = inner_arr.shape();
     let unwrapped = inner_arr.mapv(|x| x.0);
-    unwrapped.into_shape(shape).unwrap()
-}
-
-fn float64_to_array(r: Float64Tensor) -> ArrayD<f64> {
-    let inner_arr = r.0;
-    let shape = inner_arr.shape();
-    let unwrapped = inner_arr.mapv(|x| x);
     unwrapped.into_shape(shape).unwrap()
 }
 
@@ -401,9 +394,10 @@ impl MooseRuntime {
 
     // Can we use a block_on approach or do we wan to use pyo3-asyncio
     // to await an async rust in python? https://pyo3.rs/v0.13.2/ecosystem/async-await.html
-    fn get_value_from_storage(&self, placement: String, key: String) {
+    fn get_value_from_storage<'py>(&self, py: Python<'py>, placement: String, key: String) -> PyResult<&'py PyArrayDyn<f64>> {
         // If we use this Tokio runtime, it should be moved the class
-        let mut rt = Runtime::new().unwrap();
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
         let val = rt.block_on(async {
             let val = self.storages[&placement]
                 .load(&key, &SessionId::from("foobar"), None, "")
@@ -413,6 +407,10 @@ impl MooseRuntime {
         });
 
         // Return value
+        match val {
+            Value::Float64Tensor(tensor) => Ok(tensor.0.to_pyarray(py)),
+            _otherwise => Err(PyTypeError::new_err("Value type in storage is not handled: {}."))
+        }
     }
 }
 

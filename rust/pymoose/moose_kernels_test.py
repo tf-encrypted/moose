@@ -168,8 +168,8 @@ class RunComputation(parameterized.TestCase):
 
         runtime = MooseRuntime(storages)
         runtime.evaluate_computation(comp_bin, args)
-        # result = runtime.get_value_from_storage("output_owner", "output")
-        # np.testing.assert_array_equal(result, np.array([3.0]))
+        result = runtime.get_value_from_storage("output_owner", "output")
+        np.testing.assert_array_equal(result, np.array([3.0]))
 
 
 if __name__ == "__main__":
