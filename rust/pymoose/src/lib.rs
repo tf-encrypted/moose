@@ -353,7 +353,6 @@ impl MooseRuntime {
         computation: Vec<u8>,
         arguments: HashMap<String, String>,
     ) -> PyResult<()> {
-        let moose_sessions: HashMap<String, AsyncSession> = HashMap::new();
 
         let arguments = arguments
             .iter()
@@ -368,6 +367,9 @@ impl MooseRuntime {
             .collect::<HashMap<Role, Identity>>();
 
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
         for (placement, executor) in self.executors.iter() {
             let mut moose_session = AsyncSession {
                 sid: SessionId::from("foobar"),
@@ -375,38 +377,27 @@ impl MooseRuntime {
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.storages[placement]),
             };
-
             let own_identity = Identity::from(placement);
             let computation = create_computation_graph_from_py_bytes(computation.clone());
-
             let (mut moose_session_handle, _outputs) = executor
                 .run_computation(&computation, &role_assignment, &own_identity, moose_session)
                 .unwrap();
-
             session_handles.push(moose_session_handle)
             // Then await and output and filter units.
         }
+
         // let (_, errors): (Vec<_>, Vec<anyhow::Error>) = session_handles
         //     .iter()
-        //     .map(|handle| handle.block_on())
+        //     .map(|handle| rt.block_on(handle.join()))
         //     .partition(|errs| errs.is_empty());
         // if errors.is_empty() {
         //     Ok(())
         // } else {
         //     Err(errors)
         // }
-
-        let mut rt = Runtime::new().unwrap();
         for mut handle in session_handles {
-            let errors = rt.block_on(handle.join());
+            let _errors = rt.block_on(handle.join());
         }
-
-        // for mut handle in session_handles {
-        //     tokio::spawn(async move {
-        //         let errors = handle.join();
-        //     });
-        // }
-
         Ok(())
     }
 
