@@ -654,6 +654,7 @@ pub enum Operator {
     RepToAddOp(RepToAddOp),
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
+    RepTruncPrOp(RepTruncPrOp),
     AdditiveAddOp(AdditiveAddOp),
     AdditiveMulOp(AdditiveMulOp),
     AdditiveRevealOp(AdditiveRevealOp),
@@ -690,6 +691,7 @@ operator!(RepMulOp);
 operator!(RepToAddOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
+operator!(RepTruncPrOp);
 operator!(AdditiveAddOp);
 operator!(AdditiveMulOp);
 operator!(AdditiveRevealOp);
@@ -1195,6 +1197,12 @@ trait PlacementRepToAdd<C: Context, T> {
     fn rep_to_add(&self, ctx: &C, x: &T) -> Self::Output;
 }
 
+trait PlacementRepTruncPr<C: Context, S, T> {
+    type Output;
+
+    fn trunc_pr(&self, ctx: &C, s: &S, x: &T, amount: usize) -> Self::Output;
+}
+
 pub trait Context {
     type Value;
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
@@ -1236,6 +1244,7 @@ impl Context for ConcreteContext {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -1346,6 +1355,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -2998,6 +3008,245 @@ impl RepRevealOp {
     }
 }
 
+macro_rules! model_shift {
+    ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
+        impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
+
+        impl $t<ConcreteContext, $t0> for $plc {
+            type Output = $u;
+
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, amount: usize) -> Self::Output {
+                let sig = UnarySignature {
+                    arg0: <$t0 as KnownType>::TY,
+                    ret: <$u as KnownType>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    amount,
+                };
+                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                    .try_into()
+                    .unwrap()
+            }
+        }
+
+        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn $f(
+                &self,
+                ctx: &SymbolicContext,
+                x0: &<$t0 as KnownType>::Symbolic,
+                amount: usize,
+            ) -> Self::Output {
+                let sig = UnarySignature {
+                    arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
+                    ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    amount,
+                };
+                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                    .try_into()
+                    .unwrap()
+            }
+        }
+    };
+    /*
+
+    Binary
+    */
+    ($t:ident::$f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+        impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
+
+        impl $t<ConcreteContext, $t0, $t1> for $plc {
+            type Output = $u;
+
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, amount: usize) -> Self::Output {
+                let sig = BinarySignature {
+                    arg0: <$t0 as KnownType>::TY,
+                    arg1: <$t1 as KnownType>::TY,
+                    ret: <$u as KnownType>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    amount,
+                };
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    vec![x0.clone().into(), x1.clone().into()],
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic>
+            for $plc
+        {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn $f(
+                &self,
+                ctx: &SymbolicContext,
+                x0: &<$t0 as KnownType>::Symbolic,
+                x1: &<$t1 as KnownType>::Symbolic,
+                amount: usize,
+            ) -> Self::Output {
+                let sig = BinarySignature {
+                    arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
+                    arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
+                    ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    amount,
+                };
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    vec![x0.clone().into(), x1.clone().into()],
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+    };
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RepTruncPrOp {
+    sig: Signature,
+    amount: usize,
+}
+
+model_shift!(PlacementRepTruncPr::trunc_pr, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+
+kernel! {
+    RepTruncPrOp,
+    [
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
+    ]
+}
+
+trait Ring {
+    const SIZE: usize;
+}
+
+impl<R: Ring + Placed> Ring for Symbolic<R> {
+    const SIZE: usize = <R as Ring>::SIZE;
+}
+
+impl Ring for Ring64Tensor {
+    const SIZE: usize = 64;
+}
+
+impl Ring for Ring128Tensor {
+    const SIZE: usize = 128;
+}
+
+impl RepTruncPrOp {
+    fn kernel<C: Context, R, K>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        amount: usize,
+        s: AbstractReplicatedSetup<K>,
+        xe: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone + Into<C::Value> + TryFrom<C::Value> + Ring,
+        HostPlacement: PlacementSample<C, R>,
+        HostPlacement: PlacementKeyGen<C, K>,
+        HostPlacement: PlacementShl<C, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementSub<C, R, R, Output = R>,
+    {
+        let m = amount;
+
+        let (player0, player1, player2) = rep.host_placements();
+
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &xe;
+
+        let k2 = player2.keygen(ctx);
+
+        let r_bits: Vec<_> = (0..R::SIZE).map(|_| player2.sample(ctx)).collect();
+        let r = RepTruncPrOp::bit_compose(ctx, &r_bits, &player2);
+
+        let r_top_bits: Vec<_> = (m..R::SIZE - 1).map(|i| r_bits[i].clone()).collect();
+        let r_top_ring = RepTruncPrOp::bit_compose(ctx, &r_bits[m..R::SIZE - 1], &player2);
+        let r_msb = r_bits[R::SIZE - 1].clone();
+
+        let tmp: [R; 3] = [r, r_top_ring, r_msb];
+        let prep_shares: Vec<_> = tmp
+            .iter()
+            .map(|x| RepTruncPrOp::generate_additive_share(ctx, x, &player2))
+            .collect();
+
+        let signed = true;
+        // y_prime =
+        //     RepTruncPrOp::two_party_trunc_pr(ctx, &xe, m, &r, &r_top, [&player0, &player1], signed);
+
+        ReplicatedTensor {
+            shares: [
+                [x00.clone(), x10.clone()],
+                [x11.clone(), x21.clone()],
+                [x22.clone(), x02.clone()],
+            ],
+        }
+    }
+    fn bit_compose<C: Context, R>(ctx: &C, bits: &[R], plc: &HostPlacement) -> R
+    where
+        R: Clone,
+        HostPlacement: PlacementShl<C, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let shifted_bits: Vec<_> = (0..bits.len()).map(|i| plc.shl(ctx, &bits[i], i)).collect();
+        RepTruncPrOp::tree_reduce(ctx, &shifted_bits, plc)
+    }
+
+    fn tree_reduce<C: Context, R>(ctx: &C, sequence: &[R], plc: &HostPlacement) -> R
+    where
+        R: Clone,
+        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+    {
+        let n = sequence.len();
+        if n == 1 {
+            sequence[0].clone()
+        } else {
+            let mut reduced: Vec<_> = (0..n / 2)
+                .map(|i| {
+                    let x0: &R = &sequence[2 * i];
+                    let x1: &R = &sequence[2 * i + 1];
+                    let z = with_context!(plc, ctx, x0 + x1);
+                    z
+                })
+                .collect();
+            if n % 2 == 1 {
+                reduced.push(sequence[n - 1].clone());
+            }
+            RepTruncPrOp::tree_reduce(ctx, &reduced, plc)
+        }
+    }
+    fn generate_additive_share<C: Context, R, K>(ctx: &C, x: &R, plc: &HostPlacement) -> (R, R)
+    where
+        R: Clone,
+        HostPlacement: PlacementKeyGen<C, K>,
+        HostPlacement: PlacementSub<C, R, R, Output = R>,
+        HostPlacement: PlacementSample<C, R>,
+    {
+        let k = plc.keygen(ctx);
+        let share0 = plc.sample(ctx);
+        // derive seed(k)
+        let share1 = with_context!(plc, ctx, x - share0);
+        (share0, share1)
+    }
+    // fn two_party_trunc_pr<C: Context, R, K>(ctx: &C, x: )
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AdditiveRevealOp {
     sig: Signature,
@@ -3137,52 +3386,6 @@ impl RingMulOp {
 pub struct RingShlOp {
     sig: Signature,
     amount: usize,
-}
-macro_rules! model_shift {
-    ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
-        impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
-
-        impl $t<ConcreteContext, $t0> for $plc {
-            type Output = $u;
-
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, amount: usize) -> Self::Output {
-                let sig = UnarySignature {
-                    arg0: <$t0 as KnownType>::TY,
-                    ret: <$u as KnownType>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    amount,
-                };
-                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
-                    .try_into()
-                    .unwrap()
-            }
-        }
-
-        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
-            type Output = <$u as KnownType>::Symbolic;
-
-            fn $f(
-                &self,
-                ctx: &SymbolicContext,
-                x0: &<$t0 as KnownType>::Symbolic,
-                amount: usize,
-            ) -> Self::Output {
-                let sig = UnarySignature {
-                    arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
-                    ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    amount,
-                };
-                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
-                    .try_into()
-                    .unwrap()
-            }
-        }
-    };
 }
 
 // TODO expand modelled! to be applicable here instead
