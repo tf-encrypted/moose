@@ -2348,26 +2348,26 @@ impl RepToAddOp {
         let (player0, player1, player2) = x.placement().host_placements();
 
         let ReplicatedTensor {
-            shares: [[x00, x10], [x01, x11], [x02, x12]],
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
         let shares = match () {
             _ if player_a == player0 && player_b == player1 => {
-                [with_context!(player0, ctx, x00 + x10), x11]
+                [with_context!(player0, ctx, x00 + x10), x21]
             }
             _ if player_a == player0 && player_b == player2 => {
-                [x10, with_context!(player2, ctx, x02 + x12)]
+                [x00, with_context!(player2, ctx, x11 + x21)]
             }
             _ if player_a == player1 && player_b == player2 => {
-                [with_context!(player1, ctx, x01 + x11), x12]
+                [with_context!(player1, ctx, x11 + x21), x02]
             }
             _ if player_a == player1 && player_b == player0 => {
-                [x11, with_context!(player0, ctx, x00 + x10)]
+                [x21, with_context!(player0, ctx, x00 + x10)]
             }
             _ if player_a == player2 && player_b == player0 => {
-                [x10, with_context!(player2, ctx, x02 + x12)]
+                [x22, with_context!(player0, ctx, x00 + x10)]
             }
-            _ => [with_context!(player_a, ctx, x00 + x10), x11],
+            _ => [with_context!(player_a, ctx, x00 + x10), x21],
         };
         AdditiveTensor { shares }
     }
