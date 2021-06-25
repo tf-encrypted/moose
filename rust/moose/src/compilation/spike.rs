@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 use std::ops::{BitAnd, BitXor};
+use futures::future::{Map, Shared};
+use futures::FutureExt;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Placement {
@@ -2273,6 +2275,11 @@ macro_rules! kernel {
     };
 }
 
+// TODO(Morten) make second attempt at inlining
+fn remove_err<T, E>(r: std::result::Result<T, E>) -> std::result::Result<T, ()> {
+    r.map_err(|_| ())
+}
+
 /// Kernel function maybe be evaluated in symbolic contexts
 macro_rules! hybrid_kernel {
 
@@ -2354,39 +2361,41 @@ macro_rules! hybrid_kernel {
             }
         )+
 
-        $(
-            impl UnaryKernel<
-                AsyncContext,
-                $plc,
-                <$t0 as KnownType>::Async,
-                <$u as KnownType>::Async,
-            > for $op
-            {
-                fn compile(&self, ctx: &AsyncContext, plc: &$plc) -> Box<dyn Fn(
-                    &AsyncContext,
-                    &$plc,
-                    <$t0 as KnownType>::Async)
-                    -> <$u as KnownType>::Async>
-                {
-                    let k = derive_runtime_kernel![unary, $($kp)+, self];
+        // $(
+        //     impl UnaryKernel<
+        //         AsyncContext,
+        //         $plc,
+        //         <$t0 as KnownType>::Async,
+        //         <$u as KnownType>::Async,
+        //     > for $op
+        //     {
+        //         fn compile(&self, ctx: &AsyncContext, plc: &$plc) -> Box<dyn Fn(
+        //             &AsyncContext,
+        //             &$plc,
+        //             <$t0 as KnownType>::Async)
+        //             -> <$u as KnownType>::Async>
+        //         {
+        //             let k = derive_runtime_kernel![unary, $($kp)+, self];
 
-                    Box::new(move |
-                        ctx: &AsyncContext,
-                        plc: &$plc,
-                        x0: <$t0 as KnownType>::Async,
-                    | {
-                        let (sender, receiver) = tokio::sync::oneshot::channel();
-                        let task = tokio::spawn(async move {
-                            let x0 = x0.0.await.unwrap();
-                            let y = k(ctx, plc, x0);
-                            // unimplemented!()
-                            sender.send(y);
-                        });
-                        receiver
-                    })
-                }
-            }
-        )+
+        //             Box::new(move |
+        //                 ctx: &AsyncContext,
+        //                 plc: &$plc,
+        //                 x0: <$t0 as KnownType>::Async,
+        //             | {
+        //                 let (sender, receiver) = oneshot::channel();
+        //                 let shared_receiver =
+        //                     receiver.map(remove_err as fn(_) -> _).shared();
+
+        //                 let task = tokio::spawn(async move {
+        //                     let x0 = x0.0.await.unwrap();
+        //                     let y = k(ctx, plc, x0);
+        //                     sender.send(y);
+        //                 });
+        //                 Async(shared_receiver)
+        //             })
+        //         }
+        //     }
+        // )+
 
         $(
             impl UnaryKernel<
@@ -2744,6 +2753,39 @@ hybrid_kernel! {
         (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
     ]
+}
+
+impl BinaryKernel<
+    AsyncContext,
+    ReplicatedPlacement,
+    Async<ReplicatedTensor<Async<Ring64Tensor>>>,
+    Async<ReplicatedTensor<Async<Ring64Tensor>>>,
+    Async<ReplicatedTensor<Async<Ring64Tensor>>>,
+> for RepAddOp {
+    fn compile(
+        &self,
+        ctx: &AsyncContext,
+        plc: &ReplicatedPlacement
+    ) -> Box<dyn Fn(
+        &AsyncContext,
+        &ReplicatedPlacement,
+        Async<ReplicatedTensor<Async<Ring64Tensor>>>,
+        Async<ReplicatedTensor<Async<Ring64Tensor>>>
+     ) -> Async<ReplicatedTensor<Async<Ring64Tensor>>>> {
+        Box::new(|_ctx, _plc, x, y| {
+            let (sender, receiver) = oneshot::channel();
+            let shared_receiver =
+                receiver.map(remove_err as fn(_) -> _).shared();
+
+            tokio::spawn(async move {
+                let x: ReplicatedTensor<Async<Ring64Tensor>> = x.0.await.unwrap();
+                let y: ReplicatedTensor<Async<Ring64Tensor>> = y.0.await.unwrap();
+    
+                sender.send(x);
+            });
+            Async(shared_receiver)
+        })
+    }
 }
 
 impl RepAddOp {
