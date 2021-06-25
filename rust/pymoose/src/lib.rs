@@ -13,17 +13,16 @@ use moose::ring::Ring64Tensor;
 use moose::standard::{Float64Tensor, Shape};
 use moose::utils;
 use ndarray::IxDyn;
-use ndarray::{array, ArrayD};
+use ndarray::{ArrayD};
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
-use pyo3::{prelude::*, types::PyBytes, types::PyDict, types::PyList};
+use pyo3::{prelude::*, types::PyBytes, types::PyList};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
 use std::sync::Arc;
 pub mod python_computation;
 use moose::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage};
-use std::convert::TryFrom;
 use tokio::runtime::Runtime;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -64,8 +63,7 @@ fn dynarray_to_value(arr: &PyReadonlyArrayDyn<f64>) -> Value {
         .to_owned()
         .into_dimensionality::<IxDyn>()
         .unwrap();
-    let v = Value::from(Float64Tensor::from(arr_wrap));
-    v
+    Value::from(Float64Tensor::from(arr_wrap))
 }
 
 fn create_computation_graph_from_py_bytes(computation: Vec<u8>) -> Computation {
@@ -371,7 +369,7 @@ impl MooseRuntime {
         let _guard = rt.enter();
 
         for (placement, executor) in self.executors.iter() {
-            let mut moose_session = AsyncSession {
+            let moose_session = AsyncSession {
                 sid: SessionId::from("foobar"),
                 arguments: arguments.clone(),
                 networking: Arc::clone(&self.networking),
@@ -379,7 +377,7 @@ impl MooseRuntime {
             };
             let own_identity = Identity::from(placement);
             let computation = create_computation_graph_from_py_bytes(computation.clone());
-            let (mut moose_session_handle, _outputs) = executor
+            let (moose_session_handle, _outputs) = executor
                 .run_computation(&computation, &role_assignment, &own_identity, moose_session)
                 .unwrap();
             session_handles.push(moose_session_handle)
@@ -420,6 +418,6 @@ impl MooseRuntime {
 
 #[pymodule]
 fn moose_runtime(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_class::<MooseRuntime>();
+    m.add_class::<MooseRuntime>()?;
     Ok(())
 }
