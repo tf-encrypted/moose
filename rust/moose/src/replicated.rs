@@ -1,4 +1,5 @@
 use crate::bit::BitTensor;
+use crate::fixedpoint::FixedTensor::ReplicatedTensor;
 use crate::prim::PrfKey;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use serde::{Deserialize, Serialize};
