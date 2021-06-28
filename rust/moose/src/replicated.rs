@@ -4,7 +4,7 @@ use crate::ring::{Ring128Tensor, Ring64Tensor};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ReplicatedTensor<R> {
+pub struct AbstractReplicatedTensor<R> {
     shares: [[R; 2]; 3],
 }
 
@@ -14,14 +14,14 @@ pub struct AbstractReplicatedSetup<K> {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct ReplicatedZeroShare<R> {
+struct AbstractReplicatedZeroShare<R> {
     alphas: [R; 3],
 }
 
-pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
+pub type Replicated64Tensor = AbstractReplicatedTensor<Ring64Tensor>;
 
-pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
+pub type Replicated128Tensor = AbstractReplicatedTensor<Ring128Tensor>;
 
-pub type ReplicatedBitTensor = ReplicatedTensor<BitTensor>;
+pub type ReplicatedBitTensor = AbstractReplicatedTensor<BitTensor>;
 
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
