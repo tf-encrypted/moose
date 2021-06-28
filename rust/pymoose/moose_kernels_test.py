@@ -185,7 +185,7 @@ def add_args_comp(
 
 class RunComputation(parameterized.TestCase):
     @parameterized.parameters(
-        (add_comp, add_storage, {}),
+        (add_comp, add_storage, {"x_key": "x", "y_key": "y"}),
         # (add_args_comp, add_args_storage, add_args_input),
     )
     def test_run_computation(self, comp, storage_dict, args):
