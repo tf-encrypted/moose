@@ -139,6 +139,9 @@ pub enum Ty {
     Additive128Tensor,
     ReplicatedSetup,
     PrfKey,
+    Shape,
+    Ring64,
+    Ring128,
 }
 
 impl Ty {
@@ -214,6 +217,11 @@ impl Ty {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
+            Ty::Shape => SymbolicValue::Shape(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+
         }
     }
 }
@@ -238,6 +246,9 @@ pub enum Value {
     Additive128Tensor(Additive128Tensor),
     ReplicatedSetup(ReplicatedSetup),
     PrfKey(PrfKey),
+    Shape(Shape),
+    Ring64(Ring64),
+    Ring128(Ring128),
 }
 
 impl Value {
@@ -256,6 +267,9 @@ impl Value {
             Value::Additive128Tensor(_) => Ty::Additive128Tensor,
             Value::ReplicatedSetup(_) => Ty::ReplicatedSetup,
             Value::PrfKey(_) => Ty::PrfKey,
+            Value::Shape(_) => Ty::Shape,
+            Value::Ring64(_) => Ty::Ring64,
+            Value::Ring128(_) => Ty::Ring128,
         }
     }
 }
@@ -275,6 +289,9 @@ pub enum SymbolicValue {
     Additive128Tensor(<Additive128Tensor as KnownType>::Symbolic),
     ReplicatedSetup(<ReplicatedSetup as KnownType>::Symbolic),
     PrfKey(<PrfKey as KnownType>::Symbolic),
+    Shape(<Shape as KnownType>::Symbolic),
+    Ring64(<Ring64 as KnownType>::Symbolic),
+    Ring128(<Ring128 as KnownType>::Symbolic),
 }
 
 macro_rules! value {
@@ -383,6 +400,10 @@ value!(
     Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 );
 value!(PrfKey, Symbolic<PrfKey>);
+value!(Shape, Symbolic<Shape>);
+
+value!(Ring64, Symbolic<Ring64>);
+value!(Ring128, Symbolic<Ring128>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -407,6 +428,13 @@ impl Placed for BitTensor {
 impl<T> Placed for RingTensor<T> {
     type Placement = HostPlacement;
 
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+impl<T> Placed for Ring<T> {
+    type Placement = HostPlacement;
     fn placement(&self) -> Self::Placement {
         self.1.clone()
     }
@@ -478,6 +506,16 @@ impl Placed for PrfKey {
         self.1.clone()
     }
 }
+
+impl Placed for Shape {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+
 
 impl<K> Placed for AbstractReplicatedSetup<K>
 where
@@ -636,6 +674,24 @@ where
     }
 }
 
+impl<R> From<Ring<R>> for Symbolic<Ring<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: Ring<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+// impl From<Shape> for Symbolic<Shape>
+// {
+//     fn from(x: Shape) -> Self {
+//         Symbolic::Concrete(x)
+//     }
+// }
+
+
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
@@ -647,6 +703,7 @@ pub enum Operator {
     RingSubOp(RingSubOp),
     RingMulOp(RingMulOp),
     RingSampleOp(RingSampleOp),
+    FillOp(FillOp),
     BitSampleOp(BitSampleOp),
     RepSetupOp(RepSetupOp),
     RepAddOp(RepAddOp),
@@ -684,6 +741,7 @@ operator!(BitAndOp);
 operator!(RingSubOp);
 operator!(RingMulOp);
 operator!(RingSampleOp);
+operator!(FillOp);
 operator!(BitSampleOp);
 operator!(RepSetupOp);
 operator!(RepAddOp);
@@ -768,6 +826,9 @@ impl From<TernarySignature> for Signature {
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingTensor<T>(T, HostPlacement);
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ring<T>(T, HostPlacement);
+
 impl Add<RingTensor<u64>> for RingTensor<u64> {
     type Output = RingTensor<u64>;
 
@@ -844,6 +905,18 @@ impl Shr<usize> for RingTensor<u128> {
     }
 }
 
+impl RingTensor<u128> {
+    fn fill(el: u128, plc: HostPlacement) -> RingTensor<u128> {
+        RingTensor(el, plc)
+    }
+}
+
+impl RingTensor<u64> {
+    fn fill(el: u64, plc: HostPlacement) -> RingTensor<u64> {
+        RingTensor(el, plc)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitTensor(u8, HostPlacement);
 
@@ -875,6 +948,9 @@ pub struct AdditiveTensor<R> {
 pub struct PrfKey([u8; 16], HostPlacement);
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct Shape(Vec<u8>, HostPlacement);
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedSetup<K> {
     keys: [[K; 2]; 3],
 }
@@ -889,6 +965,10 @@ pub type Ring32Tensor = RingTensor<u32>;
 pub type Ring64Tensor = RingTensor<u64>;
 
 pub type Ring128Tensor = RingTensor<u128>;
+
+pub type Ring64 = Ring<u64>;
+
+pub type Ring128 = Ring<u128>;
 
 pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
 
@@ -1169,6 +1249,12 @@ trait PlacementAnd<C: Context, T, U> {
     fn and(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
+trait PlacementFill<C: Context, T> {
+    type Output;
+
+    fn fill(&self, ctx: &C, shape: &Shape, value: &Value) -> Self::Output;
+}
+
 trait PlacementMulSetup<C: Context, S, T, U> {
     type Output;
 
@@ -1197,7 +1283,7 @@ trait PlacementRepToAdd<C: Context, T> {
     fn rep_to_add(&self, ctx: &C, x: &T) -> Self::Output;
 }
 
-trait PlacementRepTruncPr<C: Context, S, T> {
+trait PlacementTruncPr<C: Context, S, T> {
     type Output;
 
     fn trunc_pr(&self, ctx: &C, s: &S, x: &T, amount: usize) -> Self::Output;
@@ -1251,6 +1337,7 @@ impl Context for ConcreteContext {
             Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::FillOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
     }
 
@@ -1349,6 +1436,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RingMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingShlOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingShrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::FillOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepSetupOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepShareOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -2926,6 +3014,54 @@ where
     }
 }
 
+trait PlacementTruncPrWithPrep<C: Context, R> {
+    fn trunc_pr(
+        &self,
+        ctx: &C,
+        x: &AdditiveTensor<R>,
+        m: usize,
+        r: &AdditiveTensor<R>,
+        r_top: &AdditiveTensor<R>,
+        r_msb: &AdditiveTensor<R>,
+    ) -> AdditiveTensor<R>;
+}
+
+impl<C: Context, R> PlacementTruncPrWithPrep<C, R> for AdditivePlacement
+where
+    R: RingSize,
+    AdditivePlacement:
+        PlacementAdd<C, AdditiveTensor<R>, AdditiveTensor<R>, Output = AdditiveTensor<R>>,
+    AdditivePlacement: PlacementAdd<C, R, AdditiveTensor<R>, Output = AdditiveTensor<R>>,
+    AdditivePlacement: PlacementMul<C, AdditiveTensor<R>, R, Output = AdditiveTensor<R>>,
+    HostPlacement: PlacementReveal<C, AdditiveTensor<R>, Output = R>,
+    HostPlacement: PlacementShl<C, R, Output = R>,
+    HostPlacement: PlacementShr<C, R, Output = R>,
+{
+    fn trunc_pr(
+        &self,
+        ctx: &C,
+        x: &AdditiveTensor<R>,
+        m: usize,
+        r: &AdditiveTensor<R>,
+        r_top: &AdditiveTensor<R>,
+        r_msb: &AdditiveTensor<R>,
+    ) -> AdditiveTensor<R> {
+        let (player_a, player_b) = self.host_placements();
+        let masked = self.add(ctx, x, r);
+
+        // (Dragos) Note that these opening should be done to all players for active security.
+        let opened_masked_a = player_a.reveal(ctx, &masked);
+
+        let no_msb_mask = player_a.shl(ctx, &opened_masked_a, 1);
+        let opened_mask_tr = player_a.shr(ctx, &no_msb_mask, m + 1);
+
+        let msb_mask = player_a.shr(ctx, &opened_masked_a, R::SIZE - 1);
+        let msb_to_correct = self.mul(ctx, r_msb, &msb_mask);
+
+        masked
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepShareOp {
     sig: Signature,
@@ -3122,7 +3258,7 @@ pub struct RepTruncPrOp {
     amount: usize,
 }
 
-model_shift!(PlacementRepTruncPr::trunc_pr, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+model_shift!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
 
 kernel! {
     RepTruncPrOp,
@@ -3131,19 +3267,19 @@ kernel! {
     ]
 }
 
-trait Ring {
+trait RingSize {
     const SIZE: usize;
 }
 
-impl<R: Ring + Placed> Ring for Symbolic<R> {
-    const SIZE: usize = <R as Ring>::SIZE;
+impl<R: RingSize + Placed> RingSize for Symbolic<R> {
+    const SIZE: usize = <R as RingSize>::SIZE;
 }
 
-impl Ring for Ring64Tensor {
+impl RingSize for Ring64Tensor {
     const SIZE: usize = 64;
 }
 
-impl Ring for Ring128Tensor {
+impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
 }
 
@@ -3156,7 +3292,7 @@ impl RepTruncPrOp {
         xe: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
     where
-        R: Clone + Into<C::Value> + TryFrom<C::Value> + Ring,
+        R: Clone + Into<C::Value> + TryFrom<C::Value> + RingSize,
         HostPlacement: PlacementSample<C, R>,
         HostPlacement: PlacementKeyGen<C, K>,
         HostPlacement: PlacementShl<C, R, Output = R>,
@@ -3274,6 +3410,86 @@ impl AdditiveRevealOp {
     {
         let AdditiveTensor { shares: [x0, x1] } = &xe;
         with_context!(plc, ctx, x1 + x0)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FillOp {
+    sig: Signature,
+    value: Value,
+}
+
+macro_rules! model_fill {
+    ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
+        impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
+
+        impl $t<ConcreteContext, $t0> for $plc {
+            type Output = $u;
+
+            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, value: &Value) -> Self::Output {
+                let sig = UnarySignature {
+                    arg0: <$t0 as KnownType>::TY,
+                    ret: <$u as KnownType>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    value,
+                };
+                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                    .try_into()
+                    .unwrap()
+            }
+        }
+
+        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
+            type Output = <$u as KnownType>::Symbolic;
+
+            fn $f(
+                &self,
+                ctx: &SymbolicContext,
+                x0: &<$t0 as KnownType>::Symbolic,
+                value: &Value,
+            ) -> Self::Output {
+                let sig = UnarySignature {
+                    arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
+                    ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    value,
+                };
+                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                    .try_into()
+                    .unwrap()
+            }
+        }
+    };
+}
+
+model_fill!(PlacementFill::fill, HostPlacement, (Shape) -> Ring64Tensor, FillOp);
+// model_fill!(PlacementFill::fill, HostPlacement, (Shape) -> Ring128Tensor, FillOp);
+
+kernel! {
+    FillOp,
+    [
+        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::kernel64),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::kernel128),
+    ]
+}
+
+impl FillOp {
+    fn kernel64<C: Context>(ctx: &C, plc: HostPlacement, value: &Value, shape: &Shape) -> Ring64Tensor {
+        match value {
+            Value::Ring64(el) => Ring64Tensor::fill(el.0, plc),
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    fn kernel128<C: Context>(ctx: &C, plc: HostPlacement, value: &Value, shape: &Shape) -> Ring128Tensor {
+        match value {
+            Value::Ring128(el) => Ring128Tensor::fill(el.0, plc),
+            _ => unimplemented!(), // ok
+        }
     }
 }
 
