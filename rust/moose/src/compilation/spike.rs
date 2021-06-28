@@ -8,6 +8,8 @@ use std::ops::{Add, Mul, Shl, Shr, Sub};
 use std::ops::{BitAnd, BitXor};
 use futures::future::{Map, Shared};
 use futures::FutureExt;
+use tokio::sync::oneshot;
+
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Placement {
@@ -1298,9 +1300,6 @@ impl Context for ConcreteContext {
 pub struct AsyncContext {
 
 }
-
-use futures::future::{Map, Shared};
-use tokio::sync::oneshot;
 
 #[derive(Clone, Debug)]
 pub struct Async<T>(
