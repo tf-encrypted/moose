@@ -86,7 +86,7 @@ impl NetworkingPass {
             kind: Operator::Receive(ReceiveOp {
                 rendezvous_key,
                 sender: Role::from(src),
-                ty: Ty::UnknownTy,
+                ty: Ty::Unknown,
             }),
             inputs: vec![],
             placement: dst_op.placement.clone(),
@@ -138,7 +138,7 @@ mod tests {
             "dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
         assert!(comp
-            .contains("mean = StdMean: (Float32TensorTy) -> Float32TensorTy (dot) @Host(alice)"));
+            .contains("mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"));
         Ok(())
     }
 
@@ -161,7 +161,7 @@ mod tests {
         assert!(comp.contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp.contains("dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp
-            .contains("mean = StdMean: (Float32TensorTy) -> Float32TensorTy (dot) @Host(alice)"));
+            .contains("mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"));
         Ok(())
     }
 

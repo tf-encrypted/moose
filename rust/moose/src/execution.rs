@@ -265,7 +265,7 @@ pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Resu
     match res {
         Ok(_) => Ok(()),
         Err(val) => {
-            if val.ty() == Ty::UnitTy {
+            if val.ty() == Ty::Unit {
                 // ignoring unit value is okay
                 Ok(())
             } else {

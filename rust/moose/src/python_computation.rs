@@ -609,24 +609,24 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
 
 fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     match py_type {
-        PyValueType::prim_PRFKeyType => Ok(Ty::PrfKeyTy),
-        PyValueType::prim_SeedType => Ok(Ty::SeedTy),
-        PyValueType::std_ShapeType => Ok(Ty::ShapeTy),
-        PyValueType::std_UnitType => Ok(Ty::UnitTy),
-        PyValueType::std_StringType => Ok(Ty::StringTy),
+        PyValueType::prim_PRFKeyType => Ok(Ty::PrfKey),
+        PyValueType::prim_SeedType => Ok(Ty::Seed),
+        PyValueType::std_ShapeType => Ok(Ty::Shape),
+        PyValueType::std_UnitType => Ok(Ty::Unit),
+        PyValueType::std_StringType => Ok(Ty::String),
         PyValueType::std_TensorType { dtype } => match dtype {
-            PyDType::float32 => Ok(Ty::Float32TensorTy),
-            PyDType::float64 => Ok(Ty::Float64TensorTy),
-            PyDType::int32 => Ok(Ty::Int32TensorTy),
-            PyDType::int64 => Ok(Ty::Int64TensorTy),
-            PyDType::uint32 => Ok(Ty::Uint32TensorTy),
-            PyDType::uint64 => Ok(Ty::Uint64TensorTy),
+            PyDType::float32 => Ok(Ty::Float32Tensor),
+            PyDType::float64 => Ok(Ty::Float64Tensor),
+            PyDType::int32 => Ok(Ty::Int32Tensor),
+            PyDType::int64 => Ok(Ty::Int64Tensor),
+            PyDType::uint32 => Ok(Ty::Uint32Tensor),
+            PyDType::uint64 => Ok(Ty::Uint64Tensor),
             PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
         },
         PyValueType::std_UnknownType => Err(anyhow::anyhow!("unimplemented type 'unknown'")),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
-        PyValueType::ring_RingTensorType => Ok(Ty::Ring128TensorTy),
-        PyValueType::bit_BitTensorType => Ok(Ty::BitTensorTy),
+        PyValueType::ring_RingTensorType => Ok(Ty::Ring128Tensor),
+        PyValueType::bit_BitTensorType => Ok(Ty::BitTensor),
     }
 }
 
@@ -706,7 +706,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: RingShape(RingShapeOp {
-                            ty: Ty::Ring128TensorTy,
+                            ty: Ty::Ring128Tensor,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
@@ -879,7 +879,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: StdShape(StdShapeOp {
-                            ty: Ty::Float64TensorTy,
+                            ty: Ty::Float64Tensor,
                         }),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -888,7 +888,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SliceOperation(op) => Ok(Operation {
                         kind: StdSlice(StdSliceOp {
-                            ty: Ty::ShapeTy,
+                            ty: Ty::Shape,
                             start: op.begin,
                             end: op.end,
                         }),
@@ -1047,7 +1047,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_SaveOperation(op) => Ok(Operation {
                         kind: Save(SaveOp {
                             // TODO replace with `UnknownTy` as soon as we have type inference
-                            ty: Ty::Float64TensorTy,
+                            ty: Ty::Float64Tensor,
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])

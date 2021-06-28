@@ -38,7 +38,7 @@ fn main() {
     let x_op = Operation {
         name: "x".into(),
         kind: Operator::RingSample(RingSampleOp {
-            output: Ty::Ring64TensorTy,
+            output: Ty::Ring64Tensor,
             max_value: None,
         }),
         inputs: vec!["x_shape".into(), "x_seed".into()],
@@ -52,8 +52,8 @@ fn main() {
         operations.push(Operation {
             name: format!("y{}", i),
             kind: Operator::RingMul(RingMulOp {
-                lhs: Ty::Ring64TensorTy,
-                rhs: Ty::Ring64TensorTy,
+                lhs: Ty::Ring64Tensor,
+                rhs: Ty::Ring64Tensor,
             }),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {
