@@ -914,7 +914,7 @@ macro_rules! modelled {
     /*
     Nullary
     */
-    ($t:ident::$f:ident, $plc:ty, $([$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
         impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {}
 
         impl $t<ConcreteContext, $u> for $plc {
@@ -951,7 +951,7 @@ macro_rules! modelled {
     /*
     Unary
     */
-    ($t:ident::$f:ident, $plc:ty, $([$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
 
         impl $t<ConcreteContext, $t0> for $plc {
@@ -994,7 +994,7 @@ macro_rules! modelled {
     /*
     Binary
     */
-    ($t:ident::$f:ident, $plc:ty, $([$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
         impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1> for $plc {
@@ -1055,7 +1055,7 @@ macro_rules! modelled {
     /*
     Ternary
     */
-    ($t:ident::$f:ident, $plc:ty, $([$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
         impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1, $t2> for $plc {
@@ -3121,8 +3121,8 @@ pub struct RingShlOp {
     amount: usize,
 }
 
-modelled!(PlacementShl::shl, HostPlacement, [amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
-modelled!(PlacementShl::shl, HostPlacement, [amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
 
 kernel! {
     RingShlOp,
@@ -3152,8 +3152,8 @@ pub struct RingShrOp {
     amount: usize,
 }
 
-modelled!(PlacementShr::shr, HostPlacement, [amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShrOp);
-modelled!(PlacementShr::shr, HostPlacement, [amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShrOp);
 
 kernel! {
     RingShrOp,
