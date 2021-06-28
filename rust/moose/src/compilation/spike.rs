@@ -129,7 +129,6 @@ pub enum Ty {
     Fixed64Tensor,
     Fixed128Tensor,
     BitTensor,
-    Ring32Tensor,
     Ring64Tensor,
     Ring128Tensor,
     Replicated64Tensor,
@@ -159,10 +158,6 @@ impl Ty {
                 }))
             }
             Ty::BitTensor => SymbolicValue::BitTensor(Symbolic::Symbolic(SymbolicHandle {
-                op: op_name.into(),
-                plc: plc.try_into().unwrap(),
-            })),
-            Ty::Ring32Tensor => SymbolicValue::Ring32Tensor(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
@@ -228,7 +223,6 @@ pub enum Value {
     Fixed64Tensor(Fixed64Tensor),
     Fixed128Tensor(Fixed128Tensor),
     BitTensor(BitTensor),
-    Ring32Tensor(Ring32Tensor),
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     Replicated64Tensor(Replicated64Tensor),
@@ -246,7 +240,6 @@ impl Value {
             Value::Fixed64Tensor(_) => Ty::Fixed64Tensor,
             Value::Fixed128Tensor(_) => Ty::Fixed128Tensor,
             Value::BitTensor(_) => Ty::BitTensor,
-            Value::Ring32Tensor(_) => Ty::Ring32Tensor,
             Value::Ring64Tensor(_) => Ty::Ring64Tensor,
             Value::Ring128Tensor(_) => Ty::Ring128Tensor,
             Value::Replicated64Tensor(_) => Ty::Replicated64Tensor,
@@ -265,7 +258,6 @@ pub enum SymbolicValue {
     Fixed64Tensor(<Fixed64Tensor as KnownType>::Symbolic),
     Fixed128Tensor(<Fixed128Tensor as KnownType>::Symbolic),
     BitTensor(<BitTensor as KnownType>::Symbolic),
-    Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
     Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
     Ring128Tensor(<Ring128Tensor as KnownType>::Symbolic),
     Replicated64Tensor(<Replicated64Tensor as KnownType>::Symbolic),
@@ -355,7 +347,6 @@ value!(
     >
 );
 value!(BitTensor, Symbolic<BitTensor>);
-value!(Ring32Tensor, Symbolic<Ring32Tensor>);
 value!(Ring64Tensor, Symbolic<Ring64Tensor>);
 value!(Ring128Tensor, Symbolic<Ring128Tensor>);
 value!(
@@ -827,8 +818,6 @@ pub struct AbstractReplicatedSetup<K> {
 struct ReplicatedZeroShare<R> {
     alphas: [R; 3],
 }
-
-pub type Ring32Tensor = RingTensor<u32>;
 
 pub type Ring64Tensor = RingTensor<u64>;
 
@@ -2979,8 +2968,6 @@ pub struct RingAddOp {
     sig: Signature,
 }
 
-// NOTE uncomment the next line to see the kernel check system in action
-// modelled!(PlacementAdd::add, HostPlacement, (Ring32Tensor, Ring32Tensor) -> Ring32Tensor, RingAddOp);
 // NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
 modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
 modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
