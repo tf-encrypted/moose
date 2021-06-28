@@ -1,9 +1,10 @@
+from moose.computation.standard import StringType
 import random
 
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
-from pymoose import MooseRuntime
+from pymoose import MooseLocalRuntime
 from pymoose import moose_kernels as mkls
 
 from moose import edsl
@@ -132,41 +133,67 @@ class BitTensorOps(parameterized.TestCase):
         assert mkls.bit_shape(a) == [3]
 
 
+x_owner = edsl.host_placement(name="x_owner")
+y_owner = edsl.host_placement(name="y_owner")
+output_owner = edsl.host_placement("output_owner")
+
+x_input = {"x": np.array([1.0], dtype=np.float64)}
+y_input = {"y": np.array([2.0], dtype=np.float64)}
+
+add_storage = {
+    "x_owner": x_input,
+    "y_owner": y_input,
+    "output_owner": {},
+}
+
+@edsl.computation
+def add_comp(
+    x_key: edsl.Argument(x_owner, vtype=StringType()),
+    y_key: edsl.Argument(y_owner, vtype=StringType())
+):
+    with x_owner:
+        x = edsl.load(x_key, dtype=edsl.float64)
+
+    with y_owner:
+        y = edsl.load(y_key, dtype=edsl.float64)
+
+    with output_owner:
+        out = edsl.add(x, y)
+        res = edsl.save("output", out)
+
+    return res
+
+
+add_args_storage = {
+    "x_owner": {},
+    "y_owner": {},
+    "output_owner": {},
+}
+add_args_input = {**x_input, **y_input}
+
+@edsl.computation
+def add_args_comp(
+    x: edsl.Argument(x_owner, dtype=edsl.float64),
+    y: edsl.Argument(y_owner, dtype=edsl.float64),
+):
+    with output_owner:
+        out = edsl.add(x, y)
+        res = edsl.save("output", out)
+
+    return res
+
+
 class RunComputation(parameterized.TestCase):
-    def test_run_computation(self):
-        def _build_computation():
-            x_owner = edsl.host_placement(name="x_owner")
-            y_owner = edsl.host_placement(name="y_owner")
-            output_owner = edsl.host_placement("output_owner")
+    @parameterized.parameters(
+        (add_comp, add_storage, {}),
+        # (add_args_comp, add_args_storage, add_args_input),
+    )
+    def test_run_computation(self, comp, storage_dict, args):
+        concrete_comp = edsl.trace_and_compile(comp, ring=128)
+        comp_bin = serialize_computation(concrete_comp)
+        print(concrete_comp)
 
-            @edsl.computation
-            def add_comp():
-
-                with x_owner:
-                    x = edsl.load("x_data", dtype=edsl.float64)
-
-                with y_owner:
-                    y = edsl.load("y_data", dtype=edsl.float64)
-
-                with output_owner:
-                    out = edsl.add(x, y)
-                    res = edsl.save("output", out)
-
-                return res
-
-            concrete_comp = edsl.trace_and_compile(add_comp, ring=128, render=True)
-            return concrete_comp
-
-        comp = _build_computation()
-        comp_bin = serialize_computation(comp)
-        storages = {
-            "x_owner": {"x_data": np.array([1.0], dtype=np.float64)},
-            "y_owner": {"y_data": np.array([2.0], dtype=np.float64)},
-            "output_owner": {},
-        }
-        args = {"": ""}
-
-        runtime = MooseRuntime(storages)
+        runtime = MooseLocalRuntime(executors_storage=storage_dict)
         runtime.evaluate_computation(comp_bin, args)
         result = runtime.get_value_from_storage("output_owner", "output")
         np.testing.assert_array_equal(result, np.array([3.0]))
