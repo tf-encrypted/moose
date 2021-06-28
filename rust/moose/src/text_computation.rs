@@ -334,7 +334,7 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("receiver", string)
     ))(input)?;
     let (input, optional_type) = opt(type_definition(0))(input)?;
-    let sig = optional_type.unwrap_or_else(|| Signature::unary(Ty::UnknownTy, Ty::UnknownTy));
+    let sig = optional_type.unwrap_or_else(|| Signature::unary(Ty::Unknown, Ty::Unknown));
     Ok((
         input,
         Operator::Send(SendOp {
@@ -473,7 +473,7 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((
         input,
         Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
-            sig: Signature::nullary(Ty::PrfKeyTy),
+            sig: Signature::nullary(Ty::PrfKey),
         }),
     ))
 }
@@ -484,7 +484,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, nonce) = attributes_single("nonce", map(vector(parse_int), Nonce))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
-    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::SeedTy));
+    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((
         input,
         Operator::PrimDeriveSeed(PrimDeriveSeedOp { sig, nonce }),
@@ -582,7 +582,7 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_args) = opt(type_definition(0))(input)?;
-    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensorTy));
+    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
     Ok((input, Operator::BitSample(BitSampleOp { sig })))
 }
 
@@ -592,7 +592,7 @@ fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", parse_int)(input)?;
     let (input, opt_args) = opt(type_definition(0))(input)?;
-    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensorTy));
+    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
     Ok((input, Operator::BitFill(BitFillOp { sig, value })))
 }
 
@@ -601,7 +601,7 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_sig) = opt(type_definition(0))(input)?;
-    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::BitTensorTy));
+    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
     Ok((input, Operator::BitXor(BitXorOp { sig })))
 }
 
@@ -695,29 +695,29 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
-        "Unit" => Ok((i, Ty::UnitTy)),
-        "String" => Ok((i, Ty::StringTy)),
-        "Float32" => Ok((i, Ty::Float32Ty)),
-        "Float64" => Ok((i, Ty::Float64Ty)),
-        "Ring64" => Ok((i, Ty::Ring64Ty)),
-        "Ring128" => Ok((i, Ty::Ring128Ty)),
-        "Ring64Tensor" => Ok((i, Ty::Ring64TensorTy)),
-        "Ring128Tensor" => Ok((i, Ty::Ring128TensorTy)),
-        "Shape" => Ok((i, Ty::ShapeTy)),
-        "Seed" => Ok((i, Ty::SeedTy)),
-        "PrfKey" => Ok((i, Ty::PrfKeyTy)),
-        "Nonce" => Ok((i, Ty::NonceTy)),
-        "Float32Tensor" => Ok((i, Ty::Float32TensorTy)),
-        "Float64Tensor" => Ok((i, Ty::Float64TensorTy)),
-        "Int8Tensor" => Ok((i, Ty::Int8TensorTy)),
-        "Int16Tensor" => Ok((i, Ty::Int16TensorTy)),
-        "Int32Tensor" => Ok((i, Ty::Int32TensorTy)),
-        "Int64Tensor" => Ok((i, Ty::Int64TensorTy)),
-        "Uint8Tensor" => Ok((i, Ty::Uint8TensorTy)),
-        "Uint16Tensor" => Ok((i, Ty::Uint16TensorTy)),
-        "Uint32Tensor" => Ok((i, Ty::Uint32TensorTy)),
-        "Uint64Tensor" => Ok((i, Ty::Uint64TensorTy)),
-        "Unknown" => Ok((i, Ty::UnknownTy)),
+        "Unit" => Ok((i, Ty::Unit)),
+        "String" => Ok((i, Ty::String)),
+        "Float32" => Ok((i, Ty::Float32)),
+        "Float64" => Ok((i, Ty::Float64)),
+        "Ring64" => Ok((i, Ty::Ring64)),
+        "Ring128" => Ok((i, Ty::Ring128)),
+        "Ring64Tensor" => Ok((i, Ty::Ring64Tensor)),
+        "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
+        "Shape" => Ok((i, Ty::Shape)),
+        "Seed" => Ok((i, Ty::Seed)),
+        "PrfKey" => Ok((i, Ty::PrfKey)),
+        "Nonce" => Ok((i, Ty::Nonce)),
+        "Float32Tensor" => Ok((i, Ty::Float32Tensor)),
+        "Float64Tensor" => Ok((i, Ty::Float64Tensor)),
+        "Int8Tensor" => Ok((i, Ty::Int8Tensor)),
+        "Int16Tensor" => Ok((i, Ty::Int16Tensor)),
+        "Int32Tensor" => Ok((i, Ty::Int32Tensor)),
+        "Int64Tensor" => Ok((i, Ty::Int64Tensor)),
+        "Uint8Tensor" => Ok((i, Ty::Uint8Tensor)),
+        "Uint16Tensor" => Ok((i, Ty::Uint16Tensor)),
+        "Uint32Tensor" => Ok((i, Ty::Uint32Tensor)),
+        "Uint64Tensor" => Ok((i, Ty::Uint64Tensor)),
+        "Unknown" => Ok((i, Ty::Unknown)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
 }
@@ -1325,30 +1325,30 @@ impl ToTextual for RingSampleOp {
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
-            Ty::UnitTy => "Unit".to_string(),
-            Ty::StringTy => "String".to_string(),
-            Ty::Float32Ty => "Float32".to_string(),
-            Ty::Float64Ty => "Float64".to_string(),
-            Ty::Ring64Ty => "Ring64".to_string(),
-            Ty::Ring128Ty => "Ring128".to_string(),
-            Ty::Ring64TensorTy => "Ring64Tensor".to_string(),
-            Ty::Ring128TensorTy => "Ring128Tensor".to_string(),
-            Ty::BitTensorTy => "BitTensor".to_string(),
-            Ty::ShapeTy => "Shape".to_string(),
-            Ty::SeedTy => "Seed".to_string(),
-            Ty::PrfKeyTy => "PrfKey".to_string(),
-            Ty::NonceTy => "Nonce".to_string(),
-            Ty::Float32TensorTy => "Float32Tensor".to_string(),
-            Ty::Float64TensorTy => "Float64Tensor".to_string(),
-            Ty::Int8TensorTy => "Int8Tensor".to_string(),
-            Ty::Int16TensorTy => "Int16Tensor".to_string(),
-            Ty::Int32TensorTy => "Int32Tensor".to_string(),
-            Ty::Int64TensorTy => "Int64Tensor".to_string(),
-            Ty::Uint8TensorTy => "Uint8Tensor".to_string(),
-            Ty::Uint16TensorTy => "Uint16Tensor".to_string(),
-            Ty::Uint32TensorTy => "Uint32Tensor".to_string(),
-            Ty::Uint64TensorTy => "Uint64Tensor".to_string(),
-            Ty::UnknownTy => "Unknown".to_string(),
+            Ty::Unit => "Unit".to_string(),
+            Ty::String => "String".to_string(),
+            Ty::Float32 => "Float32".to_string(),
+            Ty::Float64 => "Float64".to_string(),
+            Ty::Ring64 => "Ring64".to_string(),
+            Ty::Ring128 => "Ring128".to_string(),
+            Ty::Ring64Tensor => "Ring64Tensor".to_string(),
+            Ty::Ring128Tensor => "Ring128Tensor".to_string(),
+            Ty::BitTensor => "BitTensor".to_string(),
+            Ty::Shape => "Shape".to_string(),
+            Ty::Seed => "Seed".to_string(),
+            Ty::PrfKey => "PrfKey".to_string(),
+            Ty::Nonce => "Nonce".to_string(),
+            Ty::Float32Tensor => "Float32Tensor".to_string(),
+            Ty::Float64Tensor => "Float64Tensor".to_string(),
+            Ty::Int8Tensor => "Int8Tensor".to_string(),
+            Ty::Int16Tensor => "Int16Tensor".to_string(),
+            Ty::Int32Tensor => "Int32Tensor".to_string(),
+            Ty::Int64Tensor => "Int64Tensor".to_string(),
+            Ty::Uint8Tensor => "Uint8Tensor".to_string(),
+            Ty::Uint16Tensor => "Uint16Tensor".to_string(),
+            Ty::Uint32Tensor => "Uint32Tensor".to_string(),
+            Ty::Uint64Tensor => "Uint64Tensor".to_string(),
+            Ty::Unknown => "Unknown".to_string(),
         }
     }
 }
@@ -1558,13 +1558,13 @@ mod tests {
     #[test]
     fn test_type_parsing() -> Result<(), anyhow::Error> {
         let (_, parsed_type) = parse_type::<(&str, ErrorKind)>("Unit")?;
-        assert_eq!(parsed_type, Ty::UnitTy);
+        assert_eq!(parsed_type, Ty::Unit);
         let (_, parsed) = type_definition::<(&str, ErrorKind)>(0)(
             ": (Float32Tensor, Float64Tensor) -> Uint16Tensor",
         )?;
         assert_eq!(
             parsed,
-            Signature::binary(Ty::Float32TensorTy, Ty::Float64TensorTy, Ty::Uint16TensorTy),
+            Signature::binary(Ty::Float32Tensor, Ty::Float64Tensor, Ty::Uint16Tensor),
         );
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
@@ -1588,7 +1588,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32TensorTy),
+                sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![1.0].into())
             })
         );
@@ -1606,7 +1606,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32TensorTy),
+                sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(x)
             })
         );
@@ -1623,9 +1623,9 @@ mod tests {
             op.kind,
             Operator::StdAdd(StdAddOp {
                 sig: Signature::binary(
-                    Ty::Float32TensorTy,
-                    Ty::Float32TensorTy,
-                    Ty::Float32TensorTy
+                    Ty::Float32Tensor,
+                    Ty::Float32Tensor,
+                    Ty::Float32Tensor
                 ),
             })
         );
@@ -1637,9 +1637,9 @@ mod tests {
             op.kind,
             Operator::StdMul(StdMulOp {
                 sig: Signature::binary(
-                    Ty::Float32TensorTy,
-                    Ty::Float32TensorTy,
-                    Ty::Float32TensorTy
+                    Ty::Float32Tensor,
+                    Ty::Float32Tensor,
+                    Ty::Float32Tensor
                 ),
             })
         );
@@ -1673,7 +1673,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
-                sig: Signature::nullary(Ty::SeedTy),
+                sig: Signature::nullary(Ty::Seed),
                 nonce: Nonce(vec![1, 2, 3])
             })
         );
@@ -1689,7 +1689,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Send(SendOp {
-                sig: Signature::unary(Ty::UnknownTy, Ty::UnknownTy),
+                sig: Signature::unary(Ty::Unknown, Ty::Unknown),
                 rendezvous_key: "abc".into(),
                 receiver: Role::from("bob")
             })
@@ -1706,7 +1706,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Receive(ReceiveOp {
-                sig: Signature::nullary(Ty::Float32TensorTy),
+                sig: Signature::nullary(Ty::Float32Tensor),
                 rendezvous_key: "abc".into(),
                 sender: Role::from("bob"),
             })
@@ -1740,7 +1740,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                sig: Signature::nullary(Ty::Float32TensorTy),
+                sig: Signature::nullary(Ty::Float32Tensor),
                 axis: Some(0),
                 scaling_base: 3,
                 scaling_exp: 1,
@@ -1753,7 +1753,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                sig: Signature::nullary(Ty::Float32TensorTy),
+                sig: Signature::nullary(Ty::Float32Tensor),
                 axis: None,
                 scaling_base: 3,
                 scaling_exp: 1,
@@ -1837,14 +1837,14 @@ mod tests {
         assert_eq!(
             comp.operations[0].kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32TensorTy),
+                sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![1.0].into())
             })
         );
         assert_eq!(
             comp.operations[1].kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32TensorTy),
+                sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![2.0].into())
             })
         );
@@ -1853,9 +1853,9 @@ mod tests {
             comp.operations[2].kind,
             Operator::StdAdd(StdAddOp {
                 sig: Signature::binary(
-                    Ty::Float32TensorTy,
-                    Ty::Float32TensorTy,
-                    Ty::Float32TensorTy
+                    Ty::Float32Tensor,
+                    Ty::Float32Tensor,
+                    Ty::Float32Tensor
                 ),
             })
         );

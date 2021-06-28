@@ -7,7 +7,7 @@ fn main() {
     let key_op = Operation {
         name: "key".into(),
         kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
-            sig: Signature::nullary(Ty::PrfKeyTy),
+            sig: Signature::nullary(Ty::PrfKey),
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
@@ -18,7 +18,7 @@ fn main() {
     let x_seed_op = Operation {
         name: "x_seed".into(),
         kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp {
-            sig: Signature::unary(Ty::PrfKeyTy, Ty::SeedTy),
+            sig: Signature::unary(Ty::PrfKey, Ty::Seed),
             nonce: Nonce(vec![1, 2, 3]),
         }),
         inputs: vec!["key".into()],
@@ -30,7 +30,7 @@ fn main() {
     let x_shape_op = Operation {
         name: "x_shape".into(),
         kind: Operator::Constant(ConstantOp {
-            sig: Signature::nullary(Ty::ShapeTy),
+            sig: Signature::nullary(Ty::Shape),
             value: Value::Shape(Shape(vec![2, 3])),
         }),
         inputs: vec![],
@@ -42,7 +42,7 @@ fn main() {
     let x_op = Operation {
         name: "x".into(),
         kind: Operator::RingSample(RingSampleOp {
-            sig: Signature::binary(Ty::ShapeTy, Ty::SeedTy, Ty::Ring64TensorTy),
+            sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::Ring64Tensor),
             max_value: None,
         }),
         inputs: vec!["x_shape".into(), "x_seed".into()],
@@ -56,7 +56,7 @@ fn main() {
         operations.push(Operation {
             name: format!("y{}", i),
             kind: Operator::RingMul(RingMulOp {
-                sig: Signature::binary(Ty::Ring64TensorTy, Ty::Ring64TensorTy, Ty::Ring64TensorTy),
+                sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
             }),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {
