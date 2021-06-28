@@ -804,6 +804,9 @@ impl Computation {
                 Placement::Replicated(plc) => own_roles
                     .iter()
                     .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+                Placement::Additive(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
             })
             .collect::<Vec<_>>();
 
@@ -951,6 +954,7 @@ impl TestExecutor {
                     // TODO(Morten) box seems too complicated..?
                     Placement::Host(plc) => Box::new(std::iter::once(&plc.owner)),
                     Placement::Replicated(plc) => Box::new(plc.owners.iter()),
+                    Placement::Additive(plc) => Box::new(plc.owners.iter()),
                 }
             })
             .collect::<HashSet<_>>();

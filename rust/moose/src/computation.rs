@@ -763,6 +763,17 @@ pub struct RepToAdtOp {
 pub enum Placement {
     Host(HostPlacement),
     Replicated(ReplicatedPlacement),
+    Additive(AdditivePlacement),
+}
+
+impl Placement {
+    pub fn ty(&self) -> PlacementTy {
+        match self {
+            Placement::Host(plc) => plc.ty(),
+            Placement::Replicated(plc) => plc.ty(),
+            Placement::Additive(plc) => plc.ty(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Display, Clone, Debug, Hash, Eq, PartialEq)]
@@ -791,21 +802,107 @@ pub struct HostPlacement {
     pub owner: Role,
 }
 
-impl From<HostPlacement> for Placement {
-    fn from(plc: HostPlacement) -> Self {
-        Placement::Host(plc)
-    }
-}
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ReplicatedPlacement {
     pub owners: [Role; 3],
 }
 
-impl From<ReplicatedPlacement> for Placement {
-    fn from(plc: ReplicatedPlacement) -> Self {
-        Placement::Replicated(plc)
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdditivePlacement {
+    pub owners: [Role; 2],
+}
+
+impl ReplicatedPlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        let player2 = HostPlacement {
+            owner: self.owners[2].clone(),
+        };
+        (player0, player1, player2)
     }
+}
+
+impl AdditivePlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        (player0, player1)
+    }
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub enum PlacementTy {
+    HostTy,
+    ReplicatedTy,
+    AdditiveTy,
+}
+
+trait KnownPlacement {
+    const TY: PlacementTy;
+
+    fn ty(&self) -> PlacementTy {
+        Self::TY
+    }
+}
+
+impl KnownPlacement for HostPlacement {
+    const TY: PlacementTy = PlacementTy::HostTy;
+}
+
+impl KnownPlacement for ReplicatedPlacement {
+    const TY: PlacementTy = PlacementTy::ReplicatedTy;
+}
+
+impl KnownPlacement for AdditivePlacement {
+    const TY: PlacementTy = PlacementTy::AdditiveTy;
+}
+
+macro_rules! placement {
+    ($t:ident) => {
+        paste! {
+            impl From<[<$t Placement>]> for Placement {
+                fn from(x: [<$t Placement>]) -> Placement {
+                    Placement::$t(x)
+                }
+            }
+
+            impl From<&[<$t Placement>]> for Placement {
+                fn from(x: &[<$t Placement>]) -> Placement {
+                    Placement::$t(x.clone())
+                }
+            }
+
+            impl TryFrom<Placement> for [<$t Placement>] {
+                type Error = Error;
+
+                fn try_from(x: Placement) -> Result<Self> {
+                    match x {
+                        Placement::$t(x) => Ok(x),
+                        _ => Err(Error::OperandUnavailable),
+                    }
+                }
+            }
+        }
+    };
+}
+
+placement!(Host);
+placement!(Replicated);
+placement!(Additive);
+
+pub trait Placed {
+    type Placement;
+
+    fn placement(&self) -> Self::Placement;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

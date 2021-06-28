@@ -1037,6 +1037,7 @@ impl ToTextual for Placement {
         match self {
             Placement::Host(p) => p.to_textual(),
             Placement::Replicated(p) => p.to_textual(),
+            Placement::Additive(p) => p.to_textual(),
         }
     }
 }
@@ -1053,6 +1054,12 @@ impl ToTextual for ReplicatedPlacement {
             "@Replicated({}, {}, {})",
             self.owners[0], self.owners[1], self.owners[2]
         )
+    }
+}
+
+impl ToTextual for AdditivePlacement {
+    fn to_textual(&self) -> String {
+        format!("@Additive({}, {})", self.owners[0], self.owners[1])
     }
 }
 

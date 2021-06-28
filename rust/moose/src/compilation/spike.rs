@@ -7,123 +7,6 @@ use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 use std::ops::{BitAnd, BitXor};
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum Placement {
-    HostPlacement(HostPlacement),
-    ReplicatedPlacement(ReplicatedPlacement),
-    AdditivePlacement(AdditivePlacement),
-}
-
-impl Placement {
-    pub fn ty(&self) -> PlacementTy {
-        match self {
-            Placement::HostPlacement(plc) => plc.ty(),
-            Placement::ReplicatedPlacement(plc) => plc.ty(),
-            Placement::AdditivePlacement(plc) => plc.ty(),
-        }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct HostPlacement {
-    player: String,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ReplicatedPlacement {
-    players: [String; 3],
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct AdditivePlacement {
-    players: [String; 2],
-}
-
-impl ReplicatedPlacement {
-    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
-        let player0 = HostPlacement {
-            player: self.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: self.players[1].clone(),
-        };
-        let player2 = HostPlacement {
-            player: self.players[2].clone(),
-        };
-        (player0, player1, player2)
-    }
-}
-
-impl AdditivePlacement {
-    pub fn host_placements(&self) -> (HostPlacement, HostPlacement) {
-        let player0 = HostPlacement {
-            player: self.players[0].clone(),
-        };
-        let player1 = HostPlacement {
-            player: self.players[1].clone(),
-        };
-        (player0, player1)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum PlacementTy {
-    HostTy,
-    ReplicatedTy,
-    AdditiveTy,
-}
-
-trait KnownPlacement {
-    const TY: PlacementTy;
-
-    fn ty(&self) -> PlacementTy {
-        Self::TY
-    }
-}
-
-impl KnownPlacement for HostPlacement {
-    const TY: PlacementTy = PlacementTy::HostTy;
-}
-
-impl KnownPlacement for ReplicatedPlacement {
-    const TY: PlacementTy = PlacementTy::ReplicatedTy;
-}
-
-impl KnownPlacement for AdditivePlacement {
-    const TY: PlacementTy = PlacementTy::AdditiveTy;
-}
-
-macro_rules! placement {
-    ($t:ident) => {
-        impl From<$t> for Placement {
-            fn from(x: $t) -> Placement {
-                Placement::$t(x)
-            }
-        }
-
-        impl From<&$t> for Placement {
-            fn from(x: &$t) -> Placement {
-                Placement::$t(x.clone())
-            }
-        }
-
-        impl TryFrom<Placement> for $t {
-            type Error = ();
-
-            fn try_from(x: Placement) -> Result<Self, Self::Error> {
-                match x {
-                    Placement::$t(x) => Ok(x),
-                    _ => Err(()),
-                }
-            }
-        }
-    };
-}
-
-placement!(HostPlacement);
-placement!(ReplicatedPlacement);
-placement!(AdditivePlacement);
-
 impl Ty {
     pub fn synthesize_symbolic_value<S: Into<String>>(
         &self,
@@ -328,12 +211,6 @@ value!(PrfKey, Symbolic<PrfKey>);
 pub enum Symbolic<T: Placed> {
     Symbolic(SymbolicHandle<T::Placement>),
     Concrete(T),
-}
-
-pub trait Placed {
-    type Placement;
-
-    fn placement(&self) -> Self::Placement;
 }
 
 impl Placed for BitTensor {
