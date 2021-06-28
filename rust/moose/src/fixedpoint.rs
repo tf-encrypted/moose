@@ -1,14 +1,19 @@
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::ring::{PlacedRing128Tensor, PlacedRing64Tensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
 use std::ops::Mul;
 
+use crate::computation::{Placed, Placement};
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use serde::{Deserialize, Serialize};
 
 pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
 
 pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
+
+pub type PlacedFixed64Tensor = FixedTensor<PlacedRing64Tensor, Replicated64Tensor>;
+
+pub type PlacedFixed128Tensor = FixedTensor<PlacedRing128Tensor, Replicated128Tensor>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
@@ -102,6 +107,23 @@ impl Ring128Tensor {
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
             )
+        }
+    }
+}
+
+impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
+where
+    RingTensorT: Placed,
+    RingTensorT::Placement: Into<Placement>,
+    ReplicatedTensorT: Placed,
+    ReplicatedTensorT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        match self {
+            FixedTensor::RingTensor(x) => x.placement().into(),
+            FixedTensor::ReplicatedTensor(x) => x.placement().into(),
         }
     }
 }

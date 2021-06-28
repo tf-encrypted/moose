@@ -213,23 +213,6 @@ pub enum Symbolic<T: Placed> {
     Concrete(T),
 }
 
-impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
-where
-    RingTensorT: Placed,
-    RingTensorT::Placement: Into<Placement>,
-    ReplicatedTensorT: Placed,
-    ReplicatedTensorT::Placement: Into<Placement>,
-{
-    type Placement = Placement;
-
-    fn placement(&self) -> Self::Placement {
-        match self {
-            FixedTensor::RingTensor(x) => x.placement().into(),
-            FixedTensor::ReplicatedTensor(x) => x.placement().into(),
-        }
-    }
-}
-
 impl<T: Placed> Placed for Symbolic<T>
 where
     T::Placement: Clone,

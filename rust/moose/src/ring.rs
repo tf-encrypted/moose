@@ -284,7 +284,7 @@ where
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct PlacedConcreteRingTensor<T>(ConcreteRingTensor<T>, HostPlacement);
+pub struct PlacedConcreteRingTensor<T>(pub ConcreteRingTensor<T>, pub HostPlacement);
 
 impl<T> Placed for PlacedConcreteRingTensor<T> {
     type Placement = HostPlacement;
