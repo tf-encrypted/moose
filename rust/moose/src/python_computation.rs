@@ -651,7 +651,8 @@ impl TryFrom<PyComputation> for Computation {
                     prim_SampleKeyOperation(op) => Ok(Operation {
                         kind: PrimGenPrfKeyOp {
                             sig: Signature::nullary(Ty::PrfKey),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
@@ -660,7 +661,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: PrimDeriveSeedOp {
                             sig: Signature::unary(Ty::PrfKey, Ty::Nonce),
                             nonce: prim::Nonce(op.nonce.clone()),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -673,7 +675,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -686,7 +689,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -699,7 +703,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -712,7 +717,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -721,7 +727,8 @@ impl TryFrom<PyComputation> for Computation {
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: RingShapeOp {
                             sig: Signature::unary(Ty::Ring128Tensor, Ty::Shape),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -731,7 +738,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: RingSampleOp {
                             sig: Signature::binary(Ty::Shape, Ty::Seed, map_type(&op.output_type)?),
                             max_value: op.max_value,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -744,7 +752,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -757,7 +766,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: RingFillOp {
                             sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
                             value: Value::Ring128(u128::from_str(&op.value)?),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -770,7 +780,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             amount: op.amount as usize,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -783,7 +794,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             amount: op.amount as usize,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -793,7 +805,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: BitExtractOp {
                             sig: Signature::unary(map_type(&op.ring_type)?, Ty::BitTensor),
                             bit_idx: op.bit_idx as usize,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -802,7 +815,8 @@ impl TryFrom<PyComputation> for Computation {
                     bit_BitSampleOperation(op) => Ok(Operation {
                         kind: BitSampleOp {
                             sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::BitTensor),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -812,7 +826,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: BitFillOp {
                             sig: Signature::unary(Ty::Shape, Ty::BitTensor),
                             value: op.value,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -821,7 +836,8 @@ impl TryFrom<PyComputation> for Computation {
                     bit_BitXorOperation(op) => Ok(Operation {
                         kind: BitXorOp {
                             sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -830,7 +846,8 @@ impl TryFrom<PyComputation> for Computation {
                     bit_BitAndOperation(op) => Ok(Operation {
                         kind: BitAndOp {
                             sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -840,7 +857,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: RingInjectOp {
                             sig: Signature::unary(Ty::BitTensor, map_type(&op.output_type)?),
                             bit_idx: op.bit_idx as usize,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -850,7 +868,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: ConstantOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             value: map_constant_value(&op.value)?,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
@@ -863,7 +882,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -877,7 +897,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -891,7 +912,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -905,7 +927,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -919,7 +942,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             to_column_vector: op.to_column_vector,
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -928,7 +952,8 @@ impl TryFrom<PyComputation> for Computation {
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: StdShapeOp {
                             sig: Signature::unary(Ty::Float64Tensor, Ty::Shape),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -942,7 +967,8 @@ impl TryFrom<PyComputation> for Computation {
                             ),
                             start: op.begin,
                             end: op.end,
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -951,7 +977,8 @@ impl TryFrom<PyComputation> for Computation {
                     std_OnesOperation(op) => Ok(Operation {
                         kind: StdOnesOp {
                             sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -965,7 +992,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -986,7 +1014,8 @@ impl TryFrom<PyComputation> for Computation {
                                     map_type(&op.output_type)?,
                                 ),
                                 axis: op.axis,
-                            }.into(),
+                            }
+                            .into(),
                             inputs: sorted_input_names,
                             name: op.name.clone(),
                             placement: map_placement(&placements, &op.placement_name)?,
@@ -999,7 +1028,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -1013,7 +1043,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -1027,7 +1058,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -1041,7 +1073,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -1055,7 +1088,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -1066,7 +1100,8 @@ impl TryFrom<PyComputation> for Computation {
                             sig: Signature::unary(Ty::Unknown, Ty::Unit),
                             rendezvous_key: op.rendezvous_key.clone(),
                             receiver: Role::from(&op.receiver),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1077,7 +1112,8 @@ impl TryFrom<PyComputation> for Computation {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             rendezvous_key: op.rendezvous_key.clone(),
                             sender: Role::from(&op.sender),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
@@ -1088,7 +1124,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1100,7 +1137,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1110,7 +1148,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: InputOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             arg_name: op.name.clone(),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
@@ -1121,7 +1160,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1131,7 +1171,8 @@ impl TryFrom<PyComputation> for Computation {
                         kind: SaveOp {
                             // TODO replace with `UnknownTy` as soon as we have type inference
                             sig: Signature::unary(Ty::Float64Tensor, Ty::Unit),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1144,7 +1185,8 @@ impl TryFrom<PyComputation> for Computation {
                                 Ty::String,
                                 map_type(&op.output_type)?,
                             ),
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1155,7 +1197,8 @@ impl TryFrom<PyComputation> for Computation {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1169,7 +1212,8 @@ impl TryFrom<PyComputation> for Computation {
                             ),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -1184,7 +1228,8 @@ impl TryFrom<PyComputation> for Computation {
                             axis: op.axis.map(|x| x as usize),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
-                        }.into(),
+                        }
+                        .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,

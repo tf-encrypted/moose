@@ -754,7 +754,6 @@ pub struct RepToAdtOp {
     sig: Signature,
 }
 
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Placement {
     Host(HostPlacement),

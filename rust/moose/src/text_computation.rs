@@ -209,7 +209,8 @@ macro_rules! operation_on_axis {
                 $sub {
                     sig,
                     axis: opt_axis,
-                }.into(),
+                }
+                .into(),
             ))
         }
     };
@@ -220,10 +221,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let part1 = alt((
-        preceded(
-            tag("Identity"),
-            cut(std_unary!(IdentityOp)),
-        ),
+        preceded(tag("Identity"), cut(std_unary!(IdentityOp))),
         preceded(tag("Load"), cut(std_unary!(LoadOp))),
         preceded(tag("Send"), cut(send_operator)),
         preceded(tag("Receive"), cut(receive_operator)),
@@ -236,64 +234,25 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag("StdMul"), cut(std_binary!(StdMulOp))),
         preceded(tag("StdDiv"), cut(std_binary!(StdDivOp))),
         preceded(tag("StdDot"), cut(std_binary!(StdDotOp))),
-        preceded(
-            tag("StdMean"),
-            cut(operation_on_axis!(StdMeanOp)),
-        ),
+        preceded(tag("StdMean"), cut(operation_on_axis!(StdMeanOp))),
         preceded(tag("StdExpandDims"), cut(stdexpanddims)),
-        preceded(
-            tag("StdReshape"),
-            cut(std_unary!(StdReshapeOp)),
-        ),
+        preceded(tag("StdReshape"), cut(std_unary!(StdReshapeOp))),
         preceded(tag("StdAtLeast2D"), cut(stdatleast2d)),
-        preceded(
-            tag("StdShape"),
-            cut(std_unary!(StdShapeOp)),
-        ),
+        preceded(tag("StdShape"), cut(std_unary!(StdShapeOp))),
         preceded(tag("StdSlice"), cut(stdslice)),
     ));
     let part2 = alt((
-        preceded(
-            tag("StdSum"),
-            cut(operation_on_axis!(StdSumOp)),
-        ),
-        preceded(
-            tag("StdOnes"),
-            cut(std_unary!(StdOnesOp)),
-        ),
+        preceded(tag("StdSum"), cut(operation_on_axis!(StdSumOp))),
+        preceded(tag("StdOnes"), cut(std_unary!(StdOnesOp))),
         preceded(tag("StdConcatenate"), cut(stdconcatenate)),
-        preceded(
-            tag("StdTranspose"),
-            cut(std_unary!(StdTransposeOp)),
-        ),
-        preceded(
-            tag("StdInverse"),
-            cut(std_unary!(StdInverseOp)),
-        ),
-        preceded(
-            tag("RingAdd"),
-            cut(std_binary!(RingAddOp)),
-        ),
-        preceded(
-            tag("RingSub"),
-            cut(std_binary!(RingSubOp)),
-        ),
-        preceded(
-            tag("RingMul"),
-            cut(std_binary!(RingMulOp)),
-        ),
-        preceded(
-            tag("RingDot"),
-            cut(std_binary!(RingDotOp)),
-        ),
-        preceded(
-            tag("RingSum"),
-            cut(operation_on_axis!(RingSumOp)),
-        ),
-        preceded(
-            tag("RingShape"),
-            cut(std_unary!(RingShapeOp)),
-        ),
+        preceded(tag("StdTranspose"), cut(std_unary!(StdTransposeOp))),
+        preceded(tag("StdInverse"), cut(std_unary!(StdInverseOp))),
+        preceded(tag("RingAdd"), cut(std_binary!(RingAddOp))),
+        preceded(tag("RingSub"), cut(std_binary!(RingSubOp))),
+        preceded(tag("RingMul"), cut(std_binary!(RingMulOp))),
+        preceded(tag("RingDot"), cut(std_binary!(RingDotOp))),
+        preceded(tag("RingSum"), cut(operation_on_axis!(RingSumOp))),
+        preceded(tag("RingShape"), cut(std_unary!(RingShapeOp))),
         preceded(tag("RingSample"), cut(ring_sample)),
         preceded(tag("RingFill"), cut(ring_fill)),
         preceded(tag("RingShl"), cut(ring_shl)),
@@ -341,7 +300,8 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             sig,
             rendezvous_key,
             receiver: Role::from(receiver),
-        }.into(),
+        }
+        .into(),
     ))
 }
 
@@ -360,7 +320,8 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             sig,
             rendezvous_key,
             sender: Role::from(sender),
-        }.into(),
+        }
+        .into(),
     ))
 }
 
@@ -379,10 +340,7 @@ fn stdexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((
-        input,
-        StdExpandDimsOp { sig, axis }.into(),
-    ))
+    Ok((input, StdExpandDimsOp { sig, axis }.into()))
 }
 
 /// Parses a StdAtLeast2D operator.
@@ -396,7 +354,8 @@ fn stdatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         StdAtLeast2DOp {
             sig,
             to_column_vector,
-        }.into(),
+        }
+        .into(),
     ))
 }
 
@@ -418,10 +377,7 @@ fn stdconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((
-        input,
-        StdConcatenateOp { sig, axis }.into(),
-    ))
+    Ok((input, StdConcatenateOp { sig, axis }.into()))
 }
 
 /// Parses a RingSample operator.
@@ -435,7 +391,8 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         RingSampleOp {
             sig,
             max_value: opt_max_value,
-        }.into(),
+        }
+        .into(),
     ))
 }
 
@@ -474,7 +431,8 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         input,
         PrimGenPrfKeyOp {
             sig: Signature::nullary(Ty::PrfKey),
-        }.into(),
+        }
+        .into(),
     ))
 }
 
@@ -485,10 +443,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, nonce) = attributes_single("nonce", map(vector(parse_int), Nonce))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-    Ok((
-        input,
-        PrimDeriveSeedOp { sig, nonce }.into(),
-    ))
+    Ok((input, PrimDeriveSeedOp { sig, nonce }.into()))
 }
 
 /// Parses a FixedpointRingEncode operator.
@@ -506,7 +461,8 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
             sig,
             scaling_base,
             scaling_exp,
-        }.into(),
+        }
+        .into(),
     ))
 }
 
@@ -525,7 +481,8 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
             sig,
             scaling_base,
             scaling_exp,
-        }.into(),
+        }
+        .into(),
     ))
 }
 
@@ -555,7 +512,8 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>
             axis,
             scaling_base,
             scaling_exp,
-        }.into(),
+        }
+        .into(),
     ))
 }
 

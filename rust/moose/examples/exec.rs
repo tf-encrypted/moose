@@ -8,7 +8,8 @@ fn main() {
         name: "key".into(),
         kind: PrimGenPrfKeyOp {
             sig: Signature::nullary(Ty::PrfKey),
-        }.into(),
+        }
+        .into(),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -20,7 +21,8 @@ fn main() {
         kind: PrimDeriveSeedOp {
             sig: Signature::unary(Ty::PrfKey, Ty::Seed),
             nonce: Nonce(vec![1, 2, 3]),
-        }.into(),
+        }
+        .into(),
         inputs: vec!["key".into()],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -32,7 +34,8 @@ fn main() {
         kind: ConstantOp {
             sig: Signature::nullary(Ty::Shape),
             value: Value::Shape(Shape(vec![2, 3])),
-        }.into(),
+        }
+        .into(),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -44,7 +47,8 @@ fn main() {
         kind: RingSampleOp {
             sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::Ring64Tensor),
             max_value: None,
-        }.into(),
+        }
+        .into(),
         inputs: vec!["x_shape".into(), "x_seed".into()],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -57,7 +61,8 @@ fn main() {
             name: format!("y{}", i),
             kind: RingMulOp {
                 sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
-            }.into(),
+            }
+            .into(),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {
                 owner: Role::from("alice"),

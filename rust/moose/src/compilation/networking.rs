@@ -76,7 +76,8 @@ impl NetworkingPass {
                 sig: Signature::unary(Ty::Unknown, Ty::Unknown),
                 rendezvous_key: rendezvous_key.clone(),
                 receiver: Role::from(dst),
-            }.into(),
+            }
+            .into(),
             inputs: vec![src_op.name.clone()],
             placement: src_op.placement.clone(),
         };
@@ -88,7 +89,8 @@ impl NetworkingPass {
                 sig: Signature::nullary(Ty::Unknown),
                 rendezvous_key,
                 sender: Role::from(src),
-            }.into(),
+            }
+            .into(),
             inputs: vec![],
             placement: dst_op.placement.clone(),
         };
