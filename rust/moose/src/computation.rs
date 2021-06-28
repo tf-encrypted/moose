@@ -308,104 +308,142 @@ impl Signature {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Operator {
-    Identity(IdentityOp),
-    Load(LoadOp),
-    Save(SaveOp),
-    Send(SendOp),
-    Receive(ReceiveOp),
-    Input(InputOp),
-    Output(OutputOp),
-    Constant(ConstantOp),
-    StdAdd(StdAddOp),
-    StdSub(StdSubOp),
-    StdMul(StdMulOp),
-    StdDiv(StdDivOp),
-    StdDot(StdDotOp),
-    StdMean(StdMeanOp),
-    StdExpandDims(StdExpandDimsOp),
-    StdReshape(StdReshapeOp),
-    StdAtLeast2D(StdAtLeast2DOp),
-    StdShape(StdShapeOp),
-    StdSlice(StdSliceOp),
-    StdSum(StdSumOp),
-    StdOnes(StdOnesOp),
-    StdConcatenate(StdConcatenateOp),
-    StdTranspose(StdTransposeOp),
-    StdInverse(StdInverseOp),
-    RingAdd(RingAddOp),
-    RingSub(RingSubOp),
-    RingMul(RingMulOp),
-    RingDot(RingDotOp),
-    RingSum(RingSumOp),
-    RingShape(RingShapeOp),
-    RingSample(RingSampleOp),
-    RingFill(RingFillOp),
-    RingShl(RingShlOp),
-    RingShr(RingShrOp),
-    RingInject(RingInjectOp),
-    BitExtract(BitExtractOp),
-    BitSample(BitSampleOp),
-    BitFill(BitFillOp),
-    BitXor(BitXorOp),
-    BitAnd(BitAndOp),
-    PrimDeriveSeed(PrimDeriveSeedOp),
-    PrimGenPrfKey(PrimGenPrfKeyOp),
-    FixedpointRingEncode(FixedpointRingEncodeOp),
-    FixedpointRingDecode(FixedpointRingDecodeOp),
-    FixedpointRingMean(FixedpointRingMeanOp),
+    IdentityOp(IdentityOp),
+    LoadOp(LoadOp),
+    SaveOp(SaveOp),
+    SendOp(SendOp),
+    ReceiveOp(ReceiveOp),
+    InputOp(InputOp),
+    OutputOp(OutputOp),
+    ConstantOp(ConstantOp),
+    StdAddOp(StdAddOp),
+    StdSubOp(StdSubOp),
+    StdMulOp(StdMulOp),
+    StdDivOp(StdDivOp),
+    StdDotOp(StdDotOp),
+    StdMeanOp(StdMeanOp),
+    StdExpandDimsOp(StdExpandDimsOp),
+    StdReshapeOp(StdReshapeOp),
+    StdAtLeast2DOp(StdAtLeast2DOp),
+    StdShapeOp(StdShapeOp),
+    StdSliceOp(StdSliceOp),
+    StdSumOp(StdSumOp),
+    StdOnesOp(StdOnesOp),
+    StdConcatenateOp(StdConcatenateOp),
+    StdTransposeOp(StdTransposeOp),
+    StdInverseOp(StdInverseOp),
+    RingAddOp(RingAddOp),
+    RingSubOp(RingSubOp),
+    RingMulOp(RingMulOp),
+    RingDotOp(RingDotOp),
+    RingSumOp(RingSumOp),
+    RingShapeOp(RingShapeOp),
+    RingSampleOp(RingSampleOp),
+    RingFillOp(RingFillOp),
+    RingShlOp(RingShlOp),
+    RingShrOp(RingShrOp),
+    RingInjectOp(RingInjectOp),
+    BitExtractOp(BitExtractOp),
+    BitSampleOp(BitSampleOp),
+    BitFillOp(BitFillOp),
+    BitXorOp(BitXorOp),
+    BitAndOp(BitAndOp),
+    PrimDeriveSeedOp(PrimDeriveSeedOp),
+    PrimGenPrfKeyOp(PrimGenPrfKeyOp),
+    FixedAddOp(FixedAddOp),
+    FixedMulOp(FixedMulOp),
+    FixedpointRingEncodeOp(FixedpointRingEncodeOp),
+    FixedpointRingDecodeOp(FixedpointRingDecodeOp),
+    FixedpointRingMeanOp(FixedpointRingMeanOp),
+    AdtRevealOp(AdtRevealOp),
+    AdtAddOp(AdtAddOp),
+    AdtMulOp(AdtMulOp),
+    RepSetupOp(RepSetupOp),
+    RepShareOp(RepShareOp),
+    RepRevealOp(RepRevealOp),
+    RepAddOp(RepAddOp),
+    RepMulOp(RepMulOp),
+    RepToAdtOp(RepToAdtOp),
 }
 
-impl Operator {
-    pub fn sig(&self) -> &Signature {
-        match self {
-            Operator::Identity(op) => &op.sig,
-            Operator::Load(op) => &op.sig,
-            Operator::Save(op) => &op.sig,
-            Operator::Send(op) => &op.sig,
-            Operator::Receive(op) => &op.sig,
-            Operator::Input(op) => &op.sig,
-            Operator::Output(op) => &op.sig,
-            Operator::Constant(op) => &op.sig,
-            Operator::StdAdd(op) => &op.sig,
-            Operator::StdSub(op) => &op.sig,
-            Operator::StdMul(op) => &op.sig,
-            Operator::StdDiv(op) => &op.sig,
-            Operator::StdDot(op) => &op.sig,
-            Operator::StdMean(op) => &op.sig,
-            Operator::StdExpandDims(op) => &op.sig,
-            Operator::StdReshape(op) => &op.sig,
-            Operator::StdAtLeast2D(op) => &op.sig,
-            Operator::StdShape(op) => &op.sig,
-            Operator::StdSlice(op) => &op.sig,
-            Operator::StdSum(op) => &op.sig,
-            Operator::StdOnes(op) => &op.sig,
-            Operator::StdConcatenate(op) => &op.sig,
-            Operator::StdTranspose(op) => &op.sig,
-            Operator::StdInverse(op) => &op.sig,
-            Operator::RingAdd(op) => &op.sig,
-            Operator::RingSub(op) => &op.sig,
-            Operator::RingMul(op) => &op.sig,
-            Operator::RingDot(op) => &op.sig,
-            Operator::RingSum(op) => &op.sig,
-            Operator::RingShape(op) => &op.sig,
-            Operator::RingSample(op) => &op.sig,
-            Operator::RingFill(op) => &op.sig,
-            Operator::RingShl(op) => &op.sig,
-            Operator::RingShr(op) => &op.sig,
-            Operator::RingInject(op) => &op.sig,
-            Operator::BitExtract(op) => &op.sig,
-            Operator::BitSample(op) => &op.sig,
-            Operator::BitFill(op) => &op.sig,
-            Operator::BitXor(op) => &op.sig,
-            Operator::BitAnd(op) => &op.sig,
-            Operator::PrimDeriveSeed(op) => &op.sig,
-            Operator::PrimGenPrfKey(op) => &op.sig,
-            Operator::FixedpointRingEncode(op) => &op.sig,
-            Operator::FixedpointRingDecode(op) => &op.sig,
-            Operator::FixedpointRingMean(op) => &op.sig,
+macro_rules! operators {
+    ($($t:ident),+) => {
+        $(
+        impl From<$t> for Operator {
+            fn from(x: $t) -> Operator {
+                Operator::$t(x)
+            }
         }
-    }
+        )+
+
+        impl Operator {
+            pub fn sig(&self) -> &Signature {
+                match self {
+                    $(Operator::$t(op) => &op.sig,)+
+                }
+            }
+        }
+    };
 }
+
+operators![
+    IdentityOp,
+    LoadOp,
+    SaveOp,
+    SendOp,
+    ReceiveOp,
+    InputOp,
+    OutputOp,
+    ConstantOp,
+    StdAddOp,
+    StdSubOp,
+    StdMulOp,
+    StdDivOp,
+    StdDotOp,
+    StdMeanOp,
+    StdExpandDimsOp,
+    StdReshapeOp,
+    StdAtLeast2DOp,
+    StdShapeOp,
+    StdSliceOp,
+    StdSumOp,
+    StdOnesOp,
+    StdConcatenateOp,
+    StdTransposeOp,
+    StdInverseOp,
+    RingAddOp,
+    RingSubOp,
+    RingMulOp,
+    RingDotOp,
+    RingSumOp,
+    RingShapeOp,
+    RingSampleOp,
+    RingFillOp,
+    RingShlOp,
+    RingShrOp,
+    RingInjectOp,
+    BitExtractOp,
+    BitSampleOp,
+    BitFillOp,
+    BitXorOp,
+    BitAndOp,
+    PrimDeriveSeedOp,
+    PrimGenPrfKeyOp,
+    FixedAddOp,
+    FixedMulOp,
+    FixedpointRingEncodeOp,
+    FixedpointRingDecodeOp,
+    FixedpointRingMeanOp,
+    AdtRevealOp,
+    AdtAddOp,
+    AdtMulOp,
+    RepSetupOp,
+    RepShareOp,
+    RepRevealOp,
+    RepAddOp,
+    RepMulOp,
+    RepToAdtOp
+];
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SendOp {
@@ -450,7 +488,7 @@ pub struct SaveOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ConstantOp {
     pub sig: Signature,
-    pub value: Value,
+    pub value: Value, // TODO Box<Value> or Box inside Value?
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -640,6 +678,16 @@ pub struct BitAndOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct FixedAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct FixedMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct FixedpointRingEncodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
@@ -660,6 +708,52 @@ pub struct FixedpointRingMeanOp {
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdtRevealOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdtAddOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdtMulOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepSetupOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepShareOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepRevealOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepAddOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepMulOp {
+    sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepToAdtOp {
+    sig: Signature,
+}
+
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Placement {

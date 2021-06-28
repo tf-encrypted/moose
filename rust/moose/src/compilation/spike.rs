@@ -124,22 +124,6 @@ placement!(HostPlacement);
 placement!(ReplicatedPlacement);
 placement!(AdditivePlacement);
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum Ty {
-    Fixed64Tensor,
-    Fixed128Tensor,
-    BitTensor,
-    Ring64Tensor,
-    Ring128Tensor,
-    Replicated64Tensor,
-    Replicated128Tensor,
-    ReplicatedBitTensor,
-    Additive64Tensor,
-    Additive128Tensor,
-    ReplicatedSetup,
-    PrfKey,
-}
-
 impl Ty {
     pub fn synthesize_symbolic_value<S: Into<String>>(
         &self,
@@ -216,41 +200,6 @@ impl Ty {
 pub trait KnownType {
     type Symbolic;
     const TY: Ty;
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum Value {
-    Fixed64Tensor(Fixed64Tensor),
-    Fixed128Tensor(Fixed128Tensor),
-    BitTensor(BitTensor),
-    Ring64Tensor(Ring64Tensor),
-    Ring128Tensor(Ring128Tensor),
-    Replicated64Tensor(Replicated64Tensor),
-    Replicated128Tensor(Replicated128Tensor),
-    ReplicatedBitTensor(ReplicatedBitTensor),
-    Additive64Tensor(Additive64Tensor),
-    Additive128Tensor(Additive128Tensor),
-    ReplicatedSetup(ReplicatedSetup),
-    PrfKey(PrfKey),
-}
-
-impl Value {
-    pub fn ty(&self) -> Ty {
-        match self {
-            Value::Fixed64Tensor(_) => Ty::Fixed64Tensor,
-            Value::Fixed128Tensor(_) => Ty::Fixed128Tensor,
-            Value::BitTensor(_) => Ty::BitTensor,
-            Value::Ring64Tensor(_) => Ty::Ring64Tensor,
-            Value::Ring128Tensor(_) => Ty::Ring128Tensor,
-            Value::Replicated64Tensor(_) => Ty::Replicated64Tensor,
-            Value::Replicated128Tensor(_) => Ty::Replicated128Tensor,
-            Value::ReplicatedBitTensor(_) => Ty::ReplicatedBitTensor,
-            Value::Additive64Tensor(_) => Ty::Additive64Tensor,
-            Value::Additive128Tensor(_) => Ty::Additive128Tensor,
-            Value::ReplicatedSetup(_) => Ty::ReplicatedSetup,
-            Value::PrfKey(_) => Ty::PrfKey,
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -627,76 +576,6 @@ where
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-#[allow(clippy::enum_variant_names)]
-pub enum Operator {
-    PrfKeyGenOp(PrfKeyGenOp),
-    RingAddOp(RingAddOp),
-    RingShlOp(RingShlOp),
-    RingShrOp(RingShrOp),
-    BitXorOp(BitXorOp),
-    BitAndOp(BitAndOp),
-    RingSubOp(RingSubOp),
-    RingMulOp(RingMulOp),
-    RingSampleOp(RingSampleOp),
-    BitSampleOp(BitSampleOp),
-    RepSetupOp(RepSetupOp),
-    RepAddOp(RepAddOp),
-    RepMulOp(RepMulOp),
-    RepToAddOp(RepToAddOp),
-    RepShareOp(RepShareOp),
-    RepRevealOp(RepRevealOp),
-    AdditiveAddOp(AdditiveAddOp),
-    AdditiveMulOp(AdditiveMulOp),
-    AdditiveRevealOp(AdditiveRevealOp),
-    ConstantOp(ConstantOp),
-    FixedAddOp(FixedAddOp),
-    FixedMulOp(FixedMulOp),
-}
-
-macro_rules! operator {
-    ($t:ident) => {
-        impl From<$t> for Operator {
-            fn from(x: $t) -> Operator {
-                Operator::$t(x)
-            }
-        }
-    };
-}
-
-// NOTE a future improvement might be to have a single `operators!` macro
-// that takes care of everything, including generating `enum Operator`.
-operator!(PrfKeyGenOp);
-operator!(RingAddOp);
-operator!(RingShlOp);
-operator!(RingShrOp);
-operator!(BitXorOp);
-operator!(BitAndOp);
-operator!(RingSubOp);
-operator!(RingMulOp);
-operator!(RingSampleOp);
-operator!(BitSampleOp);
-operator!(RepSetupOp);
-operator!(RepAddOp);
-operator!(RepMulOp);
-operator!(RepToAddOp);
-operator!(RepShareOp);
-operator!(RepRevealOp);
-operator!(AdditiveAddOp);
-operator!(AdditiveMulOp);
-operator!(AdditiveRevealOp);
-operator!(ConstantOp);
-operator!(FixedAddOp);
-operator!(FixedMulOp);
-
-#[derive(Clone, Debug, PartialEq)]
-struct Operation {
-    name: String,
-    operator: Operator,
-    operands: Vec<String>,
-    plc: Placement,
-}
-
 use crate::computation::{Signature, NullarySignature, UnarySignature, BinarySignature, TernarySignature};
 
 
@@ -797,53 +676,7 @@ impl BitAnd for BitTensor {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct ReplicatedTensor<R> {
-    shares: [[R; 2]; 3],
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct AdditiveTensor<R> {
-    shares: [R; 2],
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct PrfKey([u8; 16], HostPlacement);
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct AbstractReplicatedSetup<K> {
-    keys: [[K; 2]; 3],
-}
-
-#[derive(Clone, Debug, PartialEq)]
-struct ReplicatedZeroShare<R> {
-    alphas: [R; 3],
-}
-
-pub type Ring64Tensor = RingTensor<u64>;
-
-pub type Ring128Tensor = RingTensor<u128>;
-
-pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
-
-pub type Replicated128Tensor = ReplicatedTensor<Ring128Tensor>;
-
-pub type Additive64Tensor = AdditiveTensor<Ring64Tensor>;
-
-pub type Additive128Tensor = AdditiveTensor<Ring128Tensor>;
-
-pub type ReplicatedBitTensor = ReplicatedTensor<BitTensor>;
-
-pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
-
-pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
-
-pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
-    RingTensor(RingTensorT),
-    ReplicatedTensor(ReplicatedTensorT),
-}
 
 macro_rules! modelled {
     /*
@@ -857,7 +690,7 @@ macro_rules! modelled {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(op.into(), &self.into(), vec![])
                     .try_into()
                     .unwrap()
@@ -869,7 +702,7 @@ macro_rules! modelled {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(op.into(), &self.into(), vec![])
                     .try_into()
                     .unwrap()
@@ -891,7 +724,7 @@ macro_rules! modelled {
                     arg0: <$t0 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
                     .unwrap()
@@ -906,7 +739,7 @@ macro_rules! modelled {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
                     .unwrap()
@@ -929,7 +762,7 @@ macro_rules! modelled {
                     arg1: <$t1 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -956,7 +789,7 @@ macro_rules! modelled {
                     arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -984,7 +817,7 @@ macro_rules! modelled {
                     arg2: <$t2 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -1018,7 +851,7 @@ macro_rules! modelled {
                     arg2: <<$t2 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op::from_signature(sig);
+                let op = $op { sig };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -2255,11 +2088,6 @@ pub trait DispatchKernel<C: Context> {
     ) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct RepSetupOp {
-    sig: Signature,
-}
-
 impl RepSetupOp {
     fn kernel<C: Context, K: Clone>(
         ctx: &C,
@@ -2286,10 +2114,6 @@ hybrid_kernel! {
         (ReplicatedPlacement, () -> ReplicatedSetup => Self::kernel),
     ]
 }
-#[derive(Clone, Debug, PartialEq)]
-pub struct RepToAddOp {
-    sig: Signature,
-}
 
 modelled!(PlacementRepToAdd::rep_to_add, AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor, RepToAddOp);
 modelled!(PlacementRepToAdd::rep_to_add, AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor, RepToAddOp);
@@ -2303,10 +2127,6 @@ hybrid_kernel! {
 }
 
 impl RepToAddOp {
-    fn from_signature(sig: UnarySignature) -> Self {
-        RepToAddOp { sig: sig.into() }
-    }
-
     fn rep_to_add_kernel<C: Context, R>(
         ctx: &C,
         add: &AdditivePlacement,
@@ -2346,11 +2166,6 @@ impl RepToAddOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct RepAddOp {
-    sig: Signature,
-}
-
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
@@ -2373,10 +2188,6 @@ hybrid_kernel! {
 }
 
 impl RepAddOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        RepAddOp { sig: sig.into() }
-    }
-
     fn rep_rep_kernel<C: Context, R>(
         ctx: &C,
         rep: &ReplicatedPlacement,
@@ -2524,11 +2335,6 @@ impl RepAddOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct AdditiveAddOp {
-    sig: Signature,
-}
-
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveAddOp);
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveAddOp);
 
@@ -2545,10 +2351,6 @@ hybrid_kernel! {
 }
 
 impl AdditiveAddOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        AdditiveAddOp { sig: sig.into() }
-    }
-
     fn add_add_kernel<C: Context, R>(
         ctx: &C,
         add: &AdditivePlacement,
@@ -2617,11 +2419,6 @@ impl AdditiveAddOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct RepMulOp {
-    sig: Signature,
-}
-
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
@@ -2644,10 +2441,6 @@ hybrid_kernel! {
 }
 
 impl RepMulOp {
-    fn from_signature(sig: TernarySignature) -> Self {
-        RepMulOp { sig: sig.into() }
-    }
-
     fn rep_rep_kernel<C: Context, R, K>(
         ctx: &C,
         rep: &ReplicatedPlacement,
@@ -2746,11 +2539,6 @@ impl RepMulOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct AdditiveMulOp {
-    sig: Signature,
-}
-
 modelled!(PlacementMul::mul, AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveMulOp);
 modelled!(PlacementMul::mul, AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor, AdditiveMulOp);
 modelled!(PlacementMul::mul, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveMulOp);
@@ -2767,10 +2555,6 @@ hybrid_kernel! {
 }
 
 impl AdditiveMulOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        AdditiveMulOp { sig: sig.into() }
-    }
-
     fn ring_add_kernel<C: Context, R>(
         ctx: &C,
         add: &AdditivePlacement,
@@ -2851,11 +2635,6 @@ where
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct RepShareOp {
-    sig: Signature,
-}
-
 modelled!(PlacementShare::share, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
 modelled!(PlacementShare::share, ReplicatedPlacement, (Ring128Tensor) -> Replicated128Tensor, RepShareOp);
 modelled!(PlacementShare::share, ReplicatedPlacement, (BitTensor) -> ReplicatedBitTensor, RepShareOp);
@@ -2870,10 +2649,6 @@ hybrid_kernel! {
 }
 
 impl RepShareOp {
-    fn from_signature(sig: UnarySignature) -> Self {
-        RepShareOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context, R: Clone>(ctx: &C, rep: &ReplicatedPlacement, x: R) -> ReplicatedTensor<R>
     where
         R: Into<C::Value> + TryFrom<C::Value> + 'static,
@@ -2894,11 +2669,6 @@ impl RepShareOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct RepRevealOp {
-    sig: Signature,
-}
-
 // NOTE
 // revealing on ReplicatedPlacements should reveal to all three players, but we're currently
 // missing a type to represent this (eg PublicReplicatedTensor vs PrivateReplicatedTensors)
@@ -2916,10 +2686,6 @@ hybrid_kernel! {
 }
 
 impl RepRevealOp {
-    fn from_signature(sig: UnarySignature) -> Self {
-        RepRevealOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: ReplicatedTensor<R>) -> R
     where
         R: Clone + 'static,
@@ -2931,11 +2697,6 @@ impl RepRevealOp {
 
         with_context!(plc, ctx, x00 + x10 + x21)
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct AdditiveRevealOp {
-    sig: Signature,
 }
 
 modelled!(PlacementReveal::reveal, HostPlacement, (Additive64Tensor) -> Ring64Tensor, AdditiveRevealOp);
@@ -2950,10 +2711,6 @@ hybrid_kernel! {
 }
 
 impl AdditiveRevealOp {
-    fn from_signature(sig: UnarySignature) -> Self {
-        AdditiveRevealOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: AdditiveTensor<R>) -> R
     where
         HostPlacement: PlacementAdd<C, R, R, Output = R>,
@@ -2961,11 +2718,6 @@ impl AdditiveRevealOp {
         let AdditiveTensor { shares: [x0, x1] } = &xe;
         with_context!(plc, ctx, x1 + x0)
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingAddOp {
-    sig: Signature,
 }
 
 // NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
@@ -2981,10 +2733,6 @@ kernel! {
 }
 
 impl RingAddOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        RingAddOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context, T>(
         _ctx: &C,
         _plc: &HostPlacement,
@@ -2996,11 +2744,6 @@ impl RingAddOp {
     {
         x + y
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingSubOp {
-    sig: Signature,
 }
 
 modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
@@ -3015,10 +2758,6 @@ kernel! {
 }
 
 impl RingSubOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        RingSubOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context, T>(
         _ctx: &C,
         _plc: &HostPlacement,
@@ -3030,11 +2769,6 @@ impl RingSubOp {
     {
         x - y
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingMulOp {
-    sig: Signature,
 }
 
 modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
@@ -3049,10 +2783,6 @@ kernel! {
 }
 
 impl RingMulOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        RingMulOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context, T>(
         _ctx: &C,
         _plc: &HostPlacement,
@@ -3066,11 +2796,6 @@ impl RingMulOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingShlOp {
-    sig: Signature,
-    amount: usize,
-}
 macro_rules! model_shift {
     ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
@@ -3144,12 +2869,6 @@ impl RingShlOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingShrOp {
-    sig: Signature,
-    amount: usize,
-}
-
 model_shift!(PlacementShr::shr, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingShrOp);
 model_shift!(PlacementShr::shr, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingShrOp);
 
@@ -3175,11 +2894,6 @@ impl RingShrOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct BitXorOp {
-    sig: Signature,
-}
-
 modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
 modelled_alias!(PlacementAdd::add, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // add = xor in Z2
 modelled_alias!(PlacementSub::sub, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // sub = xor in Z2
@@ -3192,10 +2906,6 @@ kernel! {
 }
 
 impl BitXorOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        BitXorOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
     where
         BitTensor: BitXor<BitTensor, Output = BitTensor>,
@@ -3204,16 +2914,7 @@ impl BitXorOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct BitAndOp {
-    sig: Signature,
-}
-
 impl BitAndOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        BitAndOp { sig: sig.into() }
-    }
-
     fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
     where
         BitTensor: BitAnd<BitTensor, Output = BitTensor>,
@@ -3236,11 +2937,6 @@ trait PlacementKeyGen<C: Context, K> {
     fn keygen(&self, ctx: &C) -> K;
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct PrfKeyGenOp {
-    sig: Signature,
-}
-
 modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrfKeyGenOp);
 
 kernel! {
@@ -3251,10 +2947,6 @@ kernel! {
 }
 
 impl PrfKeyGenOp {
-    fn from_signature(sig: NullarySignature) -> Self {
-        PrfKeyGenOp { sig: sig.into() }
-    }
-
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
         // TODO
         PrfKey(
@@ -3262,11 +2954,6 @@ impl PrfKeyGenOp {
             plc.clone(),
         )
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RingSampleOp {
-    sig: Signature,
 }
 
 modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
@@ -3281,10 +2968,6 @@ kernel! {
 }
 
 impl RingSampleOp {
-    fn from_signature(sig: NullarySignature) -> Self {
-        RingSampleOp { sig: sig.into() }
-    }
-
     fn kernel<T>(ctx: &ConcreteContext, plc: &HostPlacement) -> RingTensor<T>
     where
         T: From<u32>,
@@ -3292,11 +2975,6 @@ impl RingSampleOp {
         // TODO
         RingTensor::<T>(T::from(987654321), plc.clone())
     }
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct BitSampleOp {
-    sig: Signature,
 }
 
 modelled!(PlacementSample::sample, HostPlacement, () -> BitTensor, BitSampleOp);
@@ -3309,23 +2987,10 @@ kernel! {
 }
 
 impl BitSampleOp {
-    fn from_signature(sig: NullarySignature) -> Self {
-        BitSampleOp { sig: sig.into() }
-    }
-
     fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor {
         // TODO
         BitTensor(0, plc.clone())
     }
-}
-
-// TODO clippy complains if ConstantOp holds a Value but not
-// sure where to introduce eg a Box: here or in Value itself?
-// leaning towards Value
-#[derive(Clone, Debug, PartialEq)]
-pub struct ConstantOp {
-    sig: Signature,
-    val: Box<Value>,
 }
 
 impl DispatchKernel<ConcreteContext> for ConstantOp {
@@ -3363,11 +3028,6 @@ impl DispatchKernel<SymbolicContext> for ConstantOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FixedMulOp {
-    sig: Signature,
-}
-
 modelled!(PlacementMul::mul, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
 modelled!(PlacementMul::mul, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedMulOp);
@@ -3384,10 +3044,6 @@ hybrid_kernel! {
 }
 
 impl FixedMulOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        FixedMulOp { sig: sig.into() }
-    }
-
     fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
         ctx: &C,
         plc: &HostPlacement,
@@ -3475,11 +3131,6 @@ impl FixedMulOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FixedAddOp {
-    sig: Signature,
-}
-
 modelled!(PlacementAdd::add, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
 modelled!(PlacementAdd::add, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedAddOp);
@@ -3496,10 +3147,6 @@ hybrid_kernel! {
 }
 
 impl FixedAddOp {
-    fn from_signature(sig: BinarySignature) -> Self {
-        FixedAddOp { sig: sig.into() }
-    }
-
     fn host_kernel<C: Context, RingTensorT, ReplicatedTensorT>(
         ctx: &C,
         plc: &HostPlacement,

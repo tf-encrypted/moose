@@ -625,7 +625,7 @@ impl Computation {
         for (i, op) in self.operations.iter().enumerate() {
             let vertex = graph.add_node((op.name.clone(), i));
             match op.kind {
-                Operator::Send(ref op) => {
+                Operator::SendOp(ref op) => {
                     let key = op.rendezvous_key.as_ref();
 
                     if send_nodes.contains_key(key) {
@@ -638,7 +638,7 @@ impl Computation {
                     send_nodes.insert(key, vertex);
                     rdv_keys.insert(key);
                 }
-                Operator::Receive(ref op) => {
+                Operator::ReceiveOp(ref op) => {
                     let key = op.rendezvous_key.as_ref();
 
                     if recv_nodes.contains_key(key) {
@@ -755,7 +755,7 @@ impl Computation {
             .operations
             .iter() // guessing that par_iter won't help here
             .filter_map(|op| match op.kind {
-                Operator::Output(_) => Some(op.name.clone()),
+                Operator::OutputOp(_) => Some(op.name.clone()),
                 _ => None,
             })
             .collect();
@@ -815,7 +815,7 @@ impl Computation {
         let own_output_names: Vec<String> = own_operations
             .iter() // guessing that par_iter won't help here
             .filter_map(|op| match op.kind {
-                Operator::Output(_) => Some(op.name.clone()),
+                Operator::OutputOp(_) => Some(op.name.clone()),
                 _ => None,
             })
             .collect();

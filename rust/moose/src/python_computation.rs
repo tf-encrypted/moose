@@ -644,108 +644,107 @@ impl TryFrom<PyComputation> for Computation {
             .operations
             .values()
             .map(|op| {
-                use crate::computation::Operator::*;
                 use anyhow::Context;
                 use std::str::FromStr;
                 use PyOperation::*;
                 match op {
                     prim_SampleKeyOperation(op) => Ok(Operation {
-                        kind: PrimGenPrfKey(PrimGenPrfKeyOp {
+                        kind: PrimGenPrfKeyOp {
                             sig: Signature::nullary(Ty::PrfKey),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     prim_DeriveSeedOperation(op) => Ok(Operation {
-                        kind: PrimDeriveSeed(PrimDeriveSeedOp {
+                        kind: PrimDeriveSeedOp {
                             sig: Signature::unary(Ty::PrfKey, Ty::Nonce),
                             nonce: prim::Nonce(op.nonce.clone()),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingAddOperation(op) => Ok(Operation {
-                        kind: RingAdd(RingAddOp {
+                        kind: RingAddOp {
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingSubOperation(op) => Ok(Operation {
-                        kind: RingSub(RingSubOp {
+                        kind: RingSubOp {
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingMulOperation(op) => Ok(Operation {
-                        kind: RingMul(RingMulOp {
+                        kind: RingMulOp {
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingDotOperation(op) => Ok(Operation {
-                        kind: RingDot(RingDotOp {
+                        kind: RingDotOp {
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
-                        kind: RingShape(RingShapeOp {
+                        kind: RingShapeOp {
                             sig: Signature::unary(Ty::Ring128Tensor, Ty::Shape),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
-                        kind: RingSample(RingSampleOp {
+                        kind: RingSampleOp {
                             sig: Signature::binary(Ty::Shape, Ty::Seed, map_type(&op.output_type)?),
                             max_value: op.max_value,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingSumOperation(op) => Ok(Operation {
-                        kind: RingSum(RingSumOp {
+                        kind: RingSumOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
@@ -755,218 +754,218 @@ impl TryFrom<PyComputation> for Computation {
                         Err(anyhow::anyhow!("unsupported operation: {:?}", op))
                     }
                     ring_FillTensorOperation(op) => Ok(Operation {
-                        kind: RingFill(RingFillOp {
+                        kind: RingFillOp {
                             sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
                             value: Value::Ring128(u128::from_str(&op.value)?),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingShlOperation(op) => Ok(Operation {
-                        kind: RingShl(RingShlOp {
+                        kind: RingShlOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             amount: op.amount as usize,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingShrOperation(op) => Ok(Operation {
-                        kind: RingShr(RingShrOp {
+                        kind: RingShrOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             amount: op.amount as usize,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitExtractOperation(op) => Ok(Operation {
-                        kind: BitExtract(BitExtractOp {
+                        kind: BitExtractOp {
                             sig: Signature::unary(map_type(&op.ring_type)?, Ty::BitTensor),
                             bit_idx: op.bit_idx as usize,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitSampleOperation(op) => Ok(Operation {
-                        kind: BitSample(BitSampleOp {
+                        kind: BitSampleOp {
                             sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::BitTensor),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape", "seed"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitFillTensorOperation(op) => Ok(Operation {
-                        kind: BitFill(BitFillOp {
+                        kind: BitFillOp {
                             sig: Signature::unary(Ty::Shape, Ty::BitTensor),
                             value: op.value,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
-                        kind: BitXor(BitXorOp {
+                        kind: BitXorOp {
                             sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
-                        kind: BitAnd(BitAndOp {
+                        kind: BitAndOp {
                             sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_RingInjectOperation(op) => Ok(Operation {
-                        kind: RingInject(RingInjectOp {
+                        kind: RingInjectOp {
                             sig: Signature::unary(Ty::BitTensor, map_type(&op.output_type)?),
                             bit_idx: op.bit_idx as usize,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["tensor"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ConstantOperation(op) => Ok(Operation {
-                        kind: Constant(ConstantOp {
+                        kind: ConstantOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             value: map_constant_value(&op.value)?,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AddOperation(op) => Ok(Operation {
-                        kind: StdAdd(StdAddOp {
+                        kind: StdAddOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SubOperation(op) => Ok(Operation {
-                        kind: StdSub(StdSubOp {
+                        kind: StdSubOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_MulOperation(op) => Ok(Operation {
-                        kind: StdMul(StdMulOp {
+                        kind: StdMulOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DotOperation(op) => Ok(Operation {
-                        kind: StdDot(StdDotOp {
+                        kind: StdDotOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AtLeast2DOperation(op) => Ok(Operation {
-                        kind: StdAtLeast2D(StdAtLeast2DOp {
+                        kind: StdAtLeast2DOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             to_column_vector: op.to_column_vector,
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
-                        kind: StdShape(StdShapeOp {
+                        kind: StdShapeOp {
                             sig: Signature::unary(Ty::Float64Tensor, Ty::Shape),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SliceOperation(op) => Ok(Operation {
-                        kind: StdSlice(StdSliceOp {
+                        kind: StdSliceOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             start: op.begin,
                             end: op.end,
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OnesOperation(op) => Ok(Operation {
-                        kind: StdOnes(StdOnesOp {
+                        kind: StdOnesOp {
                             sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["shape"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ExpandDimsOperation(op) => Ok(Operation {
-                        kind: StdExpandDims(StdExpandDimsOp {
+                        kind: StdExpandDimsOp {
                             // assume input type is the same as the output type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -978,7 +977,7 @@ impl TryFrom<PyComputation> for Computation {
                         let sorted_input_names: Vec<String> =
                             inputs.into_iter().map(|(_k, v)| v.clone()).collect();
                         Ok(Operation {
-                            kind: StdConcatenate(StdConcatenateOp {
+                            kind: StdConcatenateOp {
                                 // assume input type is the same as output type
                                 // TODO: Support variadic signature
                                 sig: Signature::binary(
@@ -987,20 +986,20 @@ impl TryFrom<PyComputation> for Computation {
                                     map_type(&op.output_type)?,
                                 ),
                                 axis: op.axis,
-                            }),
+                            }.into(),
                             inputs: sorted_input_names,
                             name: op.name.clone(),
                             placement: map_placement(&placements, &op.placement_name)?,
                         })
                     }
                     std_TransposeOperation(op) => Ok(Operation {
-                        kind: StdTranspose(StdTransposeOp {
+                        kind: StdTransposeOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
@@ -1008,176 +1007,176 @@ impl TryFrom<PyComputation> for Computation {
                     }),
 
                     std_InverseOperation(op) => Ok(Operation {
-                        kind: StdInverse(StdInverseOp {
+                        kind: StdInverseOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_MeanOperation(op) => Ok(Operation {
-                        kind: StdMean(StdMeanOp {
+                        kind: StdMeanOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SumOperation(op) => Ok(Operation {
-                        kind: StdSum(StdSumOp {
+                        kind: StdSumOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DivOperation(op) => Ok(Operation {
-                        kind: StdDiv(StdDivOp {
+                        kind: StdDivOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SendOperation(op) => Ok(Operation {
-                        kind: Send(SendOp {
+                        kind: SendOp {
                             sig: Signature::unary(Ty::Unknown, Ty::Unit),
                             rendezvous_key: op.rendezvous_key.clone(),
                             receiver: Role::from(&op.receiver),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ReceiveOperation(op) => Ok(Operation {
-                        kind: Receive(ReceiveOp {
+                        kind: ReceiveOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             rendezvous_key: op.rendezvous_key.clone(),
                             sender: Role::from(&op.sender),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SerializeOperation(op) => Ok(Operation {
-                        kind: Identity(IdentityOp {
+                        kind: IdentityOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DeserializeOperation(op) => Ok(Operation {
-                        kind: Identity(IdentityOp {
+                        kind: IdentityOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_InputOperation(op) => Ok(Operation {
-                        kind: Input(InputOp {
+                        kind: InputOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             arg_name: op.name.clone(),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: Vec::new(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OutputOperation(op) => Ok(Operation {
-                        kind: Output(OutputOp {
+                        kind: OutputOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SaveOperation(op) => Ok(Operation {
-                        kind: Save(SaveOp {
+                        kind: SaveOp {
                             // TODO replace with `UnknownTy` as soon as we have type inference
                             sig: Signature::unary(Ty::Float64Tensor, Ty::Unit),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_LoadOperation(op) => Ok(Operation {
-                        kind: Load(LoadOp {
+                        kind: LoadOp {
                             sig: Signature::binary(
                                 Ty::String,
                                 Ty::String,
                                 map_type(&op.output_type)?,
                             ),
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
-                        kind: FixedpointRingEncode(FixedpointRingEncodeOp {
+                        kind: FixedpointRingEncodeOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingDecodeOperation(op) => Ok(Operation {
-                        kind: FixedpointRingDecode(FixedpointRingDecodeOp {
+                        kind: FixedpointRingDecodeOp {
                             sig: Signature::unary(
                                 map_type(&op.input_type)?,
                                 map_type(&op.output_type)?,
                             ),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingMeanOperation(op) => Ok(Operation {
-                        kind: FixedpointRingMean(FixedpointRingMeanOp {
+                        kind: FixedpointRingMeanOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
@@ -1185,7 +1184,7 @@ impl TryFrom<PyComputation> for Computation {
                             axis: op.axis.map(|x| x as usize),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
-                        }),
+                        }.into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,

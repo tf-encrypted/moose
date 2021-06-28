@@ -180,36 +180,36 @@ macro_rules! attributes {
 
 /// Constructs a parser for a simple unary operation.
 macro_rules! std_unary {
-    ($typ:expr, $sub:ident) => {
+    ($sub:ident) => {
         |input: &'a str| {
             let (input, sig) = type_definition(1)(input)?;
-            Ok((input, $typ($sub { sig })))
+            Ok((input, $sub { sig }.into()))
         }
     };
 }
 
 /// Constructs a parser for a simple binary operation.
 macro_rules! std_binary {
-    ($typ:expr, $sub:ident) => {
+    ($sub:ident) => {
         |input: &'a str| {
             let (input, sig) = type_definition(2)(input)?;
-            Ok((input, $typ($sub { sig })))
+            Ok((input, $sub { sig }.into()))
         }
     };
 }
 
 /// Constructs a parser for a simple binary operation.
 macro_rules! operation_on_axis {
-    ($typ:expr, $sub:ident) => {
+    ($sub:ident) => {
         |input: &'a str| {
             let (input, opt_axis) = opt(attributes_single("axis", parse_int))(input)?;
             let (input, sig) = type_definition(1)(input)?;
             Ok((
                 input,
-                $typ($sub {
+                $sub {
                     sig,
                     axis: opt_axis,
-                }),
+                }.into(),
             ))
         }
     };
@@ -222,77 +222,77 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let part1 = alt((
         preceded(
             tag("Identity"),
-            cut(std_unary!(Operator::Identity, IdentityOp)),
+            cut(std_unary!(IdentityOp)),
         ),
-        preceded(tag("Load"), cut(std_unary!(Operator::Load, LoadOp))),
+        preceded(tag("Load"), cut(std_unary!(LoadOp))),
         preceded(tag("Send"), cut(send_operator)),
         preceded(tag("Receive"), cut(receive_operator)),
         preceded(tag("Input"), cut(input_operator)),
-        preceded(tag("Output"), cut(std_unary!(Operator::Output, OutputOp))),
+        preceded(tag("Output"), cut(std_unary!(OutputOp))),
         preceded(tag("Constant"), cut(constant)),
         preceded(tag("Save"), cut(save_operator)),
-        preceded(tag("StdAdd"), cut(std_binary!(Operator::StdAdd, StdAddOp))),
-        preceded(tag("StdSub"), cut(std_binary!(Operator::StdSub, StdSubOp))),
-        preceded(tag("StdMul"), cut(std_binary!(Operator::StdMul, StdMulOp))),
-        preceded(tag("StdDiv"), cut(std_binary!(Operator::StdDiv, StdDivOp))),
-        preceded(tag("StdDot"), cut(std_binary!(Operator::StdDot, StdDotOp))),
+        preceded(tag("StdAdd"), cut(std_binary!(StdAddOp))),
+        preceded(tag("StdSub"), cut(std_binary!(StdSubOp))),
+        preceded(tag("StdMul"), cut(std_binary!(StdMulOp))),
+        preceded(tag("StdDiv"), cut(std_binary!(StdDivOp))),
+        preceded(tag("StdDot"), cut(std_binary!(StdDotOp))),
         preceded(
             tag("StdMean"),
-            cut(operation_on_axis!(Operator::StdMean, StdMeanOp)),
+            cut(operation_on_axis!(StdMeanOp)),
         ),
         preceded(tag("StdExpandDims"), cut(stdexpanddims)),
         preceded(
             tag("StdReshape"),
-            cut(std_unary!(Operator::StdReshape, StdReshapeOp)),
+            cut(std_unary!(StdReshapeOp)),
         ),
         preceded(tag("StdAtLeast2D"), cut(stdatleast2d)),
         preceded(
             tag("StdShape"),
-            cut(std_unary!(Operator::StdShape, StdShapeOp)),
+            cut(std_unary!(StdShapeOp)),
         ),
         preceded(tag("StdSlice"), cut(stdslice)),
     ));
     let part2 = alt((
         preceded(
             tag("StdSum"),
-            cut(operation_on_axis!(Operator::StdSum, StdSumOp)),
+            cut(operation_on_axis!(StdSumOp)),
         ),
         preceded(
             tag("StdOnes"),
-            cut(std_unary!(Operator::StdOnes, StdOnesOp)),
+            cut(std_unary!(StdOnesOp)),
         ),
         preceded(tag("StdConcatenate"), cut(stdconcatenate)),
         preceded(
             tag("StdTranspose"),
-            cut(std_unary!(Operator::StdTranspose, StdTransposeOp)),
+            cut(std_unary!(StdTransposeOp)),
         ),
         preceded(
             tag("StdInverse"),
-            cut(std_unary!(Operator::StdInverse, StdInverseOp)),
+            cut(std_unary!(StdInverseOp)),
         ),
         preceded(
             tag("RingAdd"),
-            cut(std_binary!(Operator::RingAdd, RingAddOp)),
+            cut(std_binary!(RingAddOp)),
         ),
         preceded(
             tag("RingSub"),
-            cut(std_binary!(Operator::RingSub, RingSubOp)),
+            cut(std_binary!(RingSubOp)),
         ),
         preceded(
             tag("RingMul"),
-            cut(std_binary!(Operator::RingMul, RingMulOp)),
+            cut(std_binary!(RingMulOp)),
         ),
         preceded(
             tag("RingDot"),
-            cut(std_binary!(Operator::RingDot, RingDotOp)),
+            cut(std_binary!(RingDotOp)),
         ),
         preceded(
             tag("RingSum"),
-            cut(operation_on_axis!(Operator::RingSum, RingSumOp)),
+            cut(operation_on_axis!(RingSumOp)),
         ),
         preceded(
             tag("RingShape"),
-            cut(std_unary!(Operator::RingShape, RingShapeOp)),
+            cut(std_unary!(RingShapeOp)),
         ),
         preceded(tag("RingSample"), cut(ring_sample)),
         preceded(tag("RingFill"), cut(ring_fill)),
@@ -322,7 +322,7 @@ fn constant<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, optional_type) = opt(type_definition(0))(input)?;
     let sig = optional_type.unwrap_or_else(|| Signature::nullary(value.ty()));
 
-    Ok((input, Operator::Constant(ConstantOp { sig, value })))
+    Ok((input, ConstantOp { sig, value }.into()))
 }
 
 /// Parses a Send operator
@@ -337,11 +337,11 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let sig = optional_type.unwrap_or_else(|| Signature::unary(Ty::Unknown, Ty::Unknown));
     Ok((
         input,
-        Operator::Send(SendOp {
+        SendOp {
             sig,
             rendezvous_key,
             receiver: Role::from(receiver),
-        }),
+        }.into(),
     ))
 }
 
@@ -356,11 +356,11 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, sig) = type_definition(0)(input)?;
     Ok((
         input,
-        Operator::Receive(ReceiveOp {
+        ReceiveOp {
             sig,
             rendezvous_key,
             sender: Role::from(sender),
-        }),
+        }.into(),
     ))
 }
 
@@ -370,7 +370,7 @@ fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, arg_name) = attributes_single("arg_name", string)(input)?;
     let (input, sig) = type_definition(0)(input)?;
-    Ok((input, Operator::Input(InputOp { sig, arg_name })))
+    Ok((input, InputOp { sig, arg_name }.into()))
 }
 
 /// Parses a StdExpandDims operator
@@ -381,7 +381,7 @@ fn stdexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, sig) = type_definition(1)(input)?;
     Ok((
         input,
-        Operator::StdExpandDims(StdExpandDimsOp { sig, axis }),
+        StdExpandDimsOp { sig, axis }.into(),
     ))
 }
 
@@ -393,10 +393,10 @@ fn stdatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, sig) = type_definition(1)(input)?;
     Ok((
         input,
-        Operator::StdAtLeast2D(StdAtLeast2DOp {
+        StdAtLeast2DOp {
             sig,
             to_column_vector,
-        }),
+        }.into(),
     ))
 }
 
@@ -409,7 +409,7 @@ fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("end", parse_int)
     ))(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, Operator::StdSlice(StdSliceOp { sig, start, end })))
+    Ok((input, StdSliceOp { sig, start, end }.into()))
 }
 
 /// Parses a StdConcatenate operator.
@@ -420,7 +420,7 @@ fn stdconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, sig) = type_definition(1)(input)?;
     Ok((
         input,
-        Operator::StdConcatenate(StdConcatenateOp { sig, axis }),
+        StdConcatenateOp { sig, axis }.into(),
     ))
 }
 
@@ -432,10 +432,10 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, sig) = type_definition(0)(input)?;
     Ok((
         input,
-        Operator::RingSample(RingSampleOp {
+        RingSampleOp {
             sig,
             max_value: opt_max_value,
-        }),
+        }.into(),
     ))
 }
 
@@ -445,7 +445,7 @@ fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", value_literal)(input)?;
     let (input, sig) = type_definition(0)(input)?;
-    Ok((input, Operator::RingFill(RingFillOp { sig, value })))
+    Ok((input, RingFillOp { sig, value }.into()))
 }
 
 /// Parses a RingShl operator.
@@ -454,7 +454,7 @@ fn ring_shl<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
     let (input, sig) = type_definition(0)(input)?;
-    Ok((input, Operator::RingShl(RingShlOp { sig, amount })))
+    Ok((input, RingShlOp { sig, amount }.into()))
 }
 
 /// Parses a RingShr operator.
@@ -463,7 +463,7 @@ fn ring_shr<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, amount) = attributes_single("amount", parse_int)(input)?;
     let (input, sig) = type_definition(0)(input)?;
-    Ok((input, Operator::RingShr(RingShrOp { sig, amount })))
+    Ok((input, RingShrOp { sig, amount }.into()))
 }
 
 /// Parses a PrimGenPrfKey operator.
@@ -472,9 +472,9 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     Ok((
         input,
-        Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
+        PrimGenPrfKeyOp {
             sig: Signature::nullary(Ty::PrfKey),
-        }),
+        }.into(),
     ))
 }
 
@@ -487,7 +487,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((
         input,
-        Operator::PrimDeriveSeed(PrimDeriveSeedOp { sig, nonce }),
+        PrimDeriveSeedOp { sig, nonce }.into(),
     ))
 }
 
@@ -502,11 +502,11 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
     let (input, sig) = type_definition(0)(input)?;
     Ok((
         input,
-        Operator::FixedpointRingEncode(FixedpointRingEncodeOp {
+        FixedpointRingEncodeOp {
             sig,
             scaling_base,
             scaling_exp,
-        }),
+        }.into(),
     ))
 }
 
@@ -521,11 +521,11 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
     let (input, sig) = type_definition(1)(input)?;
     Ok((
         input,
-        Operator::FixedpointRingDecode(FixedpointRingDecodeOp {
+        FixedpointRingDecodeOp {
             sig,
             scaling_base,
             scaling_exp,
-        }),
+        }.into(),
     ))
 }
 
@@ -534,7 +534,7 @@ fn save_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, sig) = type_definition(2)(input)?;
-    Ok((input, Operator::Save(SaveOp { sig })))
+    Ok((input, SaveOp { sig }.into()))
 }
 
 /// Parses a FixedpointRingMean operator.
@@ -550,12 +550,12 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>
     let (input, sig) = type_definition(0)(input)?;
     Ok((
         input,
-        Operator::FixedpointRingMean(FixedpointRingMeanOp {
+        FixedpointRingMeanOp {
             sig,
             axis,
             scaling_base,
             scaling_exp,
-        }),
+        }.into(),
     ))
 }
 
@@ -565,7 +565,7 @@ fn ring_inject<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, Operator::RingInject(RingInjectOp { sig, bit_idx })))
+    Ok((input, RingInjectOp { sig, bit_idx }.into()))
 }
 
 /// Parses a BitExtract operator.
@@ -574,7 +574,7 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, Operator::BitExtract(BitExtractOp { sig, bit_idx })))
+    Ok((input, BitExtractOp { sig, bit_idx }.into()))
 }
 
 /// Parses a BitSample operator.
@@ -583,7 +583,7 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_args) = opt(type_definition(0))(input)?;
     let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
-    Ok((input, Operator::BitSample(BitSampleOp { sig })))
+    Ok((input, BitSampleOp { sig }.into()))
 }
 
 /// Parses a BitFill operator.
@@ -593,7 +593,7 @@ fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, value) = attributes_single("value", parse_int)(input)?;
     let (input, opt_args) = opt(type_definition(0))(input)?;
     let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
-    Ok((input, Operator::BitFill(BitFillOp { sig, value })))
+    Ok((input, BitFillOp { sig, value }.into()))
 }
 
 /// Parses a BitXor operator.
@@ -602,7 +602,7 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
-    Ok((input, Operator::BitXor(BitXorOp { sig })))
+    Ok((input, BitXorOp { sig }.into()))
 }
 
 /// Parses list of arguments.
@@ -1102,51 +1102,51 @@ impl ToTextual for Operator {
     fn to_textual(&self) -> String {
         use Operator::*;
         match self {
-            Identity(op) => op.to_textual(),
-            Load(op) => op.to_textual(),
-            Save(op) => op.to_textual(),
-            Send(op) => op.to_textual(),
-            Receive(op) => op.to_textual(),
-            Input(op) => op.to_textual(),
-            Output(op) => op.to_textual(),
-            Constant(op) => op.to_textual(),
-            StdAdd(op) => op.to_textual(),
-            StdSub(op) => op.to_textual(),
-            StdMul(op) => op.to_textual(),
-            StdDiv(op) => op.to_textual(),
-            StdDot(op) => op.to_textual(),
-            StdMean(op) => op.to_textual(),
-            StdOnes(op) => op.to_textual(),
-            StdConcatenate(op) => op.to_textual(),
-            StdExpandDims(op) => op.to_textual(),
-            StdReshape(op) => op.to_textual(),
-            StdAtLeast2D(op) => op.to_textual(),
-            StdShape(op) => op.to_textual(),
-            StdSlice(op) => op.to_textual(),
-            StdSum(op) => op.to_textual(),
-            StdTranspose(op) => op.to_textual(),
-            StdInverse(op) => op.to_textual(),
-            RingAdd(op) => op.to_textual(),
-            RingSub(op) => op.to_textual(),
-            RingMul(op) => op.to_textual(),
-            RingDot(op) => op.to_textual(),
-            RingSum(op) => op.to_textual(),
-            RingShape(op) => op.to_textual(),
-            RingSample(op) => op.to_textual(),
-            RingFill(op) => op.to_textual(),
-            RingShl(op) => op.to_textual(),
-            RingShr(op) => op.to_textual(),
-            RingInject(op) => op.to_textual(),
-            BitExtract(op) => op.to_textual(),
-            BitSample(op) => op.to_textual(),
+            IdentityOp(op) => op.to_textual(),
+            LoadOp(op) => op.to_textual(),
+            SaveOp(op) => op.to_textual(),
+            SendOp(op) => op.to_textual(),
+            ReceiveOp(op) => op.to_textual(),
+            InputOp(op) => op.to_textual(),
+            OutputOp(op) => op.to_textual(),
+            ConstantOp(op) => op.to_textual(),
+            StdAddOp(op) => op.to_textual(),
+            StdSubOp(op) => op.to_textual(),
+            StdMulOp(op) => op.to_textual(),
+            StdDivOp(op) => op.to_textual(),
+            StdDotOp(op) => op.to_textual(),
+            StdMeanOp(op) => op.to_textual(),
+            StdOnesOp(op) => op.to_textual(),
+            StdConcatenateOp(op) => op.to_textual(),
+            StdExpandDimsOp(op) => op.to_textual(),
+            StdReshapeOp(op) => op.to_textual(),
+            StdAtLeast2DOp(op) => op.to_textual(),
+            StdShapeOp(op) => op.to_textual(),
+            StdSliceOp(op) => op.to_textual(),
+            StdSumOp(op) => op.to_textual(),
+            StdTransposeOp(op) => op.to_textual(),
+            StdInverseOp(op) => op.to_textual(),
+            RingAddOp(op) => op.to_textual(),
+            RingSubOp(op) => op.to_textual(),
+            RingMulOp(op) => op.to_textual(),
+            RingDotOp(op) => op.to_textual(),
+            RingSumOp(op) => op.to_textual(),
+            RingShapeOp(op) => op.to_textual(),
+            RingSampleOp(op) => op.to_textual(),
+            RingFillOp(op) => op.to_textual(),
+            RingShlOp(op) => op.to_textual(),
+            RingShrOp(op) => op.to_textual(),
+            RingInjectOp(op) => op.to_textual(),
+            BitExtractOp(op) => op.to_textual(),
+            BitSampleOp(op) => op.to_textual(),
             // BitFill(op) => op.to_textual(),
             // BitXor(op) => op.to_textual(),
             // BitAnd(op) => op.to_textual(),
-            PrimDeriveSeed(op) => op.to_textual(),
-            PrimGenPrfKey(op) => op.to_textual(),
-            FixedpointRingEncode(op) => op.to_textual(),
-            FixedpointRingDecode(op) => op.to_textual(),
-            FixedpointRingMean(op) => op.to_textual(),
+            PrimDeriveSeedOp(op) => op.to_textual(),
+            PrimGenPrfKeyOp(op) => op.to_textual(),
+            FixedpointRingEncodeOp(op) => op.to_textual(),
+            FixedpointRingDecodeOp(op) => op.to_textual(),
+            FixedpointRingMeanOp(op) => op.to_textual(),
             _ => unimplemented!("{:?}", self),
         }
     }
@@ -1596,7 +1596,7 @@ mod tests {
         assert_eq!(op.name, "x");
         assert_eq!(
             op.kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![1.0].into())
             })
@@ -1614,7 +1614,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(x)
             })
@@ -1630,7 +1630,7 @@ mod tests {
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::StdAdd(StdAddOp {
+            Operator::StdAddOp(StdAddOp {
                 sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
@@ -1640,7 +1640,7 @@ mod tests {
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::StdMul(StdMulOp {
+            Operator::StdMulOp(StdMulOp {
                 sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
@@ -1673,7 +1673,7 @@ mod tests {
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
-            Operator::PrimDeriveSeed(PrimDeriveSeedOp {
+            Operator::PrimDeriveSeedOp(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
                 nonce: Nonce(vec![1, 2, 3])
             })
@@ -1689,7 +1689,7 @@ mod tests {
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
-            Operator::Send(SendOp {
+            Operator::SendOp(SendOp {
                 sig: Signature::unary(Ty::Unknown, Ty::Unknown),
                 rendezvous_key: "abc".into(),
                 receiver: Role::from("bob")
@@ -1706,7 +1706,7 @@ mod tests {
         assert_eq!(op.name, "receive");
         assert_eq!(
             op.kind,
-            Operator::Receive(ReceiveOp {
+            Operator::ReceiveOp(ReceiveOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 rendezvous_key: "abc".into(),
                 sender: Role::from("bob"),
@@ -1740,7 +1740,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+            Operator::FixedpointRingMeanOp(FixedpointRingMeanOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 axis: Some(0),
                 scaling_base: 3,
@@ -1753,7 +1753,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+            Operator::FixedpointRingMeanOp(FixedpointRingMeanOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 axis: None,
                 scaling_base: 3,
@@ -1837,14 +1837,14 @@ mod tests {
         assert_eq!(comp.operations.len(), 3);
         assert_eq!(
             comp.operations[0].kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![1.0].into())
             })
         );
         assert_eq!(
             comp.operations[1].kind,
-            Operator::Constant(ConstantOp {
+            Operator::ConstantOp(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![2.0].into())
             })
@@ -1852,7 +1852,7 @@ mod tests {
         assert_eq!(comp.operations[2].name, "z");
         assert_eq!(
             comp.operations[2].kind,
-            Operator::StdAdd(StdAddOp {
+            Operator::StdAddOp(StdAddOp {
                 sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );

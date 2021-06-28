@@ -72,11 +72,11 @@ impl NetworkingPass {
 
         let send_operation = Operation {
             name: format!("send_{}", index),
-            kind: Operator::Send(SendOp {
+            kind: SendOp {
                 sig: Signature::unary(Ty::Unknown, Ty::Unknown),
                 rendezvous_key: rendezvous_key.clone(),
                 receiver: Role::from(dst),
-            }),
+            }.into(),
             inputs: vec![src_op.name.clone()],
             placement: src_op.placement.clone(),
         };
@@ -84,11 +84,11 @@ impl NetworkingPass {
 
         let receive_operation = Operation {
             name: format!("receive_{}", index),
-            kind: Operator::Receive(ReceiveOp {
+            kind: ReceiveOp {
                 sig: Signature::nullary(Ty::Unknown),
                 rendezvous_key,
                 sender: Role::from(src),
-            }),
+            }.into(),
             inputs: vec![],
             placement: dst_op.placement.clone(),
         };

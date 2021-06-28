@@ -67,12 +67,12 @@ fn par_compile(c: &mut Criterion) {
     use moose::computation::*;
     use moose::execution::*;
 
-    let operator = Operator::RingAdd(RingAddOp {
+    let operator = RingAddOp {
         sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
-    });
+    };
     let operation = Operation {
         name: "y".into(),
-        kind: operator,
+        kind: operator.into(),
         inputs: vec!["x".into(), "x".into()],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -465,7 +465,7 @@ fn gen_sample_graph(size: usize) -> Computation {
     use moose::computation::*;
     use moose::ring::*;
 
-    let operator = Operator::RingMul(RingMulOp {
+    let operator = Operator::RingMulOp(RingMulOp {
         sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
     });
 
@@ -487,7 +487,7 @@ fn gen_sample_graph(size: usize) -> Computation {
 
     operations.push(Operation {
         name: "x".into(),
-        kind: Operator::Constant(ConstantOp {
+        kind: Operator::ConstantOp(ConstantOp {
             sig: Signature::nullary(Ty::Ring64Tensor),
             value: Value::Ring64Tensor(Ring64Tensor::from(raw_tensor)),
         }),
@@ -504,7 +504,7 @@ fn compile(c: &mut Criterion) {
     use moose::computation::*;
     use moose::execution::*;
 
-    let operator = Operator::RingAdd(RingAddOp {
+    let operator = Operator::RingAddOp(RingAddOp {
         sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
     });
     let ctx = CompilationContext {
