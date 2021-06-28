@@ -1,3 +1,4 @@
+use crate::computation::{HostPlacement, Placed};
 use crate::prim::Seed;
 use crate::prng::AesRng;
 use crate::standard::Shape;
@@ -72,6 +73,39 @@ impl BitAnd for BitTensor {
     }
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct PlacedBitTensor(BitTensor, HostPlacement);
+
+impl Placed for PlacedBitTensor {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+impl PlacedBitTensor {
+    pub fn fill(shape: &Shape, el: u8, plc: &HostPlacement) -> Self {
+        PlacedBitTensor(BitTensor::fill(shape, el), plc.clone())
+    }
+}
+
+impl BitXor for PlacedBitTensor {
+    type Output = PlacedBitTensor;
+    fn bitxor(self, other: Self) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
+        PlacedBitTensor(BitTensor(self.0 .0 ^ other.0 .0), self.1)
+    }
+}
+
+impl BitAnd for PlacedBitTensor {
+    type Output = PlacedBitTensor;
+    fn bitand(self, other: Self) -> Self::Output {
+        assert_eq!(self.placement(), other.placement());
+        PlacedBitTensor(BitTensor(self.0 .0 & other.0 .0), self.1)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -94,41 +128,44 @@ mod tests {
     #[test]
     fn bit_ops() {
         let shape = Shape(vec![5]);
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
 
         // test xor
         assert_eq!(
-            BitTensor::fill(&shape, 0) ^ BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 1)
+            PlacedBitTensor::fill(&shape, 0, &alice) ^ PlacedBitTensor::fill(&shape, 1, &alice),
+            PlacedBitTensor::fill(&shape, 1, &alice)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) ^ BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 1)
+            PlacedBitTensor::fill(&shape, 1, &alice) ^ PlacedBitTensor::fill(&shape, 0, &alice),
+            PlacedBitTensor::fill(&shape, 1, &alice)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) ^ BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 0)
+            PlacedBitTensor::fill(&shape, 1, &alice) ^ PlacedBitTensor::fill(&shape, 1, &alice),
+            PlacedBitTensor::fill(&shape, 0, &alice)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 0) ^ BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 0)
+            PlacedBitTensor::fill(&shape, 0, &alice) ^ PlacedBitTensor::fill(&shape, 0, &alice),
+            PlacedBitTensor::fill(&shape, 0, &alice)
         );
 
         // test and
         assert_eq!(
-            BitTensor::fill(&shape, 0) & BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 0)
+            PlacedBitTensor::fill(&shape, 0, &alice) & PlacedBitTensor::fill(&shape, 1, &alice),
+            PlacedBitTensor::fill(&shape, 0, &alice)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) & BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 0)
+            PlacedBitTensor::fill(&shape, 1, &alice) & PlacedBitTensor::fill(&shape, 0, &alice),
+            PlacedBitTensor::fill(&shape, 0, &alice)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) & BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 1)
+            PlacedBitTensor::fill(&shape, 1, &alice) & PlacedBitTensor::fill(&shape, 1, &alice),
+            PlacedBitTensor::fill(&shape, 1, &alice)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 0) & BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 0)
+            PlacedBitTensor::fill(&shape, 0, &alice) & PlacedBitTensor::fill(&shape, 0, &alice),
+            PlacedBitTensor::fill(&shape, 0, &alice)
         );
     }
 }
