@@ -706,63 +706,8 @@ struct Operation {
     plc: Placement,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Signature {
-    Nullary(NullarySignature),
-    Unary(UnarySignature),
-    Binary(BinarySignature),
-    Ternary(TernarySignature),
-}
+use crate::computation::{Signature, NullarySignature, UnarySignature, BinarySignature, TernarySignature};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct NullarySignature {
-    ret: Ty,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct UnarySignature {
-    arg0: Ty,
-    ret: Ty,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct BinarySignature {
-    arg0: Ty,
-    arg1: Ty,
-    ret: Ty,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct TernarySignature {
-    arg0: Ty,
-    arg1: Ty,
-    arg2: Ty,
-    ret: Ty,
-}
-
-impl From<NullarySignature> for Signature {
-    fn from(s: NullarySignature) -> Signature {
-        Signature::Nullary(s)
-    }
-}
-
-impl From<UnarySignature> for Signature {
-    fn from(s: UnarySignature) -> Signature {
-        Signature::Unary(s)
-    }
-}
-
-impl From<BinarySignature> for Signature {
-    fn from(s: BinarySignature) -> Signature {
-        Signature::Binary(s)
-    }
-}
-
-impl From<TernarySignature> for Signature {
-    fn from(s: TernarySignature) -> Signature {
-        Signature::Ternary(s)
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RingTensor<T>(T, HostPlacement);
@@ -1127,70 +1072,70 @@ macro_rules! modelled_alias {
     };
 }
 
-trait PlacementAdd<C: Context, T, U> {
+pub trait PlacementAdd<C: Context, T, U> {
     type Output;
 
     fn add(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
-trait PlacementSub<C: Context, T, U> {
+pub trait PlacementSub<C: Context, T, U> {
     type Output;
 
     fn sub(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
-trait PlacementMul<C: Context, T, U> {
+pub trait PlacementMul<C: Context, T, U> {
     type Output;
 
     fn mul(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
-trait PlacementShl<C: Context, T> {
+pub trait PlacementShl<C: Context, T> {
     type Output;
 
     fn shl(&self, ctx: &C, x: &T, amount: usize) -> Self::Output;
 }
 
-trait PlacementShr<C: Context, T> {
+pub trait PlacementShr<C: Context, T> {
     type Output;
 
     fn shr(&self, ctx: &C, x: &T, amount: usize) -> Self::Output;
 }
 
-trait PlacementXor<C: Context, T, U> {
+pub trait PlacementXor<C: Context, T, U> {
     type Output;
 
     fn xor(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
-trait PlacementAnd<C: Context, T, U> {
+pub trait PlacementAnd<C: Context, T, U> {
     type Output;
 
     fn and(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
 }
 
-trait PlacementMulSetup<C: Context, S, T, U> {
+pub trait PlacementMulSetup<C: Context, S, T, U> {
     type Output;
 
     fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> Self::Output;
 }
 
-trait PlacementShare<C: Context, T> {
+pub trait PlacementShare<C: Context, T> {
     type Output;
 
     fn share(&self, ctx: &C, x: &T) -> Self::Output;
 }
 
-trait PlacementReveal<C: Context, T> {
+pub trait PlacementReveal<C: Context, T> {
     type Output;
 
     fn reveal(&self, ctx: &C, x: &T) -> Self::Output;
 }
 
-trait PlacementSample<C: Context, O> {
+pub trait PlacementSample<C: Context, O> {
     fn sample(&self, ctx: &C) -> O;
 }
 
-trait PlacementRepToAdd<C: Context, T> {
+pub trait PlacementRepToAdd<C: Context, T> {
     type Output;
 
     fn rep_to_add(&self, ctx: &C, x: &T) -> Self::Output;

@@ -23,21 +23,22 @@ impl<S: Into<String>> From<S> for SessionId {
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
 pub enum Ty {
+    UnknownTy,
     UnitTy,
     StringTy,
-    Float32Ty,
-    Float64Ty,
-    Ring64Ty,
-    Ring128Ty,
-    Ring64TensorTy,
-    Ring128TensorTy,
-    BitTensorTy,
     ShapeTy,
     SeedTy,
     PrfKeyTy,
     NonceTy,
+    Float32Ty,
+    Float64Ty,
+    Ring64Ty,
+    Ring128Ty,
     Float32TensorTy,
     Float64TensorTy,
+    Ring64TensorTy,
+    Ring128TensorTy,
+    BitTensorTy,
     Int8TensorTy,
     Int16TensorTy,
     Int32TensorTy,
@@ -46,7 +47,6 @@ pub enum Ty {
     Uint16TensorTy,
     Uint32TensorTy,
     Uint64TensorTy,
-    UnknownTy,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -163,7 +163,7 @@ value!(Uint16Tensor);
 value!(Uint32Tensor);
 value!(Uint64Tensor);
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub enum Signature {
     Nullary(NullarySignature),
     Unary(UnarySignature),
@@ -171,25 +171,25 @@ pub enum Signature {
     Ternary(TernarySignature),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct NullarySignature {
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct UnarySignature {
     pub arg0: Ty,
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct BinarySignature {
     pub arg0: Ty,
     pub arg1: Ty,
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct TernarySignature {
     pub arg0: Ty,
     pub arg1: Ty,
