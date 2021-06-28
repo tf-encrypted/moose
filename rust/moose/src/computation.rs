@@ -368,7 +368,7 @@ pub enum Operator {
 }
 
 macro_rules! operators {
-    ($($t:ident),+) => {
+    ($($t:ident,)+) => {
         $(
         paste! {
             impl From<[<$t Op>]> for Operator {
@@ -447,7 +447,7 @@ operators![
     RepReveal,
     RepAdd,
     RepMul,
-    RepToAdt
+    RepToAdt,
 ];
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
