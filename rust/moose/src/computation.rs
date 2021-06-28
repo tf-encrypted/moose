@@ -47,11 +47,23 @@ pub enum Ty {
     Uint16Tensor,
     Uint32Tensor,
     Uint64Tensor,
+    Fixed64Tensor,
+    Fixed128Tensor,
+    ReplicatedSetup,
+    Replicated64Tensor,
+    Replicated128Tensor,
+    ReplicatedBitTensor,
+    Additive64Tensor,
+    Additive128Tensor,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub enum Value {
     Unit,
+    Shape(Shape),
+    Seed(Seed),
+    PrfKey(PrfKey),
+    Nonce(Nonce),
     Float32(f32),
     Float64(f64),
     Ring64(u64),
@@ -60,10 +72,6 @@ pub enum Value {
     Ring64Tensor(Ring64Tensor),
     Ring128Tensor(Ring128Tensor),
     BitTensor(BitTensor),
-    Shape(Shape),
-    Seed(Seed),
-    PrfKey(PrfKey),
-    Nonce(Nonce),
     Float32Tensor(Float32Tensor),
     Float64Tensor(Float64Tensor),
     Int8Tensor(Int8Tensor),
@@ -106,6 +114,10 @@ impl Value {
     }
 }
 
+pub trait KnownType {
+    const TY: Ty;
+}
+
 macro_rules! value {
     ($raw_type:ident) => {
         impl From<$raw_type> for Value {
@@ -138,6 +150,10 @@ macro_rules! value {
                     }),
                 }
             }
+        }
+
+        impl KnownType for $raw_type {
+            const TY: Ty = Ty::$raw_type;
         }
     };
 }

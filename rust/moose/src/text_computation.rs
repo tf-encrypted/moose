@@ -1325,31 +1325,39 @@ impl ToTextual for RingSampleOp {
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
-            Ty::Unit => "Unit".to_string(),
-            Ty::String => "String".to_string(),
-            Ty::Float32 => "Float32".to_string(),
-            Ty::Float64 => "Float64".to_string(),
-            Ty::Ring64 => "Ring64".to_string(),
-            Ty::Ring128 => "Ring128".to_string(),
-            Ty::Ring64Tensor => "Ring64Tensor".to_string(),
-            Ty::Ring128Tensor => "Ring128Tensor".to_string(),
-            Ty::BitTensor => "BitTensor".to_string(),
-            Ty::Shape => "Shape".to_string(),
-            Ty::Seed => "Seed".to_string(),
-            Ty::PrfKey => "PrfKey".to_string(),
-            Ty::Nonce => "Nonce".to_string(),
-            Ty::Float32Tensor => "Float32Tensor".to_string(),
-            Ty::Float64Tensor => "Float64Tensor".to_string(),
-            Ty::Int8Tensor => "Int8Tensor".to_string(),
-            Ty::Int16Tensor => "Int16Tensor".to_string(),
-            Ty::Int32Tensor => "Int32Tensor".to_string(),
-            Ty::Int64Tensor => "Int64Tensor".to_string(),
-            Ty::Uint8Tensor => "Uint8Tensor".to_string(),
-            Ty::Uint16Tensor => "Uint16Tensor".to_string(),
-            Ty::Uint32Tensor => "Uint32Tensor".to_string(),
-            Ty::Uint64Tensor => "Uint64Tensor".to_string(),
-            Ty::Unknown => "Unknown".to_string(),
-        }
+            Ty::Unit => "Unit",
+            Ty::String => "String",
+            Ty::Float32 => "Float32",
+            Ty::Float64 => "Float64",
+            Ty::Ring64 => "Ring64",
+            Ty::Ring128 => "Ring128",
+            Ty::Ring64Tensor => "Ring64Tensor",
+            Ty::Ring128Tensor => "Ring128Tensor",
+            Ty::BitTensor => "BitTensor",
+            Ty::Shape => "Shape",
+            Ty::Seed => "Seed",
+            Ty::PrfKey => "PrfKey",
+            Ty::Nonce => "Nonce",
+            Ty::Float32Tensor => "Float32Tensor",
+            Ty::Float64Tensor => "Float64Tensor",
+            Ty::Int8Tensor => "Int8Tensor",
+            Ty::Int16Tensor => "Int16Tensor",
+            Ty::Int32Tensor => "Int32Tensor",
+            Ty::Int64Tensor => "Int64Tensor",
+            Ty::Uint8Tensor => "Uint8Tensor",
+            Ty::Uint16Tensor => "Uint16Tensor",
+            Ty::Uint32Tensor => "Uint32Tensor",
+            Ty::Uint64Tensor => "Uint64Tensor",
+            Ty::Unknown => "Unknown",
+            Ty::Fixed64Tensor => "Fixed64Tensor",
+            Ty::Fixed128Tensor => "Fixed128Tensor",
+            Ty::Replicated64Tensor => "Replicated64Tensor",
+            Ty::Replicated128Tensor => "Replicated128Tensor",
+            Ty::ReplicatedBitTensor => "ReplicatedBitTensor",
+            Ty::ReplicatedSetup => "ReplicatedSetup",
+            Ty::Additive64Tensor => "Additive64Tensor",
+            Ty::Additive128Tensor => "Additive128Tensor",
+        }.to_string()
     }
 }
 
@@ -1377,7 +1385,7 @@ impl ToTextual for Value {
             Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
             Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
             Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            _ => unimplemented!(),
+            _ => unimplemented!(), // TODO
         }
     }
 }
