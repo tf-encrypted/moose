@@ -730,11 +730,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSample(RingSampleOp {
-                            sig: Signature::binary(
-                                Ty::Shape,
-                                Ty::Seed,
-                                map_type(&op.output_type)?,
-                            ),
+                            sig: Signature::binary(Ty::Shape, Ty::Seed, map_type(&op.output_type)?),
                             max_value: op.max_value,
                         }),
                         name: op.name.clone(),
@@ -825,11 +821,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
                         kind: BitXor(BitXorOp {
-                            sig: Signature::binary(
-                                Ty::BitTensor,
-                                Ty::BitTensor,
-                                Ty::BitTensor,
-                            ),
+                            sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
@@ -838,11 +830,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
                         kind: BitAnd(BitAndOp {
-                            sig: Signature::binary(
-                                Ty::BitTensor,
-                                Ty::BitTensor,
-                                Ty::BitTensor,
-                            ),
+                            sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["lhs", "rhs"])

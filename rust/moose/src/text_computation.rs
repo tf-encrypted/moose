@@ -1357,7 +1357,8 @@ impl ToTextual for Ty {
             Ty::ReplicatedSetup => "ReplicatedSetup",
             Ty::Additive64Tensor => "Additive64Tensor",
             Ty::Additive128Tensor => "Additive128Tensor",
-        }.to_string()
+        }
+        .to_string()
     }
 }
 
@@ -1630,11 +1631,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::StdAdd(StdAddOp {
-                sig: Signature::binary(
-                    Ty::Float32Tensor,
-                    Ty::Float32Tensor,
-                    Ty::Float32Tensor
-                ),
+                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
@@ -1644,11 +1641,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::StdMul(StdMulOp {
-                sig: Signature::binary(
-                    Ty::Float32Tensor,
-                    Ty::Float32Tensor,
-                    Ty::Float32Tensor
-                ),
+                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
         Ok(())
@@ -1860,11 +1853,7 @@ mod tests {
         assert_eq!(
             comp.operations[2].kind,
             Operator::StdAdd(StdAddOp {
-                sig: Signature::binary(
-                    Ty::Float32Tensor,
-                    Ty::Float32Tensor,
-                    Ty::Float32Tensor
-                ),
+                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
         assert_eq!(comp.operations[2].inputs, vec!("x", "y"));

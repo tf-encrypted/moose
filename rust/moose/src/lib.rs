@@ -1,3 +1,4 @@
+pub mod additive;
 pub mod bit;
 pub mod compilation;
 pub mod computation;
@@ -9,6 +10,7 @@ pub mod networking;
 pub mod prim;
 pub mod prng;
 pub mod python_computation;
+pub mod replicated;
 pub mod ring;
 pub mod standard;
 pub mod storage;

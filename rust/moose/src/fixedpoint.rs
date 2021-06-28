@@ -3,6 +3,19 @@ use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
 use std::ops::Mul;
 
+use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
+use serde::{Deserialize, Serialize};
+
+pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
+
+pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
+    RingTensor(RingTensorT),
+    ReplicatedTensor(ReplicatedTensorT),
+}
+
 pub trait Convert<T> {
     type Scale;
     fn encode(x: &T, scaling_factor: Self::Scale) -> Self;

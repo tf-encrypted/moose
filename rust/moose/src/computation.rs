@@ -1,6 +1,11 @@
+use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::prim::{Nonce, PrfKey, Seed};
+use crate::replicated::{
+    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
+};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, Shape,
@@ -82,6 +87,14 @@ pub enum Value {
     Uint16Tensor(Uint16Tensor),
     Uint32Tensor(Uint32Tensor),
     Uint64Tensor(Uint64Tensor),
+    Fixed64Tensor(Fixed64Tensor),
+    Fixed128Tensor(Fixed128Tensor),
+    Replicated64Tensor(Replicated64Tensor),
+    Replicated128Tensor(Replicated128Tensor),
+    ReplicatedBitTensor(ReplicatedBitTensor),
+    ReplicatedSetup(ReplicatedSetup),
+    Additive64Tensor(Additive64Tensor),
+    Additive128Tensor(Additive128Tensor),
 }
 
 impl Value {
@@ -110,6 +123,14 @@ impl Value {
             Value::Uint16Tensor(_) => Ty::Uint16Tensor,
             Value::Uint32Tensor(_) => Ty::Uint32Tensor,
             Value::Uint64Tensor(_) => Ty::Uint64Tensor,
+            Value::Additive64Tensor(_) => Ty::Additive64Tensor,
+            Value::Additive128Tensor(_) => Ty::Additive128Tensor,
+            Value::Replicated64Tensor(_) => Ty::Replicated64Tensor,
+            Value::Replicated128Tensor(_) => Ty::Replicated128Tensor,
+            Value::ReplicatedBitTensor(_) => Ty::ReplicatedBitTensor,
+            Value::ReplicatedSetup(_) => Ty::ReplicatedSetup,
+            Value::Fixed64Tensor(_) => Ty::Fixed64Tensor,
+            Value::Fixed128Tensor(_) => Ty::Fixed128Tensor,
         }
     }
 }
