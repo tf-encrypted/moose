@@ -8,6 +8,7 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
+use crate::computation::{HostPlacement, Placed};
 use crate::prim::Seed;
 use crate::prng::AesRng;
 use crate::standard::Shape;
@@ -16,6 +17,8 @@ use crate::standard::Shape;
 pub struct ConcreteRingTensor<T>(pub ArrayD<Wrapping<T>>);
 pub type Ring64Tensor = ConcreteRingTensor<u64>;
 pub type Ring128Tensor = ConcreteRingTensor<u128>;
+pub type PlacedRing64Tensor = PlacedConcreteRingTensor<u64>;
+pub type PlacedRing128Tensor = PlacedConcreteRingTensor<u128>;
 
 impl Ring64Tensor {
     pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Ring64Tensor {
@@ -277,6 +280,17 @@ where
                 .unwrap();
             ConcreteRingTensor(out)
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PlacedConcreteRingTensor<T>(ConcreteRingTensor<T>, HostPlacement);
+
+impl<T> Placed for PlacedConcreteRingTensor<T> {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
     }
 }
 

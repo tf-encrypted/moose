@@ -1,3 +1,4 @@
+use crate::computation::{HostPlacement, Placed};
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
 
@@ -21,5 +22,16 @@ impl PrfKey {
     pub fn generate() -> PrfKey {
         let raw_key = AesRng::generate_random_key();
         PrfKey(raw_key)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct PlacedPrfKey(PrfKey, HostPlacement);
+
+impl Placed for PlacedPrfKey {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
     }
 }

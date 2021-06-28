@@ -73,7 +73,7 @@ impl BitAnd for BitTensor {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct PlacedBitTensor(BitTensor, HostPlacement);
 
 impl Placed for PlacedBitTensor {
