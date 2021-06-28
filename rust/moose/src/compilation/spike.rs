@@ -951,9 +951,6 @@ macro_rules! modelled {
     /*
     Unary
     */
-    ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
-        modelled!($t::$f, $plc, {} ($t0) -> $u, $op);
-    };
     ($t:ident::$f:ident, $plc:ty, $({$($attr_id:ident : $attr_ty:ty),*})? ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
 
