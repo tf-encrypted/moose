@@ -12,9 +12,9 @@ use crate::standard::{
     Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use derive_more::Display;
+use paste::paste;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use paste::paste;
 
 pub type RendezvousKey = str;
 
