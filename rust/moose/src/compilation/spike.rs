@@ -682,15 +682,18 @@ macro_rules! modelled {
     /*
     Nullary
     */
-    ($t:ident::$f:ident, $plc:ty, () -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
         impl NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {}
 
         impl $t<ConcreteContext, $u> for $plc {
-            fn $f(&self, ctx: &ConcreteContext) -> $u {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*)?) -> $u {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(op.into(), &self.into(), vec![])
                     .try_into()
                     .unwrap()
@@ -698,11 +701,14 @@ macro_rules! modelled {
         }
 
         impl $t<SymbolicContext, <$u as KnownType>::Symbolic> for $plc {
-            fn $f(&self, ctx: &SymbolicContext) -> <$u as KnownType>::Symbolic {
+            fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*)?) -> <$u as KnownType>::Symbolic {
                 let sig = NullarySignature {
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(op.into(), &self.into(), vec![])
                     .try_into()
                     .unwrap()
@@ -713,18 +719,21 @@ macro_rules! modelled {
     /*
     Unary
     */
-    ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
 
         impl $t<ConcreteContext, $t0> for $plc {
             type Output = $u;
 
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> Self::Output {
                 let sig = UnarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
                     .unwrap()
@@ -734,12 +743,15 @@ macro_rules! modelled {
         impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
             type Output = <$u as KnownType>::Symbolic;
 
-            fn $f(&self, ctx: &SymbolicContext, x0: &<$t0 as KnownType>::Symbolic) -> Self::Output {
+            fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*,)? x0: &<$t0 as KnownType>::Symbolic) -> Self::Output {
                 let sig = UnarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
                     .unwrap()
@@ -750,19 +762,22 @@ macro_rules! modelled {
     /*
     Binary
     */
-    ($t:ident::$f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
         impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1> for $plc {
             type Output = $u;
 
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> Self::Output {
                 let sig = BinarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -781,6 +796,7 @@ macro_rules! modelled {
             fn $f(
                 &self,
                 ctx: &SymbolicContext,
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as KnownType>::Symbolic,
                 x1: &<$t1 as KnownType>::Symbolic,
             ) -> Self::Output {
@@ -789,7 +805,10 @@ macro_rules! modelled {
                     arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -804,20 +823,23 @@ macro_rules! modelled {
     /*
     Ternary
     */
-    ($t:ident::$f:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
         impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
 
         impl $t<ConcreteContext, $t0, $t1, $t2> for $plc {
             type Output = $u;
 
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1, x2: &$t2) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> Self::Output {
                 let sig = TernarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
                     arg2: <$t2 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -841,6 +863,7 @@ macro_rules! modelled {
             fn $f(
                 &self,
                 ctx: &SymbolicContext,
+                $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as KnownType>::Symbolic,
                 x1: &<$t1 as KnownType>::Symbolic,
                 x2: &<$t2 as KnownType>::Symbolic,
@@ -851,7 +874,10 @@ macro_rules! modelled {
                     arg2: <<$t2 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
                 };
-                let op = $op { sig };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
                 ctx.execute(
                     op.into(),
                     &self.into(),
@@ -914,13 +940,13 @@ pub trait PlacementMul<C: Context, T, U> {
 pub trait PlacementShl<C: Context, T> {
     type Output;
 
-    fn shl(&self, ctx: &C, x: &T, amount: usize) -> Self::Output;
+    fn shl(&self, ctx: &C, amount: usize, x: &T) -> Self::Output;
 }
 
 pub trait PlacementShr<C: Context, T> {
     type Output;
 
-    fn shr(&self, ctx: &C, x: &T, amount: usize) -> Self::Output;
+    fn shr(&self, ctx: &C, amount: usize, x: &T) -> Self::Output;
 }
 
 pub trait PlacementXor<C: Context, T, U> {
@@ -2796,56 +2822,9 @@ impl RingMulOp {
     }
 }
 
-macro_rules! model_shift {
-    ($t:ident::$f:ident, $plc:ty, ($t0:ty) -> $u:ty, $op:ident) => {
-        impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
 
-        impl $t<ConcreteContext, $t0> for $plc {
-            type Output = $u;
-
-            fn $f(&self, ctx: &ConcreteContext, x0: &$t0, amount: usize) -> Self::Output {
-                let sig = UnarySignature {
-                    arg0: <$t0 as KnownType>::TY,
-                    ret: <$u as KnownType>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    amount,
-                };
-                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
-                    .try_into()
-                    .unwrap()
-            }
-        }
-
-        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
-            type Output = <$u as KnownType>::Symbolic;
-
-            fn $f(
-                &self,
-                ctx: &SymbolicContext,
-                x0: &<$t0 as KnownType>::Symbolic,
-                amount: usize,
-            ) -> Self::Output {
-                let sig = UnarySignature {
-                    arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
-                    ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
-                };
-                let op = $op {
-                    sig: sig.into(),
-                    amount,
-                };
-                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
-                    .try_into()
-                    .unwrap()
-            }
-        }
-    };
-}
-
-// TODO expand modelled! to be applicable here instead
-model_shift!(PlacementShl::shl, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingShlOp);
-model_shift!(PlacementShl::shl, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
 
 kernel! {
     RingShlOp,
@@ -2869,8 +2848,8 @@ impl RingShlOp {
     }
 }
 
-model_shift!(PlacementShr::shr, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingShrOp);
-model_shift!(PlacementShr::shr, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShrOp);
 
 kernel! {
     RingShrOp,
