@@ -11,7 +11,7 @@ pub fn prune_graph(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     // Identify all the output nodes
     let outputs = graph
         .node_indices()
-        .filter(|i| matches!(comp.operations[graph[*i].1].kind, Operator::OutputOp(_)));
+        .filter(|i| matches!(comp.operations[graph[*i].1].kind, Operator::Output(_)));
 
     // Perform a DFS
     depth_first_search(&graph, outputs, |event| {

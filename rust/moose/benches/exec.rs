@@ -465,7 +465,7 @@ fn gen_sample_graph(size: usize) -> Computation {
     use moose::computation::*;
     use moose::ring::*;
 
-    let operator = Operator::RingMulOp(RingMulOp {
+    let operator = Operator::RingMul(RingMulOp {
         sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
     });
 
@@ -487,7 +487,7 @@ fn gen_sample_graph(size: usize) -> Computation {
 
     operations.push(Operation {
         name: "x".into(),
-        kind: Operator::ConstantOp(ConstantOp {
+        kind: Operator::Constant(ConstantOp {
             sig: Signature::nullary(Ty::Ring64Tensor),
             value: Value::Ring64Tensor(Ring64Tensor::from(raw_tensor)),
         }),
@@ -504,7 +504,7 @@ fn compile(c: &mut Criterion) {
     use moose::computation::*;
     use moose::execution::*;
 
-    let operator = Operator::RingAddOp(RingAddOp {
+    let operator = Operator::RingAdd(RingAddOp {
         sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
     });
     let ctx = CompilationContext {

@@ -1060,51 +1060,51 @@ impl ToTextual for Operator {
     fn to_textual(&self) -> String {
         use Operator::*;
         match self {
-            IdentityOp(op) => op.to_textual(),
-            LoadOp(op) => op.to_textual(),
-            SaveOp(op) => op.to_textual(),
-            SendOp(op) => op.to_textual(),
-            ReceiveOp(op) => op.to_textual(),
-            InputOp(op) => op.to_textual(),
-            OutputOp(op) => op.to_textual(),
-            ConstantOp(op) => op.to_textual(),
-            StdAddOp(op) => op.to_textual(),
-            StdSubOp(op) => op.to_textual(),
-            StdMulOp(op) => op.to_textual(),
-            StdDivOp(op) => op.to_textual(),
-            StdDotOp(op) => op.to_textual(),
-            StdMeanOp(op) => op.to_textual(),
-            StdOnesOp(op) => op.to_textual(),
-            StdConcatenateOp(op) => op.to_textual(),
-            StdExpandDimsOp(op) => op.to_textual(),
-            StdReshapeOp(op) => op.to_textual(),
-            StdAtLeast2DOp(op) => op.to_textual(),
-            StdShapeOp(op) => op.to_textual(),
-            StdSliceOp(op) => op.to_textual(),
-            StdSumOp(op) => op.to_textual(),
-            StdTransposeOp(op) => op.to_textual(),
-            StdInverseOp(op) => op.to_textual(),
-            RingAddOp(op) => op.to_textual(),
-            RingSubOp(op) => op.to_textual(),
-            RingMulOp(op) => op.to_textual(),
-            RingDotOp(op) => op.to_textual(),
-            RingSumOp(op) => op.to_textual(),
-            RingShapeOp(op) => op.to_textual(),
-            RingSampleOp(op) => op.to_textual(),
-            RingFillOp(op) => op.to_textual(),
-            RingShlOp(op) => op.to_textual(),
-            RingShrOp(op) => op.to_textual(),
-            RingInjectOp(op) => op.to_textual(),
-            BitExtractOp(op) => op.to_textual(),
-            BitSampleOp(op) => op.to_textual(),
+            Identity(op) => op.to_textual(),
+            Load(op) => op.to_textual(),
+            Save(op) => op.to_textual(),
+            Send(op) => op.to_textual(),
+            Receive(op) => op.to_textual(),
+            Input(op) => op.to_textual(),
+            Output(op) => op.to_textual(),
+            Constant(op) => op.to_textual(),
+            StdAdd(op) => op.to_textual(),
+            StdSub(op) => op.to_textual(),
+            StdMul(op) => op.to_textual(),
+            StdDiv(op) => op.to_textual(),
+            StdDot(op) => op.to_textual(),
+            StdMean(op) => op.to_textual(),
+            StdOnes(op) => op.to_textual(),
+            StdConcatenate(op) => op.to_textual(),
+            StdExpandDims(op) => op.to_textual(),
+            StdReshape(op) => op.to_textual(),
+            StdAtLeast2D(op) => op.to_textual(),
+            StdShape(op) => op.to_textual(),
+            StdSlice(op) => op.to_textual(),
+            StdSum(op) => op.to_textual(),
+            StdTranspose(op) => op.to_textual(),
+            StdInverse(op) => op.to_textual(),
+            RingAdd(op) => op.to_textual(),
+            RingSub(op) => op.to_textual(),
+            RingMul(op) => op.to_textual(),
+            RingDot(op) => op.to_textual(),
+            RingSum(op) => op.to_textual(),
+            RingShape(op) => op.to_textual(),
+            RingSample(op) => op.to_textual(),
+            RingFill(op) => op.to_textual(),
+            RingShl(op) => op.to_textual(),
+            RingShr(op) => op.to_textual(),
+            RingInject(op) => op.to_textual(),
+            BitExtract(op) => op.to_textual(),
+            BitSample(op) => op.to_textual(),
             // BitFill(op) => op.to_textual(),
             // BitXor(op) => op.to_textual(),
             // BitAnd(op) => op.to_textual(),
-            PrimDeriveSeedOp(op) => op.to_textual(),
-            PrimGenPrfKeyOp(op) => op.to_textual(),
-            FixedpointRingEncodeOp(op) => op.to_textual(),
-            FixedpointRingDecodeOp(op) => op.to_textual(),
-            FixedpointRingMeanOp(op) => op.to_textual(),
+            PrimDeriveSeed(op) => op.to_textual(),
+            PrimGenPrfKey(op) => op.to_textual(),
+            FixedpointRingEncode(op) => op.to_textual(),
+            FixedpointRingDecode(op) => op.to_textual(),
+            FixedpointRingMean(op) => op.to_textual(),
             _ => unimplemented!("{:?}", self),
         }
     }
@@ -1554,7 +1554,7 @@ mod tests {
         assert_eq!(op.name, "x");
         assert_eq!(
             op.kind,
-            Operator::ConstantOp(ConstantOp {
+            Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![1.0].into())
             })
@@ -1572,7 +1572,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::ConstantOp(ConstantOp {
+            Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(x)
             })
@@ -1588,7 +1588,7 @@ mod tests {
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::StdAddOp(StdAddOp {
+            Operator::StdAdd(StdAddOp {
                 sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
@@ -1598,7 +1598,7 @@ mod tests {
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::StdMulOp(StdMulOp {
+            Operator::StdMul(StdMulOp {
                 sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
@@ -1631,7 +1631,7 @@ mod tests {
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
-            Operator::PrimDeriveSeedOp(PrimDeriveSeedOp {
+            Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
                 nonce: Nonce(vec![1, 2, 3])
             })
@@ -1647,7 +1647,7 @@ mod tests {
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
-            Operator::SendOp(SendOp {
+            Operator::Send(SendOp {
                 sig: Signature::unary(Ty::Unknown, Ty::Unknown),
                 rendezvous_key: "abc".into(),
                 receiver: Role::from("bob")
@@ -1664,7 +1664,7 @@ mod tests {
         assert_eq!(op.name, "receive");
         assert_eq!(
             op.kind,
-            Operator::ReceiveOp(ReceiveOp {
+            Operator::Receive(ReceiveOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 rendezvous_key: "abc".into(),
                 sender: Role::from("bob"),
@@ -1698,7 +1698,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::FixedpointRingMeanOp(FixedpointRingMeanOp {
+            Operator::FixedpointRingMean(FixedpointRingMeanOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 axis: Some(0),
                 scaling_base: 3,
@@ -1711,7 +1711,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::FixedpointRingMeanOp(FixedpointRingMeanOp {
+            Operator::FixedpointRingMean(FixedpointRingMeanOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 axis: None,
                 scaling_base: 3,
@@ -1795,14 +1795,14 @@ mod tests {
         assert_eq!(comp.operations.len(), 3);
         assert_eq!(
             comp.operations[0].kind,
-            Operator::ConstantOp(ConstantOp {
+            Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![1.0].into())
             })
         );
         assert_eq!(
             comp.operations[1].kind,
-            Operator::ConstantOp(ConstantOp {
+            Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
                 value: Value::Float32Tensor(vec![2.0].into())
             })
@@ -1810,7 +1810,7 @@ mod tests {
         assert_eq!(comp.operations[2].name, "z");
         assert_eq!(
             comp.operations[2].kind,
-            Operator::StdAddOp(StdAddOp {
+            Operator::StdAdd(StdAddOp {
                 sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
             })
         );
