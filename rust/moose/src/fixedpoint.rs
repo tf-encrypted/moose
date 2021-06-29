@@ -1,3 +1,4 @@
+use crate::computation::{Placed, Placement};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
@@ -14,6 +15,23 @@ pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
 pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
     RingTensor(RingTensorT),
     ReplicatedTensor(ReplicatedTensorT),
+}
+
+impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
+where
+    RingTensorT: Placed,
+    RingTensorT::Placement: Into<Placement>,
+    ReplicatedTensorT: Placed,
+    ReplicatedTensorT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        match self {
+            FixedTensor::RingTensor(x) => x.placement().into(),
+            FixedTensor::ReplicatedTensor(x) => x.placement().into(),
+        }
+    }
 }
 
 pub trait Convert<T> {

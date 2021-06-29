@@ -2,6 +2,7 @@ extern crate ndarray;
 extern crate ndarray_linalg;
 
 use crate::computation::HostPlacement;
+use crate::computation::Placed;
 use crate::computation::Placement;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -17,8 +18,24 @@ pub struct RawShape(pub Vec<usize>);
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Shape(pub RawShape, pub Placement);
 
+impl Placed for Shape {
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct StandardTensor<T>(pub ArrayD<T>, pub Placement);
+
+impl<T> Placed for StandardTensor<T> {
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
 
 pub type Float32Tensor = StandardTensor<f32>;
 pub type Float64Tensor = StandardTensor<f64>;

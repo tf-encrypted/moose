@@ -1,4 +1,5 @@
 use crate::computation::HostPlacement;
+use crate::computation::Placed;
 use crate::prim::RawSeed;
 use crate::prng::AesRng;
 use crate::standard::RawShape;
@@ -9,6 +10,14 @@ use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
+
+impl Placed for BitTensor {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
 
 impl BitTensor {
     pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {

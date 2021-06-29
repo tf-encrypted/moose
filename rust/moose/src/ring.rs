@@ -9,6 +9,7 @@ use std::ops::{Add, Mul, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
 use crate::computation::HostPlacement;
+use crate::computation::Placed;
 use crate::computation::Role;
 use crate::prim::RawSeed;
 use crate::prng::AesRng;
@@ -20,6 +21,14 @@ pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, HostPlacement);
 pub type Ring64Tensor = AbstractRingTensor<u64>;
 
 pub type Ring128Tensor = AbstractRingTensor<u128>;
+
+impl<T> Placed for AbstractRingTensor<T> {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
 
 impl Ring64Tensor {
     pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Ring64Tensor {
@@ -58,7 +67,7 @@ impl Ring128Tensor {
     }
 }
 
-impl AbstractRingTensor<u64> {
+impl Ring64Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
@@ -66,7 +75,7 @@ impl AbstractRingTensor<u64> {
     }
 }
 
-impl AbstractRingTensor<u128> {
+impl Ring128Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
