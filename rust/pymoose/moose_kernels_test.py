@@ -174,7 +174,7 @@ def add_output_storage(
 ):
     with output_owner:
         out = edsl.add(x, y)
-        res = edsl.save(out, "output")
+        res = edsl.save("output", out)
     return res
 
 
@@ -195,7 +195,7 @@ def add_multioutput(
 ):
     with output_owner:
         out = edsl.add(x, y)
-    return out, x, y
+    return (out, x, y)
 
 
 class RunComputation(parameterized.TestCase):
@@ -212,7 +212,7 @@ class RunComputation(parameterized.TestCase):
             "y_owner": {},
             "output_owner": {},
         }
-        self.storage_args = {"x_key": "x", "y_key": y}
+        self.storage_args = {"x_key": "x", "y_key": "y"}
         self.actual_args = {**self.x_input, **self.y_input}
 
     def _inner_prepare_runtime(self, comp, storage_dict):
@@ -235,7 +235,7 @@ class RunComputation(parameterized.TestCase):
             add_input_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(comp_bin, self.storage_args)
-        np.testing.assert_array_equal(result, np.array([3.0]))
+        np.testing.assert_array_equal(result['output_0'], np.array([3.0]))
 
     def test_output_storage(self):
         comp_bin, runtime = self._inner_prepare_runtime(
@@ -251,16 +251,17 @@ class RunComputation(parameterized.TestCase):
             add_no_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(comp_bin, self.actual_args)
-        np.testing.assert_array_equal(result, np.array([3.0]))
+        np.testing.assert_array_equal(result['output_0'], np.array([3.0]))
 
     def test_multioutput(self):
         comp_bin, runtime = self._inner_prepare_runtime(
-            add_no_storage, self.storage_dict
+            add_multioutput, self.storage_dict
         )
-        (out, x, y) = runtime.evaluate_computation(comp_bin, self.actual_args)
-        np.testing.assert_array_equal(x, np.array([1.0]))
-        np.testing.assert_array_equal(y, np.array([2.0]))
-        np.testing.assert_array_equal(out, np.array([3.0]))
+        result = runtime.evaluate_computation(comp_bin, self.actual_args)
+        print(result)
+        np.testing.assert_array_equal(result['output_1'], np.array([1.0]))
+        np.testing.assert_array_equal(result['output_2'], np.array([2.0]))
+        np.testing.assert_array_equal(result['output_0'], np.array([3.0]))
 
 
 if __name__ == "__main__":
