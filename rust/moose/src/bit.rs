@@ -1,3 +1,4 @@
+use crate::computation::HostPlacement;
 use crate::prim::Seed;
 use crate::prng::AesRng;
 use crate::standard::Shape;
@@ -7,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct BitTensor(pub ArrayD<u8>);
+pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
 
 impl BitTensor {
     pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Self {
@@ -15,7 +16,12 @@ impl BitTensor {
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape.0.as_ref());
-        BitTensor(Array::from_shape_vec(ix, values).unwrap())
+        BitTensor(
+            Array::from_shape_vec(ix, values).unwrap(),
+            HostPlacement {
+                owner: "TODO".into(),
+            },
+        )
     }
 }
 
@@ -26,21 +32,36 @@ impl BitTensor {
             "cannot fill a BitTensor with a value {:?}",
             el
         );
-        BitTensor(ArrayD::from_elem(shape.0.as_ref(), el & 1))
+        BitTensor(
+            ArrayD::from_elem(shape.0.as_ref(), el & 1),
+            HostPlacement {
+                owner: "TODO".into(),
+            },
+        )
     }
 }
 
 impl From<ArrayD<u8>> for BitTensor {
     fn from(a: ArrayD<u8>) -> BitTensor {
         let wrapped = a.mapv(|ai| (ai & 1) as u8);
-        BitTensor(wrapped)
+        BitTensor(
+            wrapped,
+            HostPlacement {
+                owner: "TODO".into(),
+            },
+        )
     }
 }
 
 impl From<Vec<u8>> for BitTensor {
     fn from(v: Vec<u8>) -> BitTensor {
         let ix = IxDyn(&[v.len()]);
-        BitTensor(Array::from_shape_vec(ix, v).unwrap())
+        BitTensor(
+            Array::from_shape_vec(ix, v).unwrap(),
+            HostPlacement {
+                owner: "TODO".into(),
+            },
+        )
     }
 }
 
@@ -48,7 +69,12 @@ impl From<&[u8]> for BitTensor {
     fn from(v: &[u8]) -> BitTensor {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| *vi & 1).collect();
-        BitTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        BitTensor(
+            Array::from_shape_vec(ix, v_wrapped).unwrap(),
+            HostPlacement {
+                owner: "TODO".into(),
+            },
+        )
     }
 }
 
@@ -61,14 +87,16 @@ impl From<BitTensor> for ArrayD<u8> {
 impl BitXor for BitTensor {
     type Output = BitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
-        BitTensor(self.0 ^ other.0)
+        assert_eq!(self.1, other.1);
+        BitTensor(self.0 ^ other.0, self.1)
     }
 }
 
 impl BitAnd for BitTensor {
     type Output = BitTensor;
     fn bitand(self, other: Self) -> Self::Output {
-        BitTensor(self.0 & other.0)
+        assert_eq!(self.1, other.1);
+        BitTensor(self.0 & other.0, self.1)
     }
 }
 

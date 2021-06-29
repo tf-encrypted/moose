@@ -468,23 +468,6 @@ where
 use crate::computation::{Signature, NullarySignature, UnarySignature, BinarySignature, TernarySignature};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct BitTensor(u8, HostPlacement);
-
-impl BitXor for BitTensor {
-    type Output = BitTensor;
-    fn bitxor(self, other: Self) -> Self::Output {
-        BitTensor(self.0 ^ other.0, self.1)
-    }
-}
-
-impl BitAnd for BitTensor {
-    type Output = BitTensor;
-    fn bitand(self, other: Self) -> Self::Output {
-        BitTensor(self.0 & other.0, self.1)
-    }
-}
-
-#[derive(Clone, Debug, PartialEq)]
 pub struct PrfKey([u8; 16], HostPlacement);
 
 macro_rules! modelled {
