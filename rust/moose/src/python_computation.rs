@@ -1142,8 +1142,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SaveOperation(op) => Ok(Operation {
                         kind: Save(SaveOp {
-                            // TODO replace with `UnknownTy` as soon as we have type inference
-                            sig: Signature::unary(Ty::Float64TensorTy, Ty::UnitTy),
+                            sig: Signature::binary(Ty::StringTy, Ty::UnknownTy, Ty::UnitTy),
                         }),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "value"])

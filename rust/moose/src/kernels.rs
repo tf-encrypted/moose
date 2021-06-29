@@ -921,7 +921,7 @@ impl Compile<AsyncKernel> for OutputOp {
 
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.sig.arg(0)?;
+        let expected_ty = self.sig.arg(1)?;
 
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;

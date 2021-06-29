@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use approx::AbsDiffEq;
+    use moose::compilation::types::update_types_one_hop;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use moose::{computation::*, python_computation::PyComputation, standard::Float64Tensor};
@@ -558,6 +559,7 @@ def f():
 "#;
 
         let comp = graph_from_run_call0_func(py_code);
+        let comp = update_types_one_hop(&comp).unwrap().unwrap();
         let x = Value::from(Float64Tensor::from(
             array![
                 [-0.76943992],

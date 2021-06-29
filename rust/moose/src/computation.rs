@@ -261,12 +261,33 @@ impl Signature {
         }
     }
 
+    pub fn args(&self) -> Vec<&Ty> {
+        match self {
+            Signature::Nullary(_) => vec![],
+            Signature::Unary(s) => vec![&s.arg0],
+            Signature::Binary(s) => vec![&s.arg0, &s.arg1],
+            Signature::Ternary(s) => vec![&s.arg0, &s.arg1, &s.arg2],
+        }
+    }
+
     pub fn arity(&self) -> usize {
         match self {
             Signature::Nullary(_) => 0,
             Signature::Unary(_) => 1,
             Signature::Binary(_) => 2,
             Signature::Ternary(_) => 3,
+        }
+    }
+
+    pub fn new_with_arg(&self, arg: usize, new_type: Ty) -> Self {
+        match (self, arg) {
+            (Signature::Unary(s), 0) => Signature::unary(new_type, s.ret),
+            (Signature::Binary(s), 0) => Signature::binary(new_type, s.arg1, s.ret),
+            (Signature::Binary(s), 1) => Signature::binary(s.arg0, new_type, s.ret),
+            (Signature::Ternary(s), 0) => Signature::ternary(new_type, s.arg1, s.arg2, s.ret),
+            (Signature::Ternary(s), 1) => Signature::ternary(s.arg0, new_type, s.arg2, s.ret),
+            (Signature::Ternary(s), 2) => Signature::ternary(s.arg0, s.arg1, new_type, s.ret),
+            _ => unimplemented!(), // Should be ok
         }
     }
 }
@@ -368,6 +389,14 @@ impl Operator {
             Operator::FixedpointRingEncode(op) => &op.sig,
             Operator::FixedpointRingDecode(op) => &op.sig,
             Operator::FixedpointRingMean(op) => &op.sig,
+        }
+    }
+
+    pub fn new_with_sig(&self, sig: Signature) -> Self {
+        match self {
+            Operator::Save(_) => Operator::Save(SaveOp { sig }),
+            // Let's confirm this approach works before writing the rest
+            _ => self.clone(),
         }
     }
 }
