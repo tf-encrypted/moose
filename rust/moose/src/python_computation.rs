@@ -1,4 +1,4 @@
-use crate::standard::{Float32Tensor, Float64Tensor, RawShape, Shape};
+use crate::standard::{Float32Tensor, Float64Tensor, RawShape};
 use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
@@ -579,17 +579,12 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
         .ok_or_else(|| anyhow::anyhow!("No key found in placement dictionary"))
 }
 
-fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
+fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Primitive> {
     match constant_value {
-        PyConstant::std_ShapeConstant { value } => Ok(Shape(
-            RawShape(value.iter().map(|i| *i as usize).collect()),
-            HostPlacement {
-                owner: "TODO".into(),
-            }
-            .into(),
-        )
-        .into()),
-        PyConstant::std_StringConstant { value } => Ok(Value::String(String::from(value))),
+        PyConstant::std_ShapeConstant { value } => {
+            Ok(RawShape(value.iter().map(|i| *i as usize).collect()).into())
+        }
+        PyConstant::std_StringConstant { value } => Ok(Primitive::String(String::from(value))),
         PyConstant::std_TensorConstant { value } => match value {
             PyNdarray::float32 {
                 ref items,
@@ -769,7 +764,7 @@ impl TryFrom<PyComputation> for Computation {
                     ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFillOp {
                             sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
-                            value: Value::Ring128(u128::from_str(&op.value)?),
+                            value: Primitive::Ring128(u128::from_str(&op.value)?),
                         }
                         .into(),
                         name: op.name.clone(),

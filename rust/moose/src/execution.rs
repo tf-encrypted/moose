@@ -1163,8 +1163,8 @@ mod tests {
         use maplit::hashmap;
         let mut args: HashMap<String, Value> = hashmap!();
 
-        let x: Value = "Int64Tensor([5])".try_into()?;
-        let y: Value = "Int64Tensor([10])".try_into()?;
+        let x: Value = "Int64Tensor([5]) @Host(Alice)".try_into()?;
+        let y: Value = "Int64Tensor([10]) @Host(Alice)".try_into()?;
 
         args.insert("x".to_string(), x);
         args.insert("y".to_string(), y);
@@ -1177,7 +1177,7 @@ mod tests {
         let z: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let expected: Value = "Int64Tensor([15])".try_into()?;
+        let expected: Value = "Int64Tensor([15]) @Host(Alice)".try_into()?;
 
         assert_eq!(expected, z.into());
 
@@ -1185,8 +1185,8 @@ mod tests {
     }
     use rstest::rstest;
     #[rstest]
-    #[case("0", "Int64Tensor([[1, 2], [3, 4], [5, 6], [7, 8]])")]
-    #[case("1", "Int64Tensor([[1, 2, 5, 6], [3, 4, 7, 8]])")]
+    #[case("0", "Int64Tensor([[1, 2], [3, 4], [5, 6], [7, 8]]) @Host(alice)")]
+    #[case("1", "Int64Tensor([[1, 2, 5, 6], [3, 4, 7, 8]]) @Host(alice)")]
     fn test_standard_concatenate(
         #[case] axis: usize,
         #[case] expected_result: Value,
@@ -1208,10 +1208,10 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdAdd", "Int64Tensor([8])")]
-    #[case("StdSub", "Int64Tensor([2])")]
-    #[case("StdMul", "Int64Tensor([15])")]
-    #[case("StdDiv", "Int64Tensor([1])")]
+    #[case("StdAdd", "Int64Tensor([8]) @Host(alice)")]
+    #[case("StdSub", "Int64Tensor([2]) @Host(alice)")]
+    #[case("StdMul", "Int64Tensor([15]) @Host(alice)")]
+    #[case("StdDiv", "Int64Tensor([1]) @Host(alice)")]
     fn test_standard_op(
         #[case] test_op: String,
         #[case] expected_result: Value,
@@ -1312,12 +1312,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdSum", None, "Float32(10.0)", true)]
-    #[case("StdSum", Some(0), "Float32Tensor([4.0, 6.0])", false)]
-    #[case("StdSum", Some(1), "Float32Tensor([3.0, 7.0])", false)]
-    #[case("StdMean", None, "Float32(2.5)", true)]
-    #[case("StdMean", Some(0), "Float32Tensor([2.0, 3.0])", false)]
-    #[case("StdMean", Some(1), "Float32Tensor([1.5, 3.5])", false)]
+    #[case("StdSum", None, "Float32(10.0) @Host(alice)", true)]
+    #[case("StdSum", Some(0), "Float32Tensor([4.0, 6.0]) @Host(alice)", false)]
+    #[case("StdSum", Some(1), "Float32Tensor([3.0, 7.0]) @Host(alice)", false)]
+    #[case("StdMean", None, "Float32(2.5) @Host(alice)", true)]
+    #[case("StdMean", Some(0), "Float32Tensor([2.0, 3.0]) @Host(alice)", false)]
+    #[case("StdMean", Some(1), "Float32Tensor([1.5, 3.5]) @Host(alice)", false)]
     fn test_standard_reduce_op(
         #[case] reduce_op_test: String,
         #[case] axis_test: Option<usize>,
@@ -1355,7 +1355,7 @@ mod tests {
         Ok(())
     }
     #[rstest]
-    #[case("Int64Tensor([[1, 3], [2, 4]])")]
+    #[case("Int64Tensor([[1, 3], [2, 4]]) @Host(alice)")]
     fn test_standard_transpose(
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
@@ -1374,8 +1374,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case(true, "Float64Tensor([[1.0], [1.0], [1.0]])")]
-    #[case(false, "Float64Tensor([[1.0, 1.0, 1.0]])")]
+    #[case(true, "Float64Tensor([[1.0], [1.0], [1.0]]) @Host(alice)")]
+    #[case(false, "Float64Tensor([[1.0, 1.0, 1.0]]) @Host(alice)")]
     fn test_standard_atleast_2d(
         #[case] to_column_vector: bool,
         #[case] expected_result: Value,
@@ -1400,9 +1400,9 @@ mod tests {
 
     use crate::ring::{Ring128Tensor, Ring64Tensor};
     #[rstest]
-    #[case("RingAdd", "Ring64Tensor([5])")]
-    #[case("RingMul", "Ring64Tensor([6])")]
-    #[case("RingSub", "Ring64Tensor([1])")]
+    #[case("RingAdd", "Ring64Tensor([5]) @Host(alice)")]
+    #[case("RingMul", "Ring64Tensor([6]) @Host(alice)")]
+    #[case("RingSub", "Ring64Tensor([1]) @Host(alice)")]
     fn test_ring_binop_invocation(
         #[case] test_op: String,
         #[case] expected_result: Value,
@@ -1429,19 +1429,19 @@ mod tests {
         "Ring64Tensor",
         "Ring64Tensor([[1, 2], [3, 4]])",
         "Ring64Tensor([[1, 0], [0, 1]])",
-        "Ring64Tensor([[1, 2], [3, 4]])"
+        "Ring64Tensor([[1, 2], [3, 4]]) @Host(alice)"
     )]
     #[case(
         "Ring64Tensor",
         "Ring64Tensor([[1, 2], [3, 4]])",
         "Ring64Tensor([1, 1])",
-        "Ring64Tensor([3, 7])"
+        "Ring64Tensor([3, 7]) @Host(alice)"
     )]
     #[case(
         "Ring64Tensor",
         "Ring64Tensor([1, 1])",
         "Ring64Tensor([[1, 2], [3, 4]])",
-        "Ring64Tensor([4, 6])"
+        "Ring64Tensor([4, 6]) @Host(alice)"
     )]
     fn test_ring_dot_invocation(
         #[case] type_str: String,
@@ -1480,12 +1480,16 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64", "2", "Ring64Tensor([1, 1])")]
-    #[case("Ring128", "2", "Ring128Tensor([1, 1])")]
-    #[case("Ring64", "2, 1", "Ring64Tensor([[1], [1]])")]
-    #[case("Ring64", "2, 2", "Ring64Tensor([[1, 1], [1, 1]])")]
-    #[case("Ring64", "1, 2", "Ring64Tensor([[1, 1]])")]
-    #[case("Ring128", "2, 3", "Ring128Tensor([[1, 1, 1], [1, 1, 1]])")]
+    #[case("Ring64", "2", "Ring64Tensor([1, 1]) @Host(alice)")]
+    #[case("Ring128", "2", "Ring128Tensor([1, 1]) @Host(alice)")]
+    #[case("Ring64", "2, 1", "Ring64Tensor([[1], [1]]) @Host(alice)")]
+    #[case("Ring64", "2, 2", "Ring64Tensor([[1, 1], [1, 1]]) @Host(alice)")]
+    #[case("Ring64", "1, 2", "Ring64Tensor([[1, 1]]) @Host(alice)")]
+    #[case(
+        "Ring128",
+        "2, 3",
+        "Ring128Tensor([[1, 1, 1], [1, 1, 1]]) @Host(alice)"
+    )]
     fn test_ring_fill(
         #[case] type_str: String,
         #[case] shape_str: String,
@@ -1522,7 +1526,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64Tensor([4, 6])")]
+    #[case("Ring64Tensor([4, 6]) @Host(alice)")]
     fn test_ring_sum(#[case] expected_result: Value) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])} @Host(alice)
         r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
@@ -1537,8 +1541,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64Tensor", "Ring64Tensor([2, 2])")]
-    #[case("Ring128Tensor", "Ring128Tensor([2, 2])")]
+    #[case("Ring64Tensor", "Ring64Tensor([2, 2]) @Host(alice)")]
+    #[case("Ring128Tensor", "Ring128Tensor([2, 2]) @Host(alice)")]
     fn test_ring_bitwise_ops(
         #[case] type_str: String,
         #[case] expected_result: Value,

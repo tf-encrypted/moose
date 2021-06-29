@@ -2,14 +2,14 @@ use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::prim::{Nonce, PrfKey, RawNonce, Seed};
+use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
-    Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, Shape,
-    Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
+    Shape, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use derive_more::Display;
 use paste::paste;
@@ -31,6 +31,88 @@ pub trait KnownType {
     const TY: Ty;
 }
 
+// Primitives are trivial values. They are what can live on the noded on the computation graph.
+// It can not be a Unit, an Unknown or complex structure such as ReplicatedTensor.
+macro_rules! primitives {
+    ($($val:ident $($t:ident)?,)+) => {
+
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+        pub enum Primitive {
+            $($val($val),)+
+            // TODO promote below to match other values
+            Float32(f32),
+            Float64(f64),
+            Ring64(u64),
+            Ring128(u128),
+        }
+
+        impl Primitive {
+            pub fn ty(&self) -> Ty {
+                match self {
+                    $(Primitive::$val(_) => primitives!(@ty $val $($t)?),)+
+                    // TODO promote below to match other values
+                    Primitive::Float32(_) => Ty::Float32,
+                    Primitive::Float64(_) => Ty::Float64,
+                    Primitive::Ring64(_) => Ty::Ring64,
+                    Primitive::Ring128(_) => Ty::Ring128,
+                }
+            }
+
+            pub fn place(&self, plc: &HostPlacement) -> Value {
+                match self {
+                    $(
+                        Primitive::$val(x) => {primitives!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
+                    )+
+                    // TODO promote below to match other values
+                    Primitive::Float32(x) => Value::Float32(x.clone()),
+                    Primitive::Float64(x) => Value::Float64(x.clone()),
+                    Primitive::Ring64(x) => Value::Ring64(x.clone()),
+                    Primitive::Ring128(x) => Value::Ring128(x.clone()),
+                }
+            }
+        }
+
+        $(
+        impl From<$val> for Primitive {
+            fn from(x: $val) -> Self {
+                Primitive::$val(x)
+            }
+        }
+        )+
+
+    };
+    (@ty $val:ident $t:ident) => {Ty::$t};
+    (@ty $val:ident) => {Ty::$val};
+
+    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t($t($x, $plc))};
+    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val($x)};
+}
+
+// The lines with 2 identifiers are for "Placed" values - the types whose `Value` incarnation has a placement already.
+// The lines with 1 identifier are for "Unplaced" values, where the Primitive and Value are essentially the same and can be converted easily.
+primitives![
+    RawShape Shape,
+    RawSeed Seed,
+    RawPrfKey PrfKey,
+    RawNonce Nonce,
+    String,
+    BitTensor,
+    Ring64Tensor,
+    Ring128Tensor,
+    Float32Tensor,
+    Float64Tensor,
+    Int8Tensor,
+    Int16Tensor,
+    Int32Tensor,
+    Int64Tensor,
+    Uint8Tensor,
+    Uint16Tensor,
+    Uint32Tensor,
+    Uint64Tensor,
+];
+
+/// Values are anything that can flow along the edges of the computation graph.
+/// Some values are just placed primitives, but some could be more complex.
 macro_rules! values {
     ($($val:ident,)+) => {
 
@@ -394,7 +476,7 @@ pub struct SaveOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ConstantOp {
     pub sig: Signature,
-    pub value: Value, // TODO Box<Value> or Box inside Value?
+    pub value: Primitive, // TODO Box<Primitive> or Box inside Primitive?
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -529,7 +611,7 @@ pub struct RingShapeOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingFillOp {
     pub sig: Signature,
-    pub value: Value,
+    pub value: Primitive,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

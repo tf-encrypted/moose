@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::prim::{RawNonce, RawSeed, Seed};
+use crate::prim::{RawNonce, RawPrfKey, RawSeed};
 use crate::standard::{RawShape, Shape};
 use nom::{
     branch::{alt, permutation},
@@ -31,6 +31,25 @@ impl TryFrom<String> for Computation {
 
     fn try_from(source: String) -> anyhow::Result<Computation> {
         verbose_parse_computation(&source)
+    }
+}
+
+impl TryFrom<&str> for Primitive {
+    type Error = anyhow::Error;
+
+    fn try_from(source: &str) -> anyhow::Result<Primitive> {
+        primitive_literal::<(&str, ErrorKind)>(source)
+            .map(|(_, v)| v)
+            .map_err(|_| anyhow::anyhow!("Failed to parse primitive literal {}", source))
+    }
+}
+
+impl FromStr for Primitive {
+    type Err = anyhow::Error;
+    fn from_str(source: &str) -> Result<Self, Self::Err> {
+        primitive_literal::<(&str, ErrorKind)>(source)
+            .map(|(_, v)| v)
+            .map_err(|_| anyhow::anyhow!("Failed to parse primitive literal {}", source))
     }
 }
 
@@ -277,7 +296,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn constant<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", value_literal)(input)?;
+    let (input, value) = attributes_single("value", primitive_literal)(input)?;
     let (input, optional_type) = opt(type_definition(0))(input)?;
     let sig = optional_type.unwrap_or_else(|| Signature::nullary(value.ty()));
 
@@ -400,7 +419,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", value_literal)(input)?;
+    let (input, value) = attributes_single("value", primitive_literal)(input)?;
     let (input, sig) = type_definition(0)(input)?;
     Ok((input, RingFillOp { sig, value }.into()))
 }
@@ -680,14 +699,14 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     }
 }
 
-fn value_literal_helper<'a, O1, F1, F2, E>(
+fn primitive_literal_helper<'a, O1, F1, F2, E>(
     expected_type: &'a str,
     parser: F1,
     mapper: F2,
-) -> impl FnMut(&'a str) -> IResult<&'a str, Value, E>
+) -> impl FnMut(&'a str) -> IResult<&'a str, Primitive, E>
 where
     F1: FnMut(&'a str) -> IResult<&'a str, O1, E>,
-    F2: FnMut(O1) -> Value,
+    F2: FnMut(O1) -> Primitive,
     E: 'a + ParseError<&'a str> + ContextError<&'a str>,
 {
     map(
@@ -699,119 +718,117 @@ where
     )
 }
 
-/// Parses a literal value.
-fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a literal for a primitive (not a placed value).
+fn primitive_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
-) -> IResult<&'a str, Value, E> {
+) -> IResult<&'a str, Primitive, E> {
     alt((
-        value_literal_helper("Seed", parse_hex, |v| {
-            Value::Seed(Seed(
-                RawSeed(v),
-                HostPlacement {
-                    owner: "TODO".into(),
-                },
-            ))
+        primitive_literal_helper("Seed", parse_hex, |v| Primitive::RawSeed(RawSeed(v))),
+        primitive_literal_helper("PrfKey", parse_hex, |v| Primitive::RawPrfKey(RawPrfKey(v))),
+        primitive_literal_helper("Float32", float, Primitive::Float32),
+        primitive_literal_helper("Float64", double, Primitive::Float64),
+        primitive_literal_helper("String", string, Primitive::String),
+        map(ws(string), Primitive::String), // Alternative syntax for strings - no type
+        primitive_literal_helper("Ring64", parse_int, Primitive::Ring64),
+        primitive_literal_helper("Ring128", parse_int, Primitive::Ring128),
+        primitive_literal_helper("Shape", vector(parse_int), |v| {
+            Primitive::RawShape(RawShape(v))
         }),
-        // value_literal_helper("PrfKey", parse_hex, |v| Value::PrfKey(PrfKey(v))), // TODO
-        value_literal_helper("Float32", float, Value::Float32),
-        value_literal_helper("Float64", double, Value::Float64),
-        value_literal_helper("String", string, Value::String),
-        map(ws(string), Value::String), // Alternative syntax for strings - no type
-        value_literal_helper("Ring64", parse_int, Value::Ring64),
-        value_literal_helper("Ring128", parse_int, Value::Ring128),
-        value_literal_helper("Shape", vector(parse_int), |v| {
-            Value::Shape(Shape(
-                RawShape(v),
-                HostPlacement {
-                    owner: "TODO".into(),
-                }
-                .into(),
-            ))
-        }),
-        // value_literal_helper("Nonce", vector(parse_int), |v| Value::Nonce(Nonce(v))), // TODO
+        // primitive_literal_helper("Nonce", vector(parse_int), |v| Value::Nonce(Nonce(v))), // TODO
         // 1D arrars
         alt((
-            value_literal_helper("Int8Tensor", vector(parse_int), |v| {
-                Value::Int8Tensor(v.into())
+            primitive_literal_helper("Int8Tensor", vector(parse_int), |v| {
+                Primitive::Int8Tensor(v.into())
             }),
-            value_literal_helper("Int16Tensor", vector(parse_int), |v| {
-                Value::Int16Tensor(v.into())
+            primitive_literal_helper("Int16Tensor", vector(parse_int), |v| {
+                Primitive::Int16Tensor(v.into())
             }),
-            value_literal_helper("Int32Tensor", vector(parse_int), |v| {
-                Value::Int32Tensor(v.into())
+            primitive_literal_helper("Int32Tensor", vector(parse_int), |v| {
+                Primitive::Int32Tensor(v.into())
             }),
-            value_literal_helper("Int64Tensor", vector(parse_int), |v| {
-                Value::Int64Tensor(v.into())
+            primitive_literal_helper("Int64Tensor", vector(parse_int), |v| {
+                Primitive::Int64Tensor(v.into())
             }),
-            value_literal_helper("Uint8Tensor", vector(parse_int), |v| {
-                Value::Uint8Tensor(v.into())
+            primitive_literal_helper("Uint8Tensor", vector(parse_int), |v| {
+                Primitive::Uint8Tensor(v.into())
             }),
-            value_literal_helper("Uint16Tensor", vector(parse_int), |v| {
-                Value::Uint16Tensor(v.into())
+            primitive_literal_helper("Uint16Tensor", vector(parse_int), |v| {
+                Primitive::Uint16Tensor(v.into())
             }),
-            value_literal_helper("Uint32Tensor", vector(parse_int), |v| {
-                Value::Uint32Tensor(v.into())
+            primitive_literal_helper("Uint32Tensor", vector(parse_int), |v| {
+                Primitive::Uint32Tensor(v.into())
             }),
-            value_literal_helper("Uint64Tensor", vector(parse_int), |v| {
-                Value::Uint64Tensor(v.into())
+            primitive_literal_helper("Uint64Tensor", vector(parse_int), |v| {
+                Primitive::Uint64Tensor(v.into())
             }),
-            value_literal_helper("Float32Tensor", vector(float), |v| {
-                Value::Float32Tensor(v.into())
+            primitive_literal_helper("Float32Tensor", vector(float), |v| {
+                Primitive::Float32Tensor(v.into())
             }),
-            value_literal_helper("Float64Tensor", vector(double), |v| {
-                Value::Float64Tensor(v.into())
+            primitive_literal_helper("Float64Tensor", vector(double), |v| {
+                Primitive::Float64Tensor(v.into())
             }),
-            value_literal_helper("Ring64Tensor", vector(parse_int), |v| {
-                Value::Ring64Tensor(v.into())
+            primitive_literal_helper("Ring64Tensor", vector(parse_int), |v| {
+                Primitive::Ring64Tensor(v.into())
             }),
-            value_literal_helper("Ring128Tensor", vector(parse_int), |v| {
-                Value::Ring128Tensor(v.into())
+            primitive_literal_helper("Ring128Tensor", vector(parse_int), |v| {
+                Primitive::Ring128Tensor(v.into())
             }),
         )),
         // 2D arrars
         alt((
-            value_literal_helper("Int8Tensor", vector2(parse_int), |v| {
-                Value::Int8Tensor(v.into())
+            primitive_literal_helper("Int8Tensor", vector2(parse_int), |v| {
+                Primitive::Int8Tensor(v.into())
             }),
-            value_literal_helper("Int16Tensor", vector2(parse_int), |v| {
-                Value::Int16Tensor(v.into())
+            primitive_literal_helper("Int16Tensor", vector2(parse_int), |v| {
+                Primitive::Int16Tensor(v.into())
             }),
-            value_literal_helper("Int32Tensor", vector2(parse_int), |v| {
-                Value::Int32Tensor(v.into())
+            primitive_literal_helper("Int32Tensor", vector2(parse_int), |v| {
+                Primitive::Int32Tensor(v.into())
             }),
-            value_literal_helper("Int64Tensor", vector2(parse_int), |v| {
-                Value::Int64Tensor(v.into())
+            primitive_literal_helper("Int64Tensor", vector2(parse_int), |v| {
+                Primitive::Int64Tensor(v.into())
             }),
-            value_literal_helper("Uint8Tensor", vector2(parse_int), |v| {
-                Value::Uint8Tensor(v.into())
+            primitive_literal_helper("Uint8Tensor", vector2(parse_int), |v| {
+                Primitive::Uint8Tensor(v.into())
             }),
-            value_literal_helper("Uint16Tensor", vector2(parse_int), |v| {
-                Value::Uint16Tensor(v.into())
+            primitive_literal_helper("Uint16Tensor", vector2(parse_int), |v| {
+                Primitive::Uint16Tensor(v.into())
             }),
-            value_literal_helper("Uint32Tensor", vector2(parse_int), |v| {
-                Value::Uint32Tensor(v.into())
+            primitive_literal_helper("Uint32Tensor", vector2(parse_int), |v| {
+                Primitive::Uint32Tensor(v.into())
             }),
-            value_literal_helper("Uint64Tensor", vector2(parse_int), |v| {
-                Value::Uint64Tensor(v.into())
+            primitive_literal_helper("Uint64Tensor", vector2(parse_int), |v| {
+                Primitive::Uint64Tensor(v.into())
             }),
-            value_literal_helper("Float32Tensor", vector2(float), |v| {
-                Value::Float32Tensor(v.into())
+            primitive_literal_helper("Float32Tensor", vector2(float), |v| {
+                Primitive::Float32Tensor(v.into())
             }),
-            value_literal_helper("Float64Tensor", vector2(double), |v| {
-                Value::Float64Tensor(v.into())
+            primitive_literal_helper("Float64Tensor", vector2(double), |v| {
+                Primitive::Float64Tensor(v.into())
             }),
-            value_literal_helper(
+            primitive_literal_helper(
                 "Ring64Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u64>| Value::Ring64Tensor(v.into()),
+                |v: ndarray::ArrayD<u64>| Primitive::Ring64Tensor(v.into()),
             ),
-            value_literal_helper(
+            primitive_literal_helper(
                 "Ring128Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u128>| Value::Ring128Tensor(v.into()),
+                |v: ndarray::ArrayD<u128>| Primitive::Ring128Tensor(v.into()),
             ),
         )),
     ))(input)
+}
+
+/// Parses a literal for a primitive (not a placed value).
+fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Value, E> {
+    let (input, (v, p)) = tuple((primitive_literal, ws(parse_placement)))(input)?;
+    match p {
+        Placement::Host(h) => Ok((input, v.place(&h))),
+        _ => unimplemented!(), // TODO (lvorona) return parsing error that we do not support other placements in the textual form
+    }
 }
 
 /// Parses a vector of items, using the supplied innter parser.
@@ -1342,6 +1359,7 @@ impl ToTextual for Ty {
     }
 }
 
+// TODO: This will need to be either removed or output the owner as well (lvorona)
 impl ToTextual for Value {
     fn to_textual(&self) -> String {
         match self {
@@ -1371,9 +1389,32 @@ impl ToTextual for Value {
     }
 }
 
-impl ToTextual for RawNonce {
+impl ToTextual for Primitive {
     fn to_textual(&self) -> String {
-        format!("Nonce({:?})", self) // TODO
+        match self {
+            Primitive::Int8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
+            Primitive::Int16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
+            Primitive::Int32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
+            Primitive::Int64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
+            Primitive::Uint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
+            Primitive::Uint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
+            Primitive::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
+            Primitive::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
+            Primitive::Float32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
+            Primitive::Float64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
+            Primitive::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
+            Primitive::Ring128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
+            Primitive::Float32(x) => format!("Float32({})", x),
+            Primitive::Float64(x) => format!("Float64({})", x),
+            Primitive::String(x) => format!("String({})", x.to_textual()),
+            Primitive::Ring64(x) => format!("Ring64({})", x),
+            Primitive::Ring128(x) => format!("Ring128({})", x),
+            Primitive::RawShape(RawShape(x)) => format!("Shape({:?})", x),
+            Primitive::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
+            Primitive::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
+            Primitive::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
+            _ => unimplemented!(), // TODO
+        }
     }
 }
 
@@ -1414,11 +1455,12 @@ impl ToTextual for Role {
     }
 }
 
-// impl ToTextual for Nonce {
-//     fn to_textual(&self) -> String {
-//         format!("{:?}", self.0)
-//     }
-// }
+// TODO: lvorona revisit this - this should not require a special ToTextual
+impl ToTextual for RawNonce {
+    fn to_textual(&self) -> String {
+        format!("{:?}", self.0)
+    }
+}
 
 impl ToTextual for Signature {
     fn to_textual(&self) -> String {
@@ -1480,60 +1522,49 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_value_literal() -> Result<(), anyhow::Error> {
-        let (_, parsed_f32) = value_literal::<(&str, ErrorKind)>("Float32(1.23)")?;
-        assert_eq!(parsed_f32, Value::Float32(1.23));
-        let (_, parsed_f64) = value_literal::<(&str, ErrorKind)>("Float64(1.23)")?;
-        assert_eq!(parsed_f64, Value::Float64(1.23));
-        let (_, parsed_str) = value_literal::<(&str, ErrorKind)>("\"abc\"")?;
-        assert_eq!(parsed_str, Value::String("abc".into()));
-        let (_, parsed_str) = value_literal::<(&str, ErrorKind)>("String(\"abc\")")?;
-        assert_eq!(parsed_str, Value::String("abc".into()));
-        let (_, parsed_str) = value_literal::<(&str, ErrorKind)>("\"1.23\"")?;
-        assert_eq!(parsed_str, Value::String("1.23".into()));
-        let (_, parsed_str) = value_literal::<(&str, ErrorKind)>("\"1. 2\\\"3\"")?;
-        assert_eq!(parsed_str, Value::String("1. 2\"3".into()));
+    fn test_primitive_literal() -> Result<(), anyhow::Error> {
+        let (_, parsed_f32) = primitive_literal::<(&str, ErrorKind)>("Float32(1.23)")?;
+        assert_eq!(parsed_f32, Primitive::Float32(1.23));
+        let (_, parsed_f64) = primitive_literal::<(&str, ErrorKind)>("Float64(1.23)")?;
+        assert_eq!(parsed_f64, Primitive::Float64(1.23));
+        let (_, parsed_str) = primitive_literal::<(&str, ErrorKind)>("\"abc\"")?;
+        assert_eq!(parsed_str, Primitive::String("abc".into()));
+        let (_, parsed_str) = primitive_literal::<(&str, ErrorKind)>("String(\"abc\")")?;
+        assert_eq!(parsed_str, Primitive::String("abc".into()));
+        let (_, parsed_str) = primitive_literal::<(&str, ErrorKind)>("\"1.23\"")?;
+        assert_eq!(parsed_str, Primitive::String("1.23".into()));
+        let (_, parsed_str) = primitive_literal::<(&str, ErrorKind)>("\"1. 2\\\"3\"")?;
+        assert_eq!(parsed_str, Primitive::String("1. 2\"3".into()));
         let (_, parsed_ring64_tensor) =
-            value_literal::<(&str, ErrorKind)>("Ring64Tensor([1,2,3])")?;
+            primitive_literal::<(&str, ErrorKind)>("Ring64Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring64_tensor,
-            Value::Ring64Tensor(vec![1, 2, 3].into())
+            Primitive::Ring64Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_ring128_tensor) =
-            value_literal::<(&str, ErrorKind)>("Ring128Tensor([1,2,3])")?;
+            primitive_literal::<(&str, ErrorKind)>("Ring128Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring128_tensor,
-            Value::Ring128Tensor(vec![1, 2, 3].into())
+            Primitive::Ring128Tensor(vec![1, 2, 3].into())
         );
-        let (_, parsed_shape) = value_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
+        let (_, parsed_shape) = primitive_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
+        assert_eq!(parsed_shape, Primitive::RawShape(RawShape(vec![1, 2, 3])));
+        let (_, parsed_u8_tensor) = primitive_literal::<(&str, ErrorKind)>("Uint8Tensor([1,2,3])")?;
         assert_eq!(
-            parsed_shape,
-            Value::Shape(Shape(
-                RawShape(vec![1, 2, 3]),
-                HostPlacement {
-                    owner: "TODO".into()
-                }
-                .into()
-            ))
+            parsed_u8_tensor,
+            Primitive::Uint8Tensor(vec![1, 2, 3].into())
         );
-        let (_, parsed_u8_tensor) = value_literal::<(&str, ErrorKind)>("Uint8Tensor([1,2,3])")?;
-        assert_eq!(parsed_u8_tensor, Value::Uint8Tensor(vec![1, 2, 3].into()));
         let (_, parsed_seed) =
-            value_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
+            primitive_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
         assert_eq!(
             parsed_seed,
-            Value::Seed(Seed(
-                RawSeed([
-                    0x52, 0x9c, 0x2f, 0xc9, 0xbf, 0x57, 0x3d, 0x07, 0x7f, 0x45, 0xf4, 0x2b, 0x19,
-                    0xcf, 0xb8, 0xd4
-                ]),
-                HostPlacement {
-                    owner: "TODO".into()
-                },
-            )),
+            Primitive::RawSeed(RawSeed([
+                0x52, 0x9c, 0x2f, 0xc9, 0xbf, 0x57, 0x3d, 0x07, 0x7f, 0x45, 0xf4, 0x2b, 0x19, 0xcf,
+                0xb8, 0xd4
+            ]))
         );
-        let (_, parsed_ring64) = value_literal::<(&str, ErrorKind)>("Ring64(42)")?;
-        assert_eq!(parsed_ring64, Value::Ring64(42));
+        let (_, parsed_ring64) = primitive_literal::<(&str, ErrorKind)>("Ring64(42)")?;
+        assert_eq!(parsed_ring64, Primitive::Ring64(42));
 
         Ok(())
     }
@@ -1542,7 +1573,7 @@ mod tests {
     fn test_array_literal() -> Result<(), anyhow::Error> {
         use ndarray::prelude::*;
         use std::convert::TryInto;
-        let parsed_f32: Value = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
+        let parsed_f32: Primitive = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
 
         let x = crate::standard::Float32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
@@ -1550,16 +1581,16 @@ mod tests {
                 .unwrap(),
         );
 
-        assert_eq!(parsed_f32, Value::Float32Tensor(x));
+        assert_eq!(parsed_f32, Primitive::Float32Tensor(x));
 
-        let parsed_ring64: Value = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
+        let parsed_ring64: Primitive = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
 
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
         let x = crate::ring::Ring64Tensor::from(x_backing);
 
-        assert_eq!(parsed_ring64, Value::Ring64Tensor(x));
+        assert_eq!(parsed_ring64, Primitive::Ring64Tensor(x));
 
         Ok(())
     }
@@ -1598,7 +1629,7 @@ mod tests {
             op.kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
-                value: Value::Float32Tensor(vec![1.0].into())
+                value: Primitive::Float32Tensor(vec![1.0].into())
             })
         );
 
@@ -1616,7 +1647,7 @@ mod tests {
             op.kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
-                value: Value::Float32Tensor(x)
+                value: Primitive::Float32Tensor(x)
             })
         );
         Ok(())
@@ -1839,14 +1870,14 @@ mod tests {
             comp.operations[0].kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
-                value: Value::Float32Tensor(vec![1.0].into())
+                value: Primitive::Float32Tensor(vec![1.0].into())
             })
         );
         assert_eq!(
             comp.operations[1].kind,
             Operator::Constant(ConstantOp {
                 sig: Signature::nullary(Ty::Float32Tensor),
-                value: Value::Float32Tensor(vec![2.0].into())
+                value: Primitive::Float32Tensor(vec![2.0].into())
             })
         );
         assert_eq!(comp.operations[2].name, "z");
@@ -1891,8 +1922,8 @@ mod tests {
     #[test]
     fn test_value_try_into() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
-        let v: Value = "Float32Tensor([1.0, 2.0, 3.0])".try_into()?;
-        assert_eq!(v, Value::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
+        let v: Primitive = "Float32Tensor([1.0, 2.0, 3.0])".try_into()?;
+        assert_eq!(v, Primitive::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
         Ok(())
     }
 

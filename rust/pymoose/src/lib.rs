@@ -1,9 +1,9 @@
 use moose::bit::BitTensor;
 use moose::fixedpoint::Convert;
-use moose::prim::Seed;
+use moose::prim::{RawSeed};
 use moose::prng::AesRng;
 use moose::ring::Ring64Tensor;
-use moose::standard::{Float64Tensor, Shape};
+use moose::standard::{Float64Tensor, RawShape};
 use moose::utils;
 use ndarray::ArrayD;
 use numpy::{PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
@@ -111,7 +111,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m, "ring_fill")]
     fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
-        let shape = Shape(shape);
+        let shape = RawShape(shape);
         let res = Ring64Tensor::fill(&shape, el);
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
@@ -126,14 +126,14 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u64> {
         let res = match max_value {
             None => Ring64Tensor::sample_uniform(
-                &Shape(shape),
-                &Seed(seed.as_bytes().try_into().unwrap()),
+                &RawShape(shape),
+                &RawSeed(seed.as_bytes().try_into().unwrap()),
             ),
             Some(max_value) => {
                 if max_value == 1 {
                     Ring64Tensor::sample_bits(
-                        &Shape(shape),
-                        &Seed(seed.as_bytes().try_into().unwrap()),
+                        &RawShape(shape),
+                        &RawSeed(seed.as_bytes().try_into().unwrap()),
                     )
                 } else {
                     unimplemented!()
@@ -196,15 +196,15 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         shape: Vec<usize>,
         seed: &'py PyBytes,
     ) -> &'py PyArrayDyn<u8> {
-        let shape = Shape(shape);
-        let seed = Seed(seed.as_bytes().try_into().unwrap());
+        let shape = RawShape(shape);
+        let seed = RawSeed(seed.as_bytes().try_into().unwrap());
         let b = BitTensor::sample_uniform(&shape, &seed);
         ArrayD::<u8>::from(b).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_fill")]
     fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
-        let shape = Shape(shape);
+        let shape = RawShape(shape);
         let res = BitTensor::fill(&shape, el);
         ArrayD::<u8>::from(res).to_pyarray(py)
     }

@@ -1,7 +1,7 @@
 use moose::computation::*;
 use moose::execution::*;
 use moose::prim::RawNonce;
-use moose::standard::{RawShape, Shape};
+use moose::standard::RawShape;
 
 fn main() {
     let key_op = Operation {
@@ -33,13 +33,7 @@ fn main() {
         name: "x_shape".into(),
         kind: ConstantOp {
             sig: Signature::nullary(Ty::Shape),
-            value: Value::Shape(Shape(
-                RawShape(vec![2, 3]),
-                HostPlacement {
-                    owner: "TODO".into(),
-                }
-                .into(),
-            )),
+            value: Primitive::RawShape(RawShape(vec![2, 3])),
         }
         .into(),
         inputs: vec![],

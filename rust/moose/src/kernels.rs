@@ -552,10 +552,10 @@ impl Compile<Kernel> for RingShapeOp {
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
-            (signature![(_) -> Ty::Ring64Tensor], Value::Ring64(value)) => {
+            (signature![(_) -> Ty::Ring64Tensor], Primitive::Ring64(value)) => {
                 closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape.0, value))
             }
-            (signature![(_) -> Ty::Ring128Tensor], Value::Ring128(value)) => {
+            (signature![(_) -> Ty::Ring128Tensor], Primitive::Ring128(value)) => {
                 closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape.0, value))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -740,7 +740,11 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
 impl Compile<Kernel> for ConstantOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let value = self.value.clone();
-        Ok(Kernel::NullaryClosure(Arc::new(move || Ok(value.clone()))))
+        Ok(Kernel::NullaryClosure(Arc::new(move || {
+            Ok(value.place(&HostPlacement {
+                owner: "TODO".into(),
+            }))
+        })))
     }
 }
 
