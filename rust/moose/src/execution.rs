@@ -1012,24 +1012,25 @@ impl AsyncSessionHandle {
         errors
     }
 
-    pub async fn join(&mut self) -> Vec<anyhow::Error> {
-        let mut errors = Vec::new();
-        for task in &mut self.tasks {
-            let res = task.await;
-            if let Some(e) = AsyncSessionHandle::process_task_result(res) {
-                errors.push(e);
-                return errors;
-            }
-        }
-        errors
-    }
+    //pub async fn join(&mut self) -> Vec<anyhow::Error> {
+    //    let mut errors = Vec::new();
+    //    for task in &mut self.tasks {
+    //        let res = task.await;
+    //        if let Some(e) = AsyncSessionHandle::process_task_result(res) {
+    //            errors.push(e);
+    //            return errors;
+    //        }
+    //    }
+    //    errors
+    //}
 
     // TODO(Morten)
-    // async fn join(self) -> Result<()> {
-    //     use futures::StreamExt;
-    //     let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
-    //     let res = tasks.collect::<Vec<_>>().await;
-    // }
+    async fn join(self) -> Vec<anyhow::Error> {
+        use futures::StreamExt;
+        let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
+        let res = tasks.collect::<Vec<_>>().await;
+        eprintln!("res: {:?}", res);
+    }
 
     pub fn abort(&self) {
         for task in &self.tasks {
