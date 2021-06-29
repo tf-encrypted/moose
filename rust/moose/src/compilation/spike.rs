@@ -142,6 +142,7 @@ pub enum Ty {
     Shape,
     Ring64,
     Ring128,
+    Bit,
 }
 
 impl Ty {
@@ -162,6 +163,10 @@ impl Ty {
                 }))
             }
             Ty::BitTensor => SymbolicValue::BitTensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+            Ty::Bit => SymbolicValue::Bit(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
@@ -256,6 +261,7 @@ pub enum Value {
     Shape(Shape),
     Ring64(Ring64),
     Ring128(Ring128),
+    Bit(Bit),
 }
 
 impl Value {
@@ -277,6 +283,7 @@ impl Value {
             Value::Shape(_) => Ty::Shape,
             Value::Ring64(_) => Ty::Ring64,
             Value::Ring128(_) => Ty::Ring128,
+            Value::Bit(_) => Ty::Bit,
         }
     }
 }
@@ -286,6 +293,7 @@ pub enum SymbolicValue {
     Fixed64Tensor(<Fixed64Tensor as KnownType>::Symbolic),
     Fixed128Tensor(<Fixed128Tensor as KnownType>::Symbolic),
     BitTensor(<BitTensor as KnownType>::Symbolic),
+    Bit(<Bit as KnownType>::Symbolic),
     Ring32Tensor(<Ring32Tensor as KnownType>::Symbolic),
     Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
     Ring128Tensor(<Ring128Tensor as KnownType>::Symbolic),
@@ -408,9 +416,9 @@ value!(
 );
 value!(PrfKey, Symbolic<PrfKey>);
 value!(Shape, Symbolic<Shape>);
-
 value!(Ring64, Symbolic<Ring64>);
 value!(Ring128, Symbolic<Ring128>);
+value!(Bit, Symbolic<Bit>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
@@ -707,6 +715,7 @@ impl From<Shape> for Symbolic<Shape> {
 
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::enum_variant_names)]
+#[allow(clippy::large_enum_variant)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
     RingAddOp(RingAddOp),
@@ -931,6 +940,12 @@ impl RingTensor<u64> {
     }
 }
 
+impl BitTensor {
+    fn fill(el: u8, plc: HostPlacement) -> BitTensor {
+        BitTensor(el, plc)
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct BitTensor(u8, HostPlacement);
 
@@ -983,6 +998,8 @@ pub type Ring128Tensor = RingTensor<u128>;
 pub type Ring64 = Ring<u64>;
 
 pub type Ring128 = Ring<u128>;
+
+pub type Bit = Ring<u8>;
 
 pub type Replicated64Tensor = ReplicatedTensor<Ring64Tensor>;
 
@@ -3055,8 +3072,7 @@ where
     HostPlacement: PlacementShl<C, R, R>,
     HostPlacement: PlacementShr<C, R, R>,
     AdditivePlacement: PlacementArithmeticXor<C, R>,
-    AdditivePlacement: PlacementShl<C, AdditiveTensor<R>, AdditiveTensor<R>>
-
+    AdditivePlacement: PlacementShl<C, AdditiveTensor<R>, AdditiveTensor<R>>,
 {
     fn trunc_pr(
         &self,
@@ -3342,18 +3358,18 @@ pub struct FillOp {
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring64Tensor, FillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring128Tensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> BitTensor, FillOp);
 
 kernel! {
     FillOp,
     [
         (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::kernel64),
         (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::kernel128),
+        (HostPlacement, (Shape) -> BitTensor => attributes[value] Self::kernel8),
     ]
 }
 
 impl FillOp {
-    // We need to introduce PublicTensor vs SecretTensor to be able to reason
-    // between constants and secrets
     fn kernel64<C: Context>(
         ctx: &C,
         plc: &HostPlacement,
@@ -3376,6 +3392,22 @@ impl FillOp {
         // TODO: Pass in typed value instead of Value
         match value {
             Value::Ring128(el) => Ring128Tensor::fill(el.0, plc.clone()),
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    fn kernel8<C: Context>(ctx: &C, plc: &HostPlacement, value: Value, shape: Shape) -> BitTensor {
+        // TODO: Pass in typed value instead of Value
+        match value {
+            Value::Bit(el) => {
+                let val = el.0;
+                assert!(
+                    val == 0 || val == 1,
+                    "cannot fill a BitTensor with a value {:?}",
+                    val
+                );
+                BitTensor::fill(val, plc.clone())
+            }
             _ => unimplemented!(), // ok
         }
     }
