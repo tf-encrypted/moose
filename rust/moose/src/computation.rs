@@ -660,22 +660,89 @@ pub struct RepToAdtOp {
     sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub enum Placement {
-    Host(HostPlacement),
-    Replicated(ReplicatedPlacement),
-    Additive(AdditivePlacement),
-}
+trait KnownPlacement {
+    const TY: PlacementTy;
 
-impl Placement {
-    pub fn ty(&self) -> PlacementTy {
-        match self {
-            Placement::Host(plc) => plc.ty(),
-            Placement::Replicated(plc) => plc.ty(),
-            Placement::Additive(plc) => plc.ty(),
-        }
+    fn ty(&self) -> PlacementTy {
+        Self::TY
     }
 }
+
+macro_rules! placements {
+    ($($p:ident,)+) => {
+        paste! {
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            pub enum Placement {
+                $($p([<$p Placement>]),)+
+            }
+        }
+
+        paste! {
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            pub enum PlacementTy {
+                $($p,)+
+            }
+        }
+
+        impl Placement {
+            pub fn ty(&self) -> PlacementTy {
+                match self {
+                    $(Placement::$p(plc) => plc.ty(),)+
+                }
+            }
+        }
+
+        paste! {
+            $(
+            impl From<[<$p Placement>]> for Placement {
+                fn from(x: [<$p Placement>]) -> Placement {
+                    Placement::$p(x)
+                }
+            }
+            )+
+        }
+
+        paste! {
+            $(
+            impl From<&[<$p Placement>]> for Placement {
+                fn from(x: &[<$p Placement>]) -> Placement {
+                    Placement::$p(x.clone())
+                }
+            }
+            )+
+        }
+
+        paste! {
+            $(
+            impl TryFrom<Placement> for [<$p Placement>] {
+                type Error = Error;
+
+                fn try_from(x: Placement) -> Result<Self> {
+                    match x {
+                        Placement::$p(x) => Ok(x),
+                        _ => Err(Error::OperandUnavailable),
+                    }
+                }
+            }
+            )+
+        }
+
+        paste! {
+            $(
+            impl KnownPlacement for [<$p Placement>] {
+                const TY: PlacementTy = PlacementTy::$p;
+            }
+            )+
+        }
+    };
+}
+
+placements![
+    Host,
+    Replicated,
+    Additive,
+];
+
 
 #[derive(Serialize, Deserialize, Display, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Role(pub String);
@@ -739,66 +806,6 @@ impl AdditivePlacement {
         (player0, player1)
     }
 }
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub enum PlacementTy {
-    HostTy,
-    ReplicatedTy,
-    AdditiveTy,
-}
-
-trait KnownPlacement {
-    const TY: PlacementTy;
-
-    fn ty(&self) -> PlacementTy {
-        Self::TY
-    }
-}
-
-impl KnownPlacement for HostPlacement {
-    const TY: PlacementTy = PlacementTy::HostTy;
-}
-
-impl KnownPlacement for ReplicatedPlacement {
-    const TY: PlacementTy = PlacementTy::ReplicatedTy;
-}
-
-impl KnownPlacement for AdditivePlacement {
-    const TY: PlacementTy = PlacementTy::AdditiveTy;
-}
-
-macro_rules! placement {
-    ($t:ident) => {
-        paste! {
-            impl From<[<$t Placement>]> for Placement {
-                fn from(x: [<$t Placement>]) -> Placement {
-                    Placement::$t(x)
-                }
-            }
-
-            impl From<&[<$t Placement>]> for Placement {
-                fn from(x: &[<$t Placement>]) -> Placement {
-                    Placement::$t(x.clone())
-                }
-            }
-
-            impl TryFrom<Placement> for [<$t Placement>] {
-                type Error = Error;
-
-                fn try_from(x: Placement) -> Result<Self> {
-                    match x {
-                        Placement::$t(x) => Ok(x),
-                        _ => Err(Error::OperandUnavailable),
-                    }
-                }
-            }
-        }
-    };
-}
-
-placement!(Host);
-placement!(Replicated);
-placement!(Additive);
 
 pub trait Placed {
     type Placement;
