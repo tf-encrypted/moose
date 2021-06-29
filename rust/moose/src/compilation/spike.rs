@@ -725,7 +725,7 @@ pub enum Operator {
     RepToAddOp(RepToAddOp),
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
-    // RepTruncPrOp(RepTruncPrOp),
+    RepTruncPrOp(RepTruncPrOp),
     AdditiveAddOp(AdditiveAddOp),
     AdditiveMulOp(AdditiveMulOp),
     AdditiveRevealOp(AdditiveRevealOp),
@@ -763,7 +763,7 @@ operator!(RepMulOp);
 operator!(RepToAddOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
-// operator!(RepTruncPrOp);
+operator!(RepTruncPrOp);
 operator!(AdditiveAddOp);
 operator!(AdditiveMulOp);
 operator!(AdditiveRevealOp);
@@ -1298,7 +1298,7 @@ trait PlacementRepToAdd<C: Context, T, O> {
 }
 
 trait PlacementTruncPr<C: Context, S, T, O> {
-    fn trunc_pr(&self, ctx: &C, s: &S, x: &T, amount: usize) -> O;
+    fn trunc_pr(&self, ctx: &C, amount: usize, s: &S, x: &T) -> O;
 }
 
 pub trait Context {
@@ -1342,7 +1342,7 @@ impl Context for ConcreteContext {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            // Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -1455,7 +1455,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
-            // Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -2698,6 +2698,10 @@ pub struct AdditiveAddOp {
 
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveAddOp);
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor, AdditiveAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor, AdditiveAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveAddOp);
 
 hybrid_kernel! {
     AdditiveAddOp,
@@ -3006,53 +3010,82 @@ where
     }
 }
 
-// trait PlacementTruncPrWithPrep<C: Context, R> {
-//     fn trunc_pr(
-//         &self,
-//         ctx: &C,
-//         x: &AdditiveTensor<R>,
-//         m: usize,
-//         r: &AdditiveTensor<R>,
-//         r_top: &AdditiveTensor<R>,
-//         r_msb: &AdditiveTensor<R>,
-//     ) -> AdditiveTensor<R>;
-// }
+trait PlacementArithmeticXor<C: Context, R> {
+    fn arithmetic_xor(&self, ctx: &C, x: &AdditiveTensor<R>, y: &R) -> AdditiveTensor<R>;
+    // compute x + y - 2 * x * y
+}
 
-// impl<C: Context, R> PlacementTruncPrWithPrep<C, R> for AdditivePlacement
-// where
-//     R: RingSize,
-//     AdditivePlacement:
-//         PlacementAdd<C, AdditiveTensor<R>, AdditiveTensor<R>, Output = AdditiveTensor<R>>,
-//     AdditivePlacement: PlacementAdd<C, R, AdditiveTensor<R>, Output = AdditiveTensor<R>>,
-//     AdditivePlacement: PlacementMul<C, AdditiveTensor<R>, R, Output = AdditiveTensor<R>>,
-//     HostPlacement: PlacementReveal<C, AdditiveTensor<R>, Output = R>,
-//     HostPlacement: PlacementShl<C, R, Output = R>,
-//     HostPlacement: PlacementShr<C, R, Output = R>,
-// {
-//     fn trunc_pr(
-//         &self,
-//         ctx: &C,
-//         x: &AdditiveTensor<R>,
-//         m: usize,
-//         r: &AdditiveTensor<R>,
-//         r_top: &AdditiveTensor<R>,
-//         r_msb: &AdditiveTensor<R>,
-//     ) -> AdditiveTensor<R> {
-//         let (player_a, player_b) = self.host_placements();
-//         let masked = self.add(ctx, x, r);
+impl<C: Context, R> PlacementArithmeticXor<C, R> for AdditivePlacement
+where
+    AdditivePlacement: PlacementAdd<C, AdditiveTensor<R>, R, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementAdd<C, AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementMul<C, AdditiveTensor<R>, R, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementSub<C, AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>>,
+{
+    fn arithmetic_xor(&self, ctx: &C, x: &AdditiveTensor<R>, y: &R) -> AdditiveTensor<R> {
+        let sum = self.add(ctx, x, y);
+        let (player_a, player_b) = self.host_placements();
+        let local_prod = self.mul(ctx, x, y);
+        let twice_prod = self.add(ctx, &local_prod, &local_prod);
+        self.sub(ctx, &sum, &twice_prod)
+    }
+}
 
-//         // (Dragos) Note that these opening should be done to all players for active security.
-//         let opened_masked_a = player_a.reveal(ctx, &masked);
+trait PlacementTruncPrWithPrep<C: Context, R> {
+    fn trunc_pr(
+        &self,
+        ctx: &C,
+        x: &AdditiveTensor<R>,
+        m: usize,
+        r: &AdditiveTensor<R>,
+        r_top: &AdditiveTensor<R>,
+        r_msb: &AdditiveTensor<R>,
+    ) -> AdditiveTensor<R>;
+}
 
-//         let no_msb_mask = player_a.shl(ctx, &opened_masked_a, 1);
-//         let opened_mask_tr = player_a.shr(ctx, &no_msb_mask, m + 1);
+impl<C: Context, R> PlacementTruncPrWithPrep<C, R> for AdditivePlacement
+where
+    R: RingSize,
+    AdditivePlacement: PlacementAdd<C, AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementAdd<C, R, AdditiveTensor<R>, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementAdd<C, AdditiveTensor<R>, R, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementSub<C, AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementMul<C, AdditiveTensor<R>, R, AdditiveTensor<R>>,
+    HostPlacement: PlacementReveal<C, AdditiveTensor<R>, R>,
+    HostPlacement: PlacementShl<C, R, R>,
+    HostPlacement: PlacementShr<C, R, R>,
+    AdditivePlacement: PlacementArithmeticXor<C, R>,
+    AdditivePlacement: PlacementShl<C, AdditiveTensor<R>, AdditiveTensor<R>>
 
-//         let msb_mask = player_a.shr(ctx, &opened_masked_a, R::SIZE - 1);
-//         let msb_to_correct = self.mul(ctx, r_msb, &msb_mask);
+{
+    fn trunc_pr(
+        &self,
+        ctx: &C,
+        x: &AdditiveTensor<R>,
+        m: usize,
+        r: &AdditiveTensor<R>,
+        r_top: &AdditiveTensor<R>,
+        r_msb: &AdditiveTensor<R>,
+    ) -> AdditiveTensor<R> {
+        let (player_a, player_b) = self.host_placements();
+        let masked = self.add(ctx, x, r);
 
-//         masked
-//     }
-// }
+        // (Dragos) Note that these opening should be done to all players for active security.
+        let opened_masked_a = player_a.reveal(ctx, &masked);
+
+        let no_msb_mask = player_a.shl(ctx, 1, &opened_masked_a);
+        let opened_mask_tr = player_a.shr(ctx, m + 1, &no_msb_mask);
+
+        let msb_mask = player_a.shr(ctx, R::SIZE - 1, &opened_masked_a);
+        let msb_to_correct = self.arithmetic_xor(ctx, r_msb, &msb_mask);
+
+        let shifted_msb = self.shl(ctx, R::SIZE - 1 - m, &msb_to_correct);
+
+        let output = self.add(ctx, &self.sub(ctx, &shifted_msb, r_top), &opened_mask_tr);
+        // consider input is always signed
+        masked
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepShareOp {
@@ -3134,14 +3167,26 @@ pub struct RepTruncPrOp {
     amount: usize,
 }
 
-// model_shift!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
 
-// kernel! {
-//     RepTruncPrOp,
-//     [
-//         (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
-//     ]
-// }
+kernel! {
+    RepTruncPrOp,
+    [
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
+    ]
+}
+
+impl RepTruncPrOp {
+    fn kernel<C: Context, R, K>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        amount: usize,
+        s: AbstractReplicatedSetup<K>,
+        xe: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R> {
+        xe
+    }
+}
 
 trait RingSize {
     const SIZE: usize;
@@ -3303,6 +3348,8 @@ kernel! {
 }
 
 impl FillOp {
+    // We need to introduce PublicTensor vs SecretTensor to be able to reason
+    // between constants and secrets
     fn kernel64<C: Context>(
         ctx: &C,
         plc: &HostPlacement,
@@ -3431,12 +3478,16 @@ pub struct RingShlOp {
 
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
+modelled!(PlacementShl::shl, AdditivePlacement, attributes[amount: usize] (Additive64Tensor) -> Additive64Tensor, RingShlOp);
+modelled!(PlacementShl::shl, AdditivePlacement, attributes[amount: usize] (Additive128Tensor) -> Additive128Tensor, RingShlOp);
 
 kernel! {
     RingShlOp,
     [
         (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[amount] Self::kernel),
         (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[amount] Self::kernel),
+        (AdditivePlacement, (Additive64Tensor) -> Additive64Tensor => attributes[amount] Self::additive_kernel),
+        (AdditivePlacement, (Additive128Tensor) -> Additive128Tensor => attributes[amount] Self::additive_kernel),
     ]
 }
 
@@ -3451,6 +3502,22 @@ impl RingShlOp {
         RingTensor<T>: Shl<usize, Output = RingTensor<T>>,
     {
         x << amount
+    }
+
+    fn additive_kernel<C: Context, T>(
+        _ctx: &C,
+        _plc: &AdditivePlacement,
+        amount: usize,
+        x: AdditiveTensor<T>,
+    ) -> AdditiveTensor<T>
+    where
+        T: Shl<usize, Output = T>,
+    {
+        let (player0, player1) = _plc.host_placements();
+        let AdditiveTensor { shares: [x0, x1] } = x;
+        let z0 = with_context!(player0, ctx, x0 << amount);
+        let z1 = with_context!(player1, ctx, x1 << amount);
+        AdditiveTensor { shares: [z0, z1] }
     }
 }
 
