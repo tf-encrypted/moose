@@ -1030,6 +1030,7 @@ impl AsyncSessionHandle {
         let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
         let res = tasks.collect::<Vec<_>>().await;
         eprintln!("res: {:?}", res);
+        res
     }
 
     pub fn abort(&self) {
