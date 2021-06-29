@@ -707,6 +707,7 @@ impl From<Shape> for Symbolic<Shape> {
 
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::enum_variant_names)]
+#[allow(clippy::large_enum_variant)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
     RingAddOp(RingAddOp),
@@ -1294,7 +1295,6 @@ trait PlacementSample<C: Context, O> {
 trait PlacementRepToAdd<C: Context, T, O> {
     fn rep_to_add(&self, ctx: &C, x: &T) -> O;
 }
-
 
 pub trait Context {
     type Value;
