@@ -229,7 +229,6 @@ impl Ty {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
-
         }
     }
 }
@@ -523,8 +522,6 @@ impl Placed for Shape {
     }
 }
 
-
-
 impl<K> Placed for AbstractReplicatedSetup<K>
 where
     K: Placed<Placement = HostPlacement>,
@@ -620,8 +617,7 @@ where
     }
 }
 
-impl TryFrom<Symbolic<Shape>> for Shape
-{
+impl TryFrom<Symbolic<Shape>> for Shape {
     type Error = Symbolic<Self>;
 
     fn try_from(x: Symbolic<Shape>) -> Result<Self, Self::Error> {
@@ -631,7 +627,6 @@ impl TryFrom<Symbolic<Shape>> for Shape
         }
     }
 }
-
 
 impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>>
     for FixedTensor<RingTensorT, ReplicatedTensorT>
@@ -704,14 +699,11 @@ where
     }
 }
 
-impl From<Shape> for Symbolic<Shape>
-{
+impl From<Shape> for Symbolic<Shape> {
     fn from(x: Shape) -> Self {
         Symbolic::Concrete(x)
     }
 }
-
-
 
 #[derive(Clone, Debug, PartialEq)]
 #[allow(clippy::enum_variant_names)]
@@ -1058,10 +1050,8 @@ macro_rules! modelled {
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
         impl UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
 
-        impl $t<ConcreteContext, $t0> for $plc {
-            type Output = $u;
-
-            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> Self::Output {
+        impl $t<ConcreteContext, $t0, $u> for $plc {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> $u {
                 let sig = UnarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     ret: <$u as KnownType>::TY,
@@ -1076,10 +1066,10 @@ macro_rules! modelled {
             }
         }
 
-        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
-            type Output = <$u as KnownType>::Symbolic;
+        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$u as KnownType>::Symbolic> for $plc {
 
-            fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*,)? x0: &<$t0 as KnownType>::Symbolic) -> Self::Output {
+            fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*,)? x0: &<$t0 as KnownType>::Symbolic) -> <$u as KnownType>::Symbolic
+            {
                 let sig = UnarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
@@ -1101,10 +1091,8 @@ macro_rules! modelled {
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
         impl BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
 
-        impl $t<ConcreteContext, $t0, $t1> for $plc {
-            type Output = $u;
-
-            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> Self::Output {
+        impl $t<ConcreteContext, $t0, $t1, $u> for $plc {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                 let sig = BinarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
@@ -1124,10 +1112,9 @@ macro_rules! modelled {
             }
         }
 
-        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic>
+        impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic, <$u as KnownType>::Symbolic>
             for $plc
         {
-            type Output = <$u as KnownType>::Symbolic;
 
             fn $f(
                 &self,
@@ -1135,7 +1122,8 @@ macro_rules! modelled {
                 $($($attr_id:$attr_ty),*,)?
                 x0: &<$t0 as KnownType>::Symbolic,
                 x1: &<$t1 as KnownType>::Symbolic,
-            ) -> Self::Output {
+            ) ->  <$u as KnownType>::Symbolic
+            {
                 let sig = BinarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
@@ -1162,10 +1150,9 @@ macro_rules! modelled {
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
         impl TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
 
-        impl $t<ConcreteContext, $t0, $t1, $t2> for $plc {
-            type Output = $u;
+        impl $t<ConcreteContext, $t0, $t1, $t2, $u> for $plc {
 
-            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> Self::Output {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 let sig = TernarySignature {
                     arg0: <$t0 as KnownType>::TY,
                     arg1: <$t1 as KnownType>::TY,
@@ -1192,9 +1179,9 @@ macro_rules! modelled {
                 <$t0 as KnownType>::Symbolic,
                 <$t1 as KnownType>::Symbolic,
                 <$t2 as KnownType>::Symbolic,
+                <$u as KnownType>::Symbolic,
             > for $plc
         {
-            type Output = <$u as KnownType>::Symbolic;
 
             fn $f(
                 &self,
@@ -1203,7 +1190,9 @@ macro_rules! modelled {
                 x0: &<$t0 as KnownType>::Symbolic,
                 x1: &<$t1 as KnownType>::Symbolic,
                 x2: &<$t2 as KnownType>::Symbolic,
-            ) -> Self::Output {
+            ) ->
+            <$u as KnownType>::Symbolic
+            {
                 let sig = TernarySignature {
                     arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
                     arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
@@ -1231,110 +1220,85 @@ macro_rules! modelled_alias {
     Binary
     */
     ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
-        impl $src_t<ConcreteContext, $t0, $t1> for $plc {
-            type Output = $u;
-
-            fn $src_f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
+        impl $src_t<ConcreteContext, $t0, $t1, $u> for $plc {
+            fn $src_f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> $u {
                 $dst_t::$dst_f(self, ctx, x0, x1)
             }
         }
 
-        impl $src_t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic>
-            for $plc
+        impl
+            $src_t<
+                SymbolicContext,
+                <$t0 as KnownType>::Symbolic,
+                <$t1 as KnownType>::Symbolic,
+                <$u as KnownType>::Symbolic,
+            > for $plc
         {
-            type Output = <$u as KnownType>::Symbolic;
-
             fn $src_f(
                 &self,
                 ctx: &SymbolicContext,
                 x0: &<$t0 as KnownType>::Symbolic,
                 x1: &<$t1 as KnownType>::Symbolic,
-            ) -> Self::Output {
+            ) -> <$u as KnownType>::Symbolic {
                 $dst_t::$dst_f(self, ctx, x0, x1)
             }
         }
     };
 }
 
-trait PlacementAdd<C: Context, T, U> {
-    type Output;
-
-    fn add(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+trait PlacementAdd<C: Context, T, U, O> {
+    fn add(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
-trait PlacementSub<C: Context, T, U> {
-    type Output;
-
-    fn sub(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+trait PlacementSub<C: Context, T, U, O> {
+    fn sub(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
-trait PlacementMul<C: Context, T, U> {
-    type Output;
-
-    fn mul(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+trait PlacementMul<C: Context, T, U, O> {
+    fn mul(&self, ctx: &C, x: &T, y: &U) -> O;
 }
-trait PlacementShl<C: Context, T> {
-    type Output;
-
-    fn shl(&self, ctx: &C, amount: usize, x: &T) -> Self::Output;
+trait PlacementShl<C: Context, T, O> {
+    fn shl(&self, ctx: &C, amount: usize, x: &T) -> O;
 }
 
-trait PlacementShr<C: Context, T> {
-    type Output;
-
-    fn shr(&self, ctx: &C, amount: usize, x: &T) -> Self::Output;
+trait PlacementShr<C: Context, T, O> {
+    fn shr(&self, ctx: &C, amount: usize, x: &T) -> O;
 }
 
-trait PlacementXor<C: Context, T, U> {
-    type Output;
-
-    fn xor(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+trait PlacementXor<C: Context, T, U, O> {
+    fn xor(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
-trait PlacementAnd<C: Context, T, U> {
-    type Output;
-
-    fn and(&self, ctx: &C, x: &T, y: &U) -> Self::Output;
+trait PlacementAnd<C: Context, T, U, O> {
+    fn and(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
-trait PlacementFill<C: Context, T> {
-    type Output;
-
-    fn fill(&self, ctx: &C, value: Value, shape: &Shape) -> Self::Output;
+trait PlacementFill<C: Context, S, O> {
+    fn fill(&self, ctx: &C, value: Value, shape: &S) -> O;
 }
 
-trait PlacementMulSetup<C: Context, S, T, U> {
-    type Output;
-
-    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> Self::Output;
+trait PlacementMulSetup<C: Context, S, T, U, O> {
+    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> O;
 }
 
-trait PlacementShare<C: Context, T> {
-    type Output;
-
-    fn share(&self, ctx: &C, x: &T) -> Self::Output;
+trait PlacementShare<C: Context, T, O> {
+    fn share(&self, ctx: &C, x: &T) -> O;
 }
 
-trait PlacementReveal<C: Context, T> {
-    type Output;
-
-    fn reveal(&self, ctx: &C, x: &T) -> Self::Output;
+trait PlacementReveal<C: Context, T, O> {
+    fn reveal(&self, ctx: &C, x: &T) -> O;
 }
 
 trait PlacementSample<C: Context, O> {
     fn sample(&self, ctx: &C) -> O;
 }
 
-trait PlacementRepToAdd<C: Context, T> {
-    type Output;
-
-    fn rep_to_add(&self, ctx: &C, x: &T) -> Self::Output;
+trait PlacementRepToAdd<C: Context, T, O> {
+    fn rep_to_add(&self, ctx: &C, x: &T) -> O;
 }
 
-trait PlacementTruncPr<C: Context, S, T> {
-    type Output;
-
-    fn trunc_pr(&self, ctx: &C, s: &S, x: &T, amount: usize) -> Self::Output;
+trait PlacementTruncPr<C: Context, S, T, O> {
+    fn trunc_pr(&self, ctx: &C, s: &S, x: &T, amount: usize) -> O;
 }
 
 pub trait Context {
@@ -1534,7 +1498,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc| {
-                $k(ctx, plc, $($attr),+)
+                $k(ctx, plc, $($attr.clone()),+)
             })
         }
     };
@@ -1544,7 +1508,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc, x0| {
-                $k(ctx, plc, $($attr),+, x0)
+                $k(ctx, plc, $($attr.clone()),+, x0)
             })
         }
     };
@@ -1554,7 +1518,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc, x0, x1| {
-                $k(ctx, plc, $($attr),+, x0, x1)
+                $k(ctx, plc, $($attr.clone()),+, x0, x1)
             })
         }
     };
@@ -1564,7 +1528,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc, x0, x1, x2| {
-                $k(ctx, plc, $($attr),+), x0, x1, x2
+                $k(ctx, plc, $($attr.clone()),+), x0, x1, x2
             })
         }
     };
@@ -2477,7 +2441,6 @@ impl RepSetupOp {
         rep: &ReplicatedPlacement,
     ) -> AbstractReplicatedSetup<K>
     where
-
         HostPlacement: PlacementKeyGen<C, K>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2522,7 +2485,7 @@ impl RepToAddOp {
     ) -> AdditiveTensor<R>
     where
         R: Clone,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
         R: Placed<Placement = HostPlacement>,
     {
         let (player_a, player_b) = add.host_placements();
@@ -2589,7 +2552,7 @@ impl RepAddOp {
     ) -> ReplicatedTensor<R>
     where
         R: Clone,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -2624,7 +2587,7 @@ impl RepAddOp {
     where
         R: Clone,
         R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let x_plc = x.placement();
@@ -2680,7 +2643,7 @@ impl RepAddOp {
     where
         R: Clone,
         R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let y_plc = y.placement();
@@ -2756,7 +2719,7 @@ impl AdditiveAddOp {
         y: AdditiveTensor<R>,
     ) -> AdditiveTensor<R>
     where
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let (player0, player1) = add.host_placements();
 
@@ -2778,7 +2741,7 @@ impl AdditiveAddOp {
     ) -> AdditiveTensor<R>
     where
         R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let (player0, player1) = add.host_placements();
         let AdditiveTensor { shares: [x0, x1] } = x;
@@ -2801,7 +2764,7 @@ impl AdditiveAddOp {
     ) -> AdditiveTensor<R>
     where
         R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let (player0, player1) = add.host_placements();
         let AdditiveTensor { shares: [y0, y1] } = y;
@@ -2854,8 +2817,8 @@ impl RepMulOp {
     where
         R: Clone + Into<C::Value> + TryFrom<C::Value> + 'static,
         HostPlacement: PlacementSample<C, R>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
-        HostPlacement: PlacementMul<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
+        HostPlacement: PlacementMul<C, R, R, R>,
         ReplicatedPlacement: PlacementZeroShare<C, K, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2889,7 +2852,7 @@ impl RepMulOp {
         y: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
     where
-        HostPlacement: PlacementMul<C, R, R, Output = R>,
+        HostPlacement: PlacementMul<C, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -2919,7 +2882,7 @@ impl RepMulOp {
         y: R,
     ) -> ReplicatedTensor<R>
     where
-        HostPlacement: PlacementMul<C, R, R, Output = R>,
+        HostPlacement: PlacementMul<C, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -2971,7 +2934,7 @@ impl AdditiveMulOp {
     ) -> AdditiveTensor<R>
     where
         R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementMul<C, R, R, Output = R>,
+        HostPlacement: PlacementMul<C, R, R, R>,
     {
         let (player0, player1) = add.host_placements();
 
@@ -2991,7 +2954,7 @@ impl AdditiveMulOp {
     ) -> AdditiveTensor<R>
     where
         R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementMul<C, R, R, Output = R>,
+        HostPlacement: PlacementMul<C, R, R, R>,
     {
         let (player0, player1) = add.host_placements();
 
@@ -3014,7 +2977,7 @@ impl<C: Context, K, R> PlacementZeroShare<C, K, R> for ReplicatedPlacement
 where
     R: Clone + 'static,
     HostPlacement: PlacementSample<C, R>,
-    HostPlacement: PlacementSub<C, R, R, Output = R>,
+    HostPlacement: PlacementSub<C, R, R, R>,
 {
     fn zero_share(&self, ctx: &C, s: &AbstractReplicatedSetup<K>) -> ReplicatedZeroShare<R> {
         let (player0, player1, player2) = self.host_placements();
@@ -3115,8 +3078,8 @@ impl RepShareOp {
         R: Into<C::Value> + TryFrom<C::Value> + 'static,
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementSample<C, R>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
-        HostPlacement: PlacementSub<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
+        HostPlacement: PlacementSub<C, R, R, R>,
     {
         let owner = x.placement();
 
@@ -3155,7 +3118,7 @@ impl RepRevealOp {
     fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: ReplicatedTensor<R>) -> R
     where
         R: Clone + 'static,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -3315,7 +3278,7 @@ hybrid_kernel! {
 impl AdditiveRevealOp {
     fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: AdditiveTensor<R>) -> R
     where
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
+        HostPlacement: PlacementAdd<C, R, R, R>,
     {
         let AdditiveTensor { shares: [x0, x1] } = &xe;
         with_context!(plc, ctx, x1 + x0)
@@ -3329,30 +3292,42 @@ pub struct FillOp {
 }
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring64Tensor, FillOp);
-// modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring128Tensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring128Tensor, FillOp);
 
 kernel! {
     FillOp,
     [
         (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::kernel64),
-        // (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::kernel128),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::kernel128),
     ]
 }
 
 impl FillOp {
-    fn kernel64<C: Context>(ctx: &C, plc: &HostPlacement, value: Value, shape: &Shape) -> Ring64Tensor {
+    fn kernel64<C: Context>(
+        ctx: &C,
+        plc: &HostPlacement,
+        value: Value,
+        shape: Shape,
+    ) -> Ring64Tensor {
+        // TODO: Pass in typed value instead of Value
         match value {
             Value::Ring64(el) => Ring64Tensor::fill(el.0, plc.clone()),
             _ => unimplemented!(), // ok
         }
     }
 
-    // fn kernel128<C: Context>(ctx: &C, plc: HostPlacement, value: Value, shape: &Shape) -> Ring128Tensor {
-    //     match value {
-    //         Value::Ring128(el) => Ring128Tensor::fill(el.0, plc),
-    //         _ => unimplemented!(), // ok
-    //     }
-    // }
+    fn kernel128<C: Context>(
+        ctx: &C,
+        plc: &HostPlacement,
+        value: Value,
+        shape: Shape,
+    ) -> Ring128Tensor {
+        // TODO: Pass in typed value instead of Value
+        match value {
+            Value::Ring128(el) => Ring128Tensor::fill(el.0, plc.clone()),
+            _ => unimplemented!(), // ok
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -3706,8 +3681,8 @@ impl FixedMulOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
-        HostPlacement: PlacementMul<C, RingTensorT, RingTensorT, Output = RingTensorT>,
+        HostPlacement: PlacementReveal<C, ReplicatedTensorT, RingTensorT>,
+        HostPlacement: PlacementMul<C, RingTensorT, RingTensorT, RingTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types
@@ -3743,16 +3718,16 @@ impl FixedMulOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement: PlacementShare<C, RingTensorT, ReplicatedTensorT>,
         ReplicatedPlacement: PlacementMulSetup<
             C,
             C::ReplicatedSetup,
             ReplicatedTensorT,
             ReplicatedTensorT,
-            Output = ReplicatedTensorT,
+            ReplicatedTensorT,
         >,
         ReplicatedPlacement:
-            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, ReplicatedTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types
@@ -3814,8 +3789,8 @@ impl FixedAddOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
-        HostPlacement: PlacementAdd<C, RingTensorT, RingTensorT, Output = RingTensorT>,
+        HostPlacement: PlacementReveal<C, ReplicatedTensorT, RingTensorT>,
+        HostPlacement: PlacementAdd<C, RingTensorT, RingTensorT, RingTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types
@@ -3851,9 +3826,9 @@ impl FixedAddOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement: PlacementShare<C, RingTensorT, ReplicatedTensorT>,
         ReplicatedPlacement:
-            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, ReplicatedTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types
