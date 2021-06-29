@@ -16,6 +16,7 @@ use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
 use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyFloat, PyString};
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList};
 use std::collections::HashMap;
@@ -303,35 +304,11 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
         let float_value: f64 = obj.extract(py)?;
         Ok(Value::Float64(float_value))
     } else if obj_ref.is_instance::<PyArrayDyn<f32>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<f32>(py, &obj);
-        Ok(Value::Float32Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<f64>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<f64>(py, &obj);
-        Ok(Value::Float64Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<i8>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<i8>(py, &obj);
-        Ok(Value::Int8Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<i16>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<i16>(py, &obj);
-        Ok(Value::Int16Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<i32>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<i32>(py, &obj);
-        Ok(Value::Int32Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<i64>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<i64>(py, &obj);
-        Ok(Value::Int64Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<u8>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<u8>(py, &obj);
-        Ok(Value::Uint8Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<u16>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<u16>(py, &obj);
-        Ok(Value::Uint16Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<u32>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<u32>(py, &obj);
-        Ok(Value::Uint32Tensor(tensor))
-    } else if obj_ref.is_instance::<PyArrayDyn<u64>>()? {
-        let tensor = pyobj_tensor_to_std_tensor::<u64>(py, &obj);
-        Ok(Value::Uint64Tensor(tensor))
+        // NOTE: this passes for any inner dtype, since python's isinstance will
+        // only do a shallow typecheck. inside the pyobj_tensor_to_value we do further
+        // introspection on the array & its dtype to map to the correct kind of Value
+        let value = pyobj_tensor_to_value(py, &obj).unwrap();
+        Ok(value)
     } else {
         Err(PyTypeError::new_err(
             r#"Unsupported type found in `evaluate_computation` arguments."#,
@@ -436,7 +413,7 @@ impl MooseLocalRuntime {
         py: Python<'py>,
         computation: Vec<u8>,
         arguments: HashMap<String, PyObject>,
-    ) -> PyResult<Option<Vec<PyObject>>> {
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let arguments = arguments
             .iter()
             .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
@@ -450,7 +427,7 @@ impl MooseLocalRuntime {
             .collect::<HashMap<Role, Identity>>();
 
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
-        let mut future_outputs: Vec<AsyncReceiver> = Vec::new();
+        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
 
@@ -467,39 +444,33 @@ impl MooseLocalRuntime {
                 .run_computation(&computation, &role_assignment, &own_identity, moose_session)
                 .unwrap();
 
-            for (_, future_output) in outputs {
-                future_outputs.push(future_output);
+            for (output_name, output_future) in outputs {
+                output_futures.insert(output_name, output_future);
             }
 
             session_handles.push(moose_session_handle)
         }
 
-        // let (_, errors): (Vec<_>, Vec<anyhow::Error>) = session_handles
-        //     .iter()
-        //     .map(|handle| rt.block_on(handle.join()))
-        //     .partition(|errs| errs.is_empty());
-        // if errors.is_empty() {
-        //     Ok(())
-        // } else {
-        //     Err(errors)
-        // }
         for mut handle in session_handles {
-            let _errors = rt.block_on(handle.join());
+            let errors = rt.block_on(handle.join());
+            if errors.len() > 0 {
+                let errstrings: Vec<String> = errors.into_iter().map(|e| e.to_string()).collect();
+                return Err(PyRuntimeError::new_err(errstrings));
+            }
         }
 
-        // TODO [Yann] find a way to make sure outputs match the order of the py computation outputs
         let outputs = rt.block_on(async {
-            let mut outputs: Vec<PyObject> = Vec::new();
-            for future_output in future_outputs {
-                let value = future_output.await.unwrap();
-                let value_type = value.ty();
-                // TODO [Yann] handle all the expected types
-                match value_type {
-                    Ty::Float64TensorTy => outputs.push(tensorval_to_pyobj(py, value).unwrap()),
-                    Ty::Float32TensorTy => outputs.push(tensorval_to_pyobj(py, value).unwrap()),
-
-                    _ => {}
-                }
+            let mut outputs: HashMap<String, PyObject> = HashMap::new();
+            for (output_name, output_future) in output_futures {
+                let value = output_future.await.unwrap();
+                match value {
+                    Value::Unit => None,
+                    // not sure what to support, should eventually standardize output types of computations
+                    Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
+                    Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
+                    // assume it's a tensor
+                    _ => outputs.insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
+                };
             }
             outputs
         });
