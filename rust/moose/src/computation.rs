@@ -31,8 +31,8 @@ pub trait KnownType {
     const TY: Ty;
 }
 
-// Primitives are trivial values. They are what can live on the noded on the computation graph.
-// It can not be a Unit, an Unknown or complex structure such as ReplicatedTensor.
+// Primitives are trivial values. They are what can live on the nodes of the computation graph.
+// Primitive can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
 macro_rules! primitives {
     ($($val:ident $($t:ident)?,)+) => {
 
@@ -88,8 +88,8 @@ macro_rules! primitives {
     (@value($x:expr, $plc:expr) $val:ident) => {Value::$val($x)};
 }
 
-// The lines with 2 identifiers are for "Placed" values - the types whose `Value` incarnation has a placement already.
-// The lines with 1 identifier are for "Unplaced" values, where the Primitive and Value are essentially the same and can be converted easily.
+// The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
+// The lines with 1 identifier are for linking to the "Unplaced" values, where the Primitive and Value are essentially the same and can be converted easily.
 primitives![
     RawShape Shape,
     RawSeed Seed,
@@ -111,8 +111,8 @@ primitives![
     Uint64Tensor,
 ];
 
-/// Values are anything that can flow along the edges of the computation graph.
-/// Some values are just placed primitives, but some could be more complex.
+// Values are anything that can flow along the edges of the computation graph.
+// Some values are just placed primitives, but some could be more complex.
 macro_rules! values {
     ($($val:ident,)+) => {
 
