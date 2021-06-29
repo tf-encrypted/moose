@@ -13,9 +13,11 @@ use crate::prng::AesRng;
 use crate::standard::Shape;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct ConcreteRingTensor<T>(pub ArrayD<Wrapping<T>>);
-pub type Ring64Tensor = ConcreteRingTensor<u64>;
-pub type Ring128Tensor = ConcreteRingTensor<u128>;
+pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>);
+
+pub type Ring64Tensor = AbstractRingTensor<u64>;
+
+pub type Ring128Tensor = AbstractRingTensor<u128>;
 
 impl Ring64Tensor {
     pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Ring64Tensor {
@@ -54,7 +56,7 @@ impl Ring128Tensor {
     }
 }
 
-impl ConcreteRingTensor<u64> {
+impl AbstractRingTensor<u64> {
     pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
@@ -62,7 +64,7 @@ impl ConcreteRingTensor<u64> {
     }
 }
 
-impl ConcreteRingTensor<u128> {
+impl AbstractRingTensor<u128> {
     pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
@@ -70,153 +72,153 @@ impl ConcreteRingTensor<u128> {
     }
 }
 
-impl<T> ConcreteRingTensor<T>
+impl<T> AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
-    pub fn fill(shape: &Shape, el: T) -> ConcreteRingTensor<T> {
-        ConcreteRingTensor(ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)))
+    pub fn fill(shape: &Shape, el: T) -> AbstractRingTensor<T> {
+        AbstractRingTensor(ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)))
     }
 }
 
-impl<T> ConcreteRingTensor<T> {
+impl<T> AbstractRingTensor<T> {
     pub fn shape(&self) -> Shape {
         Shape(self.0.shape().into())
     }
 }
 
-impl<T> From<ArrayD<T>> for ConcreteRingTensor<T>
+impl<T> From<ArrayD<T>> for AbstractRingTensor<T>
 where
     T: Clone,
 {
-    fn from(a: ArrayD<T>) -> ConcreteRingTensor<T> {
+    fn from(a: ArrayD<T>) -> AbstractRingTensor<T> {
         let wrapped = a.mapv(Wrapping);
-        ConcreteRingTensor(wrapped)
+        AbstractRingTensor(wrapped)
     }
 }
 
-impl From<ArrayD<i64>> for ConcreteRingTensor<u64> {
-    fn from(a: ArrayD<i64>) -> ConcreteRingTensor<u64> {
+impl From<ArrayD<i64>> for AbstractRingTensor<u64> {
+    fn from(a: ArrayD<i64>) -> AbstractRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
-        ConcreteRingTensor(ring_rep)
+        AbstractRingTensor(ring_rep)
     }
 }
 
-impl From<ArrayD<i128>> for ConcreteRingTensor<u128> {
-    fn from(a: ArrayD<i128>) -> ConcreteRingTensor<u128> {
+impl From<ArrayD<i128>> for AbstractRingTensor<u128> {
+    fn from(a: ArrayD<i128>) -> AbstractRingTensor<u128> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
-        ConcreteRingTensor(ring_rep)
+        AbstractRingTensor(ring_rep)
     }
 }
 
-impl<T> ConcreteRingTensor<T> {
-    pub fn new(a: ArrayD<Wrapping<T>>) -> ConcreteRingTensor<T> {
-        ConcreteRingTensor(a)
+impl<T> AbstractRingTensor<T> {
+    pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractRingTensor<T> {
+        AbstractRingTensor(a)
     }
 }
 
-impl<T> From<BitTensor> for ConcreteRingTensor<T>
+impl<T> From<BitTensor> for AbstractRingTensor<T>
 where
     T: From<u8>,
 {
-    fn from(b: BitTensor) -> ConcreteRingTensor<T> {
+    fn from(b: BitTensor) -> AbstractRingTensor<T> {
         let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
-        ConcreteRingTensor(ring_rep)
+        AbstractRingTensor(ring_rep)
     }
 }
 
-impl From<&ConcreteRingTensor<u64>> for ArrayD<i64> {
-    fn from(r: &ConcreteRingTensor<u64>) -> ArrayD<i64> {
+impl From<&AbstractRingTensor<u64>> for ArrayD<i64> {
+    fn from(r: &AbstractRingTensor<u64>) -> ArrayD<i64> {
         r.0.mapv(|element| element.0 as i64)
     }
 }
 
-impl From<&ConcreteRingTensor<u128>> for ArrayD<i128> {
-    fn from(r: &ConcreteRingTensor<u128>) -> ArrayD<i128> {
+impl From<&AbstractRingTensor<u128>> for ArrayD<i128> {
+    fn from(r: &AbstractRingTensor<u128>) -> ArrayD<i128> {
         r.0.mapv(|element| element.0 as i128)
     }
 }
 
-impl<T> From<Vec<T>> for ConcreteRingTensor<T> {
-    fn from(v: Vec<T>) -> ConcreteRingTensor<T> {
+impl<T> From<Vec<T>> for AbstractRingTensor<T> {
+    fn from(v: Vec<T>) -> AbstractRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         use vec_utils::VecExt;
         let v_wrapped: Vec<_> = v.map(Wrapping);
-        ConcreteRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        AbstractRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
 
-impl<T> From<&[T]> for ConcreteRingTensor<T>
+impl<T> From<&[T]> for AbstractRingTensor<T>
 where
     T: Copy,
 {
-    fn from(v: &[T]) -> ConcreteRingTensor<T> {
+    fn from(v: &[T]) -> AbstractRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        ConcreteRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        AbstractRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
     }
 }
 
-impl<T> Add<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+impl<T> Add<AbstractRingTensor<T>> for AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = ConcreteRingTensor<T>;
-    fn add(self, other: ConcreteRingTensor<T>) -> Self::Output {
-        ConcreteRingTensor(self.0 + other.0)
+    type Output = AbstractRingTensor<T>;
+    fn add(self, other: AbstractRingTensor<T>) -> Self::Output {
+        AbstractRingTensor(self.0 + other.0)
     }
 }
 
-impl<T> Mul<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+impl<T> Mul<AbstractRingTensor<T>> for AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = ConcreteRingTensor<T>;
-    fn mul(self, other: ConcreteRingTensor<T>) -> Self::Output {
-        ConcreteRingTensor(self.0.mul(other.0))
+    type Output = AbstractRingTensor<T>;
+    fn mul(self, other: AbstractRingTensor<T>) -> Self::Output {
+        AbstractRingTensor(self.0.mul(other.0))
     }
 }
 
-impl<T> Sub<ConcreteRingTensor<T>> for ConcreteRingTensor<T>
+impl<T> Sub<AbstractRingTensor<T>> for AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = ConcreteRingTensor<T>;
-    fn sub(self, other: ConcreteRingTensor<T>) -> Self::Output {
-        ConcreteRingTensor(self.0.sub(other.0))
+    type Output = AbstractRingTensor<T>;
+    fn sub(self, other: AbstractRingTensor<T>) -> Self::Output {
+        AbstractRingTensor(self.0.sub(other.0))
     }
 }
 
-impl<T> Shl<usize> for ConcreteRingTensor<T>
+impl<T> Shl<usize> for AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
 {
-    type Output = ConcreteRingTensor<T>;
+    type Output = AbstractRingTensor<T>;
     fn shl(self, other: usize) -> Self::Output {
-        ConcreteRingTensor(self.0 << other)
+        AbstractRingTensor(self.0 << other)
     }
 }
 
-impl<T> Shr<usize> for ConcreteRingTensor<T>
+impl<T> Shr<usize> for AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
 {
-    type Output = ConcreteRingTensor<T>;
+    type Output = AbstractRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
-        ConcreteRingTensor(self.0 >> other)
+        AbstractRingTensor(self.0 >> other)
     }
 }
 
-impl<T> ConcreteRingTensor<T>
+impl<T> AbstractRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
 {
-    pub fn dot(self, rhs: ConcreteRingTensor<T>) -> ConcreteRingTensor<T> {
+    pub fn dot(self, rhs: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
         match self.0.ndim() {
             1 => match rhs.0.ndim() {
                 1 => {
@@ -225,16 +227,16 @@ where
                     let res = Array::from_elem([], l.dot(&r))
                         .into_dimensionality::<IxDyn>()
                         .unwrap();
-                    ConcreteRingTensor(res)
+                    AbstractRingTensor(res)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix1>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    ConcreteRingTensor(res)
+                    AbstractRingTensor(res)
                 }
                 other => panic!(
-                    "Dot<ConcreteRingTensor> cannot handle argument of rank {:?} ",
+                    "Dot<AbstractRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ),
             },
@@ -243,39 +245,39 @@ where
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix1>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    ConcreteRingTensor(res)
+                    AbstractRingTensor(res)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    ConcreteRingTensor(res)
+                    AbstractRingTensor(res)
                 }
                 other => panic!(
-                    "Dot<ConcreteRingTensor> cannot handle argument of rank {:?} ",
+                    "Dot<AbstractRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ),
             },
             other => panic!(
-                "Dot<ConcreteRingTensor> not implemented for tensors of rank {:?}",
+                "Dot<AbstractRingTensor> not implemented for tensors of rank {:?}",
                 other
             ),
         }
     }
 }
 
-impl<T> ConcreteRingTensor<T>
+impl<T> AbstractRingTensor<T>
 where
     Wrapping<T>: Clone + Zero,
 {
-    pub fn sum(self, axis: Option<usize>) -> ConcreteRingTensor<T> {
+    pub fn sum(self, axis: Option<usize>) -> AbstractRingTensor<T> {
         if let Some(i) = axis {
-            ConcreteRingTensor(self.0.sum_axis(Axis(i)))
+            AbstractRingTensor(self.0.sum_axis(Axis(i)))
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
-            ConcreteRingTensor(out)
+            AbstractRingTensor(out)
         }
     }
 }
