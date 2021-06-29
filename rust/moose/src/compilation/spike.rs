@@ -3068,6 +3068,9 @@ where
         r_msb: &AdditiveTensor<R>,
     ) -> AdditiveTensor<R> {
         let (player_a, player_b) = self.host_placements();
+
+        // TODO(Dragos) add 2^{k-1} to x since input is signed
+
         let masked = self.add(ctx, x, r);
 
         // (Dragos) Note that these opening should be done to all players for active security.
@@ -3083,6 +3086,7 @@ where
 
         let output = self.add(ctx, &self.sub(ctx, &shifted_msb, r_top), &opened_mask_tr);
         // consider input is always signed
+        // TODO(Dragos) add subtraction by 2^{k-1-m}.
         masked
     }
 }
