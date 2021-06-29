@@ -1,6 +1,5 @@
-use crate::{
-    computation::*, prim, standard::Float32Tensor, standard::Float64Tensor, standard::Shape,
-};
+use crate::standard::{Float32Tensor, Float64Tensor, RawShape, Shape};
+use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -583,7 +582,7 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
     match constant_value {
         PyConstant::std_ShapeConstant { value } => {
-            Ok(Shape(value.iter().map(|i| *i as usize).collect()).into())
+            Ok(Shape(RawShape(value.iter().map(|i| *i as usize).collect())).into())
         }
         PyConstant::std_StringConstant { value } => Ok(Value::String(String::from(value))),
         PyConstant::std_TensorConstant { value } => match value {
@@ -660,7 +659,7 @@ impl TryFrom<PyComputation> for Computation {
                     prim_DeriveSeedOperation(op) => Ok(Operation {
                         kind: PrimDeriveSeedOp {
                             sig: Signature::unary(Ty::PrfKey, Ty::Nonce),
-                            nonce: prim::Nonce(op.nonce.clone()),
+                            nonce: prim::RawNonce(op.nonce.clone()),
                         }
                         .into(),
                         name: op.name.clone(),

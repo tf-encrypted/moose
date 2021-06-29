@@ -2,7 +2,7 @@ use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::prim::{Nonce, PrfKey, Seed};
+use crate::prim::{Nonce, PrfKey, RawNonce, Seed};
 use crate::replicated::{
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
 };
@@ -487,7 +487,7 @@ pub struct StdInverseOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
-    pub nonce: Nonce,
+    pub nonce: RawNonce,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

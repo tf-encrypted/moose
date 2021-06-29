@@ -10,9 +10,9 @@ use std::ops::{Add, Mul, Shl, Shr, Sub};
 use crate::bit::BitTensor;
 use crate::computation::HostPlacement;
 use crate::computation::Role;
-use crate::prim::Seed;
+use crate::prim::RawSeed;
 use crate::prng::AesRng;
-use crate::standard::Shape;
+use crate::standard::{RawShape, Shape};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, HostPlacement);
@@ -22,14 +22,14 @@ pub type Ring64Tensor = AbstractRingTensor<u64>;
 pub type Ring128Tensor = AbstractRingTensor<u128>;
 
 impl Ring64Tensor {
-    pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Ring64Tensor {
+    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Ring64Tensor {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0.as_ref());
         Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    pub fn sample_bits(shape: &Shape, seed: &Seed) -> Self {
+    pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
@@ -39,7 +39,7 @@ impl Ring64Tensor {
 }
 
 impl Ring128Tensor {
-    pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Self {
+    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size)
@@ -49,7 +49,7 @@ impl Ring128Tensor {
         Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 
-    pub fn sample_bits(shape: &Shape, seed: &Seed) -> Self {
+    pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
@@ -78,7 +78,7 @@ impl<T> AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
-    pub fn fill(shape: &Shape, el: T) -> AbstractRingTensor<T> {
+    pub fn fill(shape: &RawShape, el: T) -> AbstractRingTensor<T> {
         AbstractRingTensor(
             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
             HostPlacement {
@@ -90,7 +90,7 @@ where
 
 impl<T> AbstractRingTensor<T> {
     pub fn shape(&self) -> Shape {
-        Shape(self.0.shape().into())
+        Shape(RawShape(self.0.shape().into()))
     }
 }
 
@@ -377,8 +377,8 @@ mod tests {
 
     #[test]
     fn ring_sample() {
-        let shape = Shape(vec![5]);
-        let seed = Seed([0u8; 16]);
+        let shape = RawShape(vec![5]);
+        let seed = RawSeed([0u8; 16]);
         let r = Ring64Tensor::sample_uniform(&shape, &seed);
         assert_eq!(
             r,
@@ -412,7 +412,7 @@ mod tests {
 
     #[test]
     fn ring_fill() {
-        let r = Ring64Tensor::fill(&Shape(vec![2]), 1);
+        let r = Ring64Tensor::fill(&RawShape(vec![2]), 1);
         assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
     }
 
@@ -443,7 +443,7 @@ mod tests {
 
     #[test]
     fn bit_extract() {
-        let shape = Shape(vec![5]);
+        let shape = RawShape(vec![5]);
         let value = 7;
 
         let r0 = Ring64Tensor::fill(&shape, value).bit_extract(0);

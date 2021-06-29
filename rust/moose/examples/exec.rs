@@ -1,7 +1,7 @@
 use moose::computation::*;
 use moose::execution::*;
-use moose::prim::Nonce;
-use moose::standard::Shape;
+use moose::prim::RawNonce;
+use moose::standard::{RawShape, Shape};
 
 fn main() {
     let key_op = Operation {
@@ -20,7 +20,7 @@ fn main() {
         name: "x_seed".into(),
         kind: PrimDeriveSeedOp {
             sig: Signature::unary(Ty::PrfKey, Ty::Seed),
-            nonce: Nonce(vec![1, 2, 3]),
+            nonce: RawNonce(vec![1, 2, 3]),
         }
         .into(),
         inputs: vec!["key".into()],
@@ -33,7 +33,7 @@ fn main() {
         name: "x_shape".into(),
         kind: ConstantOp {
             sig: Signature::nullary(Ty::Shape),
-            value: Value::Shape(Shape(vec![2, 3])),
+            value: Value::Shape(Shape(RawShape(vec![2, 3]))),
         }
         .into(),
         inputs: vec![],

@@ -10,7 +10,10 @@ use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Shape(pub Vec<usize>);
+pub struct RawShape(pub Vec<usize>);
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct Shape(pub RawShape);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct StandardTensor<T>(pub ArrayD<T>);
@@ -26,7 +29,7 @@ pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
 
-impl Shape {
+impl RawShape {
     pub fn expand(mut self, axis: usize) -> Self {
         self.0.insert(axis, 1);
         self
@@ -34,7 +37,7 @@ impl Shape {
 
     pub fn slice(self, begin: usize, end: usize) -> Self {
         let slc = &self.0[begin..end];
-        Shape(slc.to_vec())
+        RawShape(slc.to_vec())
     }
 }
 
@@ -99,20 +102,20 @@ where
     }
 
     pub fn ones(shape: Shape) -> Self {
-        StandardTensor::<T>(ArrayD::ones(shape.0))
+        StandardTensor::<T>(ArrayD::ones(shape.0 .0))
     }
 
     pub fn reshape(self, newshape: Shape) -> Self {
-        StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
+        StandardTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap()) // TODO need to be fix (unwrap)
     }
 
     pub fn expand_dims(self, axis: usize) -> Self {
-        let newshape = self.shape().expand(axis);
+        let newshape = Shape(self.shape().0.expand(axis));
         self.reshape(newshape)
     }
 
     pub fn shape(&self) -> Shape {
-        Shape(self.0.shape().into())
+        Shape(RawShape(self.0.shape().into()))
     }
 
     pub fn sum(self, axis: Option<usize>) -> Self {
@@ -299,9 +302,9 @@ mod tests {
 
     #[test]
     fn test_shape_slice() {
-        let x_shape = Shape(vec![1, 2, 3]);
+        let x_shape = RawShape(vec![1, 2, 3]);
         let x_slice = x_shape.slice(1, 3);
-        assert_eq!(x_slice, Shape(vec![2, 3]))
+        assert_eq!(x_slice, RawShape(vec![2, 3]))
     }
 
     #[test]

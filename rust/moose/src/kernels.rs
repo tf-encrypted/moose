@@ -5,7 +5,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::prim::{PrfKey, Seed};
+use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
@@ -408,7 +408,9 @@ impl Compile<Kernel> for StdSliceOp {
         let start = self.start as usize;
         let end = self.end as usize;
         match self.sig {
-            signature![(_) -> Ty::Shape] => closure_kernel!(Shape, |x| x.slice(start, end)),
+            signature![(_) -> Ty::Shape] => {
+                closure_kernel!(Shape, |x| Shape(x.0.slice(start, end)))
+            }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
@@ -444,13 +446,23 @@ impl Compile<Kernel> for StdSumOp {
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let nonce = self.nonce.clone();
-        closure_kernel!(PrfKey, |key| Seed::from_prf(&key, &nonce))
+        closure_kernel!(PrfKey, |key| Seed(
+            RawSeed::from_prf(&key.0, &nonce),
+            HostPlacement {
+                owner: "TODO".into()
+            }
+        ))
     }
 }
 
 impl Compile<Kernel> for PrimGenPrfKeyOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(PrfKey::generate)
+        function_kernel!(|| PrfKey(
+            RawPrfKey::generate(),
+            HostPlacement {
+                owner: "TODO".into()
+            }
+        ))
     }
 }
 
@@ -541,10 +553,10 @@ impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
             (signature![(_) -> Ty::Ring64Tensor], Value::Ring64(value)) => {
-                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape, value))
+                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape.0, value))
             }
             (signature![(_) -> Ty::Ring128Tensor], Value::Ring128(value)) => {
-                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape, value))
+                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape.0, value))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -556,22 +568,22 @@ impl Compile<Kernel> for RingSampleOp {
         match (&self.sig, self.max_value) {
             (signature![(_, _) -> Ty::Ring64Tensor], None) => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
-                    &shape, &seed
+                    &shape.0, &seed.0
                 ))
             }
             (signature!((_, _) -> Ty::Ring64Tensor), Some(max_value)) if max_value == 1 => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring64Tensor::sample_bits(
-                    &shape, &seed
+                    &shape.0, &seed.0
                 ))
             }
             (signature![(_, _) -> Ty::Ring128Tensor], None) => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_uniform(
-                    &shape, &seed
+                    &shape.0, &seed.0
                 ))
             }
             (signature![(_, _) -> Ty::Ring128Tensor], Some(max_value)) if max_value == 1 => {
                 function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_bits(
-                    &shape, &seed
+                    &shape.0, &seed.0
                 ))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -642,7 +654,7 @@ impl Compile<Kernel> for BitExtractOp {
 impl Compile<Kernel> for BitSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(Shape, Seed, |shape, seed| BitTensor::sample_uniform(
-            &shape, &seed
+            &shape.0, &seed.0
         ))
     }
 }
@@ -650,7 +662,7 @@ impl Compile<Kernel> for BitSampleOp {
 impl Compile<Kernel> for BitFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let value = self.value;
-        closure_kernel!(Shape, |shape| BitTensor::fill(&shape, value))
+        closure_kernel!(Shape, |shape| BitTensor::fill(&shape.0, value))
     }
 }
 

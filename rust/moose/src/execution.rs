@@ -1073,6 +1073,8 @@ impl AsyncExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
+    use crate::standard::{RawShape, Shape};
     use ndarray::prelude::*;
     use std::convert::TryInto;
 
@@ -1123,12 +1125,10 @@ mod tests {
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
-        use crate::prim::{Nonce, PrfKey, Seed};
-
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
-            seed,
-            Seed::from_prf(&PrfKey([0; 16]), &Nonce(vec![1, 2, 3]))
+            seed.0,
+            RawSeed::from_prf(&RawPrfKey([0; 16]), &RawNonce(vec![1, 2, 3]))
         );
         Ok(())
     }
@@ -1148,7 +1148,7 @@ mod tests {
         use crate::standard::Shape;
 
         let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(x_sampled.shape(), Shape(vec![2, 2]));
+        assert_eq!(x_sampled.shape(), Shape(RawShape(vec![2, 2])));
 
         Ok(())
     }
@@ -1342,7 +1342,7 @@ mod tests {
         let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
         if unwrap_flag {
-            let shaped_result = comp_result.reshape(crate::standard::Shape(vec![1]));
+            let shaped_result = comp_result.reshape(Shape(RawShape(vec![1])));
             assert_eq!(expected_result, Value::Float32(shaped_result.0[0]));
         } else {
             assert_eq!(expected_result, comp_result.into());

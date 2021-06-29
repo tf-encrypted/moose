@@ -1,7 +1,7 @@
 use crate::computation::HostPlacement;
-use crate::prim::Seed;
+use crate::prim::RawSeed;
 use crate::prng::AesRng;
-use crate::standard::Shape;
+use crate::standard::RawShape;
 use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -11,7 +11,7 @@ use std::ops::{BitAnd, BitXor};
 pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
 
 impl BitTensor {
-    pub fn sample_uniform(shape: &Shape, seed: &Seed) -> Self {
+    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -26,7 +26,7 @@ impl BitTensor {
 }
 
 impl BitTensor {
-    pub fn fill(shape: &Shape, el: u8) -> BitTensor {
+    pub fn fill(shape: &RawShape, el: u8) -> BitTensor {
         assert!(
             el == 0 || el == 1,
             "cannot fill a BitTensor with a value {:?}",
@@ -106,22 +106,22 @@ mod tests {
 
     #[test]
     fn bit_sample() {
-        let shape = Shape(vec![5]);
-        let seed = Seed([0u8; 16]);
+        let shape = RawShape(vec![5]);
+        let seed = RawSeed([0u8; 16]);
         let r = BitTensor::sample_uniform(&shape, &seed);
         assert_eq!(r, BitTensor::from(vec![0, 1, 1, 0, 0,]));
     }
 
     #[test]
     fn bit_fill() {
-        let shape = Shape(vec![2]);
+        let shape = RawShape(vec![2]);
         let r = BitTensor::fill(&shape, 1);
         assert_eq!(r, BitTensor::from(vec![1, 1]))
     }
 
     #[test]
     fn bit_ops() {
-        let shape = Shape(vec![5]);
+        let shape = RawShape(vec![5]);
 
         // test xor
         assert_eq!(

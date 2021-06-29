@@ -467,9 +467,6 @@ where
 
 use crate::computation::{Signature, NullarySignature, UnarySignature, BinarySignature, TernarySignature};
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct PrfKey([u8; 16], HostPlacement);
-
 macro_rules! modelled {
     /*
     Nullary
