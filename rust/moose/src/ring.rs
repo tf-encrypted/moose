@@ -8,12 +8,14 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
+use crate::computation::HostPlacement;
+use crate::computation::Role;
 use crate::prim::Seed;
 use crate::prng::AesRng;
 use crate::standard::Shape;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>);
+pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, HostPlacement);
 
 pub type Ring64Tensor = AbstractRingTensor<u64>;
 
@@ -77,7 +79,12 @@ where
     Wrapping<T>: Clone,
 {
     pub fn fill(shape: &Shape, el: T) -> AbstractRingTensor<T> {
-        AbstractRingTensor(ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)))
+        AbstractRingTensor(
+            ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
@@ -93,27 +100,47 @@ where
 {
     fn from(a: ArrayD<T>) -> AbstractRingTensor<T> {
         let wrapped = a.mapv(Wrapping);
-        AbstractRingTensor(wrapped)
+        AbstractRingTensor(
+            wrapped,
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
 impl From<ArrayD<i64>> for AbstractRingTensor<u64> {
     fn from(a: ArrayD<i64>) -> AbstractRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
-        AbstractRingTensor(ring_rep)
+        AbstractRingTensor(
+            ring_rep,
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
 impl From<ArrayD<i128>> for AbstractRingTensor<u128> {
     fn from(a: ArrayD<i128>) -> AbstractRingTensor<u128> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
-        AbstractRingTensor(ring_rep)
+        AbstractRingTensor(
+            ring_rep,
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
 impl<T> AbstractRingTensor<T> {
     pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractRingTensor<T> {
-        AbstractRingTensor(a)
+        AbstractRingTensor(
+            a,
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
@@ -123,7 +150,12 @@ where
 {
     fn from(b: BitTensor) -> AbstractRingTensor<T> {
         let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
-        AbstractRingTensor(ring_rep)
+        AbstractRingTensor(
+            ring_rep,
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
@@ -144,7 +176,12 @@ impl<T> From<Vec<T>> for AbstractRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         use vec_utils::VecExt;
         let v_wrapped: Vec<_> = v.map(Wrapping);
-        AbstractRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        AbstractRingTensor(
+            Array::from_shape_vec(ix, v_wrapped).unwrap(),
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
@@ -155,7 +192,12 @@ where
     fn from(v: &[T]) -> AbstractRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        AbstractRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap())
+        AbstractRingTensor(
+            Array::from_shape_vec(ix, v_wrapped).unwrap(),
+            HostPlacement {
+                owner: Role::from("TODO"),
+            },
+        )
     }
 }
 
@@ -166,7 +208,7 @@ where
 {
     type Output = AbstractRingTensor<T>;
     fn add(self, other: AbstractRingTensor<T>) -> Self::Output {
-        AbstractRingTensor(self.0 + other.0)
+        AbstractRingTensor(self.0 + other.0, self.1)
     }
 }
 
@@ -177,7 +219,7 @@ where
 {
     type Output = AbstractRingTensor<T>;
     fn mul(self, other: AbstractRingTensor<T>) -> Self::Output {
-        AbstractRingTensor(self.0.mul(other.0))
+        AbstractRingTensor(self.0 * other.0, self.1)
     }
 }
 
@@ -188,7 +230,7 @@ where
 {
     type Output = AbstractRingTensor<T>;
     fn sub(self, other: AbstractRingTensor<T>) -> Self::Output {
-        AbstractRingTensor(self.0.sub(other.0))
+        AbstractRingTensor(self.0 - other.0, self.1)
     }
 }
 
@@ -199,7 +241,7 @@ where
 {
     type Output = AbstractRingTensor<T>;
     fn shl(self, other: usize) -> Self::Output {
-        AbstractRingTensor(self.0 << other)
+        AbstractRingTensor(self.0 << other, self.1)
     }
 }
 
@@ -210,7 +252,7 @@ where
 {
     type Output = AbstractRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
-        AbstractRingTensor(self.0 >> other)
+        AbstractRingTensor(self.0 >> other, self.1)
     }
 }
 
@@ -227,13 +269,13 @@ where
                     let res = Array::from_elem([], l.dot(&r))
                         .into_dimensionality::<IxDyn>()
                         .unwrap();
-                    AbstractRingTensor(res)
+                    AbstractRingTensor(res, self.1)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix1>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    AbstractRingTensor(res)
+                    AbstractRingTensor(res, self.1)
                 }
                 other => panic!(
                     "Dot<AbstractRingTensor> cannot handle argument of rank {:?} ",
@@ -245,13 +287,13 @@ where
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix1>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    AbstractRingTensor(res)
+                    AbstractRingTensor(res, self.1)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    AbstractRingTensor(res)
+                    AbstractRingTensor(res, self.1)
                 }
                 other => panic!(
                     "Dot<AbstractRingTensor> cannot handle argument of rank {:?} ",
@@ -272,12 +314,12 @@ where
 {
     pub fn sum(self, axis: Option<usize>) -> AbstractRingTensor<T> {
         if let Some(i) = axis {
-            AbstractRingTensor(self.0.sum_axis(Axis(i)))
+            AbstractRingTensor(self.0.sum_axis(Axis(i)), self.1)
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
-            AbstractRingTensor(out)
+            AbstractRingTensor(out, self.1)
         }
     }
 }

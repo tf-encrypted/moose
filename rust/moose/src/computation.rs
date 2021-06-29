@@ -737,12 +737,7 @@ macro_rules! placements {
     };
 }
 
-placements![
-    Host,
-    Replicated,
-    Additive,
-];
-
+placements![Host, Replicated, Additive,];
 
 #[derive(Serialize, Deserialize, Display, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Role(pub String);
