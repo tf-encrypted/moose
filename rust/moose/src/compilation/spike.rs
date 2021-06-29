@@ -725,7 +725,6 @@ pub enum Operator {
     RepToAddOp(RepToAddOp),
     RepShareOp(RepShareOp),
     RepRevealOp(RepRevealOp),
-    // RepTruncPrOp(RepTruncPrOp),
     AdditiveAddOp(AdditiveAddOp),
     AdditiveMulOp(AdditiveMulOp),
     AdditiveRevealOp(AdditiveRevealOp),
@@ -763,7 +762,6 @@ operator!(RepMulOp);
 operator!(RepToAddOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
-// operator!(RepTruncPrOp);
 operator!(AdditiveAddOp);
 operator!(AdditiveMulOp);
 operator!(AdditiveRevealOp);
@@ -1297,9 +1295,6 @@ trait PlacementRepToAdd<C: Context, T, O> {
     fn rep_to_add(&self, ctx: &C, x: &T) -> O;
 }
 
-trait PlacementTruncPr<C: Context, S, T, O> {
-    fn trunc_pr(&self, ctx: &C, s: &S, x: &T, amount: usize) -> O;
-}
 
 pub trait Context {
     type Value;
@@ -1342,7 +1337,6 @@ impl Context for ConcreteContext {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            // Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -1455,7 +1449,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
-            // Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -3005,55 +2998,6 @@ where
         }
     }
 }
-
-// trait PlacementTruncPrWithPrep<C: Context, R> {
-//     fn trunc_pr(
-//         &self,
-//         ctx: &C,
-//         x: &AdditiveTensor<R>,
-//         m: usize,
-//         r: &AdditiveTensor<R>,
-//         r_top: &AdditiveTensor<R>,
-//         r_msb: &AdditiveTensor<R>,
-//     ) -> AdditiveTensor<R>;
-// }
-
-// impl<C: Context, R> PlacementTruncPrWithPrep<C, R> for AdditivePlacement
-// where
-//     R: RingSize,
-//     AdditivePlacement:
-//         PlacementAdd<C, AdditiveTensor<R>, AdditiveTensor<R>, Output = AdditiveTensor<R>>,
-//     AdditivePlacement: PlacementAdd<C, R, AdditiveTensor<R>, Output = AdditiveTensor<R>>,
-//     AdditivePlacement: PlacementMul<C, AdditiveTensor<R>, R, Output = AdditiveTensor<R>>,
-//     HostPlacement: PlacementReveal<C, AdditiveTensor<R>, Output = R>,
-//     HostPlacement: PlacementShl<C, R, Output = R>,
-//     HostPlacement: PlacementShr<C, R, Output = R>,
-// {
-//     fn trunc_pr(
-//         &self,
-//         ctx: &C,
-//         x: &AdditiveTensor<R>,
-//         m: usize,
-//         r: &AdditiveTensor<R>,
-//         r_top: &AdditiveTensor<R>,
-//         r_msb: &AdditiveTensor<R>,
-//     ) -> AdditiveTensor<R> {
-//         let (player_a, player_b) = self.host_placements();
-//         let masked = self.add(ctx, x, r);
-
-//         // (Dragos) Note that these opening should be done to all players for active security.
-//         let opened_masked_a = player_a.reveal(ctx, &masked);
-
-//         let no_msb_mask = player_a.shl(ctx, &opened_masked_a, 1);
-//         let opened_mask_tr = player_a.shr(ctx, &no_msb_mask, m + 1);
-
-//         let msb_mask = player_a.shr(ctx, &opened_masked_a, R::SIZE - 1);
-//         let msb_to_correct = self.mul(ctx, r_msb, &msb_mask);
-
-//         masked
-//     }
-// }
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct RepShareOp {
     sig: Signature,
@@ -3127,137 +3071,6 @@ impl RepRevealOp {
         with_context!(plc, ctx, x00 + x10 + x21)
     }
 }
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct RepTruncPrOp {
-    sig: Signature,
-    amount: usize,
-}
-
-// model_shift!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
-
-// kernel! {
-//     RepTruncPrOp,
-//     [
-//         (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
-//     ]
-// }
-
-trait RingSize {
-    const SIZE: usize;
-}
-
-impl<R: RingSize + Placed> RingSize for Symbolic<R> {
-    const SIZE: usize = <R as RingSize>::SIZE;
-}
-
-impl RingSize for Ring64Tensor {
-    const SIZE: usize = 64;
-}
-
-impl RingSize for Ring128Tensor {
-    const SIZE: usize = 128;
-}
-
-// impl RepTruncPrOp {
-//     fn kernel<C: Context, R, K>(
-//         ctx: &C,
-//         rep: &ReplicatedPlacement,
-//         amount: usize,
-//         s: AbstractReplicatedSetup<K>,
-//         xe: ReplicatedTensor<R>,
-//     ) -> ReplicatedTensor<R>
-//     where
-//         R: Clone + Into<C::Value> + TryFrom<C::Value> + RingSize,
-//         HostPlacement: PlacementSample<C, R>,
-//         HostPlacement: PlacementKeyGen<C, K>,
-//         HostPlacement: PlacementShl<C, R, Output = R>,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//         HostPlacement: PlacementSub<C, R, R, Output = R>,
-//     {
-//         let m = amount;
-
-//         let (player0, player1, player2) = rep.host_placements();
-
-//         let ReplicatedTensor {
-//             shares: [[x00, x10], [x11, x21], [x22, x02]],
-//         } = &xe;
-
-//         let k2 = player2.keygen(ctx);
-
-//         let r_bits: Vec<_> = (0..R::SIZE).map(|_| player2.sample(ctx)).collect();
-//         let r = RepTruncPrOp::bit_compose(ctx, &r_bits, &player2);
-
-//         let r_top_bits: Vec<_> = (m..R::SIZE - 1).map(|i| r_bits[i].clone()).collect();
-//         let r_top_ring = RepTruncPrOp::bit_compose(ctx, &r_bits[m..R::SIZE - 1], &player2);
-//         let r_msb = r_bits[R::SIZE - 1].clone();
-
-//         let tmp: [R; 3] = [r, r_top_ring, r_msb];
-//         let prep_shares: Vec<_> = tmp
-//             .iter()
-//             .map(|x| RepTruncPrOp::generate_additive_share(ctx, x, &player2))
-//             .collect();
-
-//         let signed = true;
-//         // y_prime =
-//         //     RepTruncPrOp::two_party_trunc_pr(ctx, &xe, m, &r, &r_top, [&player0, &player1], signed);
-
-//         ReplicatedTensor {
-//             shares: [
-//                 [x00.clone(), x10.clone()],
-//                 [x11.clone(), x21.clone()],
-//                 [x22.clone(), x02.clone()],
-//             ],
-//         }
-//     }
-//     fn bit_compose<C: Context, R>(ctx: &C, bits: &[R], plc: &HostPlacement) -> R
-//     where
-//         R: Clone,
-//         HostPlacement: PlacementShl<C, R, Output = R>,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//     {
-//         let shifted_bits: Vec<_> = (0..bits.len()).map(|i| plc.shl(ctx, &bits[i], i)).collect();
-//         RepTruncPrOp::tree_reduce(ctx, &shifted_bits, plc)
-//     }
-
-//     fn tree_reduce<C: Context, R>(ctx: &C, sequence: &[R], plc: &HostPlacement) -> R
-//     where
-//         R: Clone,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//     {
-//         let n = sequence.len();
-//         if n == 1 {
-//             sequence[0].clone()
-//         } else {
-//             let mut reduced: Vec<_> = (0..n / 2)
-//                 .map(|i| {
-//                     let x0: &R = &sequence[2 * i];
-//                     let x1: &R = &sequence[2 * i + 1];
-//                     let z = with_context!(plc, ctx, x0 + x1);
-//                     z
-//                 })
-//                 .collect();
-//             if n % 2 == 1 {
-//                 reduced.push(sequence[n - 1].clone());
-//             }
-//             RepTruncPrOp::tree_reduce(ctx, &reduced, plc)
-//         }
-//     }
-//     fn generate_additive_share<C: Context, R, K>(ctx: &C, x: &R, plc: &HostPlacement) -> (R, R)
-//     where
-//         R: Clone,
-//         HostPlacement: PlacementKeyGen<C, K>,
-//         HostPlacement: PlacementSub<C, R, R, Output = R>,
-//         HostPlacement: PlacementSample<C, R>,
-//     {
-//         let k = plc.keygen(ctx);
-//         let share0 = plc.sample(ctx);
-//         // derive seed(k)
-//         let share1 = with_context!(plc, ctx, x - share0);
-//         (share0, share1)
-//     }
-//     // fn two_party_trunc_pr<C: Context, R, K>(ctx: &C, x: )
-// }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AdditiveRevealOp {
