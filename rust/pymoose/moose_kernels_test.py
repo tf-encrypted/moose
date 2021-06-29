@@ -161,7 +161,7 @@ def add_comp(
         out = edsl.add(x, y)
         res = edsl.save("output", out)
 
-    return res
+    return [res , out]
 
 
 add_args_storage = {
@@ -194,9 +194,11 @@ class RunComputation(parameterized.TestCase):
         print(concrete_comp)
 
         runtime = MooseLocalRuntime(executors_storage=storage_dict)
-        runtime.evaluate_computation(comp_bin, args)
+        outputs = runtime.evaluate_computation(comp_bin, args)
         result = runtime.get_value_from_storage("output_owner", "output")
         np.testing.assert_array_equal(result, np.array([3.0]))
+        # [Yann] why is the shape (1, 1)?
+        np.testing.assert_array_equal(outputs, np.array([[3.0]]))
 
 
 if __name__ == "__main__":

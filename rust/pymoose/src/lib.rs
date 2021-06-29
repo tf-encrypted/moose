@@ -1,8 +1,8 @@
 use moose::bit::BitTensor;
-use moose::computation::SessionId;
 use moose::computation::Value;
 use moose::computation::{Computation, Role};
-use moose::execution::{AsyncExecutor, AsyncNetworkingImpl, Identity};
+use moose::computation::{SessionId, Ty};
+use moose::execution::{AsyncExecutor, AsyncNetworkingImpl, AsyncReceiver, Identity};
 use moose::execution::{AsyncSession, AsyncSessionHandle};
 use moose::fixedpoint::Convert;
 use moose::networking::{AsyncNetworking, LocalAsyncNetworking};
@@ -386,9 +386,10 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
         Value::Uint16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Uint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Uint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        otherwise => Err(PyTypeError::new_err(
-            format!(r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#, otherwise)
-        )),
+        otherwise => Err(PyTypeError::new_err(format!(
+            r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#,
+            otherwise
+        ))),
     }
 }
 
@@ -435,7 +436,7 @@ impl MooseLocalRuntime {
         py: Python<'py>,
         computation: Vec<u8>,
         arguments: HashMap<String, PyObject>,
-    ) -> PyResult<()> {
+    ) -> PyResult<Option<Vec<PyObject>>> {
         let arguments = arguments
             .iter()
             .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
@@ -449,6 +450,7 @@ impl MooseLocalRuntime {
             .collect::<HashMap<Role, Identity>>();
 
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
+        let mut future_outputs: Vec<AsyncReceiver> = Vec::new();
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
 
@@ -461,11 +463,15 @@ impl MooseLocalRuntime {
             };
             let own_identity = Identity::from(placement);
             let computation = create_computation_graph_from_py_bytes(computation.clone());
-            let (moose_session_handle, _outputs) = executor
+            let (moose_session_handle, outputs) = executor
                 .run_computation(&computation, &role_assignment, &own_identity, moose_session)
                 .unwrap();
+
+            for (_, future_output) in outputs {
+                future_outputs.push(future_output);
+            }
+
             session_handles.push(moose_session_handle)
-            // Then await and output and filter units.
         }
 
         // let (_, errors): (Vec<_>, Vec<anyhow::Error>) = session_handles
@@ -480,18 +486,33 @@ impl MooseLocalRuntime {
         for mut handle in session_handles {
             let _errors = rt.block_on(handle.join());
         }
-        Ok(())
+
+        // TODO [Yann] find a way to make sure outputs match the order of the py computation outputs
+        let outputs = rt.block_on(async {
+            let mut outputs: Vec<PyObject> = Vec::new();
+            for future_output in future_outputs {
+                let value = future_output.await.unwrap();
+                let value_type = value.ty();
+                // TODO [Yann] handle all the expected types
+                match value_type {
+                    Ty::Float64TensorTy => outputs.push(tensorval_to_pyobj(py, value).unwrap()),
+                    Ty::Float32TensorTy => outputs.push(tensorval_to_pyobj(py, value).unwrap()),
+
+                    _ => {}
+                }
+            }
+            outputs
+        });
+
+        Ok(Some(outputs))
     }
 
-    // Can we use a block_on approach or do we wan to use pyo3-asyncio
-    // to await an async rust in python? https://pyo3.rs/v0.13.2/ecosystem/async-await.html
     fn get_value_from_storage<'py>(
         &self,
         py: Python<'py>,
         placement: String,
         key: String,
     ) -> PyResult<PyObject> {
-        // If we use this Tokio runtime, it should be moved the class
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
         let val = rt.block_on(async {
