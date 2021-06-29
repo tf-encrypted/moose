@@ -1025,7 +1025,7 @@ impl AsyncSessionHandle {
     //}
 
     // TODO(Morten)
-    async fn join(self) -> Vec<anyhow::Error> {
+    pub async fn join(self) -> Vec<anyhow::Error> {
         use futures::StreamExt;
         let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
         let res = tasks.collect::<Vec<_>>().await;
