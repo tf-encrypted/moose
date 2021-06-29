@@ -82,7 +82,7 @@ impl Ty {
 
 pub trait KnownType {
     type Symbolic;
-    const TY: Ty;
+    // const TY: Ty;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -103,28 +103,28 @@ pub enum SymbolicValue {
 
 macro_rules! value {
     ($t:ident, $st:ty) => {
-        impl From<$t> for Value {
-            fn from(x: $t) -> Value {
-                Value::$t(x)
-            }
-        }
+        // impl From<$t> for Value {
+        //     fn from(x: $t) -> Value {
+        //         Value::$t(x)
+        //     }
+        // }
 
-        impl From<&$t> for Value {
-            fn from(x: &$t) -> Value {
-                Value::$t(x.clone())
-            }
-        }
+        // impl From<&$t> for Value {
+        //     fn from(x: &$t) -> Value {
+        //         Value::$t(x.clone())
+        //     }
+        // }
 
-        impl TryFrom<Value> for $t {
-            type Error = ();
+        // impl TryFrom<Value> for $t {
+        //     type Error = ();
 
-            fn try_from(x: Value) -> Result<Self, Self::Error> {
-                match x {
-                    Value::$t(x) => Ok(x),
-                    _ => Err(()),
-                }
-            }
-        }
+        //     fn try_from(x: Value) -> Result<Self, Self::Error> {
+        //         match x {
+        //             Value::$t(x) => Ok(x),
+        //             _ => Err(()),
+        //         }
+        //     }
+        // }
 
         impl From<<$t as KnownType>::Symbolic> for SymbolicValue {
             fn from(x: <$t as KnownType>::Symbolic) -> SymbolicValue {
@@ -145,7 +145,7 @@ macro_rules! value {
 
         impl KnownType for $t {
             type Symbolic = $st;
-            const TY: Ty = Ty::$t;
+            // const TY: Ty = Ty::$t;
         }
 
         impl KnownType for $st {
@@ -161,7 +161,7 @@ macro_rules! value {
 // one thing to be careful about here is to still make room for manual
 // constructions during development.
 value!(
-    Fixed64Tensor,
+    // Fixed64Tensor,
     Symbolic<
         FixedTensor<
             <Ring64Tensor as KnownType>::Symbolic,
@@ -170,7 +170,7 @@ value!(
     >
 );
 value!(
-    Fixed128Tensor,
+    // Fixed128Tensor,
     Symbolic<
         FixedTensor<
             <Ring128Tensor as KnownType>::Symbolic,
@@ -178,34 +178,46 @@ value!(
         >,
     >
 );
-value!(BitTensor, Symbolic<BitTensor>);
-value!(Ring64Tensor, Symbolic<Ring64Tensor>);
-value!(Ring128Tensor, Symbolic<Ring128Tensor>);
 value!(
-    Replicated64Tensor,
+    // BitTensor,
+    Symbolic<BitTensor>,
+);
+value!(
+    // Ring64Tensor,
+    Symbolic<Ring64Tensor>,
+);
+value!(
+    // Ring128Tensor,
+    Symbolic<Ring128Tensor>,
+);
+value!(
+    // Replicated64Tensor,
     Symbolic<ReplicatedTensor<<Ring64Tensor as KnownType>::Symbolic>>
 );
 value!(
-    Replicated128Tensor,
+    // Replicated128Tensor,
     Symbolic<ReplicatedTensor<<Ring128Tensor as KnownType>::Symbolic>>
 );
 value!(
-    ReplicatedBitTensor,
+    // ReplicatedBitTensor,
     Symbolic<ReplicatedTensor<Symbolic<BitTensor>>>
 );
 value!(
-    Additive64Tensor,
+    // Additive64Tensor,
     Symbolic<AdditiveTensor<<Ring64Tensor as KnownType>::Symbolic>>
 );
 value!(
-    Additive128Tensor,
+    // Additive128Tensor,
     Symbolic<AdditiveTensor<<Ring128Tensor as KnownType>::Symbolic>>
 );
 value!(
-    ReplicatedSetup,
+    // ReplicatedSetup,
     Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 );
-value!(PrfKey, Symbolic<PrfKey>);
+value!(
+    // PrfKey,
+    Symbolic<PrfKey>,
+);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {

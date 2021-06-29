@@ -27,24 +27,115 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
-pub enum Ty {
-    Unknown,
-    Unit,
-    String,
+pub trait KnownType {
+    const TY: Ty;
+}
+
+macro_rules! values {
+    ($($val:ident,)+) => {
+
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+        pub enum Value {
+            $($val($val),)+
+            // TODO promote below to match other values
+            Unit,
+            Float32(f32),
+            Float64(f64),
+            Ring64(u64),
+            Ring128(u128),
+        }
+
+        #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
+        pub enum Ty {
+            Unknown,
+            $($val,)+
+            // TODO promote below to match other values
+            Unit,
+            Float32,
+            Float64,
+            Ring64,
+            Ring128,
+        }
+
+        impl Value {
+            pub fn ty(&self) -> Ty {
+                match self {
+                    $(Value::$val(_) => Ty::$val,)+
+                    // TODO promote below to match other values
+                    Value::Unit => Ty::Unit,
+                    Value::Float32(_) => Ty::Float32,
+                    Value::Float64(_) => Ty::Float64,
+                    Value::Ring64(_) => Ty::Ring64,
+                    Value::Ring128(_) => Ty::Ring128,
+                }
+            }
+        }
+
+        $(
+        impl From<$val> for Value {
+            fn from(x: $val) -> Self {
+                Value::$val(x)
+            }
+        }
+        )+
+
+        $(
+        impl From<&$val> for Value {
+            fn from(x: &$val) -> Self {
+                Value::$val(x.clone())
+            }
+        }
+        )+
+
+        $(
+        impl TryFrom<Value> for $val {
+            type Error = Error;
+            fn try_from(v: Value) -> Result<Self> {
+                match v {
+                    Value::$val(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch {
+                        expected: stringify!($val).to_string(),
+                        found: v.ty(),
+                    }),
+                }
+            }
+        }
+        )+
+
+        $(
+        impl<'v> TryFrom<&'v Value> for &'v $val {
+            type Error = Error;
+            fn try_from(v: &'v Value) -> Result<Self> {
+                match v {
+                    Value::$val(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch {
+                        expected: stringify!($val).to_string(),
+                        found: v.ty(),
+                    }),
+                }
+            }
+        }
+        )+
+
+        $(
+        impl KnownType for $val {
+            const TY: Ty = Ty::$val;
+        }
+        )+
+    };
+}
+
+values![
     Shape,
     Seed,
     PrfKey,
     Nonce,
-    Float32,
-    Float64,
-    Ring64,
-    Ring128,
-    Float32Tensor,
-    Float64Tensor,
+    String,
+    BitTensor,
     Ring64Tensor,
     Ring128Tensor,
-    BitTensor,
+    Float32Tensor,
+    Float64Tensor,
     Int8Tensor,
     Int16Tensor,
     Int32Tensor,
@@ -55,149 +146,13 @@ pub enum Ty {
     Uint64Tensor,
     Fixed64Tensor,
     Fixed128Tensor,
-    ReplicatedSetup,
     Replicated64Tensor,
     Replicated128Tensor,
     ReplicatedBitTensor,
+    ReplicatedSetup,
     Additive64Tensor,
     Additive128Tensor,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub enum Value {
-    Unit,
-    Shape(Shape),
-    Seed(Seed),
-    PrfKey(PrfKey),
-    Nonce(Nonce),
-    Float32(f32),
-    Float64(f64),
-    Ring64(u64),
-    Ring128(u128),
-    String(String),
-    Ring64Tensor(Ring64Tensor),
-    Ring128Tensor(Ring128Tensor),
-    BitTensor(BitTensor),
-    Float32Tensor(Float32Tensor),
-    Float64Tensor(Float64Tensor),
-    Int8Tensor(Int8Tensor),
-    Int16Tensor(Int16Tensor),
-    Int32Tensor(Int32Tensor),
-    Int64Tensor(Int64Tensor),
-    Uint8Tensor(Uint8Tensor),
-    Uint16Tensor(Uint16Tensor),
-    Uint32Tensor(Uint32Tensor),
-    Uint64Tensor(Uint64Tensor),
-    Fixed64Tensor(Fixed64Tensor),
-    Fixed128Tensor(Fixed128Tensor),
-    Replicated64Tensor(Replicated64Tensor),
-    Replicated128Tensor(Replicated128Tensor),
-    ReplicatedBitTensor(ReplicatedBitTensor),
-    ReplicatedSetup(ReplicatedSetup),
-    Additive64Tensor(Additive64Tensor),
-    Additive128Tensor(Additive128Tensor),
-}
-
-impl Value {
-    pub fn ty(&self) -> Ty {
-        match self {
-            Value::Unit => Ty::Unit,
-            Value::String(_) => Ty::String,
-            Value::Float32(_) => Ty::Float32,
-            Value::Float64(_) => Ty::Float64,
-            Value::Ring64(_) => Ty::Ring64,
-            Value::Ring128(_) => Ty::Ring128,
-            Value::Ring64Tensor(_) => Ty::Ring64Tensor,
-            Value::Ring128Tensor(_) => Ty::Ring128Tensor,
-            Value::BitTensor(_) => Ty::BitTensor,
-            Value::Shape(_) => Ty::Shape,
-            Value::Seed(_) => Ty::Seed,
-            Value::PrfKey(_) => Ty::PrfKey,
-            Value::Nonce(_) => Ty::Nonce,
-            Value::Float32Tensor(_) => Ty::Float32Tensor,
-            Value::Float64Tensor(_) => Ty::Float64Tensor,
-            Value::Int8Tensor(_) => Ty::Int8Tensor,
-            Value::Int16Tensor(_) => Ty::Int16Tensor,
-            Value::Int32Tensor(_) => Ty::Int32Tensor,
-            Value::Int64Tensor(_) => Ty::Int64Tensor,
-            Value::Uint8Tensor(_) => Ty::Uint8Tensor,
-            Value::Uint16Tensor(_) => Ty::Uint16Tensor,
-            Value::Uint32Tensor(_) => Ty::Uint32Tensor,
-            Value::Uint64Tensor(_) => Ty::Uint64Tensor,
-            Value::Additive64Tensor(_) => Ty::Additive64Tensor,
-            Value::Additive128Tensor(_) => Ty::Additive128Tensor,
-            Value::Replicated64Tensor(_) => Ty::Replicated64Tensor,
-            Value::Replicated128Tensor(_) => Ty::Replicated128Tensor,
-            Value::ReplicatedBitTensor(_) => Ty::ReplicatedBitTensor,
-            Value::ReplicatedSetup(_) => Ty::ReplicatedSetup,
-            Value::Fixed64Tensor(_) => Ty::Fixed64Tensor,
-            Value::Fixed128Tensor(_) => Ty::Fixed128Tensor,
-        }
-    }
-}
-
-pub trait KnownType {
-    const TY: Ty;
-}
-
-macro_rules! value {
-    ($raw_type:ident) => {
-        impl From<$raw_type> for Value {
-            fn from(x: $raw_type) -> Self {
-                Value::$raw_type(x)
-            }
-        }
-
-        impl TryFrom<Value> for $raw_type {
-            type Error = Error;
-            fn try_from(v: Value) -> Result<Self> {
-                match v {
-                    Value::$raw_type(x) => Ok(x),
-                    _ => Err(Error::TypeMismatch {
-                        expected: stringify!($raw_type).to_string(),
-                        found: v.ty(),
-                    }),
-                }
-            }
-        }
-
-        impl<'v> TryFrom<&'v Value> for &'v $raw_type {
-            type Error = Error;
-            fn try_from(v: &'v Value) -> Result<Self> {
-                match v {
-                    Value::$raw_type(x) => Ok(x),
-                    _ => Err(Error::TypeMismatch {
-                        expected: stringify!($raw_type).to_string(),
-                        found: v.ty(),
-                    }),
-                }
-            }
-        }
-
-        impl KnownType for $raw_type {
-            const TY: Ty = Ty::$raw_type;
-        }
-    };
-}
-
-value!(String);
-value!(Ring64Tensor);
-value!(Ring128Tensor);
-value!(BitTensor);
-value!(Shape);
-value!(Seed);
-value!(PrfKey);
-value!(Nonce);
-value!(Float32Tensor);
-value!(Float64Tensor);
-value!(Int8Tensor);
-value!(Int16Tensor);
-value!(Int32Tensor);
-value!(Int64Tensor);
-value!(Uint8Tensor);
-value!(Uint16Tensor);
-value!(Uint32Tensor);
-value!(Uint64Tensor);
+];
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub enum Signature {
@@ -307,68 +262,16 @@ impl Signature {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub enum Operator {
-    Identity(IdentityOp),
-    Load(LoadOp),
-    Save(SaveOp),
-    Send(SendOp),
-    Receive(ReceiveOp),
-    Input(InputOp),
-    Output(OutputOp),
-    Constant(ConstantOp),
-    StdAdd(StdAddOp),
-    StdSub(StdSubOp),
-    StdMul(StdMulOp),
-    StdDiv(StdDivOp),
-    StdDot(StdDotOp),
-    StdMean(StdMeanOp),
-    StdExpandDims(StdExpandDimsOp),
-    StdReshape(StdReshapeOp),
-    StdAtLeast2D(StdAtLeast2DOp),
-    StdShape(StdShapeOp),
-    StdSlice(StdSliceOp),
-    StdSum(StdSumOp),
-    StdOnes(StdOnesOp),
-    StdConcatenate(StdConcatenateOp),
-    StdTranspose(StdTransposeOp),
-    StdInverse(StdInverseOp),
-    RingAdd(RingAddOp),
-    RingSub(RingSubOp),
-    RingMul(RingMulOp),
-    RingDot(RingDotOp),
-    RingSum(RingSumOp),
-    RingShape(RingShapeOp),
-    RingSample(RingSampleOp),
-    RingFill(RingFillOp),
-    RingShl(RingShlOp),
-    RingShr(RingShrOp),
-    RingInject(RingInjectOp),
-    BitExtract(BitExtractOp),
-    BitSample(BitSampleOp),
-    BitFill(BitFillOp),
-    BitXor(BitXorOp),
-    BitAnd(BitAndOp),
-    PrimDeriveSeed(PrimDeriveSeedOp),
-    PrimGenPrfKey(PrimGenPrfKeyOp),
-    FixedAdd(FixedAddOp),
-    FixedMul(FixedMulOp),
-    FixedpointRingEncode(FixedpointRingEncodeOp),
-    FixedpointRingDecode(FixedpointRingDecodeOp),
-    FixedpointRingMean(FixedpointRingMeanOp),
-    AdtReveal(AdtRevealOp),
-    AdtAdd(AdtAddOp),
-    AdtMul(AdtMulOp),
-    RepSetup(RepSetupOp),
-    RepShare(RepShareOp),
-    RepReveal(RepRevealOp),
-    RepAdd(RepAddOp),
-    RepMul(RepMulOp),
-    RepToAdt(RepToAdtOp),
-}
-
 macro_rules! operators {
     ($($t:ident,)+) => {
+
+        paste! {
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            pub enum Operator {
+                $($t([<$t Op>]),)+
+            }
+        }
+
         $(
         paste! {
             impl From<[<$t Op>]> for Operator {
@@ -379,12 +282,10 @@ macro_rules! operators {
         }
         )+
 
-        paste! {
-            impl Operator {
-                pub fn sig(&self) -> &Signature {
-                    match self {
-                        $(Operator::$t(op) => &op.sig,)+
-                    }
+        impl Operator {
+            pub fn sig(&self) -> &Signature {
+                match self {
+                    $(Operator::$t(op) => &op.sig,)+
                 }
             }
         }
