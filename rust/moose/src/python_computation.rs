@@ -581,9 +581,14 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
 
 fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Value> {
     match constant_value {
-        PyConstant::std_ShapeConstant { value } => {
-            Ok(Shape(RawShape(value.iter().map(|i| *i as usize).collect())).into())
-        }
+        PyConstant::std_ShapeConstant { value } => Ok(Shape(
+            RawShape(value.iter().map(|i| *i as usize).collect()),
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
+        .into()),
         PyConstant::std_StringConstant { value } => Ok(Value::String(String::from(value))),
         PyConstant::std_TensorConstant { value } => match value {
             PyNdarray::float32 {

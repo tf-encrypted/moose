@@ -409,7 +409,7 @@ impl Compile<Kernel> for StdSliceOp {
         let end = self.end as usize;
         match self.sig {
             signature![(_) -> Ty::Shape] => {
-                closure_kernel!(Shape, |x| Shape(x.0.slice(start, end)))
+                closure_kernel!(Shape, |x| Shape(x.0.slice(start, end), x.1))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

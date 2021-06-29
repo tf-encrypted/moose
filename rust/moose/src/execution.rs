@@ -1145,10 +1145,9 @@ mod tests {
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
         use crate::ring::Ring64Tensor;
-        use crate::standard::Shape;
 
         let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(x_sampled.shape(), Shape(RawShape(vec![2, 2])));
+        assert_eq!(x_sampled.shape().0, RawShape(vec![2, 2]));
 
         Ok(())
     }
@@ -1342,7 +1341,13 @@ mod tests {
         let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
         if unwrap_flag {
-            let shaped_result = comp_result.reshape(Shape(RawShape(vec![1])));
+            let shaped_result = comp_result.reshape(Shape(
+                RawShape(vec![1]),
+                HostPlacement {
+                    owner: "alice".into(),
+                }
+                .into(),
+            ));
             assert_eq!(expected_result, Value::Float32(shaped_result.0[0]));
         } else {
             assert_eq!(expected_result, comp_result.into());

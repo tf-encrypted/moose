@@ -90,7 +90,7 @@ where
 
 impl<T> AbstractRingTensor<T> {
     pub fn shape(&self) -> Shape {
-        Shape(RawShape(self.0.shape().into()))
+        Shape(RawShape(self.0.shape().into()), self.1.clone().into())
     }
 }
 

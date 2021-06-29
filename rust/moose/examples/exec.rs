@@ -33,7 +33,13 @@ fn main() {
         name: "x_shape".into(),
         kind: ConstantOp {
             sig: Signature::nullary(Ty::Shape),
-            value: Value::Shape(Shape(RawShape(vec![2, 3]))),
+            value: Value::Shape(Shape(
+                RawShape(vec![2, 3]),
+                HostPlacement {
+                    owner: "TODO".into(),
+                }
+                .into(),
+            )),
         }
         .into(),
         inputs: vec![],

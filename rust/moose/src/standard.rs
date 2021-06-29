@@ -1,22 +1,24 @@
 extern crate ndarray;
 extern crate ndarray_linalg;
 
+use crate::computation::HostPlacement;
+use crate::computation::Placement;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Shape(pub RawShape);
+pub struct Shape(pub RawShape, pub Placement);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct StandardTensor<T>(pub ArrayD<T>);
+pub struct StandardTensor<T>(pub ArrayD<T>, pub Placement);
 
 pub type Float32Tensor = StandardTensor<f32>;
 pub type Float64Tensor = StandardTensor<f64>;
@@ -47,7 +49,7 @@ where
 {
     pub fn atleast_2d(self, to_column_vector: bool) -> StandardTensor<T> {
         match self.0.ndim() {
-            0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap()),
+            0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap(), self.1),
             1 => {
                 let length = self.0.len();
                 let newshape = if to_column_vector {
@@ -55,7 +57,7 @@ where
                 } else {
                     IxDyn(&[1, length])
                 };
-                StandardTensor::<T>(self.0.into_shape(newshape).unwrap())
+                StandardTensor::<T>(self.0.into_shape(newshape).unwrap(), self.1)
             }
             2 => self,
             otherwise => panic!(
@@ -73,25 +75,25 @@ where
                 let res = Array::from_elem([], l.dot(&r))
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (1, 2) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (2, 1) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix1>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (2, 2) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (self_rank, other_rank) => panic!(
                 // TODO: replace with proper error handling
@@ -102,35 +104,35 @@ where
     }
 
     pub fn ones(shape: Shape) -> Self {
-        StandardTensor::<T>(ArrayD::ones(shape.0 .0))
+        StandardTensor::<T>(ArrayD::ones(shape.0 .0), shape.1)
     }
 
     pub fn reshape(self, newshape: Shape) -> Self {
-        StandardTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap()) // TODO need to be fix (unwrap)
+        StandardTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
     pub fn expand_dims(self, axis: usize) -> Self {
-        let newshape = Shape(self.shape().0.expand(axis));
+        let newshape = Shape(self.shape().0.expand(axis), self.1.clone());
         self.reshape(newshape)
     }
 
     pub fn shape(&self) -> Shape {
-        Shape(RawShape(self.0.shape().into()))
+        Shape(RawShape(self.0.shape().into()), self.1.clone())
     }
 
     pub fn sum(self, axis: Option<usize>) -> Self {
         if let Some(i) = axis {
-            StandardTensor::<T>(self.0.sum_axis(Axis(i)))
+            StandardTensor::<T>(self.0.sum_axis(Axis(i)), self.1)
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
-            StandardTensor::<T>(out)
+            StandardTensor::<T>(out, self.1)
         }
     }
 
     pub fn transpose(self) -> Self {
-        StandardTensor::<T>(self.0.reversed_axes())
+        StandardTensor::<T>(self.0.reversed_axes(), self.1)
     }
 }
 
@@ -142,14 +144,14 @@ where
         match axis {
             Some(i) => {
                 let reduced = self.0.mean_axis(Axis(i)).unwrap();
-                StandardTensor::<T>(reduced)
+                StandardTensor::<T>(reduced, self.1)
             }
             None => {
                 let mean = self.0.mean().unwrap();
                 let out = Array::from_elem([], mean)
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::<T>(out)
+                StandardTensor::<T>(out, self.1)
             }
         }
     }
@@ -184,7 +186,13 @@ where
     T: LinalgScalar,
 {
     fn from(v: ArrayD<T>) -> StandardTensor<T> {
-        StandardTensor::<T>(v)
+        StandardTensor::<T>(
+            v,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -194,7 +202,13 @@ where
 {
     type Output = StandardTensor<T>;
     fn add(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 + other.0)
+        StandardTensor::<T>(
+            self.0 + other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -204,7 +218,13 @@ where
 {
     type Output = StandardTensor<T>;
     fn sub(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 - other.0)
+        StandardTensor::<T>(
+            self.0 - other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -214,7 +234,13 @@ where
 {
     type Output = StandardTensor<T>;
     fn mul(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 * other.0)
+        StandardTensor::<T>(
+            self.0 * other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -224,25 +250,49 @@ where
 {
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 / other.0)
+        StandardTensor::<T>(
+            self.0 / other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
 impl<T> From<Vec<T>> for StandardTensor<T> {
     fn from(v: Vec<T>) -> StandardTensor<T> {
-        StandardTensor(Array::from(v).into_dyn())
+        StandardTensor(
+            Array::from(v).into_dyn(),
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
 impl<T> From<Array1<T>> for StandardTensor<T> {
     fn from(v: Array1<T>) -> StandardTensor<T> {
-        StandardTensor(v.into_dyn())
+        StandardTensor(
+            v.into_dyn(),
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
 impl<T> From<Array2<T>> for StandardTensor<T> {
     fn from(v: Array2<T>) -> StandardTensor<T> {
-        StandardTensor(v.into_dyn())
+        StandardTensor(
+            v.into_dyn(),
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -254,7 +304,13 @@ where
     let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
 
     let c = ndarray::concatenate(ax, &inner_arrays).unwrap();
-    StandardTensor::<T>(c)
+    StandardTensor::<T>(
+        c,
+        HostPlacement {
+            owner: "TODO".into(),
+        }
+        .into(),
+    )
 }
 
 #[cfg(test)]

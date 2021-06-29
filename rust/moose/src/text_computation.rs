@@ -720,7 +720,13 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         value_literal_helper("Ring64", parse_int, Value::Ring64),
         value_literal_helper("Ring128", parse_int, Value::Ring128),
         value_literal_helper("Shape", vector(parse_int), |v| {
-            Value::Shape(Shape(RawShape(v)))
+            Value::Shape(Shape(
+                RawShape(v),
+                HostPlacement {
+                    owner: "TODO".into(),
+                }
+                .into(),
+            ))
         }),
         // value_literal_helper("Nonce", vector(parse_int), |v| Value::Nonce(Nonce(v))), // TODO
         // 1D arrars
@@ -1356,7 +1362,7 @@ impl ToTextual for Value {
             Value::String(x) => format!("String({})", x.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
-            Value::Shape(Shape(x)) => format!("Shape({:?})", x),
+            Value::Shape(Shape(x, _)) => format!("Shape({:?})", x),
             // Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
             // Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
             // Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
@@ -1500,7 +1506,16 @@ mod tests {
             Value::Ring128Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_shape) = value_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
-        assert_eq!(parsed_shape, Value::Shape(Shape(RawShape(vec![1, 2, 3]))));
+        assert_eq!(
+            parsed_shape,
+            Value::Shape(Shape(
+                RawShape(vec![1, 2, 3]),
+                HostPlacement {
+                    owner: "TODO".into()
+                }
+                .into()
+            ))
+        );
         let (_, parsed_u8_tensor) = value_literal::<(&str, ErrorKind)>("Uint8Tensor([1,2,3])")?;
         assert_eq!(parsed_u8_tensor, Value::Uint8Tensor(vec![1, 2, 3].into()));
         let (_, parsed_seed) =
