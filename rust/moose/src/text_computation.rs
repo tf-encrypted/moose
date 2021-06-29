@@ -1,6 +1,6 @@
 use crate::computation::*;
-use crate::prim::{Nonce, PrfKey, Seed};
-use crate::standard::Shape;
+use crate::prim::{RawNonce, RawSeed, Seed};
+use crate::standard::{RawShape, Shape};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -440,7 +440,7 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, nonce) = attributes_single("nonce", map(vector(parse_int), Nonce))(input)?;
+    let (input, nonce) = attributes_single("nonce", map(vector(parse_int), RawNonce))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((input, PrimDeriveSeedOp { sig, nonce }.into()))
@@ -704,16 +704,25 @@ fn value_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Value, E> {
     alt((
-        value_literal_helper("Seed", parse_hex, |v| Value::Seed(Seed(v))),
-        value_literal_helper("PrfKey", parse_hex, |v| Value::PrfKey(PrfKey(v))),
+        value_literal_helper("Seed", parse_hex, |v| {
+            Value::Seed(Seed(
+                RawSeed(v),
+                HostPlacement {
+                    owner: "TODO".into(),
+                },
+            ))
+        }),
+        // value_literal_helper("PrfKey", parse_hex, |v| Value::PrfKey(PrfKey(v))), // TODO
         value_literal_helper("Float32", float, Value::Float32),
         value_literal_helper("Float64", double, Value::Float64),
         value_literal_helper("String", string, Value::String),
         map(ws(string), Value::String), // Alternative syntax for strings - no type
         value_literal_helper("Ring64", parse_int, Value::Ring64),
         value_literal_helper("Ring128", parse_int, Value::Ring128),
-        value_literal_helper("Shape", vector(parse_int), |v| Value::Shape(Shape(v))),
-        value_literal_helper("Nonce", vector(parse_int), |v| Value::Nonce(Nonce(v))),
+        value_literal_helper("Shape", vector(parse_int), |v| {
+            Value::Shape(Shape(RawShape(v)))
+        }),
+        // value_literal_helper("Nonce", vector(parse_int), |v| Value::Nonce(Nonce(v))), // TODO
         // 1D arrars
         alt((
             value_literal_helper("Int8Tensor", vector(parse_int), |v| {
@@ -1348,11 +1357,17 @@ impl ToTextual for Value {
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
             Value::Shape(Shape(x)) => format!("Shape({:?})", x),
-            Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
-            Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
-            Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
+            // Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
+            // Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
+            // Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
             _ => unimplemented!(), // TODO
         }
+    }
+}
+
+impl ToTextual for RawNonce {
+    fn to_textual(&self) -> String {
+        format!("Nonce({:?})", self) // TODO
     }
 }
 
@@ -1393,11 +1408,11 @@ impl ToTextual for Role {
     }
 }
 
-impl ToTextual for Nonce {
-    fn to_textual(&self) -> String {
-        format!("{:?}", self.0)
-    }
-}
+// impl ToTextual for Nonce {
+//     fn to_textual(&self) -> String {
+//         format!("{:?}", self.0)
+//     }
+// }
 
 impl ToTextual for Signature {
     fn to_textual(&self) -> String {
@@ -1485,17 +1500,22 @@ mod tests {
             Value::Ring128Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_shape) = value_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
-        assert_eq!(parsed_shape, Value::Shape(Shape(vec![1, 2, 3])));
+        assert_eq!(parsed_shape, Value::Shape(Shape(RawShape(vec![1, 2, 3]))));
         let (_, parsed_u8_tensor) = value_literal::<(&str, ErrorKind)>("Uint8Tensor([1,2,3])")?;
         assert_eq!(parsed_u8_tensor, Value::Uint8Tensor(vec![1, 2, 3].into()));
         let (_, parsed_seed) =
             value_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
         assert_eq!(
             parsed_seed,
-            Value::Seed(Seed([
-                0x52, 0x9c, 0x2f, 0xc9, 0xbf, 0x57, 0x3d, 0x07, 0x7f, 0x45, 0xf4, 0x2b, 0x19, 0xcf,
-                0xb8, 0xd4
-            ]))
+            Value::Seed(Seed(
+                RawSeed([
+                    0x52, 0x9c, 0x2f, 0xc9, 0xbf, 0x57, 0x3d, 0x07, 0x7f, 0x45, 0xf4, 0x2b, 0x19,
+                    0xcf, 0xb8, 0xd4
+                ]),
+                HostPlacement {
+                    owner: "TODO".into()
+                },
+            )),
         );
         let (_, parsed_ring64) = value_literal::<(&str, ErrorKind)>("Ring64(42)")?;
         assert_eq!(parsed_ring64, Value::Ring64(42));
@@ -1640,7 +1660,7 @@ mod tests {
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
-                nonce: Nonce(vec![1, 2, 3])
+                nonce: RawNonce(vec![1, 2, 3])
             })
         );
         Ok(())
