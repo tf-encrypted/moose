@@ -269,6 +269,102 @@ impl Signature {
             Signature::Ternary(_) => 3,
         }
     }
+
+    pub fn merge(&mut self, another: Signature) -> anyhow::Result<()> {
+        match (self, &another) {
+            (Signature::Nullary(s), Signature::Nullary(o)) => s.merge(o),
+            (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
+            (Signature::Binary(s), Signature::Binary(o)) => s.merge(o),
+            (Signature::Ternary(s), Signature::Ternary(o)) => s.merge(o),
+            (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+            (Signature::Unary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+            (Signature::Binary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+            (Signature::Ternary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+        }
+    }
+}
+
+impl NullarySignature {
+    pub fn merge(&mut self, another: &NullarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl UnarySignature {
+    pub fn merge(&mut self, another: &UnarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.arg0.merge(&another.arg0) {
+            self.arg0 = new_type;
+        }
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl BinarySignature {
+    pub fn merge(&mut self, another: &BinarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.arg0.merge(&another.arg0) {
+            self.arg0 = new_type;
+        }
+        if let Some(new_type) = self.arg1.merge(&another.arg1) {
+            self.arg1 = new_type;
+        }
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl TernarySignature {
+    pub fn merge(&mut self, another: &TernarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.arg0.merge(&another.arg0) {
+            self.arg0 = new_type;
+        }
+        if let Some(new_type) = self.arg1.merge(&another.arg1) {
+            self.arg1 = new_type;
+        }
+        if let Some(new_type) = self.arg2.merge(&another.arg2) {
+            self.arg2 = new_type;
+        }
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl Ty {
+    /// Merge type information.
+    ///
+    /// Returns `Some(new_type)` if a merge produced a new type.
+    /// Otherwise returns None
+    pub fn merge(&self, another: &Ty) -> Option<Ty> {
+        match self {
+            Ty::UnknownTy => Some(*another),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -368,6 +464,56 @@ impl Operator {
             Operator::FixedpointRingEncode(op) => &op.sig,
             Operator::FixedpointRingDecode(op) => &op.sig,
             Operator::FixedpointRingMean(op) => &op.sig,
+        }
+    }
+
+    pub fn sig_mut(&mut self) -> &mut Signature {
+        match self {
+            Operator::Identity(op) => &mut op.sig,
+            Operator::Load(op) => &mut op.sig,
+            Operator::Save(op) => &mut op.sig,
+            Operator::Send(op) => &mut op.sig,
+            Operator::Receive(op) => &mut op.sig,
+            Operator::Input(op) => &mut op.sig,
+            Operator::Output(op) => &mut op.sig,
+            Operator::Constant(op) => &mut op.sig,
+            Operator::StdAdd(op) => &mut op.sig,
+            Operator::StdSub(op) => &mut op.sig,
+            Operator::StdMul(op) => &mut op.sig,
+            Operator::StdDiv(op) => &mut op.sig,
+            Operator::StdDot(op) => &mut op.sig,
+            Operator::StdMean(op) => &mut op.sig,
+            Operator::StdExpandDims(op) => &mut op.sig,
+            Operator::StdReshape(op) => &mut op.sig,
+            Operator::StdAtLeast2D(op) => &mut op.sig,
+            Operator::StdShape(op) => &mut op.sig,
+            Operator::StdSlice(op) => &mut op.sig,
+            Operator::StdSum(op) => &mut op.sig,
+            Operator::StdOnes(op) => &mut op.sig,
+            Operator::StdConcatenate(op) => &mut op.sig,
+            Operator::StdTranspose(op) => &mut op.sig,
+            Operator::StdInverse(op) => &mut op.sig,
+            Operator::RingAdd(op) => &mut op.sig,
+            Operator::RingSub(op) => &mut op.sig,
+            Operator::RingMul(op) => &mut op.sig,
+            Operator::RingDot(op) => &mut op.sig,
+            Operator::RingSum(op) => &mut op.sig,
+            Operator::RingShape(op) => &mut op.sig,
+            Operator::RingSample(op) => &mut op.sig,
+            Operator::RingFill(op) => &mut op.sig,
+            Operator::RingShl(op) => &mut op.sig,
+            Operator::RingShr(op) => &mut op.sig,
+            Operator::RingInject(op) => &mut op.sig,
+            Operator::BitExtract(op) => &mut op.sig,
+            Operator::BitSample(op) => &mut op.sig,
+            Operator::BitFill(op) => &mut op.sig,
+            Operator::BitXor(op) => &mut op.sig,
+            Operator::BitAnd(op) => &mut op.sig,
+            Operator::PrimDeriveSeed(op) => &mut op.sig,
+            Operator::PrimGenPrfKey(op) => &mut op.sig,
+            Operator::FixedpointRingEncode(op) => &mut op.sig,
+            Operator::FixedpointRingDecode(op) => &mut op.sig,
+            Operator::FixedpointRingMean(op) => &mut op.sig,
         }
     }
 }

@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use approx::AbsDiffEq;
+    use moose::compilation::typing::update_types_one_hop;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use moose::{computation::*, python_computation::PyComputation, standard::Float64Tensor};
@@ -18,6 +19,7 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
+        let rust_comp = update_types_one_hop(&rust_comp).unwrap().unwrap();
         rust_comp.toposort().unwrap()
     }
 
