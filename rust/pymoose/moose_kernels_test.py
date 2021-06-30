@@ -216,13 +216,13 @@ class RunComputation(parameterized.TestCase):
         self.actual_args = {**self.x_input, **self.y_input}
 
     def _inner_prepare_runtime(self, comp, storage_dict):
-        concrete_comp = edsl.trace_and_compile(comp, ring=128)
+        concrete_comp, outputs_name = edsl.trace_and_compile(comp, ring=128)
         comp_bin = serialize_computation(concrete_comp)
         runtime = MooseLocalRuntime(executors_storage=storage_dict)
-        return comp_bin, runtime
+        return comp_bin, outputs_name, runtime
 
     def test_full_storage(self):
-        comp_bin, runtime = self._inner_prepare_runtime(
+        comp_bin, outputs_name, runtime = self._inner_prepare_runtime(
             add_full_storage, self.storage_dict
         )
         outputs = runtime.evaluate_computation(comp_bin, self.storage_args)
@@ -231,14 +231,14 @@ class RunComputation(parameterized.TestCase):
         np.testing.assert_array_equal(result, np.array([3.0]))
 
     def test_input_storage(self):
-        comp_bin, runtime = self._inner_prepare_runtime(
+        comp_bin, outputs_name, runtime = self._inner_prepare_runtime(
             add_input_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(comp_bin, self.storage_args)
-        np.testing.assert_array_equal(result['output_0'], np.array([3.0]))
+        np.testing.assert_array_equal(result[outputs_name[0]], np.array([3.0]))
 
     def test_output_storage(self):
-        comp_bin, runtime = self._inner_prepare_runtime(
+        comp_bin, _, runtime = self._inner_prepare_runtime(
             add_output_storage, self.empty_storage
         )
         outputs = runtime.evaluate_computation(comp_bin, self.actual_args)
@@ -247,21 +247,20 @@ class RunComputation(parameterized.TestCase):
         np.testing.assert_array_equal(result, np.array([3.0]))
 
     def test_no_storage(self):
-        comp_bin, runtime = self._inner_prepare_runtime(
+        comp_bin, outputs_name, runtime = self._inner_prepare_runtime(
             add_no_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(comp_bin, self.actual_args)
-        np.testing.assert_array_equal(result['output_0'], np.array([3.0]))
+        np.testing.assert_array_equal(result[outputs_name[0]], np.array([3.0]))
 
     def test_multioutput(self):
-        comp_bin, runtime = self._inner_prepare_runtime(
+        comp_bin, outputs_name, runtime = self._inner_prepare_runtime(
             add_multioutput, self.storage_dict
         )
         result = runtime.evaluate_computation(comp_bin, self.actual_args)
-        print(result)
-        np.testing.assert_array_equal(result['output_1'], np.array([1.0]))
-        np.testing.assert_array_equal(result['output_2'], np.array([2.0]))
-        np.testing.assert_array_equal(result['output_0'], np.array([3.0]))
+        np.testing.assert_array_equal(result[outputs_name[0]], np.array([3.0]))
+        np.testing.assert_array_equal(result[outputs_name[1]], np.array([1.0]))
+        np.testing.assert_array_equal(result[outputs_name[2]], np.array([2.0]))
 
 
 if __name__ == "__main__":
