@@ -1,28 +1,42 @@
 use crate::computation::*;
 use petgraph::Direction;
+use std::collections::HashMap;
 
-/// Updates the operators such that the tpye information is inferred by one-hop check, without any graph traversal.
+/// Updates the operators such that the type information is inferred by one-hop check, without any recursive graph traversal.
 pub fn update_types_one_hop(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     let mut operations = comp.operations.clone();
     let graph = comp.as_graph();
 
     for n in graph.node_indices() {
-        let op = &comp.operations[graph[n].1];
-        for (pos, &t) in op.kind.sig().args().iter().enumerate() {
-            if *t != Ty::UnknownTy {
-                continue;
+        // Prepare the raw data for the signature computation
+        let inputs = &comp.operations[graph[n].1].inputs;
+        let types: HashMap<&String, Ty> = graph
+            .neighbors_directed(n, Direction::Incoming)
+            .map(|i| (&graph[i].0, comp.operations[graph[i].1].kind.sig().ret()))
+            .collect();
+        let ret = comp.operations[graph[n].1].kind.sig().ret();
+
+        let find_type = |i: usize| -> anyhow::Result<Ty> {
+            match types.get(&inputs[i]) {
+                Some(ty) => Ok(*ty),
+                _ => Err(anyhow::anyhow!(
+                    "Could not find type of input {}",
+                    inputs[i]
+                )),
             }
-            let name = &op.inputs[pos];
-            let src_op = graph
-                .neighbors_directed(n, Direction::Incoming)
-                .find(|i| name == &graph[*i].0);
-            if let Some(new_type) = src_op.map(|i| comp.operations[graph[i].1].kind.sig().ret()) {
-                // We found a better type, let's use it
-                operations[graph[n].1].kind = op
-                    .kind
-                    .new_with_sig(op.kind.sig().new_with_arg(pos, new_type));
-            }
-        }
+        };
+
+        // Compute the new signature from the graph
+        let new_sig = match inputs.len() {
+            0 => Signature::nullary(ret),
+            1 => Signature::unary(find_type(0)?, ret),
+            2 => Signature::binary(find_type(0)?, find_type(1)?, ret),
+            3 => Signature::ternary(find_type(0)?, find_type(1)?, find_type(2)?, ret),
+            _ => unimplemented!(),
+        };
+
+        // Update the existing signature with it.
+        operations[graph[n].1].kind.sig_mut().merge(new_sig)?;
     }
     Ok(Some(Computation { operations }))
 }

@@ -1,6 +1,6 @@
 pub mod networking;
 pub mod print;
 pub mod pruning;
-pub mod types;
+pub mod typing;
 
 mod spike;

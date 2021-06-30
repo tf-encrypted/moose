@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use approx::AbsDiffEq;
-    use moose::compilation::types::update_types_one_hop;
+    use moose::compilation::typing::update_types_one_hop;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use moose::{computation::*, python_computation::PyComputation, standard::Float64Tensor};
