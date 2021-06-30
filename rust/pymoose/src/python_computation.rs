@@ -19,6 +19,7 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
+        let rust_comp = update_types_one_hop(&rust_comp).unwrap().unwrap();
         rust_comp.toposort().unwrap()
     }
 
@@ -559,7 +560,6 @@ def f():
 "#;
 
         let comp = graph_from_run_call0_func(py_code);
-        let comp = update_types_one_hop(&comp).unwrap().unwrap();
         let x = Value::from(Float64Tensor::from(
             array![
                 [-0.76943992],
