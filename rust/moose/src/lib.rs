@@ -474,6 +474,256 @@ macro_rules! kernel {
     };
 }
 
+macro_rules! modelled {
+    /*
+    Nullary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
+        impl crate::kernels::NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {}
+
+        impl $t<ConcreteContext, $u> for $plc {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*)?) -> $u {
+                use crate::computation::{KnownType, NullarySignature};
+                use crate::kernels::Context;
+                use std::convert::TryInto;
+
+                let sig = NullarySignature {
+                    ret: <$u as KnownType<ConcreteContext>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                ctx.execute(op.into(), &self.into(), vec![])
+                    .try_into()
+                    .unwrap()
+            }
+        }
+
+        // impl $t<SymbolicContext, <$u as KnownType>::Symbolic> for $plc {
+        //     fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*)?) -> <$u as KnownType>::Symbolic {
+        //         let sig = NullarySignature {
+        //             ret: <$u as KnownType>::TY,
+        //         };
+        //         let op = $op {
+        //             sig: sig.into(),
+        //             $($($attr_id),*)?
+        //         };
+        //         ctx.execute(op.into(), &self.into(), vec![])
+        //             .try_into()
+        //             .unwrap()
+        //     }
+        // }
+    };
+
+    /*
+    Unary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
+        impl crate::kernels::UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
+
+        impl $t<ConcreteContext, $t0, $u> for $plc {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> $u {
+                use crate::computation::{KnownType, UnarySignature};
+                use crate::kernels::Context;
+                use std::convert::TryInto;
+
+                let sig = UnarySignature {
+                    arg0: <$t0 as KnownType<ConcreteContext>>::TY,
+                    ret: <$u as KnownType<ConcreteContext>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                    .try_into()
+                    .unwrap()
+            }
+        }
+
+        // impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic> for $plc {
+        //     type Output = <$u as KnownType>::Symbolic;
+
+        //     fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*,)? x0: &<$t0 as KnownType>::Symbolic) -> Self::Output {
+        //         let sig = UnarySignature {
+        //             arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
+        //             ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+        //         };
+        //         let op = $op {
+        //             sig: sig.into(),
+        //             $($($attr_id),*)?
+        //         };
+        //         ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
+        //             .try_into()
+        //             .unwrap()
+        //     }
+        // }
+    };
+
+    /*
+    Binary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
+        impl crate::kernels::BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
+
+        impl $t<ConcreteContext, $t0, $t1, $u> for $plc {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
+                use crate::computation::{KnownType, BinarySignature};
+                use crate::kernels::Context;
+                use std::convert::TryInto;
+
+                let sig = BinarySignature {
+                    arg0: <$t0 as KnownType<ConcreteContext>>::TY,
+                    arg1: <$t1 as KnownType<ConcreteContext>>::TY,
+                    ret: <$u as KnownType<ConcreteContext>>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    vec![x0.clone().into(), x1.clone().into()],
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+        // impl $t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic>
+        //     for $plc
+        // {
+        //     type Output = <$u as KnownType>::Symbolic;
+
+        //     fn $f(
+        //         &self,
+        //         ctx: &SymbolicContext,
+        //         $($($attr_id:$attr_ty),*,)?
+        //         x0: &<$t0 as KnownType>::Symbolic,
+        //         x1: &<$t1 as KnownType>::Symbolic,
+        //     ) -> Self::Output {
+        //         let sig = BinarySignature {
+        //             arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
+        //             arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
+        //             ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+        //         };
+        //         let op = $op {
+        //             sig: sig.into(),
+        //             $($($attr_id),*)?
+        //         };
+        //         ctx.execute(
+        //             op.into(),
+        //             &self.into(),
+        //             vec![x0.clone().into(), x1.clone().into()],
+        //         )
+        //         .try_into()
+        //         .unwrap()
+        //     }
+        // }
+    };
+
+    /*
+    Ternary
+    */
+    ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
+        impl crate::kernels::TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
+
+        impl $t<ConcreteContext, $t0, $t1, $t2, $u> for $plc {
+            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
+                use crate::computation::{KnownType, TernarySignature};
+
+                let sig = TernarySignature {
+                    arg0: <$t0 as KnownType>::TY,
+                    arg1: <$t1 as KnownType>::TY,
+                    arg2: <$t2 as KnownType>::TY,
+                    ret: <$u as KnownType>::TY,
+                };
+                let op = $op {
+                    sig: sig.into(),
+                    $($($attr_id),*)?
+                };
+                ctx.execute(
+                    op.into(),
+                    &self.into(),
+                    vec![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+                )
+                .try_into()
+                .unwrap()
+            }
+        }
+
+        // impl
+        //     $t<
+        //         SymbolicContext,
+        //         <$t0 as KnownType>::Symbolic,
+        //         <$t1 as KnownType>::Symbolic,
+        //         <$t2 as KnownType>::Symbolic,
+        //     > for $plc
+        // {
+        //     type Output = <$u as KnownType>::Symbolic;
+
+        //     fn $f(
+        //         &self,
+        //         ctx: &SymbolicContext,
+        //         $($($attr_id:$attr_ty),*,)?
+        //         x0: &<$t0 as KnownType>::Symbolic,
+        //         x1: &<$t1 as KnownType>::Symbolic,
+        //         x2: &<$t2 as KnownType>::Symbolic,
+        //     ) -> Self::Output {
+        //         let sig = TernarySignature {
+        //             arg0: <<$t0 as KnownType>::Symbolic as KnownType>::TY,
+        //             arg1: <<$t1 as KnownType>::Symbolic as KnownType>::TY,
+        //             arg2: <<$t2 as KnownType>::Symbolic as KnownType>::TY,
+        //             ret: <<$u as KnownType>::Symbolic as KnownType>::TY,
+        //         };
+        //         let op = $op {
+        //             sig: sig.into(),
+        //             $($($attr_id),*)?
+        //         };
+        //         ctx.execute(
+        //             op.into(),
+        //             &self.into(),
+        //             vec![x0.clone().into(), x1.clone().into(), x2.clone().into()],
+        //         )
+        //         .try_into()
+        //         .unwrap()
+        //     }
+        // }
+    };
+}
+
+macro_rules! modelled_alias {
+    /*
+    Binary
+    */
+    ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
+        impl $src_t<ConcreteContext, $t0, $t1> for $plc {
+            type Output = $u;
+
+            fn $src_f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
+                $dst_t::$dst_f(self, ctx, x0, x1)
+            }
+        }
+
+        // impl $src_t<SymbolicContext, <$t0 as KnownType>::Symbolic, <$t1 as KnownType>::Symbolic>
+        //     for $plc
+        // {
+        //     type Output = <$u as KnownType>::Symbolic;
+
+        //     fn $src_f(
+        //         &self,
+        //         ctx: &SymbolicContext,
+        //         x0: &<$t0 as KnownType>::Symbolic,
+        //         x1: &<$t1 as KnownType>::Symbolic,
+        //     ) -> Self::Output {
+        //         $dst_t::$dst_f(self, ctx, x0, x1)
+        //     }
+        // }
+    };
+}
+
 pub mod additive;
 pub mod bit;
 pub mod compilation;

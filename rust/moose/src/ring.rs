@@ -13,7 +13,7 @@ use crate::computation::Role;
 use crate::computation::{
     HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
 };
-use crate::kernels::ConcreteContext;
+use crate::kernels::{ConcreteContext, PlacementAdd, PlacementSub, PlacementMul, PlacementShl, PlacementShr, PlacementSample};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
@@ -32,6 +32,10 @@ impl<T> Placed for AbstractRingTensor<T> {
         self.1.clone()
     }
 }
+
+
+modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
 
 kernel! {
     RingAddOp,
@@ -56,6 +60,11 @@ impl RingAddOp {
     }
 }
 
+
+modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
+
+
 kernel! {
     RingSubOp,
     [
@@ -78,6 +87,11 @@ impl RingSubOp {
         AbstractRingTensor(x.0 - y.0, plc.clone())
     }
 }
+
+
+modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
+
 
 kernel! {
     RingMulOp,
@@ -102,6 +116,11 @@ impl RingMulOp {
     }
 }
 
+
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
+
+
 kernel! {
     RingShlOp,
     [
@@ -125,6 +144,11 @@ impl RingShlOp {
     }
 }
 
+
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShrOp);
+
+
 kernel! {
     RingShrOp,
     [
@@ -147,6 +171,10 @@ impl RingShrOp {
         AbstractRingTensor(x.0 >> amount, plc.clone())
     }
 }
+
+// TODO
+// modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
+// modelled!(PlacementSample::sample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,

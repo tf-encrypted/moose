@@ -68,6 +68,30 @@ pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
     fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
 }
 
+pub(crate) trait NullaryKernelCheck<C: Context, P, Y>
+where
+    Self: NullaryKernel<C, P, Y>,
+{
+}
+
+pub(crate) trait UnaryKernelCheck<C: Context, P, X0, Y>
+where
+    Self: UnaryKernel<C, P, X0, Y>,
+{
+}
+
+pub(crate) trait BinaryKernelCheck<C: Context, P, X0, X1, Y>
+where
+    Self: BinaryKernel<C, P, X0, X1, Y>,
+{
+}
+
+pub(crate) trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y>
+where
+    Self: TernaryKernel<C, P, X0, X1, X2, Y>,
+{
+}
+
 pub trait PlacementKeyGen<C: Context, K> {
     fn keygen(&self, ctx: &C) -> K;
 }
