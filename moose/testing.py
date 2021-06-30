@@ -9,6 +9,10 @@ from moose.logger import get_tracer
 from moose.networking.memory import Networking
 from moose.storage.memory import MemoryDataStore
 
+from moose import edsl
+from moose.computation.utils import serialize_computation
+
+from pymoose import MooseLocalRuntime
 
 class TestRuntime:
     def __init__(self, networking=None, backing_executors=None) -> None:
@@ -71,3 +75,21 @@ def run_test_computation(computation, players, arguments={}):
     return {
         player: runtime.get_executor(player.name).storage.store for player in players
     }
+
+# TODO [Yann] Rename if we decide to keep
+# We might want to subclass MooseLocalRuntime instead?
+class NewTestRuntime:
+    def __init__(self, executors_storage: dict):
+        self._executors_storage = executors_storage
+        self._runtime = MooseLocalRuntime(self._executors_storage)
+
+    def evaluate_computation(self, computation, arguments={}, ring=128):
+        concrete_comp, outputs_name = edsl.trace_and_compile(computation, ring=ring)
+        comp_bin = serialize_computation(concrete_comp)
+        comp_outputs = self._runtime.evaluate_computation(comp_bin, arguments)
+        outputs = [comp_outputs.get(output_name) for output_name in outputs_name]
+        return outputs
+
+    def get_value_from_storage(self, placement, key):
+        return self._runtime.get_value_from_storage(placement, key)
+        
