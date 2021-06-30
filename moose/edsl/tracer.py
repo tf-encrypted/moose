@@ -80,10 +80,10 @@ def trace(abstract_computation):
 def trace_and_compile(
     abstract_computation, compiler_passes=None, render=False, ring=64
 ):
-    logical_computation, output_names = trace(abstract_computation)
+    logical_computation = trace(abstract_computation)
     compiler = Compiler(passes=compiler_passes, ring=ring)
     physical_comp = compiler.compile(logical_computation, render=render)
-    return physical_comp, output_names
+    return physical_comp
 
 
 class AstTracer:
@@ -94,12 +94,10 @@ class AstTracer:
         self.placement_cache = dict()
 
     def trace(self, expressions: Expression) -> Computation:
-        outputs_name = []
         if not isinstance(expressions, (tuple, list)):
             expressions = [expressions]
         for expression in expressions:
             output_name = self.get_fresh_name("output")
-            outputs_name.append(output_name)
             op = self.visit(expression)
             self.computation.add_operation(
                 OutputOperation(
@@ -109,7 +107,7 @@ class AstTracer:
                     output_type=op.output_type,
                 )
             )
-        return self.computation, outputs_name
+        return self.computation
 
     def get_fresh_name(self, prefix):
         count = self.name_counters[prefix]
