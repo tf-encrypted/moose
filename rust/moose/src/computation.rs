@@ -261,15 +261,6 @@ impl Signature {
         }
     }
 
-    pub fn args(&self) -> Vec<&Ty> {
-        match self {
-            Signature::Nullary(_) => vec![],
-            Signature::Unary(s) => vec![&s.arg0],
-            Signature::Binary(s) => vec![&s.arg0, &s.arg1],
-            Signature::Ternary(s) => vec![&s.arg0, &s.arg1, &s.arg2],
-        }
-    }
-
     pub fn arity(&self) -> usize {
         match self {
             Signature::Nullary(_) => 0,
