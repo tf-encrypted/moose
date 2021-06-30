@@ -4,7 +4,7 @@
 use macros::with_context;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
-use std::ops::{Add, Mul, Shl, Shr, Sub};
+use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -455,6 +455,14 @@ impl<T> Placed for Ring<T> {
     }
 }
 
+impl Placed for Shape {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
 impl<R> Placed for ReplicatedTensor<R>
 where
     R: Placed<Placement = HostPlacement>,
@@ -515,14 +523,6 @@ where
 }
 
 impl Placed for PrfKey {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
-    }
-}
-
-impl Placed for Shape {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Self::Placement {
@@ -724,9 +724,11 @@ pub enum Operator {
     BitXorOp(BitXorOp),
     BitAndOp(BitAndOp),
     RingSubOp(RingSubOp),
+    RingNegOp(RingNegOp),
     RingMulOp(RingMulOp),
     RingSampleOp(RingSampleOp),
     FillOp(FillOp),
+    OnesOp(OnesOp),
     BitSampleOp(BitSampleOp),
     RepSetupOp(RepSetupOp),
     RepAddOp(RepAddOp),
@@ -736,6 +738,7 @@ pub enum Operator {
     RepRevealOp(RepRevealOp),
     RepTruncPrOp(RepTruncPrOp),
     AdditiveAddOp(AdditiveAddOp),
+    AdditiveSubOp(AdditiveSubOp),
     AdditiveMulOp(AdditiveMulOp),
     AdditiveRevealOp(AdditiveRevealOp),
     ConstantOp(ConstantOp),
@@ -762,9 +765,11 @@ operator!(RingShrOp);
 operator!(BitXorOp);
 operator!(BitAndOp);
 operator!(RingSubOp);
+operator!(RingNegOp);
 operator!(RingMulOp);
 operator!(RingSampleOp);
 operator!(FillOp);
+operator!(OnesOp);
 operator!(BitSampleOp);
 operator!(RepSetupOp);
 operator!(RepAddOp);
@@ -774,6 +779,7 @@ operator!(RepShareOp);
 operator!(RepRevealOp);
 operator!(RepTruncPrOp);
 operator!(AdditiveAddOp);
+operator!(AdditiveSubOp);
 operator!(AdditiveMulOp);
 operator!(AdditiveRevealOp);
 operator!(ConstantOp);
@@ -928,17 +934,37 @@ impl Shr<usize> for RingTensor<u128> {
     }
 }
 
-impl RingTensor<u128> {
-    fn fill(el: u128, plc: HostPlacement) -> RingTensor<u128> {
+impl Neg for RingTensor<u64> {
+    type Output = RingTensor<u64>;
+    fn neg(self) -> Self::Output {
+        RingTensor(self.0.wrapping_neg(), self.1)
+    }
+}
+
+impl Neg for RingTensor<u128> {
+    type Output = RingTensor<u128>;
+    fn neg(self) -> Self::Output {
+        RingTensor(self.0.wrapping_neg(), self.1)
+    }
+}
+
+// impl RingTensor<u128> {
+//     fn fill(el: u128, plc: HostPlacement) -> RingTensor<u128> {
+//         RingTensor(el, plc)
+//     }
+// }
+
+impl<T> RingTensor<T> {
+    fn fill(el: T, plc: HostPlacement) -> RingTensor<T> {
         RingTensor(el, plc)
     }
 }
 
-impl RingTensor<u64> {
-    fn fill(el: u64, plc: HostPlacement) -> RingTensor<u64> {
-        RingTensor(el, plc)
-    }
-}
+// impl RingTensor<u64> {
+//     fn fill(el: u64, plc: HostPlacement) -> RingTensor<u64> {
+//         RingTensor(el, plc)
+//     }
+// }
 
 impl BitTensor {
     fn fill(el: u8, plc: HostPlacement) -> BitTensor {
@@ -1271,6 +1297,10 @@ trait PlacementSub<C: Context, T, U, O> {
     fn sub(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
+trait PlacementNeg<C: Context, T, O> {
+    fn neg(&self, ctx: &C, x: &T) -> O;
+}
+
 trait PlacementMul<C: Context, T, U, O> {
     fn mul(&self, ctx: &C, x: &T, y: &U) -> O;
 }
@@ -1294,6 +1324,10 @@ trait PlacementFill<C: Context, S, O> {
     fn fill(&self, ctx: &C, value: Value, shape: &S) -> O;
 }
 
+trait PlacementOnes<C: Context, S, O> {
+    fn ones(&self, ctx: &C, shape: &S) -> O;
+}
+
 trait PlacementMulSetup<C: Context, S, T, U, O> {
     fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> O;
 }
@@ -1312,6 +1346,10 @@ trait PlacementSample<C: Context, O> {
 
 trait PlacementRepToAdd<C: Context, T, O> {
     fn rep_to_add(&self, ctx: &C, x: &T) -> O;
+}
+
+trait PlacementAddToRep<C: Context, T, O> {
+    fn add_to_rep(&self, ctx: &C, x: &T) -> O;
 }
 
 trait PlacementTruncPr<C: Context, S, T, O> {
@@ -1350,6 +1388,7 @@ impl Context for ConcreteContext {
             Operator::BitXorOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::BitAndOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingSubOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingNegOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingShlOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingShrOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -1361,12 +1400,14 @@ impl Context for ConcreteContext {
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdditiveSubOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FillOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::OnesOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
     }
 
@@ -1462,10 +1503,12 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::BitXorOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::BitAndOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingSubOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::RingNegOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingShlOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingShrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::FillOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::OnesOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepSetupOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepShareOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -1474,6 +1517,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::AdditiveSubOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::ConstantOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -2802,6 +2846,99 @@ impl AdditiveAddOp {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct AdditiveSubOp {
+    sig: Signature,
+}
+
+modelled!(PlacementSub::sub, AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveSubOp);
+modelled!(PlacementSub::sub, AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveSubOp);
+modelled!(PlacementSub::sub, AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor, AdditiveSubOp);
+modelled!(PlacementSub::sub, AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor, AdditiveSubOp);
+modelled!(PlacementSub::sub, AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor, AdditiveSubOp);
+modelled!(PlacementSub::sub, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdditiveSubOp);
+
+hybrid_kernel! {
+    AdditiveSubOp,
+    [
+        (AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor => Self::add_add_kernel),
+        (AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor => Self::add_add_kernel),
+        (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::add_ring_kernel),
+        (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::add_ring_kernel),
+        (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::ring_add_kernel),
+        (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::ring_add_kernel),
+    ]
+}
+
+impl AdditiveSubOp {
+    fn add_add_kernel<C: Context, R>(
+        ctx: &C,
+        add: &AdditivePlacement,
+        x: AdditiveTensor<R>,
+        y: AdditiveTensor<R>,
+    ) -> AdditiveTensor<R>
+    where
+        HostPlacement: PlacementSub<C, R, R, R>,
+    {
+        let (player0, player1) = add.host_placements();
+
+        let AdditiveTensor { shares: [x0, x1] } = &x;
+
+        let AdditiveTensor { shares: [y0, y1] } = &y;
+
+        let z0 = with_context!(player0, ctx, x0 - y0);
+        let z1 = with_context!(player1, ctx, x1 - y1);
+
+        AdditiveTensor { shares: [z0, z1] }
+    }
+
+    fn add_ring_kernel<C: Context, R>(
+        ctx: &C,
+        add: &AdditivePlacement,
+        x: AdditiveTensor<R>,
+        y: R,
+    ) -> AdditiveTensor<R>
+    where
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementSub<C, R, R, R>,
+    {
+        let (player0, player1) = add.host_placements();
+        let AdditiveTensor { shares: [x0, x1] } = x;
+
+        let y_plc = y.placement();
+
+        let shares = match y_plc {
+            _ if y_plc == player0 => [with_context!(player0, ctx, x0 - y), x1],
+            _ if y_plc == player1 => [x0, with_context!(player1, ctx, x1 - y)],
+            _ => [with_context!(player0, ctx, x0 - y), x1],
+        };
+        AdditiveTensor { shares }
+    }
+
+    fn ring_add_kernel<C: Context, R>(
+        ctx: &C,
+        add: &AdditivePlacement,
+        x: R,
+        y: AdditiveTensor<R>,
+    ) -> AdditiveTensor<R>
+    where
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementSub<C, R, R, R>,
+        HostPlacement: PlacementNeg<C, R, R>,
+    {
+        let (player0, player1) = add.host_placements();
+        let AdditiveTensor { shares: [y0, y1] } = y;
+
+        let x_plc = x.placement();
+        let shares = match x_plc {
+            _ if x_plc == player0 => [with_context!(player0, ctx, x - y0), player0.neg(ctx, &y1)],
+            _ if x_plc == player1 => [player0.neg(ctx, &y0), with_context!(player1, ctx, x - y1)],
+            _ => [with_context!(player0, ctx, x - y0), player1.neg(ctx, &y1)],
+        };
+        AdditiveTensor { shares }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct RepMulOp {
     sig: Signature,
 }
@@ -3126,10 +3263,11 @@ where
     HostPlacement: PlacementShr<C, R, R>,
     AdditivePlacement: PlacementArithmeticXor<C, R>,
     AdditivePlacement: PlacementShl<C, AdditiveTensor<R>, AdditiveTensor<R>>,
-    R: From<usize> + Shl<usize, Output = R> + Into<Value> + Clone,
+    R: Shl<usize, Output = R> + Into<Value> + Clone,
     HostPlacement: PlacementSample<C, R>,
     AdditivePlacement: PlacementFill<C, Shape, AdditiveTensor<R>>, // TODO: Fix shape; Use type parameter
     HostPlacement: PlacementBitCompose<C, R> + PlacementKeyGen<C, K> + PlacementSub<C, R, R, R>,
+    HostPlacement: PlacementOnes<C, Shape, R>,
 {
     fn trunc_pr(
         &self,
@@ -3145,9 +3283,11 @@ where
         // TODO(Dragos)this is optional if we work with unsigned numbers
         let x_shape = Shape(vec![1], player_a.clone());
 
+        let ones = player_a.ones(ctx, &x_shape);
+
         let twok = self.fill(
             ctx,
-            (R::from(1) << k).into(),
+            player_a.shl(ctx, k, &ones).into(),
             &Shape(vec![1], player_a.clone()),
         );
         let positive = self.add(ctx, x, &twok);
@@ -3167,7 +3307,7 @@ where
 
         let output = self.add(ctx, &self.sub(ctx, &shifted_msb, &r_top), &opened_mask_tr);
         // TODO(Dragos)this is optional if we work with unsigned numbers
-        let remainder = self.fill(ctx, (R::from(1) << (k - 1 - m)).into(), &x_shape);
+        let remainder = self.fill(ctx, player_a.shl(ctx, k - 1 - m, &ones).into(), &x_shape);
         self.sub(ctx, &output, &remainder)
     }
     fn get_prep(
@@ -3318,16 +3458,22 @@ impl RepTruncPrOp {
     where
         R: Clone + Into<C::Value> + TryFrom<C::Value> + RingSize,
         HostPlacement: PlacementKeyGen<C, K>,
+        AdditivePlacement: PlacementTruncPrWithPrep<C, R, K>
+            + PlacementRepToAdd<C, ReplicatedTensor<R>, AdditiveTensor<R>>,
     {
         let m = amount;
 
         let (player0, player1, player2) = rep.host_placements();
+        let add_plc = AdditivePlacement {
+            players: [player0.player, player1.player],
+        };
+        let x_add = add_plc.rep_to_add(ctx, &xe);
+        let x_trunc = add_plc.trunc_pr(ctx, &x_add, m, player2);
 
+        let signed = true;
         let ReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
-
-        let signed = true;
 
         ReplicatedTensor {
             shares: [
@@ -3475,6 +3621,32 @@ impl FillOp {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct OnesOp {
+    sig: Signature,
+}
+
+modelled!(PlacementOnes::ones, HostPlacement, (Shape) -> Ring64Tensor, OnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (Shape) -> Ring128Tensor, OnesOp);
+
+kernel! {
+    OnesOp,
+    [
+        (HostPlacement, (Shape) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Shape) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl OnesOp {
+    fn kernel<C: Context, T>(ctx: &C, plc: &HostPlacement, shape: &Shape) -> RingTensor<T>
+    where
+        T: From<bool>,
+    {
+        // TODO(Dragos) atm we're not using shape
+        RingTensor::<T>::fill(T::from(true), plc.clone())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct RingAddOp {
     sig: Signature,
 }
@@ -3534,6 +3706,31 @@ impl RingSubOp {
         RingTensor<T>: Sub<RingTensor<T>, Output = RingTensor<T>>,
     {
         x - y
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RingNegOp {
+    sig: Signature,
+}
+
+modelled!(PlacementNeg::neg, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingNegOp);
+modelled!(PlacementNeg::neg, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingNegOp);
+
+kernel! {
+    RingNegOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl RingNegOp {
+    fn kernel<C: Context, T>(_ctx: &C, _plc: &HostPlacement, x: RingTensor<T>) -> RingTensor<T>
+    where
+        RingTensor<T>: Neg<Output = RingTensor<T>>,
+    {
+        -x
     }
 }
 
