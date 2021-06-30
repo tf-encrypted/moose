@@ -1732,46 +1732,6 @@ hybrid_kernel! {
     ]
 }
 
-impl RepToAddOp {
-    fn rep_to_add_kernel<C: Context, R>(
-        ctx: &C,
-        add: &AdditivePlacement,
-        x: ReplicatedTensor<R>,
-    ) -> AdditiveTensor<R>
-    where
-        R: Clone,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
-        R: Placed<Placement = HostPlacement>,
-    {
-        let (player_a, player_b) = add.host_placements();
-        let (player0, player1, player2) = x.placement().host_placements();
-
-        let ReplicatedTensor {
-            shares: [[x00, x10], [x11, x21], [x22, x02]],
-        } = x;
-
-        let shares = match () {
-            _ if player_a == player0 && player_b == player1 => {
-                [with_context!(player0, ctx, x00 + x10), x21]
-            }
-            _ if player_a == player0 && player_b == player2 => {
-                [with_context!(player0, ctx, x00 + x10), x22]
-            }
-            _ if player_a == player1 && player_b == player2 => {
-                [with_context!(player1, ctx, x11 + x21), x02]
-            }
-            _ if player_a == player1 && player_b == player0 => {
-                [x21, with_context!(player0, ctx, x00 + x10)]
-            }
-            _ if player_a == player2 && player_b == player0 => {
-                [x22, with_context!(player0, ctx, x00 + x10)]
-            }
-            _ => [with_context!(player_a, ctx, x00 + x10), x21],
-        };
-        AdditiveTensor { shares }
-    }
-}
-
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
@@ -1808,75 +1768,6 @@ hybrid_kernel! {
     ]
 }
 
-impl AdditiveAddOp {
-    fn add_add_kernel<C: Context, R>(
-        ctx: &C,
-        add: &AdditivePlacement,
-        x: AdditiveTensor<R>,
-        y: AdditiveTensor<R>,
-    ) -> AdditiveTensor<R>
-    where
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
-    {
-        let (player0, player1) = add.host_placements();
-
-        let AdditiveTensor { shares: [x0, x1] } = &x;
-
-        let AdditiveTensor { shares: [y0, y1] } = &y;
-
-        let z0 = with_context!(player0, ctx, x0 + y0);
-        let z1 = with_context!(player1, ctx, x1 + y1);
-
-        AdditiveTensor { shares: [z0, z1] }
-    }
-
-    fn add_ring_kernel<C: Context, R>(
-        ctx: &C,
-        add: &AdditivePlacement,
-        x: AdditiveTensor<R>,
-        y: R,
-    ) -> AdditiveTensor<R>
-    where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
-    {
-        let (player0, player1) = add.host_placements();
-        let AdditiveTensor { shares: [x0, x1] } = x;
-
-        let y_plc = y.placement();
-
-        let shares = match y_plc {
-            _ if y_plc == player0 => [with_context!(player0, ctx, x0 + y), x1],
-            _ if y_plc == player1 => [x0, with_context!(player1, ctx, x1 + y)],
-            _ => [with_context!(player0, ctx, x0 + y), x1],
-        };
-        AdditiveTensor { shares }
-    }
-
-    fn ring_add_kernel<C: Context, R>(
-        ctx: &C,
-        add: &AdditivePlacement,
-        x: R,
-        y: AdditiveTensor<R>,
-    ) -> AdditiveTensor<R>
-    where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
-    {
-        let (player0, player1) = add.host_placements();
-        let AdditiveTensor { shares: [y0, y1] } = y;
-
-        let x_plc = x.placement();
-
-        let shares = match x_plc {
-            _ if x_plc == player0 => [with_context!(player0, ctx, y0 + x), y1],
-            _ if x_plc == player1 => [y0, with_context!(player1, ctx, x + y1)],
-            _ => [with_context!(player0, ctx, x + y0), y1],
-        };
-        AdditiveTensor { shares }
-    }
-}
-
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
@@ -1911,48 +1802,6 @@ hybrid_kernel! {
         (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::add_ring_kernel),
         (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::ring_add_kernel),
     ]
-}
-
-impl AdditiveMulOp {
-    fn ring_add_kernel<C: Context, R>(
-        ctx: &C,
-        add: &AdditivePlacement,
-        x: R,
-        y: AdditiveTensor<R>,
-    ) -> AdditiveTensor<R>
-    where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementMul<C, R, R, Output = R>,
-    {
-        let (player0, player1) = add.host_placements();
-
-        let AdditiveTensor { shares: [y0, y1] } = &y;
-
-        let z0 = with_context!(player0, ctx, x * y0);
-        let z1 = with_context!(player1, ctx, x * y1);
-
-        AdditiveTensor { shares: [z0, z1] }
-    }
-
-    fn add_ring_kernel<C: Context, R>(
-        ctx: &C,
-        add: &AdditivePlacement,
-        x: AdditiveTensor<R>,
-        y: R,
-    ) -> AdditiveTensor<R>
-    where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementMul<C, R, R, Output = R>,
-    {
-        let (player0, player1) = add.host_placements();
-
-        let AdditiveTensor { shares: [x0, x1] } = &x;
-
-        let z0 = with_context!(player0, ctx, x0 * y);
-        let z1 = with_context!(player1, ctx, x1 * y);
-
-        AdditiveTensor { shares: [z0, z1] }
-    }
 }
 
 modelled!(PlacementShare::share, ReplicatedPlacement, (Ring64Tensor) -> Replicated64Tensor, RepShareOp);
@@ -1993,16 +1842,6 @@ hybrid_kernel! {
         (HostPlacement, (Additive64Tensor) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (Additive128Tensor) -> Ring128Tensor => Self::kernel),
     ]
-}
-
-impl AdditiveRevealOp {
-    fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: AdditiveTensor<R>) -> R
-    where
-        HostPlacement: PlacementAdd<C, R, R, Output = R>,
-    {
-        let AdditiveTensor { shares: [x0, x1] } = &xe;
-        with_context!(plc, ctx, x1 + x0)
-    }
 }
 
 // NOTE that supporting op attributes might be a simple adding an ctor input to the macro: (Placement, Signature) -> Op
