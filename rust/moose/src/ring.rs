@@ -8,10 +8,13 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
-use crate::computation::HostPlacement;
 use crate::computation::Placed;
 use crate::computation::Role;
-use crate::prim::RawSeed;
+use crate::computation::{
+    HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
+};
+use crate::kernels::{ConcreteContext, Context};
+use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
 
@@ -27,6 +30,138 @@ impl<T> Placed for AbstractRingTensor<T> {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+impl RingAddOp {
+    fn kernel<T>(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+        y: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 + y.0, plc.clone())
+    }
+}
+
+impl RingSubOp {
+    fn kernel<T>(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+        y: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 - y.0, plc.clone())
+    }
+}
+
+impl RingMulOp {
+    fn kernel<T>(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+        y: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 * y.0, plc.clone())
+    }
+}
+
+impl RingShlOp {
+    fn kernel<T>(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        amount: usize,
+        x: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 << amount, plc.clone())
+    }
+}
+
+impl RingShrOp {
+    fn kernel<T>(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        amount: usize,
+        x: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 >> amount, plc.clone())
+    }
+}
+
+impl RingSampleOp {
+    fn kernel_uniform_u64(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        seed: Seed,
+        shape: Shape,
+    ) -> Ring64Tensor {
+        let mut rng = AesRng::from_seed(seed.0 .0);
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        let raw_array = Array::from_shape_vec(ix, values).unwrap();
+        AbstractRingTensor(raw_array, plc.clone())
+    }
+
+    fn kernel_bits_u64(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        seed: Seed,
+        shape: Shape,
+    ) -> Ring64Tensor {
+        let mut rng = AesRng::from_seed(seed.0 .0);
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+
+    fn kernel_uniform_u128(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        seed: Seed,
+        shape: Shape,
+    ) -> Ring128Tensor {
+        let mut rng = AesRng::from_seed(seed.0 .0);
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size)
+            .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
+            .collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+
+    fn kernel_bits_u128(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        seed: Seed,
+        shape: Shape,
+    ) -> Ring128Tensor {
+        let mut rng = AesRng::from_seed(seed.0 .0);
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 }
 
@@ -52,7 +187,11 @@ impl Ring128Tensor {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size)
-            .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
+            .map(|_| {
+                let upper = rng.next_u64() as u128;
+                let lower = rng.next_u64() as u128;
+                Wrapping((upper << 64) + lower)
+            })
             .collect();
         let ix = IxDyn(shape.0.as_ref());
         Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())

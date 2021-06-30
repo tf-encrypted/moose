@@ -1,5 +1,5 @@
-use crate::computation::HostPlacement;
-use crate::computation::Placed;
+use crate::computation::{HostPlacement, Placed, PrimGenPrfKeyOp};
+use crate::kernels::ConcreteContext;
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
 
@@ -42,6 +42,13 @@ impl Placed for Nonce {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+impl PrimGenPrfKeyOp {
+    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
+        let raw_key = RawPrfKey(AesRng::generate_random_key());
+        PrfKey(raw_key, plc.clone())
     }
 }
 

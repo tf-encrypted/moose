@@ -1856,20 +1856,6 @@ kernel! {
     ]
 }
 
-impl RingAddOp {
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        x: RingTensor<T>,
-        y: RingTensor<T>,
-    ) -> RingTensor<T>
-    where
-        RingTensor<T>: Add<RingTensor<T>, Output = RingTensor<T>>,
-    {
-        x + y
-    }
-}
-
 modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
 modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
 
@@ -1879,20 +1865,6 @@ kernel! {
         (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
     ]
-}
-
-impl RingSubOp {
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        x: RingTensor<T>,
-        y: RingTensor<T>,
-    ) -> RingTensor<T>
-    where
-        RingTensor<T>: Sub<RingTensor<T>, Output = RingTensor<T>>,
-    {
-        x - y
-    }
 }
 
 modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
@@ -1906,21 +1878,6 @@ kernel! {
     ]
 }
 
-impl RingMulOp {
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        x: RingTensor<T>,
-        y: RingTensor<T>,
-    ) -> RingTensor<T>
-    where
-        RingTensor<T>: Mul<RingTensor<T>, Output = RingTensor<T>>,
-    {
-        x * y
-    }
-}
-
-
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
 
@@ -1930,20 +1887,6 @@ kernel! {
         (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[amount] Self::kernel),
         (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[amount] Self::kernel),
     ]
-}
-
-impl RingShlOp {
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        amount: usize,
-        x: RingTensor<T>,
-    ) -> RingTensor<T>
-    where
-        RingTensor<T>: Shl<usize, Output = RingTensor<T>>,
-    {
-        x << amount
-    }
 }
 
 modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShrOp);
@@ -1957,20 +1900,6 @@ kernel! {
     ]
 }
 
-impl RingShrOp {
-    fn kernel<C: Context, T>(
-        _ctx: &C,
-        _plc: &HostPlacement,
-        amount: usize,
-        x: RingTensor<T>,
-    ) -> RingTensor<T>
-    where
-        RingTensor<T>: Shr<usize, Output = RingTensor<T>>,
-    {
-        x >> amount
-    }
-}
-
 modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
 modelled_alias!(PlacementAdd::add, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // add = xor in Z2
 modelled_alias!(PlacementSub::sub, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // sub = xor in Z2
@@ -1980,24 +1909,6 @@ kernel! {
     [
         (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
     ]
-}
-
-impl BitXorOp {
-    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
-    where
-        BitTensor: BitXor<BitTensor, Output = BitTensor>,
-    {
-        x ^ y
-    }
-}
-
-impl BitAndOp {
-    fn kernel<C: Context>(_ctx: &C, _plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor
-    where
-        BitTensor: BitAnd<BitTensor, Output = BitTensor>,
-    {
-        x & y
-    }
 }
 
 modelled!(PlacementAnd::and, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
@@ -2019,16 +1930,6 @@ kernel! {
     ]
 }
 
-impl PrfKeyGenOp {
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
-        // TODO
-        PrfKey(
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            plc.clone(),
-        )
-    }
-}
-
 modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
 modelled!(PlacementSample::sample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
 
@@ -2040,16 +1941,6 @@ kernel! {
     ]
 }
 
-impl RingSampleOp {
-    fn kernel<T>(ctx: &ConcreteContext, plc: &HostPlacement) -> RingTensor<T>
-    where
-        T: From<u32>,
-    {
-        // TODO
-        RingTensor::<T>(T::from(987654321), plc.clone())
-    }
-}
-
 modelled!(PlacementSample::sample, HostPlacement, () -> BitTensor, BitSampleOp);
 
 kernel! {
@@ -2057,13 +1948,6 @@ kernel! {
     [
         (HostPlacement, () -> BitTensor => Self::kernel),
     ]
-}
-
-impl BitSampleOp {
-    fn kernel(ctx: &ConcreteContext, plc: &HostPlacement) -> BitTensor {
-        // TODO
-        BitTensor(0, plc.clone())
-    }
 }
 
 impl DispatchKernel<ConcreteContext> for ConstantOp {

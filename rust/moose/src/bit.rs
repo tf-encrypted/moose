@@ -1,8 +1,9 @@
-use crate::computation::HostPlacement;
 use crate::computation::Placed;
-use crate::prim::RawSeed;
+use crate::computation::{BitAndOp, BitSampleOp, BitXorOp, HostPlacement};
+use crate::kernels::ConcreteContext;
+use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
-use crate::standard::RawShape;
+use crate::standard::{RawShape, Shape};
 use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -16,6 +17,38 @@ impl Placed for BitTensor {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+impl BitSampleOp {
+    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, seed: Seed, shape: Shape) -> BitTensor {
+        let mut rng = AesRng::from_seed(seed.0 .0);
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        BitTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+}
+
+impl BitXorOp {
+    fn kernel(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        x: BitTensor,
+        y: BitTensor,
+    ) -> BitTensor {
+        BitTensor(x.0 ^ y.0, plc.clone())
+    }
+}
+
+impl BitAndOp {
+    fn kernel(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        x: BitTensor,
+        y: BitTensor,
+    ) -> BitTensor {
+        BitTensor(x.0 & y.0, plc.clone())
     }
 }
 
