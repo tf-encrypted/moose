@@ -79,6 +79,174 @@ macro_rules! derive_runtime_kernel {
     };
 }
 
+macro_rules! concrete_dispatch_kernel {
+
+    /*
+    Nullaray
+    */
+
+    ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
+        impl crate::kernels::DispatchKernel<ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+                use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
+                use crate::kernels::NullaryKernel;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Nullary(NullarySignature{
+                                ret: <$u>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+
+                            let k = <$op as NullaryKernel<ConcreteContext, $plc, $u>>::compile(self, &ctx, &plc);
+
+                            Box::new(move |operands: Vec<crate::computation::Value>| {
+                                assert_eq!(operands.len(), 0);
+
+                                let y: $u = k(&ctx, &plc);
+                                y.into()
+                            })
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+        }
+    };
+
+    /*
+    Unary
+    */
+
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
+        impl crate::kernels::DispatchKernel<ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
+                use crate::kernels::UnaryKernel;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Unary(UnarySignature {
+                                arg0: <$t0>::TY,
+                                ret: <$u>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+
+                            let k = <$op as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
+
+                            Box::new(move |operands: Vec<crate::computation::Value>| {
+                                assert_eq!(operands.len(), 1);
+
+                                let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
+
+                                let y: $u = k(&ctx, &plc, x0);
+                                y.into()
+                            })
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+        }
+    };
+
+    /*
+    Binary
+    */
+
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
+        impl crate::kernels::DispatchKernel<ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
+                use crate::kernels::BinaryKernel;
+                use std::convert::TryInto;
+
+                match (plc.ty(), self.sig) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Binary(BinarySignature{
+                                arg0: <$t0>::TY,
+                                arg1: <$t1>::TY,
+                                ret: <$u>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+
+                            let k = <$op as BinaryKernel<
+                                ConcreteContext,
+                                $plc,
+                                $t0,
+                                $t1,
+                                $u
+                            >>::compile(self, &ctx, &plc);
+
+                            Box::new(move |operands| -> crate::computation::Value {
+                                assert_eq!(operands.len(), 2);
+
+                                let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
+                                let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
+
+                                let y: $u = k(&ctx, &plc, x0, x1);
+                                y.into()
+                            })
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+        }
+    };
+
+    /*
+    Ternary
+    */
+
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
+        impl DispatchKernel<ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value + 'c> {
+                match (plc.ty(), self.sig) {
+                    $(
+                        (
+                            <$plc>::TY,
+                            Signature::Ternary(TernarySignature{
+                                arg0: <$t0>::TY,
+                                arg1: <$t1>::TY,
+                                arg2: <$t2>::TY,
+                                ret: <$u>::TY,
+                            })
+                        ) => {
+                            let plc: $plc = plc.clone().try_into().unwrap();
+
+                            let k = <$op as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
+
+                            Box::new(move |operands: Vec<Value>| -> Value {
+                                assert_eq!(operands.len(), 3);
+
+                                let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
+                                let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
+                                let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
+
+                                let y: $u = k(&ctx, &plc, x0, x1, x2);
+                                y.into()
+                            })
+                        }
+                    )+
+                    _ => unimplemented!(), // ok
+                }
+            }
+        }
+    };
+}
+
 /// Kernel function is never used in symbolic contexts
 macro_rules! kernel {
 
@@ -87,7 +255,7 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
-        // concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
         // symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
 
         $(
@@ -133,11 +301,11 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        // concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
         // symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
 
         $(
-            impl UnaryKernel<
+            impl crate::kernels::UnaryKernel<
                 ConcreteContext,
                 $plc,
                 $t0,
@@ -188,11 +356,11 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        // concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
         // symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
 
         $(
-            impl BinaryKernel<
+            impl crate::kernels::BinaryKernel<
                 ConcreteContext,
                 $plc,
                 $t0,
@@ -247,7 +415,7 @@ macro_rules! kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
-        // concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
         // symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
 
         $(

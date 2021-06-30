@@ -1,6 +1,6 @@
 use crate::computation::Placed;
 use crate::computation::{BitAndOp, BitSampleOp, BitXorOp, HostPlacement};
-use crate::kernels::{BinaryKernel, ConcreteContext};
+use crate::kernels::ConcreteContext;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};

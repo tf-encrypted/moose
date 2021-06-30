@@ -129,7 +129,7 @@ macro_rules! values {
             Ring128(u128),
         }
 
-        #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
+        #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
         pub enum Ty {
             Unknown,
             $($val,)+
@@ -745,7 +745,7 @@ pub struct RepToAdtOp {
     sig: Signature,
 }
 
-trait KnownPlacement {
+pub trait KnownPlacement {
     const TY: PlacementTy;
 
     fn ty(&self) -> PlacementTy {
@@ -763,7 +763,7 @@ macro_rules! placements {
         }
 
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
             pub enum PlacementTy {
                 $($p,)+
             }

@@ -13,7 +13,7 @@ use crate::computation::Role;
 use crate::computation::{
     HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
 };
-use crate::kernels::{BinaryKernel, ConcreteContext, UnaryKernel};
+use crate::kernels::ConcreteContext;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};

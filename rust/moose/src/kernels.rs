@@ -40,6 +40,14 @@ impl Context for ConcreteContext {
     }
 }
 
+pub trait DispatchKernel<C: Context> {
+    fn compile<'c>(
+        &self,
+        ctx: &'c C,
+        plc: &Placement,
+    ) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
+}
+
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead
