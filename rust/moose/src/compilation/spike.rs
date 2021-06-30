@@ -3027,6 +3027,54 @@ where
     }
 }
 
+trait PlacementBitCompose<C: Context, R> {
+    fn bit_compose(&self, ctx: &C, bits: &[R]) -> R;
+}
+
+impl<C: Context, R> PlacementBitCompose<C, R> for HostPlacement
+where
+    R: Clone,
+    HostPlacement: PlacementShl<C, R, R>,
+    HostPlacement: PlacementTreeReduce<C, R>,
+{
+    fn bit_compose(&self, ctx: &C, bits: &[R]) -> R {
+        let shifted_bits: Vec<_> = (0..bits.len())
+            .map(|i| self.shl(ctx, i, &bits[i]))
+            .collect();
+        self.tree_reduce(ctx, &shifted_bits)
+    }
+}
+
+trait PlacementTreeReduce<C: Context, R> {
+    fn tree_reduce(&self, ctx: &C, sequence: &[R]) -> R;
+}
+
+impl<C: Context, R> PlacementTreeReduce<C, R> for HostPlacement
+where
+    R: Clone,
+    HostPlacement: PlacementAdd<C, R, R, R>,
+{
+    fn tree_reduce(&self, ctx: &C, sequence: &[R]) -> R {
+        let n = sequence.len();
+        if n == 1 {
+            sequence[0].clone()
+        } else {
+            let mut reduced: Vec<_> = (0..n / 2)
+                .map(|i| {
+                    let x0: &R = &sequence[2 * i];
+                    let x1: &R = &sequence[2 * i + 1];
+                    let z = self.add(ctx, &x0, &x1);
+                    z
+                })
+                .collect();
+            if n % 2 == 1 {
+                reduced.push(sequence[n - 1].clone());
+            }
+            self.tree_reduce(ctx, &reduced)
+        }
+    }
+}
+
 trait PlacementArithmeticXor<C: Context, R> {
     fn arithmetic_xor(&self, ctx: &C, x: &AdditiveTensor<R>, y: &R) -> AdditiveTensor<R>;
     // compute x + y - 2 * x * y
@@ -3048,19 +3096,24 @@ where
     }
 }
 
-trait PlacementTruncPrWithPrep<C: Context, R> {
+trait PlacementTruncPrWithPrep<C: Context, R, K> {
     fn trunc_pr(
         &self,
         ctx: &C,
         x: &AdditiveTensor<R>,
         m: usize,
-        r: &AdditiveTensor<R>,
-        r_top: &AdditiveTensor<R>,
-        r_msb: &AdditiveTensor<R>,
+        provider: HostPlacement,
     ) -> AdditiveTensor<R>;
+    fn get_prep(
+        &self,
+        ctx: &C,
+        shape: &Shape,
+        m: usize,
+        provider: HostPlacement,
+    ) -> (AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>);
 }
 
-impl<C: Context, R> PlacementTruncPrWithPrep<C, R> for AdditivePlacement
+impl<C: Context, R, K> PlacementTruncPrWithPrep<C, R, K> for AdditivePlacement
 where
     R: RingSize,
     AdditivePlacement: PlacementAdd<C, AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>>,
@@ -3073,22 +3126,35 @@ where
     HostPlacement: PlacementShr<C, R, R>,
     AdditivePlacement: PlacementArithmeticXor<C, R>,
     AdditivePlacement: PlacementShl<C, AdditiveTensor<R>, AdditiveTensor<R>>,
+    R: From<usize> + Shl<usize, Output = R> + Into<Value> + Clone,
+    HostPlacement: PlacementSample<C, R>,
+    AdditivePlacement: PlacementFill<C, Shape, AdditiveTensor<R>>, // TODO: Fix shape; Use type parameter
+    HostPlacement: PlacementBitCompose<C, R> + PlacementKeyGen<C, K> + PlacementSub<C, R, R, R>,
 {
     fn trunc_pr(
         &self,
         ctx: &C,
         x: &AdditiveTensor<R>,
         m: usize,
-        r: &AdditiveTensor<R>,
-        r_top: &AdditiveTensor<R>,
-        r_msb: &AdditiveTensor<R>,
+        third_party: HostPlacement,
     ) -> AdditiveTensor<R> {
+        // consider input is always signed
         let (player_a, player_b) = self.host_placements();
 
-        // TODO(Dragos) add 2^{k-1} to x since input is signed
+        let k = R::SIZE - 1;
+        // TODO(Dragos)this is optional if we work with unsigned numbers
+        let x_shape = Shape(vec![1], player_a.clone());
 
-        let masked = self.add(ctx, x, r);
+        let twok = self.fill(
+            ctx,
+            (R::from(1) << k).into(),
+            &Shape(vec![1], player_a.clone()),
+        );
+        let positive = self.add(ctx, x, &twok);
 
+        let (r, r_top, r_msb) = self.get_prep(ctx, &x_shape, m, third_party);
+
+        let masked = self.add(ctx, &positive, &r);
         // (Dragos) Note that these opening should be done to all players for active security.
         let opened_masked_a = player_a.reveal(ctx, &masked);
 
@@ -3096,14 +3162,43 @@ where
         let opened_mask_tr = player_a.shr(ctx, m + 1, &no_msb_mask);
 
         let msb_mask = player_a.shr(ctx, R::SIZE - 1, &opened_masked_a);
-        let msb_to_correct = self.arithmetic_xor(ctx, r_msb, &msb_mask);
-
+        let msb_to_correct = self.arithmetic_xor(ctx, &r_msb, &msb_mask);
         let shifted_msb = self.shl(ctx, R::SIZE - 1 - m, &msb_to_correct);
 
-        let output = self.add(ctx, &self.sub(ctx, &shifted_msb, r_top), &opened_mask_tr);
-        // consider input is always signed
-        // TODO(Dragos) add subtraction by 2^{k-1-m}.
-        masked
+        let output = self.add(ctx, &self.sub(ctx, &shifted_msb, &r_top), &opened_mask_tr);
+        // TODO(Dragos)this is optional if we work with unsigned numbers
+        let remainder = self.fill(ctx, (R::from(1) << (k - 1 - m)).into(), &x_shape);
+        self.sub(ctx, &output, &remainder)
+    }
+    fn get_prep(
+        &self,
+        ctx: &C,
+        shape: &Shape,
+        m: usize,
+        provider: HostPlacement,
+    ) -> (AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>) {
+        let (player_a, player_b) = self.host_placements();
+
+        let r_bits: Vec<_> = (0..R::SIZE).map(|_| provider.sample(ctx)).collect();
+        let r = provider.bit_compose(ctx, &r_bits);
+
+        let r_top_bits: Vec<_> = (m..R::SIZE - 1).map(|i| r_bits[i].clone()).collect();
+        let r_top_ring = provider.bit_compose(ctx, &r_bits[m..R::SIZE - 1]);
+        let r_msb = r_bits[R::SIZE - 1].clone();
+
+        let tmp: [R; 3] = [r, r_top_ring, r_msb];
+
+        let k = provider.keygen(ctx);
+        let mut results = Vec::<AdditiveTensor<R>>::new();
+        for i in 0..3 {
+            let share0 = provider.sample(ctx);
+            let share1 = provider.sub(ctx, &tmp[i], &share0);
+            // TODO(Dragos) this could probably be optimized by sending the key to p0
+            results.push(AdditiveTensor {
+                shares: [share0.clone(), share1.clone()],
+            })
+        }
+        (results[0].clone(), results[1].clone(), results[2].clone())
     }
 }
 
@@ -3196,18 +3291,6 @@ kernel! {
     ]
 }
 
-impl RepTruncPrOp {
-    fn kernel<C: Context, R, K>(
-        ctx: &C,
-        rep: &ReplicatedPlacement,
-        amount: usize,
-        s: AbstractReplicatedSetup<K>,
-        xe: ReplicatedTensor<R>,
-    ) -> ReplicatedTensor<R> {
-        xe
-    }
-}
-
 trait RingSize {
     const SIZE: usize;
 }
@@ -3224,105 +3307,37 @@ impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
 }
 
-// impl RepTruncPrOp {
-//     fn kernel<C: Context, R, K>(
-//         ctx: &C,
-//         rep: &ReplicatedPlacement,
-//         amount: usize,
-//         s: AbstractReplicatedSetup<K>,
-//         xe: ReplicatedTensor<R>,
-//     ) -> ReplicatedTensor<R>
-//     where
-//         R: Clone + Into<C::Value> + TryFrom<C::Value> + RingSize,
-//         HostPlacement: PlacementSample<C, R>,
-//         HostPlacement: PlacementKeyGen<C, K>,
-//         HostPlacement: PlacementShl<C, R, Output = R>,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//         HostPlacement: PlacementSub<C, R, R, Output = R>,
-//     {
-//         let m = amount;
+impl RepTruncPrOp {
+    fn kernel<C: Context, R, K>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        amount: usize,
+        s: AbstractReplicatedSetup<K>,
+        xe: ReplicatedTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone + Into<C::Value> + TryFrom<C::Value> + RingSize,
+        HostPlacement: PlacementKeyGen<C, K>,
+    {
+        let m = amount;
 
-//         let (player0, player1, player2) = rep.host_placements();
+        let (player0, player1, player2) = rep.host_placements();
 
-//         let ReplicatedTensor {
-//             shares: [[x00, x10], [x11, x21], [x22, x02]],
-//         } = &xe;
+        let ReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &xe;
 
-//         let k2 = player2.keygen(ctx);
+        let signed = true;
 
-//         let r_bits: Vec<_> = (0..R::SIZE).map(|_| player2.sample(ctx)).collect();
-//         let r = RepTruncPrOp::bit_compose(ctx, &r_bits, &player2);
-
-//         let r_top_bits: Vec<_> = (m..R::SIZE - 1).map(|i| r_bits[i].clone()).collect();
-//         let r_top_ring = RepTruncPrOp::bit_compose(ctx, &r_bits[m..R::SIZE - 1], &player2);
-//         let r_msb = r_bits[R::SIZE - 1].clone();
-
-//         let tmp: [R; 3] = [r, r_top_ring, r_msb];
-//         let prep_shares: Vec<_> = tmp
-//             .iter()
-//             .map(|x| RepTruncPrOp::generate_additive_share(ctx, x, &player2))
-//             .collect();
-
-//         let signed = true;
-//         // y_prime =
-//         //     RepTruncPrOp::two_party_trunc_pr(ctx, &xe, m, &r, &r_top, [&player0, &player1], signed);
-
-//         ReplicatedTensor {
-//             shares: [
-//                 [x00.clone(), x10.clone()],
-//                 [x11.clone(), x21.clone()],
-//                 [x22.clone(), x02.clone()],
-//             ],
-//         }
-//     }
-//     fn bit_compose<C: Context, R>(ctx: &C, bits: &[R], plc: &HostPlacement) -> R
-//     where
-//         R: Clone,
-//         HostPlacement: PlacementShl<C, R, Output = R>,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//     {
-//         let shifted_bits: Vec<_> = (0..bits.len()).map(|i| plc.shl(ctx, &bits[i], i)).collect();
-//         RepTruncPrOp::tree_reduce(ctx, &shifted_bits, plc)
-//     }
-
-//     fn tree_reduce<C: Context, R>(ctx: &C, sequence: &[R], plc: &HostPlacement) -> R
-//     where
-//         R: Clone,
-//         HostPlacement: PlacementAdd<C, R, R, Output = R>,
-//     {
-//         let n = sequence.len();
-//         if n == 1 {
-//             sequence[0].clone()
-//         } else {
-//             let mut reduced: Vec<_> = (0..n / 2)
-//                 .map(|i| {
-//                     let x0: &R = &sequence[2 * i];
-//                     let x1: &R = &sequence[2 * i + 1];
-//                     let z = with_context!(plc, ctx, x0 + x1);
-//                     z
-//                 })
-//                 .collect();
-//             if n % 2 == 1 {
-//                 reduced.push(sequence[n - 1].clone());
-//             }
-//             RepTruncPrOp::tree_reduce(ctx, &reduced, plc)
-//         }
-//     }
-//     fn generate_additive_share<C: Context, R, K>(ctx: &C, x: &R, plc: &HostPlacement) -> (R, R)
-//     where
-//         R: Clone,
-//         HostPlacement: PlacementKeyGen<C, K>,
-//         HostPlacement: PlacementSub<C, R, R, Output = R>,
-//         HostPlacement: PlacementSample<C, R>,
-//     {
-//         let k = plc.keygen(ctx);
-//         let share0 = plc.sample(ctx);
-//         // derive seed(k)
-//         let share1 = with_context!(plc, ctx, x - share0);
-//         (share0, share1)
-//     }
-//     // fn two_party_trunc_pr<C: Context, R, K>(ctx: &C, x: )
-// }
+        ReplicatedTensor {
+            shares: [
+                [x00.clone(), x10.clone()],
+                [x11.clone(), x21.clone()],
+                [x22.clone(), x02.clone()],
+            ],
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AdditiveRevealOp {
@@ -3359,6 +3374,8 @@ pub struct FillOp {
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring64Tensor, FillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring128Tensor, FillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> BitTensor, FillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Value] (Shape) -> Additive64Tensor, FillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Value] (Shape) -> Additive128Tensor, FillOp);
 
 kernel! {
     FillOp,
@@ -3366,6 +3383,8 @@ kernel! {
         (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::kernel64),
         (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::kernel128),
         (HostPlacement, (Shape) -> BitTensor => attributes[value] Self::kernel8),
+        (AdditivePlacement, (Shape) -> Additive64Tensor => attributes[value] Self::additive_kernel64),
+        (AdditivePlacement, (Shape) -> Additive128Tensor => attributes[value] Self::additive_kernel128),
     ]
 }
 
@@ -3383,6 +3402,27 @@ impl FillOp {
         }
     }
 
+    fn additive_kernel64<C: Context>(
+        ctx: &C,
+        plc: &AdditivePlacement,
+        value: Value,
+        shape: Shape,
+    ) -> Additive64Tensor {
+        // TODO: Pass in typed value instead of Value
+        // This should be PublicTensor
+        let (player_a, player_b) = plc.host_placements();
+        match value {
+            Value::Ring64(el) => {
+                let shares = [
+                    Ring64Tensor::fill(el.0, player_a),
+                    Ring64Tensor::fill(0, player_b),
+                ];
+                AdditiveTensor { shares }
+            }
+            _ => unimplemented!(), // ok
+        }
+    }
+
     fn kernel128<C: Context>(
         ctx: &C,
         plc: &HostPlacement,
@@ -3392,6 +3432,27 @@ impl FillOp {
         // TODO: Pass in typed value instead of Value
         match value {
             Value::Ring128(el) => Ring128Tensor::fill(el.0, plc.clone()),
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    fn additive_kernel128<C: Context>(
+        ctx: &C,
+        plc: &AdditivePlacement,
+        value: Value,
+        shape: Shape,
+    ) -> Additive128Tensor {
+        // TODO: Pass in typed value instead of Value
+        // This should be PublicTensor
+        let (player_a, player_b) = plc.host_placements();
+        match value {
+            Value::Ring128(el) => {
+                let shares = [
+                    Ring128Tensor::fill(el.0, player_a),
+                    Ring128Tensor::fill(0, player_b),
+                ];
+                AdditiveTensor { shares }
+            }
             _ => unimplemented!(), // ok
         }
     }
