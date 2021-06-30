@@ -1,6 +1,6 @@
 use moose::bit::BitTensor;
 use moose::fixedpoint::Convert;
-use moose::prim::{RawSeed};
+use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::ring::Ring64Tensor;
 use moose::standard::{Float64Tensor, RawShape};

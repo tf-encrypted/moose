@@ -1168,8 +1168,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_SaveOperation(op) => Ok(Operation {
                         kind: SaveOp {
-                            // TODO replace with `UnknownTy` as soon as we have type inference
-                            sig: Signature::unary(Ty::Float64Tensor, Ty::Unit),
+                            sig: Signature::binary(Ty::String, Ty::Unknown, Ty::Unit),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1193,7 +1192,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
                         kind: FixedpointRingEncodeOp {
-                            sig: Signature::nullary(map_type(&op.output_type)?),
+                            sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
                         }

@@ -13,7 +13,10 @@ use crate::computation::Role;
 use crate::computation::{
     HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
 };
-use crate::kernels::{ConcreteContext, PlacementAdd, PlacementSub, PlacementMul, PlacementShl, PlacementShr, PlacementSample};
+use crate::kernels::{
+    ConcreteContext, PlacementAdd, PlacementMul, PlacementSample, PlacementShl, PlacementShr,
+    PlacementSub,
+};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
@@ -32,7 +35,6 @@ impl<T> Placed for AbstractRingTensor<T> {
         self.1.clone()
     }
 }
-
 
 modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
 modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
@@ -60,10 +62,8 @@ impl RingAddOp {
     }
 }
 
-
 modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
 modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
-
 
 kernel! {
     RingSubOp,
@@ -88,10 +88,8 @@ impl RingSubOp {
     }
 }
 
-
 modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
 modelled!(PlacementMul::mul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
-
 
 kernel! {
     RingMulOp,
@@ -116,10 +114,8 @@ impl RingMulOp {
     }
 }
 
-
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
 modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
-
 
 kernel! {
     RingShlOp,
@@ -144,10 +140,8 @@ impl RingShlOp {
     }
 }
 
-
 modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShrOp);
 modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShrOp);
-
 
 kernel! {
     RingShrOp,

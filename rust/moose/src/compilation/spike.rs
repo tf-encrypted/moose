@@ -7,6 +7,10 @@ use std::convert::{TryFrom, TryInto};
 use std::ops::{Add, Mul, Shl, Shr, Sub};
 use std::ops::{BitAnd, BitXor};
 
+    Shape,
+    Ring64,
+    Ring128,
+    Bit,
 impl Ty {
     pub fn synthesize_symbolic_value<S: Into<String>>(
         &self,
@@ -28,11 +32,23 @@ impl Ty {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
+            Ty::Bit => SymbolicValue::Bit(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
             Ty::Ring64Tensor => SymbolicValue::Ring64Tensor(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
             Ty::Ring128Tensor => SymbolicValue::Ring128Tensor(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+            Ty::Ring64 => SymbolicValue::Ring64(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
+            Ty::Ring128 => SymbolicValue::Ring128(Symbolic::Symbolic(SymbolicHandle {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
@@ -76,6 +92,10 @@ impl Ty {
                 op: op_name.into(),
                 plc: plc.try_into().unwrap(),
             })),
+            Ty::Shape => SymbolicValue::Shape(Symbolic::Symbolic(SymbolicHandle {
+                op: op_name.into(),
+                plc: plc.try_into().unwrap(),
+            })),
         }
     }
 }
@@ -86,10 +106,19 @@ pub trait KnownType {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+    Shape(Shape),
+    Ring64(Ring64),
+    Ring128(Ring128),
+    Bit(Bit),
+            Value::Shape(_) => Ty::Shape,
+            Value::Ring64(_) => Ty::Ring64,
+            Value::Ring128(_) => Ty::Ring128,
+            Value::Bit(_) => Ty::Bit,
 pub enum SymbolicValue {
     Fixed64Tensor(<Fixed64Tensor as KnownType>::Symbolic),
     Fixed128Tensor(<Fixed128Tensor as KnownType>::Symbolic),
     BitTensor(<BitTensor as KnownType>::Symbolic),
+    Bit(<Bit as KnownType>::Symbolic),
     Ring64Tensor(<Ring64Tensor as KnownType>::Symbolic),
     Ring128Tensor(<Ring128Tensor as KnownType>::Symbolic),
     Replicated64Tensor(<Replicated64Tensor as KnownType>::Symbolic),
@@ -99,6 +128,9 @@ pub enum SymbolicValue {
     Additive128Tensor(<Additive128Tensor as KnownType>::Symbolic),
     ReplicatedSetup(<ReplicatedSetup as KnownType>::Symbolic),
     PrfKey(<PrfKey as KnownType>::Symbolic),
+    Shape(<Shape as KnownType>::Symbolic),
+    Ring64(<Ring64 as KnownType>::Symbolic),
+    Ring128(<Ring128 as KnownType>::Symbolic),
 }
 
 macro_rules! value {
@@ -214,15 +246,32 @@ value!(
     // ReplicatedSetup,
     Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType>::Symbolic>>
 );
-value!(
-    // PrfKey,
-    Symbolic<PrfKey>,
-);
+value!(PrfKey, Symbolic<PrfKey>);
+value!(Shape, Symbolic<Shape>);
+
+value!(Ring64, Symbolic<Ring64>);
+value!(Ring128, Symbolic<Ring128>);
+value!(Bit, Symbolic<Bit>);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Symbolic<T: Placed> {
     Symbolic(SymbolicHandle<T::Placement>),
     Concrete(T),
+}
+
+impl<T> Placed for Ring<T> {
+    type Placement = HostPlacement;
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+impl Placed for Shape {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
 }
 
 impl<T: Placed> Placed for Symbolic<T>
@@ -295,6 +344,17 @@ where
     }
 }
 
+impl TryFrom<Symbolic<Shape>> for Shape {
+    type Error = Symbolic<Self>;
+
+    fn try_from(x: Symbolic<Shape>) -> Result<Self, Self::Error> {
+        match x {
+            Symbolic::Concrete(cx) => Ok(cx),
+            Symbolic::Symbolic(_) => Err(x),
+        }
+    }
+}
+
 impl<RingTensorT, ReplicatedTensorT> TryFrom<Symbolic<FixedTensor<RingTensorT, ReplicatedTensorT>>>
     for FixedTensor<RingTensorT, ReplicatedTensorT>
 where
@@ -357,7 +417,64 @@ where
     }
 }
 
-use crate::computation::{Signature, NullarySignature, UnarySignature, BinarySignature, TernarySignature};
+impl<R> From<Ring<R>> for Symbolic<Ring<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: Ring<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl From<Shape> for Symbolic<Shape> {
+    fn from(x: Shape) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+#[allow(clippy::large_enum_variant)]
+    FillOp(FillOp),
+operator!(FillOp);
+#[derive(Clone, Debug, PartialEq)]
+pub struct Ring<T>(T, HostPlacement);
+
+impl RingTensor<u128> {
+    fn fill(el: u128, plc: HostPlacement) -> RingTensor<u128> {
+        RingTensor(el, plc)
+    }
+}
+
+impl RingTensor<u64> {
+    fn fill(el: u64, plc: HostPlacement) -> RingTensor<u64> {
+        RingTensor(el, plc)
+    }
+}
+
+impl BitTensor {
+    fn fill(el: u8, plc: HostPlacement) -> BitTensor {
+        assert!(
+            el == 0 || el == 1,
+            "cannot fill a BitTensor with a value {:?}",
+            el
+        );
+        BitTensor(el, plc)
+    }
+}
+
+pub struct Shape(Vec<u8>, HostPlacement);
+
+#[derive(Clone, Debug, PartialEq)]
+pub type Ring64 = Ring<u64>;
+
+pub type Ring128 = Ring<u128>;
+
+pub type Bit = Ring<u8>;
+
+            {
+            {
+                <$u as KnownType>::Symbolic,
+}
+    fn reveal(&self, ctx: &C, x: &T) -> O;
 
 
 impl Default for ConcreteContext {
@@ -395,6 +512,7 @@ impl Context for ConcreteContext {
             Operator::ConstantOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::FixedMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::FillOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
         }
     }
 
@@ -493,6 +611,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RingMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingShlOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingShrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::FillOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepSetupOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepShareOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepRevealOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -1089,6 +1208,61 @@ hybrid_kernel! {
     ]
 }
 
+pub struct FillOp {
+    sig: Signature,
+    value: Value,
+}
+
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring64Tensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring128Tensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> BitTensor, FillOp);
+
+kernel! {
+    FillOp,
+    [
+        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::kernel64),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::kernel128),
+        (HostPlacement, (Shape) -> BitTensor => attributes[value] Self::kernel8),
+    ]
+}
+
+impl FillOp {
+    fn kernel64<C: Context>(
+        ctx: &C,
+        plc: &HostPlacement,
+        value: Value,
+        shape: Shape,
+    ) -> Ring64Tensor {
+        // TODO: Pass in typed value instead of Value
+        match value {
+            Value::Ring64(el) => Ring64Tensor::fill(el.0, plc.clone()),
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    fn kernel128<C: Context>(
+        ctx: &C,
+        plc: &HostPlacement,
+        value: Value,
+        shape: Shape,
+    ) -> Ring128Tensor {
+        // TODO: Pass in typed value instead of Value
+        match value {
+            Value::Ring128(el) => Ring128Tensor::fill(el.0, plc.clone()),
+            _ => unimplemented!(), // ok
+        }
+    }
+
+    fn kernel8<C: Context>(ctx: &C, plc: &HostPlacement, value: Value, shape: Shape) -> BitTensor {
+        // TODO: Pass in typed value instead of Value
+        match value {
+            Value::Bit(el) => BitTensor::fill(el.0, plc.clone()),
+            _ => unimplemented!(), // ok
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
 modelled_alias!(PlacementAdd::add, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // add = xor in Z2
 modelled_alias!(PlacementSub::sub, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // sub = xor in Z2
@@ -1159,8 +1333,8 @@ impl FixedMulOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
-        HostPlacement: PlacementMul<C, RingTensorT, RingTensorT, Output = RingTensorT>,
+        HostPlacement: PlacementReveal<C, ReplicatedTensorT, RingTensorT>,
+        HostPlacement: PlacementMul<C, RingTensorT, RingTensorT, RingTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types
@@ -1196,16 +1370,16 @@ impl FixedMulOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement: PlacementShare<C, RingTensorT, ReplicatedTensorT>,
         ReplicatedPlacement: PlacementMulSetup<
             C,
             C::ReplicatedSetup,
             ReplicatedTensorT,
             ReplicatedTensorT,
-            Output = ReplicatedTensorT,
+            ReplicatedTensorT,
         >,
         ReplicatedPlacement:
-            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, ReplicatedTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types
@@ -1262,8 +1436,8 @@ impl FixedAddOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        HostPlacement: PlacementReveal<C, ReplicatedTensorT, Output = RingTensorT>,
-        HostPlacement: PlacementAdd<C, RingTensorT, RingTensorT, Output = RingTensorT>,
+        HostPlacement: PlacementReveal<C, ReplicatedTensorT, RingTensorT>,
+        HostPlacement: PlacementAdd<C, RingTensorT, RingTensorT, RingTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types
@@ -1299,9 +1473,9 @@ impl FixedAddOp {
         y: FixedTensor<RingTensorT, ReplicatedTensorT>,
     ) -> FixedTensor<RingTensorT, ReplicatedTensorT>
     where
-        ReplicatedPlacement: PlacementShare<C, RingTensorT, Output = ReplicatedTensorT>,
+        ReplicatedPlacement: PlacementShare<C, RingTensorT, ReplicatedTensorT>,
         ReplicatedPlacement:
-            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, Output = ReplicatedTensorT>,
+            PlacementAdd<C, ReplicatedTensorT, ReplicatedTensorT, ReplicatedTensorT>,
     {
         // NOTE: if one day we have branches that are not supported then we should
         // consider promoting matching to the macros and introduce proper intermediate types

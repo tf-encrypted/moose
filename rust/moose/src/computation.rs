@@ -345,6 +345,102 @@ impl Signature {
             Signature::Ternary(_) => 3,
         }
     }
+
+    pub fn merge(&mut self, another: Signature) -> anyhow::Result<()> {
+        match (self, &another) {
+            (Signature::Nullary(s), Signature::Nullary(o)) => s.merge(o),
+            (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
+            (Signature::Binary(s), Signature::Binary(o)) => s.merge(o),
+            (Signature::Ternary(s), Signature::Ternary(o)) => s.merge(o),
+            (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+            (Signature::Unary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+            (Signature::Binary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+            (Signature::Ternary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+        }
+    }
+}
+
+impl NullarySignature {
+    pub fn merge(&mut self, another: &NullarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl UnarySignature {
+    pub fn merge(&mut self, another: &UnarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.arg0.merge(&another.arg0) {
+            self.arg0 = new_type;
+        }
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl BinarySignature {
+    pub fn merge(&mut self, another: &BinarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.arg0.merge(&another.arg0) {
+            self.arg0 = new_type;
+        }
+        if let Some(new_type) = self.arg1.merge(&another.arg1) {
+            self.arg1 = new_type;
+        }
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl TernarySignature {
+    pub fn merge(&mut self, another: &TernarySignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.arg0.merge(&another.arg0) {
+            self.arg0 = new_type;
+        }
+        if let Some(new_type) = self.arg1.merge(&another.arg1) {
+            self.arg1 = new_type;
+        }
+        if let Some(new_type) = self.arg2.merge(&another.arg2) {
+            self.arg2 = new_type;
+        }
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl Ty {
+    /// Merge type information.
+    ///
+    /// Returns `Some(new_type)` if a merge produced a new type.
+    /// Otherwise returns None
+    pub fn merge(&self, another: &Ty) -> Option<Ty> {
+        match self {
+            Ty::Unknown => Some(*another),
+            _ => None,
+        }
+    }
 }
 
 macro_rules! operators {
@@ -373,8 +469,14 @@ macro_rules! operators {
                     $(Operator::$t(op) => &op.sig,)+
                 }
             }
+
+            pub fn sig_mut(&mut self) -> &mut Signature {
+                match self {
+                    $(Operator::$t(op) => &mut op.sig,)+
+                }
+            }
         }
-    };
+    }
 }
 
 operators![

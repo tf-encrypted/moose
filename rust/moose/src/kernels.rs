@@ -811,11 +811,11 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         match self.sig {
-            signature![() -> Ty::Ring64Tensor] => {
+            signature![(Ty::Float64Tensor) -> Ty::Ring64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
                 closure_kernel!(Float64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
             }
-            signature![() -> Ty::Ring128Tensor] => {
+            signature![(Ty::Float64Tensor) -> Ty::Ring128Tensor] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
                 closure_kernel!(Float64Tensor, |x| Ring128Tensor::encode(&x, scaling_factor))
             }
@@ -1068,7 +1068,7 @@ impl Compile<AsyncKernel> for OutputOp {
 
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
-        let expected_ty = self.sig.arg(0)?;
+        let expected_ty = self.sig.arg(1)?;
 
         Ok(SyncKernel::Binary(Box::new(move |sess, key, val| {
             let key = String::try_from(key)?;
