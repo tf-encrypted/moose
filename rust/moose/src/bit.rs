@@ -1,6 +1,6 @@
 use crate::computation::Placed;
 use crate::computation::{BitAndOp, BitSampleOp, BitXorOp, HostPlacement};
-use crate::kernels::ConcreteContext;
+use crate::kernels::{BinaryKernel, ConcreteContext};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
@@ -20,6 +20,13 @@ impl Placed for BitTensor {
     }
 }
 
+kernel! {
+    BitSampleOp,
+    [
+        (HostPlacement, (Seed, Shape) -> BitTensor => Self::kernel),
+    ]
+}
+
 impl BitSampleOp {
     fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, seed: Seed, shape: Shape) -> BitTensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
@@ -28,6 +35,13 @@ impl BitSampleOp {
         let ix = IxDyn(shape.0 .0.as_ref());
         BitTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
+}
+
+kernel! {
+    BitXorOp,
+    [
+        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+    ]
 }
 
 impl BitXorOp {
@@ -39,6 +53,13 @@ impl BitXorOp {
     ) -> BitTensor {
         BitTensor(x.0 ^ y.0, plc.clone())
     }
+}
+
+kernel! {
+    BitAndOp,
+    [
+        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+    ]
 }
 
 impl BitAndOp {

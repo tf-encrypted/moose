@@ -13,7 +13,7 @@ use crate::computation::Role;
 use crate::computation::{
     HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
 };
-use crate::kernels::{ConcreteContext, Context};
+use crate::kernels::{BinaryKernel, ConcreteContext, UnaryKernel};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
@@ -33,6 +33,14 @@ impl<T> Placed for AbstractRingTensor<T> {
     }
 }
 
+kernel! {
+    RingAddOp,
+    [
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
 impl RingAddOp {
     fn kernel<T>(
         _ctx: &ConcreteContext,
@@ -46,6 +54,14 @@ impl RingAddOp {
     {
         AbstractRingTensor(x.0 + y.0, plc.clone())
     }
+}
+
+kernel! {
+    RingSubOp,
+    [
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
 }
 
 impl RingSubOp {
@@ -63,6 +79,14 @@ impl RingSubOp {
     }
 }
 
+kernel! {
+    RingMulOp,
+    [
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
 impl RingMulOp {
     fn kernel<T>(
         _ctx: &ConcreteContext,
@@ -76,6 +100,14 @@ impl RingMulOp {
     {
         AbstractRingTensor(x.0 * y.0, plc.clone())
     }
+}
+
+kernel! {
+    RingShlOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[amount] Self::kernel),
+    ]
 }
 
 impl RingShlOp {
@@ -93,6 +125,14 @@ impl RingShlOp {
     }
 }
 
+kernel! {
+    RingShrOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[amount] Self::kernel),
+    ]
+}
+
 impl RingShrOp {
     fn kernel<T>(
         _ctx: &ConcreteContext,
@@ -106,6 +146,34 @@ impl RingShrOp {
     {
         AbstractRingTensor(x.0 >> amount, plc.clone())
     }
+}
+
+kernel! {
+    RingSampleOp,
+    [
+        (HostPlacement, (Seed, Shape) -> Ring64Tensor => custom |op| {
+            match op.max_value {
+                None => Box::new(|ctx, plc, seed, shape| {
+                    Self::kernel_uniform_u64(ctx, plc, seed, shape)
+                }),
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, seed, shape| {
+                    Self::kernel_bits_u64(ctx, plc, seed, shape)
+                }),
+                _ => unimplemented!(),
+            }
+        }),
+        (HostPlacement, (Seed, Shape) -> Ring128Tensor => custom |op| {
+            match op.max_value {
+                None => Box::new(|ctx, plc, seed, shape| {
+                    Self::kernel_uniform_u128(ctx, plc, seed, shape)
+                }),
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, seed, shape| {
+                    Self::kernel_bits_u128(ctx, plc, seed, shape)
+                }),
+                _ => unimplemented!(),
+            }
+        }),
+    ]
 }
 
 impl RingSampleOp {
