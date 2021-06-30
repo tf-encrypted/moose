@@ -7,15 +7,15 @@ from absl.testing import parameterized
 
 from moose import edsl
 from moose.computation.standard import StringType
-from moose.computation.utils import deserialize_computation
-from moose.computation.utils import serialize_computation
-from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-from moose.networking.memory import Networking
-from moose.storage.memory import MemoryDataStore
-from moose.testing import TestRuntime as Runtime
+from moose.testing import LocalMooseRuntime
 
-from moose.testing import NewTestRuntime
+# from moose.computation.utils import deserialize_computation
+# from moose.computation.utils import serialize_computation
+# from moose.executor.executor import AsyncExecutor
+# from moose.networking.memory import Networking
+# from moose.storage.memory import MemoryDataStore
+# from moose.testing import TestRuntime as Runtime
 
 FIXED = edsl.fixed(8, 27)
 
@@ -132,11 +132,11 @@ class LinearRegressionExample(parameterized.TestCase):
     # @parameterized.parameters(["mse", "mape"])
     @parameterized.parameters(["mse"])
     def test_linear_regression_eval(self, metric_name):
-        ((linear_comp, concrete_comp), placements,) = self._build_linear_regression_example(
-            metric_name
-        )
+        (
+            (linear_comp, concrete_comp),
+            placements,
+        ) = self._build_linear_regression_example(metric_name)
         x_owner, y_owner, model_owner, replicated_plc = placements
-        print(concrete_comp)
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         # networking = Networking()
@@ -170,10 +170,19 @@ class LinearRegressionExample(parameterized.TestCase):
 
         # print("Done: \n", model_owner_storage.store["regression_weights"])
 
-        executors_storage = {"x-owner": {"x_data": x_data}, "y-owner": {"y_data": y_data}, "model-owner": {}}
-        runtime = NewTestRuntime(executors_storage)
-        outputs = runtime.evaluate_computation(
+        executors_storage = {
+            "x-owner": {"x_data": x_data},
+            "y-owner": {"y_data": y_data},
+            "model-owner": {},
+        }
+        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        _ = runtime.evaluate_computation(
             computation=linear_comp,
+            role_assignment={
+                "x-owner": "x-owner",
+                "y-owner": "y-owner",
+                "model-owner": "model-owner",
+            },
             arguments={
                 "x_uri": "x_data",
                 "y_uri": "y_data",
@@ -182,7 +191,10 @@ class LinearRegressionExample(parameterized.TestCase):
                 "rsquared_uri": "rsquared_result",
             },
         )
-        print("Done: \n", runtime.get_value_from_storage("model-owner", "regression_weights"))
+        print(
+            "Done: \n",
+            runtime.get_value_from_storage("model-owner", "regression_weights"),
+        )
 
     # @parameterized.parameters(True, False)
     # def test_linear_regression_serde(self, compiled):
