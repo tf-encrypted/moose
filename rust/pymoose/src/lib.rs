@@ -1,9 +1,8 @@
 use moose::bit::BitTensor;
-use moose::computation::Value;
-use moose::computation::{Computation, Role};
-use moose::computation::{SessionId, Ty};
-use moose::execution::{AsyncExecutor, AsyncNetworkingImpl, AsyncReceiver, Identity};
-use moose::execution::{AsyncSession, AsyncSessionHandle};
+use moose::computation::{Computation, Role, SessionId, Value};
+use moose::execution::{
+    AsyncExecutor, AsyncNetworkingImpl, AsyncReceiver, AsyncSession, AsyncSessionHandle, Identity,
+};
 use moose::fixedpoint::Convert;
 use moose::networking::{AsyncNetworking, LocalAsyncNetworking};
 use moose::prim::Seed;
@@ -16,7 +15,7 @@ use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
 use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyFloat, PyString};
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList};
 use std::collections::HashMap;
@@ -370,24 +369,28 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
     }
 }
 
-#[pyclass]
-pub struct MooseLocalRuntime {
-    executors: HashMap<String, AsyncExecutor>,
+#[pyclass(subclass)]
+pub struct LocalRuntime {
+    #[pyo3(get, set)]
+    identities: Vec<String>,
+    executors: HashMap<Identity, AsyncExecutor>,
+    runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>>,
     networking: AsyncNetworkingImpl,
-    executors_storage: HashMap<String, Arc<dyn Send + Sync + AsyncStorage>>,
 }
 
 #[pymethods]
-impl MooseLocalRuntime {
+impl LocalRuntime {
     #[new]
-    fn new(py: Python, executors_storage: HashMap<String, HashMap<String, PyObject>>) -> Self {
-        let mut executors: HashMap<String, AsyncExecutor> = HashMap::new();
+    fn new(py: Python, storage_mapping: HashMap<String, HashMap<String, PyObject>>) -> Self {
+        let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
         let networking: Arc<dyn Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
-        let mut runtime_storage: HashMap<String, Arc<dyn Send + Sync + AsyncStorage>> =
+        let mut runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>> =
             HashMap::new();
-
-        for (placement, storage) in executors_storage {
+        let mut identities = Vec::new();
+        for (identity_str, storage) in storage_mapping {
+            let identity = Identity::from(identity_str.clone());
+            identities.push(identity_str);
             // TODO handle Result in map predicate instead of `unwrap`
             let storage = storage
                 .iter()
@@ -396,22 +399,24 @@ impl MooseLocalRuntime {
 
             let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
                 Arc::new(LocalAsyncStorage::from_hashmap(storage));
-            runtime_storage.insert(placement.clone(), exec_storage);
+            runtime_storage.insert(identity.clone(), exec_storage);
 
             let executor = AsyncExecutor::default();
-            executors.insert(placement, executor);
+            executors.insert(identity, executor);
         }
-        MooseLocalRuntime {
+        LocalRuntime {
+            identities,
             executors,
+            runtime_storage,
             networking,
-            executors_storage: runtime_storage,
         }
     }
 
-    fn evaluate_computation<'py>(
+    fn evaluate_computation(
         &self,
-        py: Python<'py>,
+        py: Python,
         computation: Vec<u8>,
+        role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let arguments = arguments
@@ -419,11 +424,21 @@ impl MooseLocalRuntime {
             .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
             .collect::<HashMap<String, Value>>();
 
-        let role_assignment = &self
-            .executors
-            .keys()
+        let (valid_role_assignments, missing_role_assignments): (
+            HashMap<String, String>,
+            HashMap<String, String>,
+        ) = role_assignments
             .into_iter()
-            .map(|arg| (Role::from(arg), Identity::from(arg)))
+            .partition(|kv| self.identities.contains(&kv.1));
+        if !missing_role_assignments.is_empty() {
+            let missing_roles: Vec<&String> = missing_role_assignments.keys().collect();
+            let missing_identities: Vec<&String> = missing_role_assignments.values().collect();
+            return Err(PyValueError::new_err(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", missing_identities, missing_roles)));
+        }
+
+        let valid_role_assignments = valid_role_assignments
+            .into_iter()
+            .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
             .collect::<HashMap<Role, Identity>>();
 
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
@@ -431,17 +446,21 @@ impl MooseLocalRuntime {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
 
-        for (placement, executor) in self.executors.iter() {
+        for (own_identity, executor) in self.executors.iter() {
             let moose_session = AsyncSession {
                 sid: SessionId::from("foobar"),
                 arguments: arguments.clone(),
                 networking: Arc::clone(&self.networking),
-                storage: Arc::clone(&self.executors_storage[placement]),
+                storage: Arc::clone(&self.runtime_storage[own_identity]),
             };
-            let own_identity = Identity::from(placement);
             let computation = create_computation_graph_from_py_bytes(computation.clone());
             let (moose_session_handle, outputs) = executor
-                .run_computation(&computation, &role_assignment, &own_identity, moose_session)
+                .run_computation(
+                    &computation,
+                    &valid_role_assignments,
+                    &own_identity,
+                    moose_session,
+                )
                 .unwrap();
 
             for (output_name, output_future) in outputs {
@@ -453,7 +472,7 @@ impl MooseLocalRuntime {
 
         for mut handle in session_handles {
             let errors = rt.block_on(handle.join());
-            if errors.len() > 0 {
+            if !errors.is_empty() {
                 let errstrings: Vec<String> = errors.into_iter().map(|e| e.to_string()).collect();
                 return Err(PyRuntimeError::new_err(errstrings));
             }
@@ -465,7 +484,7 @@ impl MooseLocalRuntime {
                 let value = output_future.await.unwrap();
                 match value {
                     Value::Unit => None,
-                    // not sure what to support, should eventually standardize output types of computations
+                    // TODO: not sure what to support, should eventually standardize output types of computations
                     Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
                     Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
                     // assume it's a tensor
@@ -478,16 +497,16 @@ impl MooseLocalRuntime {
         Ok(Some(outputs))
     }
 
-    fn get_value_from_storage<'py>(
+    fn get_value_from_storage(
         &self,
-        py: Python<'py>,
-        placement: String,
+        py: Python,
+        identity: String,
         key: String,
     ) -> PyResult<PyObject> {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
         let val = rt.block_on(async {
-            let val = self.executors_storage[&placement]
+            let val = self.runtime_storage[&Identity::from(identity)]
                 .load(&key, &SessionId::from("foobar"), None, "")
                 .await
                 .unwrap();
@@ -500,7 +519,7 @@ impl MooseLocalRuntime {
 }
 
 #[pymodule]
-fn moose_runtime(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    m.add_class::<MooseLocalRuntime>()?;
+fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
+    m.add_class::<LocalRuntime>()?;
     Ok(())
 }

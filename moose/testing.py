@@ -2,17 +2,17 @@ import asyncio
 import random
 from typing import Dict
 
+from pymoose import LocalRuntime
+
+from moose import edsl
 from moose.computation.base import Computation
+from moose.computation.utils import serialize_computation
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.logger import get_tracer
 from moose.networking.memory import Networking
 from moose.storage.memory import MemoryDataStore
 
-from moose import edsl
-from moose.computation.utils import serialize_computation
-
-from pymoose import MooseLocalRuntime
 
 class TestRuntime:
     def __init__(self, networking=None, backing_executors=None) -> None:
@@ -76,20 +76,32 @@ def run_test_computation(computation, players, arguments={}):
         player: runtime.get_executor(player.name).storage.store for player in players
     }
 
-# TODO [Yann] Rename if we decide to keep
-# We might want to subclass MooseLocalRuntime instead?
-class NewTestRuntime:
-    def __init__(self, executors_storage: dict):
-        self._executors_storage = executors_storage
-        self._runtime = MooseLocalRuntime(self._executors_storage)
 
-    def evaluate_computation(self, computation, arguments={}, ring=128):
-        concrete_comp, outputs_name = edsl.trace_and_compile(computation, ring=ring)
+class LocalMooseRuntime(LocalRuntime):
+    def __new__(cls, *, identities=None, storage_mapping=None):
+        if identities is None and storage_mapping is None:
+            raise ValueError(
+                "Must provide either a list of identities or a mapping of identities "
+                "to executor storage dicts."
+            )
+        elif storage_mapping is not None and identities is not None:
+            assert storage_mapping.keys() == identities
+        elif identities is not None:
+            storage_mapping = {identity: {} for identity in identities}
+        return LocalRuntime.__new__(LocalMooseRuntime, storage_mapping=storage_mapping)
+
+    def evaluate_computation(
+        self, computation, role_assignment, arguments=None, ring=128
+    ):
+        if arguments is None:
+            arguments = {}
+        concrete_comp = edsl.trace_and_compile(computation, ring=ring)
         comp_bin = serialize_computation(concrete_comp)
-        comp_outputs = self._runtime.evaluate_computation(comp_bin, arguments)
-        outputs = [comp_outputs.get(output_name) for output_name in outputs_name]
+        comp_outputs = super().evaluate_computation(
+            comp_bin, role_assignment, arguments
+        )
+        outputs = list(dict(sorted(comp_outputs.items())).values())
         return outputs
 
-    def get_value_from_storage(self, placement, key):
-        return self._runtime.get_value_from_storage(placement, key)
-        
+    def get_value_from_storage(self, identity, key):
+        return super().get_value_from_storage(identity, key)
