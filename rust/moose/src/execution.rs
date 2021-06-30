@@ -1024,14 +1024,41 @@ impl AsyncSessionHandle {
     //    errors
     //}
 
-    // TODO(Morten)
-    pub async fn join(self) -> Vec<anyhow::Error> {
+    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
         use futures::StreamExt;
-        let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
-        let res = tasks.collect::<Vec<_>>().await;
-        eprintln!("res: {:?}", res);
-        let v = vec![anyhow::anyhow!("some err")];
-        v
+        use crate::error::Error::{OperandUnavailable, ResultUnused};
+
+        // iterate and wrap all tasks with MyJoinHandle
+        // impl drop and future for MyJoinHandle
+        //     in Drop: call join_handle.abort()
+
+        let mut tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
+
+        while let Some(x) = tasks.next().await {
+            match x {
+                Ok(Ok(_)) => {
+                    continue;
+                }
+                Ok(Err(e)) => {
+                    match e {
+                        // OperandUnavailable and ResultUnused are typically not root causes.
+                        // Wait to get an error that would indicate the root cause of the problem,
+                        // and return it instead.
+                        OperandUnavailable => continue,
+                        ResultUnused => continue,
+                        _ => return Err(anyhow::Error::from(e)),
+                    }
+                }
+                Err(e) => {
+                    if e.is_cancelled() {
+                        continue;
+                    } else if e.is_panic() {
+                        return Err(anyhow::Error::from(e));
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     pub fn abort(&self) {
