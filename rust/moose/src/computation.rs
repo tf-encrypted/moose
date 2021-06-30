@@ -2,6 +2,7 @@ use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::kernels::{ConcreteContext, Context};
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
@@ -27,7 +28,8 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
-pub trait KnownType {
+pub trait KnownType<C: Context> {
+    type Type;
     const TY: Ty;
 }
 
@@ -200,7 +202,8 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType for $val {
+        impl KnownType<ConcreteContext> for $val {
+            type Type = $val;
             const TY: Ty = Ty::$val;
         }
         )+

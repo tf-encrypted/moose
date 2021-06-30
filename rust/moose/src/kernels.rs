@@ -6,6 +6,7 @@ use crate::execution::{
     SyncKernel,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed};
+use crate::replicated::ReplicatedSetup;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
@@ -13,6 +14,82 @@ use crate::standard::{
 use crate::{closure_kernel, function_kernel};
 use std::convert::TryFrom;
 use std::sync::Arc;
+
+pub trait Context {
+    type Value;
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
+
+    type ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
+}
+
+pub struct ConcreteContext {
+    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>, // TODO
+}
+
+impl Context for ConcreteContext {
+    type Value = Value;
+
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
+        unimplemented!() // TODO
+    }
+
+    type ReplicatedSetup = ReplicatedSetup;
+    fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+        unimplemented!() // TODO
+    }
+}
+
+pub trait PlacementKeyGen<C: Context, K> {
+    fn keygen(&self, ctx: &C) -> K;
+}
+
+pub trait PlacementAdd<C: Context, T, U, O> {
+    fn add(&self, ctx: &C, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementSub<C: Context, T, U, O> {
+    fn sub(&self, ctx: &C, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementMul<C: Context, T, U, O> {
+    fn mul(&self, ctx: &C, x: &T, y: &U) -> O;
+}
+pub trait PlacementShl<C: Context, T, O> {
+    fn shl(&self, ctx: &C, amount: usize, x: &T) -> O;
+}
+
+pub trait PlacementShr<C: Context, T, O> {
+    fn shr(&self, ctx: &C, amount: usize, x: &T) -> O;
+}
+
+pub trait PlacementXor<C: Context, T, U, O> {
+    fn xor(&self, ctx: &C, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementAnd<C: Context, T, U, O> {
+    fn and(&self, ctx: &C, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementMulSetup<C: Context, S, T, U, O> {
+    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementShare<C: Context, T, O> {
+    fn share(&self, ctx: &C, x: &T) -> O;
+}
+
+pub trait PlacementReveal<C: Context, T, O> {
+    fn reveal(&self, ctx: &C, x: &T) -> O;
+}
+
+pub trait PlacementSample<C: Context, O> {
+    fn sample(&self, ctx: &C) -> O;
+}
+
+pub trait PlacementRepToAdd<C: Context, T, O> {
+    fn rep_to_add(&self, ctx: &C, x: &T) -> O;
+}
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
