@@ -2584,13 +2584,14 @@ pub struct AddToRepOp {
 }
 
 modelled!(PlacementAddToRep::add_to_rep, ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor, AddToRepOp);
-// modelled!(PlacementAddToRep::add_to_rep, ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor, AddToRepOp);
+modelled!(PlacementAddToRep::add_to_rep, ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor, AddToRepOp);
 
+// TODO: This should be a hybrid kernel
 kernel! {
     AddToRepOp,
     [
         (ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor => Self::kernel),
-        // (ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor => Self::kernel),
+        (ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor => Self::kernel),
     ]
 }
 
@@ -3350,11 +3351,7 @@ where
 
         let ones = player_a.ones(ctx, &x_shape);
 
-        let twok = self.fill(
-            ctx,
-            player_a.shl(ctx, k, &ones).into(),
-            &x_shape,
-        );
+        let twok = self.fill(ctx, player_a.shl(ctx, k, &ones).into(), &x_shape);
         let positive = self.add(ctx, x, &twok);
 
         let (r, r_top, r_msb) = self.get_prep(ctx, &x_shape, m, third_party);
@@ -3488,11 +3485,13 @@ pub struct RepTruncPrOp {
 }
 
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
 
 kernel! {
     RepTruncPrOp,
     [
         (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
     ]
 }
 
@@ -3513,7 +3512,7 @@ impl RingSize for Ring128Tensor {
 }
 
 impl RepTruncPrOp {
-    fn kernel<C: Context, R, K>(
+    fn kernel<C: Context, K, R>(
         ctx: &C,
         rep: &ReplicatedPlacement,
         amount: usize,
@@ -3521,8 +3520,6 @@ impl RepTruncPrOp {
         xe: ReplicatedTensor<R>,
     ) -> ReplicatedTensor<R>
     where
-        R: Clone + Into<C::Value> + TryFrom<C::Value> + RingSize,
-        HostPlacement: PlacementKeyGen<C, K>,
         AdditivePlacement: PlacementTruncPrWithPrep<C, R, K>
             + PlacementRepToAdd<C, ReplicatedTensor<R>, AdditiveTensor<R>>,
         ReplicatedPlacement: PlacementAddToRep<C, AdditiveTensor<R>, ReplicatedTensor<R>>,
@@ -3556,7 +3553,7 @@ hybrid_kernel! {
 }
 
 impl AdditiveRevealOp {
-    fn kernel<C: Context, R: Clone>(ctx: &C, plc: &HostPlacement, xe: AdditiveTensor<R>) -> R
+    fn kernel<C: Context, R>(ctx: &C, plc: &HostPlacement, xe: AdditiveTensor<R>) -> R
     where
         HostPlacement: PlacementAdd<C, R, R, R>,
     {
@@ -3983,11 +3980,13 @@ pub struct ShapeOp {
 }
 
 modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, ShapeOp);
 
 kernel! {
     ShapeOp,
     [
         (HostPlacement, (Ring64Tensor) -> Shape => Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Shape => Self::kernel),
     ]
 }
 
