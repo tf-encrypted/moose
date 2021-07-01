@@ -718,6 +718,7 @@ impl From<Shape> for Symbolic<Shape> {
 #[allow(clippy::large_enum_variant)]
 pub enum Operator {
     PrfKeyGenOp(PrfKeyGenOp),
+    ShapeOp(ShapeOp),
     RingAddOp(RingAddOp),
     RingShlOp(RingShlOp),
     RingShrOp(RingShrOp),
@@ -741,6 +742,7 @@ pub enum Operator {
     AdditiveSubOp(AdditiveSubOp),
     AdditiveMulOp(AdditiveMulOp),
     AdditiveRevealOp(AdditiveRevealOp),
+    AddToRepOp(AddToRepOp),
     ConstantOp(ConstantOp),
     FixedAddOp(FixedAddOp),
     FixedMulOp(FixedMulOp),
@@ -759,6 +761,7 @@ macro_rules! operator {
 // NOTE a future improvement might be to have a single `operators!` macro
 // that takes care of everything, including generating `enum Operator`.
 operator!(PrfKeyGenOp);
+operator!(ShapeOp);
 operator!(RingAddOp);
 operator!(RingShlOp);
 operator!(RingShrOp);
@@ -778,6 +781,7 @@ operator!(RepToAddOp);
 operator!(RepShareOp);
 operator!(RepRevealOp);
 operator!(RepTruncPrOp);
+operator!(AddToRepOp);
 operator!(AdditiveAddOp);
 operator!(AdditiveSubOp);
 operator!(AdditiveMulOp);
@@ -1320,6 +1324,10 @@ trait PlacementAnd<C: Context, T, U, O> {
     fn and(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
+trait PlacementShape<C: Context, T, S> {
+    fn shape(&self, ctx: &C, x: &T) -> S;
+}
+
 trait PlacementFill<C: Context, S, O> {
     fn fill(&self, ctx: &C, value: Value, shape: &S) -> O;
 }
@@ -1382,6 +1390,7 @@ impl Context for ConcreteContext {
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
             Operator::PrfKeyGenOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::ShapeOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::BitSampleOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -1399,6 +1408,7 @@ impl Context for ConcreteContext {
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AddToRepOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveSubOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -1497,6 +1507,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     ) -> SymbolicValue {
         match op {
             Operator::PrfKeyGenOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::ShapeOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingSampleOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::BitSampleOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RingAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -1516,6 +1527,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepToAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::RepTruncPrOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
+            Operator::AddToRepOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveAddOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveSubOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
             Operator::AdditiveMulOp(op) => DispatchKernel::compile(&op, ctx, plc)(operands),
@@ -2579,6 +2591,70 @@ impl RepToAddOp {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct AddToRepOp {
+    sig: Signature,
+}
+
+modelled!(PlacementAddToRep::add_to_rep, ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor, AddToRepOp);
+// modelled!(PlacementAddToRep::add_to_rep, ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor, AddToRepOp);
+
+kernel! {
+    AddToRepOp,
+    [
+        (ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor => Self::kernel),
+        // (ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor => Self::kernel),
+    ]
+}
+
+impl AddToRepOp {
+    fn kernel<C: Context, R>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        x: AdditiveTensor<R>,
+    ) -> ReplicatedTensor<R>
+    where
+        R: Clone,
+        HostPlacement: PlacementShape<C, R, Shape>,
+        HostPlacement: PlacementKeyGen<C, PrfKey>,
+        HostPlacement: PlacementSample<C, R>,
+        AdditivePlacement: PlacementSub<C, AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>>,
+        HostPlacement: PlacementReveal<C, AdditiveTensor<R>, R>,
+        R: Placed<Placement = HostPlacement>,
+    {
+        let AdditiveTensor { shares: [x0, x1] } = &x;
+
+        let add_plc = x.placement();
+        let (player_a, player_b) = add_plc.host_placements();
+        let (player0, player1, player2) = rep.host_placements();
+
+        // assume that Additive Host Placements are included Replicated Host Placements
+        // the party that's not on the additive is the provider
+        let provider = match () {
+            _ if player0 != player_a && player0 != player_b => player0,
+            _ if player1 != player_a && player1 != player_b => player1,
+            _ => player2,
+        };
+
+        let x_shape = player_a.shape(ctx, &x0);
+        let k = provider.keygen(ctx);
+        // (TODO)Dragos now a seed needs to be derived (once derived seed op is done)
+        let y13 = provider.sample(ctx);
+        let y33 = provider.sample(ctx);
+
+        let y1 = player_a.sample(ctx);
+        let y2 = player_b.sample(ctx);
+        let y = AdditiveTensor {
+            shares: [y1.clone(), y2.clone()],
+        };
+        let c = player_a.reveal(ctx, &add_plc.sub(ctx, &x, &y));
+
+        ReplicatedTensor {
+            shares: [[y1, c.clone()], [c, y2], [y33, y13]],
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct RepAddOp {
     sig: Signature,
 }
@@ -3200,8 +3276,7 @@ where
                 .map(|i| {
                     let x0: &R = &sequence[2 * i];
                     let x1: &R = &sequence[2 * i + 1];
-                    let z = self.add(ctx, &x0, &x1);
-                    z
+                    self.add(ctx, &x0, &x1)
                 })
                 .collect();
             if n % 2 == 1 {
@@ -3330,9 +3405,9 @@ where
 
         let k = provider.keygen(ctx);
         let mut results = Vec::<AdditiveTensor<R>>::new();
-        for i in 0..3 {
+        for item in &tmp {
             let share0 = provider.sample(ctx);
-            let share1 = provider.sub(ctx, &tmp[i], &share0);
+            let share1 = provider.sub(ctx, &item, &share0);
             // TODO(Dragos) this could probably be optimized by sending the key to p0
             results.push(AdditiveTensor {
                 shares: [share0.clone(), share1.clone()],
@@ -3460,6 +3535,7 @@ impl RepTruncPrOp {
         HostPlacement: PlacementKeyGen<C, K>,
         AdditivePlacement: PlacementTruncPrWithPrep<C, R, K>
             + PlacementRepToAdd<C, ReplicatedTensor<R>, AdditiveTensor<R>>,
+        ReplicatedPlacement: PlacementAddToRep<C, AdditiveTensor<R>, ReplicatedTensor<R>>,
     {
         let m = amount;
 
@@ -3469,19 +3545,7 @@ impl RepTruncPrOp {
         };
         let x_add = add_plc.rep_to_add(ctx, &xe);
         let x_trunc = add_plc.trunc_pr(ctx, &x_add, m, player2);
-
-        let signed = true;
-        let ReplicatedTensor {
-            shares: [[x00, x10], [x11, x21], [x22, x02]],
-        } = &xe;
-
-        ReplicatedTensor {
-            shares: [
-                [x00.clone(), x10.clone()],
-                [x11.clone(), x21.clone()],
-                [x22.clone(), x02.clone()],
-            ],
-        }
+        rep.add_to_rep(ctx, &x_trunc)
     }
 }
 
@@ -3637,7 +3701,7 @@ kernel! {
 }
 
 impl OnesOp {
-    fn kernel<C: Context, T>(ctx: &C, plc: &HostPlacement, shape: &Shape) -> RingTensor<T>
+    fn kernel<C: Context, T>(ctx: &C, plc: &HostPlacement, shape: Shape) -> RingTensor<T>
     where
         T: From<bool>,
     {
@@ -3920,6 +3984,27 @@ impl PrfKeyGenOp {
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             plc.clone(),
         )
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ShapeOp {
+    sig: Signature,
+}
+
+modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, ShapeOp);
+
+kernel! {
+    ShapeOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Shape => Self::kernel),
+    ]
+}
+
+impl ShapeOp {
+    fn kernel<C: Context, T>(ctx: &C, plc: &HostPlacement, x: RingTensor<T>) -> Shape {
+        // TODO(Dragos) for now ring tensors do not have a shape
+        Shape(vec![1], plc.clone())
     }
 }
 
