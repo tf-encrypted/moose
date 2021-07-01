@@ -648,7 +648,7 @@ impl TryFrom<PyComputation> for Computation {
                 use PyOperation::*;
                 match op {
                     prim_SampleKeyOperation(op) => Ok(Operation {
-                        kind: PrimGenPrfKeyOp {
+                        kind: PrimPrfKeyGenOp {
                             sig: Signature::nullary(Ty::PrfKey),
                         }
                         .into(),

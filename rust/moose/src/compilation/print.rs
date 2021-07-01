@@ -104,7 +104,7 @@ fn pretty(op: &Operation) -> String {
         Operator::BitXor(_) => "BitXor",
         Operator::BitAnd(_) => "BitAnd",
         Operator::PrimDeriveSeed(_) => "PrimDeriveSeed",
-        Operator::PrimGenPrfKey(_) => "PrimGenPrfKey",
+        Operator::PrimPrfKeyGen(_) => "PrimPrfKeyGen",
         Operator::FixedpointRingEncode(_) => "FixedpointRingEncode",
         Operator::FixedpointRingDecode(_) => "FixedpointRingDecode",
         Operator::FixedpointRingMean(_) => "FixedpointRingMean",

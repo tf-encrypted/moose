@@ -1,5 +1,6 @@
 use crate::computation::Placed;
 use crate::computation::{BitAndOp, BitSampleOp, BitXorOp, HostPlacement};
+use crate::kernels::{PlacementAdd, PlacementSub, PlacementMul, PlacementXor, PlacementAnd};
 use crate::kernels::ConcreteContext;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -37,6 +38,10 @@ impl BitSampleOp {
     }
 }
 
+modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
+modelled_alias!(PlacementAdd::add, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // add = xor in Z2
+modelled_alias!(PlacementSub::sub, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // sub = xor in Z2
+
 kernel! {
     BitXorOp,
     [
@@ -54,6 +59,9 @@ impl BitXorOp {
         BitTensor(x.0 ^ y.0, plc.clone())
     }
 }
+
+modelled!(PlacementAnd::and, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
+modelled_alias!(PlacementMul::mul, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementAnd::and); // mul = and in Z2
 
 kernel! {
     BitAndOp,

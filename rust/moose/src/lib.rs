@@ -1,3 +1,9 @@
+macro_rules! ty {
+    ($t:ty) => {
+        <$t as KnownType<C>>::Type
+    }
+}
+
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
@@ -86,10 +92,10 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
-                use crate::kernels::NullaryKernel;
+                use crate::kernels::{ConcreteContext, NullaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig) {
@@ -123,10 +129,10 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
-                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature};
-                use crate::kernels::UnaryKernel;
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+                use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
+                use crate::kernels::{ConcreteContext, UnaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig) {
@@ -142,7 +148,7 @@ macro_rules! concrete_dispatch_kernel {
 
                             let k = <$op as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
 
-                            Box::new(move |operands: Vec<crate::computation::Value>| {
+                            Box::new(move |operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
@@ -163,10 +169,10 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
-                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
-                use crate::kernels::BinaryKernel;
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature, Value};
+                use crate::kernels::{ConcreteContext, BinaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig) {
@@ -189,7 +195,7 @@ macro_rules! concrete_dispatch_kernel {
                                 $u
                             >>::compile(self, &ctx, &plc);
 
-                            Box::new(move |operands| -> crate::computation::Value {
+                            Box::new(move |operands| -> Value {
                                 assert_eq!(operands.len(), 2);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
@@ -211,8 +217,12 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
-        impl DispatchKernel<ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c ConcreteContext, plc: &Placement) -> Box<dyn Fn(Vec<Value>) -> Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
+            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+                use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature, Value};
+                use crate::kernels::{ConcreteContext, TernaryKernel};
+                use std::convert::TryInto;
+
                 match (plc.ty(), self.sig) {
                     $(
                         (
@@ -474,6 +484,287 @@ macro_rules! kernel {
     };
 }
 
+/// Kernel function maybe be evaluated in symbolic contexts
+macro_rules! hybrid_kernel {
+
+    /*
+    Nullary
+    */
+
+    ($op:ty, [$( ($plc:ty, () -> $u:ty => $($kp:tt)+), )+]) => {
+        concrete_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+        // symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
+
+        $(
+            impl crate::kernels::NullaryKernel<
+                crate::kernels::ConcreteContext,
+                $plc,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                    ctx: &crate::kernels::ConcreteContext,
+                    plc: &$plc,
+                ) -> Box<dyn Fn(
+                    &crate::kernels::ConcreteContext,
+                    &$plc)
+                    -> $u>
+                {
+                    derive_runtime_kernel![nullary, $($kp)+, self]
+                }
+            }
+        )+
+
+        // $(
+        //     impl NullaryKernel<
+        //         SymbolicContext,
+        //         $plc,
+        //         <$u as KnownType>::Symbolic
+        //     > for $op
+        //     {
+        //         fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+        //             &SymbolicContext,
+        //             &$plc)
+        //             -> <$u as KnownType>::Symbolic>
+        //         {
+        //             let k = derive_runtime_kernel![nullary, $($kp)+, self];
+
+        //             Box::new(move |
+        //                 ctx: &SymbolicContext,
+        //                 plc: &$plc,
+        //             | {
+        //                 let y = k(ctx, &plc);
+        //                 y.into()
+        //             })
+        //         }
+        //     }
+        // )+
+    };
+
+    /*
+    Unary
+    */
+
+    ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+        // symbolic_dispatch_kernel!($op, [$( ($plc, ($t0) -> $u), )+]);
+
+        $(
+            impl crate::kernels::UnaryKernel<
+                crate::kernels::ConcreteContext,
+                $plc,
+                $t0,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                    ctx: &crate::kernels::ConcreteContext,
+                    plc: &$plc,
+                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
+                    derive_runtime_kernel![unary, $($kp)+, self]
+                }
+            }
+        )+
+
+        // $(
+        //     impl UnaryKernel<
+        //         SymbolicContext,
+        //         $plc,
+        //         <$t0 as KnownType>::Symbolic,
+        //         <$u as KnownType>::Symbolic
+        //     > for $op
+        //     {
+        //         fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+        //             &SymbolicContext,
+        //             &$plc,
+        //             <$t0 as KnownType>::Symbolic)
+        //             -> <$u as KnownType>::Symbolic>
+        //         {
+        //             let k = derive_runtime_kernel![unary, $($kp)+, self];
+
+        //             let op = self.clone();
+        //             Box::new(move |
+        //                 ctx: &SymbolicContext,
+        //                 plc: &$plc,
+        //                 x0: <$t0 as KnownType>::Symbolic,
+        //             | {
+        //                 let v0 = x0.clone().try_into();
+
+        //                 match v0 {
+        //                     Ok(v0) => {
+        //                         let y = k(ctx, &plc, v0);
+        //                         y.into()
+        //                     }
+        //                     _ => match x0 {
+        //                         Symbolic::Symbolic(h0) => {
+        //                             let op_name = ctx.add_operation(&op, &[&h0.op], &plc.clone().into());
+        //                             Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+        //                         }
+        //                         _ => unimplemented!() // ok
+        //                     }
+        //                 }
+        //             })
+        //         }
+        //     }
+        // )+
+    };
+
+    /*
+    Binary
+    */
+
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+        // symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1) -> $u), )+]);
+
+        $(
+            impl crate::kernels::BinaryKernel<
+                crate::kernels::ConcreteContext,
+                $plc,
+                $t0,
+                $t1,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                    ctx: &crate::kernels::ConcreteContext,
+                    plc: &$plc
+                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                    derive_runtime_kernel![binary, $($kp)+, self]
+                }
+            }
+        )+
+
+        // $(
+        //     impl BinaryKernel<
+        //         SymbolicContext,
+        //         $plc,
+        //         <$t0 as KnownType>::Symbolic,
+        //         <$t1 as KnownType>::Symbolic,
+        //         <$u as KnownType>::Symbolic
+        //     > for $op
+        //     {
+        //         fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+        //             &SymbolicContext,
+        //             &$plc,
+        //             <$t0 as KnownType>::Symbolic,
+        //             <$t1 as KnownType>::Symbolic)
+        //             -> <$u as KnownType>::Symbolic>
+        //         {
+        //             let k = derive_runtime_kernel![binary, $($kp)+, self];
+
+        //             let op = self.clone();
+        //             Box::new(move |
+        //                 ctx: &SymbolicContext,
+        //                 plc: &$plc,
+        //                 x0: <$t0 as KnownType>::Symbolic,
+        //                 x1: <$t1 as KnownType>::Symbolic,
+        //             | {
+        //                 let v0 = x0.clone().try_into();
+        //                 let v1 = x1.clone().try_into();
+
+        //                 match (v0, v1) {
+        //                     (Ok(v0), Ok(v1)) => {
+        //                         let y = k(ctx, &plc, v0, v1);
+        //                         y.into()
+        //                     }
+        //                     _ => match (x0, x1) {
+        //                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
+        //                             let op_name = ctx.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+        //                             Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+        //                         }
+        //                         _ => unimplemented!() // ok
+        //                     }
+        //                 }
+        //             })
+        //         }
+        //     }
+        // )+
+    };
+
+    /*
+    Ternary
+    */
+
+    ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $($kp:tt)+), )+]) => {
+        concrete_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+        // symbolic_dispatch_kernel!($op, [$( ($plc, ($t0, $t1, $t2) -> $u), )+]);
+
+        $(
+            impl crate::kernels::TernaryKernel<
+                crate::kernels::ConcreteContext,
+                $plc,
+                $t0,
+                $t1,
+                $t2,
+                $u
+            > for $op
+            {
+                fn compile(
+                    &self,
+                    ctx: &crate::kernels::ConcreteContext,
+                    plc: &$plc,
+                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                    derive_runtime_kernel![ternary, $($kp)+, self]
+                }
+            }
+        )+
+
+        // $(
+        //     impl TernaryKernel<
+        //         SymbolicContext,
+        //         $plc,
+        //         <$t0 as KnownType>::Symbolic,
+        //         <$t1 as KnownType>::Symbolic,
+        //         <$t2 as KnownType>::Symbolic,
+        //         <$u as KnownType>::Symbolic
+        //     > for $op
+        //     {
+        //         fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+        //             &SymbolicContext,
+        //             &$plc,
+        //             <$t0 as KnownType>::Symbolic,
+        //             <$t1 as KnownType>::Symbolic,
+        //             <$t2 as KnownType>::Symbolic)
+        //             -> <$u as KnownType>::Symbolic>
+        //         {
+        //             let k = derive_runtime_kernel![ternary, $($kp)+, self];
+
+        //             let op = self.clone();
+        //             Box::new(move |
+        //                 ctx: &SymbolicContext,
+        //                 plc: &$plc,
+        //                 x0: <$t0 as KnownType>::Symbolic,
+        //                 x1: <$t1 as KnownType>::Symbolic,
+        //                 x2: <$t2 as KnownType>::Symbolic,
+        //             | {
+        //                 let v0 = x0.clone().try_into();
+        //                 let v1 = x1.clone().try_into();
+        //                 let v2 = x2.clone().try_into();
+
+        //                 match (v0, v1, v2) {
+        //                     (Ok(v0), Ok(v1), Ok(v2)) => {
+        //                         let y = k(ctx, &plc, v0, v1, v2);
+        //                         y.into()
+        //                     }
+        //                     _ => match (x0, x1, x2) {
+        //                         (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1), Symbolic::Symbolic(h2)) => {
+        //                             let op_name = ctx.add_operation(&op, &[&h0.op, &h1.op, &h2.op], &plc.clone().into());
+        //                             Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+        //                         }
+        //                         _ => unimplemented!() // ok
+        //                     }
+        //                 }
+        //             })
+        //         }
+        //     }
+        // )+
+    };
+}
+
 macro_rules! modelled {
     /*
     Nullary
@@ -520,12 +811,12 @@ macro_rules! modelled {
     Unary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::UnaryKernelCheck<ConcreteContext, $plc, $t0, $u> for $op {}
+        impl crate::kernels::UnaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $u> for $op {}
 
-        impl $t<ConcreteContext, $t0, $u> for $plc {
-            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> $u {
+        impl $t<crate::kernels::ConcreteContext, $t0, $u> for $plc {
+            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> $u {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::Context;
+                use crate::kernels::{Context, ConcreteContext};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
@@ -565,12 +856,12 @@ macro_rules! modelled {
     Binary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::BinaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $u> for $op {}
+        impl crate::kernels::BinaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $t1, $u> for $op {}
 
-        impl $t<ConcreteContext, $t0, $t1, $u> for $plc {
-            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
+        impl $t<crate::kernels::ConcreteContext, $t0, $t1, $u> for $plc {
+            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::Context;
+                use crate::kernels::{Context, ConcreteContext};
                 use std::convert::TryInto;
 
                 let sig = BinarySignature {
@@ -628,17 +919,19 @@ macro_rules! modelled {
     Ternary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::TernaryKernelCheck<ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
+        impl crate::kernels::TernaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
 
-        impl $t<ConcreteContext, $t0, $t1, $t2, $u> for $plc {
-            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
+        impl $t<crate::kernels::ConcreteContext, $t0, $t1, $t2, $u> for $plc {
+            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
+                use crate::kernels::{Context, ConcreteContext};
+                use std::convert::TryInto;
 
                 let sig = TernarySignature {
-                    arg0: <$t0 as KnownType>::TY,
-                    arg1: <$t1 as KnownType>::TY,
-                    arg2: <$t2 as KnownType>::TY,
-                    ret: <$u as KnownType>::TY,
+                    arg0: <$t0 as KnownType<ConcreteContext>>::TY,
+                    arg1: <$t1 as KnownType<ConcreteContext>>::TY,
+                    arg2: <$t2 as KnownType<ConcreteContext>>::TY,
+                    ret: <$u as KnownType<ConcreteContext>>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
@@ -699,10 +992,8 @@ macro_rules! modelled_alias {
     Binary
     */
     ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
-        impl $src_t<ConcreteContext, $t0, $t1> for $plc {
-            type Output = $u;
-
-            fn $src_f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> Self::Output {
+        impl $src_t<ConcreteContext, $t0, $t1, $u> for $plc {
+            fn $src_f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> $u {
                 $dst_t::$dst_f(self, ctx, x0, x1)
             }
         }

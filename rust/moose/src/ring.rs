@@ -166,9 +166,8 @@ impl RingShrOp {
     }
 }
 
-// TODO
-// modelled!(PlacementSample::sample, HostPlacement, () -> Ring64Tensor, RingSampleOp);
-// modelled!(PlacementSample::sample, HostPlacement, () -> Ring128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Seed, Shape) -> Ring64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Seed, Shape) -> Ring128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,

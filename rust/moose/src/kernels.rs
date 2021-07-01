@@ -135,12 +135,16 @@ pub trait PlacementReveal<C: Context, T, O> {
     fn reveal(&self, ctx: &C, x: &T) -> O;
 }
 
-pub trait PlacementSample<C: Context, O> {
-    fn sample(&self, ctx: &C) -> O;
+pub trait PlacementSample<C: Context, SeedT, ShapeT, O> {
+    fn sample(&self, ctx: &C, max_value: Option<u64>, seed: &SeedT, shape: &ShapeT) -> O;
 }
 
-pub trait PlacementRepToAdd<C: Context, T, O> {
-    fn rep_to_add(&self, ctx: &C, x: &T) -> O;
+pub trait PlacementSampleUniform<C: Context, SeedT, ShapeT, O> {
+    fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O;
+}
+
+pub trait PlacementRepToAdt<C: Context, T, O> {
+    fn rep_to_adt(&self, ctx: &C, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
@@ -199,7 +203,7 @@ impl Compile<SyncKernel> for Operator {
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
-            PrimGenPrfKey(op) => Compile::<SyncKernel>::compile(op, ctx),
+            PrimPrfKeyGen(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -253,7 +257,7 @@ impl Compile<AsyncKernel> for Operator {
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            PrimGenPrfKey(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingEncode(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -584,7 +588,7 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
     }
 }
 
-impl Compile<Kernel> for PrimGenPrfKeyOp {
+impl Compile<Kernel> for PrimPrfKeyGenOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(|| PrfKey(
             RawPrfKey::generate(),

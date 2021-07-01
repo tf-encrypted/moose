@@ -277,7 +277,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag("RingShl"), cut(ring_shl)),
         preceded(tag("RingShr"), cut(ring_shr)),
         preceded(tag("PrimDeriveSeed"), cut(prim_derive_seed)),
-        preceded(tag("PrimGenPrfKey"), cut(prim_gen_prf_key)),
+        preceded(tag("PrimPrfKeyGen"), cut(prim_gen_prf_key)),
         preceded(tag("FixedpointRingEncode"), cut(fixed_point_ring_encode)),
         preceded(tag("FixedpointRingDecode"), cut(fixed_point_ring_decode)),
         preceded(tag("FixedpointRingMean"), cut(fixed_point_ring_mean)),
@@ -442,13 +442,13 @@ fn ring_shr<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, RingShrOp { sig, amount }.into()))
 }
 
-/// Parses a PrimGenPrfKey operator.
+/// Parses a PrimPrfKeyGen operator.
 fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     Ok((
         input,
-        PrimGenPrfKeyOp {
+        PrimPrfKeyGenOp {
             sig: Signature::nullary(Ty::PrfKey),
         }
         .into(),
@@ -1140,7 +1140,7 @@ impl ToTextual for Operator {
             // BitXor(op) => op.to_textual(),
             // BitAnd(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
-            PrimGenPrfKey(op) => op.to_textual(),
+            PrimPrfKeyGen(op) => op.to_textual(),
             FixedpointRingEncode(op) => op.to_textual(),
             FixedpointRingDecode(op) => op.to_textual(),
             FixedpointRingMean(op) => op.to_textual(),
@@ -1223,7 +1223,7 @@ standard_op_to_textual!(
     nonce,
     sig
 );
-standard_op_to_textual!(PrimGenPrfKeyOp, "PrimGenPrfKey: {}", sig);
+standard_op_to_textual!(PrimPrfKeyGenOp, "PrimPrfKeyGen: {}", sig);
 standard_op_to_textual!(
     FixedpointRingEncodeOp,
     "FixedpointRingEncode{{scaling_base={}, scaling_exp={}}}: {}",
@@ -1690,8 +1690,8 @@ mod tests {
     }
 
     #[test]
-    fn test_primgenprfkey() -> Result<(), anyhow::Error> {
-        let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimGenPrfKey() @Host(alice)")?;
+    fn test_primprfkeygen() -> Result<(), anyhow::Error> {
+        let (_, op) = parse_assignment::<(&str, ErrorKind)>("key = PrimPrfKeyGen() @Host(alice)")?;
         assert_eq!(op.name, "key");
         Ok(())
     }

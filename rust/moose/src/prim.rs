@@ -1,5 +1,5 @@
-use crate::computation::{HostPlacement, Placed, PrimGenPrfKeyOp};
-use crate::kernels::{ConcreteContext, NullaryKernel};
+use crate::computation::{HostPlacement, Placed, PrimPrfKeyGenOp};
+use crate::kernels::{ConcreteContext, NullaryKernel, PlacementKeyGen};
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +34,13 @@ impl Placed for PrfKey {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawNonce(pub Vec<u8>);
 
+impl RawNonce {
+    pub fn generate() -> RawNonce {
+        let nonce = AesRng::generate_random_key();
+        RawNonce(nonce.into())
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Nonce(pub RawNonce, pub HostPlacement);
 
@@ -45,14 +52,17 @@ impl Placed for Nonce {
     }
 }
 
+modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp);
+
+
 kernel! {
-    PrimGenPrfKeyOp,
+    PrimPrfKeyGenOp,
     [
         (HostPlacement, () -> PrfKey => Self::kernel),
     ]
 }
 
-impl PrimGenPrfKeyOp {
+impl PrimPrfKeyGenOp {
     fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         PrfKey(raw_key, plc.clone())

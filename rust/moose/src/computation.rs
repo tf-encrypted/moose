@@ -521,7 +521,7 @@ operators![
     BitXor,
     BitAnd,
     PrimDeriveSeed,
-    PrimGenPrfKey,
+    PrimPrfKeyGen,
     FixedAdd,
     FixedMul,
     FixedpointRingEncode,
@@ -678,7 +678,7 @@ pub struct PrimDeriveSeedOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct PrimGenPrfKeyOp {
+pub struct PrimPrfKeyGenOp {
     pub sig: Signature,
 }
 
@@ -804,47 +804,47 @@ pub struct FixedpointRingMeanOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct AdtRevealOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct AdtAddOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct AdtMulOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepSetupOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepShareOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepRevealOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepAddOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepMulOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepToAdtOp {
-    sig: Signature,
+    pub sig: Signature,
 }
 
 pub trait KnownPlacement {

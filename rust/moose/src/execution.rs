@@ -1093,7 +1093,7 @@ mod tests {
     fn test_eager_executor() {
         use itertools::Itertools;
         let mut definition = String::from(
-            r#"key = PrimGenPrfKey() @Host(alice)
+            r#"key = PrimPrfKeyGen() @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
