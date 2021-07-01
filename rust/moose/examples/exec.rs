@@ -6,7 +6,7 @@ use moose::standard::RawShape;
 fn main() {
     let key_op = Operation {
         name: "key".into(),
-        kind: PrimGenPrfKeyOp {
+        kind: PrimPrfKeyGenOp {
             sig: Signature::nullary(Ty::PrfKey),
         }
         .into(),
