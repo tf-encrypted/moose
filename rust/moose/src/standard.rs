@@ -7,6 +7,7 @@ use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
+use std::borrow::Borrow;
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -221,7 +222,21 @@ where
 {
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 / other.0)
+        let lhs_to_rhs_broadcast = self.0.broadcast(other.0.dim());
+        match lhs_to_rhs_broadcast {
+            Some(lhs_broadcasted) => StandardTensor::<T>(lhs_broadcasted.to_owned() / other.0),
+            None => {
+                let rhs_to_lhs_broadcast = other.0.broadcast(self.0.dim());
+                match rhs_to_lhs_broadcast {
+                    Some(rhs_broadcasted) => StandardTensor::<T>(self.0 / rhs_broadcasted),
+                    None => panic!(
+                        "Div can't broadcast array of shape: {:?} to {:?}",
+                        other.0.dim(),
+                        self.0.dim()
+                    ),
+                }
+            }
+        }
     }
 }
 
@@ -386,5 +401,24 @@ mod tests {
         assert_eq!(bx, b_exp);
         assert_eq!(cx, c_exp);
         assert_eq!(dx, d_exp);
+    }
+
+    #[test]
+    fn test_div() {
+        let x_1 = StandardTensor::<f32>::from(array![1.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 =
+            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_1 = x_1.div(y_1);
+        let z_1_exp =
+            StandardTensor::<f32>::from(array![0.5, 0.25].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 =
+            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_2 = x_2.div(y_2);
+        let z_2_exp =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+
+        assert_eq!(z_1, z_1_exp);
+        assert_eq!(z_2, z_2_exp);
     }
 }
