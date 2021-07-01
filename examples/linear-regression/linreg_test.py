@@ -6,16 +6,10 @@ import numpy as np
 from absl.testing import parameterized
 
 from moose import edsl
+from moose.computation import utils
 from moose.computation.standard import StringType
 from moose.logger import get_logger
 from moose.testing import LocalMooseRuntime
-
-# from moose.computation.utils import deserialize_computation
-# from moose.computation.utils import serialize_computation
-# from moose.executor.executor import AsyncExecutor
-# from moose.networking.memory import Networking
-# from moose.storage.memory import MemoryDataStore
-# from moose.testing import TestRuntime as Runtime
 
 FIXED = edsl.fixed(8, 27)
 
@@ -125,51 +119,14 @@ class LinearRegressionExample(parameterized.TestCase):
 
             return res
 
-        concrete_comp = edsl.trace_and_compile(my_comp, compiler_passes=compiler_passes)
-        return (my_comp, concrete_comp), (x_owner, y_owner, model_owner, replicated_plc)
+        return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
-    # TODO [Yann] figure out why it's hanging with mape ...
     # @parameterized.parameters(["mse", "mape"])
     @parameterized.parameters(["mse"])
     def test_linear_regression_eval(self, metric_name):
-        (
-            (linear_comp, concrete_comp),
-            placements,
-        ) = self._build_linear_regression_example(metric_name)
-        x_owner, y_owner, model_owner, replicated_plc = placements
+        linear_comp, placements = self._build_linear_regression_example(metric_name)
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
-        # networking = Networking()
-        # x_owner_storage = MemoryDataStore({"x_data": x_data})
-        # x_owner_executor = AsyncExecutor(networking, storage=x_owner_storage)
-        # y_owner_storage = MemoryDataStore({"y_data": y_data})
-        # y_owner_executor = AsyncExecutor(networking, storage=y_owner_storage)
-        # model_owner_storage = MemoryDataStore()
-        # model_owner_executor = AsyncExecutor(networking, storage=model_owner_storage)
-        # runtime = Runtime(
-        #     networking=networking,
-        #     backing_executors={
-        #         x_owner.name: x_owner_executor,
-        #         y_owner.name: y_owner_executor,
-        #         model_owner.name: model_owner_executor,
-        #     },
-        # )
-        # runtime.evaluate_computation(
-        #     concrete_comp,
-        #     placement_instantiation={
-        #         plc: plc.name for plc in [x_owner, y_owner, model_owner]
-        #     },
-        #     arguments={
-        #         "x_uri": "x_data",
-        #         "y_uri": "y_data",
-        #         "w_uri": "regression_weights",
-        #         "metric_uri": "metric_result",
-        #         "rsquared_uri": "rsquared_result",
-        #     },
-        # )
-
-        # print("Done: \n", model_owner_storage.store["regression_weights"])
-
         executors_storage = {
             "x-owner": {"x_data": x_data},
             "y-owner": {"y_data": y_data},
@@ -196,15 +153,14 @@ class LinearRegressionExample(parameterized.TestCase):
             runtime.get_value_from_storage("model-owner", "regression_weights"),
         )
 
-    # @parameterized.parameters(True, False)
-    # def test_linear_regression_serde(self, compiled):
-    #     passes_arg = None if compiled else []
-    #     (_, traced_comp), placements = self._build_linear_regression_example(
-    #         compiler_passes=passes_arg
-    #     )
-    #     serialized = serialize_computation(traced_comp)
-    #     deserialized = deserialize_computation(serialized)
-    #     assert traced_comp == deserialized
+    @parameterized.parameters(True, False)
+    def test_linear_regression_serde(self, compiled):
+        passes_arg = None if compiled else []
+        comp, _ = self._build_linear_regression_example(compiler_passes=passes_arg)
+        compiled_comp = edsl.trace_and_compile(comp)
+        serialized = utils.serialize_computation(compiled_comp)
+        deserialized = utils.deserialize_computation(serialized)
+        assert compiled_comp == deserialized
 
 
 if __name__ == "__main__":
