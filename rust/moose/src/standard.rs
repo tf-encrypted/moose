@@ -222,20 +222,9 @@ where
 {
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
-        let lhs_to_rhs_broadcast = self.0.broadcast(other.0.dim());
-        match lhs_to_rhs_broadcast {
-            Some(lhs_broadcasted) => StandardTensor::<T>(lhs_broadcasted.to_owned() / other.0),
-            None => {
-                let rhs_to_lhs_broadcast = other.0.broadcast(self.0.dim());
-                match rhs_to_lhs_broadcast {
-                    Some(rhs_broadcasted) => StandardTensor::<T>(self.0 / rhs_broadcasted),
-                    None => panic!(
-                        "Div can't broadcast array of shape: {:?} to {:?}",
-                        other.0.dim(),
-                        self.0.dim()
-                    ),
-                }
-            }
+        match self.0.broadcast(other.0.dim()) {
+            Some(self_broadcasted) => StandardTensor::<T>(self_broadcasted.to_owned() / other.0),
+            None => StandardTensor::<T>(self.0 / other.0),
         }
     }
 }
