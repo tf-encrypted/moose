@@ -196,6 +196,7 @@ impl Compile<SyncKernel> for Operator {
             Input(op) => Compile::<SyncKernel>::compile(op, ctx),
             Output(op) => Compile::<SyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<SyncKernel>::compile(op, ctx),
+            Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -217,7 +218,6 @@ impl Compile<SyncKernel> for Operator {
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingShape(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -250,6 +250,7 @@ impl Compile<AsyncKernel> for Operator {
             Input(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Output(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            Shape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -271,7 +272,6 @@ impl Compile<AsyncKernel> for Operator {
             RingMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingShape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -694,7 +694,7 @@ impl Compile<Kernel> for RingSumOp {
     }
 }
 
-impl Compile<Kernel> for RingShapeOp {
+impl Compile<Kernel> for ShapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(Ty::Ring64Tensor) -> Ty::Shape] => {

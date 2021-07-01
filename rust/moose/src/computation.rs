@@ -488,6 +488,7 @@ operators![
     Input,
     Output,
     Constant,
+    Shape,
     StdAdd,
     StdSub,
     StdMul,
@@ -509,7 +510,6 @@ operators![
     RingMul,
     RingDot,
     RingSum,
-    RingShape,
     RingSample,
     RingFill,
     RingShl,
@@ -672,6 +672,11 @@ pub struct StdInverseOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct ShapeOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
     pub nonce: RawNonce,
@@ -706,11 +711,6 @@ pub struct RingDotOp {
 pub struct RingSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct RingShapeOp {
-    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

@@ -316,13 +316,13 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::UnaryKernel<
-                ConcreteContext,
+                crate::kernels::ConcreteContext,
                 $plc,
                 $t0,
                 $u
             > for $op
             {
-                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0) -> $u> {
+                fn compile(&self, ctx: &crate::kernels::ConcreteContext, plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }

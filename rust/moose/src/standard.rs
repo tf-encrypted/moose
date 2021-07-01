@@ -1,9 +1,10 @@
 extern crate ndarray;
 extern crate ndarray_linalg;
 
-use crate::computation::HostPlacement;
-use crate::computation::Placed;
-use crate::computation::Placement;
+use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
+use crate::kernels::{PlacementShape};
+use crate::ring::{Ring64Tensor, Ring128Tensor};
+use crate::bit::{BitTensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray_linalg::types::{Lapack, Scalar};
@@ -47,6 +48,20 @@ pub type Uint8Tensor = StandardTensor<u8>;
 pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
+
+
+modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (BitTensor) -> Shape, ShapeOp);
+
+kernel! {
+    ShapeOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Shape => Self::ring_kernel),
+        (HostPlacement, (Ring128Tensor) -> Shape => Self::ring_kernel),
+        (HostPlacement, (BitTensor) -> Shape => Self::bit_kernel),
+    ]
+}
 
 impl RawShape {
     pub fn expand(mut self, axis: usize) -> Self {

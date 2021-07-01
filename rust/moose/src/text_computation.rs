@@ -247,6 +247,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag("Input"), cut(input_operator)),
         preceded(tag("Output"), cut(std_unary!(OutputOp))),
         preceded(tag("Constant"), cut(constant)),
+        preceded(tag("Shape"), cut(std_unary!(ShapeOp))),
         preceded(tag("Save"), cut(save_operator)),
         preceded(tag("StdAdd"), cut(std_binary!(StdAddOp))),
         preceded(tag("StdSub"), cut(std_binary!(StdSubOp))),
@@ -271,7 +272,6 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag("RingMul"), cut(std_binary!(RingMulOp))),
         preceded(tag("RingDot"), cut(std_binary!(RingDotOp))),
         preceded(tag("RingSum"), cut(operation_on_axis!(RingSumOp))),
-        preceded(tag("RingShape"), cut(std_unary!(RingShapeOp))),
         preceded(tag("RingSample"), cut(ring_sample)),
         preceded(tag("RingFill"), cut(ring_fill)),
         preceded(tag("RingShl"), cut(ring_shl)),
@@ -1107,6 +1107,7 @@ impl ToTextual for Operator {
             Input(op) => op.to_textual(),
             Output(op) => op.to_textual(),
             Constant(op) => op.to_textual(),
+            Shape(op) => op.to_textual(),
             StdAdd(op) => op.to_textual(),
             StdSub(op) => op.to_textual(),
             StdMul(op) => op.to_textual(),
@@ -1128,7 +1129,6 @@ impl ToTextual for Operator {
             RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
-            RingShape(op) => op.to_textual(),
             RingSample(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             RingShl(op) => op.to_textual(),
@@ -1206,11 +1206,11 @@ standard_op_to_textual!(
 );
 standard_op_to_textual!(StdTransposeOp, "StdTranspose: {}", sig);
 standard_op_to_textual!(StdInverseOp, "StdInverse: {}", sig);
+standard_op_to_textual!(ShapeOp, "Shape: {}", sig);
 standard_op_to_textual!(RingAddOp, "RingAdd: {}", sig);
 standard_op_to_textual!(RingSubOp, "RingSub: {}", sig);
 standard_op_to_textual!(RingMulOp, "RingMul: {}", sig);
 standard_op_to_textual!(RingDotOp, "RingDot: {}", sig);
-standard_op_to_textual!(RingShapeOp, "RingShape: {}", sig);
 standard_op_to_textual!(RingFillOp, "RingFill{{value={}}}: {}", value, sig);
 standard_op_to_textual!(RingShlOp, "RingShl{{amount={}}}: {}", amount, sig);
 standard_op_to_textual!(RingShrOp, "RingShr{{amount={}}}: {}", amount, sig);

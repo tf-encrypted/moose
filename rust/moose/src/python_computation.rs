@@ -724,7 +724,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
-                        kind: RingShapeOp {
+                        kind: ShapeOp {
                             sig: Signature::unary(Ty::Ring128Tensor, Ty::Shape),
                         }
                         .into(),
