@@ -952,23 +952,11 @@ impl Neg for RingTensor<u128> {
     }
 }
 
-// impl RingTensor<u128> {
-//     fn fill(el: u128, plc: HostPlacement) -> RingTensor<u128> {
-//         RingTensor(el, plc)
-//     }
-// }
-
 impl<T> RingTensor<T> {
     fn fill(el: T, plc: HostPlacement) -> RingTensor<T> {
         RingTensor(el, plc)
     }
 }
-
-// impl RingTensor<u64> {
-//     fn fill(el: u64, plc: HostPlacement) -> RingTensor<u64> {
-//         RingTensor(el, plc)
-//     }
-// }
 
 impl BitTensor {
     fn fill(el: u8, plc: HostPlacement) -> BitTensor {
@@ -3343,6 +3331,7 @@ where
     AdditivePlacement: PlacementFill<C, Shape, AdditiveTensor<R>>, // TODO: Fix shape; Use type parameter
     HostPlacement: PlacementBitCompose<C, R> + PlacementKeyGen<C, K> + PlacementSub<C, R, R, R>,
     HostPlacement: PlacementOnes<C, Shape, R>,
+    HostPlacement: PlacementShape<C, R, Shape>,
 {
     fn trunc_pr(
         &self,
@@ -3353,17 +3342,18 @@ where
     ) -> AdditiveTensor<R> {
         // consider input is always signed
         let (player_a, player_b) = self.host_placements();
+        let AdditiveTensor { shares: [x0, x1] } = x;
 
         let k = R::SIZE - 1;
         // TODO(Dragos)this is optional if we work with unsigned numbers
-        let x_shape = Shape(vec![1], player_a.clone());
+        let x_shape = player_a.shape(ctx, x0);
 
         let ones = player_a.ones(ctx, &x_shape);
 
         let twok = self.fill(
             ctx,
             player_a.shl(ctx, k, &ones).into(),
-            &Shape(vec![1], player_a.clone()),
+            &x_shape,
         );
         let positive = self.add(ctx, x, &twok);
 
