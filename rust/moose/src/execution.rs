@@ -16,6 +16,10 @@ use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::sync::oneshot;
+use std::pin::Pin;
+use std::task::Poll;
+use std::task::Context;
+use tokio::task::JoinError;
 
 #[macro_export]
 macro_rules! function_kernel {
@@ -983,6 +987,23 @@ pub struct AsyncSession {
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
+struct CancelJoinHandle {
+    task: AsyncTask
+}
+
+impl Drop for CancelJoinHandle {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
+
+impl Future for CancelJoinHandle {
+    type Output = Poll<std::result::Result<std::result::Result<(), Error>, JoinError>>;
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        return std::task::Poll::Ready(Pin::new(&mut self.task).poll(cx));
+    }
+}
+
 pub struct AsyncSessionHandle {
     tasks: Vec<AsyncTask>,
 }
@@ -1028,9 +1049,16 @@ impl AsyncSessionHandle {
         use futures::StreamExt;
         use crate::error::Error::{OperandUnavailable, ResultUnused};
 
+        // TODO:
         // iterate and wrap all tasks with MyJoinHandle
         // impl drop and future for MyJoinHandle
         //     in Drop: call join_handle.abort()
+
+        //let mut task_vec = Vec::new();
+        //for task in self.tasks.into_iter() {
+        //    task_vec.push(CancelJoinHandle{task: task});
+        //}
+        //let mut tasks = task_vec.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
 
         let mut tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
 
