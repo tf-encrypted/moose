@@ -1,5 +1,5 @@
-use crate::computation::{HostPlacement, Placed, PrimPrfKeyGenOp};
-use crate::kernels::{ConcreteContext, NullaryKernel, PlacementKeyGen};
+use crate::computation::{HostPlacement, Placed, PrimPrfKeyGenOp, PrimDeriveSeedOp};
+use crate::kernels::{ConcreteContext, NullaryKernel, PlacementKeyGen, PlacementDeriveSeed};
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
 
@@ -54,7 +54,6 @@ impl Placed for Nonce {
 
 modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp);
 
-
 kernel! {
     PrimPrfKeyGenOp,
     [
@@ -69,6 +68,23 @@ impl PrimPrfKeyGenOp {
     }
 }
 
+modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[nonce: RawNonce] (PrfKey) -> Seed, PrimDeriveSeedOp);
+
+kernel! {
+    PrimDeriveSeedOp,
+    [
+        (HostPlacement, (PrfKey) -> Seed => attributes[nonce] Self::kernel),
+    ]
+}
+
+impl PrimDeriveSeedOp {
+    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, nonce: RawNonce, key: PrfKey) -> Seed {
+        let raw_seed = RawSeed(crate::utils::derive_seed(&key.0.0, &nonce.0));
+        Seed(raw_seed, plc.clone())
+    }
+}
+
+// TODO deprecated
 impl RawSeed {
     pub fn from_prf(key: &RawPrfKey, nonce: &RawNonce) -> RawSeed {
         let raw_seed = crate::utils::derive_seed(&key.0, &nonce.0);
@@ -76,6 +92,7 @@ impl RawSeed {
     }
 }
 
+// TODO deprecated
 impl RawPrfKey {
     pub fn generate() -> RawPrfKey {
         let raw_key = AesRng::generate_random_key();

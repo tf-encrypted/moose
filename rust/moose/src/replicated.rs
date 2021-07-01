@@ -5,13 +5,18 @@ use crate::computation::{
     RepShareOp, RepToAdtOp, ReplicatedPlacement,
 };
 use crate::kernels::{
-    Context, PlacementAdd, PlacementKeyGen, PlacementMul, PlacementShape, PlacementMulSetup, PlacementSampleUniform, PlacementReveal, PlacementSub, PlacementRepToAdt
+    Context, PlacementAdd, PlacementKeyGen, PlacementMul, PlacementShape, PlacementDeriveSeed, PlacementMulSetup, PlacementSampleUniform, PlacementReveal, PlacementSub, PlacementRepToAdt
 };
 use crate::prim::PrfKey;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use crate::standard::Shape;
+use crate::prim::RawNonce;
+use crate::computation::KnownType;
+use crate::prim::Seed;
+
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedTensor<R> {
@@ -378,10 +383,6 @@ struct AbstractReplicatedShape<S> {
     shapes: [S; 3]
 }
 
-
-use crate::standard::Shape;
-
-
 impl RepMulOp {
     fn rep_rep_kernel<C: Context, RingT, KeyT, ShapeT>(
         ctx: &C,
@@ -490,25 +491,6 @@ impl RepMulOp {
         }
     }
 }
-
-
-trait PlacementDeriveSeed<C: Context, KeyT, SeedT> {
-    fn derive_seed(&self, ctx: &C, sync_key: RawNonce, key: &KeyT) -> SeedT;
-}
-
-impl<C: Context> PlacementDeriveSeed<C, PrfKey, Seed> for HostPlacement {
-    fn derive_seed(&self, ctx: &C, sync_key: RawNonce, key: &PrfKey) -> Seed {
-        unimplemented!()
-    }
-}
-
-use crate::prim::RawNonce;
-
-
-
-use crate::computation::KnownType;
-use crate::prim::Seed;
-
 
 modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor, RepToAdtOp);
 modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor, RepToAdtOp);

@@ -36,7 +36,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc| {
-                $k(ctx, plc, $($attr),+)
+                $k(ctx, plc, $($attr.clone()),+)
             })
         }
     };
@@ -46,7 +46,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc, x0| {
-                $k(ctx, plc, $($attr),+, x0)
+                $k(ctx, plc, $($attr.clone()),+, x0)
             })
         }
     };
@@ -56,7 +56,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc, x0, x1| {
-                $k(ctx, plc, $($attr),+, x0, x1)
+                $k(ctx, plc, $($attr.clone()),+, x0, x1)
             })
         }
     };
@@ -66,7 +66,7 @@ macro_rules! derive_runtime_kernel {
             let $attr = $self.$attr.clone();
             )+
             Box::new(move |ctx, plc, x0, x1, x2| {
-                $k(ctx, plc, $($attr),+), x0, x1, x2
+                $k(ctx, plc, $($attr.clone()),+), x0, x1, x2
             })
         }
     };

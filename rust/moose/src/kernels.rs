@@ -5,7 +5,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, RawNonce};
 use crate::replicated::ReplicatedSetup;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
@@ -92,12 +92,16 @@ where
 {
 }
 
-pub trait PlacementShape<C: Context, T, S> {
-    fn shape(&self, ctx: &C, x: &T) -> S;
+pub trait PlacementShape<C: Context, T, ShapeT> {
+    fn shape(&self, ctx: &C, x: &T) -> ShapeT;
 }
 
-pub trait PlacementKeyGen<C: Context, K> {
-    fn keygen(&self, ctx: &C) -> K;
+pub trait PlacementKeyGen<C: Context, KeyT> {
+    fn keygen(&self, ctx: &C) -> KeyT;
+}
+
+pub trait PlacementDeriveSeed<C: Context, KeyT, SeedT> {
+    fn derive_seed(&self, ctx: &C, sync_key: RawNonce, key: &KeyT) -> SeedT;
 }
 
 pub trait PlacementAdd<C: Context, T, U, O> {
