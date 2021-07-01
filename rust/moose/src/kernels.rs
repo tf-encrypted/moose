@@ -92,6 +92,10 @@ where
 {
 }
 
+pub trait PlacementShape<C: Context, T, S> {
+    fn shape(&self, ctx: &C, x: &T) -> S;
+}
+
 pub trait PlacementKeyGen<C: Context, K> {
     fn keygen(&self, ctx: &C) -> K;
 }
@@ -141,6 +145,28 @@ pub trait PlacementSample<C: Context, SeedT, ShapeT, O> {
 
 pub trait PlacementSampleUniform<C: Context, SeedT, ShapeT, O> {
     fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O;
+}
+
+impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleUniform<C, SeedT, ShapeT, O> for P
+where
+    P: PlacementSample<C, SeedT, ShapeT, O>
+{
+    fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
+        self.sample(ctx, None, seed, shape)
+    }
+}
+
+pub trait PlacementSampleBits<C: Context, SeedT, ShapeT, O> {
+    fn sample_bits(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O;
+}
+
+impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleBits<C, SeedT, ShapeT, O> for P
+where
+    P: PlacementSample<C, SeedT, ShapeT, O>
+{
+    fn sample_bits(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
+        self.sample(ctx, Some(1), seed, shape)
+    }
 }
 
 pub trait PlacementRepToAdt<C: Context, T, O> {

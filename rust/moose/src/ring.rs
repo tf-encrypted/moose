@@ -11,10 +11,10 @@ use crate::bit::BitTensor;
 use crate::computation::Placed;
 use crate::computation::Role;
 use crate::computation::{
-    HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
+    HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingShapeOp
 };
 use crate::kernels::{
-    ConcreteContext, PlacementAdd, PlacementMul, PlacementSample, PlacementShl, PlacementShr,
+    ConcreteContext, PlacementAdd, PlacementMul, PlacementShape, PlacementSample, PlacementSampleUniform, PlacementShl, PlacementShr,
     PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
@@ -33,6 +33,28 @@ impl<T> Placed for AbstractRingTensor<T> {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, RingShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, RingShapeOp);
+
+kernel! {
+    RingShapeOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Shape => Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Shape => Self::kernel),
+    ]
+}
+
+impl RingShapeOp {
+    fn kernel<T>(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+    ) -> Shape {
+        let raw_shape = RawShape(x.0.shape().into());
+        Shape(raw_shape, plc.clone().into())
     }
 }
 
