@@ -28,7 +28,6 @@ pub struct AbstractReplicatedSetup<K> {
     pub keys: [[K; 2]; 3],
 }
 
-
 pub type Replicated64Tensor = AbstractReplicatedTensor<Ring64Tensor>;
 
 pub type Replicated128Tensor = AbstractReplicatedTensor<Ring128Tensor>;
@@ -116,31 +115,63 @@ impl RepSetupOp {
     }
 }
 
-// TODO
-// impl RepShareOp {
-//     fn kernel<C: Context, R: Clone>(
-//         ctx: &C,
-//         rep: &ReplicatedPlacement,
-//         x: R,
-//     ) -> AbstractReplicatedTensor<R>
-//     where
-//         R: Into<C::Value> + TryFrom<C::Value> + 'static,
-//         R: Placed<Placement = HostPlacement>,
-//         HostPlacement: PlacementSample<C, R>,
-//         HostPlacement: PlacementAdd<C, R, R, R>,
-//         HostPlacement: PlacementSub<C, R, R, R>,
-//     {
-//         let owner = x.placement();
 
-//         let x0 = owner.sample(ctx);
-//         let x1 = owner.sample(ctx);
-//         let x2 = with_context!(owner, ctx, x - (x0 + x1));
+impl RepShareOp {
+    fn kernel<C: Context, SeedT, ShapeT, KeyT, RingT>(
+        ctx: &C,
+        plc: &ReplicatedPlacement,
+        setup: &AbstractReplicatedSetup<KeyT>,
+        x: RingT,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        RingT: Clone + 'static,
+        RingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementShape<C, RingT, ShapeT>,
+        HostPlacement: PlacementSampleUniform<C, SeedT, ShapeT, RingT>,
+        HostPlacement: PlacementDeriveSeed<C, KeyT, SeedT>,
+        HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
+        HostPlacement: PlacementSub<C, RingT, RingT, RingT>,
+    {
+        let owner = x.placement();
+        let (owner0, owner1, owner2) = plc.host_placements();
 
-//         AbstractReplicatedTensor {
-//             shares: [[x0.clone(), x1.clone()], [x1, x2.clone()], [x2, x0]],
-//         }
-//     }
-// }
+        let AbstractReplicatedSetup { 
+            keys: [
+                [k00, k10],
+                [k11, k21],
+                [k22, k02],
+            ]
+        } = setup;
+
+        match () {
+            _ if owner == owner0 => {
+
+            }
+            _ if owner == owner1 => {
+                
+            }
+            _ if owner == owner2 => {
+                
+            }
+            _ => {
+                
+            }
+        }
+
+        let sync_key = RawNonce::generate();
+        let seed0: SeedT = owner.derive_seed(ctx, sync_key, key);
+        let seed1: SeedT = owner.derive_seed(ctx, sync_key, key);
+        let shape = owner.shape(ctx, &x);
+
+        let x0 = owner.sample_uniform(ctx, &seed0, &shape);
+        let x1 = owner.sample_uniform(ctx, &seed1, &shape);
+        let x2 = with_context!(owner, ctx, x - (x0 + x1));
+
+        AbstractReplicatedTensor {
+            shares: [[x0.clone(), x1.clone()], [x1, x2.clone()], [x2, x0]],
+        }
+    }
+}
 
 modelled!(PlacementReveal::reveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
