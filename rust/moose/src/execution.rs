@@ -748,7 +748,7 @@ impl Computation {
         let compiled_ops: Vec<CompiledSyncOperation> = self
             .operations
             .par_iter() // par_iter seems to make sense here, see benches
-            .map(|op| op.compile(&ctx))
+            .map(|op| op.compile(ctx))
             .collect::<Result<Vec<_>>>()?;
 
         let output_names: Vec<String> = self
@@ -809,7 +809,7 @@ impl Computation {
 
         let own_kernels: Vec<CompiledAsyncOperation> = own_operations
             .par_iter() // par_iter seems to make sense here, see benches
-            .map(|op| op.compile(&ctx))
+            .map(|op| op.compile(ctx))
             .collect::<Result<Vec<_>>>()?;
 
         let own_output_names: Vec<String> = own_operations
@@ -1569,7 +1569,7 @@ mod tests {
         res = RingShr {amount = 1}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#;
-        let source = template_source.replace("Ring64Tensor", &type_str.as_str());
+        let source = template_source.replace("Ring64Tensor", type_str.as_str());
         let comp: Computation = source.try_into()?;
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;

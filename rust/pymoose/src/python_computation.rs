@@ -1,6 +1,7 @@
 #[cfg(test)]
 mod tests {
     use approx::AbsDiffEq;
+    use moose::compilation::typing::update_types_one_hop;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
     use moose::{computation::*, python_computation::PyComputation, standard::Float64Tensor};
@@ -18,6 +19,7 @@ mod tests {
         let comp: PyComputation = rmp_serde::from_read_ref(&buf).unwrap();
 
         let rust_comp: Computation = comp.try_into().unwrap();
+        let rust_comp = update_types_one_hop(&rust_comp).unwrap().unwrap();
         rust_comp.toposort().unwrap()
     }
 
@@ -464,7 +466,7 @@ def f():
     "#;
 
         let exec = TestExecutor::default();
-        let _ = exec.run_computation(&graph_from_run_call0_func(&py_code), SyncArgs::new());
+        let _ = exec.run_computation(&graph_from_run_call0_func(py_code), SyncArgs::new());
     }
     #[test]
     fn test_deserialize_linear_regression() {
@@ -557,7 +559,7 @@ def f():
 
 "#;
 
-        let comp = graph_from_run_call0_func(&py_code);
+        let comp = graph_from_run_call0_func(py_code);
         let x = Value::from(Float64Tensor::from(
             array![
                 [-0.76943992],
@@ -707,7 +709,7 @@ def f(arg1):
             .into_dimensionality::<IxDyn>()
             .unwrap();
 
-        let result = run_unary_func(&x1, &py_code);
+        let result = run_unary_func(&x1, py_code);
         let y1 = x1.mapv(f64::abs);
         assert_eq!(result, Value::Float64Tensor(Float64Tensor::from(y1)));
     }
