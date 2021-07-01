@@ -7,7 +7,6 @@ use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
-use std::borrow::Borrow;
 use std::ops::{Add, Div, Mul, Sub};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -393,7 +392,7 @@ mod tests {
     }
 
     #[test]
-    fn test_div() {
+    fn test_div_broadcasting() {
         let x_1 = StandardTensor::<f32>::from(array![1.0].into_dimensionality::<IxDyn>().unwrap());
         let y_1 =
             StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
