@@ -73,6 +73,7 @@ impl NetworkingPass {
         let send_operation = Operation {
             name: format!("send_{}", index),
             kind: Operator::Send(SendOp {
+                sig: Signature::unary(Ty::UnknownTy, Ty::UnknownTy),
                 rendezvous_key: rendezvous_key.clone(),
                 receiver: Role::from(dst),
             }),
@@ -84,9 +85,9 @@ impl NetworkingPass {
         let receive_operation = Operation {
             name: format!("receive_{}", index),
             kind: Operator::Receive(ReceiveOp {
+                sig: Signature::nullary(Ty::UnknownTy),
                 rendezvous_key,
                 sender: Role::from(src),
-                ty: Ty::UnknownTy,
             }),
             inputs: vec![],
             placement: dst_op.placement.clone(),
@@ -137,8 +138,9 @@ mod tests {
         assert!(comp.contains(
             "dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)"
         ));
-        assert!(comp
-            .contains("mean = StdMean: (Float32TensorTy) -> Float32TensorTy (dot) @Host(alice)"));
+        assert!(
+            comp.contains("mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)")
+        );
         Ok(())
     }
 
@@ -160,8 +162,9 @@ mod tests {
         assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Unknown () @Host(alice)"#));
         assert!(comp.contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp.contains("dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
-        assert!(comp
-            .contains("mean = StdMean: (Float32TensorTy) -> Float32TensorTy (dot) @Host(alice)"));
+        assert!(
+            comp.contains("mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)")
+        );
         Ok(())
     }
 

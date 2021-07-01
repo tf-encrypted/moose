@@ -68,8 +68,7 @@ fn par_compile(c: &mut Criterion) {
     use moose::execution::*;
 
     let operator = Operator::RingAdd(RingAddOp {
-        lhs: Ty::Ring64TensorTy,
-        rhs: Ty::Ring64TensorTy,
+        sig: Signature::binary(Ty::Ring64TensorTy, Ty::Ring64TensorTy, Ty::Ring64TensorTy),
     });
     let operation = Operation {
         name: "y".into(),
@@ -467,8 +466,7 @@ fn gen_sample_graph(size: usize) -> Computation {
     use moose::ring::*;
 
     let operator = Operator::RingMul(RingMulOp {
-        lhs: Ty::Ring64TensorTy,
-        rhs: Ty::Ring64TensorTy,
+        sig: Signature::binary(Ty::Ring64TensorTy, Ty::Ring64TensorTy, Ty::Ring64TensorTy),
     });
 
     let mut operations: Vec<_> = (0..size)
@@ -490,6 +488,7 @@ fn gen_sample_graph(size: usize) -> Computation {
     operations.push(Operation {
         name: "x".into(),
         kind: Operator::Constant(ConstantOp {
+            sig: Signature::nullary(Ty::Ring64TensorTy),
             value: Value::Ring64Tensor(Ring64Tensor::from(raw_tensor)),
         }),
         inputs: vec![],
@@ -506,8 +505,7 @@ fn compile(c: &mut Criterion) {
     use moose::execution::*;
 
     let operator = Operator::RingAdd(RingAddOp {
-        lhs: Ty::Ring64TensorTy,
-        rhs: Ty::Ring64TensorTy,
+        sig: Signature::binary(Ty::Ring64TensorTy, Ty::Ring64TensorTy, Ty::Ring64TensorTy),
     });
     let ctx = CompilationContext {
         role_assignment: &std::collections::HashMap::new(),
