@@ -1074,13 +1074,21 @@ impl AsyncSessionHandle {
                         // and return it instead.
                         OperandUnavailable => continue,
                         ResultUnused => continue,
-                        _ => return Err(anyhow::Error::from(e)),
+                        _ => {
+                            for task in tasks.iter() {
+                                task.abort();
+                            }
+                            return Err(anyhow::Error::from(e));
+                        }
                     }
                 }
                 Err(e) => {
                     if e.is_cancelled() {
                         continue;
                     } else if e.is_panic() {
+                        for task in tasks.iter() {
+                            task.abort();
+                        }
                         return Err(anyhow::Error::from(e));
                     }
                 }
