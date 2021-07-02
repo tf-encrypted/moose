@@ -123,6 +123,7 @@ fn pretty(op: &Operation) -> String {
         Operator::RepMul(_) => "RepMul",
         Operator::RepTruncPr(_) => "RepTruncPr",
         Operator::RepToAdt(_) => "RepToAdt",
+        Operator::AdtToRep(_) => "AdtToRep",
     };
     format!("{} = {}\\l{}", op.name, op_kind, op.placement.to_textual())
 }

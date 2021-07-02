@@ -869,7 +869,6 @@ pub struct RepMulOp {
     pub sig: Signature,
 }
 
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepTruncPrOp {
     pub sig: Signature,

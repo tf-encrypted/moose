@@ -131,7 +131,11 @@ pub trait PlacementShape<C: Context, T, ShapeT> {
 }
 
 pub trait PlacementKeyGen<C: Context, KeyT> {
-    fn keygen(&self, ctx: &C) -> KeyT;
+    fn gen_key(&self, ctx: &C) -> KeyT;
+}
+
+pub trait PlacementSetupGen<C: Context, SetupT> {
+    fn gen_setup(&self, ctx: &C) -> SetupT;
 }
 
 pub trait PlacementDeriveSeed<C: Context, KeyT, SeedT> {
@@ -251,12 +255,16 @@ pub trait PlacementRepToAdt<C: Context, T, O> {
     fn rep_to_adt(&self, ctx: &C, x: &T) -> O;
 }
 
-pub trait PlacementAdtToRep<C: Context, T, O> {
-    fn adt_to_rep(&self, ctx: &C, x: &T) -> O;
+pub trait PlacementAdtToRepSetup<C: Context, S, T, O> {
+    fn adt_to_rep(&self, ctx: &C, s: &S, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrSetup<C: Context, SetupT, T, O> {
     fn trunc_pr(&self, ctx: &C, amount: usize, setup: &SetupT, x: &T) -> O;
+}
+
+pub trait PlacementTruncPrProvider<C: Context, T, O> {
+    fn trunc_pr(&self, ctx: &C, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {

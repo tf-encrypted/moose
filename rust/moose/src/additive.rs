@@ -1,12 +1,16 @@
 use crate::computation::{
-    AdditivePlacement, AdtAddOp, AdtFillOp, AdtShlOp, AdtMulOp, AdtRevealOp, AdtSubOp, AdtToRepOp, HostPlacement, Placed, ReplicatedPlacement,
+    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
+    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
 };
 use crate::kernels::{
-    Context, PlacementAdd, PlacementFill, PlacementMul, PlacementShl, PlacementNeg, PlacementReveal, PlacementSub, PlacementAdtToRep,
+    Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
+    PlacementNeg, PlacementOnes, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
+    PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr, PlacementSub,
+    PlacementTruncPrProvider,
 };
-use crate::prim::RawNonce;
-use crate::ring::{Ring128Tensor, Ring64Tensor};
-use crate::replicated::{AbstractReplicatedTensor, Replicated64Tensor, Replicated128Tensor};
+use crate::prim::{PrfKey, RawNonce, Seed};
+use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
+use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::Shape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -356,81 +360,276 @@ impl AdtShlOp {
     }
 }
 
-modelled!(PlacementAdtToRep::add_to_rep, ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor, AdtToRepOp);
-modelled!(PlacementAdtToRep::add_to_rep, ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor, AdtToRepOp);
+trait RingSize {
+    const SIZE: usize;
+}
+
+impl RingSize for Ring64Tensor {
+    const SIZE: usize = 64;
+}
+
+impl RingSize for Ring128Tensor {
+    const SIZE: usize = 128;
+}
+
+trait BitCompose<C: Context, R> {
+    fn bit_compose(&self, ctx: &C, bits: &[R]) -> R;
+}
+
+impl<C: Context, R> BitCompose<C, R> for HostPlacement
+where
+    R: Clone,
+    HostPlacement: PlacementShl<C, R, R>,
+    HostPlacement: TreeReduce<C, R>,
+{
+    fn bit_compose(&self, ctx: &C, bits: &[R]) -> R {
+        let shifted_bits: Vec<_> = (0..bits.len())
+            .map(|i| self.shl(ctx, i, &bits[i]))
+            .collect();
+        self.tree_reduce(ctx, &shifted_bits)
+    }
+}
+
+trait TreeReduce<C: Context, R> {
+    fn tree_reduce(&self, ctx: &C, sequence: &[R]) -> R;
+}
+
+impl<C: Context, R> TreeReduce<C, R> for HostPlacement
+where
+    R: Clone,
+    HostPlacement: PlacementAdd<C, R, R, R>,
+{
+    fn tree_reduce(&self, ctx: &C, sequence: &[R]) -> R {
+        let n = sequence.len();
+        if n == 1 {
+            sequence[0].clone()
+        } else {
+            let mut reduced: Vec<_> = (0..n / 2)
+                .map(|i| {
+                    let x0: &R = &sequence[2 * i];
+                    let x1: &R = &sequence[2 * i + 1];
+                    self.add(ctx, &x0, &x1)
+                })
+                .collect();
+            if n % 2 == 1 {
+                reduced.push(sequence[n - 1].clone());
+            }
+            self.tree_reduce(ctx, &reduced)
+        }
+    }
+}
+
+trait DecomposedRandomness<C: Context, ShapeT, R> {
+    fn gen_decomposed_randomness(
+        &self,
+        ctx: &C,
+        amount: usize,
+        shape: &ShapeT,
+    ) -> (
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+    );
+}
+
+impl<C: Context, R> DecomposedRandomness<C, cs!(Shape), R> for HostPlacement
+where
+    PrfKey: KnownType<C>,
+    Seed: KnownType<C>,
+    Shape: KnownType<C>,
+    R: RingSize + Clone,
+    HostPlacement: PlacementDeriveSeed<C, cs!(PrfKey), cs!(Seed)>,
+    HostPlacement: PlacementSampleBits<C, cs!(Seed), cs!(Shape), R>,
+    HostPlacement: PlacementSampleUniform<C, cs!(Seed), cs!(Shape), R>,
+    HostPlacement: BitCompose<C, R>,
+    HostPlacement: PlacementKeyGen<C, cs!(PrfKey)>,
+    HostPlacement: PlacementSub<C, R, R, R>,
+{
+    fn gen_decomposed_randomness(
+        &self,
+        ctx: &C,
+        amount: usize,
+        shape: &cs!(Shape),
+    ) -> (
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+    ) {
+        let key = self.gen_key(ctx);
+
+        let r_bits: Vec<_> = (0..R::SIZE)
+            .map(|_| {
+                let nonce = RawNonce::generate();
+                let seed = self.derive_seed(ctx, nonce, &key);
+                self.sample_bits(ctx, &seed, &shape)
+            })
+            .collect();
+
+        let r = self.bit_compose(ctx, &r_bits);
+        let r_top = self.bit_compose(ctx, &r_bits[amount..R::SIZE - 1]);
+        let r_msb = r_bits[R::SIZE - 1].clone();
+
+        let share = |x| {
+            // TODO(Dragos) this could probably be optimized by sending the key to p0
+
+            let nonce = RawNonce::generate();
+            let seed = self.derive_seed(ctx, nonce, &key);
+            let x0 = self.sample_uniform(ctx, &seed, shape);
+            let x1 = self.sub(ctx, x, &x0);
+            AbstractAdditiveTensor { shares: [x0, x1] }
+        };
+
+        let r_shared = share(&r);
+        let r_top_shared = share(&r_top);
+        let r_msb_shared = share(&r_msb);
+
+        // TODO should we be returning r_bits here instead of r?
+        (r_shared, r_top_shared, r_msb_shared)
+    }
+}
+
+impl<C: Context, R>
+    PlacementTruncPrProvider<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>
+    for AdditivePlacement
+where
+// R: RingSize,
+// AdditivePlacement: PlacementAdd<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+// AdditivePlacement: PlacementAdd<C, R, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+// AdditivePlacement: PlacementAdd<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+// AdditivePlacement: PlacementArithmeticXor<C, R>,
+// AdditivePlacement: PlacementFill<C, Shape, AbstractAdditiveTensor<R>>, // TODO: Fix shape; Use type parameter
+// AdditivePlacement: PlacementMul<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+// AdditivePlacement: PlacementShl<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+// AdditivePlacement: PlacementSub<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+// AdditivePlacement: PlacementSub<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+// HostPlacement: PlacementBitCompose<C, R> + PlacementKeyGen<C, cs!(PrfKey)> + PlacementSub<C, R, R, R>,
+// HostPlacement: PlacementOnes<C, Shape, R>,
+// HostPlacement: PlacementReveal<C, AbstractAdditiveTensor<R>, R>,
+// HostPlacement: PlacementSampleUniform<C, R>,
+// HostPlacement: PlacementShape<C, R, Shape>,
+// HostPlacement: PlacementShl<C, R, R>,
+// HostPlacement: PlacementShr<C, R, R>,
+// R: Into<Value> + Clone,
+// HostPlacement: TruncRandomness<C, R>,
+{
+    fn trunc_pr(
+        &self,
+        ctx: &C,
+        amount: usize,
+        provider: &HostPlacement,
+        x: &AbstractAdditiveTensor<R>,
+    ) -> AbstractAdditiveTensor<R> {
+        unimplemented!()
+
+        // // consider input is always signed
+        // let (player_a, player_b) = self.host_placements();
+        // let AbstractAdditiveTensor { shares: [x0, x1] } = x;
+
+        // let k = R::SIZE - 1;
+        // // TODO(Dragos)this is optional if we work with unsigned numbers
+        // let x_shape = player_a.shape(ctx, x0);
+
+        // let ones = player_a.ones(ctx, &x_shape);
+        // let twok = player_a.shl(ctx, k, &ones);
+        // let positive = self.add(ctx, x, &twok);
+
+        // let (r, r_top, r_msb) = self.gen_prep(ctx, amount, provider, &x_shape);
+
+        // let masked = self.add(ctx, &positive, &r);
+        // // (Dragos) Note that these opening should be done to all players for active security.
+        // let opened_masked_a = player_a.reveal(ctx, &masked);
+
+        // let no_msb_mask = player_a.shl(ctx, 1, &opened_masked_a);
+        // let opened_mask_tr = player_a.shr(ctx, amount + 1, &no_msb_mask);
+
+        // let msb_mask = player_a.shr(ctx, R::SIZE - 1, &opened_masked_a);
+        // let msb_to_correct = self.arithmetic_xor(ctx, &r_msb, &msb_mask);
+        // let shifted_msb = self.shl(ctx, R::SIZE - 1 - amount, &msb_to_correct);
+
+        // let output = self.add(ctx, &self.sub(ctx, &shifted_msb, &r_top), &opened_mask_tr);
+        // // TODO(Dragos)this is optional if we work with unsigned numbers
+        // let remainder = player_a.shl(ctx, k - 1 - amount, &ones);
+        // self.sub(ctx, &output, &remainder)
+    }
+}
+
+modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor, RepToAdtOp);
+modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor, RepToAdtOp);
 
 hybrid_kernel! {
-    AdtToRepOp,
+    RepToAdtOp,
     [
-        (ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor => Self::kernel),
+        (AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor => Self::rep_to_adt_kernel),
+        (AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor => Self::rep_to_adt_kernel),
     ]
 }
 
-use crate::kernels::{PlacementShape, PlacementKeyGen, PlacementSampleUniform};
-
-impl AdtToRepOp {
-    fn kernel<C: Context, SeedT, ShapeT, KeyT, RingT>(
+impl RepToAdtOp {
+    fn rep_to_adt_kernel<C: Context, RingT>(
         ctx: &C,
-        rep: &ReplicatedPlacement,
-        x: AbstractAdditiveTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        adt: &AdditivePlacement,
+        x: AbstractReplicatedTensor<RingT>,
+    ) -> AbstractAdditiveTensor<RingT>
     where
-        RingT: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementShape<C, RingT, ShapeT>,
-        HostPlacement: PlacementKeyGen<C, KeyT>,
-        HostPlacement: PlacementSampleUniform<C, SeedT, ShapeT, RingT>,
-        HostPlacement: PlacementDeriveSeed<C, KeyT, SeedT>,
-        AdditivePlacement: PlacementSub<C, AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<RingT>>,
-        HostPlacement: PlacementReveal<C, AbstractAdditiveTensor<RingT>, RingT>,
+        AbstractReplicatedTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
+        HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
     {
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
-
-        let adt = x.placement();
         let (adt_player0, adt_player1) = adt.host_placements();
-        let (rep_player0, rep_player1, rep_player2) = rep.host_placements();
+        let (rep_player0, rep_player1, rep_player2) = x.placement().host_placements();
 
-        match () {
-            _ if rep_player0 != adt_player0 && rep_player0 != adt_player1 => {
-                let provider = rep_player0;
-                
-                
+        let AbstractReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
 
-
+        let shares = match () {
+            _ if adt_player0 == rep_player0 => {
+                let y0 = with_context!(rep_player0, ctx, x00 + x10);
+                let y1 = match () {
+                    _ if adt_player1 == rep_player1 => x21,
+                    _ if adt_player1 == rep_player2 => x22,
+                    _ => x21,
+                };
+                [y0, y1]
             }
-        }
-
-
-        // assume that Additive Host Placements are included Replicated Host Placements
-        // the player that is not on the additive is the provider
-        let provider = match () {
-            _ if rep_player0 != adt_player0 && rep_player0 != adt_player1 => rep_player0,
-            _ if rep_player1 != adt_player0 && rep_player1 != adt_player1 => rep_player1,
-            _ if rep_player2 != adt_player0 && rep_player2 != adt_player1 => rep_player2,
-            _ => unimplemented!()
+            _ if adt_player0 == rep_player1 => {
+                let y0 = with_context!(rep_player1, ctx, x11 + x21);
+                let y1 = match () {
+                    _ if adt_player1 == rep_player2 => x02,
+                    _ if adt_player1 == rep_player0 => x00,
+                    _ => x02,
+                };
+                [y0, y1]
+            }
+            _ if adt_player0 == rep_player2 => {
+                let y0 = with_context!(rep_player2, ctx, x22 + x02);
+                let y1 = match () {
+                    _ if adt_player1 == rep_player0 => x10,
+                    _ if adt_player1 == rep_player1 => x11,
+                    _ => x10,
+                };
+                [y0, y1]
+            }
+            _ if adt_player1 == rep_player0 => {
+                let y0 = x21;
+                let y1 = with_context!(rep_player0, ctx, x00 + x10);
+                [y0, y1]
+            }
+            _ if adt_player1 == rep_player1 => {
+                let y0 = x02;
+                let y1 = with_context!(rep_player1, ctx, x11 + x21);
+                [y0, y1]
+            }
+            _ if adt_player1 == rep_player2 => {
+                let y0 = x10;
+                let y1 = with_context!(rep_player2, ctx, x22 + x02);
+                [y0, y1]
+            }
+            _ => {
+                let y0 = with_context!(rep_player0, ctx, x00 + x10);
+                let y1 = x21;
+                [y0, y1]
+            }
         };
-
-        let shape = adt_player0.shape(ctx, &x0);
-
-        let sync_key0 = RawNonce::generate();
-        let sync_key1 = RawNonce::generate();
-
-
-
-        let seed0 = provider.derive_seed()
-        
-        let y13 = provider.sample_uniform(ctx);
-        let y33 = provider.sample_uniform(ctx);
-
-        let y1 = adt_player0.sample_uniform(ctx);
-        let y2 = adt_player1.sample_uniform(ctx);
-        let y = AbstractAdditiveTensor {
-            shares: [y1.clone(), y2.clone()],
-        };
-        let c = adt_player0.reveal(ctx, &adt.sub(ctx, &x, &y));
-
-        AbstractReplicatedTensor {
-            shares: [[y1, c.clone()], [c, y2], [y33, y13]],
-        }
+        AbstractAdditiveTensor { shares }
     }
 }

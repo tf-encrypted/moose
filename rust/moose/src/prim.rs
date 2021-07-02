@@ -52,7 +52,7 @@ impl Placed for Nonce {
     }
 }
 
-modelled!(PlacementKeyGen::keygen, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp);
+modelled!(PlacementKeyGen::gen_key, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp);
 
 kernel! {
     PrimPrfKeyGenOp,
