@@ -5,7 +5,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, RawNonce};
+use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
@@ -14,6 +14,7 @@ use crate::standard::{
 use crate::{closure_kernel, function_kernel};
 use std::convert::TryFrom;
 use std::sync::Arc;
+use std::collections::HashMap;
 
 pub trait Context {
     type Value;
@@ -24,19 +25,42 @@ pub trait Context {
 }
 
 pub struct ConcreteContext {
-    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>, // TODO
+    replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
 impl Context for ConcreteContext {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
-        unimplemented!() // TODO
+        match op {
+            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitXor(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitAnd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingShr(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepSetup(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepShare(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepToAdt(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            // Operator::AdtAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            // Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            // Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            _ => unimplemented!() // TODO
+        }
     }
 
     type ReplicatedSetup = ReplicatedSetup;
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
-        unimplemented!() // TODO
+        self.replicated_keys.get(plc).unwrap()
     }
 }
 
@@ -139,8 +163,16 @@ pub trait PlacementShare<C: Context, T, O> {
     fn share(&self, ctx: &C, x: &T) -> O;
 }
 
+pub trait PlacementShareSetup<C: Context, S, T, O> {
+    fn share(&self, ctx: &C, s: &S, x: &T) -> O;
+}
+
 pub trait PlacementReveal<C: Context, T, O> {
     fn reveal(&self, ctx: &C, x: &T) -> O;
+}
+
+pub trait PlacementFill<C: Context, ShapeT, O> {
+    fn fill(&self, ctx: &C, value: u64, shape: &ShapeT) -> O;
 }
 
 pub trait PlacementSample<C: Context, SeedT, ShapeT, O> {
@@ -153,7 +185,7 @@ pub trait PlacementSampleUniform<C: Context, SeedT, ShapeT, O> {
 
 impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleUniform<C, SeedT, ShapeT, O> for P
 where
-    P: PlacementSample<C, SeedT, ShapeT, O>
+    P: PlacementSample<C, SeedT, ShapeT, O>,
 {
     fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
         self.sample(ctx, None, seed, shape)
@@ -166,7 +198,7 @@ pub trait PlacementSampleBits<C: Context, SeedT, ShapeT, O> {
 
 impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleBits<C, SeedT, ShapeT, O> for P
 where
-    P: PlacementSample<C, SeedT, ShapeT, O>
+    P: PlacementSample<C, SeedT, ShapeT, O>,
 {
     fn sample_bits(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
         self.sample(ctx, Some(1), seed, shape)
@@ -714,12 +746,12 @@ impl Compile<Kernel> for ShapeOp {
 
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (&self.sig, self.value.clone()) {
-            (signature![(_) -> Ty::Ring64Tensor], Primitive::Ring64(value)) => {
-                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape.0, value))
+        match (&self.sig, self.value) {
+            (signature![(_) -> Ty::Ring64Tensor], value) => {
+                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape.0, value as u64))
             }
-            (signature![(_) -> Ty::Ring128Tensor], Primitive::Ring128(value)) => {
-                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape.0, value))
+            (signature![(_) -> Ty::Ring128Tensor], value) => {
+                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape.0, value as u128))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

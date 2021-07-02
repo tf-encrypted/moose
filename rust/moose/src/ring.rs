@@ -11,11 +11,12 @@ use crate::bit::BitTensor;
 use crate::computation::Placed;
 use crate::computation::Role;
 use crate::computation::{
-    HostPlacement, RingAddOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp, ShapeOp
+    HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp,
+    RingSubOp, ShapeOp,
 };
 use crate::kernels::{
-    ConcreteContext, PlacementAdd, PlacementMul, PlacementSample, PlacementShl, PlacementShr,
-    PlacementSub,
+    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementSample, PlacementShl,
+    PlacementShr, PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -33,6 +34,43 @@ impl<T> Placed for AbstractRingTensor<T> {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring64Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring128Tensor, RingFillOp);
+// modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> BitTensor, RingFillOp);
+
+kernel! {
+    RingFillOp,
+    [
+        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::u64_kernel),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::u128_kernel),
+    ]
+}
+
+// TODO clean up how op.value gets passed and converted
+impl RingFillOp {
+    fn u64_kernel(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        value: u64,
+        shape: Shape,
+    ) -> Ring64Tensor {
+        let raw_shape = shape.0 .0;
+        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
+        AbstractRingTensor(raw_tensor, plc.clone())
+    }
+
+    fn u128_kernel(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        value: u64,
+        shape: Shape,
+    ) -> Ring128Tensor {
+        let raw_shape = shape.0 .0;
+        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value as u128));
+        AbstractRingTensor(raw_tensor, plc.clone())
     }
 }
 
@@ -322,6 +360,7 @@ impl Ring128Tensor {
     }
 }
 
+// deprecated
 impl<T> AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,

@@ -419,7 +419,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", primitive_literal)(input)?;
+    let (input, value) = attributes_single("value", parse_int)(input)?;
     let (input, sig) = type_definition(0)(input)?;
     Ok((input, RingFillOp { sig, value }.into()))
 }
@@ -1829,7 +1829,7 @@ mod tests {
             "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill {value = Ring64(42) }: () -> Ring64Tensor () @Host(alice)",
+            "z = RingFill {value = 42 }: () -> Ring64Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingShl {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",

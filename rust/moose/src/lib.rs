@@ -1,7 +1,8 @@
-macro_rules! ty {
+// Returns the context-specific type for the given basic type.
+macro_rules! cs {
     ($t:ty) => {
         <$t as KnownType<C>>::Type
-    }
+    };
 }
 
 macro_rules! derive_runtime_kernel {
@@ -275,7 +276,7 @@ macro_rules! kernel {
                 $u
             > for $op
             {
-                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
+                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
             }
@@ -322,7 +323,7 @@ macro_rules! kernel {
                 $u
             > for $op
             {
-                fn compile(&self, ctx: &crate::kernels::ConcreteContext, plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
+                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }
@@ -378,7 +379,7 @@ macro_rules! kernel {
                 $u
             > for $op
             {
-                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
             }
@@ -438,7 +439,7 @@ macro_rules! kernel {
                 $u
             > for $op
             {
-                fn compile(&self, ctx: &ConcreteContext, plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
             }
@@ -504,8 +505,8 @@ macro_rules! hybrid_kernel {
             {
                 fn compile(
                     &self,
-                    ctx: &crate::kernels::ConcreteContext,
-                    plc: &$plc,
+                    _ctx: &crate::kernels::ConcreteContext,
+                    _plc: &$plc,
                 ) -> Box<dyn Fn(
                     &crate::kernels::ConcreteContext,
                     &$plc)
@@ -560,8 +561,8 @@ macro_rules! hybrid_kernel {
             {
                 fn compile(
                     &self,
-                    ctx: &crate::kernels::ConcreteContext,
-                    plc: &$plc,
+                    _ctx: &crate::kernels::ConcreteContext,
+                    _plc: &$plc,
                 ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
@@ -630,8 +631,8 @@ macro_rules! hybrid_kernel {
             {
                 fn compile(
                     &self,
-                    ctx: &crate::kernels::ConcreteContext,
-                    plc: &$plc
+                    _ctx: &crate::kernels::ConcreteContext,
+                    _plc: &$plc
                 ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1) -> $u> {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
@@ -705,8 +706,8 @@ macro_rules! hybrid_kernel {
             {
                 fn compile(
                     &self,
-                    ctx: &crate::kernels::ConcreteContext,
-                    plc: &$plc,
+                    _ctx: &crate::kernels::ConcreteContext,
+                    _plc: &$plc,
                 ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }

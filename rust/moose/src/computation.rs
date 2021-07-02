@@ -716,7 +716,7 @@ pub struct RingSumOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingFillOp {
     pub sig: Signature,
-    pub value: Primitive,
+    pub value: u64,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -952,7 +952,7 @@ pub struct HostPlacement {
     pub owner: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct ReplicatedPlacement {
     pub owners: [Role; 3],
 }

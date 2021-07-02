@@ -764,7 +764,7 @@ impl TryFrom<PyComputation> for Computation {
                     ring_FillTensorOperation(op) => Ok(Operation {
                         kind: RingFillOp {
                             sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
-                            value: Primitive::Ring128(u128::from_str(&op.value)?),
+                            value: u64::from_str(&op.value)?,
                         }
                         .into(),
                         name: op.name.clone(),

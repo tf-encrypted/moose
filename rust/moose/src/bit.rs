@@ -1,7 +1,9 @@
 use crate::computation::Placed;
 use crate::computation::{BitAndOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
-use crate::kernels::{PlacementAdd, PlacementSampleUniform, PlacementSub, PlacementMul, PlacementXor, PlacementAnd};
 use crate::kernels::ConcreteContext;
+use crate::kernels::{
+    PlacementAdd, PlacementAnd, PlacementMul, PlacementSampleUniform, PlacementSub, PlacementXor,
+};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
@@ -21,13 +23,8 @@ impl Placed for BitTensor {
     }
 }
 
-
 impl ShapeOp {
-    pub(crate) fn bit_kernel(
-        _ctx: &ConcreteContext,
-        plc: &HostPlacement,
-        x: BitTensor,
-    ) -> Shape {
+    pub(crate) fn bit_kernel(_ctx: &ConcreteContext, plc: &HostPlacement, x: BitTensor) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
         Shape(raw_shape, plc.clone().into())
     }
