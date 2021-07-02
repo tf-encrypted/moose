@@ -13,12 +13,12 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
+use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
-use tokio::sync::oneshot;
-use std::pin::Pin;
-use std::task::Poll;
 use std::task::Context;
+use std::task::Poll;
+use tokio::sync::oneshot;
 use tokio::task::JoinError;
 
 #[macro_export]
@@ -988,7 +988,7 @@ pub struct AsyncSession {
 pub type RoleAssignment = HashMap<Role, Identity>;
 
 struct CancelJoinHandle {
-    task: AsyncTask
+    task: AsyncTask,
 }
 
 impl Drop for CancelJoinHandle {
@@ -1046,8 +1046,8 @@ impl AsyncSessionHandle {
     //}
 
     pub async fn join_on_first_error(self) -> anyhow::Result<()> {
-        use futures::StreamExt;
         use crate::error::Error::{OperandUnavailable, ResultUnused};
+        use futures::StreamExt;
 
         // TODO:
         // iterate and wrap all tasks with MyJoinHandle
@@ -1060,7 +1060,10 @@ impl AsyncSessionHandle {
         //}
         //let mut tasks = task_vec.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
 
-        let mut tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
+        let mut tasks = self
+            .tasks
+            .into_iter()
+            .collect::<futures::stream::FuturesUnordered<_>>();
 
         while let Some(x) = tasks.next().await {
             match x {
