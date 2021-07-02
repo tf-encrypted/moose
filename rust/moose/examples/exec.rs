@@ -33,7 +33,7 @@ fn main() {
         name: "x_shape".into(),
         kind: ConstantOp {
             sig: Signature::nullary(Ty::Shape),
-            value: Primitive::RawShape(RawShape(vec![2, 3])),
+            value: Constant::RawShape(RawShape(vec![2, 3])),
         }
         .into(),
         inputs: vec![],

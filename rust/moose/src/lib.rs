@@ -35,11 +35,11 @@ macro_rules! derive_runtime_kernel {
         {
             $(
             let $attr = $self.$attr.clone();
-                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
                 $(
                     let $attr = match $attr {
-                        Primitive::$prim_ty(v) => v,
-                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                        Constant::$prim_ty(v) => v,
+                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
                     };
                 )?
             )+
@@ -52,11 +52,11 @@ macro_rules! derive_runtime_kernel {
         {
             $(
             let $attr = $self.$attr.clone();
-                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
                 $(
                     let $attr = match $attr {
-                        Primitive::$prim_ty(v) => v,
-                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                        Constant::$prim_ty(v) => v,
+                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
                     };
                 )?
             )+
@@ -69,11 +69,11 @@ macro_rules! derive_runtime_kernel {
         {
             $(
             let $attr = $self.$attr.clone();
-                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
                 $(
                     let $attr = match $attr {
-                        Primitive::$prim_ty(v) => v,
-                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                        Constant::$prim_ty(v) => v,
+                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
                     };
                 )?
             )+
@@ -86,11 +86,11 @@ macro_rules! derive_runtime_kernel {
         {
             $(
             let $attr = $self.$attr.clone();
-                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                // The following block applies the optional Constant type restriction to the attribute and unwraps it
                 $(
                     let $attr = match $attr {
-                        Primitive::$prim_ty(v) => v,
-                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                        Constant::$prim_ty(v) => v,
+                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
                     };
                 )?
             )+

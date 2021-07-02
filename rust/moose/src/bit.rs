@@ -1,5 +1,5 @@
 use crate::computation::{BitAndOp, BitFillOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
-use crate::computation::{Placed, Primitive};
+use crate::computation::{Constant, Placed};
 use crate::kernels::ConcreteContext;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementSampleUniform, PlacementSub,
@@ -31,7 +31,7 @@ impl ShapeOp {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> BitTensor, BitFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> BitTensor, BitFillOp);
 
 kernel! {
     BitFillOp,

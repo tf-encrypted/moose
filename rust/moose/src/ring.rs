@@ -9,11 +9,11 @@ use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
 use crate::computation::Role;
+use crate::computation::{Constant, Placed};
 use crate::computation::{
     HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
     RingSubOp, ShapeOp,
 };
-use crate::computation::{Placed, Primitive};
 use crate::kernels::{
     ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
     PlacementShl, PlacementShr, PlacementSub,
@@ -37,8 +37,8 @@ impl<T> Placed for AbstractRingTensor<T> {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> Ring64Tensor, RingFillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> Ring128Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring64Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring128Tensor, RingFillOp);
 
 kernel! {
     RingFillOp,
@@ -63,13 +63,13 @@ impl RingFillOp {
     fn ring128_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
-        value: Primitive,
+        value: Constant,
         shape: Shape,
     ) -> Ring128Tensor {
         let value = match value {
-            Primitive::Ring64(v) => v as u128,
-            Primitive::Ring128(v) => v,
-            _ => panic!("Incorrect primitive type for the RingFill"), // TODO: another way to report the error
+            Constant::Ring64(v) => v as u128,
+            Constant::Ring128(v) => v,
+            _ => panic!("Incorrect constant type for the RingFill"), // TODO: another way to report the error
         };
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));

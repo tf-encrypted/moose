@@ -33,13 +33,13 @@ pub trait KnownType<C: Context> {
     const TY: Ty;
 }
 
-// Primitives are trivial values. They are what can live on the nodes of the computation graph.
-// Primitive can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
-macro_rules! primitives {
+// Constants are trivial values. They are what can live on the nodes of the computation graph.
+// Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
+macro_rules! constants {
     ($($val:ident $($t:ident)?,)+) => {
 
         #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-        pub enum Primitive {
+        pub enum Constant {
             $($val($val),)+
             // TODO promote below to match other values
             Float32(f32),
@@ -48,36 +48,36 @@ macro_rules! primitives {
             Ring128(u128),
         }
 
-        impl Primitive {
+        impl Constant {
             pub fn ty(&self) -> Ty {
                 match self {
-                    $(Primitive::$val(_) => primitives!(@ty $val $($t)?),)+
+                    $(Constant::$val(_) => constants!(@ty $val $($t)?),)+
                     // TODO promote below to match other values
-                    Primitive::Float32(_) => Ty::Float32,
-                    Primitive::Float64(_) => Ty::Float64,
-                    Primitive::Ring64(_) => Ty::Ring64,
-                    Primitive::Ring128(_) => Ty::Ring128,
+                    Constant::Float32(_) => Ty::Float32,
+                    Constant::Float64(_) => Ty::Float64,
+                    Constant::Ring64(_) => Ty::Ring64,
+                    Constant::Ring128(_) => Ty::Ring128,
                 }
             }
 
             pub fn place(&self, plc: &HostPlacement) -> Value {
                 match self {
                     $(
-                        Primitive::$val(x) => {primitives!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
+                        Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
                     )+
                     // TODO promote below to match other values
-                    Primitive::Float32(x) => Value::Float32(x.clone()),
-                    Primitive::Float64(x) => Value::Float64(x.clone()),
-                    Primitive::Ring64(x) => Value::Ring64(x.clone()),
-                    Primitive::Ring128(x) => Value::Ring128(x.clone()),
+                    Constant::Float32(x) => Value::Float32(x.clone()),
+                    Constant::Float64(x) => Value::Float64(x.clone()),
+                    Constant::Ring64(x) => Value::Ring64(x.clone()),
+                    Constant::Ring128(x) => Value::Ring128(x.clone()),
                 }
             }
         }
 
         $(
-        impl From<$val> for Primitive {
+        impl From<$val> for Constant {
             fn from(x: $val) -> Self {
-                Primitive::$val(x)
+                Constant::$val(x)
             }
         }
         )+
@@ -91,8 +91,8 @@ macro_rules! primitives {
 }
 
 // The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
-// The lines with 1 identifier are for linking to the "Unplaced" values, where the Primitive and Value are essentially the same and can be converted easily.
-primitives![
+// The lines with 1 identifier are for linking to the "Unplaced" values, where the Constant and Value are essentially the same and can be converted easily.
+constants![
     RawShape Shape,
     RawSeed Seed,
     RawPrfKey PrfKey,
@@ -114,7 +114,7 @@ primitives![
 ];
 
 // Values are anything that can flow along the edges of the computation graph.
-// Some values are just placed primitives, but some could be more complex.
+// Some values are just placed constants, but some could be more complex.
 macro_rules! values {
     ($($val:ident,)+) => {
 
@@ -586,7 +586,7 @@ pub struct SaveOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ConstantOp {
     pub sig: Signature,
-    pub value: Primitive, // TODO Box<Primitive> or Box inside Primitive?
+    pub value: Constant, // TODO Box<Constant> or Box inside Constant?
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -679,19 +679,19 @@ pub struct ShapeOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitFillOp {
     pub sig: Signature,
-    pub value: Primitive,
+    pub value: Constant,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingFillOp {
     pub sig: Signature,
-    pub value: Primitive,
+    pub value: Constant,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct AdtFillOp {
     pub sig: Signature,
-    pub value: Primitive,
+    pub value: Constant,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

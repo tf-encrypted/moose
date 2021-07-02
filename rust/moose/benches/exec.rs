@@ -489,7 +489,7 @@ fn gen_sample_graph(size: usize) -> Computation {
         name: "x".into(),
         kind: Operator::Constant(ConstantOp {
             sig: Signature::nullary(Ty::Ring64Tensor),
-            value: Primitive::Ring64Tensor(Ring64Tensor::from(raw_tensor)),
+            value: Constant::Ring64Tensor(Ring64Tensor::from(raw_tensor)),
         }),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {

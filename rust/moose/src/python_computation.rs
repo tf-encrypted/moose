@@ -579,12 +579,12 @@ fn map_placement(plc: &HashMap<String, Placement>, name: &str) -> anyhow::Result
         .ok_or_else(|| anyhow::anyhow!("No key found in placement dictionary"))
 }
 
-fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Primitive> {
+fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
     match constant_value {
         PyConstant::std_ShapeConstant { value } => {
             Ok(RawShape(value.iter().map(|i| *i as usize).collect()).into())
         }
-        PyConstant::std_StringConstant { value } => Ok(Primitive::String(String::from(value))),
+        PyConstant::std_StringConstant { value } => Ok(Constant::String(String::from(value))),
         PyConstant::std_TensorConstant { value } => match value {
             PyNdarray::float32 {
                 ref items,
@@ -765,8 +765,8 @@ impl TryFrom<PyComputation> for Computation {
                         let ty = map_type(&op.output_type)?;
                         // TODO: lvorona this can be moved somewhere else
                         let value = match ty {
-                            Ty::Ring64Tensor => Primitive::Ring64(u64::from_str(&op.value)?),
-                            Ty::Ring128Tensor => Primitive::Ring128(u128::from_str(&op.value)?),
+                            Ty::Ring64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
+                            Ty::Ring128Tensor => Constant::Ring128(u128::from_str(&op.value)?),
                             _ => {
                                 return Err(anyhow::anyhow!(
                                     "unsupported return type for ring fill: {:?}",
@@ -838,7 +838,7 @@ impl TryFrom<PyComputation> for Computation {
                     bit_BitFillTensorOperation(op) => Ok(Operation {
                         kind: BitFillOp {
                             sig: Signature::unary(Ty::Shape, Ty::BitTensor),
-                            value: Primitive::Ring64(u64::from(op.value)),
+                            value: Constant::Ring64(u64::from(op.value)),
                         }
                         .into(),
                         name: op.name.clone(),

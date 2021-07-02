@@ -1116,7 +1116,7 @@ mod tests {
     }
 
     #[test]
-    fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
+    fn test_constants_derive_seed() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
@@ -1134,7 +1134,7 @@ mod tests {
     }
 
     #[test]
-    fn test_primitives_sample_ring() -> std::result::Result<(), anyhow::Error> {
+    fn test_constants_sample_ring() -> std::result::Result<(), anyhow::Error> {
         let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)} @Host(alice)
         xshape = Constant{value=Shape([2, 2])} @Host(alice)
         sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
