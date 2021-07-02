@@ -115,6 +115,7 @@ fn pretty(op: &Operation) -> String {
         Operator::AdtAdd(_) => "AdtAdd",
         Operator::AdtSub(_) => "AdtSub",
         Operator::AdtMul(_) => "AdtMul",
+        Operator::AdtShl(_) => "AdtShl",
         Operator::RepSetup(_) => "RepSetup",
         Operator::RepShare(_) => "RepShare",
         Operator::RepReveal(_) => "RepReveal",

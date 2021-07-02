@@ -532,6 +532,7 @@ operators![
     AdtAdd,
     AdtSub,
     AdtMul,
+    AdtShl,
     RepSetup,
     RepShare,
     RepReveal,
@@ -828,6 +829,12 @@ pub struct AdtSubOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct AdtMulOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdtShlOp {
+    pub sig: Signature,
+    pub amount: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

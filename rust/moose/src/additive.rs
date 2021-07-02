@@ -1,8 +1,8 @@
 use crate::computation::{
-    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtSubOp, HostPlacement, Placed,
+    AdditivePlacement, AdtAddOp, AdtFillOp, AdtShlOp, AdtMulOp, AdtRevealOp, AdtSubOp, HostPlacement, Placed,
 };
 use crate::kernels::{
-    Context, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementReveal, PlacementSub,
+    Context, PlacementAdd, PlacementFill, PlacementMul, PlacementShl, PlacementNeg, PlacementReveal, PlacementSub,
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::Shape;
@@ -321,6 +321,35 @@ impl AdtMulOp {
         let z0 = with_context!(player0, ctx, x0 * y);
         let z1 = with_context!(player1, ctx, x1 * y);
 
+        AbstractAdditiveTensor { shares: [z0, z1] }
+    }
+}
+
+modelled!(PlacementShl::shl, AdditivePlacement, attributes[amount: usize] (Additive64Tensor) -> Additive64Tensor, AdtShlOp);
+modelled!(PlacementShl::shl, AdditivePlacement, attributes[amount: usize] (Additive128Tensor) -> Additive128Tensor, AdtShlOp);
+
+hybrid_kernel! {
+    AdtShlOp,
+    [
+        (AdditivePlacement, (Additive64Tensor) -> Additive64Tensor => attributes[amount] Self::kernel),
+        (AdditivePlacement, (Additive128Tensor) -> Additive128Tensor => attributes[amount] Self::kernel),
+    ]
+}
+
+impl AdtShlOp {
+    fn kernel<C: Context, RingT>(
+        ctx: &C,
+        plc: &AdditivePlacement,
+        amount: usize,
+        x: AbstractAdditiveTensor<RingT>,
+    ) -> AbstractAdditiveTensor<RingT>
+    where
+        HostPlacement: PlacementShl<C, RingT, RingT>,
+    {
+        let (player0, player1) = plc.host_placements();
+        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
+        let z0 = player0.shl(ctx, amount, x0);
+        let z1 = player1.shl(ctx, amount, x1);
         AbstractAdditiveTensor { shares: [z0, z1] }
     }
 }
