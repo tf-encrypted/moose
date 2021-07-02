@@ -36,21 +36,12 @@ modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shap
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (Shape) -> BitTensor => attributes[value] Self::kernel),
+        (HostPlacement, (Shape) -> BitTensor => attributes[value: Ring64] Self::kernel),
     ]
 }
 
 impl BitFillOp {
-    fn kernel(
-        _ctx: &ConcreteContext,
-        plc: &HostPlacement,
-        value: Primitive,
-        shape: Shape,
-    ) -> BitTensor {
-        let value = match value {
-            Primitive::Ring64(v) => v,
-            _ => panic!("Incorrect value type for RingFill"), // TODO: another way to report the error
-        };
+    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, value: u64, shape: Shape) -> BitTensor {
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);

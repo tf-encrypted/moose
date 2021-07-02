@@ -31,40 +31,68 @@ macro_rules! derive_runtime_kernel {
         }
     };
 
-    (nullary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
+    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
+                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Primitive::$prim_ty(v) => v,
+                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                    };
+                )?
             )+
             Box::new(move |ctx, plc| {
                 $k(ctx, plc, $($attr.clone()),+)
             })
         }
     };
-    (unary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
+    (unary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
+                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Primitive::$prim_ty(v) => v,
+                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                    };
+                )?
             )+
             Box::new(move |ctx, plc, x0| {
                 $k(ctx, plc, $($attr.clone()),+, x0)
             })
         }
     };
-    (binary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
+    (binary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
+                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Primitive::$prim_ty(v) => v,
+                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                    };
+                )?
             )+
             Box::new(move |ctx, plc, x0, x1| {
                 $k(ctx, plc, $($attr.clone()),+, x0, x1)
             })
         }
     };
-    (ternary, attributes[$($attr:ident)+] $k:expr, $self:ident) => {
+    (ternary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
+                // The following block applies the optional Primitive type restriction to the attribute and unwraps it
+                $(
+                    let $attr = match $attr {
+                        Primitive::$prim_ty(v) => v,
+                        _ => panic!("Incorrect primitive type"), // TODO: another way to report the error
+                    };
+                )?
             )+
             Box::new(move |ctx, plc, x0, x1, x2| {
                 $k(ctx, plc, $($attr.clone()),+), x0, x1, x2

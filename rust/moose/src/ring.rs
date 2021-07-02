@@ -40,27 +40,21 @@ impl<T> Placed for AbstractRingTensor<T> {
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> Ring64Tensor, RingFillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> Ring128Tensor, RingFillOp);
 
-// TODO: (lvorona) add constraint on the kind of the Primitive in the enum
 kernel! {
     RingFillOp,
     [
-        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::ring64_kernel),
+        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value: Ring64] Self::ring64_kernel),
         (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::ring128_kernel),
     ]
 }
 
-// TODO clean up how op.value gets passed and converted
 impl RingFillOp {
     fn ring64_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
-        value: Primitive,
+        value: u64,
         shape: Shape,
     ) -> Ring64Tensor {
-        let value = match value {
-            Primitive::Ring64(v) => v,
-            _ => panic!("Incorrect value type for RingFill"), // TODO: another way to report the error
-        };
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
         AbstractRingTensor(raw_tensor, plc.clone())
@@ -75,7 +69,7 @@ impl RingFillOp {
         let value = match value {
             Primitive::Ring64(v) => v as u128,
             Primitive::Ring128(v) => v,
-            _ => panic!("Incorrect value type for RingFill"), // TODO: another way to report the error
+            _ => panic!("Incorrect primitive type for the RingFill"), // TODO: another way to report the error
         };
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
