@@ -372,14 +372,14 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::BinaryKernel<
-                ConcreteContext,
+                crate::kernels::ConcreteContext,
                 $plc,
                 $t0,
                 $t1,
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1) -> $u> {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
             }

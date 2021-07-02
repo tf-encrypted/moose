@@ -121,6 +121,7 @@ fn pretty(op: &Operation) -> String {
         Operator::RepReveal(_) => "RepReveal",
         Operator::RepAdd(_) => "RepAdd",
         Operator::RepMul(_) => "RepMul",
+        Operator::RepTruncPr(_) => "RepTruncPr",
         Operator::RepToAdt(_) => "RepToAdt",
     };
     format!("{} = {}\\l{}", op.name, op_kind, op.placement.to_textual())

@@ -2,13 +2,13 @@ use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tenso
 use crate::bit::BitTensor;
 use crate::computation::KnownType;
 use crate::computation::{
-    AdditivePlacement, HostPlacement, Placed, RepAddOp, RepMulOp, RepRevealOp, RepSetupOp,
+    AdditivePlacement, HostPlacement, Placed, RepAddOp, RepMulOp, RepRevealOp, RepSetupOp, RepTruncPrOp,
     RepShareOp, RepToAdtOp, ReplicatedPlacement,
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementKeyGen, PlacementMul, PlacementMulSetup,
     PlacementRepToAdt, PlacementReveal, PlacementSampleUniform, PlacementShape,
-    PlacementShareSetup, PlacementSub, PlacementZeros,
+    PlacementShareSetup, PlacementSub, PlacementZeros, PlacementTruncPrSetup,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -589,6 +589,42 @@ impl RepMulOp {
     }
 }
 
+modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
+
+kernel! {
+    RepTruncPrOp,
+    [
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
+    ]
+}
+
+impl RepTruncPrOp {
+    fn kernel<C: Context, KeyT, RingT>(
+        ctx: &C,
+        rep: &ReplicatedPlacement,
+        amount: usize,
+        s: AbstractReplicatedSetup<KeyT>,
+        xe: AbstractReplicatedTensor<RingT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        AdditivePlacement: PlacementTruncPrWithPrep<C, RingT, KeyT>,
+        AdditivePlacement: PlacementRepToAdt<C, AbstractReplicatedTensor<RingT>, AbstractAdditiveTensor<RingT>>,
+        ReplicatedPlacement: PlacementAdtToRep<C, AbstractAdditiveTensor<RingT>, AbstractReplicatedTensor<RingT>>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let adt_plc = AdditivePlacement {
+            owners: [player0.owner, player1.owner],
+        };
+
+        let x_adt = adt_plc.rep_to_add(ctx, &xe);
+        let y_adt = adt_plc.trunc_pr(ctx, &x_adt, amount, player2);
+        rep.add_to_rep(ctx, &y_adt)
+    }
+}
+
+
 modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor, RepToAdtOp);
 modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor, RepToAdtOp);
 
@@ -703,18 +739,18 @@ where
         // a security perspective since the seeds depend on both the keys and the sid.
         // however, with sub-computations we could fix these as eg `0`, `1`, and `2`
         // and make compilation a bit more deterministic
-        let sync_key_0 = RawNonce::generate();
-        let sync_key_1 = RawNonce::generate();
-        let sync_key_2 = RawNonce::generate();
+        let sync_key0 = RawNonce::generate();
+        let sync_key1 = RawNonce::generate();
+        let sync_key2 = RawNonce::generate();
 
-        let s00 = player0.derive_seed(ctx, sync_key_0.clone(), k00);
-        let s10 = player0.derive_seed(ctx, sync_key_1.clone(), k10);
+        let s00 = player0.derive_seed(ctx, sync_key0.clone(), k00);
+        let s10 = player0.derive_seed(ctx, sync_key1.clone(), k10);
 
-        let s11 = player1.derive_seed(ctx, sync_key_1, k11);
-        let s21 = player1.derive_seed(ctx, sync_key_2.clone(), k21);
+        let s11 = player1.derive_seed(ctx, sync_key1, k11);
+        let s21 = player1.derive_seed(ctx, sync_key2.clone(), k21);
 
-        let s22 = player2.derive_seed(ctx, sync_key_2, k22);
-        let s02 = player2.derive_seed(ctx, sync_key_0, k02);
+        let s22 = player2.derive_seed(ctx, sync_key2, k22);
+        let s02 = player2.derive_seed(ctx, sync_key0, k02);
 
         let seeds = [[s00, s10], [s11, s21], [s22, s02]];
         AbstractReplicatedSeeds { seeds }

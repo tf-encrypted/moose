@@ -533,11 +533,13 @@ operators![
     AdtSub,
     AdtMul,
     AdtShl,
+    AdtToRep,
     RepSetup,
     RepShare,
     RepReveal,
     RepAdd,
     RepMul,
+    RepTruncPr,
     RepToAdt,
 ];
 
@@ -838,6 +840,11 @@ pub struct AdtShlOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdtToRepOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepSetupOp {
     pub sig: Signature,
 }
@@ -860,6 +867,13 @@ pub struct RepAddOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RepMulOp {
     pub sig: Signature,
+}
+
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RepTruncPrOp {
+    pub sig: Signature,
+    pub amount: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
