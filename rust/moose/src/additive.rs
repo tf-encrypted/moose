@@ -1,6 +1,6 @@
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
-    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
+    HostPlacement, KnownType, Placed, Primitive, RepToAdtOp, ReplicatedPlacement,
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
@@ -41,8 +41,8 @@ where
     }
 }
 
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: u64] (Shape) -> Additive64Tensor, AdtFillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: u64] (Shape) -> Additive128Tensor, AdtFillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Primitive] (Shape) -> Additive64Tensor, AdtFillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Primitive] (Shape) -> Additive128Tensor, AdtFillOp);
 
 hybrid_kernel! {
     AdtFillOp,
@@ -56,7 +56,7 @@ impl AdtFillOp {
     fn kernel<C: Context, ShapeT, RingT>(
         ctx: &C,
         plc: &AdditivePlacement,
-        value: u64,
+        value: Primitive,
         shape: ShapeT,
     ) -> AbstractAdditiveTensor<RingT>
     where
@@ -68,7 +68,7 @@ impl AdtFillOp {
 
         let shares = [
             player0.fill(ctx, value, &shape),
-            player1.fill(ctx, 0, &shape),
+            player1.fill(ctx, Primitive::Ring64(0), &shape),
         ];
         AbstractAdditiveTensor { shares }
     }

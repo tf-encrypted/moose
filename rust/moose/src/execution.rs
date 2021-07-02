@@ -1497,7 +1497,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"shape = Constant{{value=Shape([{shape}])}} @Host(alice)
-        res = RingFill {{value = 1}} : (Shape) -> {t}Tensor (shape) @Host(alice)
+        res = RingFill {{value = Ring64(1)}} : (Shape) -> {t}Tensor (shape) @Host(alice)
         output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
         "#,
             t = type_str,

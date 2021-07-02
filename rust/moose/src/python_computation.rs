@@ -761,17 +761,31 @@ impl TryFrom<PyComputation> for Computation {
                     ring_RingMeanOperation(op) => {
                         Err(anyhow::anyhow!("unsupported operation: {:?}", op))
                     }
-                    ring_FillTensorOperation(op) => Ok(Operation {
-                        kind: RingFillOp {
-                            sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
-                            value: u64::from_str(&op.value)?,
-                        }
-                        .into(),
-                        name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["shape"])
-                            .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
-                    }),
+                    ring_FillTensorOperation(op) => {
+                        let ty = map_type(&op.output_type)?;
+                        // TODO: lvorona this can be moved somewhere else
+                        let value = match ty {
+                            Ty::Ring64Tensor => Primitive::Ring64(u64::from_str(&op.value)?),
+                            Ty::Ring128Tensor => Primitive::Ring128(u128::from_str(&op.value)?),
+                            _ => {
+                                return Err(anyhow::anyhow!(
+                                    "unsupported return type for ring fill: {:?}",
+                                    ty
+                                ));
+                            }
+                        };
+                        Ok(Operation {
+                            kind: RingFillOp {
+                                sig: Signature::unary(Ty::Shape, ty),
+                                value,
+                            }
+                            .into(),
+                            name: op.name.clone(),
+                            inputs: map_inputs(&op.inputs, &["shape"])
+                                .with_context(|| format!("Failed at op {:?}", op))?,
+                            placement: map_placement(&placements, &op.placement_name)?,
+                        })
+                    }
                     ring_RingShlOperation(op) => Ok(Operation {
                         kind: RingShlOp {
                             sig: Signature::unary(
@@ -824,7 +838,7 @@ impl TryFrom<PyComputation> for Computation {
                     bit_BitFillTensorOperation(op) => Ok(Operation {
                         kind: BitFillOp {
                             sig: Signature::unary(Ty::Shape, Ty::BitTensor),
-                            value: u64::from(op.value),
+                            value: Primitive::Ring64(u64::from(op.value)),
                         }
                         .into(),
                         name: op.name.clone(),

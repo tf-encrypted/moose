@@ -190,9 +190,8 @@ pub trait PlacementReveal<C: Context, T, O> {
     fn reveal(&self, ctx: &C, x: &T) -> O;
 }
 
-// TODO generalize `value` to eg Primitive
 pub trait PlacementFill<C: Context, ShapeT, O> {
-    fn fill(&self, ctx: &C, value: u64, shape: &ShapeT) -> O;
+    fn fill(&self, ctx: &C, value: Primitive, shape: &ShapeT) -> O;
 }
 
 pub trait PlacementZeros<C: Context, ShapeT, O> {
@@ -204,7 +203,7 @@ where
     P: PlacementFill<C, ShapeT, O>,
 {
     fn zeros(&self, ctx: &C, shape: &ShapeT) -> O {
-        self.fill(ctx, 0, shape)
+        self.fill(ctx, Primitive::Ring64(0), shape)
     }
 }
 
@@ -217,7 +216,7 @@ where
     P: PlacementFill<C, ShapeT, O>,
 {
     fn ones(&self, ctx: &C, shape: &ShapeT) -> O {
-        self.fill(ctx, 1, shape)
+        self.fill(ctx, Primitive::Ring64(1), shape)
     }
 }
 
@@ -807,18 +806,29 @@ impl Compile<Kernel> for ShapeOp {
 
 impl Compile<Kernel> for BitFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        Err(Error::UnimplementedOperator(format!("{:?}", self)))
+        match (&self.sig, self.value.clone()) {
+            (signature![(_) -> Ty::BitTensor], Primitive::Ring64(value)) => {
+                closure_kernel!(Shape, |shape| {
+                    assert!(value == 0 || value == 1);
+                    BitTensor::fill(&shape.0, value as u8)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match (&self.sig, self.value) {
-            (signature![(_) -> Ty::Ring64Tensor], value) => {
-                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape.0, value as u64))
+        match (&self.sig, self.value.clone()) {
+            (signature![(_) -> Ty::Ring64Tensor], Primitive::Ring64(value)) => {
+                closure_kernel!(Shape, |shape| Ring64Tensor::fill(&shape.0, value))
             }
-            (signature![(_) -> Ty::Ring128Tensor], value) => {
+            (signature![(_) -> Ty::Ring128Tensor], Primitive::Ring64(value)) => {
                 closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape.0, value as u128))
+            }
+            (signature![(_) -> Ty::Ring128Tensor], Primitive::Ring128(value)) => {
+                closure_kernel!(Shape, |shape| Ring128Tensor::fill(&shape.0, value))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

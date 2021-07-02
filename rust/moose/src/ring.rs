@@ -8,12 +8,12 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
-use crate::computation::Placed;
 use crate::computation::Role;
 use crate::computation::{
     HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
     RingSubOp, ShapeOp,
 };
+use crate::computation::{Placed, Primitive};
 use crate::kernels::{
     ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
     PlacementShl, PlacementShr, PlacementSub,
@@ -37,9 +37,10 @@ impl<T> Placed for AbstractRingTensor<T> {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring64Tensor, RingFillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring128Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> Ring64Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> Ring128Tensor, RingFillOp);
 
+// TODO: (lvorona) add constraint on the kind of the Primitive in the enum
 kernel! {
     RingFillOp,
     [
@@ -53,9 +54,13 @@ impl RingFillOp {
     fn ring64_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
-        value: u64,
+        value: Primitive,
         shape: Shape,
     ) -> Ring64Tensor {
+        let value = match value {
+            Primitive::Ring64(v) => v,
+            _ => panic!("Incorrect value type for RingFill"), // TODO: another way to report the error
+        };
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
         AbstractRingTensor(raw_tensor, plc.clone())
@@ -64,11 +69,16 @@ impl RingFillOp {
     fn ring128_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
-        value: u64,
+        value: Primitive,
         shape: Shape,
     ) -> Ring128Tensor {
+        let value = match value {
+            Primitive::Ring64(v) => v as u128,
+            Primitive::Ring128(v) => v,
+            _ => panic!("Incorrect value type for RingFill"), // TODO: another way to report the error
+        };
         let raw_shape = shape.0 .0;
-        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value as u128));
+        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
         AbstractRingTensor(raw_tensor, plc.clone())
     }
 }

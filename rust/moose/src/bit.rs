@@ -1,5 +1,5 @@
-use crate::computation::Placed;
 use crate::computation::{BitAndOp, BitFillOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
+use crate::computation::{Placed, Primitive};
 use crate::kernels::ConcreteContext;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementSampleUniform, PlacementSub,
@@ -31,7 +31,7 @@ impl ShapeOp {
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> BitTensor, BitFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> BitTensor, BitFillOp);
 
 kernel! {
     BitFillOp,
@@ -41,7 +41,16 @@ kernel! {
 }
 
 impl BitFillOp {
-    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, value: u64, shape: Shape) -> BitTensor {
+    fn kernel(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        value: Primitive,
+        shape: Shape,
+    ) -> BitTensor {
+        let value = match value {
+            Primitive::Ring64(v) => v,
+            _ => panic!("Incorrect value type for RingFill"), // TODO: another way to report the error
+        };
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);

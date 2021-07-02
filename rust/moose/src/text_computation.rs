@@ -418,7 +418,7 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", parse_int)(input)?;
+    let (input, value) = attributes_single("value", primitive_literal)(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((input, BitFillOp { sig, value }.into()))
 }
@@ -427,7 +427,7 @@ fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, value) = attributes_single("value", parse_int)(input)?;
+    let (input, value) = attributes_single("value", primitive_literal)(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((input, RingFillOp { sig, value }.into()))
 }
@@ -670,18 +670,15 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> IResult<&'a str, Ty, E> {
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
-        "Unit" => Ok((i, Ty::Unit)),
-        "String" => Ok((i, Ty::String)),
-        "Float32" => Ok((i, Ty::Float32)),
-        "Float64" => Ok((i, Ty::Float64)),
-        "Ring64" => Ok((i, Ty::Ring64)),
-        "Ring128" => Ok((i, Ty::Ring128)),
-        "Ring64Tensor" => Ok((i, Ty::Ring64Tensor)),
-        "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
+        "Unknown" => Ok((i, Ty::Unknown)),
         "Shape" => Ok((i, Ty::Shape)),
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
         "Nonce" => Ok((i, Ty::Nonce)),
+        "String" => Ok((i, Ty::String)),
+        "BitTensor" => Ok((i, Ty::BitTensor)),
+        "Ring64Tensor" => Ok((i, Ty::Ring64Tensor)),
+        "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
         "Float32Tensor" => Ok((i, Ty::Float32Tensor)),
         "Float64Tensor" => Ok((i, Ty::Float64Tensor)),
         "Int8Tensor" => Ok((i, Ty::Int8Tensor)),
@@ -692,7 +689,19 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Uint16Tensor" => Ok((i, Ty::Uint16Tensor)),
         "Uint32Tensor" => Ok((i, Ty::Uint32Tensor)),
         "Uint64Tensor" => Ok((i, Ty::Uint64Tensor)),
-        "Unknown" => Ok((i, Ty::Unknown)),
+        "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
+        "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
+        "Replicated64Tensor" => Ok((i, Ty::Replicated64Tensor)),
+        "Replicated128Tensor" => Ok((i, Ty::Replicated128Tensor)),
+        "ReplicatedBitTensor" => Ok((i, Ty::ReplicatedBitTensor)),
+        "ReplicatedSetup" => Ok((i, Ty::ReplicatedSetup)),
+        "Additive64Tensor" => Ok((i, Ty::Additive64Tensor)),
+        "Additive128Tensor" => Ok((i, Ty::Additive128Tensor)),
+        "Unit" => Ok((i, Ty::Unit)),
+        "Float32" => Ok((i, Ty::Float32)),
+        "Float64" => Ok((i, Ty::Float64)),
+        "Ring64" => Ok((i, Ty::Ring64)),
+        "Ring128" => Ok((i, Ty::Ring128)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
 }
@@ -1826,7 +1835,7 @@ mod tests {
             "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill {value = 42}: (Shape) -> Ring64Tensor (s) @Host(alice)",
+            "z = RingFill {value = Ring64(42)}: (Shape) -> Ring64Tensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingShl {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
@@ -1848,7 +1857,7 @@ mod tests {
         )?;
         parse_assignment::<(&str, ErrorKind)>("z = BitSample() @Host(alice)")?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = BitFill {value = 0}: (Shape) -> BitTensor (s) @Host(alice)",
+            "z = BitFill {value = Ring64(0)}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
 
