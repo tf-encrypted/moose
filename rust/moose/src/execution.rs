@@ -13,13 +13,9 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
-use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::task::Context;
-use std::task::Poll;
 use tokio::sync::oneshot;
-use tokio::task::JoinError;
 
 #[macro_export]
 macro_rules! function_kernel {
