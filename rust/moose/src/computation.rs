@@ -2,7 +2,7 @@ use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::kernels::{ConcreteContext, Context};
+use crate::kernels::Context;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
@@ -202,7 +202,7 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<ConcreteContext> for $val {
+        impl KnownType<crate::kernels::ConcreteContext> for $val {
             type Type = $val;
             const TY: Ty = Ty::$val;
         }
@@ -507,6 +507,7 @@ operators![
     StdInverse,
     RingAdd,
     RingSub,
+    RingNeg,
     RingMul,
     RingDot,
     RingSum,
@@ -529,6 +530,7 @@ operators![
     FixedpointRingMean,
     AdtReveal,
     AdtAdd,
+    AdtSub,
     AdtMul,
     RepSetup,
     RepShare,
@@ -698,6 +700,11 @@ pub struct RingSubOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RingNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingMulOp {
     pub sig: Signature,
 }
@@ -809,6 +816,11 @@ pub struct AdtRevealOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct AdtAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdtSubOp {
     pub sig: Signature,
 }
 

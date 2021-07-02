@@ -5,18 +5,18 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::num::Wrapping;
-use std::ops::{Add, Mul, Shl, Shr, Sub};
+use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
 use crate::computation::Placed;
 use crate::computation::Role;
 use crate::computation::{
-    HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
-    ShapeOp,
+    HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
+    RingSubOp, ShapeOp,
 };
 use crate::kernels::{
-    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementSample, PlacementShl,
-    PlacementShr, PlacementSub,
+    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
+    PlacementShl, PlacementShr, PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -134,6 +134,31 @@ impl RingSubOp {
         Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
     {
         AbstractRingTensor(x.0 - y.0, plc.clone())
+    }
+}
+
+modelled!(PlacementNeg::neg, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingNegOp);
+modelled!(PlacementNeg::neg, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingNegOp);
+
+kernel! {
+    RingNegOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl RingNegOp {
+    fn kernel<T>(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Neg<Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0.neg(), plc.clone())
     }
 }
 

@@ -28,6 +28,14 @@ pub struct ConcreteContext {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
+impl Default for ConcreteContext {
+    fn default() -> Self {
+        ConcreteContext {
+            replicated_keys: Default::default(),
+        }
+    }
+}
+
 impl Context for ConcreteContext {
     type Value = Value;
 
@@ -136,9 +144,14 @@ pub trait PlacementSub<C: Context, T, U, O> {
     fn sub(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementNeg<C: Context, T, O> {
+    fn neg(&self, ctx: &C, x: &T) -> O;
+}
+
 pub trait PlacementMul<C: Context, T, U, O> {
     fn mul(&self, ctx: &C, x: &T, y: &U) -> O;
 }
+
 pub trait PlacementShl<C: Context, T, O> {
     fn shl(&self, ctx: &C, amount: usize, x: &T) -> O;
 }
@@ -171,8 +184,35 @@ pub trait PlacementReveal<C: Context, T, O> {
     fn reveal(&self, ctx: &C, x: &T) -> O;
 }
 
+// TODO generalize `value` to eg Primitive
 pub trait PlacementFill<C: Context, ShapeT, O> {
     fn fill(&self, ctx: &C, value: u64, shape: &ShapeT) -> O;
+}
+
+pub trait PlacementZeros<C: Context, ShapeT, O> {
+    fn zeros(&self, ctx: &C, shape: &ShapeT) -> O;
+}
+
+impl<C: Context, ShapeT, O, P> PlacementZeros<C, ShapeT, O> for P
+where
+    P: PlacementFill<C, ShapeT, O>,
+{
+    fn zeros(&self, ctx: &C, shape: &ShapeT) -> O {
+        self.fill(ctx, 0, shape)
+    }
+}
+
+pub trait PlacementOnes<C: Context, ShapeT, O> {
+    fn ones(&self, ctx: &C, shape: &ShapeT) -> O;
+}
+
+impl<C: Context, ShapeT, O, P> PlacementOnes<C, ShapeT, O> for P
+where
+    P: PlacementFill<C, ShapeT, O>,
+{
+    fn ones(&self, ctx: &C, shape: &ShapeT) -> O {
+        self.fill(ctx, 1, shape)
+    }
 }
 
 pub trait PlacementSample<C: Context, SeedT, ShapeT, O> {
@@ -207,6 +247,14 @@ where
 
 pub trait PlacementRepToAdt<C: Context, T, O> {
     fn rep_to_adt(&self, ctx: &C, x: &T) -> O;
+}
+
+pub trait PlacementAdtToRep<C: Context, T, O> {
+    fn adt_to_rep(&self, ctx: &C, x: &T) -> O;
+}
+
+pub trait PlacementTruncPrSetup<C: Context, SetupT, T, O> {
+    fn trunc_pr(&self, ctx: &C, amount: usize, setup: &SetupT, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {

@@ -6,9 +6,9 @@ use crate::computation::{
     RepShareOp, RepToAdtOp, ReplicatedPlacement,
 };
 use crate::kernels::{
-    Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
-    PlacementMulSetup, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform, PlacementShape,
-    PlacementShareSetup, PlacementSub,
+    Context, PlacementAdd, PlacementDeriveSeed, PlacementKeyGen, PlacementMul, PlacementMulSetup,
+    PlacementRepToAdt, PlacementReveal, PlacementSampleUniform, PlacementShape,
+    PlacementShareSetup, PlacementSub, PlacementZeros,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -21,18 +21,22 @@ pub struct AbstractReplicatedTensor<R> {
     pub shares: [[R; 2]; 3],
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedSetup<K> {
-    pub keys: [[K; 2]; 3],
-}
-
 pub type Replicated64Tensor = AbstractReplicatedTensor<Ring64Tensor>;
 
 pub type Replicated128Tensor = AbstractReplicatedTensor<Ring128Tensor>;
 
 pub type ReplicatedBitTensor = AbstractReplicatedTensor<BitTensor>;
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractReplicatedSetup<K> {
+    pub keys: [[K; 2]; 3],
+}
+
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
+
+struct AbstractReplicatedShape<S> {
+    shapes: [S; 3],
+}
 
 impl<R> Placed for AbstractReplicatedTensor<R>
 where
@@ -101,11 +105,11 @@ impl RepSetupOp {
     where
         HostPlacement: PlacementKeyGen<C, K>,
     {
-        let (owner0, owner1, owner2) = rep.host_placements();
+        let (player0, player1, player2) = rep.host_placements();
 
-        let k0 = owner0.keygen(ctx);
-        let k1 = owner1.keygen(ctx);
-        let k2 = owner2.keygen(ctx);
+        let k0 = player0.keygen(ctx);
+        let k1 = player1.keygen(ctx);
+        let k2 = player2.keygen(ctx);
 
         AbstractReplicatedSetup {
             keys: [[k0.clone(), k1.clone()], [k1, k2.clone()], [k2, k0]],
@@ -137,68 +141,68 @@ impl RepShareOp {
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<C, RingT, ShapeT>,
         HostPlacement: PlacementSampleUniform<C, SeedT, ShapeT, RingT>,
-        HostPlacement: PlacementFill<C, ShapeT, RingT>,
+        HostPlacement: PlacementZeros<C, ShapeT, RingT>,
         HostPlacement: PlacementDeriveSeed<C, KeyT, SeedT>,
         HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
         HostPlacement: PlacementSub<C, RingT, RingT, RingT>,
     {
-        let x_owner = x.placement();
+        let x_player = x.placement();
 
         let AbstractReplicatedSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = &setup;
 
-        let (owner0, owner1, owner2) = plc.host_placements();
+        let (player0, player1, player2) = plc.host_placements();
 
         let shares = match () {
-            _ if x_owner == owner0 => {
+            _ if x_player == player0 => {
                 let sync_key = RawNonce::generate();
-                let shape = x_owner.shape(ctx, &x);
+                let shape = x_player.shape(ctx, &x);
 
-                let seed0 = owner0.derive_seed(ctx, sync_key.clone(), k00);
-                let x00 = x_owner.sample_uniform(ctx, &seed0, &shape);
-                let x10 = with_context!(x_owner, ctx, x - x00);
+                let seed0 = player0.derive_seed(ctx, sync_key.clone(), k00);
+                let x00 = x_player.sample_uniform(ctx, &seed0, &shape);
+                let x10 = with_context!(x_player, ctx, x - x00);
 
-                let seed2 = owner2.derive_seed(ctx, sync_key, k02);
-                let x22 = owner2.fill(ctx, 0, &shape);
-                let x02 = owner2.sample_uniform(ctx, &seed2, &shape);
+                let seed2 = player2.derive_seed(ctx, sync_key, k02);
+                let x22 = player2.zeros(ctx, &shape);
+                let x02 = player2.sample_uniform(ctx, &seed2, &shape);
 
                 let x11 = x10.clone();
-                let x21 = owner1.fill(ctx, 0, &shape);
+                let x21 = player1.zeros(ctx, &shape);
 
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
-            _ if x_owner == owner1 => {
+            _ if x_player == player1 => {
                 let sync_key = RawNonce::generate();
-                let shape = x_owner.shape(ctx, &x);
+                let shape = x_player.shape(ctx, &x);
 
-                let seed1 = owner1.derive_seed(ctx, sync_key.clone(), k11);
-                let x11 = x_owner.sample_uniform(ctx, &seed1, &shape);
-                let x21 = with_context!(x_owner, ctx, x - x11);
+                let seed1 = player1.derive_seed(ctx, sync_key.clone(), k11);
+                let x11 = x_player.sample_uniform(ctx, &seed1, &shape);
+                let x21 = with_context!(x_player, ctx, x - x11);
 
-                let seed0 = owner0.derive_seed(ctx, sync_key, k10);
-                let x00 = owner0.fill(ctx, 0, &shape);
-                let x10 = owner0.sample_uniform(ctx, &seed0, &shape);
+                let seed0 = player0.derive_seed(ctx, sync_key, k10);
+                let x00 = player0.zeros(ctx, &shape);
+                let x10 = player0.sample_uniform(ctx, &seed0, &shape);
 
                 let x22 = x21.clone();
-                let x02 = owner2.fill(ctx, 0, &shape);
+                let x02 = player2.zeros(ctx, &shape);
 
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
-            _ if x_owner == owner2 => {
+            _ if x_player == player2 => {
                 let sync_key = RawNonce::generate();
-                let shape = x_owner.shape(ctx, &x);
+                let shape = x_player.shape(ctx, &x);
 
-                let seed2 = owner2.derive_seed(ctx, sync_key.clone(), k22);
-                let x22 = owner2.sample_uniform(ctx, &seed2, &shape);
-                let x02 = with_context!(x_owner, ctx, x - x22);
+                let seed2 = player2.derive_seed(ctx, sync_key.clone(), k22);
+                let x22 = player2.sample_uniform(ctx, &seed2, &shape);
+                let x02 = with_context!(x_player, ctx, x - x22);
 
-                let seed1 = owner1.derive_seed(ctx, sync_key, k21);
-                let x11 = owner1.fill(ctx, 0, &shape);
-                let x21 = owner1.sample_uniform(ctx, &seed1, &shape);
+                let seed1 = player1.derive_seed(ctx, sync_key, k21);
+                let x11 = player1.zeros(ctx, &shape);
+                let x21 = player1.sample_uniform(ctx, &seed1, &shape);
 
                 let x00 = x02.clone();
-                let x10 = owner0.fill(ctx, 0, &shape);
+                let x10 = player0.zeros(ctx, &shape);
 
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
@@ -210,26 +214,26 @@ impl RepShareOp {
 
                 let sync_key0 = RawNonce::generate();
                 let sync_key1 = RawNonce::generate();
-                let shape = x_owner.shape(ctx, &x);
+                let shape = x_player.shape(ctx, &x);
 
-                let seed00 = owner0.derive_seed(ctx, sync_key0.clone(), k00);
-                let seed02 = owner2.derive_seed(ctx, sync_key0, k02);
+                let seed00 = player0.derive_seed(ctx, sync_key0.clone(), k00);
+                let seed02 = player2.derive_seed(ctx, sync_key0, k02);
 
-                let seed11 = owner1.derive_seed(ctx, sync_key1.clone(), k11);
-                let seed10 = owner0.derive_seed(ctx, sync_key1, k10);
+                let seed11 = player1.derive_seed(ctx, sync_key1.clone(), k11);
+                let seed10 = player0.derive_seed(ctx, sync_key1, k10);
 
-                let x0 = x_owner.sample_uniform(ctx, &seed00, &shape);
-                let x1 = x_owner.sample_uniform(ctx, &seed11, &shape);
-                let x2 = with_context!(x_owner, ctx, x - x0 - x1);
+                let x0 = x_player.sample_uniform(ctx, &seed00, &shape);
+                let x1 = x_player.sample_uniform(ctx, &seed11, &shape);
+                let x2 = with_context!(x_player, ctx, x - x0 - x1);
 
-                let x00 = owner0.sample_uniform(ctx, &seed00, &shape);
-                let x10 = owner0.sample_uniform(ctx, &seed10, &shape);
+                let x00 = player0.sample_uniform(ctx, &seed00, &shape);
+                let x10 = player0.sample_uniform(ctx, &seed10, &shape);
 
-                let x11 = owner1.sample_uniform(ctx, &seed11, &shape);
+                let x11 = player1.sample_uniform(ctx, &seed11, &shape);
                 let x21 = x2.clone();
 
                 let x22 = x2;
-                let x02 = owner2.sample_uniform(ctx, &seed02, &shape);
+                let x02 = player2.sample_uniform(ctx, &seed02, &shape);
 
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
@@ -266,19 +270,19 @@ impl RepRevealOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
-        let (owner0, owner1, owner2) = xe.placement().host_placements();
+        let (player0, player1, player2) = &xe.placement().host_placements();
 
         match () {
-            _ if receiver == &owner0 => {
-                // make sure to use both shares on owner0
+            _ if receiver == player0 => {
+                // make sure to use both shares on player0
                 with_context!(receiver, ctx, x00 + x10 + x21)
             }
-            _ if receiver == &owner1 => {
-                // make sure to use both shares on owner1
+            _ if receiver == player1 => {
+                // make sure to use both shares on player1
                 with_context!(receiver, ctx, x02 + x11 + x21)
             }
-            _ if receiver == &owner2 => {
-                // make sure to use both shares on owner2
+            _ if receiver == player2 => {
+                // make sure to use both shares on player2
                 with_context!(receiver, ctx, x02 + x10 + x22)
             }
             _ => {
@@ -319,7 +323,7 @@ impl RepAddOp {
     where
         HostPlacement: PlacementAdd<C, R, R, R>,
     {
-        let (owner0, owner1, owner2) = rep.host_placements();
+        let (player0, player1, player2) = rep.host_placements();
 
         let AbstractReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -329,14 +333,14 @@ impl RepAddOp {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
-        let z00 = with_context!(owner0, ctx, x00 + y00);
-        let z10 = with_context!(owner0, ctx, x10 + y10);
+        let z00 = with_context!(player0, ctx, x00 + y00);
+        let z10 = with_context!(player0, ctx, x10 + y10);
 
-        let z11 = with_context!(owner1, ctx, x11 + y11);
-        let z21 = with_context!(owner1, ctx, x21 + y21);
+        let z11 = with_context!(player1, ctx, x11 + y11);
+        let z21 = with_context!(player1, ctx, x21 + y21);
 
-        let z22 = with_context!(owner2, ctx, x22 + y22);
-        let z02 = with_context!(owner2, ctx, x02 + y02);
+        let z22 = with_context!(player2, ctx, x22 + y22);
+        let z02 = with_context!(player2, ctx, x02 + y02);
 
         AbstractReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -353,7 +357,7 @@ impl RepAddOp {
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<C, R, R, R>,
     {
-        let (owner0, owner1, owner2) = rep.host_placements();
+        let (player0, player1, player2) = rep.host_placements();
         let x_plc = x.placement();
 
         let AbstractReplicatedTensor {
@@ -361,36 +365,36 @@ impl RepAddOp {
         } = y;
 
         let shares = match () {
-            _ if x_plc == owner0 => {
+            _ if x_plc == player0 => {
                 // add x to y0
                 [
-                    [with_context!(owner0, ctx, x + y00), y10],
+                    [with_context!(player0, ctx, x + y00), y10],
                     [y11, y21],
-                    [y22, with_context!(owner2, ctx, x + y02)],
+                    [y22, with_context!(player2, ctx, x + y02)],
                 ]
             }
-            _ if x_plc == owner1 => {
+            _ if x_plc == player1 => {
                 // add x to y1
                 [
-                    [y00, with_context!(owner0, ctx, x + y10)],
-                    [with_context!(owner1, ctx, x + y11), y21],
+                    [y00, with_context!(player0, ctx, x + y10)],
+                    [with_context!(player1, ctx, x + y11), y21],
                     [y22, y02],
                 ]
             }
-            _ if x_plc == owner2 => {
+            _ if x_plc == player2 => {
                 // add x to y2
                 [
                     [y00, y10],
-                    [y11, with_context!(owner1, ctx, x + y21)],
-                    [with_context!(owner2, ctx, x + y22), y02],
+                    [y11, with_context!(player1, ctx, x + y21)],
+                    [with_context!(player2, ctx, x + y22), y02],
                 ]
             }
             _ => {
                 // add x to y0; we could randomize this
                 [
-                    [with_context!(owner0, ctx, x + y00), y10],
+                    [with_context!(player0, ctx, x + y00), y10],
                     [y11, y21],
-                    [y22, with_context!(owner2, ctx, x + y02)],
+                    [y22, with_context!(player2, ctx, x + y02)],
                 ]
             }
         };
@@ -473,10 +477,6 @@ hybrid_kernel! {
         (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
     ]
-}
-
-struct AbstractReplicatedShape<S> {
-    shapes: [S; 3],
 }
 
 impl RepMulOp {
@@ -610,58 +610,58 @@ impl RepToAdtOp {
         AbstractReplicatedTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
         HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
     {
-        let (adt_owner0, adt_owner1) = adt.host_placements();
-        let (rep_owner0, rep_owner1, rep_owner2) = x.placement().host_placements();
+        let (adt_player0, adt_player1) = adt.host_placements();
+        let (rep_player0, rep_player1, rep_player2) = x.placement().host_placements();
 
         let AbstractReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
         let shares = match () {
-            _ if adt_owner0 == rep_owner0 => {
-                let y0 = with_context!(rep_owner0, ctx, x00 + x10);
+            _ if adt_player0 == rep_player0 => {
+                let y0 = with_context!(rep_player0, ctx, x00 + x10);
                 let y1 = match () {
-                    _ if adt_owner1 == rep_owner1 => x21,
-                    _ if adt_owner1 == rep_owner2 => x22,
+                    _ if adt_player1 == rep_player1 => x21,
+                    _ if adt_player1 == rep_player2 => x22,
                     _ => x21,
                 };
                 [y0, y1]
             }
-            _ if adt_owner0 == rep_owner1 => {
-                let y0 = with_context!(rep_owner1, ctx, x11 + x21);
+            _ if adt_player0 == rep_player1 => {
+                let y0 = with_context!(rep_player1, ctx, x11 + x21);
                 let y1 = match () {
-                    _ if adt_owner1 == rep_owner2 => x02,
-                    _ if adt_owner1 == rep_owner0 => x00,
+                    _ if adt_player1 == rep_player2 => x02,
+                    _ if adt_player1 == rep_player0 => x00,
                     _ => x02,
                 };
                 [y0, y1]
             }
-            _ if adt_owner0 == rep_owner2 => {
-                let y0 = with_context!(rep_owner2, ctx, x22 + x02);
+            _ if adt_player0 == rep_player2 => {
+                let y0 = with_context!(rep_player2, ctx, x22 + x02);
                 let y1 = match () {
-                    _ if adt_owner1 == rep_owner0 => x10,
-                    _ if adt_owner1 == rep_owner1 => x11,
+                    _ if adt_player1 == rep_player0 => x10,
+                    _ if adt_player1 == rep_player1 => x11,
                     _ => x10,
                 };
                 [y0, y1]
             }
-            _ if adt_owner1 == rep_owner0 => {
+            _ if adt_player1 == rep_player0 => {
                 let y0 = x21;
-                let y1 = with_context!(rep_owner0, ctx, x00 + x10);
+                let y1 = with_context!(rep_player0, ctx, x00 + x10);
                 [y0, y1]
             }
-            _ if adt_owner1 == rep_owner1 => {
+            _ if adt_player1 == rep_player1 => {
                 let y0 = x02;
-                let y1 = with_context!(rep_owner1, ctx, x11 + x21);
+                let y1 = with_context!(rep_player1, ctx, x11 + x21);
                 [y0, y1]
             }
-            _ if adt_owner1 == rep_owner2 => {
+            _ if adt_player1 == rep_player2 => {
                 let y0 = x10;
-                let y1 = with_context!(rep_owner2, ctx, x22 + x02);
+                let y1 = with_context!(rep_player2, ctx, x22 + x02);
                 [y0, y1]
             }
             _ => {
-                let y0 = with_context!(rep_owner0, ctx, x00 + x10);
+                let y0 = with_context!(rep_player0, ctx, x00 + x10);
                 let y1 = x21;
                 [y0, y1]
             }
@@ -693,7 +693,7 @@ where
         ctx: &C,
         setup: &AbstractReplicatedSetup<cs!(PrfKey)>,
     ) -> AbstractReplicatedSeeds<cs!(Seed)> {
-        let (owner0, owner1, owner2) = self.host_placements();
+        let (player0, player1, player2) = self.host_placements();
 
         let AbstractReplicatedSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
@@ -707,14 +707,14 @@ where
         let sync_key_1 = RawNonce::generate();
         let sync_key_2 = RawNonce::generate();
 
-        let s00 = owner0.derive_seed(ctx, sync_key_0.clone(), k00);
-        let s10 = owner0.derive_seed(ctx, sync_key_1.clone(), k10);
+        let s00 = player0.derive_seed(ctx, sync_key_0.clone(), k00);
+        let s10 = player0.derive_seed(ctx, sync_key_1.clone(), k10);
 
-        let s11 = owner1.derive_seed(ctx, sync_key_1, k11);
-        let s21 = owner1.derive_seed(ctx, sync_key_2.clone(), k21);
+        let s11 = player1.derive_seed(ctx, sync_key_1, k11);
+        let s21 = player1.derive_seed(ctx, sync_key_2.clone(), k21);
 
-        let s22 = owner2.derive_seed(ctx, sync_key_2, k22);
-        let s02 = owner2.derive_seed(ctx, sync_key_0, k02);
+        let s22 = player2.derive_seed(ctx, sync_key_2, k22);
+        let s02 = player2.derive_seed(ctx, sync_key_0, k02);
 
         let seeds = [[s00, s10], [s11, s21], [s22, s02]];
         AbstractReplicatedSeeds { seeds }
@@ -750,7 +750,7 @@ where
         setup: &AbstractReplicatedSetup<cs!(PrfKey)>,
         shape: &AbstractReplicatedShape<cs!(Shape)>,
     ) -> AbstractReplicatedZeroShare<RingT> {
-        let (owner0, owner1, owner2) = self.host_placements();
+        let (player0, player1, player2) = self.host_placements();
 
         let AbstractReplicatedShape {
             shapes: [shape0, shape1, shape2],
@@ -760,17 +760,17 @@ where
             seeds: [[s00, s10], [s11, s21], [s22, s02]],
         } = &self.gen_seeds(ctx, setup);
 
-        let r00 = owner0.sample_uniform(ctx, s00, shape0);
-        let r10 = owner0.sample_uniform(ctx, s10, shape0);
-        let alpha0 = with_context!(owner0, ctx, r00 - r10);
+        let r00 = player0.sample_uniform(ctx, s00, shape0);
+        let r10 = player0.sample_uniform(ctx, s10, shape0);
+        let alpha0 = with_context!(player0, ctx, r00 - r10);
 
-        let r11 = owner1.sample_uniform(ctx, s11, shape1);
-        let r21 = owner1.sample_uniform(ctx, s21, shape1);
-        let alpha1 = with_context!(owner1, ctx, r11 - r21);
+        let r11 = player1.sample_uniform(ctx, s11, shape1);
+        let r21 = player1.sample_uniform(ctx, s21, shape1);
+        let alpha1 = with_context!(player1, ctx, r11 - r21);
 
-        let r22 = owner2.sample_uniform(ctx, s22, shape2);
-        let r02 = owner2.sample_uniform(ctx, s02, shape2);
-        let alpha2 = with_context!(owner2, ctx, r22 - r02);
+        let r22 = player2.sample_uniform(ctx, s22, shape2);
+        let r02 = player2.sample_uniform(ctx, s02, shape2);
+        let alpha2 = with_context!(player2, ctx, r22 - r02);
 
         AbstractReplicatedZeroShare {
             alphas: [alpha0, alpha1, alpha2],

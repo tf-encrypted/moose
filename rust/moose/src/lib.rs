@@ -771,12 +771,12 @@ macro_rules! modelled {
     Nullary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
-        impl crate::kernels::NullaryKernelCheck<ConcreteContext, $plc, $u> for $op {}
+        impl crate::kernels::NullaryKernelCheck<crate::kernels::ConcreteContext, $plc, $u> for $op {}
 
-        impl $t<ConcreteContext, $u> for $plc {
-            fn $f(&self, ctx: &ConcreteContext, $($($attr_id:$attr_ty),*)?) -> $u {
+        impl $t<crate::kernels::ConcreteContext, $u> for $plc {
+            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*)?) -> $u {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::Context;
+                use crate::kernels::{Context, ConcreteContext};
                 use std::convert::TryInto;
 
                 let sig = NullarySignature {
@@ -792,7 +792,7 @@ macro_rules! modelled {
             }
         }
 
-        // impl $t<SymbolicContext, <$u as KnownType>::Symbolic> for $plc {
+        // impl $t<SymbolicContext, <$u as KnownType<C>>::Type> for $plc {
         //     fn $f(&self, ctx: &SymbolicContext, $($($attr_id:$attr_ty),*)?) -> <$u as KnownType>::Symbolic {
         //         let sig = NullarySignature {
         //             ret: <$u as KnownType>::TY,
@@ -993,8 +993,8 @@ macro_rules! modelled_alias {
     Binary
     */
     ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
-        impl $src_t<ConcreteContext, $t0, $t1, $u> for $plc {
-            fn $src_f(&self, ctx: &ConcreteContext, x0: &$t0, x1: &$t1) -> $u {
+        impl $src_t<crate::kernels::ConcreteContext, $t0, $t1, $u> for $plc {
+            fn $src_f(&self, ctx: &crate::kernels::ConcreteContext, x0: &$t0, x1: &$t1) -> $u {
                 $dst_t::$dst_f(self, ctx, x0, x1)
             }
         }
