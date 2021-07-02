@@ -61,20 +61,14 @@ impl From<BitTensor> for ArrayD<u8> {
 impl BitXor for BitTensor {
     type Output = BitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => BitTensor(self_broadcasted.to_owned() ^ other.0),
-            None => BitTensor(self.0 ^ other.0),
-        }
+        BitTensor(self.0 ^ other.0)
     }
 }
 
 impl BitAnd for BitTensor {
     type Output = BitTensor;
     fn bitand(self, other: Self) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => BitTensor(self_broadcasted.to_owned() & other.0),
-            None => BitTensor(self.0 & other.0),
-        }
+        BitTensor(self.0 & other.0)
     }
 }
 
@@ -135,29 +129,6 @@ mod tests {
         assert_eq!(
             BitTensor::fill(&shape, 0) & BitTensor::fill(&shape, 0),
             BitTensor::fill(&shape, 0)
-        );
-    }
-
-    #[test]
-    fn test_bit_ops_broadcasting() {
-        // test xor
-        assert_eq!(
-            BitTensor::fill(&Shape(vec![5]), 0) ^ BitTensor::fill(&Shape(vec![1]), 1),
-            BitTensor::fill(&Shape(vec![5]), 1)
-        );
-        assert_eq!(
-            BitTensor::fill(&Shape(vec![1]), 0) ^ BitTensor::fill(&Shape(vec![5]), 1),
-            BitTensor::fill(&Shape(vec![5]), 1)
-        );
-
-        // test and
-        assert_eq!(
-            BitTensor::fill(&Shape(vec![5]), 0) & BitTensor::fill(&Shape(vec![1]), 1),
-            BitTensor::fill(&Shape(vec![5]), 0)
-        );
-        assert_eq!(
-            BitTensor::fill(&Shape(vec![1]), 0) & BitTensor::fill(&Shape(vec![5]), 1),
-            BitTensor::fill(&Shape(vec![5]), 0)
         );
     }
 }

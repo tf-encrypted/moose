@@ -164,12 +164,7 @@ where
 {
     type Output = ConcreteRingTensor<T>;
     fn add(self, other: ConcreteRingTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                ConcreteRingTensor::<T>(self_broadcasted.to_owned() + other.0)
-            }
-            None => ConcreteRingTensor::<T>(self.0 + other.0),
-        }
+        ConcreteRingTensor(self.0 + other.0)
     }
 }
 
@@ -180,12 +175,7 @@ where
 {
     type Output = ConcreteRingTensor<T>;
     fn mul(self, other: ConcreteRingTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                ConcreteRingTensor::<T>(self_broadcasted.to_owned() * other.0)
-            }
-            None => ConcreteRingTensor::<T>(self.0 * other.0),
-        }
+        ConcreteRingTensor(self.0.mul(other.0))
     }
 }
 
@@ -196,12 +186,7 @@ where
 {
     type Output = ConcreteRingTensor<T>;
     fn sub(self, other: ConcreteRingTensor<T>) -> Self::Output {
-        match self.0.broadcast(other.0.dim()) {
-            Some(self_broadcasted) => {
-                ConcreteRingTensor::<T>(self_broadcasted.to_owned() - other.0)
-            }
-            None => ConcreteRingTensor::<T>(self.0 - other.0),
-        }
+        ConcreteRingTensor(self.0.sub(other.0))
     }
 }
 
@@ -410,69 +395,6 @@ mod tests {
         let exp = Ring64Tensor::from(exp_backing);
         let out = x.sum(None);
         assert_eq!(out, exp)
-    }
-
-    #[test]
-    fn test_add_broadcasting() {
-        let x_1_backing: ArrayD<i64> = array![2].into_dimensionality::<IxDyn>().unwrap();
-        let x_1 = Ring64Tensor::from(x_1_backing);
-        let y_1_backing: ArrayD<i64> = array![1, 2].into_dimensionality::<IxDyn>().unwrap();
-        let y_1 = Ring64Tensor::from(y_1_backing);
-        let z_1 = x_1.add(y_1);
-        let z_1_exp_backing: ArrayD<i64> = array![3, 4].into_dimensionality::<IxDyn>().unwrap();
-        let z_1_exp = Ring64Tensor::from(z_1_exp_backing);
-        let x_2_backing: ArrayD<i64> = array![1, 2].into_dimensionality::<IxDyn>().unwrap();
-        let x_2 = Ring64Tensor::from(x_2_backing);
-        let y_2_backing: ArrayD<i64> = array![2].into_dimensionality::<IxDyn>().unwrap();
-        let y_2 = Ring64Tensor::from(y_2_backing);
-        let z_2 = x_2.add(y_2);
-        let z_2_exp_backing: ArrayD<i64> = array![3, 4].into_dimensionality::<IxDyn>().unwrap();
-        let z_2_exp = Ring64Tensor::from(z_2_exp_backing);
-
-        assert_eq!(z_1, z_1_exp);
-        assert_eq!(z_2, z_2_exp);
-    }
-
-    #[test]
-    fn test_sub_broadcasting() {
-        let x_1_backing: ArrayD<i64> = array![2].into_dimensionality::<IxDyn>().unwrap();
-        let x_1 = Ring64Tensor::from(x_1_backing);
-        let y_1_backing: ArrayD<i64> = array![1, 2].into_dimensionality::<IxDyn>().unwrap();
-        let y_1 = Ring64Tensor::from(y_1_backing);
-        let z_1 = x_1.sub(y_1);
-        let z_1_exp_backing: ArrayD<i64> = array![1, 0].into_dimensionality::<IxDyn>().unwrap();
-        let z_1_exp = Ring64Tensor::from(z_1_exp_backing);
-        let x_2_backing: ArrayD<i64> = array![1, 2].into_dimensionality::<IxDyn>().unwrap();
-        let x_2 = Ring64Tensor::from(x_2_backing);
-        let y_2_backing: ArrayD<i64> = array![2].into_dimensionality::<IxDyn>().unwrap();
-        let y_2 = Ring64Tensor::from(y_2_backing);
-        let z_2 = x_2.sub(y_2);
-        let z_2_exp_backing: ArrayD<i64> = array![-1, 0].into_dimensionality::<IxDyn>().unwrap();
-        let z_2_exp = Ring64Tensor::from(z_2_exp_backing);
-
-        assert_eq!(z_1, z_1_exp);
-        assert_eq!(z_2, z_2_exp);
-    }
-
-    #[test]
-    fn test_mul_broadcasting() {
-        let x_1_backing: ArrayD<i64> = array![2].into_dimensionality::<IxDyn>().unwrap();
-        let x_1 = Ring64Tensor::from(x_1_backing);
-        let y_1_backing: ArrayD<i64> = array![1, 2].into_dimensionality::<IxDyn>().unwrap();
-        let y_1 = Ring64Tensor::from(y_1_backing);
-        let z_1 = x_1.mul(y_1);
-        let z_1_exp_backing: ArrayD<i64> = array![2, 4].into_dimensionality::<IxDyn>().unwrap();
-        let z_1_exp = Ring64Tensor::from(z_1_exp_backing);
-        let x_2_backing: ArrayD<i64> = array![1, 2].into_dimensionality::<IxDyn>().unwrap();
-        let x_2 = Ring64Tensor::from(x_2_backing);
-        let y_2_backing: ArrayD<i64> = array![2].into_dimensionality::<IxDyn>().unwrap();
-        let y_2 = Ring64Tensor::from(y_2_backing);
-        let z_2 = x_2.mul(y_2);
-        let z_2_exp_backing: ArrayD<i64> = array![2, 4].into_dimensionality::<IxDyn>().unwrap();
-        let z_2_exp = Ring64Tensor::from(z_2_exp_backing);
-
-        assert_eq!(z_1, z_1_exp);
-        assert_eq!(z_2, z_2_exp);
     }
 
     #[test]
