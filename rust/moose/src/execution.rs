@@ -983,6 +983,23 @@ pub struct AsyncSession {
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
+//struct CancelJoinHandle {
+//    task: AsyncTask,
+//}
+//
+//impl Drop for CancelJoinHandle {
+//    fn drop(&mut self) {
+//        self.task.abort();
+//    }
+//}
+//
+//impl Future for CancelJoinHandle {
+//    type Output = Poll<std::result::Result<std::result::Result<(), Error>, JoinError>>;
+//    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+//        std::task::Poll::Ready(Pin::new(&mut self.task).poll(cx))
+//    }
+//}
+
 pub struct AsyncSessionHandle {
     tasks: Vec<AsyncTask>,
 }
@@ -1012,23 +1029,60 @@ impl AsyncSessionHandle {
         errors
     }
 
-    pub async fn join(&mut self) -> Vec<anyhow::Error> {
-        let mut errors = Vec::new();
-        for task in &mut self.tasks {
-            let res = task.await;
-            if let Some(e) = AsyncSessionHandle::process_task_result(res) {
-                errors.push(e);
+    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+        use crate::error::Error::{OperandUnavailable, ResultUnused};
+        use futures::StreamExt;
+
+        // TODO:
+        // iterate and wrap all tasks with MyJoinHandle
+        // impl drop and future for MyJoinHandle
+        //     in Drop: call join_handle.abort()
+
+        //let mut task_vec = Vec::new();
+        //for task in self.tasks.into_iter() {
+        //    task_vec.push(CancelJoinHandle{task: task});
+        //}
+        //let mut tasks = task_vec.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
+
+        let mut tasks = self
+            .tasks
+            .into_iter()
+            .collect::<futures::stream::FuturesUnordered<_>>();
+
+        while let Some(x) = tasks.next().await {
+            match x {
+                Ok(Ok(_)) => {
+                    continue;
+                }
+                Ok(Err(e)) => {
+                    match e {
+                        // OperandUnavailable and ResultUnused are typically not root causes.
+                        // Wait to get an error that would indicate the root cause of the problem,
+                        // and return it instead.
+                        OperandUnavailable => continue,
+                        ResultUnused => continue,
+                        _ => {
+                            for task in tasks.iter() {
+                                task.abort();
+                            }
+                            return Err(anyhow::Error::from(e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    if e.is_cancelled() {
+                        continue;
+                    } else if e.is_panic() {
+                        for task in tasks.iter() {
+                            task.abort();
+                        }
+                        return Err(anyhow::Error::from(e));
+                    }
+                }
             }
         }
-        errors
+        Ok(())
     }
-
-    // TODO(Morten)
-    // async fn join(self) -> Result<()> {
-    //     use futures::StreamExt;
-    //     let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
-    //     let res = tasks.collect::<Vec<_>>().await;
-    // }
 
     pub fn abort(&self) {
         for task in &self.tasks {
