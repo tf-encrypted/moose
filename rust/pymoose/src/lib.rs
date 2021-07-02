@@ -1,4 +1,5 @@
 use moose::bit::BitTensor;
+use moose::compilation::typing::update_types_one_hop;
 use moose::computation::{Computation, Role, SessionId, Value};
 use moose::execution::{
     AsyncExecutor, AsyncNetworkingImpl, AsyncReceiver, AsyncSession, AsyncSessionHandle, Identity,
@@ -454,9 +455,11 @@ impl LocalRuntime {
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
             };
             let computation = create_computation_graph_from_py_bytes(computation.clone());
+            let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
+            compiled_computation.toposort().unwrap();
             let (moose_session_handle, outputs) = executor
                 .run_computation(
-                    &computation,
+                    &compiled_computation,
                     &valid_role_assignments,
                     &own_identity,
                     moose_session,
