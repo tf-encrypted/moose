@@ -649,6 +649,7 @@ hybrid_kernel! {
 }
 
 impl AdtToRepOp {
+    #[allow(unused_variables)] // Remove when the code below is uncommented
     fn kernel<C: Context, SeedT, ShapeT, KeyT, RingT>(
         ctx: &C,
         rep: &ReplicatedPlacement,
@@ -680,7 +681,7 @@ impl AdtToRepOp {
 
         let sync_key0 = RawNonce::generate();
         let sync_key1 = RawNonce::generate();
-        let shape = adt_player0.shape(ctx, &x0);
+        let shape = adt_player0.shape(ctx, x0);
 
         // TODO
         unimplemented!()

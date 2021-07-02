@@ -4,13 +4,12 @@ use crate::computation::{
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
-    PlacementNeg, PlacementOnes, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
-    PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr, PlacementSub,
-    PlacementTruncPrProvider,
+    PlacementNeg, PlacementRepToAdt, PlacementReveal, PlacementSampleBits, PlacementSampleUniform,
+    PlacementShl, PlacementSub, PlacementTruncPrProvider,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
-use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
+use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::Shape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -408,7 +407,7 @@ where
                 .map(|i| {
                     let x0: &R = &sequence[2 * i];
                     let x1: &R = &sequence[2 * i + 1];
-                    self.add(ctx, &x0, &x1)
+                    self.add(ctx, x0, x1)
                 })
                 .collect();
             if n % 2 == 1 {
@@ -461,7 +460,7 @@ where
             .map(|_| {
                 let nonce = RawNonce::generate();
                 let seed = self.derive_seed(ctx, nonce, &key);
-                self.sample_bits(ctx, &seed, &shape)
+                self.sample_bits(ctx, &seed, shape)
             })
             .collect();
 
@@ -512,6 +511,7 @@ where
 // R: Into<Value> + Clone,
 // HostPlacement: TruncRandomness<C, R>,
 {
+    #[allow(unused_variables)] // Remove when the code below is uncommented
     fn trunc_pr(
         &self,
         ctx: &C,
