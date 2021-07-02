@@ -12,9 +12,9 @@ use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
+use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
-use std::collections::HashMap;
 
 pub trait Context {
     type Value;
@@ -54,7 +54,7 @@ impl Context for ConcreteContext {
             // Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
             // Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            _ => unimplemented!() // TODO
+            _ => unimplemented!(), // TODO
         }
     }
 

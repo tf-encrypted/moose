@@ -11,8 +11,8 @@ use crate::bit::BitTensor;
 use crate::computation::Placed;
 use crate::computation::Role;
 use crate::computation::{
-    HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp,
-    RingSubOp, ShapeOp,
+    HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp,
+    ShapeOp,
 };
 use crate::kernels::{
     ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementSample, PlacementShl,
@@ -39,7 +39,7 @@ impl<T> Placed for AbstractRingTensor<T> {
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring64Tensor, RingFillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring128Tensor, RingFillOp);
-// modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> BitTensor, RingFillOp);
+// modelled!(PlacementFill::fill, HostPlacement, attributes[value: Primitive] (Shape) -> BitTensor, RingFillOp); // TODO
 
 kernel! {
     RingFillOp,

@@ -115,7 +115,7 @@ impl RepSetupOp {
 
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor) -> Replicated64Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor) -> Replicated128Tensor, RepShareOp);
-// modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, BitTensor) -> ReplicatedBitTensor, RepShareOp);
+// modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, BitTensor) -> ReplicatedBitTensor, RepShareOp); // TODO
 
 hybrid_kernel! {
     RepShareOp,

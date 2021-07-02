@@ -1,7 +1,7 @@
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtMulOp, AdtRevealOp, HostPlacement, Placed,
 };
-use crate::kernels::{Context, PlacementAdd, PlacementMul};
+use crate::kernels::{Context, PlacementAdd, PlacementMul, PlacementReveal};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -32,31 +32,59 @@ where
     }
 }
 
+modelled!(PlacementReveal::reveal, HostPlacement, (Additive64Tensor) -> Ring64Tensor, AdtRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (Additive128Tensor) -> Ring128Tensor, AdtRevealOp);
+
+hybrid_kernel! {
+    AdtRevealOp,
+    [
+        (HostPlacement, (Additive64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Additive128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
 impl AdtRevealOp {
-    fn kernel<C: Context, R>(ctx: &C, plc: &HostPlacement, xe: AbstractAdditiveTensor<R>) -> R
+    fn kernel<C: Context, RingT>(
+        ctx: &C,
+        plc: &HostPlacement,
+        xe: AbstractAdditiveTensor<RingT>,
+    ) -> RingT
     where
-        R: Clone,
-        HostPlacement: PlacementAdd<C, R, R, R>,
+        HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
     {
         let AbstractAdditiveTensor { shares: [x0, x1] } = &xe;
         with_context!(plc, ctx, x1 + x0)
     }
 }
 
+modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor, AdtAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor, AdtAddOp);
+
+hybrid_kernel! {
+    AdtAddOp,
+    [
+        (AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor => Self::adt_adt_kernel),
+        (AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor => Self::adt_adt_kernel),
+        (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::adt_ring_kernel),
+        (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::adt_ring_kernel),
+        (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::ring_adt_kernel),
+        (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::ring_adt_kernel),
+    ]
+}
+
 impl AdtAddOp {
-    fn add_add_kernel<C: Context, R>(
+    fn adt_adt_kernel<C: Context, RingT>(
         ctx: &C,
         add: &AdditivePlacement,
-        x: AbstractAdditiveTensor<R>,
-        y: AbstractAdditiveTensor<R>,
-    ) -> AbstractAdditiveTensor<R>
+        x: AbstractAdditiveTensor<RingT>,
+        y: AbstractAdditiveTensor<RingT>,
+    ) -> AbstractAdditiveTensor<RingT>
     where
-        HostPlacement: PlacementAdd<C, R, R, R>,
+        HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
     {
         let (player0, player1) = add.host_placements();
 
         let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
-
         let AbstractAdditiveTensor { shares: [y0, y1] } = &y;
 
         let z0 = with_context!(player0, ctx, x0 + y0);
@@ -65,22 +93,23 @@ impl AdtAddOp {
         AbstractAdditiveTensor { shares: [z0, z1] }
     }
 
-    fn add_ring_kernel<C: Context, R>(
+    fn adt_ring_kernel<C: Context, RingT>(
         ctx: &C,
         add: &AdditivePlacement,
-        x: AbstractAdditiveTensor<R>,
-        y: R,
-    ) -> AbstractAdditiveTensor<R>
+        x: AbstractAdditiveTensor<RingT>,
+        y: RingT,
+    ) -> AbstractAdditiveTensor<RingT>
     where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, R>,
+        RingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
     {
         let (player0, player1) = add.host_placements();
+
         let AbstractAdditiveTensor { shares: [x0, x1] } = x;
 
         let y_plc = y.placement();
 
-        let shares = match y_plc {
+        let shares = match () {
             _ if y_plc == player0 => [with_context!(player0, ctx, x0 + y), x1],
             _ if y_plc == player1 => [x0, with_context!(player1, ctx, x1 + y)],
             _ => [with_context!(player0, ctx, x0 + y), x1],
@@ -88,22 +117,22 @@ impl AdtAddOp {
         AbstractAdditiveTensor { shares }
     }
 
-    fn ring_add_kernel<C: Context, R>(
+    fn ring_adt_kernel<C: Context, RingT>(
         ctx: &C,
         add: &AdditivePlacement,
-        x: R,
-        y: AbstractAdditiveTensor<R>,
-    ) -> AbstractAdditiveTensor<R>
+        x: RingT,
+        y: AbstractAdditiveTensor<RingT>,
+    ) -> AbstractAdditiveTensor<RingT>
     where
-        R: Placed<Placement = HostPlacement>,
-        HostPlacement: PlacementAdd<C, R, R, R>,
+        RingT: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
     {
         let (player0, player1) = add.host_placements();
         let AbstractAdditiveTensor { shares: [y0, y1] } = y;
 
         let x_plc = x.placement();
 
-        let shares = match x_plc {
+        let shares = match () {
             _ if x_plc == player0 => [with_context!(player0, ctx, y0 + x), y1],
             _ if x_plc == player1 => [y0, with_context!(player1, ctx, x + y1)],
             _ => [with_context!(player0, ctx, x + y0), y1],
@@ -112,8 +141,23 @@ impl AdtAddOp {
     }
 }
 
+modelled!(PlacementMul::mul, AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor, AdtMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor, AdtMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdtMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor, AdtMulOp);
+
+hybrid_kernel! {
+    AdtMulOp,
+    [
+        (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::ring_adt_kernel),
+        (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::adt_ring_kernel),
+        (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::adt_ring_kernel),
+        (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::ring_adt_kernel),
+    ]
+}
+
 impl AdtMulOp {
-    fn ring_add_kernel<C: Context, R>(
+    fn ring_adt_kernel<C: Context, R>(
         ctx: &C,
         add: &AdditivePlacement,
         x: R,
@@ -133,7 +177,7 @@ impl AdtMulOp {
         AbstractAdditiveTensor { shares: [z0, z1] }
     }
 
-    fn add_ring_kernel<C: Context, R>(
+    fn adt_ring_kernel<C: Context, R>(
         ctx: &C,
         add: &AdditivePlacement,
         x: AbstractAdditiveTensor<R>,
