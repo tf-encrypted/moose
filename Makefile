@@ -29,7 +29,7 @@ lint:
 
 test:
 	pytest .
-	cd rust && cargo test
+	cd rust && cargo test --no-default-features
 
 test-long:
 	HYPOTHESIS_PROFILE='test-long' $(MAKE) test
