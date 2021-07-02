@@ -3340,6 +3340,7 @@ where
     AdditivePlacement: PlacementMul<C, AdditiveTensor<R>, R, AdditiveTensor<R>>,
     AdditivePlacement: PlacementShl<C, AdditiveTensor<R>, AdditiveTensor<R>>,
     AdditivePlacement: PlacementSub<C, AdditiveTensor<R>, AdditiveTensor<R>, AdditiveTensor<R>>,
+    AdditivePlacement: PlacementSub<C, AdditiveTensor<R>, R, AdditiveTensor<R>>,
     HostPlacement: PlacementBitCompose<C, R> + PlacementKeyGen<C, K> + PlacementSub<C, R, R, R>,
     HostPlacement: PlacementOnes<C, Shape, R>,
     HostPlacement: PlacementReveal<C, AdditiveTensor<R>, R>,
@@ -3366,7 +3367,7 @@ where
 
         let ones = player_a.ones(ctx, &x_shape);
 
-        let twok = player_a.shl(ctx, k, &ones).into();
+        let twok = player_a.shl(ctx, k, &ones);
         let positive = self.add(ctx, x, &twok);
 
         let (r, r_top, r_msb) = self.get_prep(ctx, &x_shape, m, third_party);
@@ -3384,7 +3385,7 @@ where
 
         let output = self.add(ctx, &self.sub(ctx, &shifted_msb, &r_top), &opened_mask_tr);
         // TODO(Dragos)this is optional if we work with unsigned numbers
-        let remainder = player_a.shl(ctx, k - 1 - m, &ones).into();
+        let remainder = player_a.shl(ctx, k - 1 - m, &ones);
         self.sub(ctx, &output, &remainder)
     }
     fn get_prep(
