@@ -1,5 +1,5 @@
 use crate::computation::Placed;
-use crate::computation::{BitAndOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
+use crate::computation::{BitAndOp, BitSampleOp, BitXorOp, FillOp, HostPlacement, ShapeOp};
 use crate::kernels::ConcreteContext;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementMul, PlacementSampleUniform, PlacementSub, PlacementXor,
@@ -27,6 +27,20 @@ impl ShapeOp {
     pub(crate) fn bit_kernel(_ctx: &ConcreteContext, plc: &HostPlacement, x: BitTensor) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
         Shape(raw_shape, plc.clone().into())
+    }
+}
+
+impl FillOp {
+    pub(crate) fn bit_kernel(
+        _ctx: &ConcreteContext,
+        plc: &HostPlacement,
+        value: u64,
+        shape: Shape,
+    ) -> BitTensor {
+        assert!(value == 0 || value == 1);
+        let raw_shape = shape.0 .0;
+        let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
+        BitTensor(raw_tensor, plc.clone())
     }
 }
 

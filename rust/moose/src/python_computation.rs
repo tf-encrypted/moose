@@ -762,7 +762,7 @@ impl TryFrom<PyComputation> for Computation {
                         Err(anyhow::anyhow!("unsupported operation: {:?}", op))
                     }
                     ring_FillTensorOperation(op) => Ok(Operation {
-                        kind: RingFillOp {
+                        kind: FillOp {
                             sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
                             value: u64::from_str(&op.value)?,
                         }
@@ -822,9 +822,9 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitFillTensorOperation(op) => Ok(Operation {
-                        kind: BitFillOp {
+                        kind: FillOp {
                             sig: Signature::unary(Ty::Shape, Ty::BitTensor),
-                            value: op.value,
+                            value: u64::from(op.value),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -949,7 +949,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
-                        kind: StdShapeOp {
+                        kind: ShapeOp {
                             sig: Signature::unary(Ty::Float64Tensor, Ty::Shape),
                         }
                         .into(),

@@ -1490,14 +1490,14 @@ mod tests {
         "2, 3",
         "Ring128Tensor([[1, 1, 1], [1, 1, 1]]) @Host(alice)"
     )]
-    fn test_ring_fill(
+    fn test_fill(
         #[case] type_str: String,
         #[case] shape_str: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"shape = Constant{{value=Shape([{shape}])}} @Host(alice)
-        res = RingFill {{value = 1 }} : (Shape) -> {t}Tensor (shape) @Host(alice)
+        res = Fill {{value = 1}} : (Shape) -> {t}Tensor (shape) @Host(alice)
         output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
         "#,
             t = type_str,

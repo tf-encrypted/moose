@@ -41,11 +41,12 @@ impl Context for ConcreteContext {
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
+            Operator::Shape(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::Fill(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::BitSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::BitXor(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::BitAnd(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -281,6 +282,7 @@ impl Compile<SyncKernel> for Operator {
             Output(op) => Compile::<SyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<SyncKernel>::compile(op, ctx),
             Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
+            Fill(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -292,7 +294,6 @@ impl Compile<SyncKernel> for Operator {
             StdExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdShape(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdSlice(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -303,13 +304,11 @@ impl Compile<SyncKernel> for Operator {
             RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -335,6 +334,7 @@ impl Compile<AsyncKernel> for Operator {
             Output(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Shape(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            Fill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -346,7 +346,6 @@ impl Compile<AsyncKernel> for Operator {
             StdExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdShape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdSlice(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -357,13 +356,11 @@ impl Compile<AsyncKernel> for Operator {
             RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -468,7 +465,6 @@ std_binary_kernel!(StdSubOp, |x, y| x - y);
 std_binary_kernel!(StdMulOp, |x, y| x * y);
 std_binary_kernel!(StdDivOp, |x, y| x / y);
 std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
-std_unary_kernel!(StdShapeOp, |x| x.shape());
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for StdInverseOp {
@@ -781,6 +777,12 @@ impl Compile<Kernel> for RingSumOp {
 impl Compile<Kernel> for ShapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
+            signature![(Ty::Float32Tensor) -> Ty::Shape] => {
+                function_kernel!(Float32Tensor, |x| x.shape())
+            }
+            signature![(Ty::Float64Tensor) -> Ty::Shape] => {
+                function_kernel!(Float64Tensor, |x| x.shape())
+            }
             signature![(Ty::Ring64Tensor) -> Ty::Shape] => {
                 function_kernel!(Ring64Tensor, |x| x.shape())
             }
@@ -792,7 +794,7 @@ impl Compile<Kernel> for ShapeOp {
     }
 }
 
-impl Compile<Kernel> for RingFillOp {
+impl Compile<Kernel> for FillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value) {
             (signature![(_) -> Ty::Ring64Tensor], value) => {
@@ -899,13 +901,6 @@ impl Compile<Kernel> for BitSampleOp {
         function_kernel!(Shape, Seed, |shape, seed| BitTensor::sample_uniform(
             &shape.0, &seed.0
         ))
-    }
-}
-
-impl Compile<Kernel> for BitFillOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let value = self.value;
-        closure_kernel!(Shape, |shape| BitTensor::fill(&shape.0, value))
     }
 }
 
@@ -1260,7 +1255,7 @@ mod tests {
     #[test]
     fn test_standard_shape_ops() -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        shape = StdShape: (Float32Tensor) -> Float32Tensor (x) @Host(alice)
+        shape = Shape: (Float32Tensor) -> Shape (x) @Host(alice)
         expand_dims = StdExpandDims {axis = 2}: (Float32Tensor) -> Float32Tensor (x) @Host(alice)
         transpose = StdTranspose : (Float32Tensor) -> Float32Tensor (x) @Host(alice)"#;
 

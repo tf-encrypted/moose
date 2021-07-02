@@ -2,8 +2,8 @@ extern crate ndarray;
 extern crate ndarray_linalg;
 
 use crate::bit::BitTensor;
-use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
-use crate::kernels::PlacementShape;
+use crate::computation::{FillOp, HostPlacement, Placed, Placement, ShapeOp};
+use crate::kernels::{PlacementFill, PlacementShape};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -59,6 +59,19 @@ kernel! {
         (HostPlacement, (Ring64Tensor) -> Shape => Self::ring_kernel),
         (HostPlacement, (Ring128Tensor) -> Shape => Self::ring_kernel),
         (HostPlacement, (BitTensor) -> Shape => Self::bit_kernel),
+    ]
+}
+
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring64Tensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring128Tensor, FillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> BitTensor, FillOp);
+
+kernel! {
+    FillOp,
+    [
+        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::u64_kernel),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::u128_kernel),
+        (HostPlacement, (Shape) -> BitTensor => attributes[value] Self::bit_kernel),
     ]
 }
 

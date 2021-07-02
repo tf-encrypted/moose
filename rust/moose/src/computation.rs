@@ -489,6 +489,7 @@ operators![
     Output,
     Constant,
     Shape,
+    Fill,
     StdAdd,
     StdSub,
     StdMul,
@@ -498,7 +499,6 @@ operators![
     StdExpandDims,
     StdReshape,
     StdAtLeast2D,
-    StdShape,
     StdSlice,
     StdSum,
     StdOnes,
@@ -512,13 +512,11 @@ operators![
     RingDot,
     RingSum,
     RingSample,
-    RingFill,
     RingShl,
     RingShr,
     RingInject,
     BitExtract,
     BitSample,
-    BitFill,
     BitXor,
     BitAnd,
     PrimDeriveSeed,
@@ -646,11 +644,6 @@ pub struct StdReshapeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct StdShapeOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct StdSliceOp {
     pub sig: Signature,
     pub start: u32,
@@ -676,6 +669,12 @@ pub struct StdInverseOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct ShapeOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct FillOp {
+    pub sig: Signature,
+    pub value: u64,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -721,12 +720,6 @@ pub struct RingSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct RingFillOp {
-    pub sig: Signature,
-    pub value: u64,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RingSampleOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
@@ -759,12 +752,6 @@ pub struct BitExtractOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct BitSampleOp {
     pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitFillOp {
-    pub sig: Signature,
-    pub value: u8,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
