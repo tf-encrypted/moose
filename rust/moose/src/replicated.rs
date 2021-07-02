@@ -702,7 +702,7 @@ where
         // NOTE for now we pick random sync_keys _at compile time_, which is okay from
         // a security perspective since the seeds depend on both the keys and the sid.
         // however, with sub-computations we could fix these as eg `0`, `1`, and `2`
-        // and also make compilation more deterministic
+        // and make compilation a bit more deterministic
         let sync_key_0 = RawNonce::generate();
         let sync_key_1 = RawNonce::generate();
         let sync_key_2 = RawNonce::generate();
