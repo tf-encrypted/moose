@@ -1000,7 +1000,7 @@ impl Drop for CancelJoinHandle {
 impl Future for CancelJoinHandle {
     type Output = Poll<std::result::Result<std::result::Result<(), Error>, JoinError>>;
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        return std::task::Poll::Ready(Pin::new(&mut self.task).poll(cx));
+        std::task::Poll::Ready(Pin::new(&mut self.task).poll(cx))
     }
 }
 
