@@ -934,7 +934,7 @@ impl Compile<SyncKernel> for SaveOp {
 
 impl Compile<AsyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
-        let expected_ty = self.sig.ret();
+        let expected_ty = self.sig.arg(1)?;
 
         Ok(AsyncKernel::Binary(Box::new(
             move |sess, key, val, sender| {
