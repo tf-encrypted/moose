@@ -987,22 +987,22 @@ pub struct AsyncSession {
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
-struct CancelJoinHandle {
-    task: AsyncTask,
-}
-
-impl Drop for CancelJoinHandle {
-    fn drop(&mut self) {
-        self.task.abort();
-    }
-}
-
-impl Future for CancelJoinHandle {
-    type Output = Poll<std::result::Result<std::result::Result<(), Error>, JoinError>>;
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        std::task::Poll::Ready(Pin::new(&mut self.task).poll(cx))
-    }
-}
+//struct CancelJoinHandle {
+//    task: AsyncTask,
+//}
+//
+//impl Drop for CancelJoinHandle {
+//    fn drop(&mut self) {
+//        self.task.abort();
+//    }
+//}
+//
+//impl Future for CancelJoinHandle {
+//    type Output = Poll<std::result::Result<std::result::Result<(), Error>, JoinError>>;
+//    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+//        std::task::Poll::Ready(Pin::new(&mut self.task).poll(cx))
+//    }
+//}
 
 pub struct AsyncSessionHandle {
     tasks: Vec<AsyncTask>,
