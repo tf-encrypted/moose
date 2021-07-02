@@ -489,7 +489,9 @@ operators![
     Output,
     Constant,
     Shape,
-    Fill,
+    BitFill,
+    RingFill,
+    AdtFill,
     StdAdd,
     StdSub,
     StdMul,
@@ -672,7 +674,19 @@ pub struct ShapeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct FillOp {
+pub struct BitFillOp {
+    pub sig: Signature,
+    pub value: u64,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct RingFillOp {
+    pub sig: Signature,
+    pub value: u64,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdtFillOp {
     pub sig: Signature,
     pub value: u64,
 }

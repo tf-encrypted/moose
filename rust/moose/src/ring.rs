@@ -11,12 +11,12 @@ use crate::bit::BitTensor;
 use crate::computation::Placed;
 use crate::computation::Role;
 use crate::computation::{
-    FillOp, HostPlacement, RingAddOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
+    HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
     RingSubOp, ShapeOp,
 };
 use crate::kernels::{
-    ConcreteContext, PlacementAdd, PlacementMul, PlacementNeg, PlacementSample, PlacementShl,
-    PlacementShr, PlacementSub,
+    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
+    PlacementShl, PlacementShr, PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -37,9 +37,20 @@ impl<T> Placed for AbstractRingTensor<T> {
     }
 }
 
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring64Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: u64] (Shape) -> Ring128Tensor, RingFillOp);
+
+kernel! {
+    RingFillOp,
+    [
+        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::ring64_kernel),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::ring128_kernel),
+    ]
+}
+
 // TODO clean up how op.value gets passed and converted
-impl FillOp {
-    pub(crate) fn u64_kernel(
+impl RingFillOp {
+    fn ring64_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
         value: u64,
@@ -50,7 +61,7 @@ impl FillOp {
         AbstractRingTensor(raw_tensor, plc.clone())
     }
 
-    pub(crate) fn u128_kernel(
+    fn ring128_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
         value: u64,

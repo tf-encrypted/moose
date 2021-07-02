@@ -42,7 +42,8 @@ impl Context for ConcreteContext {
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
             Operator::Shape(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::Fill(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::BitSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::BitXor(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -282,7 +283,8 @@ impl Compile<SyncKernel> for Operator {
             Output(op) => Compile::<SyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<SyncKernel>::compile(op, ctx),
             Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Fill(op) => Compile::<SyncKernel>::compile(op, ctx),
+            BitFill(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -334,7 +336,8 @@ impl Compile<AsyncKernel> for Operator {
             Output(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Constant(op) => Compile::<AsyncKernel>::compile(op, ctx),
             Shape(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            Fill(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            BitFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -794,7 +797,13 @@ impl Compile<Kernel> for ShapeOp {
     }
 }
 
-impl Compile<Kernel> for FillOp {
+impl Compile<Kernel> for BitFillOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        Err(Error::UnimplementedOperator(format!("{:?}", self)))
+    }
+}
+
+impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value) {
             (signature![(_) -> Ty::Ring64Tensor], value) => {

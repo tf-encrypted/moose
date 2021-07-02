@@ -1057,29 +1057,6 @@ impl RepTruncPrOp {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct FillOp {
-    sig: Signature,
-    value: Value,
-}
-
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring64Tensor, FillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> Ring128Tensor, FillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Value] (Shape) -> BitTensor, FillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Value] (Shape) -> Additive64Tensor, FillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Value] (Shape) -> Additive128Tensor, FillOp);
-
-kernel! {
-    FillOp,
-    [
-        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value] Self::kernel64),
-        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::kernel128),
-        (HostPlacement, (Shape) -> BitTensor => attributes[value] Self::kernel8),
-        (AdditivePlacement, (Shape) -> Additive64Tensor => attributes[value] Self::additive_kernel64),
-        (AdditivePlacement, (Shape) -> Additive128Tensor => attributes[value] Self::additive_kernel128),
-    ]
-}
-
 impl FillOp {
     fn kernel64<C: Context>(
         ctx: &C,

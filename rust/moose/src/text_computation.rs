@@ -248,7 +248,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag("Output"), cut(std_unary!(OutputOp))),
         preceded(tag("Constant"), cut(constant)),
         preceded(tag("Shape"), cut(std_unary!(ShapeOp))),
-        preceded(tag("Fill"), cut(fill_op)),
+        preceded(tag("BitFill"), cut(bit_fill)),
+        preceded(tag("RingFill"), cut(ring_fill)),
         preceded(tag("Save"), cut(save_operator)),
         preceded(tag("StdAdd"), cut(std_binary!(StdAddOp))),
         preceded(tag("StdSub"), cut(std_binary!(StdSubOp))),
@@ -413,13 +414,22 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     ))
 }
 
-/// Parses a Fill operator.
-fn fill_op<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a BitFill operator.
+fn bit_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, value) = attributes_single("value", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, FillOp { sig, value }.into()))
+    Ok((input, BitFillOp { sig, value }.into()))
+}
+
+/// Parses a RingFill operator.
+fn ring_fill<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, value) = attributes_single("value", parse_int)(input)?;
+    let (input, sig) = type_definition(1)(input)?;
+    Ok((input, RingFillOp { sig, value }.into()))
 }
 
 /// Parses a RingShl operator.
@@ -1096,7 +1106,8 @@ impl ToTextual for Operator {
             Output(op) => op.to_textual(),
             Constant(op) => op.to_textual(),
             Shape(op) => op.to_textual(),
-            Fill(op) => op.to_textual(),
+            BitFill(op) => op.to_textual(),
+            RingFill(op) => op.to_textual(),
             StdAdd(op) => op.to_textual(),
             StdSub(op) => op.to_textual(),
             StdMul(op) => op.to_textual(),
@@ -1176,7 +1187,8 @@ standard_op_to_textual!(StdOnesOp, "StdOnes: {}", sig);
 standard_op_to_textual!(StdConcatenateOp, "StdConcatenate{{axis={}}}: {}", axis, sig);
 standard_op_to_textual!(StdExpandDimsOp, "StdExpandDims{{axis={}}}: {}", axis, sig);
 standard_op_to_textual!(StdReshapeOp, "StdReshape: {}", sig);
-standard_op_to_textual!(FillOp, "Fill{{value={}}}: {}", value, sig);
+standard_op_to_textual!(BitFillOp, "BitFill{{value={}}}: {}", value, sig);
+standard_op_to_textual!(RingFillOp, "RingFill{{value={}}}: {}", value, sig);
 standard_op_to_textual!(
     StdAtLeast2DOp,
     "StdAtLeast2D{{to_column_vector={}}}: {}",
@@ -1814,7 +1826,7 @@ mod tests {
             "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = Fill {value = 42}: (Shape) -> Ring64Tensor (s) @Host(alice)",
+            "z = RingFill {value = 42}: (Shape) -> Ring64Tensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingShl {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
@@ -1836,7 +1848,7 @@ mod tests {
         )?;
         parse_assignment::<(&str, ErrorKind)>("z = BitSample() @Host(alice)")?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = Fill {value = 0}: (Shape) -> BitTensor (s) @Host(alice)",
+            "z = BitFill {value = 0}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
 

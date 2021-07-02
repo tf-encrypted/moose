@@ -1,10 +1,11 @@
 use crate::computation::{
-    AdditivePlacement, AdtAddOp, AdtMulOp, AdtRevealOp, AdtSubOp, HostPlacement, Placed,
+    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtSubOp, HostPlacement, Placed,
 };
 use crate::kernels::{
-    Context, PlacementAdd, PlacementMul, PlacementNeg, PlacementReveal, PlacementSub,
+    Context, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementReveal, PlacementSub,
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::standard::Shape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +32,39 @@ where
 
         let owners = [owner0, owner1];
         AdditivePlacement { owners }
+    }
+}
+
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: u64] (Shape) -> Additive64Tensor, AdtFillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: u64] (Shape) -> Additive128Tensor, AdtFillOp);
+
+hybrid_kernel! {
+    AdtFillOp,
+    [
+        (AdditivePlacement, (Shape) -> Additive64Tensor => attributes[value] Self::kernel),
+        (AdditivePlacement, (Shape) -> Additive128Tensor => attributes[value] Self::kernel),
+    ]
+}
+
+impl AdtFillOp {
+    fn kernel<C: Context, ShapeT, RingT>(
+        ctx: &C,
+        plc: &AdditivePlacement,
+        value: u64,
+        shape: ShapeT,
+    ) -> AbstractAdditiveTensor<RingT>
+    where
+        HostPlacement: PlacementFill<C, ShapeT, RingT>,
+    {
+        // TODO should really return PublicAdditiveTensor, but we don't have that type yet
+
+        let (player0, player1) = plc.host_placements();
+
+        let shares = [
+            player0.fill(ctx, value, &shape),
+            player1.fill(ctx, 0, &shape),
+        ];
+        AbstractAdditiveTensor { shares }
     }
 }
 
