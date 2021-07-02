@@ -3296,6 +3296,21 @@ where
         self.sub(ctx, &sum, &twice_prod)
     }
 }
+trait RingSize {
+    const SIZE: usize;
+}
+
+impl<R: RingSize + Placed> RingSize for Symbolic<R> {
+    const SIZE: usize = <R as RingSize>::SIZE;
+}
+
+impl RingSize for Ring64Tensor {
+    const SIZE: usize = 64;
+}
+
+impl RingSize for Ring128Tensor {
+    const SIZE: usize = 128;
+}
 
 trait PlacementTruncPrWithPrep<C: Context, R, K> {
     fn trunc_pr(
@@ -3351,7 +3366,7 @@ where
 
         let ones = player_a.ones(ctx, &x_shape);
 
-        let twok = self.fill(ctx, player_a.shl(ctx, k, &ones).into(), &x_shape);
+        let twok = player_a.shl(ctx, k, &ones).into();
         let positive = self.add(ctx, x, &twok);
 
         let (r, r_top, r_msb) = self.get_prep(ctx, &x_shape, m, third_party);
@@ -3369,7 +3384,7 @@ where
 
         let output = self.add(ctx, &self.sub(ctx, &shifted_msb, &r_top), &opened_mask_tr);
         // TODO(Dragos)this is optional if we work with unsigned numbers
-        let remainder = self.fill(ctx, player_a.shl(ctx, k - 1 - m, &ones).into(), &x_shape);
+        let remainder = player_a.shl(ctx, k - 1 - m, &ones).into();
         self.sub(ctx, &output, &remainder)
     }
     fn get_prep(
@@ -3493,22 +3508,6 @@ kernel! {
         (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
         (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
     ]
-}
-
-trait RingSize {
-    const SIZE: usize;
-}
-
-impl<R: RingSize + Placed> RingSize for Symbolic<R> {
-    const SIZE: usize = <R as RingSize>::SIZE;
-}
-
-impl RingSize for Ring64Tensor {
-    const SIZE: usize = 64;
-}
-
-impl RingSize for Ring128Tensor {
-    const SIZE: usize = 128;
 }
 
 impl RepTruncPrOp {
