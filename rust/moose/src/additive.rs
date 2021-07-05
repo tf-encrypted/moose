@@ -4,10 +4,8 @@ use crate::computation::{
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
-    PlacementNeg, PlacementOnes, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
-    PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr, PlacementSub,
-    PlacementTruncPrProvider,
-};
+    PlacementNeg, PlacementRepToAdt, PlacementReveal, PlacementSampleBits, PlacementSampleUniform,
+    PlacementShl, PlacementSub, PlacementTruncPrProvider, PlacementOnes, PlacementShape, PlacementShr};
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -456,9 +454,9 @@ where
         // TODO(Morten) seems like we can rewrite this to sample r directly as uniform
         // instead of going through bits and bit_compose
         let r = self.bit_compose(ctx, &r_bits);
-        let r_top = self.bit_compose(ctx, &r_bits[amount..R::SIZE - 1]);
         let r_msb = r_bits[R::SIZE - 1].clone();
-
+        let r_top = self.bit_compose(ctx, &r_bits[amount..R::SIZE - 1]);
+        
         let share = |x| {
             // TODO(Dragos) this could probably be optimized by sending the key to p0
 
@@ -535,22 +533,18 @@ where
         // TODO we could insert debug_assert! to check above conditions
         let ones = player_a.ones(ctx, &shape);
         let upshifter = player_a.shl(ctx, R::SIZE - 2, &ones);
-        let x_positive = self.add(ctx, x, &upshifter);
+        let downshifter = player_a.shl(ctx, R::SIZE - 2 - amount, &ones);
 
-        let masked = with_context!(adt, ctx, x_positive + r);
+        let x_positive = self.add(ctx, x, &upshifter);
+        let masked = adt.add(ctx, &x_positive, &r);
         let c = player_a.reveal(ctx, &masked);
         let c_no_msb = player_a.shl(ctx, 1, &c);
         let c_top = player_a.shr(ctx, amount + 1, &c_no_msb);
         let c_msb = player_a.shr(ctx, R::SIZE - 1, &c);
-
         let b = with_context!(adt, ctx, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
         let shifted_b = self.shl(ctx, R::SIZE - 1 - amount, &b);
         let y_positive = with_context!(adt, ctx, c_top - r_top + shifted_b);
-
-        // NOTE the following would be optional for unsigned numbers
-        let downshifter = player_a.shl(ctx, R::SIZE - 1 - amount, &ones);
         let y = with_context!(adt, ctx, y_positive - downshifter);
-
         y
     }
 }
@@ -633,5 +627,66 @@ impl RepToAdtOp {
             }
         };
         AbstractAdditiveTensor { shares }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{kernels::ConcreteContext, ring::AbstractRingTensor};
+    use ndarray::array;
+
+    #[test]
+    fn test_add() {
+        let alice = HostPlacement { owner: "alice".into() };
+        let bob = HostPlacement { owner: "bob".into() };
+        let adt = AdditivePlacement {
+            owners: ["alice".into(), "bob".into()]
+        };
+
+        let x = Additive64Tensor { shares: 
+            [
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
+                AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob.clone()),
+            ]
+        };
+
+        let y = Additive64Tensor { shares: 
+            [
+                AbstractRingTensor::from_raw_plc(array![7, 8, 9], alice.clone()),
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], bob.clone()),
+            ]
+        };
+
+        let ctx = ConcreteContext::default();
+        let AbstractAdditiveTensor { 
+            shares: [z0, z1]
+        } = adt.add(&ctx, &x, &y);
+
+        assert_eq!(z0, AbstractRingTensor::from_raw_plc(array![1+7, 2+8, 3+9], alice.clone()));
+        assert_eq!(z1, AbstractRingTensor::from_raw_plc(array![4+1, 5+2, 6+3], bob.clone()));
+    }
+
+    #[test]
+    fn test_trunc() {
+        let alice = HostPlacement { owner: "alice".into() };
+        let bob = HostPlacement { owner: "bob".into() };
+        let carole = HostPlacement { owner: "carole".into() };
+        let adt = AdditivePlacement {
+            owners: ["alice".into(), "bob".into()]
+        };
+
+        let x = Additive64Tensor { shares: 
+            [
+                AbstractRingTensor::from_raw_plc(array![80908, 0, 40454], alice.clone()),
+                AbstractRingTensor::from_raw_plc(array![0, -80908_i64 as u64, 40454], bob.clone()),
+            ]
+        };
+
+        let ctx = ConcreteContext::default();
+        let x_trunc = adt.trunc_pr(&ctx, 8, &carole, &x);
+        let _y = carole.reveal(&ctx, &x_trunc);
+
+        // TODO assertions (should be \in {316, 317})
     }
 }
