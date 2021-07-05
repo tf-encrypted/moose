@@ -23,7 +23,7 @@ use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, HostPlacement);
+pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
 pub type Ring64Tensor = AbstractRingTensor<u64>;
 
@@ -35,6 +35,17 @@ impl<T> Placed for AbstractRingTensor<T> {
     fn placement(&self) -> Self::Placement {
         self.1.clone()
     }
+}
+pub trait RingSize {
+    const SIZE: usize;
+}
+
+impl RingSize for Ring64Tensor {
+    const SIZE: usize = 64;
+}
+
+impl RingSize for Ring128Tensor {
+    const SIZE: usize = 128;
 }
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring64Tensor, RingFillOp);
@@ -385,6 +396,19 @@ impl Ring128Tensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
         BitTensor::from(lsb)
+    }
+}
+
+impl<T> AbstractRingTensor<T>
+where
+    T: Clone,
+{
+    pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
+        raw_tensor: Array<T, D>,
+        plc: P,
+    ) -> AbstractRingTensor<T> {
+        let tensor = raw_tensor.mapv(Wrapping).into_dyn();
+        AbstractRingTensor(tensor, plc.into())
     }
 }
 
