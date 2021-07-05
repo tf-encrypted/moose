@@ -52,6 +52,7 @@ impl Context for ConcreteContext {
             Operator::RingAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingNeg(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RingShr(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepSetup(op) => DispatchKernel::compile(&op, self, plc)(operands),
@@ -60,11 +61,14 @@ impl Context for ConcreteContext {
             Operator::RepAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            // Operator::AdtAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            // Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            // Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, self, plc)(operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            _ => unimplemented!(), // TODO
+            op => unimplemented!("{:?}", op), // TODO
         }
     }
 
