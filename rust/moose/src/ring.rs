@@ -403,12 +403,12 @@ impl<T> AbstractRingTensor<T>
 where
     T: Clone,
 {
-    pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(raw_tensor: Array<T, D>, plc: P) -> AbstractRingTensor<T> {
+    pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
+        raw_tensor: Array<T, D>,
+        plc: P,
+    ) -> AbstractRingTensor<T> {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        AbstractRingTensor(
-            tensor,
-            plc.into(),
-        )
+        AbstractRingTensor(tensor, plc.into())
     }
 }
 

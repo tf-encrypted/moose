@@ -4,8 +4,10 @@ use crate::computation::{
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
-    PlacementNeg, PlacementRepToAdt, PlacementReveal, PlacementSampleBits, PlacementSampleUniform,
-    PlacementShl, PlacementSub, PlacementTruncPrProvider, PlacementOnes, PlacementShape, PlacementShr};
+    PlacementNeg, PlacementOnes, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
+    PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr, PlacementSub,
+    PlacementTruncPrProvider,
+};
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -456,7 +458,7 @@ where
         let r = self.bit_compose(ctx, &r_bits);
         let r_msb = r_bits[R::SIZE - 1].clone();
         let r_top = self.bit_compose(ctx, &r_bits[amount..R::SIZE - 1]);
-        
+
         let share = |x| {
             // TODO(Dragos) this could probably be optimized by sending the key to p0
 
@@ -638,49 +640,63 @@ mod tests {
 
     #[test]
     fn test_add() {
-        let alice = HostPlacement { owner: "alice".into() };
-        let bob = HostPlacement { owner: "bob".into() };
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
         let adt = AdditivePlacement {
-            owners: ["alice".into(), "bob".into()]
+            owners: ["alice".into(), "bob".into()],
         };
 
-        let x = Additive64Tensor { shares: 
-            [
+        let x = Additive64Tensor {
+            shares: [
                 AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
                 AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob.clone()),
-            ]
+            ],
         };
 
-        let y = Additive64Tensor { shares: 
-            [
+        let y = Additive64Tensor {
+            shares: [
                 AbstractRingTensor::from_raw_plc(array![7, 8, 9], alice.clone()),
                 AbstractRingTensor::from_raw_plc(array![1, 2, 3], bob.clone()),
-            ]
+            ],
         };
 
         let ctx = ConcreteContext::default();
-        let AbstractAdditiveTensor { 
-            shares: [z0, z1]
-        } = adt.add(&ctx, &x, &y);
+        let AbstractAdditiveTensor { shares: [z0, z1] } = adt.add(&ctx, &x, &y);
 
-        assert_eq!(z0, AbstractRingTensor::from_raw_plc(array![1+7, 2+8, 3+9], alice.clone()));
-        assert_eq!(z1, AbstractRingTensor::from_raw_plc(array![4+1, 5+2, 6+3], bob.clone()));
+        assert_eq!(
+            z0,
+            AbstractRingTensor::from_raw_plc(array![1 + 7, 2 + 8, 3 + 9], alice)
+        );
+        assert_eq!(
+            z1,
+            AbstractRingTensor::from_raw_plc(array![4 + 1, 5 + 2, 6 + 3], bob)
+        );
     }
 
     #[test]
     fn test_trunc() {
-        let alice = HostPlacement { owner: "alice".into() };
-        let bob = HostPlacement { owner: "bob".into() };
-        let carole = HostPlacement { owner: "carole".into() };
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
         let adt = AdditivePlacement {
-            owners: ["alice".into(), "bob".into()]
+            owners: ["alice".into(), "bob".into()],
         };
 
-        let x = Additive64Tensor { shares: 
-            [
-                AbstractRingTensor::from_raw_plc(array![80908, 0, 40454], alice.clone()),
-                AbstractRingTensor::from_raw_plc(array![0, -80908_i64 as u64, 40454], bob.clone()),
-            ]
+        let x = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(array![80908, 0, 40454], alice),
+                AbstractRingTensor::from_raw_plc(array![0, -80908_i64 as u64, 40454], bob),
+            ],
         };
 
         let ctx = ConcreteContext::default();
