@@ -432,6 +432,8 @@ where
     HostPlacement: BitCompose<C, R>,
     HostPlacement: PlacementKeyGen<C, cs!(PrfKey)>,
     HostPlacement: PlacementSub<C, R, R, R>,
+    HostPlacement: PlacementShr<C, R, R>,
+    HostPlacement: PlacementShl<C, R, R>,
 {
     fn gen_correlated_mask(
         &self,
@@ -445,23 +447,15 @@ where
     ) {
         let key = self.gen_key(ctx);
 
-        let r_bits: Vec<_> = (0..R::SIZE)
-            .map(|_| {
-                let nonce = RawNonce::generate();
-                let seed = self.derive_seed(ctx, nonce, &key);
-                self.sample_bits(ctx, &seed, shape)
-            })
-            .collect();
+        let nonce = RawNonce::generate();
+        let seed = self.derive_seed(ctx, nonce, &key);
 
-        // TODO(Morten) seems like we can rewrite this to sample r directly as uniform
-        // instead of going through bits and bit_compose
-        let r = self.bit_compose(ctx, &r_bits);
-        let r_msb = r_bits[R::SIZE - 1].clone();
-        let r_top = self.bit_compose(ctx, &r_bits[amount..R::SIZE - 1]);
+        let r = self.sample_uniform(ctx, &seed, shape);
+        let r_msb = self.shr(ctx, R::SIZE - 1, &r);
+        let r_top = self.shr(ctx, amount + 1, &self.shl(ctx, 1, &r));
 
         let share = |x| {
             // TODO(Dragos) this could probably be optimized by sending the key to p0
-
             let nonce = RawNonce::generate();
             let seed = self.derive_seed(ctx, nonce, &key);
             let x0 = self.sample_uniform(ctx, &seed, shape);
@@ -703,6 +697,7 @@ mod tests {
         let x_trunc = adt.trunc_pr(&ctx, 8, &carole, &x);
         let _y = carole.reveal(&ctx, &x_trunc);
 
-        // TODO assertions (should be \in {316, 317})
+        // TODO allowed as long as \in {316, 317}
+        assert_eq!(_y.0, array![std::num::Wrapping(316), std::num::Wrapping(-316_i64 as u64), std::num::Wrapping(316)].into_dyn());
     }
 }
