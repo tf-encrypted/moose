@@ -657,7 +657,7 @@ impl AdtToRepOp {
         x: AbstractAdditiveTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
-        RingT: Placed<Placement = HostPlacement>,
+        RingT: Placed<Placement = HostPlacement> + Clone,
         HostPlacement: PlacementShape<C, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<C, KeyT>,
         HostPlacement: PlacementSampleUniform<C, SeedT, ShapeT, RingT>,
@@ -683,49 +683,82 @@ impl AdtToRepOp {
         let sync_key1 = RawNonce::generate();
         let shape = adt_player0.shape(ctx, x0);
 
-        // TODO
-        unimplemented!()
-
         // // assume that Additive Host Placements are included Replicated Host Placements
         // // the player that is not on the additive is the provider
-        // match () {
-        //     _ if rep_player0 != adt_player0 && rep_player0 != adt_player1 => {
 
-        //     }
-        //     _ if rep_player1 != adt_player0 && rep_player1 != adt_player1 => {
-        //         let provider = rep_player1;
+        let (provider, provider_index, rep_others, rep_other_idx) = match () {
+            _ if rep_player0 != adt_player0 && rep_player0 != adt_player1 => {
+                (rep_player0, 0, [rep_player1, rep_player2], [1, 2])
+            }
+            _ if rep_player1 != adt_player0 && rep_player1 != adt_player1 => {
+                (rep_player1, 1, [rep_player2, rep_player0], [2, 0])
+            }
+            _ => (rep_player2, 2, [rep_player0, rep_player1], [0, 1]),
+        };
 
-        //     }
-        //     _ if rep_player2 != adt_player0 && rep_player2 != adt_player1 => {
-        //         // use rep_player2 as provider
+        let k = provider.gen_key(ctx);
+        let seed1 = provider.derive_seed(ctx, sync_key0, &k);
+        let seed2 = provider.derive_seed(ctx, sync_key1, &k);
 
-        //         let seed22 = rep_player2.derive_seed(ctx, sync_key1, k22);
-        //         let seed02 = rep_player2.derive_seed(ctx, sync_key0, k02);
-        //         let y22 = rep_player2.sample_uniform(ctx, seed22, &shape);
-        //         let y02 = rep_player2.sample_uniform(ctx, seed02, &shape);
+        let y0_provider = provider.sample_uniform(ctx, &seed1, &shape);
+        let y1_provider = provider.sample_uniform(ctx, &seed2, &shape);
 
-        //         let seed00 = rep_player0.derive_seed(ctx, sync_key0, k00);
-        //         let seed21 = rep_player1.derive_seed(ctx, sync_key1, k21);
+        let y0 = adt_player0.sample_uniform(ctx, &seed1, &shape);
+        let y1 = adt_player1.sample_uniform(ctx, &seed2, &shape);
+        let y = AbstractAdditiveTensor {
+            shares: [y0.clone(), y1.clone()],
+        };
 
-        //         let
+        let c = adt_player0.reveal(ctx, &adt.sub(ctx, &x, &y));
 
-        //     }
-        //     _ => unimplemented!()
-        // }
-
-        // let y13 = provider.sample_uniform(ctx);
-        // let y33 = provider.sample_uniform(ctx);
-
-        // let y1 = adt_player0.sample_uniform(ctx);
-        // let y2 = adt_player1.sample_uniform(ctx);
-        // let y = AbstractAdditiveTensor {
-        //     shares: [y1.clone(), y2.clone()],
-        // };
-        // let c = adt_player0.reveal(ctx, &adt.sub(ctx, &x, &y));
-
-        // AbstractReplicatedTensor {
-        //     shares: [[y1, c.clone()], [c, y2], [y33, y13]],
-        // }
+        let shares = match () {
+            _ if provider_index == 0 => {
+                let tmp_shares = match () {
+                    // (D, adt_0, adt_1) case
+                    _ if adt_player0 == rep_others[0] => {
+                        [[y1_provider, y0_provider], [y0, c.clone()], [c.clone(), y1]]
+                    }
+                    // (D, adt_1, adt_0) case
+                    _ if adt_player0 == rep_others[1] => {
+                        [[y0_provider, y1_provider], [y1, c.clone()], [c.clone(), y0]]
+                    }
+                    // same as previously, we don't care since parties sends their shares
+                    _ => [[y0_provider, y1_provider], [y1, c.clone()], [c.clone(), y0]],
+                };
+                tmp_shares
+            }
+            _ if provider_index == 1 => {
+                let tmp_shares = match () {
+                    // (adt_1, D, adt_0)
+                    _ if adt_player0 == rep_others[0] => {
+                        [[c.clone(), y1], [y1_provider, y0_provider], [y0, c.clone()]]
+                    }
+                    // (adt_0, D, adt_1)
+                    _ if adt_player0 == rep_others[1] => {
+                        [[c.clone(), y0], [y0_provider, y1_provider], [y1, c.clone()]]
+                    }
+                    // same as previously, we don't care since parties sends their shares
+                    _ => [[c.clone(), y0], [y0_provider, y1_provider], [y1, c.clone()]],
+                };
+                tmp_shares
+            }
+            _ => {
+                let tmp_shares = match () {
+                    // (adt0, adt1, D)
+                    _ if adt_player0 == rep_others[0] => {
+                        [[y0, c.clone()], [c.clone(), y1], [y1_provider, y0_provider]]
+                    }
+                    // (adt1, adt0, D)
+                    _ if adt_player0 == rep_others[1] => {
+                        [[y1, c.clone()], [c.clone(), y0], [y0_provider, y1_provider]]
+                    }
+                    // same as previously, we don't care since parties sends their shares
+                    _ => [[y1, c.clone()], [c.clone(), y0], [y0_provider, y1_provider]],
+                };
+                tmp_shares
+            }
+        };
+        AbstractReplicatedTensor { shares }
     }
 }
 
