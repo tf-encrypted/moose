@@ -25,14 +25,14 @@ pub fn with_context(input: TokenStream) -> TokenStream {
 
 /// Input members of the macros signature
 struct EvalWithContext {
-    player: Ident,
+    player: Expr,
     context: Ident,
     expr: Expr,
 }
 
 impl Parse for EvalWithContext {
     fn parse(input: ParseStream) -> Result<Self> {
-        let player: Ident = input.parse()?;
+        let player: Expr = input.parse()?;
         input.parse::<Token![,]>()?;
         let context: Ident = input.parse()?;
         input.parse::<Token![,]>()?;
@@ -48,9 +48,9 @@ impl Parse for EvalWithContext {
 /// The main function for the with_context macros.
 ///
 /// Parses the expression and replaced binary operations with calls to the player/context methods.
-fn unsugar(player: Ident, context: Ident, expr: &'_ mut Expr) {
+fn unsugar(player: Expr, context: Ident, expr: &'_ mut Expr) {
     struct Visitor {
-        player: Ident,
+        player: Expr,
         context: Ident,
     }
     impl VisitMut for Visitor {
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_direct() {
-        let player: Ident = parse_quote!(p);
+        let player: Expr = parse_quote!(p);
         let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a + b * c);
         unsugar(player, context, &mut e);
@@ -144,7 +144,7 @@ mod tests {
     #[test]
     /// Making sure the expression can have anything at all and not mess up our macros
     fn test_sub_expr() {
-        let player: Ident = parse_quote!(p);
+        let player: Expr = parse_quote!(p);
         let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a::new(d) + b.member * func(c));
         unsugar(player, context, &mut e);
@@ -164,7 +164,7 @@ mod tests {
     #[test]
     /// Making sure the expression can have anything at all and not mess up our macros
     fn test_sub_expr_inside() {
-        let player: Ident = parse_quote!(p);
+        let player: Expr = parse_quote!(p);
         let context: Ident = parse_quote!(q);
         let mut e: Expr = parse_quote!(a + func(b + c));
         unsugar(player, context, &mut e);
