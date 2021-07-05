@@ -101,7 +101,6 @@ hybrid_kernel! {
 impl RepSetupOp {
     fn kernel<C: Context, K: Clone>(
         ctx: &C,
-        sess: &C::Session,
         rep: &ReplicatedPlacement,
     ) -> AbstractReplicatedSetup<K>
     where
@@ -109,9 +108,9 @@ impl RepSetupOp {
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let k0 = player0.gen_key(ctx, sess);
-        let k1 = player1.gen_key(ctx, sess);
-        let k2 = player2.gen_key(ctx, sess);
+        let k0 = player0.gen_key(ctx);
+        let k1 = player1.gen_key(ctx);
+        let k2 = player2.gen_key(ctx);
 
         AbstractReplicatedSetup {
             keys: [[k0.clone(), k1.clone()], [k1, k2.clone()], [k2, k0]],
@@ -594,7 +593,7 @@ impl RepMulOp {
 modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
 modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
 
-hybrid_kernel! {
+kernel! {
     RepTruncPrOp,
     [
         (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
@@ -605,7 +604,6 @@ hybrid_kernel! {
 impl RepTruncPrOp {
     fn kernel<C: Context, KeyT, RingT>(
         ctx: &C,
-        sess: &C::Session,
         rep: &ReplicatedPlacement,
         amount: usize,
         setup: AbstractReplicatedSetup<KeyT>,

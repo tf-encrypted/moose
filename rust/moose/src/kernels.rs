@@ -1,6 +1,5 @@
 use crate::bit::BitTensor;
 use crate::computation::*;
-use crate::execution::{SyncSession};
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
@@ -19,8 +18,7 @@ use std::sync::Arc;
 
 pub trait Context {
     type Value;
-    type Session;
-    fn execute(&self, op: Operator, plc: &Placement, sess: &Self::Session, operands: Vec<Self::Value>) -> Self::Value;
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
 
     type ReplicatedSetup;
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
@@ -40,36 +38,35 @@ impl Default for ConcreteContext {
 
 impl Context for ConcreteContext {
     type Value = Value;
-    type Session = SyncSession;
 
-    fn execute(&self, op: Operator, plc: &Placement, sess: &SyncSession, operands: Vec<Value>) -> Value {
+    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
-            Operator::Shape(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::BitFill(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingFill(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::BitSample(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::BitXor(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::BitAnd(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingSample(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingAdd(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingSub(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingMul(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingNeg(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingShl(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RingShr(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RepSetup(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RepShare(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RepReveal(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RepAdd(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RepMul(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::RepToAdt(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::AdtAdd(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::AdtSub(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::AdtShl(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
-            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, self, plc)(sess, operands),
+            Operator::Shape(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitXor(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::BitAnd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingNeg(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RingShr(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepSetup(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepShare(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::RepToAdt(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, self, plc)(operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
             op => unimplemented!("{:?}", op), // TODO
         }
@@ -81,196 +78,196 @@ impl Context for ConcreteContext {
     }
 }
 
-pub trait DispatchKernel<C: Context, S> {
+pub trait DispatchKernel<C: Context> {
     fn compile<'c>(
         &self,
         ctx: &'c C,
         plc: &Placement,
-    ) -> Box<dyn Fn(&S, Vec<C::Value>) -> C::Value + 'c>;
+    ) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead
 
-pub trait NullaryKernel<C: Context, S, P, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &S, &P) -> Y>;
+pub trait NullaryKernel<C: Context, P, Y> {
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P) -> Y>;
 }
 
-pub trait UnaryKernel<C: Context, S, P, X0, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &S, &P, X0) -> Y>;
+pub trait UnaryKernel<C: Context, P, X0, Y> {
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0) -> Y>;
 }
 
-pub trait BinaryKernel<C: Context, S, P, X0, X1, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &S, &P, X0, X1) -> Y>;
+pub trait BinaryKernel<C: Context, P, X0, X1, Y> {
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1) -> Y>;
 }
 
-pub trait TernaryKernel<C: Context, S, P, X0, X1, X2, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &S, &P, X0, X1, X2) -> Y>;
+pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
+    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
 }
 
-pub(crate) trait NullaryKernelCheck<C: Context, S, P, Y>
+pub(crate) trait NullaryKernelCheck<C: Context, P, Y>
 where
-    Self: NullaryKernel<C, S, P, Y>,
+    Self: NullaryKernel<C, P, Y>,
 {
 }
 
-pub(crate) trait UnaryKernelCheck<C: Context, S, P, X0, Y>
+pub(crate) trait UnaryKernelCheck<C: Context, P, X0, Y>
 where
-    Self: UnaryKernel<C, S, P, X0, Y>,
+    Self: UnaryKernel<C, P, X0, Y>,
 {
 }
 
-pub(crate) trait BinaryKernelCheck<C: Context, S, P, X0, X1, Y>
+pub(crate) trait BinaryKernelCheck<C: Context, P, X0, X1, Y>
 where
-    Self: BinaryKernel<C, S, P, X0, X1, Y>,
+    Self: BinaryKernel<C, P, X0, X1, Y>,
 {
 }
 
-pub(crate) trait TernaryKernelCheck<C: Context, S, P, X0, X1, X2, Y>
+pub(crate) trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y>
 where
-    Self: TernaryKernel<C, S, P, X0, X1, X2, Y>,
+    Self: TernaryKernel<C, P, X0, X1, X2, Y>,
 {
 }
 
 pub trait PlacementShape<C: Context, T, ShapeT> {
-    fn shape(&self, ctx: &C, sess: &C::Session, x: &T) -> ShapeT;
+    fn shape(&self, ctx: &C, x: &T) -> ShapeT;
 }
 
 pub trait PlacementKeyGen<C: Context, KeyT> {
-    fn gen_key(&self, ctx: &C, sess: &C::Session) -> KeyT;
+    fn gen_key(&self, ctx: &C) -> KeyT;
 }
 
 pub trait PlacementSetupGen<C: Context, SetupT> {
-    fn gen_setup(&self, ctx: &C, sess: &C::Session) -> SetupT;
+    fn gen_setup(&self, ctx: &C) -> SetupT;
 }
 
 pub trait PlacementDeriveSeed<C: Context, KeyT, SeedT> {
-    fn derive_seed(&self, ctx: &C, sess: &C::Session, sync_key: RawNonce, key: &KeyT) -> SeedT;
+    fn derive_seed(&self, ctx: &C, sync_key: RawNonce, key: &KeyT) -> SeedT;
 }
 
 pub trait PlacementAdd<C: Context, T, U, O> {
-    fn add(&self, ctx: &C, sess: &C::Session, x: &T, y: &U) -> O;
+    fn add(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementSub<C: Context, T, U, O> {
-    fn sub(&self, ctx: &C, sess: &C::Session, x: &T, y: &U) -> O;
+    fn sub(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementNeg<C: Context, T, O> {
-    fn neg(&self, ctx: &C, sess: &C::Session, x: &T) -> O;
+    fn neg(&self, ctx: &C, x: &T) -> O;
 }
 
 pub trait PlacementMul<C: Context, T, U, O> {
-    fn mul(&self, ctx: &C, sess: &C::Session, x: &T, y: &U) -> O;
+    fn mul(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementShl<C: Context, T, O> {
-    fn shl(&self, ctx: &C, sess: &C::Session, amount: usize, x: &T) -> O;
+    fn shl(&self, ctx: &C, amount: usize, x: &T) -> O;
 }
 
 pub trait PlacementShr<C: Context, T, O> {
-    fn shr(&self, ctx: &C, sess: &C::Session, amount: usize, x: &T) -> O;
+    fn shr(&self, ctx: &C, amount: usize, x: &T) -> O;
 }
 
 pub trait PlacementXor<C: Context, T, U, O> {
-    fn xor(&self, ctx: &C, sess: &C::Session, x: &T, y: &U) -> O;
+    fn xor(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementAnd<C: Context, T, U, O> {
-    fn and(&self, ctx: &C, sess: &C::Session, x: &T, y: &U) -> O;
+    fn and(&self, ctx: &C, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementMulSetup<C: Context, S, T, U, O> {
-    fn mul(&self, ctx: &C, sess: &C::Session, setup: &S, x: &T, y: &U) -> O;
+    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementShare<C: Context, T, O> {
-    fn share(&self, ctx: &C, sess: &C::Session, x: &T) -> O;
+    fn share(&self, ctx: &C, x: &T) -> O;
 }
 
 pub trait PlacementShareSetup<C: Context, S, T, O> {
-    fn share(&self, ctx: &C, sess: &C::Session, setup: &S, x: &T) -> O;
+    fn share(&self, ctx: &C, s: &S, x: &T) -> O;
 }
 
 pub trait PlacementReveal<C: Context, T, O> {
-    fn reveal(&self, ctx: &C, sess: &C::Session, x: &T) -> O;
+    fn reveal(&self, ctx: &C, x: &T) -> O;
 }
 
 pub trait PlacementFill<C: Context, ShapeT, O> {
-    fn fill(&self, ctx: &C, sess: &C::Session, value: Constant, shape: &ShapeT) -> O;
+    fn fill(&self, ctx: &C, value: Constant, shape: &ShapeT) -> O;
 }
 
 pub trait PlacementZeros<C: Context, ShapeT, O> {
-    fn zeros(&self, ctx: &C, sess: &C::Session, shape: &ShapeT) -> O;
+    fn zeros(&self, ctx: &C, shape: &ShapeT) -> O;
 }
 
 impl<C: Context, ShapeT, O, P> PlacementZeros<C, ShapeT, O> for P
 where
     P: PlacementFill<C, ShapeT, O>,
 {
-    fn zeros(&self, ctx: &C, sess: &C::Session, shape: &ShapeT) -> O {
-        self.fill(ctx, sess, Constant::Ring64(0), shape)
+    fn zeros(&self, ctx: &C, shape: &ShapeT) -> O {
+        self.fill(ctx, Constant::Ring64(0), shape)
     }
 }
 
 pub trait PlacementOnes<C: Context, ShapeT, O> {
-    fn ones(&self, ctx: &C, sess: &C::Session, shape: &ShapeT) -> O;
+    fn ones(&self, ctx: &C, shape: &ShapeT) -> O;
 }
 
 impl<C: Context, ShapeT, O, P> PlacementOnes<C, ShapeT, O> for P
 where
     P: PlacementFill<C, ShapeT, O>,
 {
-    fn ones(&self, ctx: &C, sess: &C::Session, shape: &ShapeT) -> O {
-        self.fill(ctx, sess, Constant::Ring64(1), shape)
+    fn ones(&self, ctx: &C, shape: &ShapeT) -> O {
+        self.fill(ctx, Constant::Ring64(1), shape)
     }
 }
 
 pub trait PlacementSample<C: Context, SeedT, ShapeT, O> {
-    fn sample(&self, ctx: &C, sess: &C::Session, max_value: Option<u64>, seed: &SeedT, shape: &ShapeT) -> O;
+    fn sample(&self, ctx: &C, max_value: Option<u64>, seed: &SeedT, shape: &ShapeT) -> O;
 }
 
 pub trait PlacementSampleUniform<C: Context, SeedT, ShapeT, O> {
-    fn sample_uniform(&self, ctx: &C, sess: &C::Session, seed: &SeedT, shape: &ShapeT) -> O;
+    fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O;
 }
 
 impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleUniform<C, SeedT, ShapeT, O> for P
 where
     P: PlacementSample<C, SeedT, ShapeT, O>,
 {
-    fn sample_uniform(&self, ctx: &C, sess: &C::Session, seed: &SeedT, shape: &ShapeT) -> O {
+    fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
         self.sample(ctx, None, seed, shape)
     }
 }
 
 pub trait PlacementSampleBits<C: Context, SeedT, ShapeT, O> {
-    fn sample_bits(&self, ctx: &C, sess: &C::Session, seed: &SeedT, shape: &ShapeT) -> O;
+    fn sample_bits(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O;
 }
 
 impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleBits<C, SeedT, ShapeT, O> for P
 where
     P: PlacementSample<C, SeedT, ShapeT, O>,
 {
-    fn sample_bits(&self, ctx: &C, sess: &C::Session, seed: &SeedT, shape: &ShapeT) -> O {
-        self.sample(ctx, sess, Some(1), seed, shape)
+    fn sample_bits(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
+        self.sample(ctx, Some(1), seed, shape)
     }
 }
 
 pub trait PlacementRepToAdt<C: Context, T, O> {
-    fn rep_to_adt(&self, ctx: &C, sess: &C::Session, x: &T) -> O;
+    fn rep_to_adt(&self, ctx: &C, x: &T) -> O;
 }
 
 pub trait PlacementAdtToRepSetup<C: Context, S, T, O> {
-    fn adt_to_rep(&self, ctx: &C, sess: &C::Session, s: &S, x: &T) -> O;
+    fn adt_to_rep(&self, ctx: &C, s: &S, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrSetup<C: Context, SetupT, T, O> {
-    fn trunc_pr(&self, ctx: &C, sess: &C::Session, amount: usize, setup: &SetupT, x: &T) -> O;
+    fn trunc_pr(&self, ctx: &C, amount: usize, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrProvider<C: Context, T, O> {
-    fn trunc_pr(&self, ctx: &C, sess: &C::Session, amount: usize, provider: &HostPlacement, x: &T) -> O;
+    fn trunc_pr(&self, ctx: &C, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {

@@ -8,7 +8,6 @@ use std::num::Wrapping;
 use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
 
 use crate::bit::BitTensor;
-use crate::execution::SyncSession;
 use crate::computation::Role;
 use crate::computation::{Constant, Placed};
 use crate::computation::{
@@ -63,7 +62,6 @@ kernel! {
 impl RingFillOp {
     fn ring64_kernel(
         _ctx: &ConcreteContext,
-        _sess: &SyncSession,
         plc: &HostPlacement,
         value: u64,
         shape: Shape,
@@ -75,7 +73,6 @@ impl RingFillOp {
 
     fn ring128_kernel(
         _ctx: &ConcreteContext,
-        _sess: &SyncSession,
         plc: &HostPlacement,
         value: Constant,
         shape: Shape,
@@ -116,7 +113,6 @@ kernel! {
 impl RingAddOp {
     fn kernel<T>(
         _ctx: &ConcreteContext,
-        _sess: &SyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -220,7 +216,6 @@ kernel! {
 impl RingShlOp {
     fn kernel<T>(
         _ctx: &ConcreteContext,
-        _sess: &SyncSession,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -247,7 +242,6 @@ kernel! {
 impl RingShrOp {
     fn kernel<T>(
         _ctx: &ConcreteContext,
-        _sess: &SyncSession,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -268,10 +262,10 @@ kernel! {
     [
         (HostPlacement, (Seed, Shape) -> Ring64Tensor => custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, sess, plc, seed, shape| {
+                None => Box::new(|ctx, plc, seed, shape| {
                     Self::kernel_uniform_u64(ctx, plc, seed, shape)
                 }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, sess, plc, seed, shape| {
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, seed, shape| {
                     Self::kernel_bits_u64(ctx, plc, seed, shape)
                 }),
                 _ => unimplemented!(),
@@ -279,10 +273,10 @@ kernel! {
         }),
         (HostPlacement, (Seed, Shape) -> Ring128Tensor => custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, sess, plc, seed, shape| {
+                None => Box::new(|ctx, plc, seed, shape| {
                     Self::kernel_uniform_u128(ctx, plc, seed, shape)
                 }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, sess, plc, seed, shape| {
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, seed, shape| {
                     Self::kernel_bits_u128(ctx, plc, seed, shape)
                 }),
                 _ => unimplemented!(),
