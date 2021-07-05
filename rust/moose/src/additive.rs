@@ -407,8 +407,8 @@ where
     }
 }
 
-pub trait CorrelatedMaskGen<C: Context, ShapeT, RingT> {
-    fn gen_correlated_mask(
+pub trait TruncMaskGen<C: Context, ShapeT, RingT> {
+    fn gen_trunc_mask(
         &self,
         ctx: &C,
         amount: usize,
@@ -420,7 +420,7 @@ pub trait CorrelatedMaskGen<C: Context, ShapeT, RingT> {
     );
 }
 
-impl<C: Context, R> CorrelatedMaskGen<C, cs!(Shape), R> for HostPlacement
+impl<C: Context, R> TruncMaskGen<C, cs!(Shape), R> for HostPlacement
 where
     PrfKey: KnownType<C>,
     Seed: KnownType<C>,
@@ -429,13 +429,12 @@ where
     HostPlacement: PlacementDeriveSeed<C, cs!(PrfKey), cs!(Seed)>,
     HostPlacement: PlacementSampleBits<C, cs!(Seed), cs!(Shape), R>,
     HostPlacement: PlacementSampleUniform<C, cs!(Seed), cs!(Shape), R>,
-    HostPlacement: BitCompose<C, R>,
     HostPlacement: PlacementKeyGen<C, cs!(PrfKey)>,
     HostPlacement: PlacementSub<C, R, R, R>,
     HostPlacement: PlacementShr<C, R, R>,
     HostPlacement: PlacementShl<C, R, R>,
 {
-    fn gen_correlated_mask(
+    fn gen_trunc_mask(
         &self,
         ctx: &C,
         amount: usize,
@@ -477,7 +476,7 @@ impl<C: Context, R>
 where
     R: RingSize,
     Shape: KnownType<C>,
-    HostPlacement: CorrelatedMaskGen<C, cs!(Shape), R>,
+    HostPlacement: TruncMaskGen<C, cs!(Shape), R>,
     AdditivePlacement: PlacementAdd<
         C,
         AbstractAdditiveTensor<R>,
@@ -520,7 +519,7 @@ where
         let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
 
         let shape = player_a.shape(ctx, x0);
-        let (r, r_top, r_msb) = provider.gen_correlated_mask(ctx, amount, &shape);
+        let (r, r_top, r_msb) = provider.gen_trunc_mask(ctx, amount, &shape);
 
         // NOTE we consider input is always signed, and the following positive
         // conversion would be optional for unsigned numbers
@@ -698,6 +697,14 @@ mod tests {
         let _y = carole.reveal(&ctx, &x_trunc);
 
         // TODO allowed as long as \in {316, 317}
-        assert_eq!(_y.0, array![std::num::Wrapping(316), std::num::Wrapping(-316_i64 as u64), std::num::Wrapping(316)].into_dyn());
+        assert_eq!(
+            _y.0,
+            array![
+                std::num::Wrapping(316),
+                std::num::Wrapping(-316_i64 as u64),
+                std::num::Wrapping(316)
+            ]
+            .into_dyn()
+        );
     }
 }
