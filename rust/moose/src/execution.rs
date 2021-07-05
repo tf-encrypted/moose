@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use crate::networking::{AsyncNetworking, LocalSyncNetworking, SyncNetworking};
 use crate::storage::{AsyncStorage, LocalSyncStorage, SyncStorage};
 
+use crate::compilation::typing::update_types_one_hop;
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -895,6 +896,7 @@ impl EagerExecutor {
             role_assignment,
             own_identity,
         };
+        let computation = update_types_one_hop(&computation).unwrap()?;
         let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
         compiled_comp.apply(&session)
     }
@@ -1118,6 +1120,7 @@ impl AsyncExecutor {
             own_identity,
         };
 
+        let computation = update_types_one_hop(&computation).unwrap()?;
         let compiled_comp = computation.compile_async(&ctx)?;
 
         compiled_comp.apply(session)
