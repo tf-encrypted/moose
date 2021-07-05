@@ -88,6 +88,7 @@ impl PrimDeriveSeedOp {
 // TODO deprecated
 impl RawSeed {
     pub fn from_prf(key: &RawPrfKey, nonce: &RawNonce) -> RawSeed {
+        // TODO(SECURITY) take session id into account: seed = PRF(key, sid|nonce)
         let raw_seed = crate::utils::derive_seed(&key.0, &nonce.0);
         RawSeed(raw_seed)
     }

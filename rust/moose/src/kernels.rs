@@ -41,32 +41,32 @@ impl Context for ConcreteContext {
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
-            Operator::Shape(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::BitFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingFill(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::BitSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::BitXor(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::BitAnd(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingSample(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingNeg(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RingShr(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepSetup(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepShare(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::RepToAdt(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::AdtAdd(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::AdtSub(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::AdtShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::Shape(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::AdtMul(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
             op => unimplemented!("{:?}", op), // TODO
         }
@@ -81,7 +81,6 @@ impl Context for ConcreteContext {
 pub trait DispatchKernel<C: Context> {
     fn compile<'c>(
         &self,
-        ctx: &'c C,
         plc: &Placement,
     ) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
 }
@@ -91,19 +90,19 @@ pub trait DispatchKernel<C: Context> {
 // fn.. and Box<dyn Fn...> in the traits below instead
 
 pub trait NullaryKernel<C: Context, P, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P) -> Y>;
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P) -> Y>;
 }
 
 pub trait UnaryKernel<C: Context, P, X0, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0) -> Y>;
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P, X0) -> Y>;
 }
 
 pub trait BinaryKernel<C: Context, P, X0, X1, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1) -> Y>;
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1) -> Y>;
 }
 
 pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
-    fn compile(&self, ctx: &C, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
 }
 
 pub(crate) trait NullaryKernelCheck<C: Context, P, Y>
