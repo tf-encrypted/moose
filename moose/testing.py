@@ -91,17 +91,18 @@ class LocalMooseRuntime(LocalRuntime):
         return LocalRuntime.__new__(LocalMooseRuntime, storage_mapping=storage_mapping)
 
     def evaluate_computation(
-        self, computation, role_assignment, arguments=None, ring=128
+        self, computation, role_assignment, arguments=None, ring=128, python_passes = [], rust_passes = []
     ):
         if arguments is None:
             arguments = {}
-        concrete_comp = edsl.trace_and_compile(computation, ring=ring)
-        comp_bin = serialize_computation(concrete_comp)
+        high_level_comp = edsl.trace_and_compile(computation, ring=ring, compiler_passes = python_passes)
+        comp_bin = serialize_computation(high_level_comp)
         comp_outputs = super().evaluate_computation(
-            comp_bin, role_assignment, arguments
+            comp_bin, role_assignment, arguments, rust_passes
         )
         outputs = list(dict(sorted(comp_outputs.items())).values())
         return outputs
+
 
     def get_value_from_storage(self, identity, key):
         return super().get_value_from_storage(identity, key)

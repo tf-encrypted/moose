@@ -105,7 +105,7 @@ class RunComputation(parameterized.TestCase):
             add_full_storage, self.storage_dict
         )
         outputs = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.storage_args
+            comp_bin, self.role_assignment, self.storage_args, ["typing"]
         )
         assert len(outputs) == 0
         result = runtime.get_value_from_storage("output_owner", "output")
@@ -116,7 +116,7 @@ class RunComputation(parameterized.TestCase):
             add_input_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.storage_args
+            comp_bin, self.role_assignment, self.storage_args, []
         )
         np.testing.assert_array_equal(result["output_0"], np.array([3.0]))
 
@@ -125,7 +125,7 @@ class RunComputation(parameterized.TestCase):
             add_output_storage, self.empty_storage
         )
         outputs = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args, ["typing"]
         )
         assert len(outputs) == 0
         result = runtime.get_value_from_storage("output_owner", "output")
@@ -136,7 +136,7 @@ class RunComputation(parameterized.TestCase):
             add_no_storage, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args, []
         )
         np.testing.assert_array_equal(result["output_0"], np.array([3.0]))
 
@@ -145,7 +145,7 @@ class RunComputation(parameterized.TestCase):
             add_multioutput, self.storage_dict
         )
         result = runtime.evaluate_computation(
-            comp_bin, self.role_assignment, self.actual_args
+            comp_bin, self.role_assignment, self.actual_args, []
         )
         np.testing.assert_array_equal(result["output_0"], np.array([3.0]))
         np.testing.assert_array_equal(result["output_1"], np.array([1.0]))

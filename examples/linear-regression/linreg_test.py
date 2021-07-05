@@ -11,6 +11,17 @@ from moose.computation.standard import StringType
 from moose.logger import get_logger
 from moose.testing import LocalMooseRuntime
 
+from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
+from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
+from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
+from moose.compiler.host import NetworkingPass
+from moose.compiler.mpspdz import MpspdzApplyFunctionPass
+from moose.compiler.pruning import PruningPass
+from moose.compiler.render import render_computation
+from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
+from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
+
 FIXED = edsl.fixed(8, 27)
 
 
@@ -121,6 +132,47 @@ class LinearRegressionExample(parameterized.TestCase):
 
         return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
+    def _build_simple_example(self):
+        x_owner = edsl.host_placement(name="x-owner")
+        y_owner = edsl.host_placement(name="y-owner")
+        model_owner = edsl.host_placement(name="model-owner")
+        replicated_plc = edsl.replicated_placement(
+            players=[x_owner, y_owner, model_owner], name="replicated-plc"
+        )
+
+        @edsl.computation
+        def my_comp(
+            x_uri: edsl.Argument(placement=x_owner, vtype=StringType()),
+            y_uri: edsl.Argument(placement=y_owner, vtype=StringType()),
+            w_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
+            metric_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
+            rsquared_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
+        ):
+            with x_owner:
+                X = edsl.atleast_2d(
+                    edsl.load(x_uri, dtype=edsl.float64), to_column_vector=True
+                )
+                X = edsl.cast(X, dtype=FIXED)
+
+            with y_owner:
+                Y = edsl.atleast_2d(
+                    edsl.load(y_uri, dtype=edsl.float64), to_column_vector=True
+                )
+                Y = edsl.cast(Y, dtype=FIXED)
+
+            with y_owner:
+                Z = edsl.add(X, Y)
+
+            with model_owner:
+                Z = edsl.cast(Z, dtype=edsl.float64)
+                res = (
+                    edsl.save(w_uri, Z),
+                )
+
+            return res
+
+        return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
+
     # @parameterized.parameters(["mse", "mape"])
     @parameterized.parameters(["mse"])
     def test_linear_regression_eval(self, metric_name):
@@ -147,6 +199,18 @@ class LinearRegressionExample(parameterized.TestCase):
                 "metric_uri": "metric_result",
                 "rsquared_uri": "rsquared_result",
             },
+            python_passes = [
+                MpspdzApplyFunctionPass(),
+                HostEncodingPass(),
+                HostLoweringPass(),
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                HostRingLoweringPass(),
+                ReplicatedLoweringPass(ring=128),
+                PruningPass(),
+                NetworkingPass(),
+            ],
+            rust_passes = ["typing"],
         )
         print(
             "Done: \n",
@@ -162,6 +226,48 @@ class LinearRegressionExample(parameterized.TestCase):
         deserialized = utils.deserialize_computation(serialized)
         assert compiled_comp == deserialized
 
+    def test_simple_eval(self):
+        # linear_comp, placements = self._build_linear_regression_example("mse")
+        linear_comp, placements = self._build_simple_example()
+
+        x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
+        executors_storage = {
+            "x-owner": {"x_data": x_data},
+            "y-owner": {"y_data": y_data},
+            "model-owner": {},
+        }
+        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        _ = runtime.evaluate_computation(
+            computation=linear_comp,
+            role_assignment={
+                "x-owner": "x-owner",
+                "y-owner": "y-owner",
+                "model-owner": "model-owner",
+            },
+            arguments={
+                "x_uri": "x_data",
+                "y_uri": "y_data",
+                "w_uri": "regression_weights",
+                "metric_uri": "metric_result",
+                "rsquared_uri": "rsquared_result",
+            },
+            python_passes = [
+                MpspdzApplyFunctionPass(),
+                HostEncodingPass(),
+                HostLoweringPass(),
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                HostRingLoweringPass(),
+                ReplicatedLoweringPass(ring=128),
+                PruningPass(),
+                # NetworkingPass(),
+            ],
+            rust_passes = ["networking", "typing"]
+        )
+        print(
+            "Done: \n",
+            runtime.get_value_from_storage("model-owner", "regression_weights"),
+        )
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run example")

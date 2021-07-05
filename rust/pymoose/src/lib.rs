@@ -24,7 +24,11 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 use std::sync::Arc;
 pub mod python_computation;
+use moose::compilation::networking::NetworkingPass;
+use moose::compilation::print::print_graph;
+use moose::compilation::pruning::prune_graph;
 use moose::storage::{AsyncStorage, LocalAsyncStorage};
+use moose::text_computation::ToTextual;
 use tokio::runtime::Runtime;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -419,6 +423,7 @@ impl LocalRuntime {
         computation: Vec<u8>,
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
+        passes: Vec<String>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let arguments = arguments
             .iter()
@@ -454,12 +459,33 @@ impl LocalRuntime {
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
             };
-            let computation = create_computation_graph_from_py_bytes(computation.clone());
-            let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
-            compiled_computation.toposort().unwrap();
+            let mut computation = create_computation_graph_from_py_bytes(computation.clone());
+
+            // TODO::: COMPILATION PHASE
+            fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+                match pass {
+                    "networking" => NetworkingPass::pass(comp),
+                    "print" => print_graph(comp),
+                    "prune" => prune_graph(comp),
+                    "typing" => update_types_one_hop(comp),
+                    missing_pass => {
+                        Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass))
+                    }
+                }
+            }
+
+            for pass in &passes {
+                if let Some(new_comp) = do_pass(&pass, &computation).unwrap() {
+                    computation = new_comp;
+                }
+            }
+            computation = computation.toposort().unwrap();
+            println!("\nDEBUG\n{}\n\n", computation.to_textual());
+            // END OF COMPILATION PHASE
+
             let (moose_session_handle, outputs) = executor
                 .run_computation(
-                    &compiled_computation,
+                    &computation,
                     &valid_role_assignments,
                     &own_identity,
                     moose_session,
