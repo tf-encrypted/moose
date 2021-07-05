@@ -36,6 +36,17 @@ impl<T> Placed for AbstractRingTensor<T> {
         self.1.clone()
     }
 }
+pub trait RingSize {
+    const SIZE: usize;
+}
+
+impl RingSize for Ring64Tensor {
+    const SIZE: usize = 64;
+}
+
+impl RingSize for Ring128Tensor {
+    const SIZE: usize = 128;
+}
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring64Tensor, RingFillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring128Tensor, RingFillOp);

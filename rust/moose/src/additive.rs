@@ -4,12 +4,13 @@ use crate::computation::{
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
-    PlacementNeg, PlacementRepToAdt, PlacementReveal, PlacementSampleBits, PlacementSampleUniform,
-    PlacementShl, PlacementSub, PlacementTruncPrProvider,
+    PlacementNeg, PlacementOnes, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
+    PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr, PlacementSub,
+    PlacementTruncPrProvider,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
 use crate::standard::Shape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -359,19 +360,7 @@ impl AdtShlOp {
     }
 }
 
-trait RingSize {
-    const SIZE: usize;
-}
-
-impl RingSize for Ring64Tensor {
-    const SIZE: usize = 64;
-}
-
-impl RingSize for Ring128Tensor {
-    const SIZE: usize = 128;
-}
-
-trait BitCompose<C: Context, R> {
+pub trait BitCompose<C: Context, R> {
     fn bit_compose(&self, ctx: &C, bits: &[R]) -> R;
 }
 
@@ -389,7 +378,7 @@ where
     }
 }
 
-trait TreeReduce<C: Context, R> {
+pub trait TreeReduce<C: Context, R> {
     fn tree_reduce(&self, ctx: &C, sequence: &[R]) -> R;
 }
 
@@ -418,20 +407,20 @@ where
     }
 }
 
-trait DecomposedRandomness<C: Context, ShapeT, R> {
-    fn gen_decomposed_randomness(
+pub trait CorrelatedMaskGen<C: Context, ShapeT, RingT> {
+    fn gen_correlated_mask(
         &self,
         ctx: &C,
         amount: usize,
         shape: &ShapeT,
     ) -> (
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<RingT>,
+        AbstractAdditiveTensor<RingT>,
+        AbstractAdditiveTensor<RingT>,
     );
 }
 
-impl<C: Context, R> DecomposedRandomness<C, cs!(Shape), R> for HostPlacement
+impl<C: Context, R> CorrelatedMaskGen<C, cs!(Shape), R> for HostPlacement
 where
     PrfKey: KnownType<C>,
     Seed: KnownType<C>,
@@ -444,7 +433,7 @@ where
     HostPlacement: PlacementKeyGen<C, cs!(PrfKey)>,
     HostPlacement: PlacementSub<C, R, R, R>,
 {
-    fn gen_decomposed_randomness(
+    fn gen_correlated_mask(
         &self,
         ctx: &C,
         amount: usize,
@@ -464,6 +453,8 @@ where
             })
             .collect();
 
+        // TODO(Morten) seems like we can rewrite this to sample r directly as uniform
+        // instead of going through bits and bit_compose
         let r = self.bit_compose(ctx, &r_bits);
         let r_top = self.bit_compose(ctx, &r_bits[amount..R::SIZE - 1]);
         let r_msb = r_bits[R::SIZE - 1].clone();
@@ -482,7 +473,6 @@ where
         let r_top_shared = share(&r_top);
         let r_msb_shared = share(&r_msb);
 
-        // TODO should we be returning r_bits here instead of r?
         (r_shared, r_top_shared, r_msb_shared)
     }
 }
@@ -491,27 +481,32 @@ impl<C: Context, R>
     PlacementTruncPrProvider<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>
     for AdditivePlacement
 where
-// R: RingSize,
-// AdditivePlacement: PlacementAdd<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-// AdditivePlacement: PlacementAdd<C, R, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-// AdditivePlacement: PlacementAdd<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
-// AdditivePlacement: PlacementArithmeticXor<C, R>,
-// AdditivePlacement: PlacementFill<C, Shape, AbstractAdditiveTensor<R>>, // TODO: Fix shape; Use type parameter
-// AdditivePlacement: PlacementMul<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
-// AdditivePlacement: PlacementShl<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-// AdditivePlacement: PlacementSub<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-// AdditivePlacement: PlacementSub<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
-// HostPlacement: PlacementBitCompose<C, R> + PlacementKeyGen<C, cs!(PrfKey)> + PlacementSub<C, R, R, R>,
-// HostPlacement: PlacementOnes<C, Shape, R>,
-// HostPlacement: PlacementReveal<C, AbstractAdditiveTensor<R>, R>,
-// HostPlacement: PlacementSampleUniform<C, R>,
-// HostPlacement: PlacementShape<C, R, Shape>,
-// HostPlacement: PlacementShl<C, R, R>,
-// HostPlacement: PlacementShr<C, R, R>,
-// R: Into<Value> + Clone,
-// HostPlacement: TruncRandomness<C, R>,
+    R: RingSize,
+    Shape: KnownType<C>,
+    HostPlacement: CorrelatedMaskGen<C, cs!(Shape), R>,
+    AdditivePlacement: PlacementAdd<
+        C,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+    >,
+    AdditivePlacement: PlacementSub<C, R, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+    AdditivePlacement: PlacementAdd<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+    AdditivePlacement: PlacementMul<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+    AdditivePlacement: PlacementShl<C, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
+    AdditivePlacement: PlacementSub<
+        C,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+        AbstractAdditiveTensor<R>,
+    >,
+    AdditivePlacement: PlacementSub<C, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+    HostPlacement: PlacementOnes<C, cs!(Shape), R>,
+    HostPlacement: PlacementReveal<C, AbstractAdditiveTensor<R>, R>,
+    HostPlacement: PlacementShape<C, R, cs!(Shape)>,
+    HostPlacement: PlacementShl<C, R, R>,
+    HostPlacement: PlacementShr<C, R, R>,
 {
-    #[allow(unused_variables)] // Remove when the code below is uncommented
     fn trunc_pr(
         &self,
         ctx: &C,
@@ -519,37 +514,44 @@ where
         provider: &HostPlacement,
         x: &AbstractAdditiveTensor<R>,
     ) -> AbstractAdditiveTensor<R> {
-        unimplemented!()
+        #![allow(clippy::many_single_char_names)]
 
-        // // consider input is always signed
-        // let (player_a, player_b) = self.host_placements();
-        // let AbstractAdditiveTensor { shares: [x0, x1] } = x;
+        // Hack to get around https://github.com/tf-encrypted/runtime/issues/372
+        let adt = self;
 
-        // let k = R::SIZE - 1;
-        // // TODO(Dragos)this is optional if we work with unsigned numbers
-        // let x_shape = player_a.shape(ctx, x0);
+        let (player_a, player_b) = self.host_placements();
+        assert!(provider != &player_a);
+        assert!(provider != &player_b);
 
-        // let ones = player_a.ones(ctx, &x_shape);
-        // let twok = player_a.shl(ctx, k, &ones);
-        // let positive = self.add(ctx, x, &twok);
+        let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
 
-        // let (r, r_top, r_msb) = self.gen_prep(ctx, amount, provider, &x_shape);
+        let shape = player_a.shape(ctx, x0);
+        let (r, r_top, r_msb) = provider.gen_correlated_mask(ctx, amount, &shape);
 
-        // let masked = self.add(ctx, &positive, &r);
-        // // (Dragos) Note that these opening should be done to all players for active security.
-        // let opened_masked_a = player_a.reveal(ctx, &masked);
+        // NOTE we consider input is always signed, and the following positive
+        // conversion would be optional for unsigned numbers
+        // NOTE we assume that input numbers are in range -2^{k-2} <= x < 2^{k-2}
+        // so that 0 <= x + 2^{k-2} < 2^{k-1}
+        // TODO we could insert debug_assert! to check above conditions
+        let ones = player_a.ones(ctx, &shape);
+        let upshifter = player_a.shl(ctx, R::SIZE - 2, &ones);
+        let x_positive = self.add(ctx, x, &upshifter);
 
-        // let no_msb_mask = player_a.shl(ctx, 1, &opened_masked_a);
-        // let opened_mask_tr = player_a.shr(ctx, amount + 1, &no_msb_mask);
+        let masked = with_context!(adt, ctx, x_positive + r);
+        let c = player_a.reveal(ctx, &masked);
+        let c_no_msb = player_a.shl(ctx, 1, &c);
+        let c_top = player_a.shr(ctx, amount + 1, &c_no_msb);
+        let c_msb = player_a.shr(ctx, R::SIZE - 1, &c);
 
-        // let msb_mask = player_a.shr(ctx, R::SIZE - 1, &opened_masked_a);
-        // let msb_to_correct = self.arithmetic_xor(ctx, &r_msb, &msb_mask);
-        // let shifted_msb = self.shl(ctx, R::SIZE - 1 - amount, &msb_to_correct);
+        let b = with_context!(adt, ctx, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
+        let shifted_b = self.shl(ctx, R::SIZE - 1 - amount, &b);
+        let y_positive = with_context!(adt, ctx, c_top - r_top + shifted_b);
 
-        // let output = self.add(ctx, &self.sub(ctx, &shifted_msb, &r_top), &opened_mask_tr);
-        // // TODO(Dragos)this is optional if we work with unsigned numbers
-        // let remainder = player_a.shl(ctx, k - 1 - amount, &ones);
-        // self.sub(ctx, &output, &remainder)
+        // NOTE the following would be optional for unsigned numbers
+        let downshifter = player_a.shl(ctx, R::SIZE - 1 - amount, &ones);
+        let y = with_context!(adt, ctx, y_positive - downshifter);
+
+        y
     }
 }
 
