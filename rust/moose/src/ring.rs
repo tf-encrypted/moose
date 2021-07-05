@@ -55,7 +55,7 @@ kernel! {
     RingFillOp,
     [
         (HostPlacement, (Shape) -> Ring64Tensor => attributes[value: Ring64] Self::ring64_kernel),
-        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::ring128_kernel),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value: Ring128] Self::ring128_kernel),
     ]
 }
 
@@ -74,14 +74,9 @@ impl RingFillOp {
     fn ring128_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
-        value: Constant,
+        value: u128,
         shape: Shape,
     ) -> Ring128Tensor {
-        let value = match value {
-            Constant::Ring64(v) => v as u128,
-            Constant::Ring128(v) => v,
-            _ => panic!("Incorrect constant type for the RingFill"), // TODO: another way to report the error
-        };
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
         AbstractRingTensor(raw_tensor, plc.clone())
