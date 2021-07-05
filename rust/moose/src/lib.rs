@@ -8,25 +8,25 @@ macro_rules! cs {
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_,) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, &_) -> _> = &|$op| $kf;
             kf($self)
         }
     };
     (unary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, &_, _) -> _> = &|$op| $kf;
             kf($self)
         }
     };
     (binary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _, _) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, &_, _, _) -> _> = &|$op| $kf;
             kf($self)
         }
     };
     (ternary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _, _, _) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, &_, _, _, _) -> _> = &|$op| $kf;
             kf($self)
         }
     };
@@ -43,8 +43,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc| {
-                $k(ctx, plc, $($attr.clone()),+)
+            Box::new(move |ctx, sess, plc| {
+                $k(ctx, sess, plc, $($attr.clone()),+)
             })
         }
     };
@@ -60,8 +60,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc, x0| {
-                $k(ctx, plc, $($attr.clone()),+, x0)
+            Box::new(move |ctx, sess, plc, x0| {
+                $k(ctx, sess, plc, $($attr.clone()),+, x0)
             })
         }
     };
@@ -77,8 +77,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc, x0, x1| {
-                $k(ctx, plc, $($attr.clone()),+, x0, x1)
+            Box::new(move |ctx, sess, plc, x0, x1| {
+                $k(ctx, sess, plc, $($attr.clone()),+, x0, x1)
             })
         }
     };
@@ -94,8 +94,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc, x0, x1, x2| {
-                $k(ctx, plc, $($attr.clone()),+), x0, x1, x2
+            Box::new(move |ctx, sess, plc, x0, x1, x2| {
+                $k(ctx, sess, plc, $($attr.clone()),+), x0, x1, x2
             })
         }
     };
@@ -121,8 +121,15 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext, crate::execution::SyncSession> for $op {
+
+            fn compile<'c>(
+                &self,
+                ctx: &'c crate::kernels::ConcreteContext,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::execution::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+
+                use crate::execution::{SyncSession};
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
                 use crate::kernels::{ConcreteContext, NullaryKernel};
                 use std::convert::TryInto;
@@ -137,12 +144,12 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
-                            let k = <$op as NullaryKernel<ConcreteContext, $plc, $u>>::compile(self, &ctx, &plc);
+                            let k = <$op as NullaryKernel<ConcreteContext, SyncSession, $plc, $u>>::compile(self, &ctx, &plc);
 
-                            Box::new(move |operands: Vec<crate::computation::Value>| {
+                            Box::new(move |sess, operands: Vec<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 0);
 
-                                let y: $u = k(&ctx, &plc);
+                                let y: $u = k(&ctx, sess, &plc);
                                 y.into()
                             })
                         }
@@ -158,8 +165,15 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext, crate::execution::SyncSession> for $op {
+
+            fn compile<'c>(
+                &self,
+                ctx: &'c crate::kernels::ConcreteContext,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::execution::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+
+                use crate::execution::{SyncSession};
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
                 use crate::kernels::{ConcreteContext, UnaryKernel};
                 use std::convert::TryInto;
@@ -175,14 +189,14 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
-                            let k = <$op as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
+                            let k = <$op as UnaryKernel<ConcreteContext, SyncSession, $plc, $t0, $u>>::compile(self, &ctx, &plc);
 
-                            Box::new(move |operands: Vec<Value>| {
+                            Box::new(move |sess, operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = k(&ctx, &plc, x0);
+                                let y: $u = k(&ctx, sess, &plc, x0);
                                 y.into()
                             })
                         }
@@ -198,8 +212,15 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext, crate::execution::SyncSession> for $op {
+
+            fn compile<'c>(
+                &self,
+                ctx: &'c crate::kernels::ConcreteContext,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::execution::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+
+                use crate::execution::{SyncSession};
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature, Value};
                 use crate::kernels::{ConcreteContext, BinaryKernel};
                 use std::convert::TryInto;
@@ -218,19 +239,20 @@ macro_rules! concrete_dispatch_kernel {
 
                             let k = <$op as BinaryKernel<
                                 ConcreteContext,
+                                SyncSession,
                                 $plc,
                                 $t0,
                                 $t1,
                                 $u
                             >>::compile(self, &ctx, &plc);
 
-                            Box::new(move |operands| -> Value {
+                            Box::new(move |sess, operands| -> Value {
                                 assert_eq!(operands.len(), 2);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = k(&ctx, &plc, x0, x1);
+                                let y: $u = k(&ctx, sess, &plc, x0, x1);
                                 y.into()
                             })
                         }
@@ -246,8 +268,15 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext, crate::execution::SyncSession> for $op {
+
+            fn compile<'c>(
+                &self,
+                ctx: &'c crate::kernels::ConcreteContext,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::execution::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+
+                use crate::execution::{SyncSession};
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature, Value};
                 use crate::kernels::{ConcreteContext, TernaryKernel};
                 use std::convert::TryInto;
@@ -265,16 +294,16 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
-                            let k = <$op as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
+                            let k = <$op as TernaryKernel<ConcreteContext, SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
 
-                            Box::new(move |operands: Vec<Value>| -> Value {
+                            Box::new(move |sess, operands: Vec<Value>| -> Value {
                                 assert_eq!(operands.len(), 3);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = k(&ctx, &plc, x0, x1, x2);
+                                let y: $u = k(&ctx, sess, &plc, x0, x1, x2);
                                 y.into()
                             })
                         }
@@ -298,13 +327,14 @@ macro_rules! kernel {
         // symbolic_dispatch_kernel!($op, [$( ($plc, () -> $u), )+]);
 
         $(
-            impl NullaryKernel<
-                ConcreteContext,
+            impl crate::kernels::NullaryKernel<
+                crate::kernels::ConcreteContext,
+                crate::execution::SyncSession,
                 $plc,
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
+                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &crate::execution::SyncSession, &$plc) -> $u> {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
             }
@@ -346,12 +376,13 @@ macro_rules! kernel {
         $(
             impl crate::kernels::UnaryKernel<
                 crate::kernels::ConcreteContext,
+                crate::execution::SyncSession,
                 $plc,
                 $t0,
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
+                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &crate::execution::SyncSession, &$plc, $t0) -> $u> {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }
@@ -401,13 +432,20 @@ macro_rules! kernel {
         $(
             impl crate::kernels::BinaryKernel<
                 crate::kernels::ConcreteContext,
+                crate::execution::SyncSession,
                 $plc,
                 $t0,
                 $t1,
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(
+                    &crate::kernels::ConcreteContext,
+                    &crate::execution::SyncSession,
+                    &$plc,
+                    $t0,
+                    $t1) -> $u>
+                {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
             }
@@ -467,7 +505,7 @@ macro_rules! kernel {
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, &SyncSession, $t0, $t1, $t2) -> $u> {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
             }
@@ -527,6 +565,7 @@ macro_rules! hybrid_kernel {
         $(
             impl crate::kernels::NullaryKernel<
                 crate::kernels::ConcreteContext,
+                crate::execution::SyncSession,
                 $plc,
                 $u
             > for $op
@@ -537,6 +576,7 @@ macro_rules! hybrid_kernel {
                     _plc: &$plc,
                 ) -> Box<dyn Fn(
                     &crate::kernels::ConcreteContext,
+                    &crate::execution::SyncSession,
                     &$plc)
                     -> $u>
                 {
@@ -582,6 +622,7 @@ macro_rules! hybrid_kernel {
         $(
             impl crate::kernels::UnaryKernel<
                 crate::kernels::ConcreteContext,
+                crate::execution::SyncSession,
                 $plc,
                 $t0,
                 $u
@@ -591,7 +632,12 @@ macro_rules! hybrid_kernel {
                     &self,
                     _ctx: &crate::kernels::ConcreteContext,
                     _plc: &$plc,
-                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
+                ) -> Box<dyn Fn(
+                    &crate::kernels::ConcreteContext,
+                    &crate::execution::SyncSession,
+                    &$plc,
+                    $t0) -> $u>
+                {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }
@@ -651,6 +697,7 @@ macro_rules! hybrid_kernel {
         $(
             impl crate::kernels::BinaryKernel<
                 crate::kernels::ConcreteContext,
+                crate::execution::SyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -661,7 +708,13 @@ macro_rules! hybrid_kernel {
                     &self,
                     _ctx: &crate::kernels::ConcreteContext,
                     _plc: &$plc
-                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                ) -> Box<dyn Fn(
+                    &crate::kernels::ConcreteContext,
+                    &crate::execution::SyncSession,
+                    &$plc,
+                    $t0,
+                    $t1) -> $u>
+                {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
             }
@@ -725,6 +778,7 @@ macro_rules! hybrid_kernel {
         $(
             impl crate::kernels::TernaryKernel<
                 crate::kernels::ConcreteContext,
+                crate::execution::SyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -736,7 +790,13 @@ macro_rules! hybrid_kernel {
                     &self,
                     _ctx: &crate::kernels::ConcreteContext,
                     _plc: &$plc,
-                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                ) -> Box<dyn Fn(
+                    &crate::kernels::ConcreteContext,
+                    &crate::execution::SyncSession,
+                    &$plc,
+                    $t0,
+                    $t1,$t2) -> $u>
+                {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
             }
@@ -799,10 +859,15 @@ macro_rules! modelled {
     Nullary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
-        impl crate::kernels::NullaryKernelCheck<crate::kernels::ConcreteContext, $plc, $u> for $op {}
+        impl crate::kernels::NullaryKernelCheck<crate::kernels::ConcreteContext, crate::execution::SyncSession, $plc, $u> for $op {}
 
         impl $t<crate::kernels::ConcreteContext, $u> for $plc {
-            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*)?) -> $u {
+            fn $f(
+                &self,
+                ctx: &crate::kernels::ConcreteContext,
+                sess: &crate::execution::SyncSession,
+                $($($attr_id:$attr_ty),*)?
+            ) -> $u {
                 use crate::computation::{KnownType, NullarySignature};
                 use crate::kernels::{Context, ConcreteContext};
                 use std::convert::TryInto;
@@ -814,7 +879,7 @@ macro_rules! modelled {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                ctx.execute(op.into(), &self.into(), vec![])
+                ctx.execute(sess, op.into(), &self.into(), vec![])
                     .try_into()
                     .unwrap()
             }
@@ -840,7 +905,7 @@ macro_rules! modelled {
     Unary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::UnaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $u> for $op {}
+        impl crate::kernels::UnaryKernelCheck<crate::kernels::ConcreteContext, crate::execution::SyncSession, $plc, $t0, $u> for $op {}
 
         impl $t<crate::kernels::ConcreteContext, $t0, $u> for $plc {
             fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> $u {
@@ -885,7 +950,7 @@ macro_rules! modelled {
     Binary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::BinaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $t1, $u> for $op {}
+        impl crate::kernels::BinaryKernelCheck<crate::kernels::ConcreteContext, crate::execution::SyncSession, $plc, $t0, $t1, $u> for $op {}
 
         impl $t<crate::kernels::ConcreteContext, $t0, $t1, $u> for $plc {
             fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
@@ -948,7 +1013,7 @@ macro_rules! modelled {
     Ternary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::TernaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
+        impl crate::kernels::TernaryKernelCheck<crate::kernels::ConcreteContext, crate::execution::SyncSession, $plc, $t0, $t1, $t2, $u> for $op {}
 
         impl $t<crate::kernels::ConcreteContext, $t0, $t1, $t2, $u> for $plc {
             fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {

@@ -1,6 +1,7 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
 use crate::kernels::{ConcreteContext, NullaryKernel, PlacementDeriveSeed, PlacementKeyGen};
 use crate::prng::AesRng;
+use crate::execution::SyncSession;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -78,7 +79,7 @@ kernel! {
 }
 
 impl PrimDeriveSeedOp {
-    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, nonce: RawNonce, key: PrfKey) -> Seed {
+    fn kernel(_ctx: &ConcreteContext, sess: &SyncSession, plc: &HostPlacement, nonce: RawNonce, key: PrfKey) -> Seed {
         // TODO(SECURITY) take session id into account: seed = PRF(key, sid|nonce)
         let raw_seed = RawSeed(crate::utils::derive_seed(&key.0 .0, &nonce.0));
         Seed(raw_seed, plc.clone())

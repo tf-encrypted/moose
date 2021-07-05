@@ -55,6 +55,7 @@ hybrid_kernel! {
 impl AdtFillOp {
     fn kernel<C: Context, ShapeT, RingT>(
         ctx: &C,
+        sess: &C::Session,
         plc: &AdditivePlacement,
         value: Constant,
         shape: ShapeT,
@@ -88,6 +89,7 @@ hybrid_kernel! {
 impl AdtRevealOp {
     fn kernel<C: Context, RingT>(
         ctx: &C,
+        sess: &C::Session,
         plc: &HostPlacement,
         xe: AbstractAdditiveTensor<RingT>,
     ) -> RingT
@@ -121,6 +123,7 @@ hybrid_kernel! {
 impl AdtAddOp {
     fn adt_adt_kernel<C: Context, RingT>(
         ctx: &C,
+        sess: &C::Session,
         add: &AdditivePlacement,
         x: AbstractAdditiveTensor<RingT>,
         y: AbstractAdditiveTensor<RingT>,
@@ -141,6 +144,7 @@ impl AdtAddOp {
 
     fn adt_ring_kernel<C: Context, RingT>(
         ctx: &C,
+        sess: &C::Session,
         add: &AdditivePlacement,
         x: AbstractAdditiveTensor<RingT>,
         y: RingT,
@@ -164,6 +168,7 @@ impl AdtAddOp {
 
     fn ring_adt_kernel<C: Context, RingT>(
         ctx: &C,
+        sess: &C::Session,
         add: &AdditivePlacement,
         x: RingT,
         y: AbstractAdditiveTensor<RingT>,
@@ -208,6 +213,7 @@ hybrid_kernel! {
 impl AdtSubOp {
     fn adt_adt_kernel<C: Context, R>(
         ctx: &C,
+        sess: &C::Session,
         adt: &AdditivePlacement,
         x: AbstractAdditiveTensor<R>,
         y: AbstractAdditiveTensor<R>,
@@ -228,6 +234,7 @@ impl AdtSubOp {
 
     fn adt_ring_kernel<C: Context, R>(
         ctx: &C,
+        sess: &C::Session,
         adt: &AdditivePlacement,
         x: AbstractAdditiveTensor<R>,
         y: R,
@@ -251,6 +258,7 @@ impl AdtSubOp {
 
     fn ring_adt_kernel<C: Context, R>(
         ctx: &C,
+        sess: &C::Session,
         adt: &AdditivePlacement,
         x: R,
         y: AbstractAdditiveTensor<R>,
@@ -292,6 +300,7 @@ hybrid_kernel! {
 impl AdtMulOp {
     fn ring_adt_kernel<C: Context, R>(
         ctx: &C,
+        sess: &C::Session,
         add: &AdditivePlacement,
         x: R,
         y: AbstractAdditiveTensor<R>,
@@ -312,6 +321,7 @@ impl AdtMulOp {
 
     fn adt_ring_kernel<C: Context, R>(
         ctx: &C,
+        sess: &C::Session,
         add: &AdditivePlacement,
         x: AbstractAdditiveTensor<R>,
         y: R,
@@ -345,6 +355,7 @@ hybrid_kernel! {
 impl AdtShlOp {
     fn kernel<C: Context, RingT>(
         ctx: &C,
+        sess: &C::Session,
         plc: &AdditivePlacement,
         amount: usize,
         x: AbstractAdditiveTensor<RingT>,
@@ -503,6 +514,7 @@ where
     fn trunc_pr(
         &self,
         ctx: &C,
+        sess: &C::Session,
         amount: usize,
         provider: &HostPlacement,
         x: &AbstractAdditiveTensor<R>,
@@ -518,7 +530,7 @@ where
 
         let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
 
-        let shape = player_a.shape(ctx, x0);
+        let shape = player_a.shape(ctx, sess, x0);
         let (r, r_top, r_msb) = provider.gen_trunc_mask(ctx, amount, &shape);
 
         // NOTE we consider input is always signed, and the following positive
@@ -526,18 +538,18 @@ where
         // NOTE we assume that input numbers are in range -2^{k-2} <= x < 2^{k-2}
         // so that 0 <= x + 2^{k-2} < 2^{k-1}
         // TODO we could insert debug_assert! to check above conditions
-        let ones = player_a.ones(ctx, &shape);
-        let upshifter = player_a.shl(ctx, R::SIZE - 2, &ones);
-        let downshifter = player_a.shl(ctx, R::SIZE - 2 - amount, &ones);
+        let ones = player_a.ones(ctx, sess, &shape);
+        let upshifter = player_a.shl(ctx, sess, R::SIZE - 2, &ones);
+        let downshifter = player_a.shl(ctx, sess, R::SIZE - 2 - amount, &ones);
 
-        let x_positive = self.add(ctx, x, &upshifter);
-        let masked = adt.add(ctx, &x_positive, &r);
-        let c = player_a.reveal(ctx, &masked);
-        let c_no_msb = player_a.shl(ctx, 1, &c);
-        let c_top = player_a.shr(ctx, amount + 1, &c_no_msb);
-        let c_msb = player_a.shr(ctx, R::SIZE - 1, &c);
+        let x_positive = self.add(ctx, sess, x, &upshifter);
+        let masked = adt.add(ctx, sess, &x_positive, &r);
+        let c = player_a.reveal(ctx, sess, &masked);
+        let c_no_msb = player_a.shl(ctx, sess, 1, &c);
+        let c_top = player_a.shr(ctx, sess, amount + 1, &c_no_msb);
+        let c_msb = player_a.shr(ctx, sess, R::SIZE - 1, &c);
         let b = with_context!(adt, ctx, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
-        let shifted_b = self.shl(ctx, R::SIZE - 1 - amount, &b);
+        let shifted_b = self.shl(ctx, sess, R::SIZE - 1 - amount, &b);
         let y_positive = with_context!(adt, ctx, c_top - r_top + shifted_b);
         let y = with_context!(adt, ctx, y_positive - downshifter);
         y
