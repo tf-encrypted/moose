@@ -2,7 +2,7 @@ use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::kernels::Context;
+use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
@@ -28,7 +28,7 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
-pub trait KnownType<C: Context> {
+pub trait KnownType<S: Session> {
     type Type;
     const TY: Ty;
 }

@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
-pub trait Context {
+pub trait Session {
     type Value;
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
 
@@ -42,7 +42,7 @@ impl Default for NewSyncSession {
     }
 }
 
-impl Context for NewSyncSession {
+impl Session for NewSyncSession {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
@@ -90,195 +90,192 @@ impl RuntimeSession for NewSyncSession {
     }
 }
 
-pub trait DispatchKernel<C: Context> {
-    fn compile(
-        &self,
-        plc: &Placement,
-    ) -> Box<dyn Fn(&C, Vec<C::Value>) -> C::Value>;
+pub trait DispatchKernel<S: Session> {
+    fn compile(&self, plc: &Placement) -> Box<dyn Fn(&S, Vec<S::Value>) -> S::Value>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
 // function kernels then we could consider returning an enum over
 // fn.. and Box<dyn Fn...> in the traits below instead
 
-pub trait NullaryKernel<C: Context, P, Y> {
-    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P) -> Y>;
+pub trait NullaryKernel<S: Session, P, Y> {
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&S, &P) -> Y>;
 }
 
-pub trait UnaryKernel<C: Context, P, X0, Y> {
-    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P, X0) -> Y>;
+pub trait UnaryKernel<S: Session, P, X0, Y> {
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&S, &P, X0) -> Y>;
 }
 
-pub trait BinaryKernel<C: Context, P, X0, X1, Y> {
-    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1) -> Y>;
+pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&S, &P, X0, X1) -> Y>;
 }
 
-pub trait TernaryKernel<C: Context, P, X0, X1, X2, Y> {
-    fn compile(&self, plc: &P) -> Box<dyn Fn(&C, &P, X0, X1, X2) -> Y>;
+pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&S, &P, X0, X1, X2) -> Y>;
 }
 
-pub(crate) trait NullaryKernelCheck<C: Context, P, Y>
+pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
 where
-    Self: NullaryKernel<C, P, Y>,
+    Self: NullaryKernel<S, P, Y>,
 {
 }
 
-pub(crate) trait UnaryKernelCheck<C: Context, P, X0, Y>
+pub(crate) trait UnaryKernelCheck<S: Session, P, X0, Y>
 where
-    Self: UnaryKernel<C, P, X0, Y>,
+    Self: UnaryKernel<S, P, X0, Y>,
 {
 }
 
-pub(crate) trait BinaryKernelCheck<C: Context, P, X0, X1, Y>
+pub(crate) trait BinaryKernelCheck<S: Session, P, X0, X1, Y>
 where
-    Self: BinaryKernel<C, P, X0, X1, Y>,
+    Self: BinaryKernel<S, P, X0, X1, Y>,
 {
 }
 
-pub(crate) trait TernaryKernelCheck<C: Context, P, X0, X1, X2, Y>
+pub(crate) trait TernaryKernelCheck<S: Session, P, X0, X1, X2, Y>
 where
-    Self: TernaryKernel<C, P, X0, X1, X2, Y>,
+    Self: TernaryKernel<S, P, X0, X1, X2, Y>,
 {
 }
 
-pub trait PlacementShape<C: Context, T, ShapeT> {
-    fn shape(&self, ctx: &C, x: &T) -> ShapeT;
+pub trait PlacementShape<S: Session, T, ShapeT> {
+    fn shape(&self, sess: &S, x: &T) -> ShapeT;
 }
 
-pub trait PlacementKeyGen<C: Context, KeyT> {
-    fn gen_key(&self, ctx: &C) -> KeyT;
+pub trait PlacementKeyGen<S: Session, KeyT> {
+    fn gen_key(&self, sess: &S) -> KeyT;
 }
 
-pub trait PlacementSetupGen<C: Context, SetupT> {
-    fn gen_setup(&self, ctx: &C) -> SetupT;
+pub trait PlacementSetupGen<S: Session, SetupT> {
+    fn gen_setup(&self, sess: &S) -> SetupT;
 }
 
-pub trait PlacementDeriveSeed<C: Context, KeyT, SeedT> {
-    fn derive_seed(&self, ctx: &C, sync_key: RawNonce, key: &KeyT) -> SeedT;
+pub trait PlacementDeriveSeed<S: Session, KeyT, SeedT> {
+    fn derive_seed(&self, sess: &S, sync_key: RawNonce, key: &KeyT) -> SeedT;
 }
 
-pub trait PlacementAdd<C: Context, T, U, O> {
-    fn add(&self, ctx: &C, x: &T, y: &U) -> O;
+pub trait PlacementAdd<S: Session, T, U, O> {
+    fn add(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementSub<C: Context, T, U, O> {
-    fn sub(&self, ctx: &C, x: &T, y: &U) -> O;
+pub trait PlacementSub<S: Session, T, U, O> {
+    fn sub(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementNeg<C: Context, T, O> {
-    fn neg(&self, ctx: &C, x: &T) -> O;
+pub trait PlacementNeg<S: Session, T, O> {
+    fn neg(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementMul<C: Context, T, U, O> {
-    fn mul(&self, ctx: &C, x: &T, y: &U) -> O;
+pub trait PlacementMul<S: Session, T, U, O> {
+    fn mul(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementShl<C: Context, T, O> {
-    fn shl(&self, ctx: &C, amount: usize, x: &T) -> O;
+pub trait PlacementShl<S: Session, T, O> {
+    fn shl(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
-pub trait PlacementShr<C: Context, T, O> {
-    fn shr(&self, ctx: &C, amount: usize, x: &T) -> O;
+pub trait PlacementShr<S: Session, T, O> {
+    fn shr(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
-pub trait PlacementXor<C: Context, T, U, O> {
-    fn xor(&self, ctx: &C, x: &T, y: &U) -> O;
+pub trait PlacementXor<S: Session, T, U, O> {
+    fn xor(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementAnd<C: Context, T, U, O> {
-    fn and(&self, ctx: &C, x: &T, y: &U) -> O;
+pub trait PlacementAnd<S: Session, T, U, O> {
+    fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementMulSetup<C: Context, S, T, U, O> {
-    fn mul(&self, ctx: &C, s: &S, x: &T, y: &U) -> O;
+pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
+    fn mul(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementShare<C: Context, T, O> {
-    fn share(&self, ctx: &C, x: &T) -> O;
+pub trait PlacementShare<S: Session, T, O> {
+    fn share(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementShareSetup<C: Context, S, T, O> {
-    fn share(&self, ctx: &C, s: &S, x: &T) -> O;
+pub trait PlacementShareSetup<S: Session, SetupT, T, O> {
+    fn share(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
-pub trait PlacementReveal<C: Context, T, O> {
-    fn reveal(&self, ctx: &C, x: &T) -> O;
+pub trait PlacementReveal<S: Session, T, O> {
+    fn reveal(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementFill<C: Context, ShapeT, O> {
-    fn fill(&self, ctx: &C, value: Constant, shape: &ShapeT) -> O;
+pub trait PlacementFill<S: Session, ShapeT, O> {
+    fn fill(&self, sess: &S, value: Constant, shape: &ShapeT) -> O;
 }
 
-pub trait PlacementZeros<C: Context, ShapeT, O> {
-    fn zeros(&self, ctx: &C, shape: &ShapeT) -> O;
+pub trait PlacementZeros<S: Session, ShapeT, O> {
+    fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
-impl<C: Context, ShapeT, O, P> PlacementZeros<C, ShapeT, O> for P
+impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
 where
-    P: PlacementFill<C, ShapeT, O>,
+    P: PlacementFill<S, ShapeT, O>,
 {
-    fn zeros(&self, ctx: &C, shape: &ShapeT) -> O {
-        self.fill(ctx, Constant::Ring64(0), shape)
+    fn zeros(&self, sess: &S, shape: &ShapeT) -> O {
+        self.fill(sess, Constant::Ring64(0), shape)
     }
 }
 
-pub trait PlacementOnes<C: Context, ShapeT, O> {
-    fn ones(&self, ctx: &C, shape: &ShapeT) -> O;
+pub trait PlacementOnes<S: Session, ShapeT, O> {
+    fn ones(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
-impl<C: Context, ShapeT, O, P> PlacementOnes<C, ShapeT, O> for P
+impl<S: Session, ShapeT, O, P> PlacementOnes<S, ShapeT, O> for P
 where
-    P: PlacementFill<C, ShapeT, O>,
+    P: PlacementFill<S, ShapeT, O>,
 {
-    fn ones(&self, ctx: &C, shape: &ShapeT) -> O {
-        self.fill(ctx, Constant::Ring64(1), shape)
+    fn ones(&self, sess: &S, shape: &ShapeT) -> O {
+        self.fill(sess, Constant::Ring64(1), shape)
     }
 }
 
-pub trait PlacementSample<C: Context, SeedT, ShapeT, O> {
-    fn sample(&self, ctx: &C, max_value: Option<u64>, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSample<S: Session, SeedT, ShapeT, O> {
+    fn sample(&self, sess: &S, max_value: Option<u64>, seed: &SeedT, shape: &ShapeT) -> O;
 }
 
-pub trait PlacementSampleUniform<C: Context, SeedT, ShapeT, O> {
-    fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSampleUniform<S: Session, SeedT, ShapeT, O> {
+    fn sample_uniform(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O;
 }
 
-impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleUniform<C, SeedT, ShapeT, O> for P
+impl<S: Session, SeedT, ShapeT, O, P> PlacementSampleUniform<S, SeedT, ShapeT, O> for P
 where
-    P: PlacementSample<C, SeedT, ShapeT, O>,
+    P: PlacementSample<S, SeedT, ShapeT, O>,
 {
-    fn sample_uniform(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
-        self.sample(ctx, None, seed, shape)
+    fn sample_uniform(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O {
+        self.sample(sess, None, seed, shape)
     }
 }
 
-pub trait PlacementSampleBits<C: Context, SeedT, ShapeT, O> {
-    fn sample_bits(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSampleBits<S: Session, SeedT, ShapeT, O> {
+    fn sample_bits(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O;
 }
 
-impl<C: Context, SeedT, ShapeT, O, P> PlacementSampleBits<C, SeedT, ShapeT, O> for P
+impl<S: Session, SeedT, ShapeT, O, P> PlacementSampleBits<S, SeedT, ShapeT, O> for P
 where
-    P: PlacementSample<C, SeedT, ShapeT, O>,
+    P: PlacementSample<S, SeedT, ShapeT, O>,
 {
-    fn sample_bits(&self, ctx: &C, seed: &SeedT, shape: &ShapeT) -> O {
-        self.sample(ctx, Some(1), seed, shape)
+    fn sample_bits(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O {
+        self.sample(sess, Some(1), seed, shape)
     }
 }
 
-pub trait PlacementRepToAdt<C: Context, T, O> {
-    fn rep_to_adt(&self, ctx: &C, x: &T) -> O;
+pub trait PlacementRepToAdt<C: Session, T, O> {
+    fn rep_to_adt(&self, sess: &C, x: &T) -> O;
 }
 
-pub trait PlacementAdtToRepSetup<C: Context, S, T, O> {
-    fn adt_to_rep(&self, ctx: &C, s: &S, x: &T) -> O;
+pub trait PlacementAdtToRepSetup<S: Session, SetupT, T, O> {
+    fn adt_to_rep(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
-pub trait PlacementTruncPrSetup<C: Context, SetupT, T, O> {
-    fn trunc_pr(&self, ctx: &C, amount: usize, setup: &SetupT, x: &T) -> O;
+pub trait PlacementTruncPrSetup<S: Session, SetupT, T, O> {
+    fn trunc_pr(&self, sess: &S, amount: usize, setup: &SetupT, x: &T) -> O;
 }
 
-pub trait PlacementTruncPrProvider<C: Context, T, O> {
-    fn trunc_pr(&self, ctx: &C, amount: usize, provider: &HostPlacement, x: &T) -> O;
+pub trait PlacementTruncPrProvider<S: Session, T, O> {
+    fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {

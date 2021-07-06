@@ -41,7 +41,7 @@ kernel! {
 }
 
 impl BitFillOp {
-    fn kernel(_ctx: &NewSyncSession, plc: &HostPlacement, value: u64, shape: Shape) -> BitTensor {
+    fn kernel(_sess: &NewSyncSession, plc: &HostPlacement, value: u64, shape: Shape) -> BitTensor {
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
@@ -59,7 +59,7 @@ kernel! {
 }
 
 impl BitSampleOp {
-    fn kernel(_ctx: &NewSyncSession, plc: &HostPlacement, seed: Seed, shape: Shape) -> BitTensor {
+    fn kernel(_sess: &NewSyncSession, plc: &HostPlacement, seed: Seed, shape: Shape) -> BitTensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -81,7 +81,7 @@ kernel! {
 
 impl BitXorOp {
     fn kernel(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         x: BitTensor,
         y: BitTensor,
@@ -102,7 +102,7 @@ kernel! {
 
 impl BitAndOp {
     fn kernel(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         x: BitTensor,
         y: BitTensor,
