@@ -442,6 +442,10 @@ impl LocalRuntime {
             .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
             .collect::<HashMap<Role, Identity>>();
 
+        let computation = create_computation_graph_from_py_bytes(computation);
+        let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
+        compiled_computation.toposort().unwrap();
+
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
         let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
         let rt = Runtime::new().unwrap();
@@ -454,9 +458,6 @@ impl LocalRuntime {
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
             };
-            let computation = create_computation_graph_from_py_bytes(computation.clone());
-            let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
-            compiled_computation.toposort().unwrap();
             let (moose_session_handle, outputs) = executor
                 .run_computation(
                     &compiled_computation,
