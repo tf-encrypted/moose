@@ -15,7 +15,7 @@ use crate::computation::{
     RingSubOp, ShapeOp,
 };
 use crate::kernels::{
-    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
+    NewSyncSession, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
     PlacementShl, PlacementShr, PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
@@ -61,7 +61,7 @@ kernel! {
 
 impl RingFillOp {
     fn ring64_kernel(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         value: u64,
         shape: Shape,
@@ -72,7 +72,7 @@ impl RingFillOp {
     }
 
     fn ring128_kernel(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         value: u128,
         shape: Shape,
@@ -85,7 +85,7 @@ impl RingFillOp {
 
 impl ShapeOp {
     pub(crate) fn ring_kernel<T>(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
     ) -> Shape {
@@ -107,7 +107,7 @@ kernel! {
 
 impl RingAddOp {
     fn kernel<T>(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -133,7 +133,7 @@ kernel! {
 
 impl RingSubOp {
     fn kernel<T>(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -159,7 +159,7 @@ kernel! {
 
 impl RingNegOp {
     fn kernel<T>(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
     ) -> AbstractRingTensor<T>
@@ -184,7 +184,7 @@ kernel! {
 
 impl RingMulOp {
     fn kernel<T>(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -210,7 +210,7 @@ kernel! {
 
 impl RingShlOp {
     fn kernel<T>(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -236,7 +236,7 @@ kernel! {
 
 impl RingShrOp {
     fn kernel<T>(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -282,7 +282,7 @@ kernel! {
 
 impl RingSampleOp {
     fn kernel_uniform_u64(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -296,7 +296,7 @@ impl RingSampleOp {
     }
 
     fn kernel_bits_u64(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -309,7 +309,7 @@ impl RingSampleOp {
     }
 
     fn kernel_uniform_u128(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -324,7 +324,7 @@ impl RingSampleOp {
     }
 
     fn kernel_bits_u128(
-        _ctx: &ConcreteContext,
+        _ctx: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,

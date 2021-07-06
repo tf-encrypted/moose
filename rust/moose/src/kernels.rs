@@ -24,19 +24,25 @@ pub trait Context {
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
 }
 
-pub struct ConcreteContext {
+pub trait RuntimeSession {
+    fn session_id(&self) -> SessionId;
+}
+
+pub struct NewSyncSession {
+    session_id: SessionId,
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
-impl Default for ConcreteContext {
+impl Default for NewSyncSession {
     fn default() -> Self {
-        ConcreteContext {
+        NewSyncSession {
+            session_id: "abcde".into(), // TODO
             replicated_keys: Default::default(),
         }
     }
 }
 
-impl Context for ConcreteContext {
+impl Context for NewSyncSession {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
@@ -75,6 +81,12 @@ impl Context for ConcreteContext {
     type ReplicatedSetup = ReplicatedSetup;
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
         self.replicated_keys.get(plc).unwrap()
+    }
+}
+
+impl RuntimeSession for NewSyncSession {
+    fn session_id(&self) -> SessionId {
+        self.session_id.clone()
     }
 }
 

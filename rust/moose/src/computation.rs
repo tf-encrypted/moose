@@ -202,7 +202,7 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::kernels::ConcreteContext> for $val {
+        impl KnownType<crate::kernels::NewSyncSession> for $val {
             type Type = $val;
             const TY: Ty = Ty::$val;
         }
