@@ -41,32 +41,32 @@ impl Context for ConcreteContext {
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
         match op {
-            Operator::Shape(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::AdtMul(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(operands),
-            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(operands),
+            Operator::Shape(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::AdtMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
             op => unimplemented!("{:?}", op), // TODO
         }
@@ -82,7 +82,7 @@ pub trait DispatchKernel<C: Context> {
     fn compile<'c>(
         &self,
         plc: &Placement,
-    ) -> Box<dyn Fn(Vec<C::Value>) -> C::Value + 'c>;
+    ) -> Box<dyn Fn(&C, Vec<C::Value>) -> C::Value + 'c>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
