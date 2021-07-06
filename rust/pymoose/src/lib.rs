@@ -473,11 +473,10 @@ impl LocalRuntime {
             session_handles.push(moose_session_handle)
         }
 
-        for mut handle in session_handles {
-            let errors = rt.block_on(handle.join());
-            if !errors.is_empty() {
-                let errstrings: Vec<String> = errors.into_iter().map(|e| e.to_string()).collect();
-                return Err(PyRuntimeError::new_err(errstrings));
+        for handle in session_handles {
+            let result = rt.block_on(handle.join_on_first_error());
+            if let Err(e) = result {
+                return Err(PyRuntimeError::new_err(e.to_string()));
             }
         }
 
