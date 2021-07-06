@@ -96,7 +96,9 @@ pub fn short_name_derive(input: TokenStream) -> TokenStream {
     // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
     // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
     let mut ident_string = name.to_string();
-    ident_string.truncate(ident_string.len() - 2);
+    if ident_string.ends_with("Op") {
+        ident_string.truncate(ident_string.len() - 2);
+    }
     let gen = quote! {
         impl #name {
             pub const SHORT_NAME: &'static str = #ident_string;
