@@ -1,19 +1,54 @@
 extern crate ndarray;
 extern crate ndarray_linalg;
 
+use crate::bit::BitTensor;
+use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
+use crate::kernels::{Context, PlacementPlace, PlacementShape};
+use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Shape(pub Vec<usize>);
+pub struct RawShape(pub Vec<usize>);
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct Shape(pub RawShape, pub Placement);
+
+impl Placed for Shape {
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
+
+impl<C: Context> PlacementPlace<C, Shape> for Placement {
+    fn place(&self, _ctx: &C, shape: Shape) -> Shape {
+        if self == &shape.placement() {
+            shape
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            Shape(shape.0, self.clone())
+        }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct StandardTensor<T>(pub ArrayD<T>);
+pub struct StandardTensor<T>(pub ArrayD<T>, pub Placement);
+
+impl<T> Placed for StandardTensor<T> {
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        self.1.clone()
+    }
+}
 
 pub type Float32Tensor = StandardTensor<f32>;
 pub type Float64Tensor = StandardTensor<f64>;
@@ -26,7 +61,20 @@ pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
 
-impl Shape {
+modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (BitTensor) -> Shape, ShapeOp);
+
+kernel! {
+    ShapeOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Shape => Self::ring_kernel),
+        (HostPlacement, (Ring128Tensor) -> Shape => Self::ring_kernel),
+        (HostPlacement, (BitTensor) -> Shape => Self::bit_kernel),
+    ]
+}
+
+impl RawShape {
     pub fn expand(mut self, axis: usize) -> Self {
         self.0.insert(axis, 1);
         self
@@ -34,7 +82,7 @@ impl Shape {
 
     pub fn slice(self, begin: usize, end: usize) -> Self {
         let slc = &self.0[begin..end];
-        Shape(slc.to_vec())
+        RawShape(slc.to_vec())
     }
 }
 
@@ -44,7 +92,7 @@ where
 {
     pub fn atleast_2d(self, to_column_vector: bool) -> StandardTensor<T> {
         match self.0.ndim() {
-            0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap()),
+            0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap(), self.1),
             1 => {
                 let length = self.0.len();
                 let newshape = if to_column_vector {
@@ -52,7 +100,7 @@ where
                 } else {
                     IxDyn(&[1, length])
                 };
-                StandardTensor::<T>(self.0.into_shape(newshape).unwrap())
+                StandardTensor::<T>(self.0.into_shape(newshape).unwrap(), self.1)
             }
             2 => self,
             otherwise => panic!(
@@ -70,25 +118,25 @@ where
                 let res = Array::from_elem([], l.dot(&r))
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (1, 2) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (2, 1) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix1>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (2, 2) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res)
+                StandardTensor::<T>(res, self.1)
             }
             (self_rank, other_rank) => panic!(
                 // TODO: replace with proper error handling
@@ -99,35 +147,35 @@ where
     }
 
     pub fn ones(shape: Shape) -> Self {
-        StandardTensor::<T>(ArrayD::ones(shape.0))
+        StandardTensor::<T>(ArrayD::ones(shape.0 .0), shape.1)
     }
 
     pub fn reshape(self, newshape: Shape) -> Self {
-        StandardTensor::<T>(self.0.into_shape(newshape.0).unwrap()) // TODO need to be fix (unwrap)
+        StandardTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
     pub fn expand_dims(self, axis: usize) -> Self {
-        let newshape = self.shape().expand(axis);
+        let newshape = Shape(self.shape().0.expand(axis), self.1.clone());
         self.reshape(newshape)
     }
 
     pub fn shape(&self) -> Shape {
-        Shape(self.0.shape().into())
+        Shape(RawShape(self.0.shape().into()), self.1.clone())
     }
 
     pub fn sum(self, axis: Option<usize>) -> Self {
         if let Some(i) = axis {
-            StandardTensor::<T>(self.0.sum_axis(Axis(i)))
+            StandardTensor::<T>(self.0.sum_axis(Axis(i)), self.1)
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
-            StandardTensor::<T>(out)
+            StandardTensor::<T>(out, self.1)
         }
     }
 
     pub fn transpose(self) -> Self {
-        StandardTensor::<T>(self.0.reversed_axes())
+        StandardTensor::<T>(self.0.reversed_axes(), self.1)
     }
 }
 
@@ -139,14 +187,14 @@ where
         match axis {
             Some(i) => {
                 let reduced = self.0.mean_axis(Axis(i)).unwrap();
-                StandardTensor::<T>(reduced)
+                StandardTensor::<T>(reduced, self.1)
             }
             None => {
                 let mean = self.0.mean().unwrap();
                 let out = Array::from_elem([], mean)
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::<T>(out)
+                StandardTensor::<T>(out, self.1)
             }
         }
     }
@@ -181,7 +229,13 @@ where
     T: LinalgScalar,
 {
     fn from(v: ArrayD<T>) -> StandardTensor<T> {
-        StandardTensor::<T>(v)
+        StandardTensor::<T>(
+            v,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -191,7 +245,13 @@ where
 {
     type Output = StandardTensor<T>;
     fn add(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 + other.0)
+        StandardTensor::<T>(
+            self.0 + other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -201,7 +261,13 @@ where
 {
     type Output = StandardTensor<T>;
     fn sub(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 - other.0)
+        StandardTensor::<T>(
+            self.0 - other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -211,7 +277,13 @@ where
 {
     type Output = StandardTensor<T>;
     fn mul(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 * other.0)
+        StandardTensor::<T>(
+            self.0 * other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -221,25 +293,49 @@ where
 {
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(self.0 / other.0)
+        StandardTensor::<T>(
+            self.0 / other.0,
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
 impl<T> From<Vec<T>> for StandardTensor<T> {
     fn from(v: Vec<T>) -> StandardTensor<T> {
-        StandardTensor(Array::from(v).into_dyn())
+        StandardTensor(
+            Array::from(v).into_dyn(),
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
 impl<T> From<Array1<T>> for StandardTensor<T> {
     fn from(v: Array1<T>) -> StandardTensor<T> {
-        StandardTensor(v.into_dyn())
+        StandardTensor(
+            v.into_dyn(),
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
 impl<T> From<Array2<T>> for StandardTensor<T> {
     fn from(v: Array2<T>) -> StandardTensor<T> {
-        StandardTensor(v.into_dyn())
+        StandardTensor(
+            v.into_dyn(),
+            HostPlacement {
+                owner: "TODO".into(),
+            }
+            .into(),
+        )
     }
 }
 
@@ -251,7 +347,13 @@ where
     let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
 
     let c = ndarray::concatenate(ax, &inner_arrays).unwrap();
-    StandardTensor::<T>(c)
+    StandardTensor::<T>(
+        c,
+        HostPlacement {
+            owner: "TODO".into(),
+        }
+        .into(),
+    )
 }
 
 #[cfg(test)]
@@ -299,9 +401,9 @@ mod tests {
 
     #[test]
     fn test_shape_slice() {
-        let x_shape = Shape(vec![1, 2, 3]);
+        let x_shape = RawShape(vec![1, 2, 3]);
         let x_slice = x_shape.slice(1, 3);
-        assert_eq!(x_slice, Shape(vec![2, 3]))
+        assert_eq!(x_slice, RawShape(vec![2, 3]))
     }
 
     #[test]

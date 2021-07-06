@@ -1,7 +1,38 @@
+use crate::computation::{Placed, Placement};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
 use std::ops::Mul;
+
+use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
+use serde::{Deserialize, Serialize};
+
+pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
+
+pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
+    RingTensor(RingTensorT),
+    ReplicatedTensor(ReplicatedTensorT),
+}
+
+impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
+where
+    RingTensorT: Placed,
+    RingTensorT::Placement: Into<Placement>,
+    ReplicatedTensorT: Placed,
+    ReplicatedTensorT::Placement: Into<Placement>,
+{
+    type Placement = Placement;
+
+    fn placement(&self) -> Self::Placement {
+        match self {
+            FixedTensor::RingTensor(x) => x.placement().into(),
+            FixedTensor::ReplicatedTensor(x) => x.placement().into(),
+        }
+    }
+}
 
 pub trait Convert<T> {
     type Scale;
