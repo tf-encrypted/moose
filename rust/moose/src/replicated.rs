@@ -879,7 +879,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x_rep = Replicated64Tensor {
+        let rhs = Replicated64Tensor {
             shares: [
                 [
                     AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
@@ -898,15 +898,22 @@ mod tests {
 
         let x_add = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice),
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
                 AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob),
             ],
         };
 
         let ctx = ConcreteContext::default();
-        let x_add_ret = rep.adt_to_rep(&ctx, &x_add);
+        let x_rep = rep.adt_to_rep(&ctx, &x_add);
 
-        assert_eq!(x_rep, x_add_ret);
-        // adt to_rep
+        println!("{:?}", x_rep);
+
+        let x_rep_open = alice.reveal(&ctx, &x_rep);
+        let x_add_open = alice.reveal(&ctx, &x_add);
+
+        println!("{:?}", x_rep_open);
+        println!("{:?}", x_add_open);
+
+        assert_eq!(x_rep_open, x_add_open);
     }
 }

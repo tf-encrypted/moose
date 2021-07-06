@@ -66,6 +66,7 @@ impl Context for ConcreteContext {
             Operator::AdtShl(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdtMul(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, self, plc)(operands),
+            Operator::AdtToRep(op) => DispatchKernel::compile(&op, self, plc)(operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, self, plc)(operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
             op => unimplemented!("{:?}", op), // TODO
