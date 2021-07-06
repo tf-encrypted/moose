@@ -593,7 +593,7 @@ impl RepMulOp {
 modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
 modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
 
-kernel! {
+hybrid_kernel! {
     RepTruncPrOp,
     [
         (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
