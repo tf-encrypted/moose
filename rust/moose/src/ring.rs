@@ -15,8 +15,8 @@ use crate::computation::{
     RingSubOp, ShapeOp,
 };
 use crate::kernels::{
-    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
-    PlacementShl, PlacementShr, PlacementSub,
+    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -36,6 +36,7 @@ impl<T> Placed for AbstractRingTensor<T> {
         self.1.clone()
     }
 }
+
 pub trait RingSize {
     const SIZE: usize;
 }
@@ -46,6 +47,21 @@ impl RingSize for Ring64Tensor {
 
 impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
+}
+
+impl<T> PlacementPlace<ConcreteContext, AbstractRingTensor<T>> for HostPlacement
+where
+    AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
+{
+    fn place(&self, _ctx: &ConcreteContext, x: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
+        if self == &x.placement() {
+            x
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            AbstractRingTensor(x.0, self.clone())
+        }
+    }
 }
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring64Tensor, RingFillOp);

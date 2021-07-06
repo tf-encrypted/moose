@@ -7,9 +7,9 @@ use crate::computation::{
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementAdtToRepSetup, PlacementDeriveSeed, PlacementKeyGen,
-    PlacementMul, PlacementMulSetup, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPrProvider,
-    PlacementTruncPrSetup, PlacementZeros,
+    PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementSampleUniform, PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub,
+    PlacementTruncPrProvider, PlacementTruncPrSetup, PlacementZeros,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -86,6 +86,32 @@ where
 
         let owners = [owner0, owner1, owner2];
         ReplicatedPlacement { owners }
+    }
+}
+
+impl<C: Context, R> PlacementPlace<C, AbstractReplicatedTensor<R>> for ReplicatedPlacement
+where
+    AbstractReplicatedTensor<R>: Placed<Placement = ReplicatedPlacement>,
+    HostPlacement: PlacementPlace<C, R>,
+{
+    fn place(&self, ctx: &C, x: AbstractReplicatedTensor<R>) -> AbstractReplicatedTensor<R> {
+        if self == &x.placement() {
+            x
+        } else {
+            let AbstractReplicatedTensor {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = x;
+
+            let (player0, player1, player2) = self.host_placements();
+
+            AbstractReplicatedTensor {
+                shares: [
+                    [player0.place(ctx, x00), player0.place(ctx, x10)],
+                    [player1.place(ctx, x11), player1.place(ctx, x21)],
+                    [player2.place(ctx, x22), player2.place(ctx, x02)],
+                ],
+            }
+        }
     }
 }
 

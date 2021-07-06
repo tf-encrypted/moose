@@ -4,9 +4,9 @@ use crate::computation::{
 };
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
-    PlacementNeg, PlacementOnes, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
-    PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr, PlacementSub,
-    PlacementTruncPrProvider,
+    PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementSampleBits, PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr,
+    PlacementSub, PlacementTruncPrProvider,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
@@ -38,6 +38,26 @@ where
 
         let owners = [owner0, owner1];
         AdditivePlacement { owners }
+    }
+}
+
+impl<C: Context, R> PlacementPlace<C, AbstractAdditiveTensor<R>> for AdditivePlacement
+where
+    AbstractAdditiveTensor<R>: Placed<Placement = AdditivePlacement>,
+    HostPlacement: PlacementPlace<C, R>,
+{
+    fn place(&self, ctx: &C, x: AbstractAdditiveTensor<R>) -> AbstractAdditiveTensor<R> {
+        if self == &x.placement() {
+            x
+        } else {
+            let AbstractAdditiveTensor { shares: [x0, x1] } = x;
+
+            let (player0, player1) = self.host_placements();
+
+            AbstractAdditiveTensor {
+                shares: [player0.place(ctx, x0), player1.place(ctx, x1)],
+            }
+        }
     }
 }
 

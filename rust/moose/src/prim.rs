@@ -1,5 +1,7 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
-use crate::kernels::{ConcreteContext, NullaryKernel, PlacementDeriveSeed, PlacementKeyGen};
+use crate::kernels::{
+    ConcreteContext, NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace,
+};
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
 
@@ -17,6 +19,18 @@ impl Placed for Seed {
     }
 }
 
+impl PlacementPlace<ConcreteContext, Seed> for HostPlacement {
+    fn place(&self, _ctx: &ConcreteContext, seed: Seed) -> Seed {
+        if self == &seed.placement() {
+            seed
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            Seed(seed.0, self.clone())
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawPrfKey(pub [u8; 16]);
 
@@ -28,6 +42,18 @@ impl Placed for PrfKey {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+impl PlacementPlace<ConcreteContext, PrfKey> for HostPlacement {
+    fn place(&self, _ctx: &ConcreteContext, key: PrfKey) -> PrfKey {
+        if self == &key.placement() {
+            key
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            PrfKey(key.0, self.clone())
+        }
     }
 }
 
@@ -49,6 +75,18 @@ impl Placed for Nonce {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+impl PlacementPlace<ConcreteContext, Nonce> for HostPlacement {
+    fn place(&self, _ctx: &ConcreteContext, nonce: Nonce) -> Nonce {
+        if self == &nonce.placement() {
+            nonce
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            Nonce(nonce.0, self.clone())
+        }
     }
 }
 
