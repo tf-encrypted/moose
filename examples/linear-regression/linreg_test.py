@@ -121,9 +121,7 @@ class LinearRegressionExample(parameterized.TestCase):
 
         return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
-    # @parameterized.parameters(["mse", "mape"])
-    @parameterized.parameters(["mse"])
-    def test_linear_regression_eval(self, metric_name):
+    def _linear_regression_eval(self, metric_name):
         linear_comp, placements = self._build_linear_regression_example(metric_name)
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
@@ -152,6 +150,14 @@ class LinearRegressionExample(parameterized.TestCase):
             "Done: \n",
             runtime.get_value_from_storage("model-owner", "regression_weights"),
         )
+
+    def test_linear_regression_mse(self):
+        self._linear_regression_eval("mse")
+
+    # TODO: fix test and handle pytest mark in makefile targets
+    # @pytest.mark.slow
+    # def test_linear_regression_mape(self):
+    #     self._linear_regression_eval("mape")
 
     @parameterized.parameters(True, False)
     def test_linear_regression_serde(self, compiled):
