@@ -434,6 +434,10 @@ impl LocalRuntime {
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        // Having argument to the function as `Py<MooseComputation>` should've worked, but it does not.
+        // So that we are being a bit defensive like this here.
+        assert!(format!("{}", computation.as_ref(py).str()?)
+            .starts_with("<builtins.MooseComputation object at "));
         let moose = unsafe { std::mem::transmute::<PyObject, Py<MooseComputation>>(computation) };
 
         let computation = moose.try_borrow(py)?;
