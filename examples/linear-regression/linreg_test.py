@@ -148,7 +148,7 @@ class LinearRegressionExample(parameterized.TestCase):
         )
         print(
             "Done: \n",
-            runtime.get_value_from_storage("model-owner", "regression_weights"),
+            runtime.read_value_from_storage("model-owner", "regression_weights"),
         )
 
     def test_linear_regression_mse(self):

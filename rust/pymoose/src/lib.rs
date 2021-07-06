@@ -523,7 +523,7 @@ impl LocalRuntime {
         Ok(())
     }
 
-    fn get_value_from_storage(
+    fn read_value_from_storage(
         &self,
         py: Python,
         identity: String,

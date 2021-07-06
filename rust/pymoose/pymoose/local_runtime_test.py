@@ -108,7 +108,7 @@ class RunComputation(parameterized.TestCase):
             comp_bin, self.role_assignment, self.storage_args
         )
         assert len(outputs) == 0
-        result = runtime.get_value_from_storage("output_owner", "output")
+        result = runtime.read_value_from_storage("output_owner", "output")
         np.testing.assert_array_equal(result, np.array([3.0]))
 
     def test_input_storage(self):
@@ -128,7 +128,7 @@ class RunComputation(parameterized.TestCase):
             comp_bin, self.role_assignment, self.actual_args
         )
         assert len(outputs) == 0
-        result = runtime.get_value_from_storage("output_owner", "output")
+        result = runtime.read_value_from_storage("output_owner", "output")
         np.testing.assert_array_equal(result, np.array([3.0]))
 
     def test_no_storage(self):
