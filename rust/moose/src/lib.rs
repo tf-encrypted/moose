@@ -122,10 +122,10 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
         impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(
+            fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value + 'c>
+            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
                 use crate::kernels::{ConcreteContext, NullaryKernel};
@@ -163,10 +163,10 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
         impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(
+            fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value + 'c>
+            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
                 use crate::kernels::{ConcreteContext, UnaryKernel};
@@ -207,10 +207,10 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
         impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(
+            fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value + 'c>
+            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature, Value};
                 use crate::kernels::{ConcreteContext, BinaryKernel};
@@ -259,10 +259,10 @@ macro_rules! concrete_dispatch_kernel {
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
         impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(
+            fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value + 'c>
+            ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, Vec<crate::computation::Value>) -> crate::computation::Value>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature, Value};
                 use crate::kernels::{ConcreteContext, TernaryKernel};
@@ -279,7 +279,6 @@ macro_rules! concrete_dispatch_kernel {
                                 ret: <$u>::TY,
                             })
                         ) => {
-                            let ctx = self.clone();
                             let plc: $plc = plc.clone().try_into().unwrap();
 
                             let k = <$op as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &plc);

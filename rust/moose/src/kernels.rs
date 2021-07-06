@@ -79,10 +79,10 @@ impl Context for ConcreteContext {
 }
 
 pub trait DispatchKernel<C: Context> {
-    fn compile<'c>(
+    fn compile(
         &self,
         plc: &Placement,
-    ) -> Box<dyn Fn(&C, Vec<C::Value>) -> C::Value + 'c>;
+    ) -> Box<dyn Fn(&C, Vec<C::Value>) -> C::Value>;
 }
 
 // TODO if rustc can't figure out how to optimize Box<dyn Fn...> for
