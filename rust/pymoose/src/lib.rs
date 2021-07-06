@@ -420,6 +420,55 @@ impl LocalRuntime {
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let computation = create_computation_graph_from_py_bytes(computation);
+        let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
+        compiled_computation.toposort().unwrap();
+
+        self.evaluate_compiled_computation(py, &compiled_computation, role_assignments, arguments)
+    }
+
+    fn evaluate_compiled(
+        &self,
+        py: Python,
+        computation: Py<MooseComputation>,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let cell: &PyCell<MooseComputation> = computation.as_ref(py);
+        let computation = cell.try_borrow()?;
+        self.evaluate_compiled_computation(py, &computation.computation, role_assignments, arguments)
+    }
+
+    fn get_value_from_storage(
+        &self,
+        py: Python,
+        identity: String,
+        key: String,
+    ) -> PyResult<PyObject> {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let val = rt.block_on(async {
+            let val = self.runtime_storage[&Identity::from(identity)]
+                .load(&key, &SessionId::from("foobar"), None, "")
+                .await
+                .unwrap();
+            val
+        });
+
+        // Return value as PyObject
+        tensorval_to_pyobj(py, val)
+    }
+}
+
+impl LocalRuntime {
+    fn evaluate_compiled_computation(
+        &self,
+        py: Python,
+        computation: &Computation,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+
         let arguments = arguments
             .iter()
             .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
@@ -442,10 +491,6 @@ impl LocalRuntime {
             .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
             .collect::<HashMap<Role, Identity>>();
 
-        let computation = create_computation_graph_from_py_bytes(computation);
-        let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
-        compiled_computation.toposort().unwrap();
-
         let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
         let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
         let rt = Runtime::new().unwrap();
@@ -460,7 +505,7 @@ impl LocalRuntime {
             };
             let (moose_session_handle, outputs) = executor
                 .run_computation(
-                    &compiled_computation,
+                    &computation,
                     &valid_role_assignments,
                     &own_identity,
                     moose_session,
@@ -499,30 +544,29 @@ impl LocalRuntime {
 
         Ok(Some(outputs))
     }
+}
 
-    fn get_value_from_storage(
-        &self,
-        py: Python,
-        identity: String,
-        key: String,
-    ) -> PyResult<PyObject> {
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
-        let val = rt.block_on(async {
-            let val = self.runtime_storage[&Identity::from(identity)]
-                .load(&key, &SessionId::from("foobar"), None, "")
-                .await
-                .unwrap();
-            val
-        });
+#[pyclass]
+pub struct MooseComputation {
+    computation: Computation,
+}
 
-        // Return value as PyObject
-        tensorval_to_pyobj(py, val)
+#[pymodule]
+fn moose_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    #[pyfn(m, "compile_computation")]
+    pub fn compile_computation(py: Python, computation: Vec<u8>) -> Py<MooseComputation> {
+        let computation = create_computation_graph_from_py_bytes(computation);
+        let computation = update_types_one_hop(&computation).unwrap().unwrap();
+        computation.toposort().unwrap();
+        Py::new(py, MooseComputation {computation}).unwrap()
     }
+
+    Ok(())
 }
 
 #[pymodule]
 fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LocalRuntime>()?;
+    m.add_class::<MooseComputation>()?;
     Ok(())
 }

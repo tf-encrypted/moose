@@ -13,6 +13,7 @@ setup(
     rust_extensions=[
         RustExtension("pymoose.moose_kernels", "./Cargo.toml"),
         RustExtension("pymoose.moose_runtime", "./Cargo.toml"),
+        RustExtension("pymoose.moose_compiler", "./Cargo.toml"),
     ],
     install_requires=install_requires,
     setup_requires=setup_requires,
