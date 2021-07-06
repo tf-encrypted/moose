@@ -160,7 +160,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 )
                 Y = edsl.cast(Y, dtype=FIXED)
 
-            with y_owner:
+            with replicated_plc:
                 Z = edsl.add(X, Y)
 
             with model_owner:
@@ -262,7 +262,11 @@ class LinearRegressionExample(parameterized.TestCase):
                 PruningPass(),
                 # NetworkingPass(),
             ],
-            rust_passes = ["networking", "typing"]
+            rust_passes = [
+                "networking",
+                "typing",
+                # "print",
+                ]
         )
         print(
             "Done: \n",

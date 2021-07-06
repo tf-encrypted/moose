@@ -452,6 +452,30 @@ impl LocalRuntime {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
 
+        let mut computation = create_computation_graph_from_py_bytes(computation.clone());
+
+        // TODO::: COMPILATION PHASE
+        fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+            match pass {
+                "networking" => NetworkingPass::pass(comp),
+                "print" => print_graph(comp),
+                "prune" => prune_graph(comp),
+                "typing" => update_types_one_hop(comp),
+                missing_pass => {
+                    Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass))
+                }
+            }
+        }
+
+        for pass in &passes {
+            if let Some(new_comp) = do_pass(&pass, &computation).unwrap() {
+                computation = new_comp;
+            }
+        }
+        computation = computation.toposort().unwrap();
+        // println!("\nDEBUG\n{}\n\n", computation.to_textual());
+        // END OF COMPILATION PHASE
+
         for (own_identity, executor) in self.executors.iter() {
             let moose_session = AsyncSession {
                 sid: SessionId::from("foobar"),
@@ -459,29 +483,6 @@ impl LocalRuntime {
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
             };
-            let mut computation = create_computation_graph_from_py_bytes(computation.clone());
-
-            // TODO::: COMPILATION PHASE
-            fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
-                match pass {
-                    "networking" => NetworkingPass::pass(comp),
-                    "print" => print_graph(comp),
-                    "prune" => prune_graph(comp),
-                    "typing" => update_types_one_hop(comp),
-                    missing_pass => {
-                        Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass))
-                    }
-                }
-            }
-
-            for pass in &passes {
-                if let Some(new_comp) = do_pass(&pass, &computation).unwrap() {
-                    computation = new_comp;
-                }
-            }
-            computation = computation.toposort().unwrap();
-            println!("\nDEBUG\n{}\n\n", computation.to_textual());
-            // END OF COMPILATION PHASE
 
             let (moose_session_handle, outputs) = executor
                 .run_computation(
