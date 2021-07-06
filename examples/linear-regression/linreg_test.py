@@ -4,26 +4,20 @@ import unittest
 
 import numpy as np
 from absl.testing import parameterized
+from pymoose import moose_compiler as rust_compiler
 
 from moose import edsl
+from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
+from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
+from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
+from moose.compiler.mpspdz import MpspdzApplyFunctionPass
+from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
+from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation import utils
 from moose.computation.standard import StringType
 from moose.logger import get_logger
 from moose.testing import LocalMooseRuntime
-
-from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
-from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
-from moose.compiler.host import NetworkingPass
-from moose.compiler.mpspdz import MpspdzApplyFunctionPass
-from moose.compiler.pruning import PruningPass
-from moose.compiler.render import render_computation
-from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
-from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
-
-from pymoose import moose_compiler as rust_compiler
-from moose.computation.utils import serialize_computation
 
 FIXED = edsl.fixed(8, 27)
 
@@ -172,7 +166,10 @@ class LinearRegressionExample(parameterized.TestCase):
         linear_comp, placements = self._build_linear_regression_example("mse")
 
         # Compile in Python
-        concrete_comp = edsl.trace_and_compile(linear_comp, ring=128, compiler_passes = [
+        concrete_comp = edsl.trace_and_compile(
+            linear_comp,
+            ring=128,
+            compiler_passes=[
                 MpspdzApplyFunctionPass(),
                 HostEncodingPass(),
                 HostLoweringPass(),
@@ -182,11 +179,11 @@ class LinearRegressionExample(parameterized.TestCase):
                 ReplicatedLoweringPass(ring=128),
                 # PruningPass(),
                 # NetworkingPass(),
-        ])
-        comp_bin = serialize_computation(concrete_comp)
+            ],
+        )
+        comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
         rust_compiled = rust_compiler.compile_computation(comp_bin)
-
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         executors_storage = {
@@ -214,6 +211,7 @@ class LinearRegressionExample(parameterized.TestCase):
             "Done: \n",
             runtime.get_value_from_storage("model-owner", "regression_weights"),
         )
+
     # TODO: fix test and handle pytest mark in makefile targets
     # @pytest.mark.slow
     # def test_linear_regression_mape(self):
