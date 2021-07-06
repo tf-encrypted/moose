@@ -6,10 +6,10 @@ use crate::computation::{
     RepSetupOp, RepShareOp, RepTruncPrOp, ReplicatedPlacement,
 };
 use crate::kernels::{
-    Context, PlacementAdd, PlacementAdtToRepSetup, PlacementDeriveSeed, PlacementKeyGen,
-    PlacementMul, PlacementMulSetup, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPrProvider,
-    PlacementTruncPrSetup, PlacementZeros,
+    Context, PlacementAdd, PlacementAdtToRep, PlacementDeriveSeed, PlacementKeyGen, PlacementMul,
+    PlacementMulSetup, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
+    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPr,
+    PlacementTruncPrProvider, PlacementZeros,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -590,23 +590,22 @@ impl RepMulOp {
     }
 }
 
-modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
-modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
 
 kernel! {
     RepTruncPrOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
+        (ReplicatedPlacement,  (Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
+        (ReplicatedPlacement,  (Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
     ]
 }
 
 impl RepTruncPrOp {
-    fn kernel<C: Context, KeyT, RingT>(
+    fn kernel<C: Context, RingT>(
         ctx: &C,
         rep: &ReplicatedPlacement,
         amount: usize,
-        setup: AbstractReplicatedSetup<KeyT>,
         xe: AbstractReplicatedTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
@@ -617,12 +616,8 @@ impl RepTruncPrOp {
         >,
         AdditivePlacement:
             PlacementRepToAdt<C, AbstractReplicatedTensor<RingT>, AbstractAdditiveTensor<RingT>>,
-        ReplicatedPlacement: PlacementAdtToRepSetup<
-            C,
-            AbstractReplicatedSetup<KeyT>,
-            AbstractAdditiveTensor<RingT>,
-            AbstractReplicatedTensor<RingT>,
-        >,
+        ReplicatedPlacement:
+            PlacementAdtToRep<C, AbstractAdditiveTensor<RingT>, AbstractReplicatedTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -633,27 +628,25 @@ impl RepTruncPrOp {
 
         let x_adt = adt.rep_to_adt(ctx, &xe);
         let y_adt = adt.trunc_pr(ctx, amount, &provider, &x_adt);
-        rep.adt_to_rep(ctx, &setup, &y_adt)
+        rep.adt_to_rep(ctx, &y_adt)
     }
 }
 
-modelled!(PlacementAdtToRepSetup::adt_to_rep, ReplicatedPlacement, (ReplicatedSetup, Additive64Tensor) -> Replicated64Tensor, AdtToRepOp);
-modelled!(PlacementAdtToRepSetup::adt_to_rep, ReplicatedPlacement, (ReplicatedSetup, Additive128Tensor) -> Replicated128Tensor, AdtToRepOp);
+modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor, AdtToRepOp);
+modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor, AdtToRepOp);
 
 hybrid_kernel! {
     AdtToRepOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, Additive64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Additive128Tensor) -> Replicated128Tensor => Self::kernel),
+        (ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor => Self::kernel),
+        (ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor => Self::kernel),
     ]
 }
 
 impl AdtToRepOp {
-    #[allow(unused_variables)] // Remove when the code below is uncommented
     fn kernel<C: Context, SeedT, ShapeT, KeyT, RingT>(
         ctx: &C,
         rep: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
         x: AbstractAdditiveTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
@@ -671,9 +664,6 @@ impl AdtToRepOp {
         HostPlacement: PlacementReveal<C, AbstractAdditiveTensor<RingT>, RingT>,
     {
         let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
-        let AbstractReplicatedSetup {
-            keys: [[k00, k10], [k11, k21], [k22, k02]],
-        } = &setup;
 
         let adt = x.placement();
         let (adt_player0, adt_player1) = adt.host_placements();
@@ -864,5 +854,59 @@ where
         AbstractReplicatedZeroShare {
             alphas: [alpha0, alpha1, alpha2],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{kernels::ConcreteContext, ring::AbstractRingTensor};
+    use ndarray::array;
+
+    #[test]
+    fn test_share_conversion() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x_rep = Replicated64Tensor {
+            shares: [
+                [
+                    AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
+                    AbstractRingTensor::from_raw_plc(array![4, 5, 6], alice.clone()),
+                ],
+                [
+                    AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob.clone()),
+                    AbstractRingTensor::from_raw_plc(array![0, 0, 0], bob.clone()),
+                ],
+                [
+                    AbstractRingTensor::from_raw_plc(array![0, 0, 0], carole.clone()),
+                    AbstractRingTensor::from_raw_plc(array![1, 2, 3], carole),
+                ],
+            ],
+        };
+
+        let x_add = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice),
+                AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob),
+            ],
+        };
+
+        let ctx = ConcreteContext::default();
+        let x_add_ret = rep.adt_to_rep(&ctx, &x_add);
+
+        assert_eq!(x_rep, x_add_ret);
+        // adt to_rep
     }
 }

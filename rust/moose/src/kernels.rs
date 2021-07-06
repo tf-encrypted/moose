@@ -258,12 +258,12 @@ pub trait PlacementRepToAdt<C: Context, T, O> {
     fn rep_to_adt(&self, ctx: &C, x: &T) -> O;
 }
 
-pub trait PlacementAdtToRepSetup<C: Context, S, T, O> {
-    fn adt_to_rep(&self, ctx: &C, s: &S, x: &T) -> O;
+pub trait PlacementAdtToRep<C: Context, T, O> {
+    fn adt_to_rep(&self, ctx: &C, x: &T) -> O;
 }
 
-pub trait PlacementTruncPrSetup<C: Context, SetupT, T, O> {
-    fn trunc_pr(&self, ctx: &C, amount: usize, setup: &SetupT, x: &T) -> O;
+pub trait PlacementTruncPr<C: Context, T, O> {
+    fn trunc_pr(&self, ctx: &C, amount: usize, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrProvider<C: Context, T, O> {
