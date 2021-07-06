@@ -156,8 +156,8 @@ class LinearRegressionExample(parameterized.TestCase):
 
     # TODO: fix test and handle pytest mark in makefile targets
     # @pytest.mark.slow
-    # def test_linear_regression_mape(self):
-    #     self._linear_regression_eval("mape")
+    def test_linear_regression_mape(self):
+        self._linear_regression_eval("mape")
 
     @parameterized.parameters(True, False)
     def test_linear_regression_serde(self, compiled):
