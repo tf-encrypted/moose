@@ -270,6 +270,10 @@ pub trait PlacementTruncPrProvider<C: Context, T, O> {
     fn trunc_pr(&self, ctx: &C, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
+pub trait PlacementPlace<C: Context, T> {
+    fn place(&self, ctx: &C, x: T) -> T;
+}
+
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())
