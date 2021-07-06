@@ -544,6 +544,11 @@ operators![
     RepToAdt,
 ];
 
+pub trait HasShortName {
+    const SHORT_NAME: &'static str;
+    fn short_name(&self) -> &str;
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct SendOp {
     pub sig: Signature,

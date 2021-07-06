@@ -1,4 +1,4 @@
-use crate::computation::{Computation, Operation, Operator, ReceiveOp};
+use crate::computation::{Computation, HasShortName, Operation, Operator, ReceiveOp};
 use crate::text_computation::ToTextual;
 use petgraph::dot::Config::{EdgeNoLabel, NodeNoLabel};
 use petgraph::dot::Dot;

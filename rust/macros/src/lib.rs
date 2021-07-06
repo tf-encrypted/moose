@@ -100,9 +100,9 @@ pub fn short_name_derive(input: TokenStream) -> TokenStream {
         ident_string.truncate(ident_string.len() - 2);
     }
     let gen = quote! {
-        impl #name {
-            pub const SHORT_NAME: &'static str = #ident_string;
-            pub fn short_name(&self) -> &str {
+        impl HasShortName for #name {
+            const SHORT_NAME: &'static str = #ident_string;
+            fn short_name(&self) -> &str {
                 #ident_string
             }
         }
