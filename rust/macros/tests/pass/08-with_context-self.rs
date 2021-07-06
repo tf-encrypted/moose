@@ -17,14 +17,18 @@ impl Player {
         assert_eq!(ctx, "c");
         2 * (x - y)
     }
+
+    pub fn expression(&self, ctx: &str) {
+        let x = 0;
+        let y = 1;
+        let z = 2;
+        let res = with_context!(self, ctx, x - y * z);
+        assert_eq!(res, 2*x - 4*y*z);
+    }
 }
 
 fn main() {
     let player = Player{};
     let ctx = "c";
-    let x = 0;
-    let y = 1;
-    let z = 2;
-    let res = with_context!(player, ctx, x - 14 * y * z);
-    assert_eq!(res, 2*x - 28*4*y*z);
+    player.expression(ctx);
 }
