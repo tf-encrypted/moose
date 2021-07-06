@@ -172,6 +172,7 @@ impl RepShareOp {
         HostPlacement: PlacementDeriveSeed<C, KeyT, SeedT>,
         HostPlacement: PlacementAdd<C, RingT, RingT, RingT>,
         HostPlacement: PlacementSub<C, RingT, RingT, RingT>,
+        ReplicatedPlacement: PlacementPlace<C, AbstractReplicatedTensor<RingT>>,
     {
         let x_player = x.placement();
 
@@ -266,7 +267,7 @@ impl RepShareOp {
             }
         };
 
-        AbstractReplicatedTensor { shares }
+        plc.place(ctx, AbstractReplicatedTensor { shares })
     }
 }
 
@@ -383,6 +384,7 @@ impl RepAddOp {
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<C, R, R, R>,
+        ReplicatedPlacement: PlacementPlace<C, AbstractReplicatedTensor<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let x_plc = x.placement();
@@ -426,7 +428,7 @@ impl RepAddOp {
             }
         };
 
-        AbstractReplicatedTensor { shares }
+        rep.place(ctx, AbstractReplicatedTensor { shares })
     }
 
     fn rep_ring_kernel<C: Context, R>(
@@ -438,6 +440,7 @@ impl RepAddOp {
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<C, R, R, R>,
+        ReplicatedPlacement: PlacementPlace<C, AbstractReplicatedTensor<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let y_plc = y.placement();
@@ -481,7 +484,7 @@ impl RepAddOp {
             }
         };
 
-        AbstractReplicatedTensor { shares }
+        rep.place(ctx, AbstractReplicatedTensor { shares })
     }
 }
 
