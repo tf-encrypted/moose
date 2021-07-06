@@ -1,12 +1,20 @@
+use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
-use crate::prim::{Nonce, PrfKey, Seed};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::kernels::Context;
+use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
+use crate::replicated::{
+    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
+};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
-    Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, Shape,
-    Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
+    Shape, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use derive_more::Display;
+use macros::ShortName;
+use paste::paste;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
@@ -21,149 +29,218 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug, Display)]
-pub enum Ty {
-    UnitTy,
-    StringTy,
-    Float32Ty,
-    Float64Ty,
-    Ring64Ty,
-    Ring128Ty,
-    Ring64TensorTy,
-    Ring128TensorTy,
-    BitTensorTy,
-    ShapeTy,
-    SeedTy,
-    PrfKeyTy,
-    NonceTy,
-    Float32TensorTy,
-    Float64TensorTy,
-    Int8TensorTy,
-    Int16TensorTy,
-    Int32TensorTy,
-    Int64TensorTy,
-    Uint8TensorTy,
-    Uint16TensorTy,
-    Uint32TensorTy,
-    Uint64TensorTy,
-    UnknownTy,
+pub trait KnownType<C: Context> {
+    type Type;
+    const TY: Ty;
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub enum Value {
-    Unit,
-    Float32(f32),
-    Float64(f64),
-    Ring64(u64),
-    Ring128(u128),
-    String(String),
-    Ring64Tensor(Ring64Tensor),
-    Ring128Tensor(Ring128Tensor),
-    BitTensor(BitTensor),
-    Shape(Shape),
-    Seed(Seed),
-    PrfKey(PrfKey),
-    Nonce(Nonce),
-    Float32Tensor(Float32Tensor),
-    Float64Tensor(Float64Tensor),
-    Int8Tensor(Int8Tensor),
-    Int16Tensor(Int16Tensor),
-    Int32Tensor(Int32Tensor),
-    Int64Tensor(Int64Tensor),
-    Uint8Tensor(Uint8Tensor),
-    Uint16Tensor(Uint16Tensor),
-    Uint32Tensor(Uint32Tensor),
-    Uint64Tensor(Uint64Tensor),
-}
+// Constants are trivial values. They are what can live on the nodes of the computation graph.
+// Constant can not be a Unit, an Unknown or a complex structure such as ReplicatedTensor.
+macro_rules! constants {
+    ($($val:ident $($t:ident)?,)+) => {
 
-impl Value {
-    pub fn ty(&self) -> Ty {
-        use Ty::*;
-        use Value::*;
-        match self {
-            Unit => UnitTy,
-            String(_) => StringTy,
-            Float32(_) => Float32Ty,
-            Float64(_) => Float64Ty,
-            Ring64(_) => Ring64Ty,
-            Ring128(_) => Ring128Ty,
-            Ring64Tensor(_) => Ring64TensorTy,
-            Ring128Tensor(_) => Ring128TensorTy,
-            BitTensor(_) => BitTensorTy,
-            Shape(_) => ShapeTy,
-            Seed(_) => SeedTy,
-            PrfKey(_) => PrfKeyTy,
-            Nonce(_) => NonceTy,
-            Float32Tensor(_) => Float32TensorTy,
-            Float64Tensor(_) => Float64TensorTy,
-            Int8Tensor(_) => Int8TensorTy,
-            Int16Tensor(_) => Int16TensorTy,
-            Int32Tensor(_) => Int32TensorTy,
-            Int64Tensor(_) => Int64TensorTy,
-            Uint8Tensor(_) => Uint8TensorTy,
-            Uint16Tensor(_) => Uint16TensorTy,
-            Uint32Tensor(_) => Uint32TensorTy,
-            Uint64Tensor(_) => Uint64TensorTy,
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+        pub enum Constant {
+            $($val($val),)+
+            // TODO promote below to match other values
+            Float32(f32),
+            Float64(f64),
+            Ring64(u64),
+            Ring128(u128),
         }
-    }
-}
 
-macro_rules! value {
-    ($raw_type:ident) => {
-        impl From<$raw_type> for Value {
-            fn from(x: $raw_type) -> Self {
-                Value::$raw_type(x)
+        impl Constant {
+            pub fn ty(&self) -> Ty {
+                match self {
+                    $(Constant::$val(_) => constants!(@ty $val $($t)?),)+
+                    // TODO promote below to match other values
+                    Constant::Float32(_) => Ty::Float32,
+                    Constant::Float64(_) => Ty::Float64,
+                    Constant::Ring64(_) => Ty::Ring64,
+                    Constant::Ring128(_) => Ty::Ring128,
+                }
+            }
+
+            pub fn place(&self, plc: &HostPlacement) -> Value {
+                match self {
+                    $(
+                        Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
+                    )+
+                    // TODO promote below to match other values
+                    Constant::Float32(x) => Value::Float32(x.clone()),
+                    Constant::Float64(x) => Value::Float64(x.clone()),
+                    Constant::Ring64(x) => Value::Ring64(x.clone()),
+                    Constant::Ring128(x) => Value::Ring128(x.clone()),
+                }
             }
         }
 
-        impl TryFrom<Value> for $raw_type {
+        $(
+        impl From<$val> for Constant {
+            fn from(x: $val) -> Self {
+                Constant::$val(x)
+            }
+        }
+        )+
+
+    };
+    (@ty $val:ident $t:ident) => {Ty::$t};
+    (@ty $val:ident) => {Ty::$val};
+
+    (@value($x:expr, $plc:expr) $val:ident $t:ident) => {Value::$t($t($x, $plc))};
+    (@value($x:expr, $plc:expr) $val:ident) => {Value::$val($x)};
+}
+
+// The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
+// The lines with 1 identifier are for linking to the "Unplaced" values, where the Constant and Value are essentially the same and can be converted easily.
+constants![
+    RawShape Shape,
+    RawSeed Seed,
+    RawPrfKey PrfKey,
+    RawNonce Nonce,
+    String,
+    BitTensor,
+    Ring64Tensor,
+    Ring128Tensor,
+    Float32Tensor,
+    Float64Tensor,
+    Int8Tensor,
+    Int16Tensor,
+    Int32Tensor,
+    Int64Tensor,
+    Uint8Tensor,
+    Uint16Tensor,
+    Uint32Tensor,
+    Uint64Tensor,
+];
+
+// Values are anything that can flow along the edges of the computation graph.
+// Some values are just placed constants, but some could be more complex.
+macro_rules! values {
+    ($($val:ident,)+) => {
+
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+        pub enum Value {
+            $($val($val),)+
+            // TODO promote below to match other values
+            Unit,
+            Float32(f32),
+            Float64(f64),
+            Ring64(u64),
+            Ring128(u128),
+        }
+
+        #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
+        pub enum Ty {
+            Unknown,
+            $($val,)+
+            // TODO promote below to match other values
+            Unit,
+            Float32,
+            Float64,
+            Ring64,
+            Ring128,
+        }
+
+        impl Value {
+            pub fn ty(&self) -> Ty {
+                match self {
+                    $(Value::$val(_) => Ty::$val,)+
+                    // TODO promote below to match other values
+                    Value::Unit => Ty::Unit,
+                    Value::Float32(_) => Ty::Float32,
+                    Value::Float64(_) => Ty::Float64,
+                    Value::Ring64(_) => Ty::Ring64,
+                    Value::Ring128(_) => Ty::Ring128,
+                }
+            }
+        }
+
+        $(
+        impl From<$val> for Value {
+            fn from(x: $val) -> Self {
+                Value::$val(x)
+            }
+        }
+        )+
+
+        $(
+        impl From<&$val> for Value {
+            fn from(x: &$val) -> Self {
+                Value::$val(x.clone())
+            }
+        }
+        )+
+
+        $(
+        impl TryFrom<Value> for $val {
             type Error = Error;
             fn try_from(v: Value) -> Result<Self> {
                 match v {
-                    Value::$raw_type(x) => Ok(x),
+                    Value::$val(x) => Ok(x),
                     _ => Err(Error::TypeMismatch {
-                        expected: stringify!($raw_type).to_string(),
+                        expected: stringify!($val).to_string(),
                         found: v.ty(),
                     }),
                 }
             }
         }
+        )+
 
-        impl<'v> TryFrom<&'v Value> for &'v $raw_type {
+        $(
+        impl<'v> TryFrom<&'v Value> for &'v $val {
             type Error = Error;
             fn try_from(v: &'v Value) -> Result<Self> {
                 match v {
-                    Value::$raw_type(x) => Ok(x),
+                    Value::$val(x) => Ok(x),
                     _ => Err(Error::TypeMismatch {
-                        expected: stringify!($raw_type).to_string(),
+                        expected: stringify!($val).to_string(),
                         found: v.ty(),
                     }),
                 }
             }
         }
+        )+
+
+        $(
+        impl KnownType<crate::kernels::ConcreteContext> for $val {
+            type Type = $val;
+            const TY: Ty = Ty::$val;
+        }
+        )+
     };
 }
 
-value!(String);
-value!(Ring64Tensor);
-value!(Ring128Tensor);
-value!(BitTensor);
-value!(Shape);
-value!(Seed);
-value!(PrfKey);
-value!(Nonce);
-value!(Float32Tensor);
-value!(Float64Tensor);
-value!(Int8Tensor);
-value!(Int16Tensor);
-value!(Int32Tensor);
-value!(Int64Tensor);
-value!(Uint8Tensor);
-value!(Uint16Tensor);
-value!(Uint32Tensor);
-value!(Uint64Tensor);
+values![
+    Shape,
+    Seed,
+    PrfKey,
+    Nonce,
+    String,
+    BitTensor,
+    Ring64Tensor,
+    Ring128Tensor,
+    Float32Tensor,
+    Float64Tensor,
+    Int8Tensor,
+    Int16Tensor,
+    Int32Tensor,
+    Int64Tensor,
+    Uint8Tensor,
+    Uint16Tensor,
+    Uint32Tensor,
+    Uint64Tensor,
+    Fixed64Tensor,
+    Fixed128Tensor,
+    Replicated64Tensor,
+    Replicated128Tensor,
+    ReplicatedBitTensor,
+    ReplicatedSetup,
+    Additive64Tensor,
+    Additive128Tensor,
+];
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub enum Signature {
     Nullary(NullarySignature),
     Unary(UnarySignature),
@@ -171,25 +248,25 @@ pub enum Signature {
     Ternary(TernarySignature),
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct NullarySignature {
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct UnarySignature {
     pub arg0: Ty,
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct BinarySignature {
     pub arg0: Ty,
     pub arg1: Ty,
     pub ret: Ty,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub struct TernarySignature {
     pub arg0: Ty,
     pub arg1: Ty,
@@ -361,410 +438,380 @@ impl Ty {
     /// Otherwise returns None
     pub fn merge(&self, another: &Ty) -> Option<Ty> {
         match self {
-            Ty::UnknownTy => Some(*another),
+            Ty::Unknown => Some(*another),
             _ => None,
         }
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub enum Operator {
-    Identity(IdentityOp),
-    Load(LoadOp),
-    Save(SaveOp),
-    Send(SendOp),
-    Receive(ReceiveOp),
-    Input(InputOp),
-    Output(OutputOp),
-    Constant(ConstantOp),
-    StdAdd(StdAddOp),
-    StdSub(StdSubOp),
-    StdMul(StdMulOp),
-    StdDiv(StdDivOp),
-    StdDot(StdDotOp),
-    StdMean(StdMeanOp),
-    StdExpandDims(StdExpandDimsOp),
-    StdReshape(StdReshapeOp),
-    StdAtLeast2D(StdAtLeast2DOp),
-    StdShape(StdShapeOp),
-    StdSlice(StdSliceOp),
-    StdSum(StdSumOp),
-    StdOnes(StdOnesOp),
-    StdConcatenate(StdConcatenateOp),
-    StdTranspose(StdTransposeOp),
-    StdInverse(StdInverseOp),
-    RingAdd(RingAddOp),
-    RingSub(RingSubOp),
-    RingMul(RingMulOp),
-    RingDot(RingDotOp),
-    RingSum(RingSumOp),
-    RingShape(RingShapeOp),
-    RingSample(RingSampleOp),
-    RingFill(RingFillOp),
-    RingShl(RingShlOp),
-    RingShr(RingShrOp),
-    RingInject(RingInjectOp),
-    BitExtract(BitExtractOp),
-    BitSample(BitSampleOp),
-    BitFill(BitFillOp),
-    BitXor(BitXorOp),
-    BitAnd(BitAndOp),
-    PrimDeriveSeed(PrimDeriveSeedOp),
-    PrimGenPrfKey(PrimGenPrfKeyOp),
-    FixedpointRingEncode(FixedpointRingEncodeOp),
-    FixedpointRingDecode(FixedpointRingDecodeOp),
-    FixedpointRingMean(FixedpointRingMeanOp),
-}
+macro_rules! operators {
+    ($($t:ident,)+) => {
 
-impl Operator {
-    pub fn sig(&self) -> &Signature {
-        match self {
-            Operator::Identity(op) => &op.sig,
-            Operator::Load(op) => &op.sig,
-            Operator::Save(op) => &op.sig,
-            Operator::Send(op) => &op.sig,
-            Operator::Receive(op) => &op.sig,
-            Operator::Input(op) => &op.sig,
-            Operator::Output(op) => &op.sig,
-            Operator::Constant(op) => &op.sig,
-            Operator::StdAdd(op) => &op.sig,
-            Operator::StdSub(op) => &op.sig,
-            Operator::StdMul(op) => &op.sig,
-            Operator::StdDiv(op) => &op.sig,
-            Operator::StdDot(op) => &op.sig,
-            Operator::StdMean(op) => &op.sig,
-            Operator::StdExpandDims(op) => &op.sig,
-            Operator::StdReshape(op) => &op.sig,
-            Operator::StdAtLeast2D(op) => &op.sig,
-            Operator::StdShape(op) => &op.sig,
-            Operator::StdSlice(op) => &op.sig,
-            Operator::StdSum(op) => &op.sig,
-            Operator::StdOnes(op) => &op.sig,
-            Operator::StdConcatenate(op) => &op.sig,
-            Operator::StdTranspose(op) => &op.sig,
-            Operator::StdInverse(op) => &op.sig,
-            Operator::RingAdd(op) => &op.sig,
-            Operator::RingSub(op) => &op.sig,
-            Operator::RingMul(op) => &op.sig,
-            Operator::RingDot(op) => &op.sig,
-            Operator::RingSum(op) => &op.sig,
-            Operator::RingShape(op) => &op.sig,
-            Operator::RingSample(op) => &op.sig,
-            Operator::RingFill(op) => &op.sig,
-            Operator::RingShl(op) => &op.sig,
-            Operator::RingShr(op) => &op.sig,
-            Operator::RingInject(op) => &op.sig,
-            Operator::BitExtract(op) => &op.sig,
-            Operator::BitSample(op) => &op.sig,
-            Operator::BitFill(op) => &op.sig,
-            Operator::BitXor(op) => &op.sig,
-            Operator::BitAnd(op) => &op.sig,
-            Operator::PrimDeriveSeed(op) => &op.sig,
-            Operator::PrimGenPrfKey(op) => &op.sig,
-            Operator::FixedpointRingEncode(op) => &op.sig,
-            Operator::FixedpointRingDecode(op) => &op.sig,
-            Operator::FixedpointRingMean(op) => &op.sig,
+        paste! {
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+            pub enum Operator {
+                $($t([<$t Op>]),)+
+            }
         }
-    }
 
-    pub fn sig_mut(&mut self) -> &mut Signature {
-        match self {
-            Operator::Identity(op) => &mut op.sig,
-            Operator::Load(op) => &mut op.sig,
-            Operator::Save(op) => &mut op.sig,
-            Operator::Send(op) => &mut op.sig,
-            Operator::Receive(op) => &mut op.sig,
-            Operator::Input(op) => &mut op.sig,
-            Operator::Output(op) => &mut op.sig,
-            Operator::Constant(op) => &mut op.sig,
-            Operator::StdAdd(op) => &mut op.sig,
-            Operator::StdSub(op) => &mut op.sig,
-            Operator::StdMul(op) => &mut op.sig,
-            Operator::StdDiv(op) => &mut op.sig,
-            Operator::StdDot(op) => &mut op.sig,
-            Operator::StdMean(op) => &mut op.sig,
-            Operator::StdExpandDims(op) => &mut op.sig,
-            Operator::StdReshape(op) => &mut op.sig,
-            Operator::StdAtLeast2D(op) => &mut op.sig,
-            Operator::StdShape(op) => &mut op.sig,
-            Operator::StdSlice(op) => &mut op.sig,
-            Operator::StdSum(op) => &mut op.sig,
-            Operator::StdOnes(op) => &mut op.sig,
-            Operator::StdConcatenate(op) => &mut op.sig,
-            Operator::StdTranspose(op) => &mut op.sig,
-            Operator::StdInverse(op) => &mut op.sig,
-            Operator::RingAdd(op) => &mut op.sig,
-            Operator::RingSub(op) => &mut op.sig,
-            Operator::RingMul(op) => &mut op.sig,
-            Operator::RingDot(op) => &mut op.sig,
-            Operator::RingSum(op) => &mut op.sig,
-            Operator::RingShape(op) => &mut op.sig,
-            Operator::RingSample(op) => &mut op.sig,
-            Operator::RingFill(op) => &mut op.sig,
-            Operator::RingShl(op) => &mut op.sig,
-            Operator::RingShr(op) => &mut op.sig,
-            Operator::RingInject(op) => &mut op.sig,
-            Operator::BitExtract(op) => &mut op.sig,
-            Operator::BitSample(op) => &mut op.sig,
-            Operator::BitFill(op) => &mut op.sig,
-            Operator::BitXor(op) => &mut op.sig,
-            Operator::BitAnd(op) => &mut op.sig,
-            Operator::PrimDeriveSeed(op) => &mut op.sig,
-            Operator::PrimGenPrfKey(op) => &mut op.sig,
-            Operator::FixedpointRingEncode(op) => &mut op.sig,
-            Operator::FixedpointRingDecode(op) => &mut op.sig,
-            Operator::FixedpointRingMean(op) => &mut op.sig,
+        $(
+        paste! {
+            impl From<[<$t Op>]> for Operator {
+                fn from(x: [<$t Op>]) -> Operator {
+                    Operator::$t(x)
+                }
+            }
+        }
+        )+
+
+        impl Operator {
+            pub fn sig(&self) -> &Signature {
+                match self {
+                    $(Operator::$t(op) => &op.sig,)+
+                }
+            }
+
+            pub fn sig_mut(&mut self) -> &mut Signature {
+                match self {
+                    $(Operator::$t(op) => &mut op.sig,)+
+                }
+            }
         }
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+operators![
+    Identity,
+    Load,
+    Save,
+    Send,
+    Receive,
+    Input,
+    Output,
+    Constant,
+    Shape,
+    BitFill,
+    RingFill,
+    AdtFill,
+    StdAdd,
+    StdSub,
+    StdMul,
+    StdDiv,
+    StdDot,
+    StdMean,
+    StdExpandDims,
+    StdReshape,
+    StdAtLeast2D,
+    StdSlice,
+    StdSum,
+    StdOnes,
+    StdConcatenate,
+    StdTranspose,
+    StdInverse,
+    RingAdd,
+    RingSub,
+    RingNeg,
+    RingMul,
+    RingDot,
+    RingSum,
+    RingSample,
+    RingShl,
+    RingShr,
+    RingInject,
+    BitExtract,
+    BitSample,
+    BitXor,
+    BitAnd,
+    PrimDeriveSeed,
+    PrimPrfKeyGen,
+    FixedAdd,
+    FixedMul,
+    FixedpointRingEncode,
+    FixedpointRingDecode,
+    FixedpointRingMean,
+    AdtReveal,
+    AdtAdd,
+    AdtSub,
+    AdtMul,
+    AdtShl,
+    AdtToRep,
+    RepSetup,
+    RepShare,
+    RepReveal,
+    RepAdd,
+    RepMul,
+    RepTruncPr,
+    RepToAdt,
+];
+
+pub trait HasShortName {
+    const SHORT_NAME: &'static str;
+    fn short_name(&self) -> &str;
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct SendOp {
     pub sig: Signature,
     pub rendezvous_key: String,
     pub receiver: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct IdentityOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct ReceiveOp {
     pub sig: Signature,
     pub rendezvous_key: String,
     pub sender: Role,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct InputOp {
     pub sig: Signature,
     pub arg_name: String,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct OutputOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct LoadOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct SaveOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct ConstantOp {
     pub sig: Signature,
-    pub value: Value,
+    pub value: Constant, // TODO Box<Constant> or Box inside Constant?
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdDivOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdDotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdOnesOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdConcatenateOp {
     pub sig: Signature,
     pub axis: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdAtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdExpandDimsOp {
     pub sig: Signature,
     pub axis: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdReshapeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct StdShapeOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdSliceOp {
     pub sig: Signature,
     pub start: u32,
     pub end: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdTransposeOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdInverseOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ShapeOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct BitFillOp {
+    pub sig: Signature,
+    pub value: Constant,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RingFillOp {
+    pub sig: Signature,
+    pub value: Constant,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AdtFillOp {
+    pub sig: Signature,
+    pub value: Constant,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
-    pub nonce: Nonce,
+    pub nonce: RawNonce,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct PrimGenPrfKeyOp {
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct PrimPrfKeyGenOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingAddOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingSubOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RingNegOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingMulOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingDotOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct RingShapeOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct RingFillOp {
-    pub sig: Signature,
-    pub value: Value,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingSampleOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingShlOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingShrOp {
     pub sig: Signature,
     pub amount: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingInjectOp {
     pub sig: Signature,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitExtractOp {
     pub sig: Signature,
     pub bit_idx: usize,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitSampleOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct BitFillOp {
-    pub sig: Signature,
-    pub value: u8,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitXorOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitAndOp {
     pub sig: Signature,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointRingEncodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointRingDecodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointRingMeanOp {
     pub sig: Signature,
     pub axis: Option<usize>,
@@ -772,11 +819,151 @@ pub struct FixedpointRingMeanOp {
     pub scaling_exp: u32,
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub enum Placement {
-    Host(HostPlacement),
-    Replicated(ReplicatedPlacement),
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AdtRevealOp {
+    pub sig: Signature,
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AdtAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AdtSubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AdtMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AdtShlOp {
+    pub sig: Signature,
+    pub amount: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AdtToRepOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSetupOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShareOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepRevealOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepTruncPrOp {
+    pub sig: Signature,
+    pub amount: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepToAdtOp {
+    pub sig: Signature,
+}
+
+pub trait KnownPlacement {
+    const TY: PlacementTy;
+
+    fn ty(&self) -> PlacementTy {
+        Self::TY
+    }
+}
+
+macro_rules! placements {
+    ($($p:ident,)+) => {
+        paste! {
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+            pub enum Placement {
+                $($p([<$p Placement>]),)+
+            }
+        }
+
+        paste! {
+            #[derive(Serialize, Deserialize, PartialEq, Eq, Clone, Debug)]
+            pub enum PlacementTy {
+                $($p,)+
+            }
+        }
+
+        impl Placement {
+            pub fn ty(&self) -> PlacementTy {
+                match self {
+                    $(Placement::$p(plc) => plc.ty(),)+
+                }
+            }
+        }
+
+        paste! {
+            $(
+            impl From<[<$p Placement>]> for Placement {
+                fn from(x: [<$p Placement>]) -> Placement {
+                    Placement::$p(x)
+                }
+            }
+            )+
+        }
+
+        paste! {
+            $(
+            impl From<&[<$p Placement>]> for Placement {
+                fn from(x: &[<$p Placement>]) -> Placement {
+                    Placement::$p(x.clone())
+                }
+            }
+            )+
+        }
+
+        paste! {
+            $(
+            impl TryFrom<Placement> for [<$p Placement>] {
+                type Error = Error;
+
+                fn try_from(x: Placement) -> Result<Self> {
+                    match x {
+                        Placement::$p(x) => Ok(x),
+                        _ => Err(Error::OperandUnavailable),
+                    }
+                }
+            }
+            )+
+        }
+
+        paste! {
+            $(
+            impl KnownPlacement for [<$p Placement>] {
+                const TY: PlacementTy = PlacementTy::$p;
+            }
+            )+
+        }
+    };
+}
+
+placements![Host, Replicated, Additive,];
 
 #[derive(Serialize, Deserialize, Display, Clone, Debug, Hash, Eq, PartialEq)]
 pub struct Role(pub String);
@@ -804,21 +991,47 @@ pub struct HostPlacement {
     pub owner: Role,
 }
 
-impl From<HostPlacement> for Placement {
-    fn from(plc: HostPlacement) -> Self {
-        Placement::Host(plc)
-    }
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Debug)]
 pub struct ReplicatedPlacement {
     pub owners: [Role; 3],
 }
 
-impl From<ReplicatedPlacement> for Placement {
-    fn from(plc: ReplicatedPlacement) -> Self {
-        Placement::Replicated(plc)
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct AdditivePlacement {
+    pub owners: [Role; 2],
+}
+
+impl ReplicatedPlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        let player2 = HostPlacement {
+            owner: self.owners[2].clone(),
+        };
+        (player0, player1, player2)
     }
+}
+
+impl AdditivePlacement {
+    pub fn host_placements(&self) -> (HostPlacement, HostPlacement) {
+        let player0 = HostPlacement {
+            owner: self.owners[0].clone(),
+        };
+        let player1 = HostPlacement {
+            owner: self.owners[1].clone(),
+        };
+        (player0, player1)
+    }
+}
+
+pub trait Placed {
+    type Placement;
+
+    fn placement(&self) -> Self::Placement;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

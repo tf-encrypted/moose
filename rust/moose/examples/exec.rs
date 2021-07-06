@@ -1,14 +1,15 @@
 use moose::computation::*;
 use moose::execution::*;
-use moose::prim::Nonce;
-use moose::standard::Shape;
+use moose::prim::RawNonce;
+use moose::standard::RawShape;
 
 fn main() {
     let key_op = Operation {
         name: "key".into(),
-        kind: Operator::PrimGenPrfKey(PrimGenPrfKeyOp {
-            sig: Signature::nullary(Ty::PrfKeyTy),
-        }),
+        kind: PrimPrfKeyGenOp {
+            sig: Signature::nullary(Ty::PrfKey),
+        }
+        .into(),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -17,10 +18,11 @@ fn main() {
 
     let x_seed_op = Operation {
         name: "x_seed".into(),
-        kind: Operator::PrimDeriveSeed(PrimDeriveSeedOp {
-            sig: Signature::unary(Ty::PrfKeyTy, Ty::SeedTy),
-            nonce: Nonce(vec![1, 2, 3]),
-        }),
+        kind: PrimDeriveSeedOp {
+            sig: Signature::unary(Ty::PrfKey, Ty::Seed),
+            nonce: RawNonce(vec![1, 2, 3]),
+        }
+        .into(),
         inputs: vec!["key".into()],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -29,10 +31,11 @@ fn main() {
 
     let x_shape_op = Operation {
         name: "x_shape".into(),
-        kind: Operator::Constant(ConstantOp {
-            sig: Signature::nullary(Ty::ShapeTy),
-            value: Value::Shape(Shape(vec![2, 3])),
-        }),
+        kind: ConstantOp {
+            sig: Signature::nullary(Ty::Shape),
+            value: Constant::RawShape(RawShape(vec![2, 3])),
+        }
+        .into(),
         inputs: vec![],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -41,10 +44,11 @@ fn main() {
 
     let x_op = Operation {
         name: "x".into(),
-        kind: Operator::RingSample(RingSampleOp {
-            sig: Signature::binary(Ty::ShapeTy, Ty::SeedTy, Ty::Ring64TensorTy),
+        kind: RingSampleOp {
+            sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::Ring64Tensor),
             max_value: None,
-        }),
+        }
+        .into(),
         inputs: vec!["x_shape".into(), "x_seed".into()],
         placement: Placement::Host(HostPlacement {
             owner: Role::from("alice"),
@@ -55,9 +59,10 @@ fn main() {
     for i in 0..10_000_000 {
         operations.push(Operation {
             name: format!("y{}", i),
-            kind: Operator::RingMul(RingMulOp {
-                sig: Signature::binary(Ty::Ring64TensorTy, Ty::Ring64TensorTy, Ty::Ring64TensorTy),
-            }),
+            kind: RingMulOp {
+                sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
+            }
+            .into(),
             inputs: vec!["x".into(), "x".into()],
             placement: Placement::Host(HostPlacement {
                 owner: Role::from("alice"),

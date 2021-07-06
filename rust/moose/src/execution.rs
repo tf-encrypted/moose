@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use crate::networking::{AsyncNetworking, LocalSyncNetworking, SyncNetworking};
 use crate::storage::{AsyncStorage, LocalSyncStorage, SyncStorage};
 
+use crate::compilation::typing::update_types_one_hop;
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -265,7 +266,7 @@ pub fn map_send_result(res: std::result::Result<(), Value>) -> std::result::Resu
     match res {
         Ok(_) => Ok(()),
         Err(val) => {
-            if val.ty() == Ty::UnitTy {
+            if val.ty() == Ty::Unit {
                 // ignoring unit value is okay
                 Ok(())
             } else {
@@ -804,6 +805,9 @@ impl Computation {
                 Placement::Replicated(plc) => own_roles
                     .iter()
                     .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
+                Placement::Additive(plc) => own_roles
+                    .iter()
+                    .any(|owner| plc.owners.iter().any(|plc_owner| *owner == plc_owner)),
             })
             .collect::<Vec<_>>();
 
@@ -892,6 +896,11 @@ impl EagerExecutor {
             role_assignment,
             own_identity,
         };
+        let computation = update_types_one_hop(computation)
+            .map_err(|e| {
+                Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
+            })?
+            .unwrap();
         let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
         compiled_comp.apply(&session)
     }
@@ -951,6 +960,7 @@ impl TestExecutor {
                     // TODO(Morten) box seems too complicated..?
                     Placement::Host(plc) => Box::new(std::iter::once(&plc.owner)),
                     Placement::Replicated(plc) => Box::new(plc.owners.iter()),
+                    Placement::Additive(plc) => Box::new(plc.owners.iter()),
                 }
             })
             .collect::<HashSet<_>>();
@@ -983,6 +993,23 @@ pub struct AsyncSession {
 
 pub type RoleAssignment = HashMap<Role, Identity>;
 
+//struct CancelJoinHandle {
+//    task: AsyncTask,
+//}
+//
+//impl Drop for CancelJoinHandle {
+//    fn drop(&mut self) {
+//        self.task.abort();
+//    }
+//}
+//
+//impl Future for CancelJoinHandle {
+//    type Output = Poll<std::result::Result<std::result::Result<(), Error>, JoinError>>;
+//    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+//        std::task::Poll::Ready(Pin::new(&mut self.task).poll(cx))
+//    }
+//}
+
 pub struct AsyncSessionHandle {
     tasks: Vec<AsyncTask>,
 }
@@ -1012,23 +1039,60 @@ impl AsyncSessionHandle {
         errors
     }
 
-    pub async fn join(&mut self) -> Vec<anyhow::Error> {
-        let mut errors = Vec::new();
-        for task in &mut self.tasks {
-            let res = task.await;
-            if let Some(e) = AsyncSessionHandle::process_task_result(res) {
-                errors.push(e);
+    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+        use crate::error::Error::{OperandUnavailable, ResultUnused};
+        use futures::StreamExt;
+
+        // TODO:
+        // iterate and wrap all tasks with MyJoinHandle
+        // impl drop and future for MyJoinHandle
+        //     in Drop: call join_handle.abort()
+
+        //let mut task_vec = Vec::new();
+        //for task in self.tasks.into_iter() {
+        //    task_vec.push(CancelJoinHandle{task: task});
+        //}
+        //let mut tasks = task_vec.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
+
+        let mut tasks = self
+            .tasks
+            .into_iter()
+            .collect::<futures::stream::FuturesUnordered<_>>();
+
+        while let Some(x) = tasks.next().await {
+            match x {
+                Ok(Ok(_)) => {
+                    continue;
+                }
+                Ok(Err(e)) => {
+                    match e {
+                        // OperandUnavailable and ResultUnused are typically not root causes.
+                        // Wait to get an error that would indicate the root cause of the problem,
+                        // and return it instead.
+                        OperandUnavailable => continue,
+                        ResultUnused => continue,
+                        _ => {
+                            for task in tasks.iter() {
+                                task.abort();
+                            }
+                            return Err(anyhow::Error::from(e));
+                        }
+                    }
+                }
+                Err(e) => {
+                    if e.is_cancelled() {
+                        continue;
+                    } else if e.is_panic() {
+                        for task in tasks.iter() {
+                            task.abort();
+                        }
+                        return Err(anyhow::Error::from(e));
+                    }
+                }
             }
         }
-        errors
+        Ok(())
     }
-
-    // TODO(Morten)
-    // async fn join(self) -> Result<()> {
-    //     use futures::StreamExt;
-    //     let tasks = self.tasks.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
-    //     let res = tasks.collect::<Vec<_>>().await;
-    // }
 
     pub fn abort(&self) {
         for task in &self.tasks {
@@ -1060,6 +1124,11 @@ impl AsyncExecutor {
             own_identity,
         };
 
+        let computation = update_types_one_hop(computation)
+            .map_err(|e| {
+                Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
+            })?
+            .unwrap();
         let compiled_comp = computation.compile_async(&ctx)?;
 
         compiled_comp.apply(session)
@@ -1069,6 +1138,8 @@ impl AsyncExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
+    use crate::standard::{RawShape, Shape};
     use ndarray::prelude::*;
     use std::convert::TryInto;
 
@@ -1087,8 +1158,8 @@ mod tests {
     fn test_eager_executor() {
         use itertools::Itertools;
         let mut definition = String::from(
-            r#"key = PrimGenPrfKey() @Host(alice)
-        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+            r#"key = PrimPrfKeyGen() @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
         );
@@ -1110,27 +1181,25 @@ mod tests {
     }
 
     #[test]
-    fn test_primitives_derive_seed() -> std::result::Result<(), anyhow::Error> {
+    fn test_constants_derive_seed() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
-        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let comp: Computation = source.try_into()?;
 
         let exec = TestExecutor::default();
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
-        use crate::prim::{Nonce, PrfKey, Seed};
-
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
-            seed,
-            Seed::from_prf(&PrfKey([0; 16]), &Nonce(vec![1, 2, 3]))
+            seed.0,
+            RawSeed::from_prf(&RawPrfKey([0; 16]), &RawNonce(vec![1, 2, 3]))
         );
         Ok(())
     }
 
     #[test]
-    fn test_primitives_sample_ring() -> std::result::Result<(), anyhow::Error> {
+    fn test_constants_sample_ring() -> std::result::Result<(), anyhow::Error> {
         let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)} @Host(alice)
         xshape = Constant{value=Shape([2, 2])} @Host(alice)
         sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
@@ -1141,10 +1210,9 @@ mod tests {
         let outputs = exec.run_computation(&comp, SyncArgs::new())?;
 
         use crate::ring::Ring64Tensor;
-        use crate::standard::Shape;
 
         let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
-        assert_eq!(x_sampled.shape(), Shape(vec![2, 2]));
+        assert_eq!(x_sampled.shape().0, RawShape(vec![2, 2]));
 
         Ok(())
     }
@@ -1160,8 +1228,8 @@ mod tests {
         use maplit::hashmap;
         let mut args: HashMap<String, Value> = hashmap!();
 
-        let x: Value = "Int64Tensor([5])".try_into()?;
-        let y: Value = "Int64Tensor([10])".try_into()?;
+        let x: Value = "Int64Tensor([5]) @Host(Alice)".try_into()?;
+        let y: Value = "Int64Tensor([10]) @Host(Alice)".try_into()?;
 
         args.insert("x".to_string(), x);
         args.insert("y".to_string(), y);
@@ -1174,7 +1242,7 @@ mod tests {
         let z: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let expected: Value = "Int64Tensor([15])".try_into()?;
+        let expected: Value = "Int64Tensor([15]) @Host(Alice)".try_into()?;
 
         assert_eq!(expected, z.into());
 
@@ -1182,8 +1250,8 @@ mod tests {
     }
     use rstest::rstest;
     #[rstest]
-    #[case("0", "Int64Tensor([[1, 2], [3, 4], [5, 6], [7, 8]])")]
-    #[case("1", "Int64Tensor([[1, 2, 5, 6], [3, 4, 7, 8]])")]
+    #[case("0", "Int64Tensor([[1, 2], [3, 4], [5, 6], [7, 8]]) @Host(alice)")]
+    #[case("1", "Int64Tensor([[1, 2, 5, 6], [3, 4, 7, 8]]) @Host(alice)")]
     fn test_standard_concatenate(
         #[case] axis: usize,
         #[case] expected_result: Value,
@@ -1205,10 +1273,10 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdAdd", "Int64Tensor([8])")]
-    #[case("StdSub", "Int64Tensor([2])")]
-    #[case("StdMul", "Int64Tensor([15])")]
-    #[case("StdDiv", "Int64Tensor([1])")]
+    #[case("StdAdd", "Int64Tensor([8]) @Host(alice)")]
+    #[case("StdSub", "Int64Tensor([2]) @Host(alice)")]
+    #[case("StdMul", "Int64Tensor([15]) @Host(alice)")]
+    #[case("StdDiv", "Int64Tensor([1]) @Host(alice)")]
     fn test_standard_op(
         #[case] test_op: String,
         #[case] expected_result: Value,
@@ -1309,12 +1377,12 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdSum", None, "Float32(10.0)", true)]
-    #[case("StdSum", Some(0), "Float32Tensor([4.0, 6.0])", false)]
-    #[case("StdSum", Some(1), "Float32Tensor([3.0, 7.0])", false)]
-    #[case("StdMean", None, "Float32(2.5)", true)]
-    #[case("StdMean", Some(0), "Float32Tensor([2.0, 3.0])", false)]
-    #[case("StdMean", Some(1), "Float32Tensor([1.5, 3.5])", false)]
+    #[case("StdSum", None, "Float32(10.0) @Host(alice)", true)]
+    #[case("StdSum", Some(0), "Float32Tensor([4.0, 6.0]) @Host(alice)", false)]
+    #[case("StdSum", Some(1), "Float32Tensor([3.0, 7.0]) @Host(alice)", false)]
+    #[case("StdMean", None, "Float32(2.5) @Host(alice)", true)]
+    #[case("StdMean", Some(0), "Float32Tensor([2.0, 3.0]) @Host(alice)", false)]
+    #[case("StdMean", Some(1), "Float32Tensor([1.5, 3.5]) @Host(alice)", false)]
     fn test_standard_reduce_op(
         #[case] reduce_op_test: String,
         #[case] axis_test: Option<usize>,
@@ -1338,7 +1406,13 @@ mod tests {
         let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
         if unwrap_flag {
-            let shaped_result = comp_result.reshape(crate::standard::Shape(vec![1]));
+            let shaped_result = comp_result.reshape(Shape(
+                RawShape(vec![1]),
+                HostPlacement {
+                    owner: "alice".into(),
+                }
+                .into(),
+            ));
             assert_eq!(expected_result, Value::Float32(shaped_result.0[0]));
         } else {
             assert_eq!(expected_result, comp_result.into());
@@ -1346,7 +1420,7 @@ mod tests {
         Ok(())
     }
     #[rstest]
-    #[case("Int64Tensor([[1, 3], [2, 4]])")]
+    #[case("Int64Tensor([[1, 3], [2, 4]]) @Host(alice)")]
     fn test_standard_transpose(
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
@@ -1365,8 +1439,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case(true, "Float64Tensor([[1.0], [1.0], [1.0]])")]
-    #[case(false, "Float64Tensor([[1.0, 1.0, 1.0]])")]
+    #[case(true, "Float64Tensor([[1.0], [1.0], [1.0]]) @Host(alice)")]
+    #[case(false, "Float64Tensor([[1.0, 1.0, 1.0]]) @Host(alice)")]
     fn test_standard_atleast_2d(
         #[case] to_column_vector: bool,
         #[case] expected_result: Value,
@@ -1391,9 +1465,9 @@ mod tests {
 
     use crate::ring::{Ring128Tensor, Ring64Tensor};
     #[rstest]
-    #[case("RingAdd", "Ring64Tensor([5])")]
-    #[case("RingMul", "Ring64Tensor([6])")]
-    #[case("RingSub", "Ring64Tensor([1])")]
+    #[case("RingAdd", "Ring64Tensor([5]) @Host(alice)")]
+    #[case("RingMul", "Ring64Tensor([6]) @Host(alice)")]
+    #[case("RingSub", "Ring64Tensor([1]) @Host(alice)")]
     fn test_ring_binop_invocation(
         #[case] test_op: String,
         #[case] expected_result: Value,
@@ -1420,19 +1494,19 @@ mod tests {
         "Ring64Tensor",
         "Ring64Tensor([[1, 2], [3, 4]])",
         "Ring64Tensor([[1, 0], [0, 1]])",
-        "Ring64Tensor([[1, 2], [3, 4]])"
+        "Ring64Tensor([[1, 2], [3, 4]]) @Host(alice)"
     )]
     #[case(
         "Ring64Tensor",
         "Ring64Tensor([[1, 2], [3, 4]])",
         "Ring64Tensor([1, 1])",
-        "Ring64Tensor([3, 7])"
+        "Ring64Tensor([3, 7]) @Host(alice)"
     )]
     #[case(
         "Ring64Tensor",
         "Ring64Tensor([1, 1])",
         "Ring64Tensor([[1, 2], [3, 4]])",
-        "Ring64Tensor([4, 6])"
+        "Ring64Tensor([4, 6]) @Host(alice)"
     )]
     fn test_ring_dot_invocation(
         #[case] type_str: String,
@@ -1471,20 +1545,24 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64", "2", "Ring64Tensor([1, 1])")]
-    #[case("Ring128", "2", "Ring128Tensor([1, 1])")]
-    #[case("Ring64", "2, 1", "Ring64Tensor([[1], [1]])")]
-    #[case("Ring64", "2, 2", "Ring64Tensor([[1, 1], [1, 1]])")]
-    #[case("Ring64", "1, 2", "Ring64Tensor([[1, 1]])")]
-    #[case("Ring128", "2, 3", "Ring128Tensor([[1, 1, 1], [1, 1, 1]])")]
-    fn test_ring_fill(
+    #[case("Ring64", "2", "Ring64Tensor([1, 1]) @Host(alice)")]
+    #[case("Ring128", "2", "Ring128Tensor([1, 1]) @Host(alice)")]
+    #[case("Ring64", "2, 1", "Ring64Tensor([[1], [1]]) @Host(alice)")]
+    #[case("Ring64", "2, 2", "Ring64Tensor([[1, 1], [1, 1]]) @Host(alice)")]
+    #[case("Ring64", "1, 2", "Ring64Tensor([[1, 1]]) @Host(alice)")]
+    #[case(
+        "Ring128",
+        "2, 3",
+        "Ring128Tensor([[1, 1, 1], [1, 1, 1]]) @Host(alice)"
+    )]
+    fn test_fill(
         #[case] type_str: String,
         #[case] shape_str: String,
         #[case] expected_result: Value,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"shape = Constant{{value=Shape([{shape}])}} @Host(alice)
-        res = RingFill {{value = {t}(1) }} : (Shape) -> {t}Tensor (shape) @Host(alice)
+        res = RingFill {{value = Ring64(1)}} : (Shape) -> {t}Tensor (shape) @Host(alice)
         output = Output : ({t}Tensor) -> {t}Tensor (res) @Host(alice)
         "#,
             t = type_str,
@@ -1513,7 +1591,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64Tensor([4, 6])")]
+    #[case("Ring64Tensor([4, 6]) @Host(alice)")]
     fn test_ring_sum(#[case] expected_result: Value) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Ring64Tensor([[1, 2], [3, 4]])} @Host(alice)
         r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
@@ -1528,8 +1606,8 @@ mod tests {
     }
 
     #[rstest]
-    #[case("Ring64Tensor", "Ring64Tensor([2, 2])")]
-    #[case("Ring128Tensor", "Ring128Tensor([2, 2])")]
+    #[case("Ring64Tensor", "Ring64Tensor([2, 2]) @Host(alice)")]
+    #[case("Ring128Tensor", "Ring128Tensor([2, 2]) @Host(alice)")]
     fn test_ring_bitwise_ops(
         #[case] type_str: String,
         #[case] expected_result: Value,
