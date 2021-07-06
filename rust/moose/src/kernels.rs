@@ -278,6 +278,10 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
+pub trait PlacementPlace<S: Session, T> {
+    fn place(&self, sess: &S, x: T) -> T;
+}
+
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())

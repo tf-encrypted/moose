@@ -105,7 +105,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     #[pyfn(m, "derive_seed")]
     fn derive_seed<'py>(py: Python<'py>, seed: &'py PyBytes, nonce: &'py PyBytes) -> &'py PyBytes {
-        let new_seed = utils::derive_seed(seed.as_bytes(), nonce.as_bytes());
+        let sid = []; // this was not needed in the Python runtime
+        let new_seed = utils::derive_seed(seed.as_bytes(), &sid, nonce.as_bytes());
         PyBytes::new(py, &new_seed)
     }
 

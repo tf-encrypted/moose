@@ -147,6 +147,7 @@ macro_rules! concrete_dispatch_kernel {
                                 assert_eq!(operands.len(), 0);
 
                                 let y: $u = k(sess, &plc);
+                                debug_assert_eq!(y.placement(), plc.clone().into());
                                 y.into()
                             })
                         }
@@ -191,6 +192,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
 
                                 let y: $u = k(sess, &plc, x0);
+                                debug_assert_eq!(y.placement(), plc.clone().into());
                                 y.into()
                             })
                         }
@@ -243,6 +245,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
 
                                 let y: $u = k(sess, &plc, x0, x1);
+                                debug_assert_eq!(y.placement(), plc.clone().into());
                                 y.into()
                             })
                         }
@@ -291,6 +294,7 @@ macro_rules! concrete_dispatch_kernel {
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
 
                                 let y: $u = k(sess, &plc, x0, x1, x2);
+                                debug_assert_eq!(y.placement(), plc.clone().into());
                                 y.into()
                             })
                         }
