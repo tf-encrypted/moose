@@ -500,6 +500,29 @@ impl LocalRuntime {
         Ok(Some(outputs))
     }
 
+    fn write_value_to_storage(
+        &self,
+        py: Python,
+        identity: String,
+        key: String,
+        value: PyObject,
+    ) -> PyResult<()> {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let identity = Identity::from(identity);
+        let identity_storage = self.runtime_storage.get(&identity).unwrap();
+        let value_to_store = pyobj_to_value(py, value)?;
+        let result = rt.block_on(async {
+            identity_storage
+                .save(&key, &SessionId::from("yo"), &value_to_store)
+                .await
+        });
+        if let Err(e) = result {
+            return Err(PyRuntimeError::new_err(e.to_string()));
+        }
+        Ok(())
+    }
+
     fn get_value_from_storage(
         &self,
         py: Python,
