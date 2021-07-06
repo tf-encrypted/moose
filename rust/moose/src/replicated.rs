@@ -879,23 +879,6 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let rhs = Replicated64Tensor {
-            shares: [
-                [
-                    AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
-                    AbstractRingTensor::from_raw_plc(array![4, 5, 6], alice.clone()),
-                ],
-                [
-                    AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob.clone()),
-                    AbstractRingTensor::from_raw_plc(array![0, 0, 0], bob.clone()),
-                ],
-                [
-                    AbstractRingTensor::from_raw_plc(array![0, 0, 0], carole.clone()),
-                    AbstractRingTensor::from_raw_plc(array![1, 2, 3], carole),
-                ],
-            ],
-        };
-
         let x_add = Additive64Tensor {
             shares: [
                 AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
@@ -915,5 +898,38 @@ mod tests {
         println!("{:?}", x_add_open);
 
         assert_eq!(x_rep_open, x_add_open);
+    }
+
+    use ndarray::prelude::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(array![1, 2, 3].into_dimensionality::<IxDyn>().unwrap(),
+        array![1, 2, 3].into_dimensionality::<IxDyn>().unwrap(),
+        array![2, 4, 6].into_dimensionality::<IxDyn>().unwrap())
+    ]
+    fn test_rep_add(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let ctx = ConcreteContext::default();
+        let setup = rep.gen_setup(&ctx);
+
+        let x1 = AbstractRingTensor::from_raw_plc(x, alice.clone());
+        let y1 = AbstractRingTensor::from_raw_plc(y, alice.clone());
+
+        let x1_shared = rep.share(&ctx, &setup, &x1);
+        let y1_shared = rep.share(&ctx, &setup, &y1);
+
+        let sum = rep.add(&ctx, &x1_shared, &y1_shared);
+        let opened_sum = alice.reveal(&ctx, &sum);
+        assert_eq!(
+            opened_sum,
+            AbstractRingTensor::from_raw_plc(z, alice.clone())
+        );
     }
 }
