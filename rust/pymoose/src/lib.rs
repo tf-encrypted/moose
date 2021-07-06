@@ -430,13 +430,19 @@ impl LocalRuntime {
     fn evaluate_compiled(
         &self,
         py: Python,
-        computation: Py<MooseComputation>,
+        computation: PyObject,
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
-        let cell: &PyCell<MooseComputation> = computation.as_ref(py);
-        let computation = cell.try_borrow()?;
-        self.evaluate_compiled_computation(py, &computation.computation, role_assignments, arguments)
+        let moose = unsafe { std::mem::transmute::<PyObject, Py<MooseComputation>>(computation) };
+
+        let computation = moose.try_borrow(py)?;
+        self.evaluate_compiled_computation(
+            py,
+            &computation.computation,
+            role_assignments,
+            arguments,
+        )
     }
 
     fn get_value_from_storage(
@@ -468,7 +474,6 @@ impl LocalRuntime {
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
-
         let arguments = arguments
             .iter()
             .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
@@ -554,11 +559,11 @@ pub struct MooseComputation {
 #[pymodule]
 fn moose_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "compile_computation")]
-    pub fn compile_computation(py: Python, computation: Vec<u8>) -> Py<MooseComputation> {
+    pub fn compile_computation(_py: Python, computation: Vec<u8>) -> MooseComputation {
         let computation = create_computation_graph_from_py_bytes(computation);
         let computation = update_types_one_hop(&computation).unwrap().unwrap();
         computation.toposort().unwrap();
-        Py::new(py, MooseComputation {computation}).unwrap()
+        MooseComputation { computation }
     }
 
     Ok(())
