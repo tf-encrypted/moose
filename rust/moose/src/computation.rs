@@ -28,6 +28,12 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
+impl SessionId {
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
 pub trait KnownType<S: Session> {
     type Type;
     const TY: Ty;

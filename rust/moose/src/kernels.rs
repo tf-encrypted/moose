@@ -25,7 +25,7 @@ pub trait Session {
 }
 
 pub trait RuntimeSession {
-    fn session_id(&self) -> SessionId;
+    fn session_id(&self) -> &SessionId;
 }
 
 pub struct NewSyncSession {
@@ -85,8 +85,8 @@ impl Session for NewSyncSession {
 }
 
 impl RuntimeSession for NewSyncSession {
-    fn session_id(&self) -> SessionId {
-        self.session_id.clone()
+    fn session_id(&self) -> &SessionId {
+        &self.session_id
     }
 }
 
