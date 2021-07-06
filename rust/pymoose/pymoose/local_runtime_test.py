@@ -151,6 +151,24 @@ class RunComputation(parameterized.TestCase):
         np.testing.assert_array_equal(result["output_1"], np.array([1.0]))
         np.testing.assert_array_equal(result["output_2"], np.array([2.0]))
 
+    def test_write_to_storage(self):
+        runtime = LocalRuntime(storage_mapping=self.empty_storage)
+        x = np.array([1.0, 2.0, 3.0])
+        runtime.write_value_to_storage("x_owner", "x", x)
+        result = runtime.read_value_from_storage("x_owner", "x")
+        np.testing.assert_array_equal(x, result)
+
+    def test_write_wrong_identity(self):
+        runtime = LocalRuntime(storage_mapping=self.empty_storage)
+        x = np.array([1.0, 2.0, 3.0])
+        self.assertRaises(
+            RuntimeError,
+            runtime.write_value_to_storage,
+            identity="missingidentity",
+            key="x",
+            value=x,
+        )
+
 
 if __name__ == "__main__":
     absltest.main()

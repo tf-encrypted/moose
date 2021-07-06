@@ -510,7 +510,15 @@ impl LocalRuntime {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
         let identity = Identity::from(identity);
-        let identity_storage = self.runtime_storage.get(&identity).unwrap();
+        let identity_storage = match self.runtime_storage.get(&identity) {
+            Some(store) => store,
+            None => {
+                return Err(PyRuntimeError::new_err(format!(
+                    "Runtime does not contain storage for identity {:?}.",
+                    identity.to_string()
+                )))
+            }
+        };
         let value_to_store = pyobj_to_value(py, value)?;
         let result = rt.block_on(async {
             identity_storage
