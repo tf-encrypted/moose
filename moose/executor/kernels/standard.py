@@ -358,4 +358,6 @@ def _decode_tensor_info(tensor_info):
         tensor = json.loads(tensor_info["tensor"])
         return tensor
     else:
-        raise ValueError(f"Can deserialize tensor of type: {type(tensor)}")
+        raise ValueError(
+            f"Can deserialize tensor of type: {tensor_info['tensor_type']}"
+        )

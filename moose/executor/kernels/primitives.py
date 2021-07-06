@@ -1,5 +1,5 @@
-from moose_kernels import derive_seed
-from moose_kernels import sample_key
+from pymoose.moose_kernels import derive_seed
+from pymoose.moose_kernels import sample_key
 
 from moose.computation.primitives import DeriveSeedOperation
 from moose.computation.primitives import SampleKeyOperation
