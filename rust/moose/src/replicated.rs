@@ -903,33 +903,61 @@ mod tests {
     use ndarray::prelude::*;
     use rstest::rstest;
 
+    macro_rules! create_test {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractRingTensor::from_raw_plc(ys, alice.clone());
+
+                let ctx = ConcreteContext::default();
+                let setup = rep.gen_setup(&ctx);
+
+                let x_shared = rep.share(&ctx, &setup, &x);
+                let y_shared = rep.share(&ctx, &setup, &y);
+
+                let sum = rep.add(&ctx, &x_shared, &y_shared);
+                let opened_sum = alice.reveal(&ctx, &sum);
+                assert_eq!(
+                    opened_sum,
+                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    create_test!(test_rep_add64, u64);
+    create_test!(test_rep_add128, u128);
+
     #[rstest]
-    #[case(array![1, 2, 3].into_dimensionality::<IxDyn>().unwrap(),
-        array![1, 2, 3].into_dimensionality::<IxDyn>().unwrap(),
-        array![2, 4, 6].into_dimensionality::<IxDyn>().unwrap())
+    #[case(array![1_u64, 2, 3].into_dyn(),
+        array![1_u64, 2, 3].into_dyn(),
+        array![2_u64, 4, 6].into_dyn())
     ]
-    fn test_rep_add(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+    #[case(array![-1_i64 as u64, -2_i64 as u64, -3_i64 as u64].into_dyn(),
+        array![1_u64, 2, 3].into_dyn(),
+        array![0_u64, 0, 0].into_dyn())
+    ]
+    fn test_rep_add_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
+        test_rep_add64(x, y, z);
+    }
 
-        let ctx = ConcreteContext::default();
-        let setup = rep.gen_setup(&ctx);
-
-        let x1 = AbstractRingTensor::from_raw_plc(x, alice.clone());
-        let y1 = AbstractRingTensor::from_raw_plc(y, alice.clone());
-
-        let x1_shared = rep.share(&ctx, &setup, &x1);
-        let y1_shared = rep.share(&ctx, &setup, &y1);
-
-        let sum = rep.add(&ctx, &x1_shared, &y1_shared);
-        let opened_sum = alice.reveal(&ctx, &sum);
-        assert_eq!(
-            opened_sum,
-            AbstractRingTensor::from_raw_plc(z, alice.clone())
-        );
+    #[rstest]
+    #[case(array![1_u128, 2, 3].into_dyn(),
+        array![1_u128, 2, 3].into_dyn(),
+        array![2_u128, 4, 6].into_dyn())
+    ]
+    #[case(array![-1_i128 as u128, -2_i128 as u128, -3_i128 as u128].into_dyn(),
+        array![1_u128, 2, 3].into_dyn(),
+        array![0_u128, 0, 0].into_dyn())
+    ]
+    fn test_rep_add_128(#[case] x: ArrayD<u128>, #[case] y: ArrayD<u128>, #[case] z: ArrayD<u128>) {
+        test_rep_add128(x, y, z);
     }
 }
