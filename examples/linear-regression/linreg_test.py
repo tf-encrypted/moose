@@ -172,7 +172,17 @@ class LinearRegressionExample(parameterized.TestCase):
         linear_comp, placements = self._build_linear_regression_example("mse")
 
         # Compile in Python
-        concrete_comp = edsl.trace_and_compile(linear_comp, ring=128)
+        concrete_comp = edsl.trace_and_compile(linear_comp, ring=128, compiler_passes = [
+                MpspdzApplyFunctionPass(),
+                HostEncodingPass(),
+                HostLoweringPass(),
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                HostRingLoweringPass(),
+                ReplicatedLoweringPass(ring=128),
+                # PruningPass(),
+                # NetworkingPass(),
+        ])
         comp_bin = serialize_computation(concrete_comp)
         # Compile in Rust
         rust_compiled = rust_compiler.compile_computation(comp_bin)

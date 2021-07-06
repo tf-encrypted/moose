@@ -24,6 +24,8 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 use std::sync::Arc;
 pub mod python_computation;
+use moose::compilation::networking::NetworkingPass;
+use moose::compilation::pruning::prune_graph;
 use moose::storage::{AsyncStorage, LocalAsyncStorage};
 use tokio::runtime::Runtime;
 
@@ -565,6 +567,8 @@ fn moose_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "compile_computation")]
     pub fn compile_computation(_py: Python, computation: Vec<u8>) -> MooseComputation {
         let computation = create_computation_graph_from_py_bytes(computation);
+        let computation = prune_graph(&computation).unwrap().unwrap();
+        let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
         let computation = update_types_one_hop(&computation).unwrap().unwrap();
         computation.toposort().unwrap();
         MooseComputation { computation }
