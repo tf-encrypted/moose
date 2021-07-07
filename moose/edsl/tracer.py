@@ -97,10 +97,11 @@ class AstTracer:
         if not isinstance(expressions, (tuple, list)):
             expressions = [expressions]
         for expression in expressions:
+            output_name = self.get_fresh_name("output")
             op = self.visit(expression)
             self.computation.add_operation(
                 OutputOperation(
-                    name=self.get_fresh_name("output"),
+                    name=output_name,
                     inputs={"value": op.name},
                     placement_name=op.placement_name,
                     output_type=op.output_type,

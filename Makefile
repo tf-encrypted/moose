@@ -20,6 +20,7 @@ fmt:
 	isort .
 	black .
 	cd rust && cargo fmt
+	cd rust/pymoose && isort . && black .
 
 lint:
 	flake8 .
@@ -28,7 +29,7 @@ lint:
 
 test:
 	pytest .
-	cd rust && cargo test
+	cd rust && cargo test --no-default-features
 
 test-long:
 	HYPOTHESIS_PROFILE='test-long' $(MAKE) test
@@ -38,7 +39,9 @@ test-ci:
 
 clean:
 	find ./moose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
+	find ./rust/pymoose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf .pytest_cache
+	rm -rf ./rust/pymoose/.pytest_cache
 	rm -Rf .hypothesis
 	cd rust && cargo clean
 
