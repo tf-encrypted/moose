@@ -103,14 +103,10 @@ class LocalMooseRuntime(LocalRuntime):
         outputs = list(dict(sorted(comp_outputs.items())).values())
         return outputs
 
-    def evaluate_compiled(
-        self, comp_bin, role_assignment, arguments=None, ring=128
-    ):
+    def evaluate_compiled(self, comp_bin, role_assignment, arguments=None, ring=128):
         if arguments is None:
             arguments = {}
-        comp_outputs = super().evaluate_compiled(
-            comp_bin, role_assignment, arguments
-        )
+        comp_outputs = super().evaluate_compiled(comp_bin, role_assignment, arguments)
         outputs = list(dict(sorted(comp_outputs.items())).values())
         return outputs
 
