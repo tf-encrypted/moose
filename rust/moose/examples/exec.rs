@@ -20,7 +20,7 @@ fn main() {
         name: "x_seed".into(),
         kind: PrimDeriveSeedOp {
             sig: Signature::unary(Ty::PrfKey, Ty::Seed),
-            nonce: RawNonce(vec![1, 2, 3]),
+            sync_key: RawNonce(vec![1, 2, 3]),
         }
         .into(),
         inputs: vec!["key".into()],

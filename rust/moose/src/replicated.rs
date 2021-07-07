@@ -7,7 +7,7 @@ use crate::computation::{
 };
 use crate::kernels::{
     PlacementAdd, PlacementAdtToRepSetup, PlacementDeriveSeed, PlacementKeyGen, PlacementMul,
-    PlacementMulSetup, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
+    PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
     PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPrProvider,
     PlacementTruncPrSetup, PlacementZeros, Session,
 };
@@ -89,6 +89,32 @@ where
     }
 }
 
+impl<S: Session, R> PlacementPlace<S, AbstractReplicatedTensor<R>> for ReplicatedPlacement
+where
+    AbstractReplicatedTensor<R>: Placed<Placement = ReplicatedPlacement>,
+    HostPlacement: PlacementPlace<S, R>,
+{
+    fn place(&self, sess: &S, x: AbstractReplicatedTensor<R>) -> AbstractReplicatedTensor<R> {
+        if self == &x.placement() {
+            x
+        } else {
+            let AbstractReplicatedTensor {
+                shares: [[x00, x10], [x11, x21], [x22, x02]],
+            } = x;
+
+            let (player0, player1, player2) = self.host_placements();
+
+            AbstractReplicatedTensor {
+                shares: [
+                    [player0.place(sess, x00), player0.place(sess, x10)],
+                    [player1.place(sess, x11), player1.place(sess, x21)],
+                    [player2.place(sess, x22), player2.place(sess, x02)],
+                ],
+            }
+        }
+    }
+}
+
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 
 hybrid_kernel! {
@@ -146,6 +172,7 @@ impl RepShareOp {
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
     {
         let x_player = x.placement();
 
@@ -240,7 +267,7 @@ impl RepShareOp {
             }
         };
 
-        AbstractReplicatedTensor { shares }
+        plc.place(sess, AbstractReplicatedTensor { shares })
     }
 }
 
@@ -357,6 +384,7 @@ impl RepAddOp {
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let x_plc = x.placement();
@@ -400,7 +428,7 @@ impl RepAddOp {
             }
         };
 
-        AbstractReplicatedTensor { shares }
+        rep.place(sess, AbstractReplicatedTensor { shares })
     }
 
     fn rep_ring_kernel<S: Session, R>(
@@ -412,6 +440,7 @@ impl RepAddOp {
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let y_plc = y.placement();
@@ -455,7 +484,7 @@ impl RepAddOp {
             }
         };
 
-        AbstractReplicatedTensor { shares }
+        rep.place(sess, AbstractReplicatedTensor { shares })
     }
 }
 
@@ -494,6 +523,7 @@ impl RepMulOp {
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         ReplicatedPlacement: ZeroShareGen<S, KeyT, RingT, ShapeT>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -524,9 +554,12 @@ impl RepMulOp {
         let z1 = with_context!(player1, sess, { v1 + a1 });
         let z2 = with_context!(player2, sess, { v2 + a2 });
 
-        AbstractReplicatedTensor {
-            shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
-        }
+        rep.place(
+            sess,
+            AbstractReplicatedTensor {
+                shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
+            },
+        )
     }
 
     fn ring_rep_kernel<S: Session, RingT, KeyT>(

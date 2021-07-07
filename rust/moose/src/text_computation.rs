@@ -240,53 +240,71 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let part1 = alt((
-        preceded(tag("Identity"), cut(std_unary!(IdentityOp))),
-        preceded(tag("Load"), cut(std_unary!(LoadOp))),
-        preceded(tag("Send"), cut(send_operator)),
-        preceded(tag("Receive"), cut(receive_operator)),
-        preceded(tag("Input"), cut(input_operator)),
-        preceded(tag("Output"), cut(std_unary!(OutputOp))),
-        preceded(tag("Constant"), cut(constant)),
-        preceded(tag("Shape"), cut(std_unary!(ShapeOp))),
-        preceded(tag("BitFill"), cut(bit_fill)),
-        preceded(tag("RingFill"), cut(ring_fill)),
-        preceded(tag("Save"), cut(save_operator)),
-        preceded(tag("StdAdd"), cut(std_binary!(StdAddOp))),
-        preceded(tag("StdSub"), cut(std_binary!(StdSubOp))),
-        preceded(tag("StdMul"), cut(std_binary!(StdMulOp))),
-        preceded(tag("StdDiv"), cut(std_binary!(StdDivOp))),
-        preceded(tag("StdDot"), cut(std_binary!(StdDotOp))),
-        preceded(tag("StdMean"), cut(operation_on_axis!(StdMeanOp))),
-        preceded(tag("StdExpandDims"), cut(stdexpanddims)),
-        preceded(tag("StdReshape"), cut(std_unary!(StdReshapeOp))),
-        preceded(tag("StdAtLeast2D"), cut(stdatleast2d)),
-        preceded(tag("StdSlice"), cut(stdslice)),
+        preceded(tag(IdentityOp::SHORT_NAME), cut(std_unary!(IdentityOp))),
+        preceded(tag(LoadOp::SHORT_NAME), cut(std_unary!(LoadOp))),
+        preceded(tag(SendOp::SHORT_NAME), cut(send_operator)),
+        preceded(tag(ReceiveOp::SHORT_NAME), cut(receive_operator)),
+        preceded(tag(InputOp::SHORT_NAME), cut(input_operator)),
+        preceded(tag(OutputOp::SHORT_NAME), cut(std_unary!(OutputOp))),
+        preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
+        preceded(tag(ShapeOp::SHORT_NAME), cut(std_unary!(ShapeOp))),
+        preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
+        preceded(tag(RingFillOp::SHORT_NAME), cut(ring_fill)),
+        preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
+        preceded(tag(StdAddOp::SHORT_NAME), cut(std_binary!(StdAddOp))),
+        preceded(tag(StdSubOp::SHORT_NAME), cut(std_binary!(StdSubOp))),
+        preceded(tag(StdMulOp::SHORT_NAME), cut(std_binary!(StdMulOp))),
+        preceded(tag(StdDivOp::SHORT_NAME), cut(std_binary!(StdDivOp))),
+        preceded(tag(StdDotOp::SHORT_NAME), cut(std_binary!(StdDotOp))),
+        preceded(
+            tag(StdMeanOp::SHORT_NAME),
+            cut(operation_on_axis!(StdMeanOp)),
+        ),
+        preceded(tag(StdExpandDimsOp::SHORT_NAME), cut(stdexpanddims)),
+        preceded(tag(StdReshapeOp::SHORT_NAME), cut(std_unary!(StdReshapeOp))),
+        preceded(tag(StdAtLeast2DOp::SHORT_NAME), cut(stdatleast2d)),
+        preceded(tag(StdSliceOp::SHORT_NAME), cut(stdslice)),
     ));
     let part2 = alt((
-        preceded(tag("StdSum"), cut(operation_on_axis!(StdSumOp))),
-        preceded(tag("StdOnes"), cut(std_unary!(StdOnesOp))),
-        preceded(tag("StdConcatenate"), cut(stdconcatenate)),
-        preceded(tag("StdTranspose"), cut(std_unary!(StdTransposeOp))),
-        preceded(tag("StdInverse"), cut(std_unary!(StdInverseOp))),
-        preceded(tag("RingAdd"), cut(std_binary!(RingAddOp))),
-        preceded(tag("RingSub"), cut(std_binary!(RingSubOp))),
-        preceded(tag("RingMul"), cut(std_binary!(RingMulOp))),
-        preceded(tag("RingDot"), cut(std_binary!(RingDotOp))),
-        preceded(tag("RingSum"), cut(operation_on_axis!(RingSumOp))),
-        preceded(tag("RingSample"), cut(ring_sample)),
-        preceded(tag("RingShl"), cut(ring_shl)),
-        preceded(tag("RingShr"), cut(ring_shr)),
-        preceded(tag("PrimDeriveSeed"), cut(prim_derive_seed)),
-        preceded(tag("PrimPrfKeyGen"), cut(prim_gen_prf_key)),
-        preceded(tag("FixedpointRingEncode"), cut(fixed_point_ring_encode)),
-        preceded(tag("FixedpointRingDecode"), cut(fixed_point_ring_decode)),
-        preceded(tag("FixedpointRingMean"), cut(fixed_point_ring_mean)),
+        preceded(tag(StdSumOp::SHORT_NAME), cut(operation_on_axis!(StdSumOp))),
+        preceded(tag(StdOnesOp::SHORT_NAME), cut(std_unary!(StdOnesOp))),
+        preceded(tag(StdConcatenateOp::SHORT_NAME), cut(stdconcatenate)),
+        preceded(
+            tag(StdTransposeOp::SHORT_NAME),
+            cut(std_unary!(StdTransposeOp)),
+        ),
+        preceded(tag(StdInverseOp::SHORT_NAME), cut(std_unary!(StdInverseOp))),
+        preceded(tag(RingAddOp::SHORT_NAME), cut(std_binary!(RingAddOp))),
+        preceded(tag(RingSubOp::SHORT_NAME), cut(std_binary!(RingSubOp))),
+        preceded(tag(RingMulOp::SHORT_NAME), cut(std_binary!(RingMulOp))),
+        preceded(tag(RingDotOp::SHORT_NAME), cut(std_binary!(RingDotOp))),
+        preceded(
+            tag(RingSumOp::SHORT_NAME),
+            cut(operation_on_axis!(RingSumOp)),
+        ),
+        preceded(tag(RingSampleOp::SHORT_NAME), cut(ring_sample)),
+        preceded(tag(RingShlOp::SHORT_NAME), cut(ring_shl)),
+        preceded(tag(RingShrOp::SHORT_NAME), cut(ring_shr)),
+        preceded(tag(PrimDeriveSeedOp::SHORT_NAME), cut(prim_derive_seed)),
+        preceded(tag(PrimPrfKeyGenOp::SHORT_NAME), cut(prim_gen_prf_key)),
+        preceded(
+            tag(FixedpointRingEncodeOp::SHORT_NAME),
+            cut(fixed_point_ring_encode),
+        ),
+        preceded(
+            tag(FixedpointRingDecodeOp::SHORT_NAME),
+            cut(fixed_point_ring_decode),
+        ),
+        preceded(
+            tag(FixedpointRingMeanOp::SHORT_NAME),
+            cut(fixed_point_ring_mean),
+        ),
     ));
     let part3 = alt((
-        preceded(tag("RingInject"), cut(ring_inject)),
-        preceded(tag("BitExtract"), cut(bit_extract)),
-        preceded(tag("BitSample"), cut(bit_sample)),
-        preceded(tag("BitXor"), cut(bit_xor)),
+        preceded(tag(RingInjectOp::SHORT_NAME), cut(ring_inject)),
+        preceded(tag(BitExtractOp::SHORT_NAME), cut(bit_extract)),
+        preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
+        preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
     ));
     alt((part1, part2, part3))(input)
 }
@@ -467,10 +485,10 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, nonce) = attributes_single("nonce", map(vector(parse_int), RawNonce))(input)?;
+    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), RawNonce))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-    Ok((input, PrimDeriveSeedOp { sig, nonce }.into()))
+    Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
 }
 
 /// Parses a FixedpointRingEncode operator.
@@ -1161,85 +1179,75 @@ macro_rules! standard_op_to_textual {
             fn to_textual(&self) -> String {
                 format!(
                     $format,
-                    $(self.$member.to_textual()),*
+                    $(self.$member.to_textual(),)*
+                    op = self.short_name(),
                 )
             }
         }
     };
 }
 
-standard_op_to_textual!(ConstantOp, "Constant{{value = {}}}", value);
-standard_op_to_textual!(IdentityOp, "Identity: {}", sig);
-standard_op_to_textual!(LoadOp, "Load: {}", sig);
-standard_op_to_textual!(SaveOp, "Save: {}", sig);
+standard_op_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
+standard_op_to_textual!(IdentityOp, "{op}: {}", sig);
+standard_op_to_textual!(LoadOp, "{op}: {}", sig);
+standard_op_to_textual!(SaveOp, "{op}: {}", sig);
 standard_op_to_textual!(
     SendOp,
-    "Send {{rendezvous_key={}, receiver={}}}",
+    "{op} {{rendezvous_key={}, receiver={}}}",
     rendezvous_key,
     receiver
 );
 standard_op_to_textual!(
     ReceiveOp,
-    "Receive {{rendezvous_key={}, sender={}}} : {}",
+    "{op} {{rendezvous_key={}, sender={}}} : {}",
     rendezvous_key,
     sender,
     sig
 );
-standard_op_to_textual!(InputOp, "Input {{arg_name={}}}: {}", arg_name, sig);
-standard_op_to_textual!(OutputOp, "Output: {}", sig);
-standard_op_to_textual!(StdAddOp, "StdAdd: {}", sig);
-standard_op_to_textual!(StdSubOp, "StdSub: {}", sig);
-standard_op_to_textual!(StdMulOp, "StdMul: {}", sig);
-standard_op_to_textual!(StdDivOp, "StdDiv: {}", sig);
-standard_op_to_textual!(StdDotOp, "StdDot: {}", sig);
-standard_op_to_textual!(StdOnesOp, "StdOnes: {}", sig);
-standard_op_to_textual!(StdConcatenateOp, "StdConcatenate{{axis={}}}: {}", axis, sig);
-standard_op_to_textual!(StdExpandDimsOp, "StdExpandDims{{axis={}}}: {}", axis, sig);
-standard_op_to_textual!(StdReshapeOp, "StdReshape: {}", sig);
-standard_op_to_textual!(BitFillOp, "BitFill{{value={}}}: {}", value, sig);
-standard_op_to_textual!(RingFillOp, "RingFill{{value={}}}: {}", value, sig);
+standard_op_to_textual!(InputOp, "{op} {{arg_name={}}}: {}", arg_name, sig);
+standard_op_to_textual!(OutputOp, "{op}: {}", sig);
+standard_op_to_textual!(StdAddOp, "{op}: {}", sig);
+standard_op_to_textual!(StdSubOp, "{op}: {}", sig);
+standard_op_to_textual!(StdMulOp, "{op}: {}", sig);
+standard_op_to_textual!(StdDivOp, "{op}: {}", sig);
+standard_op_to_textual!(StdDotOp, "{op}: {}", sig);
+standard_op_to_textual!(StdOnesOp, "{op}: {}", sig);
+standard_op_to_textual!(StdConcatenateOp, "{op}{{axis={}}}: {}", axis, sig);
+standard_op_to_textual!(StdExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
+standard_op_to_textual!(StdReshapeOp, "{op}: {}", sig);
+standard_op_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
+standard_op_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
 standard_op_to_textual!(
     StdAtLeast2DOp,
-    "StdAtLeast2D{{to_column_vector={}}}: {}",
+    "{op}{{to_column_vector={}}}: {}",
     to_column_vector,
     sig
 );
-standard_op_to_textual!(
-    StdSliceOp,
-    "StdSlice{{start={}, end={}}}: {}",
-    start,
-    end,
-    sig
-);
-standard_op_to_textual!(StdTransposeOp, "StdTranspose: {}", sig);
-standard_op_to_textual!(StdInverseOp, "StdInverse: {}", sig);
-standard_op_to_textual!(ShapeOp, "Shape: {}", sig);
-standard_op_to_textual!(RingAddOp, "RingAdd: {}", sig);
-standard_op_to_textual!(RingSubOp, "RingSub: {}", sig);
-standard_op_to_textual!(RingMulOp, "RingMul: {}", sig);
-standard_op_to_textual!(RingDotOp, "RingDot: {}", sig);
-standard_op_to_textual!(RingShlOp, "RingShl{{amount={}}}: {}", amount, sig);
-standard_op_to_textual!(RingShrOp, "RingShr{{amount={}}}: {}", amount, sig);
-standard_op_to_textual!(RingInjectOp, "RingInject{{bit_idx={}}}: {}", bit_idx, sig);
-standard_op_to_textual!(BitExtractOp, "BitExtract{{bit_idx={}}}: {}", bit_idx, sig);
-standard_op_to_textual!(BitSampleOp, "BitSample: {}", sig);
-standard_op_to_textual!(
-    PrimDeriveSeedOp,
-    "PrimDeriveSeed{{nonce={}}}: {}",
-    nonce,
-    sig
-);
-standard_op_to_textual!(PrimPrfKeyGenOp, "PrimPrfKeyGen: {}", sig);
+standard_op_to_textual!(StdSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
+standard_op_to_textual!(StdTransposeOp, "{op}: {}", sig);
+standard_op_to_textual!(StdInverseOp, "{op}: {}", sig);
+standard_op_to_textual!(ShapeOp, "{op}: {}", sig);
+standard_op_to_textual!(RingAddOp, "{op}: {}", sig);
+standard_op_to_textual!(RingSubOp, "{op}: {}", sig);
+standard_op_to_textual!(RingMulOp, "{op}: {}", sig);
+standard_op_to_textual!(RingDotOp, "{op}: {}", sig);
+standard_op_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
+standard_op_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
+standard_op_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+standard_op_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+standard_op_to_textual!(BitSampleOp, "{op}: {}", sig);
+standard_op_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
+standard_op_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
 standard_op_to_textual!(
     FixedpointRingEncodeOp,
-    "FixedpointRingEncode{{scaling_base={}, scaling_exp={}}}: {}",
+    "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
     sig
 );
 standard_op_to_textual!(
     FixedpointRingDecodeOp,
-    "FixedpointRingDecode{{scaling_base={}, scaling_exp={}}}: {}",
+    "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
     sig
@@ -1705,14 +1713,14 @@ mod tests {
     #[test]
     fn test_seed() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)",
+            "seed = PrimDeriveSeed{sync_key = [1, 2, 3]}(key)@Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
-                nonce: RawNonce(vec![1, 2, 3])
+                sync_key: RawNonce(vec![1, 2, 3])
             })
         );
         Ok(())
@@ -1955,7 +1963,7 @@ mod tests {
         let comp: Computation = "x = Constant{value = Float32Tensor([1.0])} @Host(alice)
             y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
             z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)
+            seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)} @Host(alice)
             o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"
             .try_into()?;

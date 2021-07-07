@@ -15,8 +15,8 @@ use crate::computation::{
     RingSubOp, ShapeOp,
 };
 use crate::kernels::{
-    NewSyncSession, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
-    PlacementShl, PlacementShr, PlacementSub,
+    NewSyncSession, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -36,6 +36,7 @@ impl<T> Placed for AbstractRingTensor<T> {
         self.1.clone()
     }
 }
+
 pub trait RingSize {
     const SIZE: usize;
 }
@@ -46,6 +47,21 @@ impl RingSize for Ring64Tensor {
 
 impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
+}
+
+impl<T> PlacementPlace<NewSyncSession, AbstractRingTensor<T>> for HostPlacement
+where
+    AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
+{
+    fn place(&self, _sess: &NewSyncSession, x: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
+        if self == &x.placement() {
+            x
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            AbstractRingTensor(x.0, self.clone())
+        }
+    }
 }
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring64Tensor, RingFillOp);
@@ -61,7 +77,7 @@ kernel! {
 
 impl RingFillOp {
     fn ring64_kernel(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         value: u64,
         shape: Shape,
@@ -72,7 +88,7 @@ impl RingFillOp {
     }
 
     fn ring128_kernel(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         value: u128,
         shape: Shape,
@@ -85,7 +101,7 @@ impl RingFillOp {
 
 impl ShapeOp {
     pub(crate) fn ring_kernel<T>(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
     ) -> Shape {
@@ -107,7 +123,7 @@ kernel! {
 
 impl RingAddOp {
     fn kernel<T>(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -133,7 +149,7 @@ kernel! {
 
 impl RingSubOp {
     fn kernel<T>(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -159,7 +175,7 @@ kernel! {
 
 impl RingNegOp {
     fn kernel<T>(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
     ) -> AbstractRingTensor<T>
@@ -184,7 +200,7 @@ kernel! {
 
 impl RingMulOp {
     fn kernel<T>(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -210,7 +226,7 @@ kernel! {
 
 impl RingShlOp {
     fn kernel<T>(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -236,7 +252,7 @@ kernel! {
 
 impl RingShrOp {
     fn kernel<T>(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -282,7 +298,7 @@ kernel! {
 
 impl RingSampleOp {
     fn kernel_uniform_u64(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -296,7 +312,7 @@ impl RingSampleOp {
     }
 
     fn kernel_bits_u64(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -309,7 +325,7 @@ impl RingSampleOp {
     }
 
     fn kernel_uniform_u128(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -324,7 +340,7 @@ impl RingSampleOp {
     }
 
     fn kernel_bits_u128(
-        _ctx: &NewSyncSession,
+        _sess: &NewSyncSession,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,

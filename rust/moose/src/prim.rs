@@ -1,6 +1,7 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
 use crate::kernels::{
-    NewSyncSession, NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, RuntimeSession,
+    NewSyncSession, NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace,
+    RuntimeSession,
 };
 use crate::prng::AesRng;
 use serde::{Deserialize, Serialize};
@@ -19,6 +20,18 @@ impl Placed for Seed {
     }
 }
 
+impl PlacementPlace<NewSyncSession, Seed> for HostPlacement {
+    fn place(&self, _sess: &NewSyncSession, seed: Seed) -> Seed {
+        if self == &seed.placement() {
+            seed
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            Seed(seed.0, self.clone())
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawPrfKey(pub [u8; 16]);
 
@@ -30,6 +43,18 @@ impl Placed for PrfKey {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+impl PlacementPlace<NewSyncSession, PrfKey> for HostPlacement {
+    fn place(&self, _sess: &NewSyncSession, key: PrfKey) -> PrfKey {
+        if self == &key.placement() {
+            key
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            PrfKey(key.0, self.clone())
+        }
     }
 }
 
@@ -54,6 +79,18 @@ impl Placed for Nonce {
     }
 }
 
+impl PlacementPlace<NewSyncSession, Nonce> for HostPlacement {
+    fn place(&self, _sess: &NewSyncSession, nonce: Nonce) -> Nonce {
+        if self == &nonce.placement() {
+            nonce
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            Nonce(nonce.0, self.clone())
+        }
+    }
+}
+
 modelled!(PlacementKeyGen::gen_key, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp);
 
 kernel! {
@@ -70,12 +107,12 @@ impl PrimPrfKeyGenOp {
     }
 }
 
-modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[nonce: RawNonce] (PrfKey) -> Seed, PrimDeriveSeedOp);
+modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[sync_key: RawNonce] (PrfKey) -> Seed, PrimDeriveSeedOp);
 
 kernel! {
     PrimDeriveSeedOp,
     [
-        (HostPlacement, (PrfKey) -> Seed => attributes[nonce] Self::kernel),
+        (HostPlacement, (PrfKey) -> Seed => attributes[sync_key] Self::kernel),
     ]
 }
 
@@ -83,20 +120,24 @@ impl PrimDeriveSeedOp {
     fn kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
-        nonce: RawNonce,
+        sync_key: RawNonce,
         key: PrfKey,
     ) -> Seed {
-        // TODO(SECURITY) take session id into account: seed = PRF(key, sid|nonce)
         let sid = sess.session_id();
-        let raw_seed = RawSeed(crate::utils::derive_seed(&key.0 .0, &nonce.0));
-        Seed(raw_seed, plc.clone())
+        let raw_key = key.0;
+
+        let mut nonce: Vec<u8> = vec![];
+        nonce.extend(sid.as_bytes());
+        nonce.extend(sync_key.0);
+
+        let raw_seed = crate::utils::derive_seed(&raw_key.0, &nonce);
+        Seed(RawSeed(raw_seed), plc.clone())
     }
 }
 
 // TODO deprecated
 impl RawSeed {
     pub fn from_prf(key: &RawPrfKey, nonce: &RawNonce) -> RawSeed {
-        // TODO(SECURITY) take session id into account: seed = PRF(key, sid|nonce)
         let raw_seed = crate::utils::derive_seed(&key.0, &nonce.0);
         RawSeed(raw_seed)
     }

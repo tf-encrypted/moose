@@ -10,7 +10,10 @@ setup(
     name="pymoose",
     version="0.1.2-alpha.0",  # NOTE: auto-updated during release
     description="Python-bindings for Moose",
-    rust_extensions=[RustExtension("pymoose.moose_kernels", "./Cargo.toml")],
+    rust_extensions=[
+        RustExtension("pymoose.moose_kernels", "./Cargo.toml"),
+        RustExtension("pymoose.moose_runtime", "./Cargo.toml"),
+    ],
     install_requires=install_requires,
     setup_requires=setup_requires,
     test_requires=test_requires,

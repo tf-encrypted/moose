@@ -1,9 +1,8 @@
 use crate::computation::{BitAndOp, BitFillOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
 use crate::computation::{Constant, Placed};
-use crate::kernels::NewSyncSession;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementSampleUniform, PlacementSub,
-    PlacementXor,
+    NewSyncSession, PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementSampleUniform, PlacementSub, PlacementXor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -21,6 +20,18 @@ impl Placed for BitTensor {
 
     fn placement(&self) -> Self::Placement {
         self.1.clone()
+    }
+}
+
+impl PlacementPlace<NewSyncSession, BitTensor> for HostPlacement {
+    fn place(&self, _sess: &NewSyncSession, x: BitTensor) -> BitTensor {
+        if self == &x.placement() {
+            x
+        } else {
+            // TODO just updating the placement isn't enough,
+            // we need this to eventually turn into Send + Recv
+            BitTensor(x.0, self.clone())
+        }
     }
 }
 

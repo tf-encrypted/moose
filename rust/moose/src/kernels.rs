@@ -25,7 +25,7 @@ pub trait Session {
 }
 
 pub trait RuntimeSession {
-    fn session_id(&self) -> SessionId;
+    fn session_id(&self) -> &SessionId;
 }
 
 pub struct NewSyncSession {
@@ -85,12 +85,13 @@ impl Session for NewSyncSession {
 }
 
 impl RuntimeSession for NewSyncSession {
-    fn session_id(&self) -> SessionId {
-        self.session_id.clone()
+    fn session_id(&self) -> &SessionId {
+        &self.session_id
     }
 }
 
 pub trait DispatchKernel<S: Session> {
+    #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &Placement) -> Box<dyn Fn(&S, Vec<S::Value>) -> S::Value>;
 }
 
@@ -276,6 +277,10 @@ pub trait PlacementTruncPrSetup<S: Session, SetupT, T, O> {
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
+}
+
+pub trait PlacementPlace<S: Session, T> {
+    fn place(&self, sess: &S, x: T) -> T;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
@@ -706,7 +711,7 @@ impl Compile<Kernel> for StdSumOp {
 
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let nonce = self.nonce.clone();
+        let nonce = self.sync_key.clone();
         closure_kernel!(PrfKey, |key| Seed(
             RawSeed::from_prf(&key.0, &nonce),
             HostPlacement {
