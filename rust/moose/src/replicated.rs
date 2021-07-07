@@ -900,7 +900,7 @@ mod tests {
     use ndarray::array;
 
     #[test]
-    fn test_share_conversion() {
+    fn test_adt_to_rep() {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -915,19 +915,56 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x_add = Additive64Tensor {
+        let x1 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone()),
-                AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob),
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "alice".into()}),
+                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "bob".into()} ),
             ],
         };
 
         let ctx = ConcreteContext::default();
-        let x_rep = rep.adt_to_rep(&ctx, &x_add);
 
-        let x_rep_open = alice.reveal(&ctx, &x_rep);
-        let x_add_open = alice.reveal(&ctx, &x_add);
+        let x1_rep = rep.adt_to_rep(&ctx, &x1);
+        assert_eq!(alice.reveal(&ctx, &x1_rep), alice.reveal(&ctx, &x1));
+        assert_eq!(bob.reveal(&ctx, &x1_rep), bob.reveal(&ctx, &x1));
+        assert_eq!(carole.reveal(&ctx, &x1_rep), carole.reveal(&ctx, &x1));
 
-        assert_eq!(x_rep_open, x_add_open);
+        let x2 = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "bob".into()}),
+                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "alice".into()} ),
+            ],
+        };
+
+        let x2_rep = rep.adt_to_rep(&ctx, &x2);
+        assert_eq!(alice.reveal(&ctx, &x2_rep), alice.reveal(&ctx, &x2));
+        assert_eq!(bob.reveal(&ctx, &x2_rep), bob.reveal(&ctx, &x2));
+        assert_eq!(carole.reveal(&ctx, &x2_rep), carole.reveal(&ctx, &x2));
+
+        let x3 = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "david".into()}),
+                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "eric".into()} ),
+            ],
+        };
+
+        let x3_rep = rep.adt_to_rep(&ctx, &x3);
+        assert_eq!(alice.reveal(&ctx, &x3_rep), alice.reveal(&ctx, &x3));
+        assert_eq!(bob.reveal(&ctx, &x3_rep), bob.reveal(&ctx, &x3));
+        assert_eq!(carole.reveal(&ctx, &x3_rep), carole.reveal(&ctx, &x3));
+
+
+        let x4 = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "alice".into()}),
+                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "eric".into()} ),
+            ],
+        };
+
+        let x4_rep = rep.adt_to_rep(&ctx, &x4);
+        assert_eq!(alice.reveal(&ctx, &x4_rep), alice.reveal(&ctx, &x4));
+        assert_eq!(bob.reveal(&ctx, &x4_rep), bob.reveal(&ctx, &x4));
+        assert_eq!(carole.reveal(&ctx, &x4_rep), carole.reveal(&ctx, &x4));
+
     }
 }
