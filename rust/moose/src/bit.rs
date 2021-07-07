@@ -1,9 +1,10 @@
 use crate::computation::{BitAndOp, BitFillOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
 use crate::computation::{Constant, Placed};
+use crate::error::Result;
 use crate::kernels::ConcreteContext;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementSampleUniform, PlacementSub,
-    PlacementXor,
+    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementSampleUniform, PlacementSub, PlacementXor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -19,8 +20,21 @@ pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
 impl Placed for BitTensor {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
+    }
+}
+
+impl PlacementPlace<ConcreteContext, BitTensor> for HostPlacement {
+    fn place(&self, _ctx: &ConcreteContext, x: BitTensor) -> BitTensor {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                BitTensor(x.0, self.clone())
+            }
+        }
     }
 }
 

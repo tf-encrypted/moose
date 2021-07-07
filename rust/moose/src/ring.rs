@@ -14,9 +14,10 @@ use crate::computation::{
     HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
     RingSubOp, ShapeOp,
 };
+use crate::error::Result;
 use crate::kernels::{
-    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementSample,
-    PlacementShl, PlacementShr, PlacementSub,
+    ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -32,10 +33,11 @@ pub type Ring128Tensor = AbstractRingTensor<u128>;
 impl<T> Placed for AbstractRingTensor<T> {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
     }
 }
+
 pub trait RingSize {
     const SIZE: usize;
 }
@@ -48,6 +50,22 @@ impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
 }
 
+impl<T> PlacementPlace<ConcreteContext, AbstractRingTensor<T>> for HostPlacement
+where
+    AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
+{
+    fn place(&self, _ctx: &ConcreteContext, x: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                AbstractRingTensor(x.0, self.clone())
+            }
+        }
+    }
+}
+
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring64Tensor, RingFillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring128Tensor, RingFillOp);
 
@@ -55,7 +73,7 @@ kernel! {
     RingFillOp,
     [
         (HostPlacement, (Shape) -> Ring64Tensor => attributes[value: Ring64] Self::ring64_kernel),
-        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value] Self::ring128_kernel),
+        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value: Ring128] Self::ring128_kernel),
     ]
 }
 
@@ -74,14 +92,9 @@ impl RingFillOp {
     fn ring128_kernel(
         _ctx: &ConcreteContext,
         plc: &HostPlacement,
-        value: Constant,
+        value: u128,
         shape: Shape,
     ) -> Ring128Tensor {
-        let value = match value {
-            Constant::Ring64(v) => v as u128,
-            Constant::Ring128(v) => v,
-            _ => panic!("Incorrect constant type for the RingFill"), // TODO: another way to report the error
-        };
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
         AbstractRingTensor(raw_tensor, plc.clone())

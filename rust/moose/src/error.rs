@@ -27,6 +27,9 @@ pub enum Error {
     #[error("Malformed computation")]
     MalformedComputation(String),
 
+    #[error("Malformed placement")]
+    MalformedPlacement,
+
     #[error("Compilation error: {0}")]
     Compilation(String),
 

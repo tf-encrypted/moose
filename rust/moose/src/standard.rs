@@ -3,7 +3,8 @@ extern crate ndarray_linalg;
 
 use crate::bit::BitTensor;
 use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
-use crate::kernels::PlacementShape;
+use crate::error::Result;
+use crate::kernels::{Context, PlacementPlace, PlacementShape};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -22,8 +23,21 @@ pub struct Shape(pub RawShape, pub Placement);
 impl Placed for Shape {
     type Placement = Placement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
+    }
+}
+
+impl<C: Context> PlacementPlace<C, Shape> for Placement {
+    fn place(&self, _ctx: &C, shape: Shape) -> Shape {
+        match shape.placement() {
+            Ok(place) if &place == self => shape,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                Shape(shape.0, self.clone())
+            }
+        }
     }
 }
 
@@ -33,8 +47,8 @@ pub struct StandardTensor<T>(pub ArrayD<T>, pub Placement);
 impl<T> Placed for StandardTensor<T> {
     type Placement = Placement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
     }
 }
 
