@@ -436,15 +436,7 @@ impl LocalRuntime {
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
-        // Having argument to the function as `Py<MooseComputation>` should've worked, but it does not.
-        // So that we are being a bit defensive like this here.
-        assert!(format!("{}", computation.as_ref(py).str()?)
-            .starts_with("<builtins.MooseComputation object at "));
-        let moose: Py<MooseComputation> =
-            unsafe { Py::from_borrowed_ptr(py, computation.as_ptr()) };
-        // More direct way to get the same
-        // let moose = unsafe { std::mem::transmute::<PyObject, Py<MooseComputation>>(computation) };
-
+        let moose = MooseComputation::from_py(py, computation)?;
         let computation = moose.try_borrow(py)?;
         self.evaluate_compiled_computation(
             py,
@@ -563,6 +555,20 @@ impl LocalRuntime {
 #[pyclass]
 pub struct MooseComputation {
     computation: Computation,
+}
+
+impl MooseComputation {
+    /// Convert an object after checking its type.
+    ///
+    /// The function uses an unsafe block inside exactly the way it is used in the PyO3 library.
+    /// The conversion traits already present inside library do not work due to the erroneous constraint
+    /// of PyNativeType on them.
+    pub fn from_py(py: Python, computation: PyObject) -> PyResult<Py<Self>> {
+        assert!(format!("{}", computation.as_ref(py).str()?)
+            .starts_with("<builtins.MooseComputation object at "));
+        let moose = unsafe { Py::from_borrowed_ptr(py, computation.as_ptr()) };
+        Ok(moose)
+    }
 }
 
 #[pymodule]
