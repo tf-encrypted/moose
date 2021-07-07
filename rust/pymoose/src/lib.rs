@@ -604,7 +604,7 @@ impl MooseComputation {
 }
 
 #[pymodule]
-fn moose_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "compile_computation")]
     pub fn compile_computation(
         _py: Python,

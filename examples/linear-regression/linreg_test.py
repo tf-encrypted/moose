@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 import pytest
 from absl.testing import parameterized
-from pymoose import moose_compiler as rust_compiler
+from pymoose import elk_compiler as rust_compiler
 
 from moose import edsl
 from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
@@ -185,7 +185,7 @@ class LinearRegressionExample(parameterized.TestCase):
         comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
         rust_compiled = rust_compiler.compile_computation(
-            comp_bin, ["prune", "networking", "typing", "print"]
+            comp_bin, ["prune", "networking", "typing"]
         )
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
