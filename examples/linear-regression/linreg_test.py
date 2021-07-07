@@ -3,6 +3,7 @@ import logging
 import unittest
 
 import numpy as np
+import pytest
 from absl.testing import parameterized
 from pymoose import moose_compiler as rust_compiler
 
@@ -214,10 +215,9 @@ class LinearRegressionExample(parameterized.TestCase):
             runtime.read_value_from_storage("model-owner", "regression_weights"),
         )
 
-    # TODO: fix test and handle pytest mark in makefile targets
-    # @pytest.mark.slow
-    # def test_linear_regression_mape(self):
-    #     self._linear_regression_eval("mape")
+    @pytest.mark.slow
+    def test_linear_regression_mape(self):
+        self._linear_regression_eval("mape")
 
     @parameterized.parameters(True, False)
     def test_linear_regression_serde(self, compiled):
