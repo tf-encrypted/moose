@@ -91,6 +91,7 @@ impl RuntimeSession for NewSyncSession {
 }
 
 pub trait DispatchKernel<S: Session> {
+    #[allow(clippy::type_complexity)] // TODO
     fn compile(&self, plc: &Placement) -> Box<dyn Fn(&S, Vec<S::Value>) -> S::Value>;
 }
 

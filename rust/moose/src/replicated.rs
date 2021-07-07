@@ -554,9 +554,12 @@ impl RepMulOp {
         let z1 = with_context!(player1, sess, { v1 + a1 });
         let z2 = with_context!(player2, sess, { v2 + a2 });
 
-        rep.place(sess, AbstractReplicatedTensor {
-            shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
-        })
+        rep.place(
+            sess,
+            AbstractReplicatedTensor {
+                shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
+            },
+        )
     }
 
     fn ring_rep_kernel<S: Session, RingT, KeyT>(
