@@ -1031,7 +1031,7 @@ impl AdditivePlacement {
 pub trait Placed {
     type Placement;
 
-    fn placement(&self) -> Self::Placement;
+    fn placement(&self) -> std::result::Result<Self::Placement, Error>;
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
