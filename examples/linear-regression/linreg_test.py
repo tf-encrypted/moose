@@ -1,6 +1,7 @@
 import argparse
 import logging
 import unittest
+import pytest
 
 import numpy as np
 from absl.testing import parameterized
@@ -154,8 +155,7 @@ class LinearRegressionExample(parameterized.TestCase):
     def test_linear_regression_mse(self):
         self._linear_regression_eval("mse")
 
-    # TODO: fix test and handle pytest mark in makefile targets
-    # @pytest.mark.slow
+    @pytest.mark.slow
     def test_linear_regression_mape(self):
         self._linear_regression_eval("mape")
 
