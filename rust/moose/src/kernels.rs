@@ -1285,8 +1285,19 @@ impl Compile<AsyncKernel> for LoadOp {
 
 #[cfg(test)]
 mod tests {
-    use crate::execution::*;
-    use std::convert::TryInto;
+    use ndarray::{array, IxDyn};
+
+    use crate::{computation::Value, execution::*, standard::Float64Tensor};
+    use std::{collections::HashMap, convert::TryInto};
+
+    fn _run_test_computation(
+        text_computation: &str,
+        args: HashMap<String, Value>,
+    ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&text_computation.try_into()?, args)?;
+        Ok(outputs)
+    }
 
     #[test]
     fn test_standard_shape_ops() -> std::result::Result<(), anyhow::Error> {
@@ -1297,6 +1308,19 @@ mod tests {
 
         let exec = TestExecutor::default();
         let _outputs = exec.run_computation(&source.try_into()?, SyncArgs::new())?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_constant() -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value = Float64Tensor([1.0, 2.0])} @Host(alice)
+            res = Output: (Float32Tensor) -> Float64Tensor (x) @Host(alice)"#;
+
+        let outputs = _run_test_computation(source, SyncArgs::new())?;
+        let res_exp = Value::Float64Tensor(Float64Tensor::from(
+            array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap(),
+        ));
+        assert_eq!(outputs["res"], res_exp);
         Ok(())
     }
 }
