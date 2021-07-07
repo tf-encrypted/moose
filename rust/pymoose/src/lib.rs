@@ -1,4 +1,5 @@
 use moose::bit::BitTensor;
+use moose::compilation::print::print_graph;
 use moose::compilation::typing::update_types_one_hop;
 use moose::computation::{Computation, Role, SessionId, Value};
 use moose::execution::{
@@ -574,13 +575,32 @@ impl MooseComputation {
 #[pymodule]
 fn moose_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "compile_computation")]
-    pub fn compile_computation(_py: Python, computation: Vec<u8>) -> MooseComputation {
-        let computation = create_computation_graph_from_py_bytes(computation);
-        let computation = prune_graph(&computation).unwrap().unwrap();
-        let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
-        let computation = update_types_one_hop(&computation).unwrap().unwrap();
-        computation.toposort().unwrap();
-        MooseComputation { computation }
+    pub fn compile_computation(
+        _py: Python,
+        computation: Vec<u8>,
+        passes: Vec<String>,
+    ) -> PyResult<MooseComputation> {
+        fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+            match pass {
+                "networking" => NetworkingPass::pass(comp),
+                "print" => print_graph(comp),
+                "prune" => prune_graph(comp),
+                "typing" => update_types_one_hop(comp),
+                missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
+            }
+        }
+        let mut computation = create_computation_graph_from_py_bytes(computation);
+        for pass in &passes {
+            if let Some(new_comp) =
+                do_pass(&pass, &computation).map_err(|e| PyRuntimeError::new_err(e.to_string()))?
+            {
+                computation = new_comp;
+            }
+        }
+        computation
+            .toposort()
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        Ok(MooseComputation { computation })
     }
 
     Ok(())

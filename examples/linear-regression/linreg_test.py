@@ -183,7 +183,9 @@ class LinearRegressionExample(parameterized.TestCase):
         )
         comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
-        rust_compiled = rust_compiler.compile_computation(comp_bin)
+        rust_compiled = rust_compiler.compile_computation(
+            comp_bin, ["prune", "networking", "typing", "print"]
+        )
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
         executors_storage = {
