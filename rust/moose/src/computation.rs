@@ -703,7 +703,7 @@ pub struct AdtFillOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
-    pub nonce: RawNonce,
+    pub sync_key: RawNonce,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]

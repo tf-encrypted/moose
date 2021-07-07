@@ -467,10 +467,10 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, nonce) = attributes_single("nonce", map(vector(parse_int), RawNonce))(input)?;
+    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), RawNonce))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-    Ok((input, PrimDeriveSeedOp { sig, nonce }.into()))
+    Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
 }
 
 /// Parses a FixedpointRingEncode operator.
@@ -1225,8 +1225,8 @@ standard_op_to_textual!(BitExtractOp, "BitExtract{{bit_idx={}}}: {}", bit_idx, s
 standard_op_to_textual!(BitSampleOp, "BitSample: {}", sig);
 standard_op_to_textual!(
     PrimDeriveSeedOp,
-    "PrimDeriveSeed{{nonce={}}}: {}",
-    nonce,
+    "PrimDeriveSeed{{sync_key={}}}: {}",
+    sync_key,
     sig
 );
 standard_op_to_textual!(PrimPrfKeyGenOp, "PrimPrfKeyGen: {}", sig);
@@ -1705,14 +1705,14 @@ mod tests {
     #[test]
     fn test_seed() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)",
+            "seed = PrimDeriveSeed{sync_key = [1, 2, 3]}(key)@Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
-                nonce: RawNonce(vec![1, 2, 3])
+                sync_key: RawNonce(vec![1, 2, 3])
             })
         );
         Ok(())
@@ -1955,7 +1955,7 @@ mod tests {
         let comp: Computation = "x = Constant{value = Float32Tensor([1.0])} @Host(alice)
             y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
             z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)
+            seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)} @Host(alice)
             o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"
             .try_into()?;

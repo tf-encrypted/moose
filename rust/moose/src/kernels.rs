@@ -710,7 +710,7 @@ impl Compile<Kernel> for StdSumOp {
 
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let nonce = self.nonce.clone();
+        let nonce = self.sync_key.clone();
         closure_kernel!(PrfKey, |key| Seed(
             RawSeed::from_prf(&key.0, &nonce),
             HostPlacement {

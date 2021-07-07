@@ -470,8 +470,8 @@ where
     ) {
         let key = self.gen_key(sess);
 
-        let nonce = RawNonce::generate();
-        let seed = self.derive_seed(sess, nonce, &key);
+        let sync_key = RawNonce::generate();
+        let seed = self.derive_seed(sess, sync_key, &key);
 
         let r = self.sample_uniform(sess, &seed, shape);
         let r_msb = self.shr(sess, R::SIZE - 1, &r);
@@ -479,8 +479,8 @@ where
 
         let share = |x| {
             // TODO(Dragos) this could probably be optimized by sending the key to p0
-            let nonce = RawNonce::generate();
-            let seed = self.derive_seed(sess, nonce, &key);
+            let share_sync_key = RawNonce::generate();
+            let seed = self.derive_seed(sess, share_sync_key, &key);
             let x0 = self.sample_uniform(sess, &seed, shape);
             let x1 = self.sub(sess, x, &x0);
             AbstractAdditiveTensor { shares: [x0, x1] }
