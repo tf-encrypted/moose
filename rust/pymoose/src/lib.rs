@@ -18,7 +18,7 @@ use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyFloat, PyString};
-use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList};
+use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
@@ -440,7 +440,10 @@ impl LocalRuntime {
         // So that we are being a bit defensive like this here.
         assert!(format!("{}", computation.as_ref(py).str()?)
             .starts_with("<builtins.MooseComputation object at "));
-        let moose = unsafe { std::mem::transmute::<PyObject, Py<MooseComputation>>(computation) };
+        let moose: Py<MooseComputation> =
+            unsafe { Py::from_borrowed_ptr(py, computation.as_ptr()) };
+        // More direct way to get the same
+        // let moose = unsafe { std::mem::transmute::<PyObject, Py<MooseComputation>>(computation) };
 
         let computation = moose.try_borrow(py)?;
         self.evaluate_compiled_computation(
