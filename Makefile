@@ -28,11 +28,12 @@ lint:
 	cd rust && cargo clippy --all-targets -- -D warnings
 
 test:
-	pytest .
+	pytest -m "not slow"
 	cd rust && cargo test --no-default-features
 
 test-long:
 	HYPOTHESIS_PROFILE='test-long' $(MAKE) test
+	pytest -m "slow"
 
 test-ci:
 	HYPOTHESIS_PROFILE='ci' $(MAKE) test
