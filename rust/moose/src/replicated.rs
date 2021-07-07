@@ -523,6 +523,7 @@ impl RepMulOp {
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         ReplicatedPlacement: ZeroShareGen<S, KeyT, RingT, ShapeT>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -553,9 +554,9 @@ impl RepMulOp {
         let z1 = with_context!(player1, sess, { v1 + a1 });
         let z2 = with_context!(player2, sess, { v2 + a2 });
 
-        AbstractReplicatedTensor {
+        rep.place(sess, AbstractReplicatedTensor {
             shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
-        }
+        })
     }
 
     fn ring_rep_kernel<S: Session, RingT, KeyT>(
