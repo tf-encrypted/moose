@@ -88,6 +88,28 @@ fn unsugar(player: Expr, context: Ident, expr: &'_ mut Expr) {
     visitor.visit_expr_mut(expr)
 }
 
+/// Derive macro to produce simple names of the enum structs
+#[proc_macro_derive(ShortName)]
+pub fn short_name_derive(input: TokenStream) -> TokenStream {
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
+    let name = &ast.ident;
+    // Note, we only need to truncate the name by the charaters to get rid of the `Op` suffix.
+    // If we refactor to not have that suffix anymore we can just use `stringify!(#name)` inside `quote!` below.
+    let mut ident_string = name.to_string();
+    if ident_string.ends_with("Op") {
+        ident_string.truncate(ident_string.len() - 2);
+    }
+    let gen = quote! {
+        impl HasShortName for #name {
+            const SHORT_NAME: &'static str = #ident_string;
+            fn short_name(&self) -> &str {
+                #ident_string
+            }
+        }
+    };
+    gen.into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
