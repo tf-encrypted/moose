@@ -1,9 +1,9 @@
 import argparse
 import logging
 import unittest
-import pytest
 
 import numpy as np
+import pytest
 from absl.testing import parameterized
 
 from moose import edsl
