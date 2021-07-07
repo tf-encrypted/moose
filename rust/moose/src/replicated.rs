@@ -917,8 +917,18 @@ mod tests {
 
         let x1 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "alice".into()}),
-                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "bob".into()} ),
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "bob".into(),
+                    },
+                ),
             ],
         };
 
@@ -931,8 +941,18 @@ mod tests {
 
         let x2 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "bob".into()}),
-                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "alice".into()} ),
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "bob".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ),
             ],
         };
 
@@ -943,8 +963,18 @@ mod tests {
 
         let x3 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "david".into()}),
-                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "eric".into()} ),
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "david".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "eric".into(),
+                    },
+                ),
             ],
         };
 
@@ -953,11 +983,20 @@ mod tests {
         assert_eq!(bob.reveal(&ctx, &x3_rep), bob.reveal(&ctx, &x3));
         assert_eq!(carole.reveal(&ctx, &x3_rep), carole.reveal(&ctx, &x3));
 
-
         let x4 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![1, 2, 3], HostPlacement {owner: "alice".into()}),
-                AbstractRingTensor::from_raw_plc(array![4, 5, 6], HostPlacement {owner: "eric".into()} ),
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "eric".into(),
+                    },
+                ),
             ],
         };
 
@@ -965,6 +1004,5 @@ mod tests {
         assert_eq!(alice.reveal(&ctx, &x4_rep), alice.reveal(&ctx, &x4));
         assert_eq!(bob.reveal(&ctx, &x4_rep), bob.reveal(&ctx, &x4));
         assert_eq!(carole.reveal(&ctx, &x4_rep), carole.reveal(&ctx, &x4));
-
     }
 }
