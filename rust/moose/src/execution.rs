@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use crate::networking::{AsyncNetworking, LocalSyncNetworking, SyncNetworking};
 use crate::storage::{AsyncStorage, LocalSyncStorage, SyncStorage};
 
+use crate::compilation::typing::update_types_one_hop;
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
@@ -895,6 +896,11 @@ impl EagerExecutor {
             role_assignment,
             own_identity,
         };
+        let computation = update_types_one_hop(computation)
+            .map_err(|e| {
+                Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
+            })?
+            .unwrap();
         let compiled_comp: CompiledSyncComputation = computation.compile_sync(&ctx)?;
         compiled_comp.apply(&session)
     }
@@ -1118,6 +1124,11 @@ impl AsyncExecutor {
             own_identity,
         };
 
+        let computation = update_types_one_hop(computation)
+            .map_err(|e| {
+                Error::MalformedComputation(format!("Failed to perform typing pass: {}", e))
+            })?
+            .unwrap();
         let compiled_comp = computation.compile_async(&ctx)?;
 
         compiled_comp.apply(session)
@@ -1148,7 +1159,7 @@ mod tests {
         use itertools::Itertools;
         let mut definition = String::from(
             r#"key = PrimPrfKeyGen() @Host(alice)
-        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
         );
@@ -1172,7 +1183,7 @@ mod tests {
     #[test]
     fn test_constants_derive_seed() -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
-        seed = PrimDeriveSeed {nonce = [1, 2, 3]} (key) @Host(alice)
+        seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let comp: Computation = source.try_into()?;
 

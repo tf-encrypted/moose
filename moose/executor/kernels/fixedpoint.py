@@ -1,7 +1,7 @@
 import numpy as np
-from moose_kernels import fixedpoint_decode
-from moose_kernels import fixedpoint_encode
-from moose_kernels import fixedpoint_ring_mean
+from pymoose.moose_kernels import fixedpoint_decode
+from pymoose.moose_kernels import fixedpoint_encode
+from pymoose.moose_kernels import fixedpoint_ring_mean
 
 from moose.computation.fixedpoint import RingDecodeOperation
 from moose.computation.fixedpoint import RingEncodeOperation

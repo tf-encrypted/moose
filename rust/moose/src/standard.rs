@@ -3,7 +3,8 @@ extern crate ndarray_linalg;
 
 use crate::bit::BitTensor;
 use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
-use crate::kernels::PlacementShape;
+use crate::error::Result;
+use crate::kernels::{Context, PlacementPlace, PlacementShape};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -22,8 +23,21 @@ pub struct Shape(pub RawShape, pub Placement);
 impl Placed for Shape {
     type Placement = Placement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
+    }
+}
+
+impl<C: Context> PlacementPlace<C, Shape> for Placement {
+    fn place(&self, _ctx: &C, shape: Shape) -> Shape {
+        match shape.placement() {
+            Ok(place) if &place == self => shape,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                Shape(shape.0, self.clone())
+            }
+        }
     }
 }
 
@@ -33,8 +47,8 @@ pub struct StandardTensor<T>(pub ArrayD<T>, pub Placement);
 impl<T> Placed for StandardTensor<T> {
     type Placement = Placement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
     }
 }
 
@@ -233,13 +247,16 @@ where
 {
     type Output = StandardTensor<T>;
     fn add(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(
-            self.0 + other.0,
-            HostPlacement {
-                owner: "TODO".into(),
+        let placement = HostPlacement {
+            owner: "TODO".into(),
+        }
+        .into();
+        match self.0.broadcast(other.0.dim()) {
+            Some(self_broadcasted) => {
+                StandardTensor::<T>(self_broadcasted.to_owned() + other.0, placement)
             }
-            .into(),
-        )
+            None => StandardTensor::<T>(self.0 + other.0, placement),
+        }
     }
 }
 
@@ -249,13 +266,16 @@ where
 {
     type Output = StandardTensor<T>;
     fn sub(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(
-            self.0 - other.0,
-            HostPlacement {
-                owner: "TODO".into(),
+        let placement = HostPlacement {
+            owner: "TODO".into(),
+        }
+        .into();
+        match self.0.broadcast(other.0.dim()) {
+            Some(self_broadcasted) => {
+                StandardTensor::<T>(self_broadcasted.to_owned() - other.0, placement)
             }
-            .into(),
-        )
+            None => StandardTensor::<T>(self.0 - other.0, placement),
+        }
     }
 }
 
@@ -265,13 +285,16 @@ where
 {
     type Output = StandardTensor<T>;
     fn mul(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(
-            self.0 * other.0,
-            HostPlacement {
-                owner: "TODO".into(),
+        let placement = HostPlacement {
+            owner: "TODO".into(),
+        }
+        .into();
+        match self.0.broadcast(other.0.dim()) {
+            Some(self_broadcasted) => {
+                StandardTensor::<T>(self_broadcasted.to_owned() * other.0, placement)
             }
-            .into(),
-        )
+            None => StandardTensor::<T>(self.0 * other.0, placement),
+        }
     }
 }
 
@@ -281,13 +304,16 @@ where
 {
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
-        StandardTensor::<T>(
-            self.0 / other.0,
-            HostPlacement {
-                owner: "TODO".into(),
+        let placement = HostPlacement {
+            owner: "TODO".into(),
+        }
+        .into();
+        match self.0.broadcast(other.0.dim()) {
+            Some(self_broadcasted) => {
+                StandardTensor::<T>(self_broadcasted.to_owned() / other.0, placement)
             }
-            .into(),
-        )
+            None => StandardTensor::<T>(self.0 / other.0, placement),
+        }
     }
 }
 
@@ -476,5 +502,81 @@ mod tests {
         assert_eq!(bx, b_exp);
         assert_eq!(cx, c_exp);
         assert_eq!(dx, d_exp);
+    }
+
+    #[test]
+    fn test_add_broadcasting() {
+        let x_1 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_1 = x_1.add(y_1);
+        let z_1_exp =
+            StandardTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_2 = x_2.add(y_2);
+        let z_2_exp =
+            StandardTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+
+        assert_eq!(z_1, z_1_exp);
+        assert_eq!(z_2, z_2_exp);
+    }
+
+    #[test]
+    fn test_sub_broadcasting() {
+        let x_1 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_1 = x_1.sub(y_1);
+        let z_1_exp =
+            StandardTensor::<f32>::from(array![1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_2 = x_2.sub(y_2);
+        let z_2_exp =
+            StandardTensor::<f32>::from(array![-1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
+
+        assert_eq!(z_1, z_1_exp);
+        assert_eq!(z_2, z_2_exp);
+    }
+
+    #[test]
+    fn test_mul_broadcasting() {
+        let x_1 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_1 = x_1.mul(y_1);
+        let z_1_exp =
+            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_2 = x_2.mul(y_2);
+        let z_2_exp =
+            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+
+        assert_eq!(z_1, z_1_exp);
+        assert_eq!(z_2, z_2_exp);
+    }
+
+    #[test]
+    fn test_div_broadcasting() {
+        let x_1 = StandardTensor::<f32>::from(array![1.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 =
+            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_1 = x_1.div(y_1);
+        let z_1_exp =
+            StandardTensor::<f32>::from(array![0.5, 0.25].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 =
+            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let z_2 = x_2.div(y_2);
+        let z_2_exp =
+            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+
+        assert_eq!(z_1, z_1_exp);
+        assert_eq!(z_2, z_2_exp);
     }
 }
