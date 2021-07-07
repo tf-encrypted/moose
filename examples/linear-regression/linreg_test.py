@@ -156,7 +156,7 @@ class LinearRegressionExample(parameterized.TestCase):
         )
         print(
             "Done: \n",
-            runtime.get_value_from_storage("model-owner", "regression_weights"),
+            runtime.read_value_from_storage("model-owner", "regression_weights"),
         )
 
     def test_linear_regression_mse(self):
@@ -211,7 +211,7 @@ class LinearRegressionExample(parameterized.TestCase):
         )
         print(
             "Done: \n",
-            runtime.get_value_from_storage("model-owner", "regression_weights"),
+            runtime.read_value_from_storage("model-owner", "regression_weights"),
         )
 
     # TODO: fix test and handle pytest mark in makefile targets

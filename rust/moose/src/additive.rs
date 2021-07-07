@@ -2,6 +2,7 @@ use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
     HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
 };
+use crate::error::Result;
 use crate::kernels::{
     Context, PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul,
     PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
@@ -30,14 +31,14 @@ where
 {
     type Placement = AdditivePlacement;
 
-    fn placement(&self) -> Self::Placement {
+    fn placement(&self) -> Result<Self::Placement> {
         let AbstractAdditiveTensor { shares: [x0, x1] } = self;
 
-        let owner0 = x0.placement().owner;
-        let owner1 = x1.placement().owner;
+        let owner0 = x0.placement()?.owner;
+        let owner1 = x1.placement()?.owner;
 
         let owners = [owner0, owner1];
-        AdditivePlacement { owners }
+        Ok(AdditivePlacement { owners })
     }
 }
 
@@ -47,15 +48,14 @@ where
     HostPlacement: PlacementPlace<C, R>,
 {
     fn place(&self, ctx: &C, x: AbstractAdditiveTensor<R>) -> AbstractAdditiveTensor<R> {
-        if self == &x.placement() {
-            x
-        } else {
-            let AbstractAdditiveTensor { shares: [x0, x1] } = x;
-
-            let (player0, player1) = self.host_placements();
-
-            AbstractAdditiveTensor {
-                shares: [player0.place(ctx, x0), player1.place(ctx, x1)],
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                let AbstractAdditiveTensor { shares: [x0, x1] } = x;
+                let (player0, player1) = self.host_placements();
+                AbstractAdditiveTensor {
+                    shares: [player0.place(ctx, x0), player1.place(ctx, x1)],
+                }
             }
         }
     }
@@ -171,7 +171,7 @@ impl AdtAddOp {
         AdditivePlacement: PlacementPlace<C, AbstractAdditiveTensor<RingT>>,
     {
         let (player0, player1) = adt.host_placements();
-        let y_plc = y.placement();
+        let y_plc = y.placement().unwrap();
 
         let AbstractAdditiveTensor { shares: [x0, x1] } = x;
 
@@ -195,7 +195,7 @@ impl AdtAddOp {
         AdditivePlacement: PlacementPlace<C, AbstractAdditiveTensor<RingT>>,
     {
         let (player0, player1) = adt.host_placements();
-        let x_plc = x.placement();
+        let x_plc = x.placement().unwrap();
 
         let AbstractAdditiveTensor { shares: [y0, y1] } = y;
 
@@ -260,7 +260,7 @@ impl AdtSubOp {
         AdditivePlacement: PlacementPlace<C, AbstractAdditiveTensor<R>>,
     {
         let (player0, player1) = adt.host_placements();
-        let y_plc = y.placement();
+        let y_plc = y.placement().unwrap();
 
         let AbstractAdditiveTensor { shares: [x0, x1] } = x;
 
@@ -285,7 +285,7 @@ impl AdtSubOp {
         AdditivePlacement: PlacementPlace<C, AbstractAdditiveTensor<R>>,
     {
         let (player0, player1) = adt.host_placements();
-        let x_plc = x.placement();
+        let x_plc = x.placement().unwrap();
 
         let AbstractAdditiveTensor { shares: [y0, y1] } = y;
 
@@ -591,7 +591,7 @@ impl RepToAdtOp {
         AdditivePlacement: PlacementPlace<C, AbstractAdditiveTensor<RingT>>,
     {
         let (adt_player0, adt_player1) = adt.host_placements();
-        let (rep_player0, rep_player1, rep_player2) = x.placement().host_placements();
+        let (rep_player0, rep_player1, rep_player2) = x.placement().unwrap().host_placements();
 
         let AbstractReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],

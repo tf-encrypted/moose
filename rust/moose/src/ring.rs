@@ -14,6 +14,7 @@ use crate::computation::{
     HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
     RingSubOp, ShapeOp,
 };
+use crate::error::Result;
 use crate::kernels::{
     ConcreteContext, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
     PlacementSample, PlacementShl, PlacementShr, PlacementSub,
@@ -32,8 +33,8 @@ pub type Ring128Tensor = AbstractRingTensor<u128>;
 impl<T> Placed for AbstractRingTensor<T> {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
     }
 }
 
@@ -54,12 +55,13 @@ where
     AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
 {
     fn place(&self, _ctx: &ConcreteContext, x: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
-        if self == &x.placement() {
-            x
-        } else {
-            // TODO just updating the placement isn't enough,
-            // we need this to eventually turn into Send + Recv
-            AbstractRingTensor(x.0, self.clone())
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                AbstractRingTensor(x.0, self.clone())
+            }
         }
     }
 }
