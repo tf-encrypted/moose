@@ -1107,43 +1107,60 @@ mod tests {
                 assert_eq!(alice_open.1, alice_y.1); // make sure placements are equal
 
                 // truncation can be off by 1
-                let alice_diff = alice_y - alice_open;
-                println!("{:?}", alice_diff);
-                assert!(
-                    (alice_diff.0.iter().max().unwrap().clone() -
-                    alice_diff.0.iter().min().unwrap().clone()) <= std::num::Wrapping(1)
-                );
+                for (i, value) in alice_y.0.iter().enumerate() {
+                    let diff = value - &alice_open.0[i];
+                    assert!(
+                        diff == std::num::Wrapping(1 as $tt)
+                            || diff == std::num::Wrapping($tt::MAX)
+                            || diff == std::num::Wrapping(0),
+                        "difference = {}, lhs = {}, rhs = {}",
+                        diff,
+                        value,
+                        &alice_open.0[i]
+                    );
+                }
 
+                let bob_x1 = AbstractRingTensor::from_raw_plc(xs.clone(), bob.clone());
+                let bob_rep = rep.share(&sess, &setup, &bob_x1);
+                let bob_tr = rep.trunc_pr(&sess, amount, &bob_rep);
+                let bob_open = bob.reveal(&sess, &bob_tr);
 
-                // let bob_x1 = AbstractRingTensor::from_raw_plc(xs.clone(), bob.clone());
-                // let bob_rep = rep.share(&sess, &setup, &bob_x1);
-                // let bob_tr = rep.trunc_pr(&sess, amount, &bob_rep);
-                // let bob_open = bob.reveal(&sess, &bob_tr);
+                let bob_y = AbstractRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                assert_eq!(bob_open.1, bob);
 
-                // let bob_y = AbstractRingTensor::from_raw_plc(ys.clone(), bob.clone());
-                // assert_eq!(bob_open.1, bob);
+                for (i, value) in bob_y.0.iter().enumerate() {
+                    let diff = value - &bob_open.0[i];
+                    assert!(
+                        diff == std::num::Wrapping(1 as $tt)
+                            || diff == std::num::Wrapping($tt::MAX)
+                            || diff == std::num::Wrapping(0),
+                        "difference = {}, lhs = {}, rhs = {}",
+                        diff,
+                        value,
+                        &bob_open.0[i]
+                    );
+                }
 
-                // let bob_diff = bob_y - bob_open;
-                // assert!(
-                //     (bob_diff.0.iter().max().unwrap().clone() -
-                //     bob_diff.0.iter().min().unwrap().clone()) <= std::num::Wrapping(1)
-                // );
+                let carole_x1 = AbstractRingTensor::from_raw_plc(xs.clone(), carole.clone());
+                let carole_rep = rep.share(&sess, &setup, &carole_x1);
+                let carole_tr = rep.trunc_pr(&sess, amount, &carole_rep);
+                let carole_open = carole.reveal(&sess, &carole_tr);
 
+                let carole_y = AbstractRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                assert_eq!(carole_open.1, carole);
 
-                // let carole_x1 = AbstractRingTensor::from_raw_plc(xs.clone(), carole.clone());
-                // let carole_rep = rep.share(&sess, &setup, &carole_x1);
-                // let carole_tr = rep.trunc_pr(&sess, amount, &carole_rep);
-                // let carole_open = carole.reveal(&sess, &carole_tr);
-
-                // let carole_y = AbstractRingTensor::from_raw_plc(ys.clone(), bob.clone());
-                // assert_eq!(carole_open.1, carole);
-
-                // let carole_diff = carole_y - carole_open;
-                // assert!(
-                //     (carole_diff.0.iter().max().unwrap().clone() -
-                //     carole_diff.0.iter().min().unwrap().clone()) <= std::num::Wrapping(1)
-                // );
-
+                for (i, value) in carole_y.0.iter().enumerate() {
+                    let diff = value - &carole_open.0[i];
+                    assert!(
+                        diff == std::num::Wrapping(1 as $tt)
+                            || diff == std::num::Wrapping($tt::MAX)
+                            || diff == std::num::Wrapping(0),
+                        "difference = {}, lhs = {}, rhs = {}",
+                        diff,
+                        value,
+                        &carole_open.0[i]
+                    );
+                }
             }
         };
     }
@@ -1164,6 +1181,9 @@ mod tests {
         61,
         array![0_u64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2].into_dyn())
     ]
+    #[case(array![-10_i64 as u64].into_dyn(), 1, array![-5_i64 as u64].into_dyn())]
+    #[case(array![-10_i64 as u64].into_dyn(), 0, array![-10_i64 as u64].into_dyn())]
+    #[case(array![-1152921504606846976_i64 as u64].into_dyn(), 60, array![-1_i64 as u64].into_dyn())]
     fn test_rep_truncation_64(
         #[case] x: ArrayD<u64>,
         #[case] amount: usize,
@@ -1173,10 +1193,20 @@ mod tests {
     }
 
     #[rstest]
-    #[case(array![80908_u128, 0, 40454].into_dyn(),
+    #[case(array![1_u128, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648, 4294967296, 8589934592, 17179869184, 34359738368, 68719476736, 137438953472, 274877906944, 549755813888, 1099511627776, 2199023255552, 4398046511104, 8796093022208, 17592186044416, 35184372088832, 70368744177664, 140737488355328, 281474976710656, 562949953421312, 1125899906842624, 2251799813685248, 4503599627370496, 9007199254740992, 18014398509481984, 36028797018963968, 72057594037927936, 144115188075855872, 288230376151711744, 576460752303423488, 1152921504606846976, 2305843009213693952, 4611686018427387904].into_dyn(),
         1,
-        array![40454_u128, 0, 20227].into_dyn())
+        array![0_u128, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648, 4294967296, 8589934592, 17179869184, 34359738368, 68719476736, 137438953472, 274877906944, 549755813888, 1099511627776, 2199023255552, 4398046511104, 8796093022208, 17592186044416, 35184372088832, 70368744177664, 140737488355328, 281474976710656, 562949953421312, 1125899906842624, 2251799813685248, 4503599627370496, 9007199254740992, 18014398509481984, 36028797018963968, 72057594037927936, 144115188075855872, 288230376151711744, 576460752303423488, 1152921504606846976, 2305843009213693952].into_dyn())
     ]
+    #[case(array![1_u128, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648, 4294967296, 8589934592, 17179869184, 34359738368, 68719476736, 137438953472, 274877906944, 549755813888, 1099511627776, 2199023255552, 4398046511104, 8796093022208, 17592186044416, 35184372088832, 70368744177664, 140737488355328, 281474976710656, 562949953421312, 1125899906842624, 2251799813685248, 4503599627370496, 9007199254740992, 18014398509481984, 36028797018963968, 72057594037927936, 144115188075855872, 288230376151711744, 576460752303423488, 1152921504606846976, 2305843009213693952, 4611686018427387904].into_dyn(),
+        62,
+        array![0_u128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1].into_dyn())
+    ]
+    #[case(array![1_u128, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288, 1048576, 2097152, 4194304, 8388608, 16777216, 33554432, 67108864, 134217728, 268435456, 536870912, 1073741824, 2147483648, 4294967296, 8589934592, 17179869184, 34359738368, 68719476736, 137438953472, 274877906944, 549755813888, 1099511627776, 2199023255552, 4398046511104, 8796093022208, 17592186044416, 35184372088832, 70368744177664, 140737488355328, 281474976710656, 562949953421312, 1125899906842624, 2251799813685248, 4503599627370496, 9007199254740992, 18014398509481984, 36028797018963968, 72057594037927936, 144115188075855872, 288230376151711744, 576460752303423488, 1152921504606846976, 2305843009213693952, 4611686018427387904].into_dyn(),
+        61,
+        array![0_u128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2].into_dyn())
+    ]
+    #[case(array![-10_i128 as u128].into_dyn(), 1, array![-5_i128 as u128].into_dyn())]
+    #[case(array![-10_i128 as u128].into_dyn(), 0, array![-10_i128 as u128].into_dyn())]
     fn test_rep_truncation_128(
         #[case] x: ArrayD<u128>,
         #[case] amount: usize,
