@@ -135,6 +135,7 @@ impl RepSetupOp {
     ) -> AbstractReplicatedSetup<K>
     where
         HostPlacement: PlacementKeyGen<S, K>,
+        HostPlacement: PlacementPlace<S, K>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -143,7 +144,14 @@ impl RepSetupOp {
         let k2 = player2.gen_key(sess);
 
         AbstractReplicatedSetup {
-            keys: [[k0.clone(), k1.clone()], [k1, k2.clone()], [k2, k0]],
+            keys: [
+                [
+                    player0.place(sess, k0.clone()),
+                    player0.place(sess, k1.clone()),
+                ],
+                [player1.place(sess, k1), player1.place(sess, k2.clone())],
+                [player2.place(sess, k2), player2.place(sess, k0)],
+            ],
         }
     }
 }
@@ -898,7 +906,8 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{kernels::NewSyncSession, ring::AbstractRingTensor};
+    use crate::kernels::NewSyncSession;
+    use crate::ring::AbstractRingTensor;
     use ndarray::array;
 
     #[test]
@@ -1006,5 +1015,66 @@ mod tests {
         assert_eq!(alice.reveal(&sess, &x4_rep), alice.reveal(&sess, &x4));
         assert_eq!(bob.reveal(&sess, &x4_rep), bob.reveal(&sess, &x4));
         assert_eq!(carole.reveal(&sess, &x4_rep), carole.reveal(&sess, &x4));
+    }
+
+    use ndarray::prelude::*;
+    use rstest::rstest;
+
+    macro_rules! rep_add_test {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractRingTensor::from_raw_plc(ys, alice.clone());
+
+                let sess = NewSyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let y_shared = rep.share(&sess, &setup, &y);
+
+                let sum = rep.add(&sess, &x_shared, &y_shared);
+                let opened_sum = alice.reveal(&sess, &sum);
+                assert_eq!(
+                    opened_sum,
+                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_add_test!(test_rep_add64, u64);
+    rep_add_test!(test_rep_add128, u128);
+
+    #[rstest]
+    #[case(array![1_u64, 2, 3].into_dyn(),
+        array![1_u64, 2, 3].into_dyn(),
+        array![2_u64, 4, 6].into_dyn())
+    ]
+    #[case(array![-1_i64 as u64, -2_i64 as u64, -3_i64 as u64].into_dyn(),
+        array![1_u64, 2, 3].into_dyn(),
+        array![0_u64, 0, 0].into_dyn())
+    ]
+    fn test_rep_add_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
+        test_rep_add64(x, y, z);
+    }
+
+    #[rstest]
+    #[case(array![1_u128, 2, 3].into_dyn(),
+        array![1_u128, 2, 3].into_dyn(),
+        array![2_u128, 4, 6].into_dyn())
+    ]
+    #[case(array![-1_i128 as u128, -2_i128 as u128, -3_i128 as u128].into_dyn(),
+        array![1_u128, 2, 3].into_dyn(),
+        array![0_u128, 0, 0].into_dyn())
+    ]
+    fn test_rep_add_128(#[case] x: ArrayD<u128>, #[case] y: ArrayD<u128>, #[case] z: ArrayD<u128>) {
+        test_rep_add128(x, y, z);
     }
 }

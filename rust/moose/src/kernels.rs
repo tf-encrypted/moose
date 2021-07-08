@@ -140,6 +140,10 @@ where
 {
 }
 
+pub trait Tensor<S: Session> {
+    type Scalar;
+}
+
 pub trait PlacementShape<S: Session, T, ShapeT> {
     fn shape(&self, sess: &S, x: &T) -> ShapeT;
 }
@@ -215,9 +219,13 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,
+    O: Tensor<S>,
+    O::Scalar: Into<Constant>,
+    O::Scalar: From<u8>,
 {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O {
-        self.fill(sess, Constant::Ring64(0), shape)
+        let value = O::Scalar::from(0).into();
+        self.fill(sess, value, shape)
     }
 }
 
@@ -228,9 +236,13 @@ pub trait PlacementOnes<S: Session, ShapeT, O> {
 impl<S: Session, ShapeT, O, P> PlacementOnes<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,
+    O: Tensor<S>,
+    O::Scalar: Into<Constant>,
+    O::Scalar: From<u8>,
 {
     fn ones(&self, sess: &S, shape: &ShapeT) -> O {
-        self.fill(sess, Constant::Ring64(1), shape)
+        let value = O::Scalar::from(0).into();
+        self.fill(sess, value, shape)
     }
 }
 

@@ -17,7 +17,7 @@ use crate::computation::{
 use crate::error::Result;
 use crate::kernels::{
     NewSyncSession, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
-    PlacementSample, PlacementShl, PlacementShr, PlacementSub,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub, Session, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -29,6 +29,10 @@ pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 pub type Ring64Tensor = AbstractRingTensor<u64>;
 
 pub type Ring128Tensor = AbstractRingTensor<u128>;
+
+impl<S: Session, T> Tensor<S> for AbstractRingTensor<T> {
+    type Scalar = T;
+}
 
 impl<T> Placed for AbstractRingTensor<T> {
     type Placement = HostPlacement;
