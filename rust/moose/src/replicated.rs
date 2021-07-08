@@ -1074,4 +1074,38 @@ mod tests {
     fn test_rep_add_128(#[case] x: ArrayD<u128>, #[case] y: ArrayD<u128>, #[case] z: ArrayD<u128>) {
         test_rep_add128(x, y, z);
     }
+
+    #[test]
+    fn test_rep_truncation() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let ctx = ConcreteContext::default();
+        let setup = rep.gen_setup(&ctx);
+        let x1 = AbstractRingTensor::from_raw_plc(array![80908_u64, 0, 40454], alice.clone());
+        let x1_rep = rep.share(&ctx, &setup, &x1);
+
+        let truncated = rep.trunc_pr(&ctx, 1, &x1_rep);
+        let x1_open = alice.reveal(&ctx, &truncated);
+
+        let y1 = AbstractRingTensor::from_raw_plc(array![40454, 0, 20227], alice);
+        assert_eq!(x1_open.1, y1.1); // make sure placements are equal
+
+        let z = y1 - x1_open;
+        let min_diff = z.0.iter().max().unwrap().clone();
+        let max_diff = z.0.iter().min().unwrap().clone();
+
+        assert!((max_diff - min_diff) <= std::num::Wrapping(1)); // truncation can be off by 1
+    }
 }
