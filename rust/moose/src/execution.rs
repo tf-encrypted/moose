@@ -1143,6 +1143,15 @@ mod tests {
     use ndarray::prelude::*;
     use std::convert::TryInto;
 
+    fn _run_test_computation(
+        text_computation: &str,
+        args: HashMap<String, Value>,
+    ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
+        let exec = TestExecutor::default();
+        let outputs = exec.run_computation(&text_computation.try_into()?, args)?;
+        Ok(outputs)
+    }
+
     #[test]
     fn test_standard_prod_ops() -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
@@ -1155,7 +1164,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eager_executor() {
+    fn test_eager_executor() -> std::result::Result<(), anyhow::Error> {
         use itertools::Itertools;
         let mut definition = String::from(
             r#"key = PrimPrfKeyGen() @Host(alice)
@@ -1173,11 +1182,11 @@ mod tests {
             .join("\n");
         definition.push_str(&body);
         definition.push_str("\nz = Output: (Ring64Tensor) -> Unit (x0) @Host(alice)");
-        let comp: Computation = definition.try_into().unwrap();
 
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new()).unwrap();
+        let outputs = _run_test_computation(definition.as_str(), SyncArgs::new())?;
+
         assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
+        Ok(())
     }
 
     #[test]
@@ -1185,10 +1194,7 @@ mod tests {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
-        let comp: Computation = source.try_into()?;
-
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(source, SyncArgs::new())?;
 
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
@@ -1205,9 +1211,7 @@ mod tests {
         sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
         "#;
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(source, SyncArgs::new())?;
 
         use crate::ring::Ring64Tensor;
 
@@ -1236,6 +1240,7 @@ mod tests {
 
         let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
         let comp: Computation = source.try_into()?;
+
         let exec = TestExecutor::from_storage(&storage);
         let outputs = exec.run_computation(&comp, args)?;
 
@@ -1248,6 +1253,7 @@ mod tests {
 
         Ok(())
     }
+
     use rstest::rstest;
     #[rstest]
     #[case("0", "Int64Tensor([[1, 2], [3, 4], [5, 6], [7, 8]]) @Host(alice)")]
@@ -1262,9 +1268,7 @@ mod tests {
         output = Output: (Int64Tensor) -> Int64Tensor (concatenated) @Host(alice)
         "#;
         let source = source_template.replace("test_axis", &axis.to_string());
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
 
         let concatenated: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
@@ -1287,9 +1291,7 @@ mod tests {
         output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
         "#;
         let source = source_template.replace("StdOp", &test_op);
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
 
         let res: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
@@ -1304,9 +1306,7 @@ mod tests {
         x_inv = StdInverse : (Float32Tensor) -> Float32Tensor (x) @Host(alice)
         output = Output: (Float32Tensor) -> Float32Tensor (x_inv) @Host(alice)
         "#;
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
 
         let expected_output = crate::standard::Float32Tensor::from(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
@@ -1332,9 +1332,8 @@ mod tests {
         output = Output : (dtype) -> dtype (r) @Host(alice)
         "#;
         let source = template.replace("dtype", &dtype);
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
+
         match dtype.as_str() {
             "Float32Tensor" => {
                 let r: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
@@ -1399,10 +1398,7 @@ mod tests {
         "#,
             reduce_op_test, axis_str
         );
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
-
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
         let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
         if unwrap_flag {
@@ -1428,10 +1424,7 @@ mod tests {
         r = StdTranspose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
         output = Output : (Int64Tensor) -> Int64Tensor (r) @Host(alice)
         "#;
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
-
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
         let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
         assert_eq!(expected_result, comp_result.into());
@@ -1452,11 +1445,7 @@ mod tests {
         "#,
             to_column_vector
         );
-
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
-
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
         let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
 
@@ -1480,10 +1469,7 @@ mod tests {
         "#,
             test_op
         );
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
-
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
         let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
@@ -1522,10 +1508,7 @@ mod tests {
         "#,
             x_str, y_str
         );
-
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
 
         match type_str.as_str() {
             "Ring64Tensor" => {
@@ -1569,9 +1552,7 @@ mod tests {
             shape = shape_str,
         );
 
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
 
         match type_str.as_str() {
             "Ring64" => {
@@ -1597,9 +1578,7 @@ mod tests {
         r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
         "#;
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
         let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
@@ -1617,9 +1596,7 @@ mod tests {
         output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#;
         let source = template_source.replace("Ring64Tensor", type_str.as_str());
-        let comp: Computation = source.try_into()?;
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&comp, SyncArgs::new())?;
+        let outputs = _run_test_computation(&source, SyncArgs::new())?;
         match type_str.as_str() {
             "Ring64Tensor" => {
                 let comp_result: Ring64Tensor =
