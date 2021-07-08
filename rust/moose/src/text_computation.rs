@@ -1344,6 +1344,7 @@ impl ToTextual for Ty {
             Ty::Ring128 => "Ring128",
             Ty::Ring64Tensor => "Ring64Tensor",
             Ty::Ring128Tensor => "Ring128Tensor",
+            Ty::Bit => "Bit",
             Ty::BitTensor => "BitTensor",
             Ty::Shape => "Shape",
             Ty::Seed => "Seed",

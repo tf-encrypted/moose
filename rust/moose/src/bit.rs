@@ -3,8 +3,8 @@ use crate::computation::{Constant, Placed};
 use crate::error::Result;
 use crate::kernels::ConcreteContext;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
-    PlacementSampleUniform, PlacementSub, PlacementXor,
+    Context, PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementSampleUniform, PlacementSub, PlacementXor, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -16,6 +16,10 @@ use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
+
+impl<C: Context> Tensor<C> for BitTensor {
+    type Scalar = u8;
+}
 
 impl Placed for BitTensor {
     type Placement = HostPlacement;
@@ -50,12 +54,12 @@ modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (Shape) -> BitTensor => attributes[value: Ring64] Self::kernel),
+        (HostPlacement, (Shape) -> BitTensor => attributes[value: Bit] Self::kernel),
     ]
 }
 
 impl BitFillOp {
-    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, value: u64, shape: Shape) -> BitTensor {
+    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, value: u8, shape: Shape) -> BitTensor {
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
