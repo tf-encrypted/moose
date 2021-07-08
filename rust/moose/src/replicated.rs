@@ -14,6 +14,7 @@ use crate::kernels::{
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::Shape;
+use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
@@ -635,34 +636,78 @@ impl RepMulOp {
     }
 }
 
-modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
-modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
-
-hybrid_kernel! {
-    RepTruncPrOp,
-    [
-        (ReplicatedPlacement,  (Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
-        (ReplicatedPlacement,  (Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
-    ]
+trait TypeLink {
+    type Additive;
+    type Replicated;
+    type Ring;
 }
 
+impl<RingT> TypeLink for AbstractReplicatedTensor<RingT> {
+    type Additive = AbstractAdditiveTensor<RingT>;
+    type Replicated = AbstractReplicatedTensor<RingT>;
+    type Ring = RingT;
+}
+
+impl<RingT: Placed<Placement = HostPlacement>> TypeLink
+    for Symbolic<AbstractReplicatedTensor<RingT>>
+{
+    // Wants Symbolic<AbstractAdditiveTensor<Symbolic<AbstractRingTensor<u64>>
+    type Additive =
+        Symbolic<AbstractAdditiveTensor<Symbolic<crate::ring::AbstractRingTensor<RingT>>>>;
+    type Replicated = Symbolic<AbstractReplicatedTensor<RingT>>;
+    type Ring = RingT;
+}
+
+impl<RingT> TypeLink for AbstractAdditiveTensor<RingT> {
+    type Additive = AbstractAdditiveTensor<RingT>;
+    type Replicated = AbstractReplicatedTensor<RingT>;
+    type Ring = RingT;
+}
+
+impl<RingT: Placed<Placement = HostPlacement>> TypeLink
+    for Symbolic<AbstractAdditiveTensor<Symbolic<crate::ring::AbstractRingTensor<RingT>>>>
+{
+    type Additive =
+        Symbolic<AbstractAdditiveTensor<Symbolic<crate::ring::AbstractRingTensor<RingT>>>>;
+    type Replicated = Symbolic<AbstractReplicatedTensor<RingT>>;
+    type Ring = RingT;
+}
+
+// modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+// modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
+
+// hybrid_kernel! {
+//     RepTruncPrOp,
+//     [
+//         (ReplicatedPlacement,  (Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
+//         (ReplicatedPlacement,  (Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
+//     ]
+// }
+
 impl RepTruncPrOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, AbstractReplicatedTensorT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: usize,
-        xe: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        xe: AbstractReplicatedTensorT,
+    ) -> AbstractReplicatedTensorT
     where
+        AbstractReplicatedTensorT: TypeLink,
         AdditivePlacement: PlacementTruncPrProvider<
             S,
-            AbstractAdditiveTensor<RingT>,
-            AbstractAdditiveTensor<RingT>,
+            <AbstractReplicatedTensorT as TypeLink>::Additive,
+            <AbstractReplicatedTensorT as TypeLink>::Additive,
         >,
-        AdditivePlacement:
-            PlacementRepToAdt<S, AbstractReplicatedTensor<RingT>, AbstractAdditiveTensor<RingT>>,
-        ReplicatedPlacement:
-            PlacementAdtToRep<S, AbstractAdditiveTensor<RingT>, AbstractReplicatedTensor<RingT>>,
+        AdditivePlacement: PlacementRepToAdt<
+            S,
+            AbstractReplicatedTensorT,
+            <AbstractReplicatedTensorT as TypeLink>::Additive,
+        >,
+        ReplicatedPlacement: PlacementAdtToRep<
+            S,
+            <AbstractReplicatedTensorT as TypeLink>::Additive,
+            AbstractReplicatedTensorT,
+        >,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -689,25 +734,31 @@ hybrid_kernel! {
 }
 
 impl AdtToRepOp {
-    fn kernel<S: Session, SeedT, ShapeT, KeyT, RingT>(
+    fn kernel<S: Session, SeedT, ShapeT, KeyT, AbstractAdditiveTensorT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractAdditiveTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        x: AbstractAdditiveTensorT,
+    ) -> <AbstractAdditiveTensorT as TypeLink>::Replicated
     where
-        RingT: Placed<Placement = HostPlacement> + Clone,
-        HostPlacement: PlacementShape<S, RingT, ShapeT>,
+        AbstractAdditiveTensorT: TypeLink,
+        <AbstractAdditiveTensorT as TypeLink>::Ring: Placed<Placement = HostPlacement> + Clone,
+        HostPlacement: PlacementShape<S, <AbstractAdditiveTensorT as TypeLink>::Ring, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
-        HostPlacement: PlacementSampleUniform<S, SeedT, ShapeT, RingT>,
+        HostPlacement:
+            PlacementSampleUniform<S, SeedT, ShapeT, <AbstractAdditiveTensorT as TypeLink>::Ring>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         AdditivePlacement: PlacementSub<
             S,
-            AbstractAdditiveTensor<RingT>,
-            AbstractAdditiveTensor<RingT>,
-            AbstractAdditiveTensor<RingT>,
+            AbstractAdditiveTensorT,
+            AbstractAdditiveTensorT,
+            AbstractAdditiveTensorT,
         >,
-        HostPlacement: PlacementReveal<S, AbstractAdditiveTensor<RingT>, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        HostPlacement: PlacementReveal<
+            S,
+            AbstractAdditiveTensorT,
+            <AbstractAdditiveTensorT as TypeLink>::Ring,
+        >,
+        ReplicatedPlacement: PlacementPlace<S, <AbstractAdditiveTensorT as TypeLink>::Replicated>,
     {
         let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
 
