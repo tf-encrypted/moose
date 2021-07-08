@@ -1,10 +1,10 @@
-use crate::computation::{BitAndOp, BitFillOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
-use crate::computation::{Constant, Placed};
+use crate::computation::{
+    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, ShapeOp,
+};
 use crate::error::Result;
-use crate::kernels::ConcreteContext;
 use crate::kernels::{
-    Context, PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
-    PlacementSampleUniform, PlacementSub, PlacementXor, Tensor,
+    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementSampleUniform, PlacementSub, PlacementXor, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -17,7 +17,7 @@ use std::ops::{BitAnd, BitXor};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
 
-impl<C: Context> Tensor<C> for BitTensor {
+impl<S: Session> Tensor<S> for BitTensor {
     type Scalar = u8;
 }
 
@@ -29,8 +29,8 @@ impl Placed for BitTensor {
     }
 }
 
-impl PlacementPlace<ConcreteContext, BitTensor> for HostPlacement {
-    fn place(&self, _ctx: &ConcreteContext, x: BitTensor) -> BitTensor {
+impl PlacementPlace<SyncSession, BitTensor> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: BitTensor) -> BitTensor {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
@@ -43,7 +43,7 @@ impl PlacementPlace<ConcreteContext, BitTensor> for HostPlacement {
 }
 
 impl ShapeOp {
-    pub(crate) fn bit_kernel(_ctx: &ConcreteContext, plc: &HostPlacement, x: BitTensor) -> Shape {
+    pub(crate) fn bit_kernel(_sess: &SyncSession, plc: &HostPlacement, x: BitTensor) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
         Shape(raw_shape, plc.clone().into())
     }
@@ -59,7 +59,7 @@ kernel! {
 }
 
 impl BitFillOp {
-    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, value: u8, shape: Shape) -> BitTensor {
+    fn kernel(_sess: &SyncSession, plc: &HostPlacement, value: u8, shape: Shape) -> BitTensor {
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
@@ -77,7 +77,7 @@ kernel! {
 }
 
 impl BitSampleOp {
-    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, seed: Seed, shape: Shape) -> BitTensor {
+    fn kernel(_sess: &SyncSession, plc: &HostPlacement, seed: Seed, shape: Shape) -> BitTensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -98,12 +98,7 @@ kernel! {
 }
 
 impl BitXorOp {
-    fn kernel(
-        _ctx: &ConcreteContext,
-        plc: &HostPlacement,
-        x: BitTensor,
-        y: BitTensor,
-    ) -> BitTensor {
+    fn kernel(_sess: &SyncSession, plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor {
         BitTensor(x.0 ^ y.0, plc.clone())
     }
 }
@@ -119,12 +114,7 @@ kernel! {
 }
 
 impl BitAndOp {
-    fn kernel(
-        _ctx: &ConcreteContext,
-        plc: &HostPlacement,
-        x: BitTensor,
-        y: BitTensor,
-    ) -> BitTensor {
+    fn kernel(_sess: &SyncSession, plc: &HostPlacement, x: BitTensor, y: BitTensor) -> BitTensor {
         BitTensor(x.0 & y.0, plc.clone())
     }
 }
