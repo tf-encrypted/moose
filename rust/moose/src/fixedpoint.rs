@@ -1,11 +1,11 @@
 use crate::computation::{Placed, Placement};
+use crate::error::Result;
+use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
-use std::ops::Mul;
-
-use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use serde::{Deserialize, Serialize};
+use std::ops::Mul;
 
 pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
 
@@ -26,10 +26,10 @@ where
 {
     type Placement = Placement;
 
-    fn placement(&self) -> Self::Placement {
+    fn placement(&self) -> Result<Self::Placement> {
         match self {
-            FixedTensor::RingTensor(x) => x.placement().into(),
-            FixedTensor::ReplicatedTensor(x) => x.placement().into(),
+            FixedTensor::RingTensor(x) => Ok(x.placement()?.into()),
+            FixedTensor::ReplicatedTensor(x) => Ok(x.placement()?.into()),
         }
     }
 }

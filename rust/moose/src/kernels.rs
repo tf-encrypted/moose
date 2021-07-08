@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
+/// General session trait determining basic properties for session objects.
 pub trait Session {
     type Value;
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
@@ -24,25 +25,33 @@ pub trait Session {
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
 }
 
-pub trait RuntimeSession {
+/// Trait for sessions that are intended for run-time use only.
+///
+/// This trait is used to make a distinct between functionality that may
+/// only be executed during run-time as opposed to at compile-time, such
+/// as for instance key generation. Moreover, it also offers access to
+/// information that is only known at run-time, such as the concrete
+/// session id under which execution is happening.
+pub trait RuntimeSession: Session {
     fn session_id(&self) -> &SessionId;
 }
 
-pub struct NewSyncSession {
+/// Session object for synchronous/eager execution (in new framework).
+pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
-impl Default for NewSyncSession {
+impl Default for SyncSession {
     fn default() -> Self {
-        NewSyncSession {
+        SyncSession {
             session_id: "abcde".into(), // TODO
             replicated_keys: Default::default(),
         }
     }
 }
 
-impl Session for NewSyncSession {
+impl Session for SyncSession {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
@@ -72,6 +81,7 @@ impl Session for NewSyncSession {
             Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
             op => unimplemented!("{:?}", op), // TODO
@@ -84,7 +94,33 @@ impl Session for NewSyncSession {
     }
 }
 
-impl RuntimeSession for NewSyncSession {
+impl RuntimeSession for SyncSession {
+    fn session_id(&self) -> &SessionId {
+        &self.session_id
+    }
+}
+
+/// Session object for asynchronous execution (in new framework).
+pub struct AsyncSession {
+    session_id: SessionId,
+    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+}
+
+impl Session for AsyncSession {
+    type Value = (); // TODO
+    fn execute(&self, _op: Operator, _plc: &Placement, _operands: Vec<Self::Value>) -> Self::Value {
+        // TODO
+        unimplemented!()
+    }
+
+    type ReplicatedSetup = (); // TODO
+    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+        // TODO
+        unimplemented!()
+    }
+}
+
+impl RuntimeSession for AsyncSession {
     fn session_id(&self) -> &SessionId {
         &self.session_id
     }
@@ -137,6 +173,10 @@ pub(crate) trait TernaryKernelCheck<S: Session, P, X0, X1, X2, Y>
 where
     Self: TernaryKernel<S, P, X0, X1, X2, Y>,
 {
+}
+
+pub trait Tensor<S: Session> {
+    type Scalar;
 }
 
 pub trait PlacementShape<S: Session, T, ShapeT> {
@@ -214,9 +254,13 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,
+    O: Tensor<S>,
+    O::Scalar: Into<Constant>,
+    O::Scalar: From<u8>,
 {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O {
-        self.fill(sess, Constant::Ring64(0), shape)
+        let value = O::Scalar::from(0).into();
+        self.fill(sess, value, shape)
     }
 }
 
@@ -227,9 +271,13 @@ pub trait PlacementOnes<S: Session, ShapeT, O> {
 impl<S: Session, ShapeT, O, P> PlacementOnes<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,
+    O: Tensor<S>,
+    O::Scalar: Into<Constant>,
+    O::Scalar: From<u8>,
 {
     fn ones(&self, sess: &S, shape: &ShapeT) -> O {
-        self.fill(sess, Constant::Ring64(1), shape)
+        let value = O::Scalar::from(0).into();
+        self.fill(sess, value, shape)
     }
 }
 
@@ -263,16 +311,16 @@ where
     }
 }
 
-pub trait PlacementRepToAdt<C: Session, T, O> {
-    fn rep_to_adt(&self, sess: &C, x: &T) -> O;
+pub trait PlacementRepToAdt<S: Session, T, O> {
+    fn rep_to_adt(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementAdtToRepSetup<S: Session, SetupT, T, O> {
-    fn adt_to_rep(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+pub trait PlacementAdtToRep<S: Session, T, O> {
+    fn adt_to_rep(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementTruncPrSetup<S: Session, SetupT, T, O> {
-    fn trunc_pr(&self, sess: &S, amount: usize, setup: &SetupT, x: &T) -> O;
+pub trait PlacementTruncPr<S: Session, T, O> {
+    fn trunc_pr(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {

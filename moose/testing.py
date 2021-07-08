@@ -103,5 +103,8 @@ class LocalMooseRuntime(LocalRuntime):
         outputs = list(dict(sorted(comp_outputs.items())).values())
         return outputs
 
-    def get_value_from_storage(self, identity, key):
-        return super().get_value_from_storage(identity, key)
+    def read_value_from_storage(self, identity, key):
+        return super().read_value_from_storage(identity, key)
+
+    def write_value_to_storage(self, identity, key, value):
+        return super().write_value_to_storage(identity, key, value)

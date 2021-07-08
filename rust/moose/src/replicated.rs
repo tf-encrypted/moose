@@ -1,15 +1,15 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
-use crate::computation::KnownType;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, HostPlacement, Placed, RepAddOp, RepMulOp, RepRevealOp,
-    RepSetupOp, RepShareOp, RepTruncPrOp, ReplicatedPlacement,
+    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAddOp, RepMulOp,
+    RepRevealOp, RepSetupOp, RepShareOp, RepTruncPrOp, ReplicatedPlacement,
 };
+use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAdd, PlacementAdtToRepSetup, PlacementDeriveSeed, PlacementKeyGen, PlacementMul,
+    PlacementAdd, PlacementAdtToRep, PlacementDeriveSeed, PlacementKeyGen, PlacementMul,
     PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPrProvider,
-    PlacementTruncPrSetup, PlacementZeros, Session,
+    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPr,
+    PlacementTruncPrProvider, PlacementZeros, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -45,22 +45,24 @@ where
 {
     type Placement = ReplicatedPlacement;
 
-    fn placement(&self) -> Self::Placement {
+    fn placement(&self) -> Result<Self::Placement> {
         let AbstractReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = self;
 
-        let owner0 = x00.placement().owner;
-        assert_eq!(x10.placement().owner, owner0);
+        let owner0 = x00.placement()?.owner;
+        let owner1 = x11.placement()?.owner;
+        let owner2 = x22.placement()?.owner;
 
-        let owner1 = x11.placement().owner;
-        assert_eq!(x21.placement().owner, owner1);
-
-        let owner2 = x22.placement().owner;
-        assert_eq!(x02.placement().owner, owner2);
-
-        let owners = [owner0, owner1, owner2];
-        ReplicatedPlacement { owners }
+        if x10.placement()?.owner == owner0
+            && x21.placement()?.owner == owner1
+            && x02.placement()?.owner == owner2
+        {
+            let owners = [owner0, owner1, owner2];
+            Ok(ReplicatedPlacement { owners })
+        } else {
+            Err(Error::MalformedPlacement)
+        }
     }
 }
 
@@ -70,22 +72,24 @@ where
 {
     type Placement = ReplicatedPlacement;
 
-    fn placement(&self) -> Self::Placement {
+    fn placement(&self) -> Result<Self::Placement> {
         let AbstractReplicatedSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
         } = self;
 
-        let owner0 = k00.placement().owner;
-        assert_eq!(k10.placement().owner, owner0);
+        let owner0 = k00.placement()?.owner;
+        let owner1 = k11.placement()?.owner;
+        let owner2 = k22.placement()?.owner;
 
-        let owner1 = k11.placement().owner;
-        assert_eq!(k21.placement().owner, owner1);
-
-        let owner2 = k22.placement().owner;
-        assert_eq!(k02.placement().owner, owner2);
-
-        let owners = [owner0, owner1, owner2];
-        ReplicatedPlacement { owners }
+        if k10.placement()?.owner == owner0
+            && k21.placement()?.owner == owner1
+            && k02.placement()?.owner == owner2
+        {
+            let owners = [owner0, owner1, owner2];
+            Ok(ReplicatedPlacement { owners })
+        } else {
+            Err(Error::MalformedPlacement)
+        }
     }
 }
 
@@ -95,21 +99,21 @@ where
     HostPlacement: PlacementPlace<S, R>,
 {
     fn place(&self, sess: &S, x: AbstractReplicatedTensor<R>) -> AbstractReplicatedTensor<R> {
-        if self == &x.placement() {
-            x
-        } else {
-            let AbstractReplicatedTensor {
-                shares: [[x00, x10], [x11, x21], [x22, x02]],
-            } = x;
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                let AbstractReplicatedTensor {
+                    shares: [[x00, x10], [x11, x21], [x22, x02]],
+                } = x;
 
-            let (player0, player1, player2) = self.host_placements();
-
-            AbstractReplicatedTensor {
-                shares: [
-                    [player0.place(sess, x00), player0.place(sess, x10)],
-                    [player1.place(sess, x11), player1.place(sess, x21)],
-                    [player2.place(sess, x22), player2.place(sess, x02)],
-                ],
+                let (player0, player1, player2) = self.host_placements();
+                AbstractReplicatedTensor {
+                    shares: [
+                        [player0.place(sess, x00), player0.place(sess, x10)],
+                        [player1.place(sess, x11), player1.place(sess, x21)],
+                        [player2.place(sess, x22), player2.place(sess, x02)],
+                    ],
+                }
             }
         }
     }
@@ -131,6 +135,7 @@ impl RepSetupOp {
     ) -> AbstractReplicatedSetup<K>
     where
         HostPlacement: PlacementKeyGen<S, K>,
+        HostPlacement: PlacementPlace<S, K>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -139,7 +144,14 @@ impl RepSetupOp {
         let k2 = player2.gen_key(sess);
 
         AbstractReplicatedSetup {
-            keys: [[k0.clone(), k1.clone()], [k1, k2.clone()], [k2, k0]],
+            keys: [
+                [
+                    player0.place(sess, k0.clone()),
+                    player0.place(sess, k1.clone()),
+                ],
+                [player1.place(sess, k1), player1.place(sess, k2.clone())],
+                [player2.place(sess, k2), player2.place(sess, k0)],
+            ],
         }
     }
 }
@@ -174,7 +186,7 @@ impl RepShareOp {
         HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
     {
-        let x_player = x.placement();
+        let x_player = x.placement().unwrap();
 
         let AbstractReplicatedSetup {
             keys: [[k00, k10], [k11, k21], [k22, k02]],
@@ -298,7 +310,7 @@ impl RepRevealOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
-        let (player0, player1, player2) = &xe.placement().host_placements();
+        let (player0, player1, player2) = &xe.placement().unwrap().host_placements();
 
         match () {
             _ if receiver == player0 => {
@@ -387,7 +399,7 @@ impl RepAddOp {
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let x_plc = x.placement();
+        let x_plc = x.placement().unwrap();
 
         let AbstractReplicatedTensor {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
@@ -443,7 +455,7 @@ impl RepAddOp {
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let y_plc = y.placement();
+        let y_plc = y.placement().unwrap();
 
         let AbstractReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
@@ -623,23 +635,22 @@ impl RepMulOp {
     }
 }
 
-modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
-modelled!(PlacementTruncPrSetup::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
 
 hybrid_kernel! {
     RepTruncPrOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
+        (ReplicatedPlacement,  (Replicated64Tensor) -> Replicated64Tensor => attributes[amount] Self::kernel),
+        (ReplicatedPlacement,  (Replicated128Tensor) -> Replicated128Tensor => attributes[amount] Self::kernel),
     ]
 }
 
 impl RepTruncPrOp {
-    fn kernel<S: Session, KeyT, RingT>(
+    fn kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: usize,
-        setup: AbstractReplicatedSetup<KeyT>,
         xe: AbstractReplicatedTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
@@ -650,12 +661,8 @@ impl RepTruncPrOp {
         >,
         AdditivePlacement:
             PlacementRepToAdt<S, AbstractReplicatedTensor<RingT>, AbstractAdditiveTensor<RingT>>,
-        ReplicatedPlacement: PlacementAdtToRepSetup<
-            S,
-            AbstractReplicatedSetup<KeyT>,
-            AbstractAdditiveTensor<RingT>,
-            AbstractReplicatedTensor<RingT>,
-        >,
+        ReplicatedPlacement:
+            PlacementAdtToRep<S, AbstractAdditiveTensor<RingT>, AbstractReplicatedTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -666,31 +673,29 @@ impl RepTruncPrOp {
 
         let x_adt = adt.rep_to_adt(sess, &xe);
         let y_adt = adt.trunc_pr(sess, amount, &provider, &x_adt);
-        rep.adt_to_rep(sess, &setup, &y_adt)
+        rep.adt_to_rep(sess, &y_adt)
     }
 }
 
-modelled!(PlacementAdtToRepSetup::adt_to_rep, ReplicatedPlacement, (ReplicatedSetup, Additive64Tensor) -> Replicated64Tensor, AdtToRepOp);
-modelled!(PlacementAdtToRepSetup::adt_to_rep, ReplicatedPlacement, (ReplicatedSetup, Additive128Tensor) -> Replicated128Tensor, AdtToRepOp);
+modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor, AdtToRepOp);
+modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor, AdtToRepOp);
 
 hybrid_kernel! {
     AdtToRepOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, Additive64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Additive128Tensor) -> Replicated128Tensor => Self::kernel),
+        (ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor => Self::kernel),
+        (ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor => Self::kernel),
     ]
 }
 
 impl AdtToRepOp {
-    #[allow(unused_variables)] // Remove when the code below is uncommented
     fn kernel<S: Session, SeedT, ShapeT, KeyT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
         x: AbstractAdditiveTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
-        RingT: Placed<Placement = HostPlacement>,
+        RingT: Placed<Placement = HostPlacement> + Clone,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
         HostPlacement: PlacementSampleUniform<S, SeedT, ShapeT, RingT>,
@@ -702,13 +707,11 @@ impl AdtToRepOp {
             AbstractAdditiveTensor<RingT>,
         >,
         HostPlacement: PlacementReveal<S, AbstractAdditiveTensor<RingT>, RingT>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
     {
         let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
-        let AbstractReplicatedSetup {
-            keys: [[k00, k10], [k11, k21], [k22, k02]],
-        } = &setup;
 
-        let adt = x.placement();
+        let adt = x.placement().unwrap();
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = rep.host_placements();
 
@@ -716,49 +719,79 @@ impl AdtToRepOp {
         let sync_key1 = RawNonce::generate();
         let shape = adt_player0.shape(sess, x0);
 
-        // TODO
-        unimplemented!()
+        let (provider, provider_index, rep_others) = match () {
+            _ if rep_player0 != adt_player0 && rep_player0 != adt_player1 => {
+                (rep_player0, 0, [rep_player1, rep_player2])
+            }
+            _ if rep_player1 != adt_player0 && rep_player1 != adt_player1 => {
+                (rep_player1, 1, [rep_player2, rep_player0])
+            }
+            _ if rep_player2 != adt_player0 && rep_player2 != adt_player1 => {
+                (rep_player2, 2, [rep_player0, rep_player1])
+            }
+            _ => unimplemented!(), // something is wrong in the protocol otherwise
+        };
 
-        // // assume that Additive Host Placements are included Replicated Host Placements
-        // // the player that is not on the additive is the provider
-        // match () {
-        //     _ if rep_player0 != adt_player0 && rep_player0 != adt_player1 => {
+        let k = provider.gen_key(sess);
+        let seed1 = provider.derive_seed(sess, sync_key0, &k);
+        let seed2 = provider.derive_seed(sess, sync_key1, &k);
 
-        //     }
-        //     _ if rep_player1 != adt_player0 && rep_player1 != adt_player1 => {
-        //         let provider = rep_player1;
+        let y0_provider = provider.sample_uniform(sess, &seed1, &shape);
+        let y1_provider = provider.sample_uniform(sess, &seed2, &shape);
 
-        //     }
-        //     _ if rep_player2 != adt_player0 && rep_player2 != adt_player1 => {
-        //         // use rep_player2 as provider
+        let y0 = adt_player0.sample_uniform(sess, &seed1, &shape);
+        let y1 = adt_player1.sample_uniform(sess, &seed2, &adt_player1.shape(sess, x1));
 
-        //         let seed22 = rep_player2.derive_seed(ctx, sync_key1, k22);
-        //         let seed02 = rep_player2.derive_seed(ctx, sync_key0, k02);
-        //         let y22 = rep_player2.sample_uniform(ctx, seed22, &shape);
-        //         let y02 = rep_player2.sample_uniform(ctx, seed02, &shape);
+        let y = AbstractAdditiveTensor {
+            shares: [y0.clone(), y1.clone()],
+        };
+        let c = adt_player0.reveal(sess, &adt.sub(sess, &x, &y));
 
-        //         let seed00 = rep_player0.derive_seed(ctx, sync_key0, k00);
-        //         let seed21 = rep_player1.derive_seed(ctx, sync_key1, k21);
-
-        //         let
-
-        //     }
-        //     _ => unimplemented!()
-        // }
-
-        // let y13 = provider.sample_uniform(ctx);
-        // let y33 = provider.sample_uniform(ctx);
-
-        // let y1 = adt_player0.sample_uniform(ctx);
-        // let y2 = adt_player1.sample_uniform(ctx);
-        // let y = AbstractAdditiveTensor {
-        //     shares: [y1.clone(), y2.clone()],
-        // };
-        // let c = adt_player0.reveal(ctx, &adt.sub(ctx, &x, &y));
-
-        // AbstractReplicatedTensor {
-        //     shares: [[y1, c.clone()], [c, y2], [y33, y13]],
-        // }
+        let shares = match () {
+            _ if provider_index == 0 => {
+                match () {
+                    // (D, adt_0, adt_1) case
+                    _ if adt_player0 == rep_others[0] => {
+                        [[y1_provider, y0_provider], [y0, c.clone()], [c, y1]]
+                    }
+                    // (D, adt_1, adt_0) case
+                    _ if adt_player0 == rep_others[1] => {
+                        [[y0_provider, y1_provider], [y1, c.clone()], [c, y0]]
+                    }
+                    // same as previously, we don't care since parties sends their shares
+                    _ => [[y0_provider, y1_provider], [y1, c.clone()], [c, y0]],
+                }
+            }
+            _ if provider_index == 1 => {
+                match () {
+                    // (adt_1, D, adt_0)
+                    _ if adt_player0 == rep_others[0] => {
+                        [[c.clone(), y1], [y1_provider, y0_provider], [y0, c]]
+                    }
+                    // (adt_0, D, adt_1)
+                    _ if adt_player0 == rep_others[1] => {
+                        [[c.clone(), y0], [y0_provider, y1_provider], [y1, c]]
+                    }
+                    // same as previously, we don't care since parties sends their shares
+                    _ => [[c.clone(), y0], [y0_provider, y1_provider], [y1, c]],
+                }
+            }
+            _ => {
+                match () {
+                    // (adt0, adt1, D)
+                    _ if adt_player0 == rep_others[0] => {
+                        [[y0, c.clone()], [c, y1], [y1_provider, y0_provider]]
+                    }
+                    // (adt1, adt0, D)
+                    _ if adt_player0 == rep_others[1] => {
+                        [[y1, c.clone()], [c, y0], [y0_provider, y1_provider]]
+                    }
+                    // same as previously, we don't care since parties sends their shares
+                    _ => [[y1, c.clone()], [c, y0], [y0_provider, y1_provider]],
+                }
+            }
+        };
+        rep.place(sess, AbstractReplicatedTensor { shares })
     }
 }
 
@@ -867,5 +900,181 @@ where
         AbstractReplicatedZeroShare {
             alphas: [alpha0, alpha1, alpha2],
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::kernels::SyncSession;
+    use crate::ring::AbstractRingTensor;
+    use ndarray::array;
+
+    #[test]
+    fn test_adt_to_rep() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x1 = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "bob".into(),
+                    },
+                ),
+            ],
+        };
+
+        let sess = SyncSession::default();
+
+        let x1_rep = rep.adt_to_rep(&sess, &x1);
+        assert_eq!(alice.reveal(&sess, &x1_rep), alice.reveal(&sess, &x1));
+        assert_eq!(bob.reveal(&sess, &x1_rep), bob.reveal(&sess, &x1));
+        assert_eq!(carole.reveal(&sess, &x1_rep), carole.reveal(&sess, &x1));
+
+        let x2 = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "bob".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ),
+            ],
+        };
+
+        let x2_rep = rep.adt_to_rep(&sess, &x2);
+        assert_eq!(alice.reveal(&sess, &x2_rep), alice.reveal(&sess, &x2));
+        assert_eq!(bob.reveal(&sess, &x2_rep), bob.reveal(&sess, &x2));
+        assert_eq!(carole.reveal(&sess, &x2_rep), carole.reveal(&sess, &x2));
+
+        let x3 = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "david".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "eric".into(),
+                    },
+                ),
+            ],
+        };
+
+        let x3_rep = rep.adt_to_rep(&sess, &x3);
+        assert_eq!(alice.reveal(&sess, &x3_rep), alice.reveal(&sess, &x3));
+        assert_eq!(bob.reveal(&sess, &x3_rep), bob.reveal(&sess, &x3));
+        assert_eq!(carole.reveal(&sess, &x3_rep), carole.reveal(&sess, &x3));
+
+        let x4 = Additive64Tensor {
+            shares: [
+                AbstractRingTensor::from_raw_plc(
+                    array![1, 2, 3],
+                    HostPlacement {
+                        owner: "alice".into(),
+                    },
+                ),
+                AbstractRingTensor::from_raw_plc(
+                    array![4, 5, 6],
+                    HostPlacement {
+                        owner: "eric".into(),
+                    },
+                ),
+            ],
+        };
+
+        let x4_rep = rep.adt_to_rep(&sess, &x4);
+        assert_eq!(alice.reveal(&sess, &x4_rep), alice.reveal(&sess, &x4));
+        assert_eq!(bob.reveal(&sess, &x4_rep), bob.reveal(&sess, &x4));
+        assert_eq!(carole.reveal(&sess, &x4_rep), carole.reveal(&sess, &x4));
+    }
+
+    use ndarray::prelude::*;
+    use rstest::rstest;
+
+    macro_rules! rep_add_test {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractRingTensor::from_raw_plc(ys, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let y_shared = rep.share(&sess, &setup, &y);
+
+                let sum = rep.add(&sess, &x_shared, &y_shared);
+                let opened_sum = alice.reveal(&sess, &sum);
+                assert_eq!(
+                    opened_sum,
+                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_add_test!(test_rep_add64, u64);
+    rep_add_test!(test_rep_add128, u128);
+
+    #[rstest]
+    #[case(array![1_u64, 2, 3].into_dyn(),
+        array![1_u64, 2, 3].into_dyn(),
+        array![2_u64, 4, 6].into_dyn())
+    ]
+    #[case(array![-1_i64 as u64, -2_i64 as u64, -3_i64 as u64].into_dyn(),
+        array![1_u64, 2, 3].into_dyn(),
+        array![0_u64, 0, 0].into_dyn())
+    ]
+    fn test_rep_add_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u64>, #[case] z: ArrayD<u64>) {
+        test_rep_add64(x, y, z);
+    }
+
+    #[rstest]
+    #[case(array![1_u128, 2, 3].into_dyn(),
+        array![1_u128, 2, 3].into_dyn(),
+        array![2_u128, 4, 6].into_dyn())
+    ]
+    #[case(array![-1_i128 as u128, -2_i128 as u128, -3_i128 as u128].into_dyn(),
+        array![1_u128, 2, 3].into_dyn(),
+        array![0_u128, 0, 0].into_dyn())
+    ]
+    fn test_rep_add_128(#[case] x: ArrayD<u128>, #[case] y: ArrayD<u128>, #[case] z: ArrayD<u128>) {
+        test_rep_add128(x, y, z);
     }
 }

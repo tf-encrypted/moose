@@ -1,3 +1,16 @@
+use crate::bit::BitTensor;
+use crate::computation::{
+    Constant, HostPlacement, Placed, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp,
+    RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
+};
+use crate::error::Result;
+use crate::kernels::{
+    PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
+    PlacementShl, PlacementShr, PlacementSub, RuntimeSession, Session, SyncSession, Tensor,
+};
+use crate::prim::{RawSeed, Seed};
+use crate::prng::AesRng;
+use crate::standard::{RawShape, Shape};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use num_traits::Zero;
@@ -7,21 +20,6 @@ use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
 
-use crate::bit::BitTensor;
-use crate::computation::Role;
-use crate::computation::{Constant, Placed};
-use crate::computation::{
-    HostPlacement, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
-    RingSubOp, ShapeOp,
-};
-use crate::kernels::{
-    NewSyncSession, PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
-    PlacementSample, PlacementShl, PlacementShr, PlacementSub,
-};
-use crate::prim::{RawSeed, Seed};
-use crate::prng::AesRng;
-use crate::standard::{RawShape, Shape};
-
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
@@ -29,11 +27,15 @@ pub type Ring64Tensor = AbstractRingTensor<u64>;
 
 pub type Ring128Tensor = AbstractRingTensor<u128>;
 
+impl<S: Session, T> Tensor<S> for AbstractRingTensor<T> {
+    type Scalar = T;
+}
+
 impl<T> Placed for AbstractRingTensor<T> {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
     }
 }
 
@@ -49,17 +51,18 @@ impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
 }
 
-impl<T> PlacementPlace<NewSyncSession, AbstractRingTensor<T>> for HostPlacement
+impl<T> PlacementPlace<SyncSession, AbstractRingTensor<T>> for HostPlacement
 where
     AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
 {
-    fn place(&self, _sess: &NewSyncSession, x: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
-        if self == &x.placement() {
-            x
-        } else {
-            // TODO just updating the placement isn't enough,
-            // we need this to eventually turn into Send + Recv
-            AbstractRingTensor(x.0, self.clone())
+    fn place(&self, _sess: &SyncSession, x: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                AbstractRingTensor(x.0, self.clone())
+            }
         }
     }
 }
@@ -76,8 +79,8 @@ kernel! {
 }
 
 impl RingFillOp {
-    fn ring64_kernel(
-        _sess: &NewSyncSession,
+    fn ring64_kernel<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         value: u64,
         shape: Shape,
@@ -87,8 +90,8 @@ impl RingFillOp {
         AbstractRingTensor(raw_tensor, plc.clone())
     }
 
-    fn ring128_kernel(
-        _sess: &NewSyncSession,
+    fn ring128_kernel<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         value: u128,
         shape: Shape,
@@ -100,8 +103,8 @@ impl RingFillOp {
 }
 
 impl ShapeOp {
-    pub(crate) fn ring_kernel<T>(
-        _sess: &NewSyncSession,
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
     ) -> Shape {
@@ -122,8 +125,8 @@ kernel! {
 }
 
 impl RingAddOp {
-    fn kernel<T>(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -148,8 +151,8 @@ kernel! {
 }
 
 impl RingSubOp {
-    fn kernel<T>(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -174,8 +177,8 @@ kernel! {
 }
 
 impl RingNegOp {
-    fn kernel<T>(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
     ) -> AbstractRingTensor<T>
@@ -199,8 +202,8 @@ kernel! {
 }
 
 impl RingMulOp {
-    fn kernel<T>(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
         y: AbstractRingTensor<T>,
@@ -225,8 +228,8 @@ kernel! {
 }
 
 impl RingShlOp {
-    fn kernel<T>(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -251,8 +254,8 @@ kernel! {
 }
 
 impl RingShrOp {
-    fn kernel<T>(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
         plc: &HostPlacement,
         amount: usize,
         x: AbstractRingTensor<T>,
@@ -297,8 +300,8 @@ kernel! {
 }
 
 impl RingSampleOp {
-    fn kernel_uniform_u64(
-        _sess: &NewSyncSession,
+    fn kernel_uniform_u64<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -311,8 +314,8 @@ impl RingSampleOp {
         AbstractRingTensor(raw_array, plc.clone())
     }
 
-    fn kernel_bits_u64(
-        _sess: &NewSyncSession,
+    fn kernel_bits_u64<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -324,8 +327,8 @@ impl RingSampleOp {
         AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 
-    fn kernel_uniform_u128(
-        _sess: &NewSyncSession,
+    fn kernel_uniform_u128<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,
@@ -339,8 +342,8 @@ impl RingSampleOp {
         AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 
-    fn kernel_bits_u128(
-        _sess: &NewSyncSession,
+    fn kernel_bits_u128<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         seed: Seed,
         shape: Shape,

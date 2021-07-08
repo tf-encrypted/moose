@@ -1,8 +1,11 @@
-use crate::computation::{BitAndOp, BitFillOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
-use crate::computation::{Constant, Placed};
+use crate::computation::{
+    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, ShapeOp,
+};
+use crate::error::Result;
 use crate::kernels::{
-    NewSyncSession, PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
-    PlacementSampleUniform, PlacementSub, PlacementXor,
+    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession, Session, SyncSession,
+    Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -15,28 +18,37 @@ use std::ops::{BitAnd, BitXor};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
 
+impl<S: Session> Tensor<S> for BitTensor {
+    type Scalar = u8;
+}
+
 impl Placed for BitTensor {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
     }
 }
 
-impl PlacementPlace<NewSyncSession, BitTensor> for HostPlacement {
-    fn place(&self, _sess: &NewSyncSession, x: BitTensor) -> BitTensor {
-        if self == &x.placement() {
-            x
-        } else {
-            // TODO just updating the placement isn't enough,
-            // we need this to eventually turn into Send + Recv
-            BitTensor(x.0, self.clone())
+impl PlacementPlace<SyncSession, BitTensor> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: BitTensor) -> BitTensor {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                BitTensor(x.0, self.clone())
+            }
         }
     }
 }
 
 impl ShapeOp {
-    pub(crate) fn bit_kernel(_sess: &NewSyncSession, plc: &HostPlacement, x: BitTensor) -> Shape {
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: BitTensor,
+    ) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
         Shape(raw_shape, plc.clone().into())
     }
@@ -47,12 +59,17 @@ modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (Shape) -> BitTensor => attributes[value: Ring64] Self::kernel),
+        (HostPlacement, (Shape) -> BitTensor => attributes[value: Bit] Self::kernel),
     ]
 }
 
 impl BitFillOp {
-    fn kernel(_sess: &NewSyncSession, plc: &HostPlacement, value: u64, shape: Shape) -> BitTensor {
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        value: u8,
+        shape: Shape,
+    ) -> BitTensor {
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
@@ -70,7 +87,12 @@ kernel! {
 }
 
 impl BitSampleOp {
-    fn kernel(_sess: &NewSyncSession, plc: &HostPlacement, seed: Seed, shape: Shape) -> BitTensor {
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        seed: Seed,
+        shape: Shape,
+    ) -> BitTensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -91,8 +113,8 @@ kernel! {
 }
 
 impl BitXorOp {
-    fn kernel(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         x: BitTensor,
         y: BitTensor,
@@ -112,8 +134,8 @@ kernel! {
 }
 
 impl BitAndOp {
-    fn kernel(
-        _sess: &NewSyncSession,
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
         x: BitTensor,
         y: BitTensor,
