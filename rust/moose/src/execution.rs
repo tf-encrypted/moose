@@ -1138,17 +1138,78 @@ impl AsyncExecutor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::networking::LocalAsyncNetworking;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use crate::standard::{RawShape, Shape};
+    use crate::storage::LocalAsyncStorage;
     use ndarray::prelude::*;
     use std::convert::TryInto;
+    use tokio::runtime::Runtime;
 
     fn _run_test_computation(
         text_computation: &str,
         args: HashMap<String, Value>,
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
-        let exec = TestExecutor::default();
-        let outputs = exec.run_computation(&text_computation.try_into()?, args)?;
+        let executor = TestExecutor::default();
+        let outputs = executor.run_computation(&text_computation.try_into()?, args)?;
+        Ok(outputs)
+    }
+
+    fn _run_async_test_computation(
+        text_computation: &str,
+        args: HashMap<String, Value>,
+        roles: Vec<String>,
+    ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
+        // TODO [Yann] currently run with a single executor, should have one executor per role.
+        let executor = AsyncExecutor::default();
+
+        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+            Arc::new(LocalAsyncNetworking::default());
+        let runtime_storage: HashMap<String, Value> = HashMap::new();
+        let storage: Arc<dyn Send + Sync + AsyncStorage> =
+            Arc::new(LocalAsyncStorage::from_hashmap(runtime_storage));
+        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
+
+        let own_identity = Identity::from("hard_worker");
+        let role_assignments = roles
+            .iter()
+            .map(|arg| (Role::from(arg), Identity::from("hard_worker")))
+            .collect::<HashMap<Role, Identity>>();
+
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
+        let moose_session = AsyncSession {
+            sid: SessionId::from("foobar"),
+            arguments: args,
+            networking: Arc::clone(&networking),
+            storage: Arc::clone(&storage),
+        };
+
+        let (moose_session_handle, outputs) = executor
+            .run_computation(
+                &text_computation.try_into()?,
+                &role_assignments,
+                &own_identity,
+                moose_session,
+            )
+            .unwrap();
+
+        let _result = rt.block_on(moose_session_handle.join_on_first_error());
+
+        for (output_name, output_future) in outputs {
+            output_futures.insert(output_name, output_future);
+        }
+
+        let outputs = rt.block_on(async {
+            let mut outputs: HashMap<String, Value> = HashMap::new();
+            for (output_name, output_future) in output_futures {
+                let value = output_future.await.unwrap();
+                outputs.insert(output_name, value);
+            }
+            outputs
+        });
+
         Ok(outputs)
     }
 
@@ -1273,13 +1334,18 @@ mod tests {
     }
 
     #[rstest]
-    #[case("StdAdd", "Int64Tensor([8]) @Host(alice)")]
-    #[case("StdSub", "Int64Tensor([2]) @Host(alice)")]
-    #[case("StdMul", "Int64Tensor([15]) @Host(alice)")]
-    #[case("StdDiv", "Int64Tensor([1]) @Host(alice)")]
+    #[case("StdAdd", "Int64Tensor([8]) @Host(alice)", true)]
+    #[case("StdSub", "Int64Tensor([2]) @Host(alice)", true)]
+    #[case("StdMul", "Int64Tensor([15]) @Host(alice)", true)]
+    #[case("StdDiv", "Int64Tensor([1]) @Host(alice)", true)]
+    #[case("StdAdd", "Int64Tensor([8]) @Host(alice)", false)]
+    #[case("StdSub", "Int64Tensor([2]) @Host(alice)", false)]
+    #[case("StdMul", "Int64Tensor([15]) @Host(alice)", false)]
+    #[case("StdDiv", "Int64Tensor([1]) @Host(alice)", false)]
     fn test_standard_op(
         #[case] test_op: String,
         #[case] expected_result: Value,
+        #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source_template = r#"x0 = Constant{value=Int64Tensor([5])} @Host(alice)
         x1 = Constant{value=Int64Tensor([3])} @Host(bob)
@@ -1287,7 +1353,15 @@ mod tests {
         output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
         "#;
         let source = source_template.replace("StdOp", &test_op);
-        let outputs = _run_test_computation(&source, SyncArgs::new())?;
+        let args: HashMap<String, Value> = HashMap::new();
+
+        let outputs = match run_async {
+            true => {
+                let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
+                _run_async_test_computation(&source, args, roles)?
+            }
+            false => _run_test_computation(&source, args)?,
+        };
 
         let res: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
