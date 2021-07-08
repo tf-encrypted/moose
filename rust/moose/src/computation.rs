@@ -43,6 +43,7 @@ macro_rules! constants {
         pub enum Constant {
             $($val($val),)+
             // TODO promote below to match other values
+            Bit(u8),
             Float32(f32),
             Float64(f64),
             Ring64(u64),
@@ -54,6 +55,7 @@ macro_rules! constants {
                 match self {
                     $(Constant::$val(_) => constants!(@ty $val $($t)?),)+
                     // TODO promote below to match other values
+                    Constant::Bit(_) => Ty::Bit,
                     Constant::Float32(_) => Ty::Float32,
                     Constant::Float64(_) => Ty::Float64,
                     Constant::Ring64(_) => Ty::Ring64,
@@ -67,6 +69,7 @@ macro_rules! constants {
                         Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
                     )+
                     // TODO promote below to match other values
+                    Constant::Bit(x) => Value::Bit(x.clone()),
                     Constant::Float32(x) => Value::Float32(x.clone()),
                     Constant::Float64(x) => Value::Float64(x.clone()),
                     Constant::Ring64(x) => Value::Ring64(x.clone()),
@@ -114,6 +117,27 @@ constants![
     Uint64Tensor,
 ];
 
+impl From<u8> for Constant {
+    // TODO: not obvious that u64 is always Ring64
+    fn from(x: u8) -> Self {
+        Constant::Bit(x)
+    }
+}
+
+impl From<u64> for Constant {
+    // TODO: not obvious that u64 is always Ring64
+    fn from(x: u64) -> Self {
+        Constant::Ring64(x)
+    }
+}
+
+impl From<u128> for Constant {
+    // TODO: not obvious that u64 is always Ring64
+    fn from(x: u128) -> Self {
+        Constant::Ring128(x)
+    }
+}
+
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
@@ -124,6 +148,7 @@ macro_rules! values {
             $($val($val),)+
             // TODO promote below to match other values
             Unit,
+            Bit(u8),
             Float32(f32),
             Float64(f64),
             Ring64(u64),
@@ -136,6 +161,7 @@ macro_rules! values {
             $($val,)+
             // TODO promote below to match other values
             Unit,
+            Bit,
             Float32,
             Float64,
             Ring64,
@@ -148,6 +174,7 @@ macro_rules! values {
                     $(Value::$val(_) => Ty::$val,)+
                     // TODO promote below to match other values
                     Value::Unit => Ty::Unit,
+                    Value::Bit(_) => Ty::Bit,
                     Value::Float32(_) => Ty::Float32,
                     Value::Float64(_) => Ty::Float64,
                     Value::Ring64(_) => Ty::Ring64,

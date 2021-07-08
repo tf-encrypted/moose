@@ -131,6 +131,10 @@ where
 {
 }
 
+pub trait Tensor<C: Context> {
+    type Scalar;
+}
+
 pub trait PlacementShape<C: Context, T, ShapeT> {
     fn shape(&self, ctx: &C, x: &T) -> ShapeT;
 }
@@ -206,9 +210,13 @@ pub trait PlacementZeros<C: Context, ShapeT, O> {
 impl<C: Context, ShapeT, O, P> PlacementZeros<C, ShapeT, O> for P
 where
     P: PlacementFill<C, ShapeT, O>,
+    O: Tensor<C>,
+    O::Scalar: Into<Constant>,
+    O::Scalar: From<u8>,
 {
     fn zeros(&self, ctx: &C, shape: &ShapeT) -> O {
-        self.fill(ctx, Constant::Ring64(0), shape)
+        let value = O::Scalar::from(0).into();
+        self.fill(ctx, value, shape)
     }
 }
 
@@ -219,9 +227,13 @@ pub trait PlacementOnes<C: Context, ShapeT, O> {
 impl<C: Context, ShapeT, O, P> PlacementOnes<C, ShapeT, O> for P
 where
     P: PlacementFill<C, ShapeT, O>,
+    O: Tensor<C>,
+    O::Scalar: Into<Constant>,
+    O::Scalar: From<u8>,
 {
     fn ones(&self, ctx: &C, shape: &ShapeT) -> O {
-        self.fill(ctx, Constant::Ring64(1), shape)
+        let value = O::Scalar::from(0).into();
+        self.fill(ctx, value, shape)
     }
 }
 
