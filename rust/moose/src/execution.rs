@@ -1238,11 +1238,7 @@ mod tests {
         args.insert("x".to_string(), x);
         args.insert("y".to_string(), y);
 
-        let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::default());
-        let comp: Computation = source.try_into()?;
-
-        let exec = TestExecutor::from_storage(&storage);
-        let outputs = exec.run_computation(&comp, args)?;
+        let outputs = _run_test_computation(&source, args)?;
 
         let z: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
