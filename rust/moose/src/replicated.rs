@@ -1094,13 +1094,13 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let ctx = ConcreteContext::default();
-        let setup = rep.gen_setup(&ctx);
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
         let x1 = AbstractRingTensor::from_raw_plc(array![80908_u64, 0, 40454], alice.clone());
-        let x1_rep = rep.share(&ctx, &setup, &x1);
+        let x1_rep = rep.share(&sess, &setup, &x1);
 
-        let truncated = rep.trunc_pr(&ctx, 1, &x1_rep);
-        let x1_open = alice.reveal(&ctx, &truncated);
+        let truncated = rep.trunc_pr(&sess, 1, &x1_rep);
+        let x1_open = alice.reveal(&sess, &truncated);
 
         let y1 = AbstractRingTensor::from_raw_plc(array![40454, 0, 20227], alice);
         assert_eq!(x1_open.1, y1.1); // make sure placements are equal

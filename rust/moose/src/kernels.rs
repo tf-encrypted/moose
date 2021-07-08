@@ -75,6 +75,7 @@ impl Session for SyncSession {
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
