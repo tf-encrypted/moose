@@ -10,6 +10,7 @@ use crate::kernels::{
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
+use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -19,6 +20,10 @@ use std::ops::{BitAnd, BitXor};
 pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
 
 impl<S: Session> Tensor<S> for BitTensor {
+    type Scalar = u8;
+}
+
+impl<S: Session> Tensor<S> for Symbolic<BitTensor> {
     type Scalar = u8;
 }
 
@@ -38,6 +43,29 @@ impl PlacementPlace<SyncSession, BitTensor> for HostPlacement {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 BitTensor(x.0, self.clone())
+            }
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<BitTensor>> for HostPlacement {
+    fn place(&self, sess: &SymbolicSession, x: Symbolic<BitTensor>) -> Symbolic<BitTensor> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(x) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(BitTensor(x.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
             }
         }
     }

@@ -11,6 +11,15 @@ use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 
+impl Placed for String {
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        // TODO we need a wrapper for strings that contains placement info
+        unimplemented!()
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
 

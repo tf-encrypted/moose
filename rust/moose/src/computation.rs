@@ -1,17 +1,19 @@
-use crate::additive::{Additive128Tensor, Additive64Tensor};
+use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
-    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
+    AbstractReplicatedSetup, AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor,
+    ReplicatedBitTensor, ReplicatedSetup,
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
     Shape, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
+use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
 use macros::ShortName;
 use paste::paste;
@@ -147,19 +149,7 @@ impl From<u128> for Constant {
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
-    ($($val:ident,)+) => {
-
-        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-        pub enum Value {
-            $($val($val),)+
-            // TODO promote below to match other values
-            Unit,
-            Bit(u8),
-            Float32(f32),
-            Float64(f64),
-            Ring64(u64),
-            Ring128(u128),
-        }
+    ($(($val:ident, $sym_val:ty),)+) => {
 
         #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
         pub enum Ty {
@@ -172,6 +162,18 @@ macro_rules! values {
             Float64,
             Ring64,
             Ring128,
+        }
+
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+        pub enum Value {
+            $($val($val),)+
+            // TODO promote below to match other values
+            Unit,
+            Bit(u8),
+            Float32(f32),
+            Float64(f64),
+            Ring64(u64),
+            Ring128(u128),
         }
 
         impl Value {
@@ -241,36 +243,204 @@ macro_rules! values {
             const TY: Ty = Ty::$val;
         }
         )+
+
+        #[derive(PartialEq, Clone, Debug)]
+        pub enum SymbolicValue {
+            $($val($sym_val),)+
+        }
+
+        impl SymbolicValue {
+            pub fn ty(&self) -> Ty {
+                match self {
+                    $(SymbolicValue::$val(_) => Ty::$val,)+
+                    // TODO promote below to match other values
+                    // SymbolicValue::Unit => Ty::Unit,
+                    // SymbolicValue::Bit(_) => Ty::Bit,
+                    // SymbolicValue::Float32(_) => Ty::Float32,
+                    // SymbolicValue::Float64(_) => Ty::Float64,
+                    // SymbolicValue::Ring64(_) => Ty::Ring64,
+                    // SymbolicValue::Ring128(_) => Ty::Ring128,
+                }
+            }
+        }
+
+        $(
+        impl From<$sym_val> for SymbolicValue {
+            fn from(x: $sym_val) -> Self {
+                SymbolicValue::$val(x)
+            }
+        }
+        )+
+
+        $(
+        impl TryFrom<SymbolicValue> for $sym_val {
+            type Error = Error;
+            fn try_from(v: SymbolicValue) -> Result<Self> {
+                match v {
+                    SymbolicValue::$val(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch {
+                        expected: stringify!($val).to_string(),
+                        found: v.ty(),
+                    }),
+                }
+            }
+        }
+        )+
+
+        $(
+        impl KnownType<crate::symbolic::SymbolicSession> for $val {
+            type Type = $sym_val;
+            const TY: Ty = Ty::$val;
+        }
+        )+
     };
 }
 
+impl From<Ring64Tensor> for Symbolic<Ring64Tensor> {
+    fn from(x: Ring64Tensor) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl From<Ring128Tensor> for Symbolic<Ring128Tensor> {
+    fn from(x: Ring128Tensor) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> From<AbstractReplicatedTensor<R>> for Symbolic<AbstractReplicatedTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
+where
+    K: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedSetup<K>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl From<Shape> for Symbolic<Shape> {
+    fn from(x: Shape) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractAdditiveTensor<R>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<R> TryFrom<Symbolic<AbstractReplicatedTensor<R>>> for AbstractReplicatedTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedTensor<R>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K>
+where
+    K: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedSetup<K>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
 values![
-    Shape,
-    Seed,
-    PrfKey,
-    Nonce,
-    String,
-    BitTensor,
-    Ring64Tensor,
-    Ring128Tensor,
-    Float32Tensor,
-    Float64Tensor,
-    Int8Tensor,
-    Int16Tensor,
-    Int32Tensor,
-    Int64Tensor,
-    Uint8Tensor,
-    Uint16Tensor,
-    Uint32Tensor,
-    Uint64Tensor,
-    Fixed64Tensor,
-    Fixed128Tensor,
-    Replicated64Tensor,
-    Replicated128Tensor,
-    ReplicatedBitTensor,
-    ReplicatedSetup,
-    Additive64Tensor,
-    Additive128Tensor,
+    (Shape, Symbolic<Shape>),
+    (Seed, Symbolic<Seed>),
+    (PrfKey, Symbolic<PrfKey>),
+    (Nonce, Symbolic<Nonce>),
+    (String, Symbolic<String>),
+    (BitTensor, Symbolic<BitTensor>),
+    (Ring64Tensor, Symbolic<Ring64Tensor>),
+    (Ring128Tensor, Symbolic<Ring128Tensor>),
+    (Float32Tensor, Symbolic<Float32Tensor>),
+    (Float64Tensor, Symbolic<Float64Tensor>),
+    (Int8Tensor, Symbolic<Int8Tensor>),
+    (Int16Tensor, Symbolic<Int16Tensor>),
+    (Int32Tensor, Symbolic<Int32Tensor>),
+    (Int64Tensor, Symbolic<Int64Tensor>),
+    (Uint8Tensor, Symbolic<Uint8Tensor>),
+    (Uint16Tensor, Symbolic<Uint16Tensor>),
+    (Uint32Tensor, Symbolic<Uint32Tensor>),
+    (Uint64Tensor, Symbolic<Uint64Tensor>),
+    (
+        Fixed64Tensor,
+        Symbolic<
+            FixedTensor<
+                <Ring64Tensor as KnownType<SymbolicSession>>::Type,
+                <Replicated64Tensor as KnownType<SymbolicSession>>::Type,
+            >,
+        >
+    ),
+    (
+        Fixed128Tensor,
+        Symbolic<
+            FixedTensor<
+                <Ring128Tensor as KnownType<SymbolicSession>>::Type,
+                <Replicated128Tensor as KnownType<SymbolicSession>>::Type,
+            >,
+        >
+    ),
+    (
+        Replicated64Tensor,
+        Symbolic<AbstractReplicatedTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        Replicated128Tensor,
+        Symbolic<AbstractReplicatedTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        ReplicatedBitTensor,
+        Symbolic<AbstractReplicatedTensor<<BitTensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        ReplicatedSetup,
+        Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        Additive64Tensor,
+        Symbolic<AbstractAdditiveTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        Additive128Tensor,
+        Symbolic<AbstractAdditiveTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
 ];
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]

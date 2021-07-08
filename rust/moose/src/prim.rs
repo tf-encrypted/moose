@@ -5,6 +5,7 @@ use crate::kernels::{
     SyncSession,
 };
 use crate::prng::AesRng;
+use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -34,6 +35,29 @@ impl PlacementPlace<SyncSession, Seed> for HostPlacement {
     }
 }
 
+impl PlacementPlace<SymbolicSession, Symbolic<Seed>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<Seed>) -> Symbolic<Seed> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(seed) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(Seed(seed.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawPrfKey(pub [u8; 16]);
 
@@ -56,6 +80,29 @@ impl PlacementPlace<SyncSession, PrfKey> for HostPlacement {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 PrfKey(key.0, self.clone())
+            }
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<PrfKey>) -> Symbolic<PrfKey> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(key) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(PrfKey(key.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
             }
         }
     }
@@ -90,6 +137,29 @@ impl PlacementPlace<SyncSession, Nonce> for HostPlacement {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 Nonce(nonce.0, self.clone())
+            }
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<Nonce>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<Nonce>) -> Symbolic<Nonce> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(nonce) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(Nonce(nonce.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
             }
         }
     }
