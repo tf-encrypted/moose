@@ -2,7 +2,7 @@ use crate::additive::{Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::kernels::Context;
+use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
@@ -29,7 +29,13 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
-pub trait KnownType<C: Context> {
+impl SessionId {
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
+pub trait KnownType<S: Session> {
     type Type;
     const TY: Ty;
 }
@@ -230,7 +236,7 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::kernels::ConcreteContext> for $val {
+        impl KnownType<crate::kernels::SyncSession> for $val {
             type Type = $val;
             const TY: Ty = Ty::$val;
         }
@@ -730,7 +736,7 @@ pub struct AdtFillOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
-    pub nonce: RawNonce,
+    pub sync_key: RawNonce,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

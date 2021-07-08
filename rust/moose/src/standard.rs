@@ -1,10 +1,7 @@
-extern crate ndarray;
-extern crate ndarray_linalg;
-
 use crate::bit::BitTensor;
 use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
 use crate::error::Result;
-use crate::kernels::{Context, PlacementPlace, PlacementShape};
+use crate::kernels::{PlacementPlace, PlacementShape, Session};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -28,8 +25,8 @@ impl Placed for Shape {
     }
 }
 
-impl<C: Context> PlacementPlace<C, Shape> for Placement {
-    fn place(&self, _ctx: &C, shape: Shape) -> Shape {
+impl<S: Session> PlacementPlace<S, Shape> for Placement {
+    fn place(&self, _sess: &S, shape: Shape) -> Shape {
         match shape.placement() {
             Ok(place) if &place == self => shape,
             _ => {

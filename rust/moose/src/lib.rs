@@ -1,7 +1,7 @@
 // Returns the context-specific type for the given basic type.
 macro_rules! cs {
     ($t:ty) => {
-        <$t as KnownType<C>>::Type
+        <$t as KnownType<S>>::Type
     };
 }
 
@@ -43,8 +43,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc| {
-                $k(ctx, plc, $($attr.clone()),+)
+            Box::new(move |sess, plc| {
+                $k(sess, plc, $($attr.clone()),+)
             })
         }
     };
@@ -60,8 +60,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc, x0| {
-                $k(ctx, plc, $($attr.clone()),+, x0)
+            Box::new(move |sess, plc, x0| {
+                $k(sess, plc, $($attr.clone()),+, x0)
             })
         }
     };
@@ -77,8 +77,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc, x0, x1| {
-                $k(ctx, plc, $($attr.clone()),+, x0, x1)
+            Box::new(move |sess, plc, x0, x1| {
+                $k(sess, plc, $($attr.clone()),+, x0, x1)
             })
         }
     };
@@ -94,8 +94,8 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |ctx, plc, x0, x1, x2| {
-                $k(ctx, plc, $($attr.clone()),+), x0, x1, x2
+            Box::new(move |sess, plc, x0, x1, x2| {
+                $k(sess, plc, $($attr.clone()),+), x0, x1, x2
             })
         }
     };
@@ -121,10 +121,14 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, () -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>
+            {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
-                use crate::kernels::{ConcreteContext, NullaryKernel};
+                use crate::kernels::{SyncSession, NullaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig) {
@@ -137,12 +141,12 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
-                            let k = <$op as NullaryKernel<ConcreteContext, $plc, $u>>::compile(self, &ctx, &plc);
+                            let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self, &plc);
 
-                            Box::new(move |operands: Vec<crate::computation::Value>| {
+                            Box::new(move |sess, operands: Vec<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 0);
 
-                                let y: $u = k(&ctx, &plc);
+                                let y: $u = k(sess, &plc);
                                 debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
                                 y.into()
                             })
@@ -159,10 +163,14 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>
+            {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
-                use crate::kernels::{ConcreteContext, UnaryKernel};
+                use crate::kernels::{SyncSession, UnaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig) {
@@ -176,14 +184,14 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
-                            let k = <$op as UnaryKernel<ConcreteContext, $plc, $t0, $u>>::compile(self, &ctx, &plc);
+                            let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self, &plc);
 
-                            Box::new(move |operands: Vec<Value>| {
+                            Box::new(move |sess, operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = k(&ctx, &plc, x0);
+                                let y: $u = k(sess, &plc, x0);
                                 debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
                                 y.into()
                             })
@@ -200,10 +208,14 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>
+            {
                 use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature, Value};
-                use crate::kernels::{ConcreteContext, BinaryKernel};
+                use crate::kernels::{SyncSession, BinaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig) {
@@ -219,20 +231,20 @@ macro_rules! concrete_dispatch_kernel {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
                             let k = <$op as BinaryKernel<
-                                ConcreteContext,
+                                SyncSession,
                                 $plc,
                                 $t0,
                                 $t1,
                                 $u
-                            >>::compile(self, &ctx, &plc);
+                            >>::compile(self, &plc);
 
-                            Box::new(move |operands| -> Value {
+                            Box::new(move |sess, operands| -> Value {
                                 assert_eq!(operands.len(), 2);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = k(&ctx, &plc, x0, x1);
+                                let y: $u = k(sess, &plc, x0, x1);
                                 debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
                                 y.into()
                             })
@@ -249,10 +261,14 @@ macro_rules! concrete_dispatch_kernel {
     */
 
     ($op:ty, [$( ($plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty), )+]) => {
-        impl crate::kernels::DispatchKernel<crate::kernels::ConcreteContext> for $op {
-            fn compile<'c>(&self, ctx: &'c crate::kernels::ConcreteContext, plc: &crate::computation::Placement) -> Box<dyn Fn(Vec<crate::computation::Value>) -> crate::computation::Value + 'c> {
+        impl crate::kernels::DispatchKernel<crate::kernels::SyncSession> for $op {
+            fn compile(
+                &self,
+                plc: &crate::computation::Placement
+            ) -> Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>
+            {
                 use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature, Value};
-                use crate::kernels::{ConcreteContext, TernaryKernel};
+                use crate::kernels::{SyncSession, TernaryKernel};
                 use std::convert::TryInto;
 
                 match (plc.ty(), self.sig) {
@@ -268,16 +284,16 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into().unwrap();
 
-                            let k = <$op as TernaryKernel<ConcreteContext, $plc, $t0, $t1, $t2, $u>>::compile(self, &ctx, &plc);
+                            let k = <$op as TernaryKernel<SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self, &plc);
 
-                            Box::new(move |operands: Vec<Value>| -> Value {
+                            Box::new(move |sess, operands: Vec<Value>| -> Value {
                                 assert_eq!(operands.len(), 3);
 
                                 let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
                                 let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
 
-                                let y: $u = k(&ctx, &plc, x0, x1, x2);
+                                let y: $u = k(sess, &plc, x0, x1, x2);
                                 debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
                                 y.into()
                             })
@@ -303,12 +319,12 @@ macro_rules! kernel {
 
         $(
             impl NullaryKernel<
-                ConcreteContext,
+                SyncSession,
                 $plc,
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc) -> $u> {
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc) -> $u> {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
             }
@@ -321,17 +337,17 @@ macro_rules! kernel {
         //         <$u as KnownType>::Symbolic
         //     > for $op
         //     {
-        //         fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+        //         fn compile(&self, sess: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
         //             &SymbolicContext,
         //             &$plc)
         //             -> <$u as KnownType>::Symbolic>
         //         {
         //             let op = self.clone();
         //             Box::new(move |
-        //                 ctx: &SymbolicContext,
+        //                 sess: &SymbolicContext,
         //                 plc: &$plc,
         //             | {
-        //                 let op_name = ctx.add_operation(&op, &[], &plc.clone().into());
+        //                 let op_name = sess.add_operation(&op, &[], &plc.clone().into());
         //                 Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
         //             })
         //         }
@@ -349,13 +365,13 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::UnaryKernel<
-                crate::kernels::ConcreteContext,
+                crate::kernels::SyncSession,
                 $plc,
                 $t0,
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> $u> {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }
@@ -369,7 +385,7 @@ macro_rules! kernel {
         //         <$u as KnownType>::Symbolic
         //     > for $op
         //     {
-        //         fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+        //         fn compile(&self, sess: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
         //             &SymbolicContext,
         //             &$plc,
         //             <$t0 as KnownType>::Symbolic)
@@ -377,13 +393,13 @@ macro_rules! kernel {
         //         {
         //             let op = self.clone();
         //             Box::new(move |
-        //                 ctx: &SymbolicContext,
+        //                 sess: &SymbolicContext,
         //                 plc: &$plc,
         //                 x0: <$t0 as KnownType>::Symbolic,
         //             | {
         //                 match x0 {
         //                     Symbolic::Symbolic(h0) => {
-        //                         let op_name = ctx.add_operation(&op, &[&h0.op], &plc.clone().into());
+        //                         let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
         //                         Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
         //                     }
         //                     _ => unimplemented!()
@@ -404,14 +420,14 @@ macro_rules! kernel {
 
         $(
             impl crate::kernels::BinaryKernel<
-                crate::kernels::ConcreteContext,
+                crate::kernels::SyncSession,
                 $plc,
                 $t0,
                 $t1,
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &crate::kernels::ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> $u> {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
             }
@@ -426,7 +442,7 @@ macro_rules! kernel {
         //         <$u as KnownType>::Symbolic
         //     > for $op
         //     {
-        //         fn compile(&self, ctx: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
+        //         fn compile(&self, sess: &SymbolicContext, plc: &$plc) -> Box<dyn Fn(
         //             &SymbolicContext,
         //             &$plc,
         //             <$t0 as KnownType>::Symbolic,
@@ -435,14 +451,14 @@ macro_rules! kernel {
         //         {
         //             let op = self.clone();
         //             Box::new(move |
-        //                 ctx: &SymbolicContext,
+        //                 sess: &SymbolicContext,
         //                 plc: &$plc,
         //                 x0: <$t0 as KnownType>::Symbolic,
         //                 x1: <$t1 as KnownType>::Symbolic,
         //             | {
         //                 match (x0, x1) {
         //                     (Symbolic::Symbolic(h0), Symbolic::Symbolic(h1)) => {
-        //                         let op_name = ctx.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
+        //                         let op_name = sess.add_operation(&op, &[&h0.op, &h1.op], &plc.clone().into());
         //                         Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
         //                     }
         //                     _ => unimplemented!()
@@ -463,7 +479,7 @@ macro_rules! kernel {
 
         $(
             impl TernaryKernel<
-                ConcreteContext,
+                SyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -471,7 +487,7 @@ macro_rules! kernel {
                 $u
             > for $op
             {
-                fn compile(&self, _ctx: &ConcreteContext, _plc: &$plc) -> Box<dyn Fn(&ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(&SyncSession, &$plc, $t0, $t1, $t2) -> $u> {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
             }
@@ -530,17 +546,16 @@ macro_rules! hybrid_kernel {
 
         $(
             impl crate::kernels::NullaryKernel<
-                crate::kernels::ConcreteContext,
+                crate::kernels::SyncSession,
                 $plc,
                 $u
             > for $op
             {
                 fn compile(
                     &self,
-                    _ctx: &crate::kernels::ConcreteContext,
                     _plc: &$plc,
                 ) -> Box<dyn Fn(
-                    &crate::kernels::ConcreteContext,
+                    &crate::kernels::SyncSession,
                     &$plc)
                     -> $u>
                 {
@@ -585,7 +600,7 @@ macro_rules! hybrid_kernel {
 
         $(
             impl crate::kernels::UnaryKernel<
-                crate::kernels::ConcreteContext,
+                crate::kernels::SyncSession,
                 $plc,
                 $t0,
                 $u
@@ -593,9 +608,8 @@ macro_rules! hybrid_kernel {
             {
                 fn compile(
                     &self,
-                    _ctx: &crate::kernels::ConcreteContext,
                     _plc: &$plc,
-                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0) -> $u> {
+                ) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> $u> {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }
@@ -654,7 +668,7 @@ macro_rules! hybrid_kernel {
 
         $(
             impl crate::kernels::BinaryKernel<
-                crate::kernels::ConcreteContext,
+                crate::kernels::SyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -663,9 +677,8 @@ macro_rules! hybrid_kernel {
             {
                 fn compile(
                     &self,
-                    _ctx: &crate::kernels::ConcreteContext,
                     _plc: &$plc
-                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1) -> $u> {
+                ) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1) -> $u> {
                     derive_runtime_kernel![binary, $($kp)+, self]
                 }
             }
@@ -728,7 +741,7 @@ macro_rules! hybrid_kernel {
 
         $(
             impl crate::kernels::TernaryKernel<
-                crate::kernels::ConcreteContext,
+                crate::kernels::SyncSession,
                 $plc,
                 $t0,
                 $t1,
@@ -738,9 +751,8 @@ macro_rules! hybrid_kernel {
             {
                 fn compile(
                     &self,
-                    _ctx: &crate::kernels::ConcreteContext,
                     _plc: &$plc,
-                ) -> Box<dyn Fn(&crate::kernels::ConcreteContext, &$plc, $t0, $t1, $t2) -> $u> {
+                ) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0, $t1, $t2) -> $u> {
                     derive_runtime_kernel![ternary, $($kp)+, self]
                 }
             }
@@ -803,22 +815,22 @@ macro_rules! modelled {
     Nullary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? () -> $u:ty, $op:ident) => {
-        impl crate::kernels::NullaryKernelCheck<crate::kernels::ConcreteContext, $plc, $u> for $op {}
+        impl crate::kernels::NullaryKernelCheck<crate::kernels::SyncSession, $plc, $u> for $op {}
 
-        impl $t<crate::kernels::ConcreteContext, $u> for $plc {
-            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*)?) -> $u {
+        impl $t<crate::kernels::SyncSession, $u> for $plc {
+            fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*)?) -> $u {
                 use crate::computation::{KnownType, NullarySignature};
-                use crate::kernels::{Context, ConcreteContext};
+                use crate::kernels::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = NullarySignature {
-                    ret: <$u as KnownType<ConcreteContext>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                ctx.execute(op.into(), &self.into(), vec![])
+                sess.execute(op.into(), &self.into(), vec![])
                     .try_into()
                     .unwrap()
             }
@@ -844,23 +856,23 @@ macro_rules! modelled {
     Unary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::UnaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $u> for $op {}
+        impl crate::kernels::UnaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $u> for $op {}
 
-        impl $t<crate::kernels::ConcreteContext, $t0, $u> for $plc {
-            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> $u {
+        impl $t<crate::kernels::SyncSession, $t0, $u> for $plc {
+            fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0) -> $u {
                 use crate::computation::{KnownType, UnarySignature};
-                use crate::kernels::{Context, ConcreteContext};
+                use crate::kernels::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = UnarySignature {
-                    arg0: <$t0 as KnownType<ConcreteContext>>::TY,
-                    ret: <$u as KnownType<ConcreteContext>>::TY,
+                    arg0: <$t0 as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                ctx.execute(op.into(), &self.into(), vec![x0.clone().into()])
+                sess.execute(op.into(), &self.into(), vec![x0.clone().into()])
                     .try_into()
                     .unwrap()
             }
@@ -889,24 +901,24 @@ macro_rules! modelled {
     Binary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::BinaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $t1, $u> for $op {}
+        impl crate::kernels::BinaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $t1, $u> for $op {}
 
-        impl $t<crate::kernels::ConcreteContext, $t0, $t1, $u> for $plc {
-            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
+        impl $t<crate::kernels::SyncSession, $t0, $t1, $u> for $plc {
+            fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1) -> $u {
                 use crate::computation::{KnownType, BinarySignature};
-                use crate::kernels::{Context, ConcreteContext};
+                use crate::kernels::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = BinarySignature {
-                    arg0: <$t0 as KnownType<ConcreteContext>>::TY,
-                    arg1: <$t1 as KnownType<ConcreteContext>>::TY,
-                    ret: <$u as KnownType<ConcreteContext>>::TY,
+                    arg0: <$t0 as KnownType<SyncSession>>::TY,
+                    arg1: <$t1 as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                ctx.execute(
+                sess.execute(
                     op.into(),
                     &self.into(),
                     vec![x0.clone().into(), x1.clone().into()],
@@ -952,25 +964,25 @@ macro_rules! modelled {
     Ternary
     */
     ($t:ident::$f:ident, $plc:ty, $(attributes[$($attr_id:ident : $attr_ty:ty),*])? ($t0:ty, $t1:ty, $t2:ty) -> $u:ty, $op:ident) => {
-        impl crate::kernels::TernaryKernelCheck<crate::kernels::ConcreteContext, $plc, $t0, $t1, $t2, $u> for $op {}
+        impl crate::kernels::TernaryKernelCheck<crate::kernels::SyncSession, $plc, $t0, $t1, $t2, $u> for $op {}
 
-        impl $t<crate::kernels::ConcreteContext, $t0, $t1, $t2, $u> for $plc {
-            fn $f(&self, ctx: &crate::kernels::ConcreteContext, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
+        impl $t<crate::kernels::SyncSession, $t0, $t1, $t2, $u> for $plc {
+            fn $f(&self, sess: &crate::kernels::SyncSession, $($($attr_id:$attr_ty),*,)? x0: &$t0, x1: &$t1, x2: &$t2) -> $u {
                 use crate::computation::{KnownType, TernarySignature};
-                use crate::kernels::{Context, ConcreteContext};
+                use crate::kernels::{Session, SyncSession};
                 use std::convert::TryInto;
 
                 let sig = TernarySignature {
-                    arg0: <$t0 as KnownType<ConcreteContext>>::TY,
-                    arg1: <$t1 as KnownType<ConcreteContext>>::TY,
-                    arg2: <$t2 as KnownType<ConcreteContext>>::TY,
-                    ret: <$u as KnownType<ConcreteContext>>::TY,
+                    arg0: <$t0 as KnownType<SyncSession>>::TY,
+                    arg1: <$t1 as KnownType<SyncSession>>::TY,
+                    arg2: <$t2 as KnownType<SyncSession>>::TY,
+                    ret: <$u as KnownType<SyncSession>>::TY,
                 };
                 let op = $op {
                     sig: sig.into(),
                     $($($attr_id),*)?
                 };
-                ctx.execute(
+                sess.execute(
                     op.into(),
                     &self.into(),
                     vec![x0.clone().into(), x1.clone().into(), x2.clone().into()],
@@ -1025,9 +1037,9 @@ macro_rules! modelled_alias {
     Binary
     */
     ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
-        impl $src_t<crate::kernels::ConcreteContext, $t0, $t1, $u> for $plc {
-            fn $src_f(&self, ctx: &crate::kernels::ConcreteContext, x0: &$t0, x1: &$t1) -> $u {
-                $dst_t::$dst_f(self, ctx, x0, x1)
+        impl $src_t<crate::kernels::SyncSession, $t0, $t1, $u> for $plc {
+            fn $src_f(&self, sess: &crate::kernels::SyncSession, x0: &$t0, x1: &$t1) -> $u {
+                $dst_t::$dst_f(self, sess, x0, x1)
             }
         }
 
