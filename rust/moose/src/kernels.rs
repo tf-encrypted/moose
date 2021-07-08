@@ -72,6 +72,7 @@ impl Session for NewSyncSession {
             Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
             op => unimplemented!("{:?}", op), // TODO
@@ -263,16 +264,16 @@ where
     }
 }
 
-pub trait PlacementRepToAdt<C: Session, T, O> {
-    fn rep_to_adt(&self, sess: &C, x: &T) -> O;
+pub trait PlacementRepToAdt<S: Session, T, O> {
+    fn rep_to_adt(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementAdtToRepSetup<S: Session, SetupT, T, O> {
-    fn adt_to_rep(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+pub trait PlacementAdtToRep<S: Session, T, O> {
+    fn adt_to_rep(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementTruncPrSetup<S: Session, SetupT, T, O> {
-    fn trunc_pr(&self, sess: &S, amount: usize, setup: &SetupT, x: &T) -> O;
+pub trait PlacementTruncPr<S: Session, T, O> {
+    fn trunc_pr(&self, sess: &S, amount: usize, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {

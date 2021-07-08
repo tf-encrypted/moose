@@ -1,5 +1,7 @@
-use crate::computation::{BitAndOp, BitFillOp, BitSampleOp, BitXorOp, HostPlacement, ShapeOp};
-use crate::computation::{Constant, Placed};
+use crate::computation::{
+    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, ShapeOp,
+};
+use crate::error::Result;
 use crate::kernels::{
     NewSyncSession, PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
     PlacementSampleUniform, PlacementSub, PlacementXor,
@@ -18,19 +20,20 @@ pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
 impl Placed for BitTensor {
     type Placement = HostPlacement;
 
-    fn placement(&self) -> Self::Placement {
-        self.1.clone()
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
     }
 }
 
 impl PlacementPlace<NewSyncSession, BitTensor> for HostPlacement {
     fn place(&self, _sess: &NewSyncSession, x: BitTensor) -> BitTensor {
-        if self == &x.placement() {
-            x
-        } else {
-            // TODO just updating the placement isn't enough,
-            // we need this to eventually turn into Send + Recv
-            BitTensor(x.0, self.clone())
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                // TODO just updating the placement isn't enough,
+                // we need this to eventually turn into Send + Recv
+                BitTensor(x.0, self.clone())
+            }
         }
     }
 }
