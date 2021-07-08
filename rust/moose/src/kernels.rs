@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
 
+/// General session trait determining basic properties for session objects.
 pub trait Session {
     type Value;
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value;
@@ -24,25 +25,33 @@ pub trait Session {
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup;
 }
 
-pub trait RuntimeSession {
+/// Trait for sessions that are intended for run-time use only.
+///
+/// This trait is used to make a distinct between functionality that may
+/// only be executed during run-time as opposed to at compile-time, such
+/// as for instance key generation. Moreover, it also offers access to
+/// information that is only known at run-time, such as the concrete
+/// session id under which execution is happening.
+pub trait RuntimeSession: Session {
     fn session_id(&self) -> &SessionId;
 }
 
-pub struct NewSyncSession {
+/// Session object for synchronous/eager execution (in new framework).
+pub struct SyncSession {
     session_id: SessionId,
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
-impl Default for NewSyncSession {
+impl Default for SyncSession {
     fn default() -> Self {
-        NewSyncSession {
+        SyncSession {
             session_id: "abcde".into(), // TODO
             replicated_keys: Default::default(),
         }
     }
 }
 
-impl Session for NewSyncSession {
+impl Session for SyncSession {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
@@ -85,7 +94,33 @@ impl Session for NewSyncSession {
     }
 }
 
-impl RuntimeSession for NewSyncSession {
+impl RuntimeSession for SyncSession {
+    fn session_id(&self) -> &SessionId {
+        &self.session_id
+    }
+}
+
+/// Session object for asynchronous execution (in new framework).
+pub struct AsyncSession {
+    session_id: SessionId,
+    // replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
+}
+
+impl Session for AsyncSession {
+    type Value = (); // TODO
+    fn execute(&self, _op: Operator, _plc: &Placement, _operands: Vec<Self::Value>) -> Self::Value {
+        // TODO
+        unimplemented!()
+    }
+
+    type ReplicatedSetup = (); // TODO
+    fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
+        // TODO
+        unimplemented!()
+    }
+}
+
+impl RuntimeSession for AsyncSession {
     fn session_id(&self) -> &SessionId {
         &self.session_id
     }

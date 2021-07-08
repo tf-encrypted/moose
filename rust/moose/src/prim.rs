@@ -1,8 +1,8 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
 use crate::error::Result;
 use crate::kernels::{
-    NewSyncSession, NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace,
-    RuntimeSession,
+    NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
+    SyncSession,
 };
 
 use crate::prng::AesRng;
@@ -22,8 +22,8 @@ impl Placed for Seed {
     }
 }
 
-impl PlacementPlace<NewSyncSession, Seed> for HostPlacement {
-    fn place(&self, _sess: &NewSyncSession, seed: Seed) -> Seed {
+impl PlacementPlace<SyncSession, Seed> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, seed: Seed) -> Seed {
         match seed.placement() {
             Ok(place) if &place == self => seed,
             _ => {
@@ -49,8 +49,8 @@ impl Placed for PrfKey {
     }
 }
 
-impl PlacementPlace<NewSyncSession, PrfKey> for HostPlacement {
-    fn place(&self, _sess: &NewSyncSession, key: PrfKey) -> PrfKey {
+impl PlacementPlace<SyncSession, PrfKey> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, key: PrfKey) -> PrfKey {
         match key.placement() {
             Ok(place) if self == &place => key,
             _ => {
@@ -83,8 +83,8 @@ impl Placed for Nonce {
     }
 }
 
-impl PlacementPlace<NewSyncSession, Nonce> for HostPlacement {
-    fn place(&self, _sess: &NewSyncSession, nonce: Nonce) -> Nonce {
+impl PlacementPlace<SyncSession, Nonce> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, nonce: Nonce) -> Nonce {
         match nonce.placement() {
             Ok(place) if &place == self => nonce,
             _ => {
@@ -106,7 +106,7 @@ kernel! {
 }
 
 impl PrimPrfKeyGenOp {
-    fn kernel(_sess: &NewSyncSession, plc: &HostPlacement) -> PrfKey {
+    fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> PrfKey {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         PrfKey(raw_key, plc.clone())
     }

@@ -653,7 +653,7 @@ impl RepToAdtOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{kernels::NewSyncSession, ring::AbstractRingTensor};
+    use crate::{kernels::SyncSession, ring::AbstractRingTensor};
     use ndarray::array;
 
     #[test]
@@ -682,7 +682,7 @@ mod tests {
             ],
         };
 
-        let sess = NewSyncSession::default();
+        let sess = SyncSession::default();
         let AbstractAdditiveTensor { shares: [z0, z1] } = adt.add(&sess, &x, &y);
 
         assert_eq!(
@@ -717,7 +717,7 @@ mod tests {
             ],
         };
 
-        let sess = NewSyncSession::default();
+        let sess = SyncSession::default();
         let x_trunc = adt.trunc_pr(&sess, 8, &carole, &x);
         let _y = carole.reveal(&sess, &x_trunc);
 

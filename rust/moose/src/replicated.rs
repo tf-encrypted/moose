@@ -906,7 +906,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::kernels::NewSyncSession;
+    use crate::kernels::SyncSession;
     use crate::ring::AbstractRingTensor;
     use ndarray::array;
 
@@ -943,7 +943,7 @@ mod tests {
             ],
         };
 
-        let sess = NewSyncSession::default();
+        let sess = SyncSession::default();
 
         let x1_rep = rep.adt_to_rep(&sess, &x1);
         assert_eq!(alice.reveal(&sess, &x1_rep), alice.reveal(&sess, &x1));
@@ -1033,7 +1033,7 @@ mod tests {
                 let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
                 let y = AbstractRingTensor::from_raw_plc(ys, alice.clone());
 
-                let sess = NewSyncSession::default();
+                let sess = SyncSession::default();
                 let setup = rep.gen_setup(&sess);
 
                 let x_shared = rep.share(&sess, &setup, &x);
