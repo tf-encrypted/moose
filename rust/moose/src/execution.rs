@@ -1217,17 +1217,6 @@ mod tests {
         Ok(outputs)
     }
 
-    #[test]
-    fn test_standard_prod_ops() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)"#;
-        TestExecutor::default().run_computation(&source.try_into()?, SyncArgs::new())?;
-        Ok(())
-    }
-
     #[rstest]
     #[case(true)]
     #[case(false)]
@@ -1429,6 +1418,35 @@ mod tests {
             (outputs.get("output").unwrap().clone()).try_into()?;
 
         assert_eq!(expected_result, res.into());
+        Ok(())
+    }
+
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_standard_dot(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])} @Host(bob)
+        res = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
+        output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
+        "#;
+
+        let args: HashMap<String, Value> = HashMap::new();
+        let outputs = match run_async {
+            true => {
+                let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
+                _run_async_test_computation(&source, args, roles)?
+            }
+            false => _run_sync_test_computation(&source, args)?,
+        };
+
+        let expected_output = Value::from(Float32Tensor::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        ));
+
+        assert_eq!(outputs["output"], expected_output);
         Ok(())
     }
 
