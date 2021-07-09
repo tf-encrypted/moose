@@ -885,26 +885,26 @@ mod tests {
 
         let ops = sess.ops.read().unwrap();
 
-        assert!(matches!(ops.iter().find(|o| o.name == "op_0"),
-        Some(
+        assert!(ops.iter().any(|o| matches!(o,
             Operation {
+                name,
                 kind: Operator::RingAdd(RingAddOp { sig: _ }),
                 inputs,
                 placement: Placement::Host(HostPlacement { owner }),
                 ..
-            })
-            if inputs == &vec!["x0", "y0"] && owner.0 == "alice"
-        ));
+            }
+            if name == "op_0" && inputs == &vec!["x0", "y0"] && owner.0 == "alice"
+        )));
 
-        assert!(matches!(ops.iter().find(|o| o.name == "op_1"),
-        Some(
+        assert!(ops.iter().any(|o| matches!(o,
             Operation {
+                name,
                 kind: Operator::RingAdd(RingAddOp { sig: _ }),
                 inputs,
                 placement: Placement::Host(HostPlacement { owner }),
                 ..
-            })
-            if inputs == &vec!["x1", "y1"] && owner.0 == "bob"
-        ));
+            }
+            if name == "op_1" && inputs == &vec!["x1", "y1"] && owner.0 == "bob"
+        )));
     }
 }
