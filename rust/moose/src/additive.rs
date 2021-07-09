@@ -885,30 +885,26 @@ mod tests {
 
         let ops = sess.ops.read().unwrap();
 
-        match ops.iter().find(|o| o.name == "op_0") {
-            None => panic!("Newly created operation was not placed on graph"),
-            Some(op) => assert!(matches!(
-                op,
-                Operation {
-                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
-                    inputs,
-                    placement: Placement::Host(HostPlacement { owner }),
-                    ..
-                } if inputs == &vec!["x0", "y0"] && owner.0 == "alice"
-            )),
-        }
+        assert!(matches!(ops.iter().find(|o| o.name == "op_0"),
+        Some(
+            Operation {
+                kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                inputs,
+                placement: Placement::Host(HostPlacement { owner }),
+                ..
+            })
+            if inputs == &vec!["x0", "y0"] && owner.0 == "alice"
+        ));
 
-        match ops.iter().find(|o| o.name == "op_1") {
-            None => panic!("Newly created operation was not placed on graph"),
-            Some(op) => assert!(matches!(
-                op,
-                Operation {
-                    kind: Operator::RingAdd(RingAddOp { sig: _ }),
-                    inputs,
-                    placement: Placement::Host(HostPlacement { owner }),
-                    ..
-                } if inputs == &vec!["x1", "y1"] && owner.0 == "bob"
-            )),
-        }
+        assert!(matches!(ops.iter().find(|o| o.name == "op_1"),
+        Some(
+            Operation {
+                kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                inputs,
+                placement: Placement::Host(HostPlacement { owner }),
+                ..
+            })
+            if inputs == &vec!["x1", "y1"] && owner.0 == "bob"
+        ));
     }
 }
