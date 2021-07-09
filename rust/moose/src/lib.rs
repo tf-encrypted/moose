@@ -5,6 +5,17 @@ macro_rules! cs {
     };
 }
 
+
+macro_rules! st {
+    ($t:ty) => {
+        <<$t as crate::replicated::CanonicalType>::Type as KnownType<S>>::Type
+    };
+    ($t:ty, $s:ty) => {
+        <<$t as crate::replicated::CanonicalType>::Type as KnownType<$s>>::Type
+    };
+}
+
+
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
@@ -875,14 +886,15 @@ macro_rules! hybrid_kernel {
                     use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                     use std::convert::TryInto;
 
-                    let k = derive_runtime_kernel![unary, $($kp)+, self];
-
                     let op = self.clone();
                     Box::new(move |
                         sess: &SymbolicSession,
                         plc: &$plc,
                         x0: <$t0 as KnownType<SymbolicSession>>::Type,
                     | {
+                        // TODO derive k outside box (using self instead of op)
+                        let k = derive_runtime_kernel![unary, $($kp)+, op];
+
                         let v0 = x0.clone().try_into();
 
                         match v0 {

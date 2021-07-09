@@ -2,6 +2,7 @@ use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
     HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
 };
+use crate::replicated::CanonicalType;
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul, PlacementNeg,
@@ -494,35 +495,33 @@ where
     }
 }
 
+use std::convert::TryInto;
+
 impl<S: Session, R>
     PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>
     for AdditivePlacement
 where
+    AbstractAdditiveTensor<R>: CanonicalType,
+    <AbstractAdditiveTensor<R> as CanonicalType>::Type: KnownType<S>,
+    AbstractReplicatedTensor<R>: CanonicalType,
+    <AbstractReplicatedTensor<R> as CanonicalType>::Type: KnownType<S>,
     R: RingSize,
     Shape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, cs!(Shape), R>,
-    AdditivePlacement: PlacementAdd<
-        S,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-    >,
-    AdditivePlacement: PlacementSub<S, R, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementAdd<S, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementMul<S, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementShl<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementSub<
-        S,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-    >,
-    AdditivePlacement: PlacementSub<S, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+    HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<R>), R>,
     HostPlacement: PlacementOnes<S, cs!(Shape), R>,
-    HostPlacement: PlacementReveal<S, AbstractAdditiveTensor<R>, R>,
     HostPlacement: PlacementShape<S, R, cs!(Shape)>,
     HostPlacement: PlacementShl<S, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
+    AbstractAdditiveTensor<R>: Clone + Into<st!(AbstractAdditiveTensor<R>)>,
+    st!(AbstractAdditiveTensor<R>): TryInto<AbstractAdditiveTensor<R>>,
+    AdditivePlacement: PlacementAdd<S, st!(AbstractAdditiveTensor<R>), R, st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementAdd<S, st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementSub<S, R, st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementMul<S, st!(AbstractAdditiveTensor<R>), R, st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementShl<S, st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementSub<S, st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementSub<S, st!(AbstractAdditiveTensor<R>), R, st!(AbstractAdditiveTensor<R>)>,
 {
     fn trunc_pr(
         &self,
@@ -554,16 +553,16 @@ where
         let upshifter = player_a.shl(sess, R::SIZE - 2, &ones);
         let downshifter = player_a.shl(sess, R::SIZE - 2 - amount, &ones);
 
-        let x_positive = self.add(sess, x, &upshifter);
-        let masked = adt.add(sess, &x_positive, &r);
-        let c = player_a.reveal(sess, &masked);
+        let x_positive: AbstractAdditiveTensor<R> = self.add(sess, &x.clone().into(), &upshifter).try_into().ok().unwrap();
+        let masked: AbstractAdditiveTensor<R> = adt.add(sess, &x_positive.into(), &r.into()).try_into().ok().unwrap();
+        let c = player_a.reveal(sess, &masked.into());
         let c_no_msb = player_a.shl(sess, 1, &c);
         let c_top = player_a.shr(sess, amount + 1, &c_no_msb);
         let c_msb = player_a.shr(sess, R::SIZE - 1, &c);
-        let b = with_context!(adt, sess, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
-        let shifted_b = self.shl(sess, R::SIZE - 1 - amount, &b);
-        let y_positive = with_context!(adt, sess, c_top - r_top + shifted_b);
-        let y = with_context!(adt, sess, y_positive - downshifter);
+        let b = with_context!(adt, sess, r_msb.clone().into() + c_msb - r_msb.clone().into() * c_msb - r_msb.into() * c_msb).try_into().ok().unwrap(); // a xor b = a+b-2ab
+        let shifted_b = self.shl(sess, R::SIZE - 1 - amount, &b.into()).try_into().ok().unwrap();
+        let y_positive: AbstractAdditiveTensor<R> = with_context!(adt, sess, c_top - r_top.into() + shifted_b.into()).try_into().ok().unwrap();
+        let y = with_context!(adt, sess, y_positive.into() - downshifter).try_into().ok().unwrap();
         y
     }
 }
