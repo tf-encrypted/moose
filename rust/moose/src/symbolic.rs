@@ -1,9 +1,9 @@
 use crate::computation::{
-    Operation, Operator, Placed, Placement, ReplicatedPlacement, SymbolicValue,
+    KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement, SymbolicValue,
 };
-use crate::kernels::Session;
+use crate::kernels::{DispatchKernel, Session};
 use crate::prim::PrfKey;
-use crate::replicated::{AbstractReplicatedSetup, AbstractReplicatedTensor};
+use crate::replicated::AbstractReplicatedSetup;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
@@ -36,10 +36,20 @@ where
 }
 
 pub struct SymbolicSession {
-    strategy: Box<dyn SymbolicStrategy>,
-    ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
-    replicated_keys:
+    pub strategy: Box<dyn SymbolicStrategy>,
+    pub ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
+    pub replicated_keys:
         HashMap<ReplicatedPlacement, Symbolic<AbstractReplicatedSetup<Symbolic<PrfKey>>>>,
+}
+
+impl Default for SymbolicSession {
+    fn default() -> Self {
+        SymbolicSession {
+            strategy: Box::new(DefaultSymbolicStrategy),
+            ops: Default::default(),
+            replicated_keys: Default::default(),
+        }
+    }
 }
 
 impl SymbolicSession {
@@ -65,12 +75,12 @@ impl SymbolicSession {
 impl Session for SymbolicSession {
     type Value = crate::computation::SymbolicValue;
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value {
-        unimplemented!()
+        self.strategy.execute(self, op, plc, operands)
     }
 
-    type ReplicatedSetup = (); // TODO
+    type ReplicatedSetup = <crate::replicated::ReplicatedSetup as KnownType<SymbolicSession>>::Type;
     fn replicated_setup(&self, plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
-        unimplemented!()
+        self.replicated_keys.get(plc).unwrap()
     }
 }
 
@@ -96,7 +106,8 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
         operands: Vec<SymbolicValue>,
     ) -> SymbolicValue {
         match op {
-            _ => unimplemented!(),
+            Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),
         }
     }
 }

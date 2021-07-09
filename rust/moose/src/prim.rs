@@ -45,7 +45,7 @@ impl PlacementPlace<SymbolicSession, Symbolic<Seed>> for HostPlacement {
                         // TODO insert Place ops?
                         Symbolic::Concrete(Seed(seed.0, self.clone()))
                     }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
                         Symbolic::Symbolic(SymbolicHandle {
                             op,
@@ -95,7 +95,7 @@ impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
                         // TODO insert Place ops?
                         Symbolic::Concrete(PrfKey(key.0, self.clone()))
                     }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
                         Symbolic::Symbolic(SymbolicHandle {
                             op,
@@ -152,7 +152,7 @@ impl PlacementPlace<SymbolicSession, Symbolic<Nonce>> for HostPlacement {
                         // TODO insert Place ops?
                         Symbolic::Concrete(Nonce(nonce.0, self.clone()))
                     }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
                         Symbolic::Symbolic(SymbolicHandle {
                             op,

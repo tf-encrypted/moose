@@ -79,7 +79,7 @@ where
 impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractRingTensor<T>>> for HostPlacement {
     fn place(
         &self,
-        sess: &SymbolicSession,
+        _sess: &SymbolicSession,
         x: Symbolic<AbstractRingTensor<T>>,
     ) -> Symbolic<AbstractRingTensor<T>> {
         match x.placement() {
@@ -90,7 +90,7 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractRingTensor<T>>> for Hos
                         // TODO insert Place ops?
                         Symbolic::Concrete(AbstractRingTensor(x.0, self.clone()))
                     }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
                         Symbolic::Symbolic(SymbolicHandle {
                             op,

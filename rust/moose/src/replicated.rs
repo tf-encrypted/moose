@@ -667,17 +667,23 @@ impl RepTruncPrOp {
         AbstractReplicatedTensor<RingT>: CanonicalType,
         <AbstractReplicatedTensor<RingT> as CanonicalType>::Type: KnownType<S>,
 
-        AdditivePlacement:
-            PlacementRepToAdt<S, st!(AbstractReplicatedTensor<RingT>), st!(AbstractAdditiveTensor<RingT>)>,
+        AdditivePlacement: PlacementRepToAdt<
+            S,
+            st!(AbstractReplicatedTensor<RingT>),
+            st!(AbstractAdditiveTensor<RingT>),
+        >,
 
         AdditivePlacement: PlacementTruncPrProvider<
             S,
             AbstractAdditiveTensor<RingT>,
             AbstractAdditiveTensor<RingT>,
         >,
-        
-        ReplicatedPlacement:
-            PlacementAdtToRep<S, st!(AbstractAdditiveTensor<RingT>), st!(AbstractReplicatedTensor<RingT>)>,
+
+        ReplicatedPlacement: PlacementAdtToRep<
+            S,
+            st!(AbstractAdditiveTensor<RingT>),
+            st!(AbstractReplicatedTensor<RingT>),
+        >,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -686,9 +692,9 @@ impl RepTruncPrOp {
         };
         let provider = player2;
 
-        let x_adt = adt.rep_to_adt(sess, &xe.clone().into()).try_into().ok().unwrap();
+        let x_adt = adt.rep_to_adt(sess, &xe.into()).try_into().ok().unwrap();
         let y_adt = adt.trunc_pr(sess, amount, &provider, &x_adt);
-        rep.adt_to_rep(sess, &y_adt.into()).try_into().ok().unwrap()
+        rep.adt_to_rep(sess, &y_adt.into())
     }
 }
 
@@ -711,7 +717,9 @@ impl<RingT: CanonicalType> CanonicalType for AbstractAdditiveTensor<RingT> {
     type Type = AbstractAdditiveTensor<<RingT as CanonicalType>::Type>;
 }
 
-impl<RingT: CanonicalType + Placed<Placement=HostPlacement>> CanonicalType for Symbolic<AbstractAdditiveTensor<RingT>> {
+impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
+    for Symbolic<AbstractAdditiveTensor<RingT>>
+{
     type Type = AbstractAdditiveTensor<<RingT as CanonicalType>::Type>;
 }
 
@@ -719,10 +727,11 @@ impl<RingT: CanonicalType> CanonicalType for AbstractReplicatedTensor<RingT> {
     type Type = AbstractReplicatedTensor<<RingT as CanonicalType>::Type>;
 }
 
-impl<RingT: CanonicalType + Placed<Placement=HostPlacement>> CanonicalType for Symbolic<AbstractReplicatedTensor<RingT>> {
+impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
+    for Symbolic<AbstractReplicatedTensor<RingT>>
+{
     type Type = AbstractReplicatedTensor<<RingT as CanonicalType>::Type>;
 }
-
 
 modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor, AdtToRepOp);
 modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (Additive128Tensor) -> Replicated128Tensor, AdtToRepOp);

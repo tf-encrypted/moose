@@ -5,7 +5,6 @@ macro_rules! cs {
     };
 }
 
-
 macro_rules! st {
     ($t:ty) => {
         <<$t as crate::replicated::CanonicalType>::Type as KnownType<S>>::Type
@@ -14,7 +13,6 @@ macro_rules! st {
         <<$t as crate::replicated::CanonicalType>::Type as KnownType<$s>>::Type
     };
 }
-
 
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
@@ -458,7 +456,7 @@ macro_rules! symbolic_dispatch_kernel {
                             >>::compile(self, &plc);
 
                             Box::new(move |sess, operands| {
-                                assert_eq!(operands.len(), 1);
+                                assert_eq!(operands.len(), 2);
 
                                 let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into().unwrap();
@@ -823,7 +821,7 @@ macro_rules! hybrid_kernel {
                 <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
             > for $op
             {
-                fn compile(&self, plc: &$plc) -> Box<dyn Fn(
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
                     &crate::symbolic::SymbolicSession,
                     &$plc
                 ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>
@@ -877,7 +875,7 @@ macro_rules! hybrid_kernel {
                 <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
             > for $op
             {
-                fn compile(&self, plc: &$plc) -> Box<dyn Fn(
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
                     &crate::symbolic::SymbolicSession,
                     &$plc,
                     <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
@@ -951,7 +949,7 @@ macro_rules! hybrid_kernel {
                 <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
             > for $op
             {
-                fn compile(&self, plc: &$plc) -> Box<dyn Fn(
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
                     &crate::symbolic::SymbolicSession,
                     &$plc,
                     <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,
@@ -1029,7 +1027,7 @@ macro_rules! hybrid_kernel {
                 <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
             > for $op
             {
-                fn compile(&self, plc: &$plc) -> Box<dyn Fn(
+                fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
                     &crate::symbolic::SymbolicSession,
                     &$plc,
                     <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type,

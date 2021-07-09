@@ -49,7 +49,7 @@ impl PlacementPlace<SyncSession, BitTensor> for HostPlacement {
 }
 
 impl PlacementPlace<SymbolicSession, Symbolic<BitTensor>> for HostPlacement {
-    fn place(&self, sess: &SymbolicSession, x: Symbolic<BitTensor>) -> Symbolic<BitTensor> {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<BitTensor>) -> Symbolic<BitTensor> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
@@ -58,7 +58,7 @@ impl PlacementPlace<SymbolicSession, Symbolic<BitTensor>> for HostPlacement {
                         // TODO insert Place ops?
                         Symbolic::Concrete(BitTensor(x.0, self.clone()))
                     }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc }) => {
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
                         Symbolic::Symbolic(SymbolicHandle {
                             op,
