@@ -635,6 +635,8 @@ impl RepMulOp {
     }
 }
 
+use std::convert::TryInto;
+
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
 
@@ -652,17 +654,36 @@ impl RepTruncPrOp {
         rep: &ReplicatedPlacement,
         amount: usize,
         xe: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> st!(AbstractReplicatedTensor<RingT>, S)
     where
+        RingT: Clone,
+        AbstractReplicatedTensor<RingT>: Into<st!(AbstractReplicatedTensor<RingT>)>,
+        st!(AbstractAdditiveTensor<RingT>): TryInto<AbstractAdditiveTensor<RingT>>,
+        AbstractAdditiveTensor<RingT>: Into<st!(AbstractAdditiveTensor<RingT>)>,
+        st!(AbstractAdditiveTensor<RingT>): TryInto<AbstractAdditiveTensor<RingT>>,
+
+        AbstractAdditiveTensor<RingT>: CanonicalType,
+        <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
+        AbstractReplicatedTensor<RingT>: CanonicalType,
+        <AbstractReplicatedTensor<RingT> as CanonicalType>::Type: KnownType<S>,
+
+        AdditivePlacement: PlacementRepToAdt<
+            S,
+            st!(AbstractReplicatedTensor<RingT>),
+            st!(AbstractAdditiveTensor<RingT>),
+        >,
+
         AdditivePlacement: PlacementTruncPrProvider<
             S,
             AbstractAdditiveTensor<RingT>,
             AbstractAdditiveTensor<RingT>,
         >,
-        AdditivePlacement:
-            PlacementRepToAdt<S, AbstractReplicatedTensor<RingT>, AbstractAdditiveTensor<RingT>>,
-        ReplicatedPlacement:
-            PlacementAdtToRep<S, AbstractAdditiveTensor<RingT>, AbstractReplicatedTensor<RingT>>,
+
+        ReplicatedPlacement: PlacementAdtToRep<
+            S,
+            st!(AbstractAdditiveTensor<RingT>),
+            st!(AbstractReplicatedTensor<RingT>),
+        >,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -671,10 +692,45 @@ impl RepTruncPrOp {
         };
         let provider = player2;
 
-        let x_adt = adt.rep_to_adt(sess, &xe);
+        let x_adt = adt.rep_to_adt(sess, &xe.into()).try_into().ok().unwrap();
         let y_adt = adt.trunc_pr(sess, amount, &provider, &x_adt);
-        rep.adt_to_rep(sess, &y_adt)
+        rep.adt_to_rep(sess, &y_adt.into())
     }
+}
+
+pub trait CanonicalType {
+    type Type;
+}
+
+use crate::ring::AbstractRingTensor;
+use crate::symbolic::Symbolic;
+
+impl<T> CanonicalType for AbstractRingTensor<T> {
+    type Type = AbstractRingTensor<T>;
+}
+
+impl<T> CanonicalType for Symbolic<AbstractRingTensor<T>> {
+    type Type = AbstractRingTensor<T>;
+}
+
+impl<RingT: CanonicalType> CanonicalType for AbstractAdditiveTensor<RingT> {
+    type Type = AbstractAdditiveTensor<<RingT as CanonicalType>::Type>;
+}
+
+impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
+    for Symbolic<AbstractAdditiveTensor<RingT>>
+{
+    type Type = AbstractAdditiveTensor<<RingT as CanonicalType>::Type>;
+}
+
+impl<RingT: CanonicalType> CanonicalType for AbstractReplicatedTensor<RingT> {
+    type Type = AbstractReplicatedTensor<<RingT as CanonicalType>::Type>;
+}
+
+impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
+    for Symbolic<AbstractReplicatedTensor<RingT>>
+{
+    type Type = AbstractReplicatedTensor<<RingT as CanonicalType>::Type>;
 }
 
 modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (Additive64Tensor) -> Replicated64Tensor, AdtToRepOp);
@@ -696,17 +752,20 @@ impl AdtToRepOp {
     ) -> AbstractReplicatedTensor<RingT>
     where
         RingT: Placed<Placement = HostPlacement> + Clone,
+        AbstractAdditiveTensor<RingT>: CanonicalType,
+        <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
         HostPlacement: PlacementSampleUniform<S, SeedT, ShapeT, RingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         AdditivePlacement: PlacementSub<
             S,
-            AbstractAdditiveTensor<RingT>,
-            AbstractAdditiveTensor<RingT>,
-            AbstractAdditiveTensor<RingT>,
+            st!(AbstractAdditiveTensor<RingT>, S),
+            st!(AbstractAdditiveTensor<RingT>, S),
+            st!(AbstractAdditiveTensor<RingT>, S),
         >,
-        HostPlacement: PlacementReveal<S, AbstractAdditiveTensor<RingT>, RingT>,
+        AbstractAdditiveTensor<RingT>: Into<st!(AbstractAdditiveTensor<RingT>, S)>,
+        HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<RingT>, S), RingT>,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
     {
         let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
@@ -745,7 +804,7 @@ impl AdtToRepOp {
         let y = AbstractAdditiveTensor {
             shares: [y0.clone(), y1.clone()],
         };
-        let c = adt_player0.reveal(sess, &adt.sub(sess, &x, &y));
+        let c = adt_player0.reveal(sess, &adt.sub(sess, &x.into(), &y.into()));
 
         let shares = match () {
             _ if provider_index == 0 => {

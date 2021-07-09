@@ -11,6 +11,7 @@ use crate::kernels::{
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::standard::{RawShape, Shape};
+use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use num_traits::Zero;
@@ -28,6 +29,10 @@ pub type Ring64Tensor = AbstractRingTensor<u64>;
 pub type Ring128Tensor = AbstractRingTensor<u128>;
 
 impl<S: Session, T> Tensor<S> for AbstractRingTensor<T> {
+    type Scalar = T;
+}
+
+impl<S: Session, T> Tensor<S> for Symbolic<AbstractRingTensor<T>> {
     type Scalar = T;
 }
 
@@ -51,6 +56,10 @@ impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
 }
 
+impl<R: RingSize + Placed> RingSize for Symbolic<R> {
+    const SIZE: usize = R::SIZE;
+}
+
 impl<T> PlacementPlace<SyncSession, AbstractRingTensor<T>> for HostPlacement
 where
     AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
@@ -62,6 +71,33 @@ where
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 AbstractRingTensor(x.0, self.clone())
+            }
+        }
+    }
+}
+
+impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractRingTensor<T>>> for HostPlacement {
+    fn place(
+        &self,
+        _sess: &SymbolicSession,
+        x: Symbolic<AbstractRingTensor<T>>,
+    ) -> Symbolic<AbstractRingTensor<T>> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(x) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(AbstractRingTensor(x.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
             }
         }
     }
