@@ -1158,7 +1158,7 @@ mod tests {
     }
 
     // TODO [Yann]
-    // - Currently run with a single executor, should have one executor per role.
+    // - Run with an async executor per role, once the compiler is transitioned to Rust.
     // - Add storage an optional argument
     fn _run_async_test_computation(
         text_computation: &str,
@@ -1166,7 +1166,6 @@ mod tests {
         roles: Vec<String>,
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         let executor = AsyncExecutor::default();
-
         let networking: Arc<dyn Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
         let runtime_storage: HashMap<String, Value> = HashMap::new();
@@ -1306,22 +1305,21 @@ mod tests {
         Ok(())
     }
 
-    // TODO [Yann] figure out why it's not running with async executor
     #[rstest]
-    // #[case(true)]
+    #[case(true)]
     #[case(false)]
     fn test_standard_input(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(Alice)
-        y = Input {arg_name = "y"}: () -> Int64Tensor @Host(Alice)
-        z = StdAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(Alice)
-        output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(Alice)
+        let source = r#"x = Input {arg_name = "x"}: () -> Int64Tensor @Host(alice)
+        y = Input {arg_name = "y"}: () -> Int64Tensor @Host(alice)
+        z = StdAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
         "#;
 
         use maplit::hashmap;
         let mut args: HashMap<String, Value> = hashmap!();
 
-        let x: Value = "Int64Tensor([5]) @Host(Alice)".try_into()?;
-        let y: Value = "Int64Tensor([10]) @Host(Alice)".try_into()?;
+        let x: Value = "Int64Tensor([5]) @Host(alice)".try_into()?;
+        let y: Value = "Int64Tensor([10]) @Host(alice)".try_into()?;
 
         args.insert("x".to_string(), x);
         args.insert("y".to_string(), y);
@@ -1337,7 +1335,7 @@ mod tests {
         let z: crate::standard::Int64Tensor =
             (outputs.get("output").unwrap().clone()).try_into()?;
 
-        let expected: Value = "Int64Tensor([15]) @Host(Alice)".try_into()?;
+        let expected: Value = "Int64Tensor([15]) @Host(alice)".try_into()?;
 
         assert_eq!(expected, z.into());
 
