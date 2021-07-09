@@ -5,8 +5,16 @@ import unittest
 import numpy as np
 import pytest
 from absl.testing import parameterized
+from pymoose import elk_compiler as rust_compiler
 
 from moose import edsl
+from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
+from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
+from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
+from moose.compiler.mpspdz import MpspdzApplyFunctionPass
+from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
+from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation import utils
 from moose.computation.standard import StringType
 from moose.logger import get_logger
@@ -154,6 +162,58 @@ class LinearRegressionExample(parameterized.TestCase):
 
     def test_linear_regression_mse(self):
         self._linear_regression_eval("mse")
+
+    def test_linear_regression_rust_compiler(self):
+        linear_comp, placements = self._build_linear_regression_example("mse")
+
+        # Compile in Python
+        concrete_comp = edsl.trace_and_compile(
+            linear_comp,
+            ring=128,
+            compiler_passes=[
+                MpspdzApplyFunctionPass(),
+                HostEncodingPass(),
+                HostLoweringPass(),
+                ReplicatedEncodingPass(),
+                ReplicatedOpsPass(),
+                HostRingLoweringPass(),
+                ReplicatedLoweringPass(ring=128),
+                # PruningPass(),
+                # NetworkingPass(),
+            ],
+        )
+        comp_bin = utils.serialize_computation(concrete_comp)
+        # Compile in Rust
+        rust_compiled = rust_compiler.compile_computation(
+            comp_bin, ["prune", "networking", "typing"]
+        )
+
+        x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
+        executors_storage = {
+            "x-owner": {"x_data": x_data},
+            "y-owner": {"y_data": y_data},
+            "model-owner": {},
+        }
+        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
+        _ = runtime.evaluate_compiled(
+            comp_bin=rust_compiled,
+            role_assignment={
+                "x-owner": "x-owner",
+                "y-owner": "y-owner",
+                "model-owner": "model-owner",
+            },
+            arguments={
+                "x_uri": "x_data",
+                "y_uri": "y_data",
+                "w_uri": "regression_weights",
+                "metric_uri": "metric_result",
+                "rsquared_uri": "rsquared_result",
+            },
+        )
+        print(
+            "Done: \n",
+            runtime.read_value_from_storage("model-owner", "regression_weights"),
+        )
 
     @pytest.mark.slow
     def test_linear_regression_mape(self):
