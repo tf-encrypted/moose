@@ -1164,13 +1164,15 @@ mod tests {
         text_computation: &str,
         args: HashMap<String, Value>,
         roles: Vec<String>,
+        storage: Option<Arc<dyn Send + Sync + AsyncStorage>>,
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
         let executor = AsyncExecutor::default();
         let networking: Arc<dyn Send + Sync + AsyncNetworking> =
             Arc::new(LocalAsyncNetworking::default());
-        let runtime_storage: HashMap<String, Value> = HashMap::new();
-        let storage: Arc<dyn Send + Sync + AsyncStorage> =
-            Arc::new(LocalAsyncStorage::from_hashmap(runtime_storage));
+
+        let store: HashMap<String, Value> = HashMap::new();
+        let executor_storage: Arc<dyn Send + Sync + AsyncStorage> =
+            Arc::new(LocalAsyncStorage::from_hashmap(store));
         let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
 
         let own_identity = Identity::from("hard_worker");
@@ -1186,7 +1188,7 @@ mod tests {
             sid: SessionId::from("foobar"),
             arguments: args,
             networking: Arc::clone(&networking),
-            storage: Arc::clone(&storage),
+            storage: Arc::clone(&executor_storage),
         };
 
         let (moose_session_handle, outputs) = executor
@@ -1212,6 +1214,15 @@ mod tests {
             }
             outputs
         });
+
+        // let val = rt.block_on(async {
+        //     let val = executor_storage
+        //         .load("x_data", &SessionId::from("foobar"), None, "")
+        //         .await
+        //         .unwrap();
+        //     val
+        // });
+        // println!("{:?}", val);
 
         Ok(outputs)
     }
@@ -1242,7 +1253,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&definition, args, roles)?
+                _run_async_test_computation(&definition, args, roles, None)?
             }
             false => _run_sync_test_computation(&definition, args)?,
         };
@@ -1264,7 +1275,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1292,7 +1303,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1327,7 +1338,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1338,6 +1349,31 @@ mod tests {
         let expected: Value = "Int64Tensor([15]) @Host(alice)".try_into()?;
 
         assert_eq!(expected, z.into());
+
+        Ok(())
+    }
+
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_save(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x_uri = Input {arg_name = "x_uri"}: () -> String @Host(alice)
+        x = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
+        save = Save: (String, Int64Tensor) -> Unit (x_uri, x) @Host(alice)
+        output = Output: (Unit) -> Unit (save) @Host(alice)
+        "#;
+
+        use maplit::hashmap;
+        let mut args: HashMap<String, Value> = hashmap!();
+        args.insert("x_uri".to_string(), Value::from("x_data".to_string()));
+
+        let outputs = match run_async {
+            true => {
+                let roles: Vec<String> = vec!["alice".to_string()];
+                _run_async_test_computation(&source, args, roles, None)?
+            }
+            false => _run_sync_test_computation(&source, args)?,
+        };
 
         Ok(())
     }
@@ -1371,7 +1407,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1407,7 +1443,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1433,7 +1469,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1460,7 +1496,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1499,7 +1535,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1627,7 +1663,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1663,7 +1699,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1694,7 +1730,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1729,7 +1765,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1800,7 +1836,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1864,7 +1900,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1900,7 +1936,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
@@ -1928,7 +1964,7 @@ mod tests {
         let outputs = match run_async {
             true => {
                 let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles)?
+                _run_async_test_computation(&source, args, roles, None)?
             }
             false => _run_sync_test_computation(&source, args)?,
         };
