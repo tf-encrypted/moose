@@ -742,7 +742,11 @@ operators![
     RepShare,
     RepReveal,
     RepAdd,
+    RepSub,
     RepMul,
+    RepDot,
+    RepMean,
+    RepSum,
     RepTruncPr,
     RepToAdt,
 ];
@@ -1074,8 +1078,30 @@ pub struct RepAddOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepMulOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepDotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepMeanOp {
+    pub sig: Signature,
+    // axis ?
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSumOp {
+    pub sig: Signature,
+    // axis ?
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

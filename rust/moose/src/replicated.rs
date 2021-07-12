@@ -2,7 +2,7 @@ use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tenso
 use crate::bit::BitTensor;
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAddOp, RepMulOp,
-    RepRevealOp, RepSetupOp, RepShareOp, RepTruncPrOp, ReplicatedPlacement,
+    RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepTruncPrOp, ReplicatedPlacement,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
@@ -500,6 +500,173 @@ impl RepAddOp {
     }
 }
 
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepSubOp);
+
+hybrid_kernel! {
+    RepSubOp,
+    [
+        (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
+    ]
+}
+
+impl RepSubOp {
+    fn rep_rep_kernel<S: Session, R>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedTensor<R>,
+        y: AbstractReplicatedTensor<R>,
+    ) -> AbstractReplicatedTensor<R>
+    where
+        HostPlacement: PlacementSub<S, R, R, R>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let AbstractReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = &y;
+
+        let z00 = with_context!(player0, sess, x00 - y00);
+        let z10 = with_context!(player0, sess, x10 - y10);
+
+        let z11 = with_context!(player1, sess, x11 - y11);
+        let z21 = with_context!(player1, sess, x21 - y21);
+
+        let z22 = with_context!(player2, sess, x22 - y22);
+        let z02 = with_context!(player2, sess, x02 - y02);
+
+        AbstractReplicatedTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+
+    fn ring_rep_kernel<S: Session, R>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: R,
+        y: AbstractReplicatedTensor<R>,
+    ) -> AbstractReplicatedTensor<R>
+    where
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementSub<S, R, R, R>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let x_plc = x.placement().unwrap();
+
+        let AbstractReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = y;
+
+        let shares = match () {
+            _ if x_plc == player0 => {
+                // sub y0 from x
+                [
+                    [with_context!(player0, sess, x - y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, sess, x - y02)],
+                ]
+            }
+            _ if x_plc == player1 => {
+                // sub y1 from x
+                [
+                    [y00, with_context!(player0, sess, x - y10)],
+                    [with_context!(player1, sess, x - y11), y21],
+                    [y22, y02],
+                ]
+            }
+            _ if x_plc == player2 => {
+                // sub y2 from x
+                [
+                    [y00, y10],
+                    [y11, with_context!(player1, sess, x - y21)],
+                    [with_context!(player2, sess, x - y22), y02],
+                ]
+            }
+            _ => {
+                // sub y0 from x; we could randomize this
+                [
+                    [with_context!(player0, sess, x - y00), y10],
+                    [y11, y21],
+                    [y22, with_context!(player2, sess, x - y02)],
+                ]
+            }
+        };
+
+        rep.place(sess, AbstractReplicatedTensor { shares })
+    }
+
+    fn rep_ring_kernel<S: Session, R>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedTensor<R>,
+        y: R,
+    ) -> AbstractReplicatedTensor<R>
+    where
+        R: Placed<Placement = HostPlacement>,
+        HostPlacement: PlacementSub<S, R, R, R>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let y_plc = y.placement().unwrap();
+
+        let AbstractReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        let shares = match () {
+            _ if y_plc == player0 => {
+                // sub y0 from x
+                [
+                    [with_context!(player0, sess, x00 - y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, sess, x02 - y)],
+                ]
+            }
+            _ if y_plc == player1 => {
+                // sub y1 from x
+                [
+                    [x00, with_context!(player0, sess, x10 - y)],
+                    [with_context!(player1, sess, x11 - y), x21],
+                    [x22, x02],
+                ]
+            }
+            _ if y_plc == player2 => {
+                // sub y2 from x
+                [
+                    [x00, x10],
+                    [x11, with_context!(player1, sess, x21 - y)],
+                    [with_context!(player2, sess, x22 - y), x02],
+                ]
+            }
+            _ => {
+                // sub y0 from x; we could randomize this
+                [
+                    [with_context!(player0, sess, x00 - y), x10],
+                    [x11, x21],
+                    [x22, with_context!(player2, sess, x02 - y)],
+                ]
+            }
+        };
+
+        rep.place(sess, AbstractReplicatedTensor { shares })
+    }
+}
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
