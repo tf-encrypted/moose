@@ -11,7 +11,7 @@ use crate::kernels::{
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
-use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
+use crate::ring::{AbstractRingTensor, FromRawPlc, Ring128Tensor, Ring64Tensor, RingSize};
 use crate::standard::Shape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -402,6 +402,128 @@ where
     }
 }
 
+pub trait DebugTrunc<S: Session> {
+    fn debug_trunc(
+        &self,
+        sess: &S,
+        amount: usize,
+        provider: &HostPlacement,
+        x: &AbstractAdditiveTensor<AbstractRingTensor<u64>>,
+    ) -> AbstractAdditiveTensor<AbstractRingTensor<u64>>;
+}
+
+impl<S: Session> DebugTrunc<S> for AdditivePlacement
+where
+    HostPlacement: PlacementReveal<
+        S,
+        AbstractAdditiveTensor<AbstractRingTensor<u64>>,
+        AbstractRingTensor<u64>,
+    >,
+    Shape: KnownType<S>,
+    HostPlacement: PlacementOnes<S, cs!(Shape), AbstractRingTensor<u64>>,
+    HostPlacement: PlacementShape<S, AbstractRingTensor<u64>, cs!(Shape)>,
+    HostPlacement: PlacementShl<S, AbstractRingTensor<u64>, AbstractRingTensor<u64>>,
+    HostPlacement: PlacementShr<S, AbstractRingTensor<u64>, AbstractRingTensor<u64>>,
+    AdditivePlacement: PlacementAdd<
+        S,
+        AbstractAdditiveTensor<AbstractRingTensor<u64>>,
+        AbstractRingTensor<u64>,
+        AbstractAdditiveTensor<AbstractRingTensor<u64>>,
+    >,
+    AdditivePlacement: PlacementAdd<
+        S,
+        AbstractAdditiveTensor<Ring64Tensor>,
+        AbstractAdditiveTensor<Ring64Tensor>,
+        AbstractAdditiveTensor<Ring64Tensor>,
+    >,
+    AdditivePlacement: PlacementShl<S, AbstractAdditiveTensor<Ring64Tensor>, AbstractAdditiveTensor<Ring64Tensor>>,
+    AdditivePlacement: PlacementSub<S, Ring64Tensor, AbstractAdditiveTensor<Ring64Tensor>, AbstractAdditiveTensor<Ring64Tensor>>,
+    AdditivePlacement: PlacementSub<
+        S,
+        AbstractAdditiveTensor<Ring64Tensor>,
+        AbstractAdditiveTensor<Ring64Tensor>,
+        AbstractAdditiveTensor<Ring64Tensor>,
+    >,
+    AdditivePlacement: PlacementSub<S, AbstractAdditiveTensor<Ring64Tensor>, Ring64Tensor, AbstractAdditiveTensor<Ring64Tensor>>,
+    AdditivePlacement: PlacementMul<S, AbstractAdditiveTensor<Ring64Tensor>, Ring64Tensor, AbstractAdditiveTensor<Ring64Tensor>>,
+ 
+{
+    fn debug_trunc(
+        &self,
+        sess: &S,
+        amount: usize,
+        provider: &HostPlacement,
+        x: &AbstractAdditiveTensor<AbstractRingTensor<u64>>,
+    ) -> AbstractAdditiveTensor<AbstractRingTensor<u64>> {
+        let adt = self;
+        let (player_a, player_b) = self.host_placements();
+
+        use ndarray::array;
+        let det_r = Ring64Tensor::from_raw_plc(array![10257240343600288652].into_dyn(), player_a.clone());
+        let det_r_top = Ring64Tensor::from_raw_plc(array![0].into_dyn(), player_a.clone());
+        let det_r_msb = Ring64Tensor::from_raw_plc(array![1].into_dyn(), player_a.clone());
+
+        let r = AbstractAdditiveTensor {
+            shares: [
+                det_r,
+                Ring64Tensor::from_raw_plc(array![0].into_dyn(), player_b.clone()),
+            ],
+        };
+
+        let r_top = AbstractAdditiveTensor {
+            shares: [
+                det_r_top,
+                Ring64Tensor::from_raw_plc(array![0].into_dyn(), player_b.clone()),
+            ],
+        };
+
+        let r_msb = AbstractAdditiveTensor {
+            shares: [
+                det_r_msb,
+                Ring64Tensor::from_raw_plc(array![0].into_dyn(), player_b.clone()),
+            ],
+        };
+
+        // let (r, r_top, r_msb) = provider.gen_trunc_mask(sess, amount, &shape);
+        println!(
+            "r = {:?}\nr_top = {:?}\nr_msb = {:?}",
+            player_a.reveal(sess, &r),
+            player_a.reveal(sess, &r_top),
+            player_a.reveal(sess, &r_msb)
+        );
+
+        let R_SIZE: usize = 64;
+        let k = R_SIZE - 1; // Maximum bit length (unsigned)
+
+        let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
+
+        let shape = player_a.shape(sess, x0);
+        let ones = player_a.ones(sess, &shape);
+        println!("Ones: {:?}", ones);
+        let upshifter = player_a.shl(sess, k - 1, &ones);
+        let downshifter = player_a.shl(sess, k - amount - 1, &ones);
+
+        println!("upshifter = {:?}", upshifter);
+        println!("input = {:?}", player_a.reveal(sess, x));
+        let x_positive = self.add(sess, x, &upshifter);
+
+        let masked = adt.add(sess, &x_positive, &r);
+        let c = player_a.reveal(sess, &masked);
+        println!("opened mask = {:?}", c);
+        let c_no_msb = player_a.shl(sess, 1, &c);
+        // also called shifted
+        let c_top = player_a.shr(sess, amount + 1, &c_no_msb);
+        let c_msb = player_a.shr(sess, R_SIZE - 1, &c);
+        // OK
+        let overflow = with_context!(adt, sess, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
+        let shifted_ovevrflow = self.shl(sess, k - amount, &overflow);
+        // shifted - upper + overflow << (k - m)
+        let y_positive = with_context!(adt, sess, c_top - r_top + shifted_ovevrflow);
+        let y = with_context!(adt, sess, y_positive - downshifter);
+        y
+    }
+}
+
 pub trait TreeReduce<S: Session, R> {
     fn tree_reduce(&self, sess: &S, sequence: &[R]) -> R;
 }
@@ -523,6 +645,8 @@ where
     HostPlacement: PlacementShape<S, R, cs!(Shape)>,
     HostPlacement: PlacementShl<S, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
+    R: std::fmt::Debug,
+    // R: FromRawPlc<HostPlacement, u64>,
 {
     fn trunc_pr(
         &self,
@@ -543,26 +667,39 @@ where
         let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
 
         let shape = player_a.shape(sess, x0);
+
         let (r, r_top, r_msb) = provider.gen_trunc_mask(sess, amount, &shape);
+        println!(
+            "r = {:?}\nr_top = {:?}\nr_msb = {:?}",
+            player_a.reveal(sess, &r),
+            player_a.reveal(sess, &r_top),
+            player_a.reveal(sess, &r_msb)
+        );
 
         // NOTE we consider input is always signed, and the following positive
         // conversion would be optional for unsigned numbers
         // NOTE we assume that input numbers are in range -2^{k-2} <= x < 2^{k-2}
         // so that 0 <= x + 2^{k-2} < 2^{k-1}
         // TODO we could insert debug_assert! to check above conditions
+
+        let k = R::SIZE - 1; // Maximum bit length (unsigned)
         let ones = player_a.ones(sess, &shape);
-        let upshifter = player_a.shl(sess, R::SIZE - 2, &ones);
-        let downshifter = player_a.shl(sess, R::SIZE - 2 - amount, &ones);
+        let upshifter = player_a.shl(sess, k - 1, &ones);
+        let downshifter = player_a.shl(sess, k - amount - 1, &ones);
 
         let x_positive = self.add(sess, x, &upshifter);
         let masked = adt.add(sess, &x_positive, &r);
+
         let c = player_a.reveal(sess, &masked);
         let c_no_msb = player_a.shl(sess, 1, &c);
+        // also called shifted
         let c_top = player_a.shr(sess, amount + 1, &c_no_msb);
         let c_msb = player_a.shr(sess, R::SIZE - 1, &c);
-        let b = with_context!(adt, sess, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
-        let shifted_b = self.shl(sess, R::SIZE - 1 - amount, &b);
-        let y_positive = with_context!(adt, sess, c_top - r_top + shifted_b);
+        // OK
+        let overflow = with_context!(adt, sess, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
+        let shifted_ovevrflow = self.shl(sess, k - amount, &overflow);
+        // shifted - upper + overflow << (k - m)
+        let y_positive = with_context!(adt, sess, c_top - r_top + shifted_ovevrflow);
         let y = with_context!(adt, sess, y_positive - downshifter);
         y
     }
@@ -712,14 +849,30 @@ mod tests {
 
         let x = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![80908, 0, 40454], alice),
-                AbstractRingTensor::from_raw_plc(array![0, -80908_i64 as u64, 40454], bob),
+                AbstractRingTensor::from_raw_plc(array![0 as u64], alice),
+                AbstractRingTensor::from_raw_plc(array![-1152921504606846976_i64 as u64], bob),
             ],
         };
 
         let sess = SyncSession::default();
-        let x_trunc = adt.trunc_pr(&sess, 8, &carole, &x);
+        let x_trunc = adt.debug_trunc(&sess, 60, &carole, &x);
         let _y = carole.reveal(&sess, &x_trunc);
+
+        let target = AbstractRingTensor::from_raw_plc(array![-1_i64 as u64], carole.clone());
+
+        for (i, value) in _y.0.iter().enumerate() {
+            let diff = value - &target.0[i];
+            assert!(
+                diff == std::num::Wrapping(1)
+                    || diff == std::num::Wrapping(u64::MAX)
+                    || diff == std::num::Wrapping(0),
+                "difference = {}, lhs = {}, rhs = {}",
+                diff,
+                value,
+                &target.0[i]
+            );
+        }
+        assert_eq!(false, true);
 
         // TODO allowed as long as \in {316, 317}
         // assert_eq!(

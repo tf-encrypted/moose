@@ -277,7 +277,7 @@ where
     O::Scalar: From<u8>,
 {
     fn ones(&self, sess: &S, shape: &ShapeT) -> O {
-        let value = O::Scalar::from(0).into();
+        let value = O::Scalar::from(1).into();
         self.fill(sess, value, shape)
     }
 }
