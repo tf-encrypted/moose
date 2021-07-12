@@ -51,6 +51,30 @@ impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
 }
 
+pub trait FromRawPlc<P, T> {
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractRingTensor<T>;
+}
+
+impl<P> FromRawPlc<P, u64> for Ring64Tensor
+where
+    P: Into<HostPlacement>,
+{
+    fn from_raw_plc(raw_tensor: ArrayD<u64>, plc: P) -> Ring64Tensor {
+        let tensor = raw_tensor.mapv(Wrapping).into_dyn();
+        AbstractRingTensor(tensor, plc.into())
+    }
+}
+
+impl<P> FromRawPlc<P, u128> for Ring128Tensor
+where
+    P: Into<HostPlacement>,
+{
+    fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> Ring128Tensor {
+        let tensor = raw_tensor.mapv(Wrapping).into_dyn();
+        AbstractRingTensor(tensor, plc.into())
+    }
+}
+
 impl<T> PlacementPlace<SyncSession, AbstractRingTensor<T>> for HostPlacement
 where
     AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
@@ -237,6 +261,7 @@ impl RingShlOp {
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+        T: std::fmt::Debug,
     {
         AbstractRingTensor(x.0 << amount, plc.clone())
     }

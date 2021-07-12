@@ -1207,6 +1207,7 @@ mod tests {
     ]
     #[case(array![-10_i128 as u128].into_dyn(), 1, array![-5_i128 as u128].into_dyn())]
     #[case(array![-10_i128 as u128].into_dyn(), 0, array![-10_i128 as u128].into_dyn())]
+    #[case(array![-1152921504606846976_i128 as u128].into_dyn(), 60, array![-1_i128 as u128].into_dyn())]
     fn test_rep_truncation_128(
         #[case] x: ArrayD<u128>,
         #[case] amount: usize,

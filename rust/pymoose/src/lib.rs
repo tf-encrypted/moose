@@ -1,4 +1,5 @@
 use moose::bit::BitTensor;
+use moose::compilation::print::print_graph;
 use moose::compilation::typing::update_types_one_hop;
 use moose::computation::{Computation, Role, SessionId, Value};
 use moose::execution::{
@@ -18,12 +19,14 @@ use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::types::{PyFloat, PyString};
-use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList};
+use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
 use std::sync::Arc;
 pub mod python_computation;
+use moose::compilation::networking::NetworkingPass;
+use moose::compilation::pruning::prune_graph;
 use moose::storage::{AsyncStorage, LocalAsyncStorage};
 use tokio::runtime::Runtime;
 
@@ -420,84 +423,28 @@ impl LocalRuntime {
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
-        let arguments = arguments
-            .iter()
-            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
-            .collect::<HashMap<String, Value>>();
-
-        let (valid_role_assignments, missing_role_assignments): (
-            HashMap<String, String>,
-            HashMap<String, String>,
-        ) = role_assignments
-            .into_iter()
-            .partition(|kv| self.identities.contains(&kv.1));
-        if !missing_role_assignments.is_empty() {
-            let missing_roles: Vec<&String> = missing_role_assignments.keys().collect();
-            let missing_identities: Vec<&String> = missing_role_assignments.values().collect();
-            return Err(PyValueError::new_err(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", missing_identities, missing_roles)));
-        }
-
-        let valid_role_assignments = valid_role_assignments
-            .into_iter()
-            .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
-            .collect::<HashMap<Role, Identity>>();
-
         let computation = create_computation_graph_from_py_bytes(computation);
         let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
         compiled_computation.toposort().unwrap();
 
-        let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
-        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
+        self.evaluate_compiled_computation(py, &compiled_computation, role_assignments, arguments)
+    }
 
-        for (own_identity, executor) in self.executors.iter() {
-            let moose_session = AsyncSession {
-                sid: SessionId::from("foobar"),
-                arguments: arguments.clone(),
-                networking: Arc::clone(&self.networking),
-                storage: Arc::clone(&self.runtime_storage[own_identity]),
-            };
-            let (moose_session_handle, outputs) = executor
-                .run_computation(
-                    &compiled_computation,
-                    &valid_role_assignments,
-                    &own_identity,
-                    moose_session,
-                )
-                .unwrap();
-
-            for (output_name, output_future) in outputs {
-                output_futures.insert(output_name, output_future);
-            }
-
-            session_handles.push(moose_session_handle)
-        }
-
-        for handle in session_handles {
-            let result = rt.block_on(handle.join_on_first_error());
-            if let Err(e) = result {
-                return Err(PyRuntimeError::new_err(e.to_string()));
-            }
-        }
-
-        let outputs = rt.block_on(async {
-            let mut outputs: HashMap<String, PyObject> = HashMap::new();
-            for (output_name, output_future) in output_futures {
-                let value = output_future.await.unwrap();
-                match value {
-                    Value::Unit => None,
-                    // TODO: not sure what to support, should eventually standardize output types of computations
-                    Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
-                    Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
-                    // assume it's a tensor
-                    _ => outputs.insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
-                };
-            }
-            outputs
-        });
-
-        Ok(Some(outputs))
+    fn evaluate_compiled(
+        &self,
+        py: Python,
+        computation: PyObject,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let moose = MooseComputation::from_py(py, computation)?;
+        let computation = moose.try_borrow(py)?;
+        self.evaluate_compiled_computation(
+            py,
+            &computation.computation,
+            role_assignments,
+            arguments,
+        )
     }
 
     fn write_value_to_storage(
@@ -552,8 +499,147 @@ impl LocalRuntime {
     }
 }
 
+impl LocalRuntime {
+    fn evaluate_compiled_computation(
+        &self,
+        py: Python,
+        computation: &Computation,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let arguments = arguments
+            .iter()
+            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
+            .collect::<HashMap<String, Value>>();
+
+        let (valid_role_assignments, missing_role_assignments): (
+            HashMap<String, String>,
+            HashMap<String, String>,
+        ) = role_assignments
+            .into_iter()
+            .partition(|kv| self.identities.contains(&kv.1));
+        if !missing_role_assignments.is_empty() {
+            let missing_roles: Vec<&String> = missing_role_assignments.keys().collect();
+            let missing_identities: Vec<&String> = missing_role_assignments.values().collect();
+            return Err(PyValueError::new_err(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", missing_identities, missing_roles)));
+        }
+
+        let valid_role_assignments = valid_role_assignments
+            .into_iter()
+            .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
+            .collect::<HashMap<Role, Identity>>();
+
+        let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
+        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
+        for (own_identity, executor) in self.executors.iter() {
+            let moose_session = AsyncSession {
+                sid: SessionId::from("foobar"),
+                arguments: arguments.clone(),
+                networking: Arc::clone(&self.networking),
+                storage: Arc::clone(&self.runtime_storage[own_identity]),
+            };
+            let (moose_session_handle, outputs) = executor
+                .run_computation(
+                    &computation,
+                    &valid_role_assignments,
+                    &own_identity,
+                    moose_session,
+                )
+                .unwrap();
+
+            for (output_name, output_future) in outputs {
+                output_futures.insert(output_name, output_future);
+            }
+
+            session_handles.push(moose_session_handle)
+        }
+
+        for handle in session_handles {
+            let result = rt.block_on(handle.join_on_first_error());
+            if let Err(e) = result {
+                return Err(PyRuntimeError::new_err(e.to_string()));
+            }
+        }
+
+        let outputs = rt.block_on(async {
+            let mut outputs: HashMap<String, PyObject> = HashMap::new();
+            for (output_name, output_future) in output_futures {
+                let value = output_future.await.unwrap();
+                match value {
+                    Value::Unit => None,
+                    // TODO: not sure what to support, should eventually standardize output types of computations
+                    Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
+                    Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
+                    // assume it's a tensor
+                    _ => outputs.insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
+                };
+            }
+            outputs
+        });
+
+        Ok(Some(outputs))
+    }
+}
+
+#[pyclass]
+pub struct MooseComputation {
+    computation: Computation,
+}
+
+impl MooseComputation {
+    /// Convert an object after checking its type.
+    ///
+    /// The function uses an unsafe block inside exactly the way it is used in the PyO3 library.
+    /// The conversion traits already present inside library do not work due to the erroneous constraint
+    /// of PyNativeType on them.
+    pub fn from_py(py: Python, computation: PyObject) -> PyResult<Py<Self>> {
+        assert!(format!("{}", computation.as_ref(py).str()?)
+            .starts_with("<builtins.MooseComputation object at "));
+        let moose = unsafe { Py::from_borrowed_ptr(py, computation.as_ptr()) };
+        Ok(moose)
+    }
+}
+
+#[pymodule]
+fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    #[pyfn(m, "compile_computation")]
+    pub fn compile_computation(
+        _py: Python,
+        computation: Vec<u8>,
+        passes: Vec<String>,
+    ) -> PyResult<MooseComputation> {
+        fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+            match pass {
+                "networking" => NetworkingPass::pass(comp),
+                "print" => print_graph(comp),
+                "prune" => prune_graph(comp),
+                "typing" => update_types_one_hop(comp),
+                missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
+            }
+        }
+        let mut computation = create_computation_graph_from_py_bytes(computation);
+        for pass in &passes {
+            if let Some(new_comp) =
+                do_pass(&pass, &computation).map_err(|e| PyRuntimeError::new_err(e.to_string()))?
+            {
+                computation = new_comp;
+            }
+        }
+        computation
+            .toposort()
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        Ok(MooseComputation { computation })
+    }
+
+    Ok(())
+}
+
 #[pymodule]
 fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LocalRuntime>()?;
+    m.add_class::<MooseComputation>()?;
     Ok(())
 }

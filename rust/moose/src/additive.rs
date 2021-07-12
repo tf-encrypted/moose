@@ -544,14 +544,8 @@ where
         let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
 
         let shape = player_a.shape(sess, x0);
-        let (r, r_top, r_msb) = provider.gen_trunc_mask(sess, amount, &shape);
 
-        println!(
-            "r = {:?}\nr_top = {:?}\nr_msb = {:?}\n",
-            player_a.reveal(sess, &r),
-            player_a.reveal(sess, &r_top),
-            player_a.reveal(sess, &r_msb)
-        );
+        let (r, r_top, r_msb) = provider.gen_trunc_mask(sess, amount, &shape);
         // NOTE we consider input is always signed, and the following positive
         // conversion would be optional for unsigned numbers
         // NOTE we assume that input numbers are in range -2^{k-2} <= x < 2^{k-2}
@@ -564,14 +558,18 @@ where
 
         let x_positive = self.add(sess, x, &upshifter);
         let masked = adt.add(sess, &x_positive, &r);
+
         let c = player_a.reveal(sess, &masked);
         let c_no_msb = player_a.shl(sess, 1, &c);
+        // also called shifted
         let c_top = player_a.shr(sess, amount + 1, &c_no_msb);
         let c_msb = player_a.shr(sess, R::SIZE - 1, &c);
+        // OK
         let overflow = with_context!(adt, sess, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
-        let shifted_overflow = self.shl(sess, k - amount, &overflow);
-        let res = with_context!(adt, sess, c_top - r_top + shifted_overflow);
-        let y= with_context!(adt, sess, res - downshifter);
+        let shifted_ovevrflow = self.shl(sess, k - amount, &overflow);
+        // shifted - upper + overflow << (k - m)
+        let y_positive = with_context!(adt, sess, c_top - r_top + shifted_ovevrflow);
+        let y = with_context!(adt, sess, y_positive - downshifter);
         y
     }
 }
@@ -721,11 +719,11 @@ mod tests {
 
         assert_eq!(
             zrb0,
-            AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice.clone())
+            AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice)
         );
         assert_eq!(
             zrb1,
-            AbstractRingTensor::from_raw_plc(array![4 + 7, 5 + 8, 6 + 9], bob.clone())
+            AbstractRingTensor::from_raw_plc(array![4 + 7, 5 + 8, 6 + 9], bob)
         );
     }
 
@@ -746,9 +744,13 @@ mod tests {
 
         let x = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![80908, 0, 40454], alice),
+                AbstractRingTensor::from_raw_plc(array![0_u64, 0, 0], alice),
                 AbstractRingTensor::from_raw_plc(
-                    array![0, -1152921504606846976_i64 as u64, 40454],
+                    array![
+                        4611686018427387903,
+                        -1152921504606846976_i64 as u64,
+                        1152921504606846975
+                    ],
                     bob,
                 ),
             ],
@@ -758,10 +760,10 @@ mod tests {
         let x_trunc = adt.trunc_pr(&sess, 60, &carole, &x);
         let _y = carole.reveal(&sess, &x_trunc);
 
-        let target = AbstractRingTensor::from_raw_plc(array![0, -1_i64 as u64, 0], carole);
+        let target = AbstractRingTensor::from_raw_plc(array![3, -1_i64 as u64, 0], carole);
 
         for (i, value) in _y.0.iter().enumerate() {
-            let diff = value - &target.0[i];
+            let diff = value - target.0[i];
             assert!(
                 diff == std::num::Wrapping(1)
                     || diff == std::num::Wrapping(u64::MAX)
@@ -769,19 +771,8 @@ mod tests {
                 "difference = {}, lhs = {}, rhs = {}",
                 diff,
                 value,
-                &target.0[i]
+                target.0[i]
             );
         }
-
-        // TODO allowed as long as \in {316, 317}
-        // assert_eq!(
-        //     _y.0,
-        //     array![
-        //         std::num::Wrapping(316),
-        //         std::num::Wrapping(-316_i64 as u64),
-        //         std::num::Wrapping(316)
-        //     ]
-        //     .into_dyn()
-        // );
     }
 }

@@ -277,7 +277,7 @@ where
     O::Scalar: From<u8>,
 {
     fn ones(&self, sess: &S, shape: &ShapeT) -> O {
-        let value = O::Scalar::from(0).into();
+        let value = O::Scalar::from(1).into();
         self.fill(sess, value, shape)
     }
 }
@@ -1151,7 +1151,9 @@ impl Compile<SyncKernel> for ReceiveOp {
             let v: Value = sess
                 .networking
                 .receive(&sender_id, &rendezvous_key, &sess.sid)?;
-            check_type(&v, expected_ty)?;
+            if expected_ty != Ty::Unknown {
+                check_type(&v, expected_ty)?;
+            }
             Ok(v)
         })))
     }
@@ -1180,7 +1182,9 @@ impl Compile<AsyncKernel> for ReceiveOp {
                     .networking
                     .receive(&sender_id, &rendezvous_key, &sess.sid)
                     .await?;
-                check_type(&v, expected_ty)?;
+                if expected_ty != Ty::Unknown {
+                    check_type(&v, expected_ty)?;
+                }
                 map_send_result(sender.send(v))
             })
         })))
