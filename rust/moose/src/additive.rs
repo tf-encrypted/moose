@@ -10,6 +10,7 @@ use crate::kernels::{
     PlacementTruncPrProvider, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
+use crate::replicated::CanonicalType;
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
 use crate::standard::Shape;
@@ -494,36 +495,48 @@ where
     }
 }
 
+use std::convert::TryInto;
+
 impl<S: Session, R>
     PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>
     for AdditivePlacement
 where
+    AbstractAdditiveTensor<R>: CanonicalType,
+    <AbstractAdditiveTensor<R> as CanonicalType>::Type: KnownType<S>,
+    AbstractReplicatedTensor<R>: CanonicalType,
+    <AbstractReplicatedTensor<R> as CanonicalType>::Type: KnownType<S>,
     R: RingSize,
     Shape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, cs!(Shape), R>,
-    AdditivePlacement: PlacementAdd<
-        S,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-    >,
-    AdditivePlacement: PlacementSub<S, R, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementAdd<S, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementMul<S, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementShl<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>,
-    AdditivePlacement: PlacementSub<
-        S,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-        AbstractAdditiveTensor<R>,
-    >,
-    AdditivePlacement: PlacementSub<S, AbstractAdditiveTensor<R>, R, AbstractAdditiveTensor<R>>,
+    HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<R>), R>,
     HostPlacement: PlacementOnes<S, cs!(Shape), R>,
-    HostPlacement: PlacementReveal<S, AbstractAdditiveTensor<R>, R>,
     HostPlacement: PlacementShape<S, R, cs!(Shape)>,
     HostPlacement: PlacementShl<S, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
-    R: std::fmt::Debug,
+    AbstractAdditiveTensor<R>: Clone + Into<st!(AbstractAdditiveTensor<R>)>,
+    st!(AbstractAdditiveTensor<R>): TryInto<AbstractAdditiveTensor<R>>,
+    AdditivePlacement:
+        PlacementAdd<S, st!(AbstractAdditiveTensor<R>), R, st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementAdd<
+        S,
+        st!(AbstractAdditiveTensor<R>),
+        st!(AbstractAdditiveTensor<R>),
+        st!(AbstractAdditiveTensor<R>),
+    >,
+    AdditivePlacement:
+        PlacementSub<S, R, st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement:
+        PlacementMul<S, st!(AbstractAdditiveTensor<R>), R, st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement:
+        PlacementShl<S, st!(AbstractAdditiveTensor<R>), st!(AbstractAdditiveTensor<R>)>,
+    AdditivePlacement: PlacementSub<
+        S,
+        st!(AbstractAdditiveTensor<R>),
+        st!(AbstractAdditiveTensor<R>),
+        st!(AbstractAdditiveTensor<R>),
+    >,
+    AdditivePlacement:
+        PlacementSub<S, st!(AbstractAdditiveTensor<R>), R, st!(AbstractAdditiveTensor<R>)>,
 {
     fn trunc_pr(
         &self,
@@ -556,21 +569,47 @@ where
         let upshifter = player_a.shl(sess, k - 1, &ones);
         let downshifter = player_a.shl(sess, k - amount - 1, &ones);
 
-        let x_positive = self.add(sess, x, &upshifter);
-        let masked = adt.add(sess, &x_positive, &r);
-
-        let c = player_a.reveal(sess, &masked);
+        let x_positive: AbstractAdditiveTensor<R> = self
+            .add(sess, &x.clone().into(), &upshifter)
+            .try_into()
+            .ok()
+            .unwrap();
+        let masked: AbstractAdditiveTensor<R> = adt
+            .add(sess, &x_positive.into(), &r.into())
+            .try_into()
+            .ok()
+            .unwrap();
+        let c = player_a.reveal(sess, &masked.into());
         let c_no_msb = player_a.shl(sess, 1, &c);
         // also called shifted
         let c_top = player_a.shr(sess, amount + 1, &c_no_msb);
         let c_msb = player_a.shr(sess, R::SIZE - 1, &c);
+
         // OK
-        let overflow = with_context!(adt, sess, r_msb + c_msb - r_msb * c_msb - r_msb * c_msb); // a xor b = a+b-2ab
-        let shifted_ovevrflow = self.shl(sess, k - amount, &overflow);
+        let overflow = with_context!(
+            adt,
+            sess,
+            r_msb.clone().into() + c_msb - r_msb.clone().into() * c_msb - r_msb.into() * c_msb
+        )
+        .try_into()
+        .ok()
+        .unwrap(); // a xor b = a+b-2ab
+        let shifted_overflow = self
+            .shl(sess, k - amount, &overflow.into())
+            .try_into()
+            .ok()
+            .unwrap();
         // shifted - upper + overflow << (k - m)
-        let y_positive = with_context!(adt, sess, c_top - r_top + shifted_ovevrflow);
-        let y = with_context!(adt, sess, y_positive - downshifter);
-        y
+        let y_positive: AbstractAdditiveTensor<R> =
+            with_context!(adt, sess, c_top - r_top.into() + shifted_overflow.into())
+                .try_into()
+                .ok()
+                .unwrap();
+
+        with_context!(adt, sess, y_positive.into() - downshifter)
+            .try_into()
+            .ok()
+            .unwrap()
     }
 }
 
@@ -659,7 +698,12 @@ impl RepToAdtOp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{kernels::SyncSession, ring::AbstractRingTensor};
+    use crate::{
+        computation::{Operation, Operator, Placement, RingAddOp},
+        kernels::SyncSession,
+        ring::AbstractRingTensor,
+        symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
+    };
     use ndarray::array;
 
     #[test]
@@ -774,5 +818,136 @@ mod tests {
                 target.0[i]
             );
         }
+    }
+
+    #[test]
+    fn test_symbolic_add() {
+        let adt = AdditivePlacement {
+            owners: ["alice".into(), "bob".into()],
+        };
+
+        let x: <Additive64Tensor as KnownType<SymbolicSession>>::Type =
+            Symbolic::Symbolic(SymbolicHandle {
+                op: "x".into(),
+                plc: adt.clone(),
+            });
+
+        let y: <Additive64Tensor as KnownType<SymbolicSession>>::Type =
+            Symbolic::Symbolic(SymbolicHandle {
+                op: "x".into(),
+                plc: adt.clone(),
+            });
+
+        let sess = SymbolicSession::default();
+        let z = adt.add(&sess, &x, &y);
+
+        let op_name = match z {
+            Symbolic::Symbolic(handle) => {
+                assert_eq!("op_0", handle.op);
+                handle.op
+            }
+            _ => panic!("Expected a symbolic result from the symbolic addition"),
+        };
+
+        let ops = sess.ops.read().unwrap();
+        match ops.iter().find(|o| o.name == op_name) {
+            None => panic!("Newly created operation was not placed on graph"),
+            Some(op) => assert!(matches!(
+                op,
+                Operation {
+                    kind: Operator::AdtAdd(AdtAddOp { sig: _ }),
+                    ..
+                }
+            )),
+        }
+    }
+
+    #[test]
+    fn test_concrete_symbolic_add() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+
+        let adt = AdditivePlacement {
+            owners: ["alice".into(), "bob".into()],
+        };
+
+        let x: <Additive64Tensor as KnownType<SymbolicSession>>::Type =
+            Symbolic::Concrete(AbstractAdditiveTensor {
+                shares: [
+                    Symbolic::Symbolic(SymbolicHandle {
+                        op: "x0".into(),
+                        plc: alice.clone(),
+                    }),
+                    Symbolic::Symbolic(SymbolicHandle {
+                        op: "x1".into(),
+                        plc: bob.clone(),
+                    }),
+                ],
+            });
+
+        let y: <Additive64Tensor as KnownType<SymbolicSession>>::Type =
+            Symbolic::Concrete(AbstractAdditiveTensor {
+                shares: [
+                    Symbolic::Symbolic(SymbolicHandle {
+                        op: "y0".into(),
+                        plc: alice,
+                    }),
+                    Symbolic::Symbolic(SymbolicHandle {
+                        op: "y1".into(),
+                        plc: bob,
+                    }),
+                ],
+            });
+
+        let sess = SymbolicSession::default();
+        let z = adt.add(&sess, &x, &y);
+
+        match &z {
+            Symbolic::Concrete(AbstractAdditiveTensor { shares: [z0, z1] }) => {
+                match z0 {
+                    Symbolic::Symbolic(handle) => {
+                        assert_eq!("op_0", handle.op);
+                    }
+                    _ => panic!("Expected a symbolic result from the symbolic addition"),
+                }
+                match z1 {
+                    Symbolic::Symbolic(handle) => {
+                        assert_eq!("op_1", handle.op);
+                    }
+                    _ => panic!("Expected a symbolic result from the symbolic addition"),
+                }
+            }
+            _ => {
+                panic!("Expected a concrete result from the symbolic addition on a concrete value")
+            }
+        }
+
+        let ops = sess.ops.read().unwrap();
+
+        assert!(ops.iter().any(|o| matches!(o,
+            Operation {
+                name,
+                kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                inputs,
+                placement: Placement::Host(HostPlacement { owner }),
+                ..
+            }
+            if name == "op_0" && inputs == &vec!["x0", "y0"] && owner.0 == "alice"
+        )));
+
+        assert!(ops.iter().any(|o| matches!(o,
+            Operation {
+                name,
+                kind: Operator::RingAdd(RingAddOp { sig: _ }),
+                inputs,
+                placement: Placement::Host(HostPlacement { owner }),
+                ..
+            }
+            if name == "op_1" && inputs == &vec!["x1", "y1"] && owner.0 == "bob"
+        )));
     }
 }

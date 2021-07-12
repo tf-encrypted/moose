@@ -19,3 +19,5 @@ To ease your development we encourage you to install the following extra cargo c
 - [`cargo release`](https://crates.io/crates/cargo-release) automates the release cycle, including bumping versions.
 
 - [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
+
+- [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.
