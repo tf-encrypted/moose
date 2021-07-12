@@ -1095,13 +1095,13 @@ pub struct RepDotOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepMeanOp {
     pub sig: Signature,
-    // axis ?
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSumOp {
     pub sig: Signature,
-    // axis ?
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
