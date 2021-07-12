@@ -1168,6 +1168,16 @@ impl ToTextual for Operator {
             FixedpointRingEncode(op) => op.to_textual(),
             FixedpointRingDecode(op) => op.to_textual(),
             FixedpointRingMean(op) => op.to_textual(),
+            RepSetup(op) => op.to_textual(),
+            RepShare(op) => op.to_textual(),
+            RepReveal(op) => op.to_textual(),
+            RepDot(op) => op.to_textual(),
+            RepMean(op) => op.to_textual(),
+            RepSum(op) => op.to_textual(),
+            RepAdd(op) => op.to_textual(),
+            RepSub(op) => op.to_textual(),
+            RepMul(op) => op.to_textual(),
+            RepTruncPr(op) => op.to_textual(),
             _ => unimplemented!("{:?}", self),
         }
     }
@@ -1252,17 +1262,42 @@ standard_op_to_textual!(
     scaling_exp,
     sig
 );
+standard_op_to_textual!(RepSetupOp, "{op}: {}", sig);
+standard_op_to_textual!(RepShareOp, "{op}: {}", sig);
+standard_op_to_textual!(RepRevealOp, "{op}: {}", sig);
+standard_op_to_textual!(RepDotOp, "{op}: {}", sig);
+standard_op_to_textual!(RepAddOp, "{op}: {}", sig);
+standard_op_to_textual!(RepSubOp, "{op}: {}", sig);
+standard_op_to_textual!(RepMulOp, "{op}: {}", sig);
+standard_op_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
 
-impl ToTextual for StdMeanOp {
-    fn to_textual(&self) -> String {
-        match self {
-            StdMeanOp { sig, axis: Some(a) } => {
-                format!("StdMean{{axis = {}}}: {}", a, sig.to_textual())
+macro_rules! op_with_axis_to_textual {
+    ($op:tt) => {
+        impl ToTextual for $op {
+            fn to_textual(&self) -> String {
+                match self {
+                    $op { sig, axis: Some(a) } => {
+                        format!(
+                            "{}{{axis = {}}}: {}",
+                            self.short_name(),
+                            a,
+                            sig.to_textual()
+                        )
+                    }
+                    $op { sig, axis: None } => {
+                        format!("{}: {}", self.short_name(), sig.to_textual())
+                    }
+                }
             }
-            StdMeanOp { sig, axis: None } => format!("StdMean: {}", sig.to_textual()),
         }
-    }
+    };
 }
+
+op_with_axis_to_textual!(StdMeanOp);
+op_with_axis_to_textual!(StdSumOp);
+op_with_axis_to_textual!(RingSumOp);
+op_with_axis_to_textual!(RepMeanOp);
+op_with_axis_to_textual!(RepSumOp);
 
 impl ToTextual for FixedpointRingMeanOp {
     fn to_textual(&self) -> String {
@@ -1292,28 +1327,6 @@ impl ToTextual for FixedpointRingMeanOp {
                 scaling_exp,
                 sig.to_textual()
             ),
-        }
-    }
-}
-
-impl ToTextual for StdSumOp {
-    fn to_textual(&self) -> String {
-        match self {
-            StdSumOp { sig, axis: Some(a) } => {
-                format!("StdSum{{axis = {}}}: {}", a, sig.to_textual())
-            }
-            StdSumOp { sig, axis: None } => format!("StdSum: {}", sig.to_textual()),
-        }
-    }
-}
-
-impl ToTextual for RingSumOp {
-    fn to_textual(&self) -> String {
-        match self {
-            RingSumOp { sig, axis: Some(a) } => {
-                format!("RingSum{{axis = {}}}: {}", a, sig.to_textual())
-            }
-            RingSumOp { sig, axis: None } => format!("RingSum: {}", sig.to_textual()),
         }
     }
 }
