@@ -297,7 +297,6 @@ impl RingShlOp {
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
-        T: std::fmt::Debug,
     {
         AbstractRingTensor(x.0 << amount, plc.clone())
     }
