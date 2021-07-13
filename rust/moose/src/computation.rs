@@ -651,7 +651,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -677,6 +677,16 @@ macro_rules! operators {
             pub fn sig_mut(&mut self) -> &mut Signature {
                 match self {
                     $(Operator::$t(op) => &mut op.sig,)+
+                }
+            }
+        }
+
+        impl std::ops::Deref for Operator {
+            type Target = dyn HasShortName;
+
+            fn deref(&self) -> &Self::Target {
+                match self {
+                    $(Operator::$t(o) => o,)+
                 }
             }
         }
@@ -752,7 +762,6 @@ operators![
 ];
 
 pub trait HasShortName {
-    const SHORT_NAME: &'static str;
     fn short_name(&self) -> &str;
 }
 
