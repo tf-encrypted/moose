@@ -134,6 +134,11 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Input(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Load(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),
         }
     }

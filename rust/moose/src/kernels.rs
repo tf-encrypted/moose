@@ -336,6 +336,25 @@ pub trait PlacementConstant<S: Session, O> {
     fn constant(&self, sess: &S, value: Constant) -> O;
 }
 
+pub trait PlacementInput<S: Session, O> {
+    fn input(&self, sess: &S, arg_name: String) -> O;
+}
+
+pub trait PlacementLoad<S: Session, KeyT, QueryT, O> {
+    fn load(&self, sess: &S, key: &KeyT, query: &QueryT) -> O;
+}
+
+pub trait PlacementStdAtLeast2D<S: Session, T, O> {
+    fn std_at_least_2d(&self, sess: &S, to_column_vector: bool, x: &T) -> O;
+}
+
+pub trait PlacementFixedpointRingEncode<S: Session, T, O> {
+    fn fixedpoint_ring_encode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
+}
+pub trait PlacementSlice<S: Session, T, ShapeT> {
+    fn slice(&self, sess: &S, start: u32, end: u32, x: &T) -> ShapeT;
+}
+
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())
@@ -695,6 +714,26 @@ impl Compile<Kernel> for StdReshapeOp {
     }
 }
 
+modelled!(PlacementStdAtLeast2D::std_at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, StdAtLeast2DOp);
+
+kernel! {
+    StdAtLeast2DOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[to_column_vector] Self::kernel_float64tensor),
+    ]
+}
+
+impl StdAtLeast2DOp {
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _to_column_vector: bool,
+        _x: Float64Tensor,
+    ) -> Float64Tensor {
+        // TODO: (lvorona)
+        unimplemented!()
+    }
+}
+
 impl Compile<Kernel> for StdAtLeast2DOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let tcv = self.to_column_vector;
@@ -1013,6 +1052,27 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
+modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Float64Tensor) -> Ring128Tensor, FixedpointRingEncodeOp);
+
+kernel! {
+    FixedpointRingEncodeOp, [
+        (HostPlacement, (Float64Tensor) -> Ring128Tensor => attributes[scaling_base, scaling_exp] Self::kernel_float64tensor),
+    ]
+}
+
+impl FixedpointRingEncodeOp {
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _scaling_base: u64,
+        _scaling_exp: u32,
+        _x: Float64Tensor,
+    ) -> Ring128Tensor {
+        // TODO: (lvorona)
+        unimplemented!()
+    }
+}
+
 impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
@@ -1095,11 +1155,7 @@ kernel! {
 }
 
 impl ConstantOp {
-    fn kernel_string<S: RuntimeSession>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        value: String,
-    ) -> String {
+    fn kernel_string<S: RuntimeSession>(_sess: &S, _plc: &HostPlacement, value: String) -> String {
         // TODO: (lvorona) should we be placing the constant on the placement here?
         value
     }
@@ -1111,7 +1167,6 @@ impl ConstantOp {
     ) -> Float64Tensor {
         value
     }
-
 }
 
 impl Compile<SyncKernel> for SendOp {
@@ -1251,6 +1306,27 @@ impl Compile<AsyncKernel> for IdentityOp {
     }
 }
 
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> String, InputOp);
+// TODO: (lvorona) all the other types. Perhaps a macros?
+
+kernel! {
+    InputOp, [
+        (HostPlacement, () -> String => attributes[arg_name] Self::kernel_string),
+    ]
+}
+
+impl InputOp {
+    fn kernel_string<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        arg_name: String,
+    ) -> String {
+        // TODO: (lvorona) should we be placing the constant on the placement here?
+        // TODO: (lvorona) this is only good for the symbolic session
+        format!("Input value for {}", arg_name)
+    }
+}
+
 impl Compile<SyncKernel> for InputOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let arg_name = self.arg_name.clone();
@@ -1337,6 +1413,27 @@ impl Compile<AsyncKernel> for SaveOp {
                 })
             },
         )))
+    }
+}
+
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float64Tensor, LoadOp);
+// TODO: (lvorona) all the other types. Perhaps a macros?
+
+kernel! {
+    LoadOp, [
+        (HostPlacement, (String, String) -> Float64Tensor => Self::kernel_float64tensor),
+    ]
+}
+
+impl LoadOp {
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: String,
+        _query: String,
+    ) -> Float64Tensor {
+        // TODO: (lvorona)
+        unimplemented!()
     }
 }
 
