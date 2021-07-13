@@ -340,8 +340,16 @@ pub trait PlacementInput<S: Session, O> {
     fn input(&self, sess: &S, arg_name: String) -> O;
 }
 
+pub trait PlacementOutput<S: Session, T, O> {
+    fn output(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementLoad<S: Session, KeyT, QueryT, O> {
     fn load(&self, sess: &S, key: &KeyT, query: &QueryT) -> O;
+}
+
+pub trait PlacementSave<S: Session, KeyT, T, O> {
+    fn save(&self, sess: &S, key: &KeyT, x: &T) -> O;
 }
 
 pub trait PlacementStdAtLeast2D<S: Session, T, O> {
@@ -351,6 +359,11 @@ pub trait PlacementStdAtLeast2D<S: Session, T, O> {
 pub trait PlacementFixedpointRingEncode<S: Session, T, O> {
     fn fixedpoint_ring_encode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
+
+pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
+    fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
+}
+
 pub trait PlacementSlice<S: Session, T, ShapeT> {
     fn slice(&self, sess: &S, start: u32, end: u32, x: &T) -> ShapeT;
 }
@@ -1090,6 +1103,27 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
     }
 }
 
+modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> Float64Tensor, FixedpointRingDecodeOp);
+
+kernel! {
+    FixedpointRingDecodeOp, [
+        (HostPlacement, (Ring128Tensor) -> Float64Tensor => attributes[scaling_base, scaling_exp] Self::kernel_float64tensor),
+    ]
+}
+
+impl FixedpointRingDecodeOp {
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _scaling_base: u64,
+        _scaling_exp: u32,
+        _x: Ring128Tensor,
+    ) -> Float64Tensor {
+        // TODO: (lvorona)
+        unimplemented!()
+    }
+}
+
 impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
@@ -1186,7 +1220,9 @@ impl Compile<SyncKernel> for SendOp {
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
             sess.networking
                 .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
-            Ok(Value::Unit)
+            Ok(Value::Unit(Unit(HostPlacement {
+                owner: "TODO".into(),
+            })))
         })))
     }
 }
@@ -1216,7 +1252,9 @@ impl Compile<AsyncKernel> for SendOp {
                 sess.networking
                     .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
-                map_send_result(sender.send(Value::Unit))
+                map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                    owner: "TODO".into(),
+                }))))
             })
         })))
     }
@@ -1366,6 +1404,21 @@ impl Compile<AsyncKernel> for InputOp {
     }
 }
 
+modelled!(PlacementOutput::output, HostPlacement, (Unit) -> Unit, OutputOp);
+
+kernel! {
+    OutputOp, [
+        (HostPlacement, (Unit) -> Unit => Self::kernel),
+    ]
+}
+
+impl OutputOp {
+    fn kernel<S: RuntimeSession>(_sess: &S, _plc: &HostPlacement, _x: Unit) -> Unit {
+        // TODO: (lvorona)
+        unimplemented!()
+    }
+}
+
 impl Compile<SyncKernel> for OutputOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         Ok(SyncKernel::Unary(Box::new(move |_sess, x0| Ok(x0))))
@@ -1383,6 +1436,27 @@ impl Compile<AsyncKernel> for OutputOp {
     }
 }
 
+modelled!(PlacementSave::save, HostPlacement, (String, Float64Tensor) -> Unit, SaveOp);
+// TODO: (lvorona) all the other types. Perhaps a macros?
+
+kernel! {
+    SaveOp, [
+        (HostPlacement, (String, Float64Tensor) -> Unit => Self::kernel_float64tensor),
+    ]
+}
+
+impl SaveOp {
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: String,
+        _x: Float64Tensor,
+    ) -> Unit {
+        // TODO: (lvorona)
+        unimplemented!()
+    }
+}
+
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.sig.arg(1)?;
@@ -1391,7 +1465,9 @@ impl Compile<SyncKernel> for SaveOp {
             let key = String::try_from(key)?;
             check_type(&val, expected_ty)?;
             sess.storage.save(&key, &sess.sid, &val)?;
-            Ok(Value::Unit)
+            Ok(Value::Unit(Unit(HostPlacement {
+                owner: "TODO".into(),
+            })))
         })))
     }
 }
@@ -1409,7 +1485,9 @@ impl Compile<AsyncKernel> for SaveOp {
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
                     sess.storage.save(&key, &sess.sid, &val).await?;
-                    map_send_result(sender.send(Value::Unit))
+                    map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                        owner: "TODO".into(),
+                    }))))
                 })
             },
         )))

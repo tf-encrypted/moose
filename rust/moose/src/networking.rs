@@ -192,9 +192,13 @@ mod tests {
         let alice = "alice".into();
         let bob = "bob".into();
 
-        net.send(&Value::Unit, &bob, "rdv", &SessionId::from("12345"))
+        let unit = Value::Unit(Unit(HostPlacement {
+            owner: "TODO".into(),
+        }));
+
+        net.send(&unit, &bob, "rdv", &SessionId::from("12345"))
             .unwrap();
-        net.send(&Value::Unit, &bob, "rdv", &SessionId::from("67890"))
+        net.send(&unit, &bob, "rdv", &SessionId::from("67890"))
             .unwrap();
         net.receive(&alice, "rdv", &SessionId::from("12345"))
             .unwrap();
@@ -223,14 +227,20 @@ mod tests {
         let net3 = Arc::clone(&net);
         let task3 = tokio::spawn(async move {
             let bob = "bob".into();
-            net3.send(&Value::Unit, &bob, "rdv", &SessionId::from("12345"))
+            let unit = Value::Unit(Unit(HostPlacement {
+                owner: "TODO".into(),
+            }));
+            net3.send(&unit, &bob, "rdv", &SessionId::from("12345"))
                 .await
         });
 
         let net4 = Arc::clone(&net);
         let task4 = tokio::spawn(async move {
             let bob = "bob".into();
-            net4.send(&Value::Unit, &bob, "rdv", &SessionId::from("67890"))
+            let unit = Value::Unit(Unit(HostPlacement {
+                owner: "TODO".into(),
+            }));
+            net4.send(&unit, &bob, "rdv", &SessionId::from("67890"))
                 .await
         });
 

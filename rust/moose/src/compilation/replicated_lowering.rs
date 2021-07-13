@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use crate::{computation::*, kernels::Session, symbolic::SymbolicSession};
 
 pub fn replicated_lowering(comp: &Computation) -> anyhow::Result<Option<Computation>> {
-    let operations = comp.operations.clone();
     let sess = SymbolicSession::default();
     let mut env: HashMap<String, SymbolicValue> = HashMap::default();
 
@@ -20,5 +19,9 @@ pub fn replicated_lowering(comp: &Computation) -> anyhow::Result<Option<Computat
 
     println!("\n\n\nDUMPING ENTIRE ENV\n{:?}\n\n\n", env);
 
-    Ok(Some(Computation { operations }))
+    let ops = sess.ops.read().unwrap();
+
+    Ok(Some(Computation {
+        operations: ops.clone(),
+    }))
 }

@@ -571,7 +571,7 @@ impl LocalRuntime {
             for (output_name, output_future) in output_futures {
                 let value = output_future.await.unwrap();
                 match value {
-                    Value::Unit => None,
+                    Value::Unit(_) => None,
                     // TODO: not sure what to support, should eventually standardize output types of computations
                     Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
                     Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),

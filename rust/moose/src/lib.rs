@@ -411,7 +411,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => panic!("Not implemented kernel for {:?}", self), // ok
+                    _ => panic!("No kernel for {:?}", self), // ok
                 }
             }
         }
