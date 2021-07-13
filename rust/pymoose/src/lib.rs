@@ -1,5 +1,6 @@
 use moose::bit::BitTensor;
 use moose::compilation::print::print_graph;
+use moose::compilation::replicated_lowering::replicated_lowering;
 use moose::compilation::typing::update_types_one_hop;
 use moose::computation::{Computation, Role, SessionId, Value};
 use moose::execution::{
@@ -618,6 +619,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 "print" => print_graph(comp),
                 "prune" => prune_graph(comp),
                 "typing" => update_types_one_hop(comp),
+                "replicated-lowering" => replicated_lowering(comp),
                 "dump" => {
                     println!("{}", comp.to_textual());
                     Ok(None)

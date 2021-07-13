@@ -177,7 +177,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
                 HostRingLoweringPass(),
-                ReplicatedLoweringPass(ring=128),
+                # ReplicatedLoweringPass(ring=128),
                 # PruningPass(),
                 # NetworkingPass(),
             ],
@@ -185,7 +185,7 @@ class LinearRegressionExample(parameterized.TestCase):
         comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
         rust_compiled = rust_compiler.compile_computation(
-            comp_bin, ["prune", "networking", "typing"]
+            comp_bin, ["dump", "print", "replicated-lowering", "print", "prune", "networking", "typing"]
         )
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)

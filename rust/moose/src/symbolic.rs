@@ -133,6 +133,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Constant(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),
         }
     }

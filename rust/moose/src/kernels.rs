@@ -332,6 +332,10 @@ pub trait PlacementPlace<S: Session, T> {
     fn place(&self, sess: &S, x: T) -> T;
 }
 
+pub trait PlacementConstant<S: Session, O> {
+    fn constant(&self, sess: &S, value: Constant) -> O;
+}
+
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())
@@ -1077,6 +1081,37 @@ impl Compile<Kernel> for ConstantOp {
             }))
         })))
     }
+}
+
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> String, ConstantOp);
+modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
+// TODO: (lvorona) all the other types. Perhaps a macros?
+
+kernel! {
+    ConstantOp, [
+        (HostPlacement, () -> String => attributes[value: String] Self::kernel_string),
+        (HostPlacement, () -> Float64Tensor => attributes[value: Float64Tensor] Self::kernel_float64tensor),
+    ]
+}
+
+impl ConstantOp {
+    fn kernel_string<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        value: String,
+    ) -> String {
+        // TODO: (lvorona) should we be placing the constant on the placement here?
+        value
+    }
+
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        value: Float64Tensor,
+    ) -> Float64Tensor {
+        value
+    }
+
 }
 
 impl Compile<SyncKernel> for SendOp {
