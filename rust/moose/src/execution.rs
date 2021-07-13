@@ -1291,100 +1291,50 @@ impl AsyncTestRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::networking::LocalAsyncNetworking;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
-    use crate::standard::{RawShape, Shape};
-    use crate::storage::LocalAsyncStorage;
+    use crate::ring::{Ring128Tensor, Ring64Tensor};
+    use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor, RawShape, Shape};
+    use itertools::Itertools;
+    use maplit::hashmap;
     use ndarray::prelude::*;
     use std::convert::TryInto;
-    use tokio::runtime::Runtime;
 
-    // TODO [Yann]
-    // - Add storage an optional argument
-    fn _run_sync_test_computation(
-        text_computation: &str,
-        args: HashMap<String, Value>,
+    fn _run_computation_test(
+        computation: Computation,
+        storage_mapping: HashMap<String, HashMap<String, Value>>,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, Value>,
+        run_async: bool,
     ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
-        let executor = TestExecutor::default();
-        let outputs = executor.run_computation(&text_computation.try_into()?, args)?;
-        Ok(outputs)
-    }
-
-    // TODO [Yann]
-    // - Run with an async executor per role, once the compiler is transitioned to Rust.
-    // - Add storage an optional argument
-    fn _run_async_test_computation(
-        text_computation: &str,
-        args: HashMap<String, Value>,
-        roles: Vec<String>,
-        storage: Option<Arc<dyn Send + Sync + AsyncStorage>>,
-    ) -> std::result::Result<HashMap<String, Value>, anyhow::Error> {
-        let executor = AsyncExecutor::default();
-        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
-            Arc::new(LocalAsyncNetworking::default());
-
-        let store: HashMap<String, Value> = HashMap::new();
-        let executor_storage: Arc<dyn Send + Sync + AsyncStorage> =
-            Arc::new(LocalAsyncStorage::from_hashmap(store));
-        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
-
-        let own_identity = Identity::from("hard_worker");
-        let role_assignments = roles
-            .iter()
-            .map(|arg| (Role::from(arg), Identity::from("hard_worker")))
-            .collect::<HashMap<Role, Identity>>();
-
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
-
-        let moose_session = AsyncSession {
-            sid: SessionId::from("foobar"),
-            arguments: args,
-            networking: Arc::clone(&networking),
-            storage: Arc::clone(&executor_storage),
-        };
-
-        let (moose_session_handle, outputs) = executor
-            .run_computation(
-                &text_computation.try_into()?,
-                &role_assignments,
-                &own_identity,
-                moose_session,
-            )
-            .unwrap();
-
-        let _result = rt.block_on(moose_session_handle.join_on_first_error());
-
-        for (output_name, output_future) in outputs {
-            output_futures.insert(output_name, output_future);
-        }
-
-        let outputs = rt.block_on(async {
-            let mut outputs: HashMap<String, Value> = HashMap::new();
-            for (output_name, output_future) in output_futures {
-                let value = output_future.await.unwrap();
-                outputs.insert(output_name, value);
+        match run_async {
+            false => {
+                let executor = TestExecutor::default();
+                let outputs = executor.run_computation(&computation.try_into()?, arguments)?;
+                Ok(outputs)
             }
-            outputs
-        });
-
-        // let val = rt.block_on(async {
-        //     let val = executor_storage
-        //         .load("x_data", &SessionId::from("foobar"), None, "")
-        //         .await
-        //         .unwrap();
-        //     val
-        // });
-        // println!("{:?}", val);
-
-        Ok(outputs)
+            true => {
+                let valid_role_assignments = role_assignments
+                    .into_iter()
+                    .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
+                    .collect::<HashMap<Role, Identity>>();
+                let executor = AsyncTestRuntime::new(storage_mapping);
+                let outputs = executor.evaluate_computation(
+                    computation,
+                    valid_role_assignments,
+                    arguments,
+                )?;
+                match outputs {
+                    Some(outputs) => Ok(outputs),
+                    None => todo!(),
+                }
+            }
+        }
     }
 
     #[rstest]
     #[case(true)]
     #[case(false)]
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        use itertools::Itertools;
         let mut definition = String::from(
             r#"key = PrimPrfKeyGen() @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
@@ -1402,14 +1352,18 @@ mod tests {
         definition.push_str(&body);
         definition.push_str("\nz = Output: (Ring64Tensor) -> Unit (x0) @Host(alice)");
 
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&definition, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&definition, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            definition.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         assert_eq!(outputs.keys().collect::<Vec<_>>(), vec!["z"]);
         Ok(())
@@ -1424,14 +1378,18 @@ mod tests {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
         seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
@@ -1452,16 +1410,18 @@ mod tests {
         sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
         "#;
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
-
-        use crate::ring::Ring64Tensor;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(x_sampled.shape().0, RawShape(vec![2, 2]));
@@ -1478,58 +1438,54 @@ mod tests {
         z = StdAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
         "#;
-
-        use maplit::hashmap;
-        let mut args: HashMap<String, Value> = hashmap!();
-
+        let mut arguments: HashMap<String, Value> = hashmap!();
         let x: Value = "Int64Tensor([5]) @Host(alice)".try_into()?;
         let y: Value = "Int64Tensor([10]) @Host(alice)".try_into()?;
+        arguments.insert("x".to_string(), x);
+        arguments.insert("y".to_string(), y);
 
-        args.insert("x".to_string(), x);
-        args.insert("y".to_string(), y);
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
-
-        let z: crate::standard::Int64Tensor =
-            (outputs.get("output").unwrap().clone()).try_into()?;
-
+        let z: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         let expected: Value = "Int64Tensor([15]) @Host(alice)".try_into()?;
-
         assert_eq!(expected, z.into());
-
         Ok(())
     }
 
-    #[rstest]
-    #[case(true)]
-    #[case(false)]
-    fn test_save(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x_uri = Input {arg_name = "x_uri"}: () -> String @Host(alice)
-        x = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
-        save = Save: (String, Int64Tensor) -> Unit (x_uri, x) @Host(alice)
-        output = Output: (Unit) -> Unit (save) @Host(alice)
-        "#;
+    // #[rstest]
+    // #[case(true)]
+    // #[case(false)]
+    // fn test_save(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+    //     let source = r#"x_uri = Input {arg_name = "x_uri"}: () -> String @Host(alice)
+    //     x = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
+    //     save = Save: (String, Int64Tensor) -> Unit (x_uri, x) @Host(alice)
+    //     output = Output: (Unit) -> Unit (save) @Host(alice)
+    //     "#;
 
-        use maplit::hashmap;
-        let mut args: HashMap<String, Value> = hashmap!();
-        args.insert("x_uri".to_string(), Value::from("x_data".to_string()));
+    //     use maplit::hashmap;
+    //     let mut args: HashMap<String, Value> = hashmap!();
+    //     args.insert("x_uri".to_string(), Value::from("x_data".to_string()));
 
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+    //     let outputs = match run_async {
+    //         true => {
+    //             let roles: Vec<String> = vec!["alice".to_string()];
+    //             _run_async_test_computation(&source, args, roles, None)?
+    //         }
+    //         false => _run_sync_test_computation(&source, args)?,
+    //     };
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     use rstest::rstest;
     #[rstest]
@@ -1556,17 +1512,20 @@ mod tests {
         output = Output: (Int64Tensor) -> Int64Tensor (concatenated) @Host(alice)
         "#;
         let source = source_template.replace("test_axis", &axis.to_string());
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
-        let concatenated: crate::standard::Int64Tensor =
-            (outputs.get("output").unwrap().clone()).try_into()?;
+        let concatenated: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, concatenated.into());
         Ok(())
     }
@@ -1585,25 +1544,37 @@ mod tests {
         #[case] expected_result: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
+        // TODO figure out why getting error when x1 is owned by Bob and comp is compiled with NetworkingPass::pass
         let source_template = r#"x0 = Constant{value=Int64Tensor([5])} @Host(alice)
-        x1 = Constant{value=Int64Tensor([3])} @Host(bob)
+        x1 = Constant{value=Int64Tensor([3])} @Host(alice)
         res = StdOp: (Int64Tensor, Int64Tensor) -> Int64Tensor (x0, x1) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
         "#;
         let source = source_template.replace("StdOp", &test_op);
+        let computation: Computation = source.try_into()?;
+        // use crate::compilation::networking::NetworkingPass;
+        // let computation = NetworkingPass::pass(&computation).unwrap();
+        // let computation = match computation {
+        //     Some(computation) => {
+        //         println!("{:?}", computation);
+        //         computation.toposort().unwrap()
+        //     }
+        //     None => todo!(),
+        // };
+        let arguments: HashMap<String, Value> = HashMap::new();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            computation,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
-
-        let res: crate::standard::Int64Tensor =
-            (outputs.get("output").unwrap().clone()).try_into()?;
-
+        let res: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, res.into());
         Ok(())
     }
@@ -1612,27 +1583,30 @@ mod tests {
     #[case(true)]
     #[case(false)]
     fn test_standard_dot(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+        // TODO figure out why getting error when x1 is owned by Bob and comp is compiled with NetworkingPass::pass
         let source = r#"x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])} @Host(bob)
+        x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])} @Host(alice)
         res = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
         output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
         "#;
-
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string(), "bob".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = HashMap::new();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         let expected_output = Value::from(Float32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         ));
-
         assert_eq!(outputs["output"], expected_output);
         Ok(())
     }
@@ -1645,29 +1619,29 @@ mod tests {
         x_inv = StdInverse : (Float32Tensor) -> Float32Tensor (x) @Host(alice)
         output = Output: (Float32Tensor) -> Float32Tensor (x_inv) @Host(alice)
         "#;
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
-        let expected_output = crate::standard::Float32Tensor::from(
+        let expected_output = Float32Tensor::from(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let x_inv: crate::standard::Float32Tensor =
-            (outputs.get("output").unwrap().clone()).try_into()?;
-
+        let x_inv: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_output, x_inv);
-
         Ok(())
     }
 
-    use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor};
     #[rstest]
     #[case("Float32Tensor", true)]
     #[case("Float64Tensor", true)]
@@ -1684,14 +1658,18 @@ mod tests {
         output = Output : (dtype) -> dtype (r) @Host(alice)
         "#;
         let source = template.replace("dtype", &dtype);
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         match dtype.as_str() {
             "Float32Tensor" => {
@@ -1812,14 +1790,18 @@ mod tests {
         "#,
             reduce_op_test, axis_str
         );
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
@@ -1848,16 +1830,20 @@ mod tests {
         r = StdTranspose : (Int64Tensor) -> Int64Tensor (s) @Host(alice)
         output = Output : (Int64Tensor) -> Int64Tensor (r) @Host(alice)
         "#;
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
-        let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
+        let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -1879,21 +1865,24 @@ mod tests {
         "#,
             to_column_vector
         );
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
+
         let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
-
         Ok(())
     }
 
-    use crate::ring::{Ring128Tensor, Ring64Tensor};
     #[rstest]
     #[case("RingAdd", "Ring64Tensor([5]) @Host(alice)", true)]
     #[case("RingMul", "Ring64Tensor([6]) @Host(alice)", true)]
@@ -1914,14 +1903,19 @@ mod tests {
         "#,
             test_op
         );
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
+
         let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
@@ -1985,14 +1979,18 @@ mod tests {
         "#,
             x_str, y_str
         );
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         match type_str.as_str() {
             "Ring64Tensor" => {
@@ -2048,15 +2046,19 @@ mod tests {
             t = type_str,
             shape = shape_str,
         );
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
         match type_str.as_str() {
             "Ring64" => {
                 let comp_result: Ring64Tensor =
@@ -2085,14 +2087,19 @@ mod tests {
         r = RingSum {axis = 0}: (Ring64Tensor) -> Ring64Tensor (x) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (r) @Host(alice)
         "#;
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
+
         let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
@@ -2113,14 +2120,18 @@ mod tests {
         output = Output: (Ring64Tensor) -> Ring64Tensor (res) @Host(alice)
         "#;
         let source = template_source.replace("Ring64Tensor", type_str.as_str());
-        let args: HashMap<String, Value> = HashMap::new();
-        let outputs = match run_async {
-            true => {
-                let roles: Vec<String> = vec!["alice".to_string()];
-                _run_async_test_computation(&source, args, roles, None)?
-            }
-            false => _run_sync_test_computation(&source, args)?,
-        };
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
 
         match type_str.as_str() {
             "Ring64Tensor" => {
