@@ -58,6 +58,7 @@ impl RingSize for Ring128Tensor {
 
 pub trait FromRawPlc<P, T> {
     fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractRingTensor<T>;
+    fn from_vec_raw_plc(raw_vector: Vec<T>, plc: P) -> AbstractRingTensor<T>;
 }
 
 impl<P> FromRawPlc<P, u64> for Ring64Tensor
@@ -68,6 +69,13 @@ where
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
         AbstractRingTensor(tensor, plc.into())
     }
+
+    fn from_vec_raw_plc(raw_vector: Vec<u64>, plc: P) -> Ring64Tensor {
+        let ix = IxDyn(&[raw_vector.len()]);
+        use vec_utils::VecExt;
+        let v_wrapped: Vec<_> = raw_vector.map(Wrapping);
+        AbstractRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap(), plc.into())
+    }
 }
 
 impl<P> FromRawPlc<P, u128> for Ring128Tensor
@@ -77,6 +85,13 @@ where
     fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> Ring128Tensor {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
         AbstractRingTensor(tensor, plc.into())
+    }
+
+    fn from_vec_raw_plc(raw_vector: Vec<u128>, plc: P) -> Ring128Tensor {
+        let ix = IxDyn(&[raw_vector.len()]);
+        use vec_utils::VecExt;
+        let v_wrapped: Vec<_> = raw_vector.map(Wrapping);
+        AbstractRingTensor(Array::from_shape_vec(ix, v_wrapped).unwrap(), plc.into())
     }
 }
 
