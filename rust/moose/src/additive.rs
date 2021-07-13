@@ -557,16 +557,17 @@ where
         let AbstractAdditiveTensor { shares: [x0, _x1] } = x;
 
         let shape = player_a.shape(sess, x0);
-        let (r, r_top, r_msb) = provider.gen_trunc_mask(sess, amount, &shape);
 
+        let (r, r_top, r_msb) = provider.gen_trunc_mask(sess, amount, &shape);
         // NOTE we consider input is always signed, and the following positive
         // conversion would be optional for unsigned numbers
         // NOTE we assume that input numbers are in range -2^{k-2} <= x < 2^{k-2}
         // so that 0 <= x + 2^{k-2} < 2^{k-1}
         // TODO we could insert debug_assert! to check above conditions
+        let k = R::SIZE - 1;
         let ones = player_a.ones(sess, &shape);
-        let upshifter = player_a.shl(sess, R::SIZE - 2, &ones);
-        let downshifter = player_a.shl(sess, R::SIZE - 2 - amount, &ones);
+        let upshifter = player_a.shl(sess, k - 1, &ones);
+        let downshifter = player_a.shl(sess, k - amount - 1, &ones);
 
         let x_positive: AbstractAdditiveTensor<R> = self
             .add(sess, &x.clone().into(), &upshifter)
@@ -580,9 +581,12 @@ where
             .unwrap();
         let c = player_a.reveal(sess, &masked.into());
         let c_no_msb = player_a.shl(sess, 1, &c);
+        // also called shifted
         let c_top = player_a.shr(sess, amount + 1, &c_no_msb);
         let c_msb = player_a.shr(sess, R::SIZE - 1, &c);
-        let b = with_context!(
+
+        // OK
+        let overflow = with_context!(
             adt,
             sess,
             r_msb.clone().into() + c_msb - r_msb.clone().into() * c_msb - r_msb.into() * c_msb
@@ -590,16 +594,18 @@ where
         .try_into()
         .ok()
         .unwrap(); // a xor b = a+b-2ab
-        let shifted_b = self
-            .shl(sess, R::SIZE - 1 - amount, &b.into())
+        let shifted_overflow = self
+            .shl(sess, k - amount, &overflow.into())
             .try_into()
             .ok()
             .unwrap();
+        // shifted - upper + overflow << (k - m)
         let y_positive: AbstractAdditiveTensor<R> =
-            with_context!(adt, sess, c_top - r_top.into() + shifted_b.into())
+            with_context!(adt, sess, c_top - r_top.into() + shifted_overflow.into())
                 .try_into()
                 .ok()
                 .unwrap();
+
         with_context!(adt, sess, y_positive.into() - downshifter)
             .try_into()
             .ok()
@@ -731,11 +737,37 @@ mod tests {
 
         assert_eq!(
             z0,
-            AbstractRingTensor::from_raw_plc(array![1 + 7, 2 + 8, 3 + 9], alice)
+            AbstractRingTensor::from_raw_plc(array![1 + 7, 2 + 8, 3 + 9], alice.clone())
         );
         assert_eq!(
             z1,
-            AbstractRingTensor::from_raw_plc(array![4 + 1, 5 + 2, 6 + 3], bob)
+            AbstractRingTensor::from_raw_plc(array![4 + 1, 5 + 2, 6 + 3], bob.clone())
+        );
+
+        let r_alice = AbstractRingTensor::from_raw_plc(array![7, 8, 9], alice.clone());
+        let AbstractAdditiveTensor { shares: [zr0, zr1] } = adt.add(&sess, &x, &r_alice);
+
+        assert_eq!(
+            zr0,
+            AbstractRingTensor::from_raw_plc(array![1 + 7, 2 + 8, 3 + 9], alice.clone())
+        );
+        assert_eq!(
+            zr1,
+            AbstractRingTensor::from_raw_plc(array![4, 5, 6], bob.clone())
+        );
+
+        let r_bob = AbstractRingTensor::from_raw_plc(array![7, 8, 9], bob.clone());
+        let AbstractAdditiveTensor {
+            shares: [zrb0, zrb1],
+        } = adt.add(&sess, &x, &r_bob);
+
+        assert_eq!(
+            zrb0,
+            AbstractRingTensor::from_raw_plc(array![1, 2, 3], alice)
+        );
+        assert_eq!(
+            zrb1,
+            AbstractRingTensor::from_raw_plc(array![4 + 7, 5 + 8, 6 + 9], bob)
         );
     }
 
@@ -756,25 +788,37 @@ mod tests {
 
         let x = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(array![80908, 0, 40454], alice),
-                AbstractRingTensor::from_raw_plc(array![0, -80908_i64 as u64, 40454], bob),
+                AbstractRingTensor::from_raw_plc(array![0_u64, 0, 0], alice),
+                AbstractRingTensor::from_raw_plc(
+                    array![
+                        4611686018427387903,
+                        -1152921504606846976_i64 as u64,
+                        1152921504606846975
+                    ],
+                    bob,
+                ),
             ],
         };
 
         let sess = SyncSession::default();
-        let x_trunc = adt.trunc_pr(&sess, 8, &carole, &x);
+        let x_trunc = adt.trunc_pr(&sess, 60, &carole, &x);
         let _y = carole.reveal(&sess, &x_trunc);
 
-        // TODO allowed as long as \in {316, 317}
-        // assert_eq!(
-        //     _y.0,
-        //     array![
-        //         std::num::Wrapping(316),
-        //         std::num::Wrapping(-316_i64 as u64),
-        //         std::num::Wrapping(316)
-        //     ]
-        //     .into_dyn()
-        // );
+        let target = AbstractRingTensor::from_raw_plc(array![3, -1_i64 as u64, 0], carole);
+
+        // probabilistic truncation can be off by 1
+        for (i, value) in _y.0.iter().enumerate() {
+            let diff = value - target.0[i];
+            assert!(
+                diff == std::num::Wrapping(1)
+                    || diff == std::num::Wrapping(u64::MAX)
+                    || diff == std::num::Wrapping(0),
+                "difference = {}, lhs = {}, rhs = {}",
+                diff,
+                value,
+                target.0[i]
+            );
+        }
     }
 
     #[test]

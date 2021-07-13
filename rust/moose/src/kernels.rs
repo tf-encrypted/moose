@@ -75,6 +75,7 @@ impl Session for SyncSession {
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -276,7 +277,7 @@ where
     O::Scalar: From<u8>,
 {
     fn ones(&self, sess: &S, shape: &ShapeT) -> O {
-        let value = O::Scalar::from(0).into();
+        let value = O::Scalar::from(1).into();
         self.fill(sess, value, shape)
     }
 }

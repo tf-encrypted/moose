@@ -56,6 +56,30 @@ impl RingSize for Ring128Tensor {
     const SIZE: usize = 128;
 }
 
+pub trait FromRawPlc<P, T> {
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractRingTensor<T>;
+}
+
+impl<P> FromRawPlc<P, u64> for Ring64Tensor
+where
+    P: Into<HostPlacement>,
+{
+    fn from_raw_plc(raw_tensor: ArrayD<u64>, plc: P) -> Ring64Tensor {
+        let tensor = raw_tensor.mapv(Wrapping).into_dyn();
+        AbstractRingTensor(tensor, plc.into())
+    }
+}
+
+impl<P> FromRawPlc<P, u128> for Ring128Tensor
+where
+    P: Into<HostPlacement>,
+{
+    fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> Ring128Tensor {
+        let tensor = raw_tensor.mapv(Wrapping).into_dyn();
+        AbstractRingTensor(tensor, plc.into())
+    }
+}
+
 impl<R: RingSize + Placed> RingSize for Symbolic<R> {
     const SIZE: usize = R::SIZE;
 }
