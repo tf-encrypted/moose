@@ -12,6 +12,7 @@ use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
 use moose::ring::Ring64Tensor;
 use moose::standard::{Float64Tensor, RawShape, StandardTensor};
+use moose::text_computation::ToTextual;
 use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
@@ -617,6 +618,10 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 "print" => print_graph(comp),
                 "prune" => prune_graph(comp),
                 "typing" => update_types_one_hop(comp),
+                "dump" => {
+                    println!("{}", comp.to_textual());
+                    Ok(None)
+                }
                 missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
             }
         }
