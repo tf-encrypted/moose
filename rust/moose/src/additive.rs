@@ -806,6 +806,7 @@ mod tests {
 
         let target = AbstractRingTensor::from_raw_plc(array![3, -1_i64 as u64, 0], carole);
 
+        // probabilistic truncation can be off by 1
         for (i, value) in _y.0.iter().enumerate() {
             let diff = value - target.0[i];
             assert!(
