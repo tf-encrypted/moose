@@ -2,8 +2,10 @@
 
 use crate::computation::*;
 use crate::error::{Error, Result};
-use crate::networking::{AsyncNetworking, LocalSyncNetworking, SyncNetworking};
-use crate::storage::{AsyncStorage, LocalSyncStorage, SyncStorage};
+use crate::networking::{
+    AsyncNetworking, LocalAsyncNetworking, LocalSyncNetworking, SyncNetworking,
+};
+use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStorage};
 
 use crate::compilation::typing::update_types_one_hop;
 use derive_more::Display;
@@ -16,6 +18,7 @@ use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 use std::sync::Arc;
+use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
 #[macro_export]
@@ -1132,6 +1135,156 @@ impl AsyncExecutor {
         let compiled_comp = computation.compile_async(&ctx)?;
 
         compiled_comp.apply(session)
+    }
+}
+
+pub struct AsyncTestRuntime {
+    pub identities: Vec<Identity>,
+    pub executors: HashMap<Identity, AsyncExecutor>,
+    pub runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>>,
+    pub networking: AsyncNetworkingImpl,
+}
+
+impl AsyncTestRuntime {
+    pub fn new(storage_mapping: HashMap<String, HashMap<String, Value>>) -> Self {
+        let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
+        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+            Arc::new(LocalAsyncNetworking::default());
+        let mut runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>> =
+            HashMap::new();
+        let mut identities = Vec::new();
+        for (identity_str, storage) in storage_mapping {
+            let identity = Identity::from(identity_str.clone()).clone();
+            identities.push(identity.clone());
+            // TODO handle Result in map predicate instead of `unwrap`
+            let storage = storage
+                .iter()
+                .map(|arg| (arg.0.to_owned(), arg.1.to_owned()))
+                .collect::<HashMap<String, Value>>();
+
+            let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
+                Arc::new(LocalAsyncStorage::from_hashmap(storage));
+            runtime_storage.insert(identity.clone(), exec_storage);
+
+            let executor = AsyncExecutor::default();
+            executors.insert(identity.clone(), executor);
+        }
+
+        AsyncTestRuntime {
+            identities,
+            executors,
+            runtime_storage,
+            networking,
+        }
+    }
+    pub fn evaluate_computation(
+        &self,
+        computation: Computation,
+        role_assignments: HashMap<Role, Identity>,
+        arguments: HashMap<String, Value>,
+    ) -> Result<Option<HashMap<String, Value>>> {
+        let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
+        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
+        let (valid_role_assignments, missing_role_assignments): (
+            HashMap<Role, Identity>,
+            HashMap<Role, Identity>,
+        ) = role_assignments
+            .into_iter()
+            .partition(|kv| self.identities.contains(&kv.1));
+        if !missing_role_assignments.is_empty() {
+            let missing_roles: Vec<&Role> = missing_role_assignments.keys().collect();
+            let missing_identities: Vec<&Identity> = missing_role_assignments.values().collect();
+            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", missing_identities, missing_roles)));
+        }
+
+        for (own_identity, executor) in self.executors.iter() {
+            let moose_session = AsyncSession {
+                sid: SessionId::from("foobar"),
+                arguments: arguments.clone(),
+                networking: Arc::clone(&self.networking),
+                storage: Arc::clone(&self.runtime_storage[own_identity]),
+            };
+            let (moose_session_handle, outputs) = executor
+                .run_computation(
+                    &computation,
+                    &valid_role_assignments,
+                    &own_identity,
+                    moose_session,
+                )
+                .unwrap();
+
+            for (output_name, output_future) in outputs {
+                output_futures.insert(output_name, output_future);
+            }
+
+            session_handles.push(moose_session_handle)
+        }
+
+        for handle in session_handles {
+            let result = rt.block_on(handle.join_on_first_error());
+            if let Err(e) = result {
+                return Err(Error::TestRuntime(e.to_string()));
+            }
+        }
+
+        let outputs = rt.block_on(async {
+            let mut outputs: HashMap<String, Value> = HashMap::new();
+            for (output_name, output_future) in output_futures {
+                let value = output_future.await.unwrap();
+                outputs.insert(output_name, value);
+            }
+
+            outputs
+        });
+
+        Ok(Some(outputs))
+    }
+
+    pub fn read_value_from_storage(&self, identity: Identity, key: String) -> Result<Value> {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let val = rt.block_on(async {
+            let val = self.runtime_storage[&Identity::from(identity)]
+                .load(&key, &SessionId::from("foobar"), None, "")
+                .await
+                .unwrap();
+            val
+        });
+
+        Ok(val)
+    }
+
+    pub fn write_value_to_storage(
+        &self,
+        identity: Identity,
+        key: String,
+        value: Value,
+    ) -> Result<()> {
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+        let identity = Identity::from(identity);
+        let identity_storage = match self.runtime_storage.get(&identity) {
+            Some(store) => store,
+            None => {
+                return Err(Error::TestRuntime(format!(
+                    "Runtime does not contain storage for identity {:?}.",
+                    identity.to_string()
+                )));
+            }
+        };
+
+        let result = rt.block_on(async {
+            identity_storage
+                .save(&key, &SessionId::from("yo"), &value)
+                .await
+        });
+        if let Err(e) = result {
+            return Err(Error::TestRuntime(e.to_string()));
+        }
+        Ok(())
     }
 }
 
