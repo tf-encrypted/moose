@@ -1463,65 +1463,69 @@ mod tests {
     }
 
     #[rstest]
-    // #[case(true)]
-    // #[case(false)]
-    // fn test_save(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-    //     let source = r#"x_uri = Input {arg_name = "x_uri"}: () -> String @Host(alice)
-    //     x = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
-    //     save = Save: (String, Int64Tensor) -> Unit (x_uri, x) @Host(alice)
-    //     output = Output: (Unit) -> Unit (save) @Host(alice)
-    //     "#;
-
-    //     let mut arguments: HashMap<String, Value> = hashmap!();
-    //     arguments.insert("x_uri".to_string(), Value::from("x_data".to_string()));
-    //     let storage_mapping: HashMap<String, HashMap<String, Value>> =
-    //         hashmap!("alice".to_string()=> hashmap!());
-    //     let role_assignments: HashMap<String, String> =
-    //         hashmap!("alice".to_string() => "alice".to_string());
-    //     let valid_role_assignments = role_assignments
-    //         .into_iter()
-    //         .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-    //         .collect::<HashMap<Role, Identity>>();
-    //     let executor = AsyncTestRuntime::new(storage_mapping);
-    //     let _outputs =
-    //         executor.evaluate_computation(source.try_into()?, valid_role_assignments, arguments)?;
-
-    //     let storage_outputs = executor
-    //         .read_value_from_storage(Identity::from("alice".to_string()), "x_data".to_string());
-
-    //     println!("Storage outputs: {:?}", storage_outputs);
-
-    //     Ok(())
-    // }
-    #[case(true)]
-    #[case(false)]
-    fn test_load_save(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Load: (String, String) -> Int64Tensor ("input_data", "") @Host(alice)
-        save = Save: (String, Int64Tensor) -> Unit ("saved_data", x) @Host(alice)
+    #[case("Int64Tensor([8]) @Host(alice)", true)]
+    #[case("Int32Tensor([8]) @Host(alice)", true)]
+    #[case("Float32Tensor([8]) @Host(alice)", true)]
+    #[case("Float64Tensor([8]) @Host(alice)", true)]
+    #[case("Int64Tensor([8]) @Host(alice)", false)]
+    #[case("Int32Tensor([8]) @Host(alice)", false)]
+    #[case("Float32Tensor([8]) @Host(alice)", false)]
+    #[case("Float64Tensor([8]) @Host(alice)", false)]
+    fn test_load_save(
+        #[case] x: Value,
+        #[case] run_async: bool,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let input_data: Value = x.try_into()?;
+        let data_type_str = input_data.ty().to_string();
+        let source_template = r#"x_uri = Input {arg_name="x_uri"}: () -> String () @Host(alice)
+        x_query = Input {arg_name="x_query"}: () -> String () @Host(alice)
+        saved_uri = Constant{value = String("saved_data")} () @Host(alice)
+        x = Load: (String, String) -> TensorType (x_uri, x_query) @Host(alice)
+        save = Save: (String, TensorType) -> Unit (saved_uri, x) @Host(alice)
         output = Output: (Unit) -> Unit (save) @Host(alice)
         "#;
+        let source = source_template.replace("TensorType", &data_type_str);
 
-        let mut arguments: HashMap<String, Value> = hashmap!();
-        let input_data: Value = "Int64Tensor([15]) @Host(alice)".try_into()?;
-        let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!("input_data".to_string() => input_data));
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let valid_role_assignments = role_assignments
-            .into_iter()
-            .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
-            .collect::<HashMap<Role, Identity>>();
-        let executor = AsyncTestRuntime::new(storage_mapping);
-        let _outputs =
-            executor.evaluate_computation(source.try_into()?, valid_role_assignments, arguments)?;
+        let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> Value::from("input_data".to_string()),
+            "x_query".to_string() => Value::from("".to_string()),
+            "saved_uri".to_string() => Value::from("saved_data".to_string()));
 
-        let storage_outputs = executor.read_value_from_storage(
-            Identity::from("alice".to_string()),
-            "saved_data".to_string(),
-        );
+        let saved_data = match run_async {
+            true => {
+                let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!("alice".to_string()=> hashmap!("input_data".to_string() => input_data.clone()));
+                let role_assignments: HashMap<String, String> =
+                    hashmap!("alice".to_string() => "alice".to_string());
+                let valid_role_assignments = role_assignments
+                    .into_iter()
+                    .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
+                    .collect::<HashMap<Role, Identity>>();
+                let executor = AsyncTestRuntime::new(storage_mapping);
+                let _outputs = executor.evaluate_computation(
+                    source.try_into()?,
+                    valid_role_assignments,
+                    arguments,
+                )?;
 
-        println!("Storage outputs: {:?}", storage_outputs);
+                let saved_data = executor.read_value_from_storage(
+                    Identity::from("alice".to_string()),
+                    "saved_data".to_string(),
+                )?;
+                saved_data
+            }
+            false => {
+                let store: HashMap<String, Value> =
+                    hashmap!("input_data".to_string() => input_data.clone());
+                let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(store));
+                let executor = TestExecutor::from_storage(&storage);
+                let _outputs = executor.run_computation(&source.try_into()?, arguments)?;
+                let saved_data =
+                    storage.load("saved_data", &SessionId::from("foobar"), None, "")?;
 
+                saved_data
+            }
+        };
+
+        assert_eq!(input_data, saved_data);
         Ok(())
     }
 
