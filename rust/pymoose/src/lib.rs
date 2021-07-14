@@ -1,7 +1,7 @@
 use moose::bit::BitTensor;
 use moose::compilation::print::print_graph;
 use moose::compilation::typing::update_types_one_hop;
-use moose::computation::{Computation, Role, SessionId, Value};
+use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
 use moose::fixedpoint::Convert;
@@ -25,7 +25,6 @@ use std::num::Wrapping;
 pub mod python_computation;
 use moose::compilation::networking::NetworkingPass;
 use moose::compilation::pruning::prune_graph;
-use tokio::runtime::Runtime;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
@@ -433,27 +432,13 @@ impl LocalRuntime {
         key: String,
         value: PyObject,
     ) -> PyResult<()> {
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
         let identity = Identity::from(identity);
-        let identity_storage = match self.runtime.runtime_storage.get(&identity) {
-            Some(store) => store,
-            None => {
-                return Err(PyRuntimeError::new_err(format!(
-                    "Runtime does not contain storage for identity {:?}.",
-                    identity.to_string()
-                )))
-            }
-        };
         let value_to_store = pyobj_to_value(py, value)?;
-        let result = rt.block_on(async {
-            identity_storage
-                .save(&key, &SessionId::from("yo"), &value_to_store)
-                .await
-        });
-        if let Err(e) = result {
-            return Err(PyRuntimeError::new_err(e.to_string()));
-        }
+        let _result = self
+            .runtime
+            .write_value_to_storage(identity, key, value_to_store)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
         Ok(())
     }
 
@@ -463,17 +448,11 @@ impl LocalRuntime {
         identity: String,
         key: String,
     ) -> PyResult<PyObject> {
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
-        let val = rt.block_on(async {
-            let val = self.runtime.runtime_storage[&Identity::from(identity)]
-                .load(&key, &SessionId::from("foobar"), None, "")
-                .await
-                .unwrap();
-            val
-        });
+        let val = self
+            .runtime
+            .read_value_from_storage(Identity::from(identity), key)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
-        // Return value as PyObject
         tensorval_to_pyobj(py, val)
     }
 }
