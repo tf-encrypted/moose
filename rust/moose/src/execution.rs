@@ -1462,7 +1462,7 @@ mod tests {
         Ok(())
     }
 
-    // #[rstest]
+    #[rstest]
     // #[case(true)]
     // #[case(false)]
     // fn test_save(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
@@ -1472,20 +1472,58 @@ mod tests {
     //     output = Output: (Unit) -> Unit (save) @Host(alice)
     //     "#;
 
-    //     use maplit::hashmap;
-    //     let mut args: HashMap<String, Value> = hashmap!();
-    //     args.insert("x_uri".to_string(), Value::from("x_data".to_string()));
+    //     let mut arguments: HashMap<String, Value> = hashmap!();
+    //     arguments.insert("x_uri".to_string(), Value::from("x_data".to_string()));
+    //     let storage_mapping: HashMap<String, HashMap<String, Value>> =
+    //         hashmap!("alice".to_string()=> hashmap!());
+    //     let role_assignments: HashMap<String, String> =
+    //         hashmap!("alice".to_string() => "alice".to_string());
+    //     let valid_role_assignments = role_assignments
+    //         .into_iter()
+    //         .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
+    //         .collect::<HashMap<Role, Identity>>();
+    //     let executor = AsyncTestRuntime::new(storage_mapping);
+    //     let _outputs =
+    //         executor.evaluate_computation(source.try_into()?, valid_role_assignments, arguments)?;
 
-    //     let outputs = match run_async {
-    //         true => {
-    //             let roles: Vec<String> = vec!["alice".to_string()];
-    //             _run_async_test_computation(&source, args, roles, None)?
-    //         }
-    //         false => _run_sync_test_computation(&source, args)?,
-    //     };
+    //     let storage_outputs = executor
+    //         .read_value_from_storage(Identity::from("alice".to_string()), "x_data".to_string());
+
+    //     println!("Storage outputs: {:?}", storage_outputs);
 
     //     Ok(())
     // }
+    #[case(true)]
+    #[case(false)]
+    fn test_load_save(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Load: (String, String) -> Int64Tensor ("input_data", "") @Host(alice)
+        save = Save: (String, Int64Tensor) -> Unit ("saved_data", x) @Host(alice)
+        output = Output: (Unit) -> Unit (save) @Host(alice)
+        "#;
+
+        let mut arguments: HashMap<String, Value> = hashmap!();
+        let input_data: Value = "Int64Tensor([15]) @Host(alice)".try_into()?;
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!("input_data".to_string() => input_data));
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let valid_role_assignments = role_assignments
+            .into_iter()
+            .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
+            .collect::<HashMap<Role, Identity>>();
+        let executor = AsyncTestRuntime::new(storage_mapping);
+        let _outputs =
+            executor.evaluate_computation(source.try_into()?, valid_role_assignments, arguments)?;
+
+        let storage_outputs = executor.read_value_from_storage(
+            Identity::from("alice".to_string()),
+            "saved_data".to_string(),
+        );
+
+        println!("Storage outputs: {:?}", storage_outputs);
+
+        Ok(())
+    }
 
     use rstest::rstest;
     #[rstest]
