@@ -1788,6 +1788,36 @@ mod tests {
         Ok(())
     }
 
+    // TODO test for axis as vector when textual representation can support it
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_standard_expand_dims(
+        #[case] run_async: bool,
+    ) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value = Int64Tensor([1, 2])} @Host(alice)
+        expand_dims = StdExpandDims {axis = 1}: (Int64Tensor) -> Int64Tensor (x) @Host(alice)
+        output = Output: (Int64Tensor) -> Int64Tensor (expand_dims) @Host(alice)"#;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
+
+        let res: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let actual_shape = res.shape().0;
+        let expected_shape = RawShape(vec![2, 1]);
+        assert_eq!(expected_shape, actual_shape);
+        Ok(())
+    }
+
     #[rstest]
     #[case("StdSum", None, "Float32(10.0) @Host(alice)", true, true)]
     #[case(
