@@ -366,8 +366,15 @@ pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
     fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 
-pub trait PlacementSlice<S: Session, T, ShapeT> {
-    fn slice(&self, sess: &S, start: u32, end: u32, x: &T) -> ShapeT;
+pub trait EmptyTypeHolder<T> {}
+
+// The `T` type parameter is required by the modelled!() macros, but we are enforcing that T = ShapeT.
+pub trait PlacementSlice<S: Session, ShapeT, T>
+where
+    // Forces ShapeT = T
+    dyn EmptyTypeHolder<ShapeT>: EmptyTypeHolder<T>,
+{
+    fn slice(&self, sess: &S, start: u32, end: u32, x: &ShapeT) -> ShapeT;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
