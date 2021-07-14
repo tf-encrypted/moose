@@ -1290,6 +1290,7 @@ impl AsyncTestRuntime {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compilation::networking::NetworkingPass;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use crate::ring::{Ring128Tensor, Ring64Tensor};
     use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor, RawShape, Shape};
@@ -1324,7 +1325,7 @@ mod tests {
                 )?;
                 match outputs {
                     Some(outputs) => Ok(outputs),
-                    None => todo!(),
+                    None => Ok(hashmap!().into()),
                 }
             }
         }
@@ -1581,7 +1582,6 @@ mod tests {
         #[case] expected_result: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        // TODO figure out why getting error when x1 is owned by Bob and comp is compiled with NetworkingPass::pass
         let source_template = r#"x0 = Constant{value=Int64Tensor([5])} @Host(alice)
         x1 = Constant{value=Int64Tensor([3])} @Host(bob)
         res = StdOp: (Int64Tensor, Int64Tensor) -> Int64Tensor (x0, x1) @Host(alice)
@@ -1589,28 +1589,30 @@ mod tests {
         "#;
         let source = source_template.replace("StdOp", &test_op);
         let computation: Computation = source.try_into()?;
-        use crate::compilation::networking::NetworkingPass;
-        let computation = NetworkingPass::pass(&computation).unwrap();
-        let computation = match computation {
-            Some(computation) => {
-                for op in &computation.operations {
-                    println!("{:?}", op);
-                }
-                computation
-            }
-            None => todo!(),
-        };
-        let arguments: HashMap<String, Value> = HashMap::new();
+        let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string()=> hashmap!(), "bob".to_string()=>hashmap!());
         let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
-        let outputs = _run_computation_test(
-            computation,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+
+        let outputs = match run_async {
+            true => {
+                let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
+                _run_computation_test(
+                    computation,
+                    storage_mapping,
+                    role_assignments,
+                    arguments,
+                    run_async,
+                )?
+            }
+            false => _run_computation_test(
+                computation,
+                storage_mapping,
+                role_assignments,
+                arguments,
+                run_async,
+            )?,
+        };
 
         let res: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, res.into());
@@ -1621,24 +1623,36 @@ mod tests {
     #[case(true)]
     #[case(false)]
     fn test_standard_dot(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
-        // TODO figure out why getting error when x1 is owned by Bob and comp is compiled with NetworkingPass::pass
         let source = r#"x0 = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])} @Host(alice)
+        x1 = Constant{value=Float32Tensor([[1.0, 0.0], [0.0, 1.0]])} @Host(bob)
         res = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x0, x1) @Host(alice)
         output = Output: (Float32Tensor) -> Float32Tensor (res) @Host(alice)
         "#;
-        let arguments: HashMap<String, Value> = HashMap::new();
+        let computation: Computation = source.try_into()?;
+        let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
-        let outputs = _run_computation_test(
-            source.try_into()?,
-            storage_mapping,
-            role_assignments,
-            arguments,
-            run_async,
-        )?;
+            hashmap!("alice".to_string()=> hashmap!(), "bob".to_string()=>hashmap!());
+        let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
+
+        let outputs = match run_async {
+            true => {
+                let computation = NetworkingPass::pass(&computation).unwrap().unwrap();
+                _run_computation_test(
+                    computation,
+                    storage_mapping,
+                    role_assignments,
+                    arguments,
+                    run_async,
+                )?
+            }
+            false => _run_computation_test(
+                computation,
+                storage_mapping,
+                role_assignments,
+                arguments,
+                run_async,
+            )?,
+        };
 
         let expected_output = Value::from(Float32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
