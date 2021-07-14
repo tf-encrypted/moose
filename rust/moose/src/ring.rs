@@ -328,30 +328,30 @@ impl RingShrOp {
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Seed, Shape) -> Ring64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Seed, Shape) -> Ring128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Shape, Seed) -> Ring64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Shape, Seed) -> Ring128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,
     [
-        (HostPlacement, (Seed, Shape) -> Ring64Tensor => custom |op| {
+        (HostPlacement, (Shape, Seed) -> Ring64Tensor => custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, seed, shape| {
-                    Self::kernel_uniform_u64(ctx, plc, seed, shape)
+                None => Box::new(|ctx, plc, shape, seed| {
+                    Self::kernel_uniform_u64(ctx, plc, shape, seed)
                 }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, seed, shape| {
-                    Self::kernel_bits_u64(ctx, plc, seed, shape)
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape, seed| {
+                    Self::kernel_bits_u64(ctx, plc, shape, seed)
                 }),
                 _ => unimplemented!(),
             }
         }),
-        (HostPlacement, (Seed, Shape) -> Ring128Tensor => custom |op| {
+        (HostPlacement, (Shape, Seed) -> Ring128Tensor => custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, seed, shape| {
-                    Self::kernel_uniform_u128(ctx, plc, seed, shape)
+                None => Box::new(|ctx, plc, shape, seed| {
+                    Self::kernel_uniform_u128(ctx, plc, shape, seed)
                 }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, seed, shape| {
-                    Self::kernel_bits_u128(ctx, plc, seed, shape)
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape, seed| {
+                    Self::kernel_bits_u128(ctx, plc, shape, seed)
                 }),
                 _ => unimplemented!(),
             }
@@ -363,8 +363,8 @@ impl RingSampleOp {
     fn kernel_uniform_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        seed: Seed,
         shape: Shape,
+        seed: Seed,
     ) -> Ring64Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
@@ -377,8 +377,8 @@ impl RingSampleOp {
     fn kernel_bits_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        seed: Seed,
         shape: Shape,
+        seed: Seed,
     ) -> Ring64Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
@@ -390,8 +390,8 @@ impl RingSampleOp {
     fn kernel_uniform_u128<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        seed: Seed,
         shape: Shape,
+        seed: Seed,
     ) -> Ring128Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
@@ -405,8 +405,8 @@ impl RingSampleOp {
     fn kernel_bits_u128<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        seed: Seed,
         shape: Shape,
+        seed: Seed,
     ) -> Ring128Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();

@@ -282,33 +282,33 @@ where
     }
 }
 
-pub trait PlacementSample<S: Session, SeedT, ShapeT, O> {
-    fn sample(&self, sess: &S, max_value: Option<u64>, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSample<S: Session, ShapeT, SeedT, O> {
+    fn sample(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-pub trait PlacementSampleUniform<S: Session, SeedT, ShapeT, O> {
-    fn sample_uniform(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSampleUniform<S: Session, ShapeT, SeedT, O> {
+    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-impl<S: Session, SeedT, ShapeT, O, P> PlacementSampleUniform<S, SeedT, ShapeT, O> for P
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleUniform<S, ShapeT, SeedT, O> for P
 where
-    P: PlacementSample<S, SeedT, ShapeT, O>,
+    P: PlacementSample<S, ShapeT, SeedT, O>,
 {
-    fn sample_uniform(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O {
-        self.sample(sess, None, seed, shape)
+    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+        self.sample(sess, None, shape, seed)
     }
 }
 
-pub trait PlacementSampleBits<S: Session, SeedT, ShapeT, O> {
-    fn sample_bits(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSampleBits<S: Session, ShapeT, SeedT, O> {
+    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-impl<S: Session, SeedT, ShapeT, O, P> PlacementSampleBits<S, SeedT, ShapeT, O> for P
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleBits<S, ShapeT, SeedT, O> for P
 where
-    P: PlacementSample<S, SeedT, ShapeT, O>,
+    P: PlacementSample<S, ShapeT, SeedT, O>,
 {
-    fn sample_bits(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O {
-        self.sample(sess, Some(1), seed, shape)
+    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+        self.sample(sess, Some(1), shape, seed)
     }
 }
 

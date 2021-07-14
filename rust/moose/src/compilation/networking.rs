@@ -159,7 +159,7 @@ mod tests {
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="alice"} (y) @Host(bob)"#
+            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
         ));
         assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Unknown () @Host(alice)"#));
         assert!(comp.contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
@@ -182,11 +182,11 @@ mod tests {
 
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="bob"} (x) @Host(alice)"#
+            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="bob"}: (Unknown) -> Unknown (x) @Host(alice)"#
         ));
         assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="alice"} : () -> Unknown () @Host(bob)"#));
         assert!(comp.contains(
-            r#"send_1 = Send {rendezvous_key="rendezvous_key_1", receiver="bob"} (y) @Host(alice)"#
+            r#"send_1 = Send {rendezvous_key="rendezvous_key_1", receiver="bob"}: (Unknown) -> Unknown (y) @Host(alice)"#
         ));
         assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key="rendezvous_key_1", sender="alice"} : () -> Unknown () @Host(bob)"#));
         // Should use the same pair of operators for both computations on both (asserting for no extra jumps)

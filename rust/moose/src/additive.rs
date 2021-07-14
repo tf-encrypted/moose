@@ -448,12 +448,12 @@ pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
 impl<S: Session, R> TruncMaskGen<S, cs!(Shape), R> for HostPlacement
 where
     PrfKey: KnownType<S>,
-    Seed: KnownType<S>,
     Shape: KnownType<S>,
+    Seed: KnownType<S>,
     R: RingSize + Clone,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
-    HostPlacement: PlacementSampleBits<S, cs!(Seed), cs!(Shape), R>,
-    HostPlacement: PlacementSampleUniform<S, cs!(Seed), cs!(Shape), R>,
+    HostPlacement: PlacementSampleBits<S, cs!(Shape), cs!(Seed), R>,
+    HostPlacement: PlacementSampleUniform<S, cs!(Shape), cs!(Seed), R>,
     HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
     HostPlacement: PlacementSub<S, R, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
@@ -474,7 +474,7 @@ where
         let sync_key = RawNonce::generate();
         let seed = self.derive_seed(sess, sync_key, &key);
 
-        let r = self.sample_uniform(sess, &seed, shape);
+        let r = self.sample_uniform(sess, shape, &seed);
         let r_msb = self.shr(sess, R::SIZE - 1, &r);
         let r_top = self.shr(sess, amount + 1, &self.shl(sess, 1, &r));
 
@@ -482,7 +482,7 @@ where
             // TODO(Dragos) this could probably be optimized by sending the key to p0
             let share_sync_key = RawNonce::generate();
             let seed = self.derive_seed(sess, share_sync_key, &key);
-            let x0 = self.sample_uniform(sess, &seed, shape);
+            let x0 = self.sample_uniform(sess, shape, &seed);
             let x1 = self.sub(sess, x, &x0);
             AbstractAdditiveTensor { shares: [x0, x1] }
         };

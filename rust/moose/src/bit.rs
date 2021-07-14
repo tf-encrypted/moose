@@ -105,12 +105,12 @@ impl BitFillOp {
     }
 }
 
-modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (Seed, Shape) -> BitTensor, BitSampleOp);
+modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (Shape, Seed) -> BitTensor, BitSampleOp);
 
 kernel! {
     BitSampleOp,
     [
-        (HostPlacement, (Seed, Shape) -> BitTensor => Self::kernel),
+        (HostPlacement, (Shape, Seed) -> BitTensor => Self::kernel),
     ]
 }
 
@@ -118,8 +118,8 @@ impl BitSampleOp {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        seed: Seed,
         shape: Shape,
+        seed: Seed,
     ) -> BitTensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
