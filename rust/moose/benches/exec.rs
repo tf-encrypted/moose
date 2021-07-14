@@ -571,7 +571,7 @@ fn compile(c: &mut Criterion) {
 
 fn execute(c: &mut Criterion) {
     use maplit::hashmap;
-    use moose::computation::SessionId;
+    use moose::computation::{HostPlacement, SessionId, Unit, Value};
     use moose::execution::*;
     use moose::networking::*;
     use std::rc::Rc;
@@ -585,12 +585,15 @@ fn execute(c: &mut Criterion) {
     let mut group = c.benchmark_group("execute");
     for size in [10_000, 100_000, 250_000, 500_000].iter() {
         let comp = gen_sample_graph(*size);
+        let unit = Value::Unit(Unit(HostPlacement {
+            owner: "TODO".into(),
+        }));
 
         group.bench_function(BenchmarkId::new("sync_direct", size), |b| {
             let sess = SyncSession {
                 sid: SessionId::from("12345"),
                 arguments: hashmap!(),
-                networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
+                networking: Rc::new(DummyNetworking(unit.clone())),
                 storage: Rc::new(moose::storage::LocalSyncStorage::default()),
             };
 
@@ -606,7 +609,7 @@ fn execute(c: &mut Criterion) {
             let sess = SyncSession {
                 sid: SessionId::from("12345"),
                 arguments: hashmap!(),
-                networking: Rc::new(DummyNetworking(moose::computation::Value::Unit)),
+                networking: Rc::new(DummyNetworking(unit.clone())),
                 storage: Rc::new(moose::storage::LocalSyncStorage::default()),
             };
 
@@ -622,7 +625,7 @@ fn execute(c: &mut Criterion) {
             let session = AsyncSession {
                 sid: SessionId::from("12345"),
                 arguments: hashmap! {},
-                networking: Arc::new(DummyNetworking(moose::computation::Value::Unit)),
+                networking: Arc::new(DummyNetworking(unit.clone())),
                 storage: Arc::new(moose::storage::LocalAsyncStorage::default()),
             };
 
