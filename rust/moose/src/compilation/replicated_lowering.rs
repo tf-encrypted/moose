@@ -17,8 +17,6 @@ pub fn replicated_lowering(comp: &Computation) -> anyhow::Result<Option<Computat
         env.insert(op.name.clone(), res);
     }
 
-    println!("\n\n\nDUMPING ENTIRE ENV\n{:?}\n\n\n", env);
-
     let ops = sess.ops.read().unwrap();
 
     Ok(Some(Computation {

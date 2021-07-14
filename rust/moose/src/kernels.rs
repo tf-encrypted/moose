@@ -7,7 +7,9 @@ use crate::execution::{
 };
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
+use crate::ring::AbstractRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::standard::StandardTensor;
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
@@ -1066,22 +1068,23 @@ impl Compile<Kernel> for BitAndOp {
 }
 
 modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Float64Tensor) -> Ring128Tensor, FixedpointRingEncodeOp);
+modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Float32Tensor) -> Ring64Tensor, FixedpointRingEncodeOp);
 
 kernel! {
     FixedpointRingEncodeOp, [
-        (HostPlacement, (Float64Tensor) -> Ring128Tensor => attributes[scaling_base, scaling_exp] Self::kernel_float64tensor),
+        (HostPlacement, (Float64Tensor) -> Ring128Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (Float32Tensor) -> Ring64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
 impl FixedpointRingEncodeOp {
-    fn kernel_float64tensor<S: RuntimeSession>(
+    fn kernel<S: RuntimeSession, ST, TT>(
         _sess: &S,
         _plc: &HostPlacement,
         _scaling_base: u64,
         _scaling_exp: u32,
-        _x: Float64Tensor,
-    ) -> Ring128Tensor {
-        // TODO: (lvorona)
+        _x: StandardTensor<ST>,
+    ) -> AbstractRingTensor<TT> {
         unimplemented!()
     }
 }
@@ -1104,22 +1107,23 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
 }
 
 modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> Float64Tensor, FixedpointRingDecodeOp);
+modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring64Tensor) -> Float32Tensor, FixedpointRingDecodeOp);
 
 kernel! {
     FixedpointRingDecodeOp, [
-        (HostPlacement, (Ring128Tensor) -> Float64Tensor => attributes[scaling_base, scaling_exp] Self::kernel_float64tensor),
+        (HostPlacement, (Ring128Tensor) -> Float64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (Ring64Tensor) -> Float32Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
 impl FixedpointRingDecodeOp {
-    fn kernel_float64tensor<S: RuntimeSession>(
+    fn kernel<S: RuntimeSession, ST, TT>(
         _sess: &S,
         _plc: &HostPlacement,
         _scaling_base: u64,
         _scaling_exp: u32,
-        _x: Ring128Tensor,
-    ) -> Float64Tensor {
-        // TODO: (lvorona)
+        _x: AbstractRingTensor<ST>,
+    ) -> StandardTensor<TT> {
         unimplemented!()
     }
 }
