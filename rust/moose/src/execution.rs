@@ -1583,26 +1583,27 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         // TODO figure out why getting error when x1 is owned by Bob and comp is compiled with NetworkingPass::pass
         let source_template = r#"x0 = Constant{value=Int64Tensor([5])} @Host(alice)
-        x1 = Constant{value=Int64Tensor([3])} @Host(alice)
+        x1 = Constant{value=Int64Tensor([3])} @Host(bob)
         res = StdOp: (Int64Tensor, Int64Tensor) -> Int64Tensor (x0, x1) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (res) @Host(alice)
         "#;
         let source = source_template.replace("StdOp", &test_op);
         let computation: Computation = source.try_into()?;
-        // use crate::compilation::networking::NetworkingPass;
-        // let computation = NetworkingPass::pass(&computation).unwrap();
-        // let computation = match computation {
-        //     Some(computation) => {
-        //         println!("{:?}", computation);
-        //         computation.toposort().unwrap()
-        //     }
-        //     None => todo!(),
-        // };
+        use crate::compilation::networking::NetworkingPass;
+        let computation = NetworkingPass::pass(&computation).unwrap();
+        let computation = match computation {
+            Some(computation) => {
+                for op in &computation.operations {
+                    println!("{:?}", op);
+                }
+                computation
+            }
+            None => todo!(),
+        };
         let arguments: HashMap<String, Value> = HashMap::new();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
-        let role_assignments: HashMap<String, String> =
-            hashmap!("alice".to_string() => "alice".to_string());
+            hashmap!("alice".to_string()=> hashmap!(), "bob".to_string()=>hashmap!());
+        let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
         let outputs = _run_computation_test(
             computation,
             storage_mapping,
