@@ -73,7 +73,7 @@ impl NetworkingPass {
         let send_operation = Operation {
             name: format!("send_{}", index),
             kind: SendOp {
-                sig: Signature::unary(Ty::Unknown, Ty::Unknown),
+                sig: Signature::unary(Ty::Unknown, Ty::Unit),
                 rendezvous_key: rendezvous_key.clone(),
                 receiver: Role::from(dst),
             }
@@ -159,7 +159,7 @@ mod tests {
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
+            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="alice"}: (Unknown) -> Unit (y) @Host(bob)"#
         ));
         assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Unknown () @Host(alice)"#));
         assert!(comp.contains("mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
@@ -182,11 +182,11 @@ mod tests {
 
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="bob"}: (Unknown) -> Unknown (x) @Host(alice)"#
+            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="bob"}: (Unknown) -> Unit (x) @Host(alice)"#
         ));
         assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="alice"} : () -> Unknown () @Host(bob)"#));
         assert!(comp.contains(
-            r#"send_1 = Send {rendezvous_key="rendezvous_key_1", receiver="bob"}: (Unknown) -> Unknown (y) @Host(alice)"#
+            r#"send_1 = Send {rendezvous_key="rendezvous_key_1", receiver="bob"}: (Unknown) -> Unit (y) @Host(alice)"#
         ));
         assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key="rendezvous_key_1", sender="alice"} : () -> Unknown () @Host(bob)"#));
         // Should use the same pair of operators for both computations on both (asserting for no extra jumps)
