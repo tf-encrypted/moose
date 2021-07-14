@@ -1,10 +1,7 @@
-extern crate ndarray;
-extern crate ndarray_linalg;
-
 use crate::bit::BitTensor;
 use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
 use crate::error::Result;
-use crate::kernels::{Context, PlacementPlace, PlacementShape};
+use crate::kernels::{PlacementPlace, PlacementShape, RuntimeSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -13,6 +10,15 @@ use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
+
+impl Placed for String {
+    type Placement = Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        // TODO we need a wrapper for strings that contains placement info
+        unimplemented!()
+    }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
@@ -28,8 +34,8 @@ impl Placed for Shape {
     }
 }
 
-impl<C: Context> PlacementPlace<C, Shape> for Placement {
-    fn place(&self, _ctx: &C, shape: Shape) -> Shape {
+impl<S: RuntimeSession> PlacementPlace<S, Shape> for Placement {
+    fn place(&self, _sess: &S, shape: Shape) -> Shape {
         match shape.placement() {
             Ok(place) if &place == self => shape,
             _ => {

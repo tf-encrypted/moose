@@ -485,10 +485,10 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, nonce) = attributes_single("nonce", map(vector(parse_int), RawNonce))(input)?;
+    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), RawNonce))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
-    Ok((input, PrimDeriveSeedOp { sig, nonce }.into()))
+    Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
 }
 
 /// Parses a FixedpointRingEncode operator.
@@ -1168,6 +1168,16 @@ impl ToTextual for Operator {
             FixedpointRingEncode(op) => op.to_textual(),
             FixedpointRingDecode(op) => op.to_textual(),
             FixedpointRingMean(op) => op.to_textual(),
+            RepSetup(op) => op.to_textual(),
+            RepShare(op) => op.to_textual(),
+            RepReveal(op) => op.to_textual(),
+            RepDot(op) => op.to_textual(),
+            RepMean(op) => op.to_textual(),
+            RepSum(op) => op.to_textual(),
+            RepAdd(op) => op.to_textual(),
+            RepSub(op) => op.to_textual(),
+            RepMul(op) => op.to_textual(),
+            RepTruncPr(op) => op.to_textual(),
             _ => unimplemented!("{:?}", self),
         }
     }
@@ -1236,7 +1246,7 @@ standard_op_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
 standard_op_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 standard_op_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 standard_op_to_textual!(BitSampleOp, "{op}: {}", sig);
-standard_op_to_textual!(PrimDeriveSeedOp, "{op}{{nonce={}}}: {}", nonce, sig);
+standard_op_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 standard_op_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
 standard_op_to_textual!(
     FixedpointRingEncodeOp,
@@ -1252,17 +1262,42 @@ standard_op_to_textual!(
     scaling_exp,
     sig
 );
+standard_op_to_textual!(RepSetupOp, "{op}: {}", sig);
+standard_op_to_textual!(RepShareOp, "{op}: {}", sig);
+standard_op_to_textual!(RepRevealOp, "{op}: {}", sig);
+standard_op_to_textual!(RepDotOp, "{op}: {}", sig);
+standard_op_to_textual!(RepAddOp, "{op}: {}", sig);
+standard_op_to_textual!(RepSubOp, "{op}: {}", sig);
+standard_op_to_textual!(RepMulOp, "{op}: {}", sig);
+standard_op_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
 
-impl ToTextual for StdMeanOp {
-    fn to_textual(&self) -> String {
-        match self {
-            StdMeanOp { sig, axis: Some(a) } => {
-                format!("StdMean{{axis = {}}}: {}", a, sig.to_textual())
+macro_rules! op_with_axis_to_textual {
+    ($op:tt) => {
+        impl ToTextual for $op {
+            fn to_textual(&self) -> String {
+                match self {
+                    $op { sig, axis: Some(a) } => {
+                        format!(
+                            "{}{{axis = {}}}: {}",
+                            self.short_name(),
+                            a,
+                            sig.to_textual()
+                        )
+                    }
+                    $op { sig, axis: None } => {
+                        format!("{}: {}", self.short_name(), sig.to_textual())
+                    }
+                }
             }
-            StdMeanOp { sig, axis: None } => format!("StdMean: {}", sig.to_textual()),
         }
-    }
+    };
 }
+
+op_with_axis_to_textual!(StdMeanOp);
+op_with_axis_to_textual!(StdSumOp);
+op_with_axis_to_textual!(RingSumOp);
+op_with_axis_to_textual!(RepMeanOp);
+op_with_axis_to_textual!(RepSumOp);
 
 impl ToTextual for FixedpointRingMeanOp {
     fn to_textual(&self) -> String {
@@ -1296,28 +1331,6 @@ impl ToTextual for FixedpointRingMeanOp {
     }
 }
 
-impl ToTextual for StdSumOp {
-    fn to_textual(&self) -> String {
-        match self {
-            StdSumOp { sig, axis: Some(a) } => {
-                format!("StdSum{{axis = {}}}: {}", a, sig.to_textual())
-            }
-            StdSumOp { sig, axis: None } => format!("StdSum: {}", sig.to_textual()),
-        }
-    }
-}
-
-impl ToTextual for RingSumOp {
-    fn to_textual(&self) -> String {
-        match self {
-            RingSumOp { sig, axis: Some(a) } => {
-                format!("RingSum{{axis = {}}}: {}", a, sig.to_textual())
-            }
-            RingSumOp { sig, axis: None } => format!("RingSum: {}", sig.to_textual()),
-        }
-    }
-}
-
 impl ToTextual for RingSampleOp {
     fn to_textual(&self) -> String {
         match self {
@@ -1344,6 +1357,7 @@ impl ToTextual for Ty {
             Ty::Ring128 => "Ring128",
             Ty::Ring64Tensor => "Ring64Tensor",
             Ty::Ring128Tensor => "Ring128Tensor",
+            Ty::Bit => "Bit",
             Ty::BitTensor => "BitTensor",
             Ty::Shape => "Shape",
             Ty::Seed => "Seed",
@@ -1713,14 +1727,14 @@ mod tests {
     #[test]
     fn test_seed() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)",
+            "seed = PrimDeriveSeed{sync_key = [1, 2, 3]}(key)@Host(alice)",
         )?;
         assert_eq!(op.name, "seed");
         assert_eq!(
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
-                nonce: RawNonce(vec![1, 2, 3])
+                sync_key: RawNonce(vec![1, 2, 3])
             })
         );
         Ok(())
@@ -1963,7 +1977,7 @@ mod tests {
         let comp: Computation = "x = Constant{value = Float32Tensor([1.0])} @Host(alice)
             y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
             z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
-            seed = PrimDeriveSeed{nonce = [1, 2, 3]}(key)@Host(alice)
+            seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)} @Host(alice)
             o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"
             .try_into()?;

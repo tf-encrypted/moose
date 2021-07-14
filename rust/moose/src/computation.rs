@@ -1,17 +1,19 @@
-use crate::additive::{Additive128Tensor, Additive64Tensor};
+use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::kernels::Context;
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
-    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup,
+    AbstractReplicatedSetup, AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor,
+    ReplicatedBitTensor, ReplicatedSetup,
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
     Shape, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
+use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
 use macros::ShortName;
 use paste::paste;
@@ -29,7 +31,13 @@ impl<S: Into<String>> From<S> for SessionId {
     }
 }
 
-pub trait KnownType<C: Context> {
+impl SessionId {
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
+
+pub trait KnownType<S: Session> {
     type Type;
     const TY: Ty;
 }
@@ -43,6 +51,7 @@ macro_rules! constants {
         pub enum Constant {
             $($val($val),)+
             // TODO promote below to match other values
+            Bit(u8),
             Float32(f32),
             Float64(f64),
             Ring64(u64),
@@ -54,6 +63,7 @@ macro_rules! constants {
                 match self {
                     $(Constant::$val(_) => constants!(@ty $val $($t)?),)+
                     // TODO promote below to match other values
+                    Constant::Bit(_) => Ty::Bit,
                     Constant::Float32(_) => Ty::Float32,
                     Constant::Float64(_) => Ty::Float64,
                     Constant::Ring64(_) => Ty::Ring64,
@@ -67,6 +77,7 @@ macro_rules! constants {
                         Constant::$val(x) => {constants!(@value(x.clone(), plc.clone().into()) $val $($t)?)},
                     )+
                     // TODO promote below to match other values
+                    Constant::Bit(x) => Value::Bit(x.clone()),
                     Constant::Float32(x) => Value::Float32(x.clone()),
                     Constant::Float64(x) => Value::Float64(x.clone()),
                     Constant::Ring64(x) => Value::Ring64(x.clone()),
@@ -114,21 +125,31 @@ constants![
     Uint64Tensor,
 ];
 
+impl From<u8> for Constant {
+    // TODO: not obvious that u64 is always Ring64
+    fn from(x: u8) -> Self {
+        Constant::Bit(x)
+    }
+}
+
+impl From<u64> for Constant {
+    // TODO: not obvious that u64 is always Ring64
+    fn from(x: u64) -> Self {
+        Constant::Ring64(x)
+    }
+}
+
+impl From<u128> for Constant {
+    // TODO: not obvious that u64 is always Ring64
+    fn from(x: u128) -> Self {
+        Constant::Ring128(x)
+    }
+}
+
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
-    ($($val:ident,)+) => {
-
-        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-        pub enum Value {
-            $($val($val),)+
-            // TODO promote below to match other values
-            Unit,
-            Float32(f32),
-            Float64(f64),
-            Ring64(u64),
-            Ring128(u128),
-        }
+    ($(($val:ident, $sym_val:ty),)+) => {
 
         #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
         pub enum Ty {
@@ -136,10 +157,23 @@ macro_rules! values {
             $($val,)+
             // TODO promote below to match other values
             Unit,
+            Bit,
             Float32,
             Float64,
             Ring64,
             Ring128,
+        }
+
+        #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+        pub enum Value {
+            $($val($val),)+
+            // TODO promote below to match other values
+            Unit,
+            Bit(u8),
+            Float32(f32),
+            Float64(f64),
+            Ring64(u64),
+            Ring128(u128),
         }
 
         impl Value {
@@ -148,6 +182,7 @@ macro_rules! values {
                     $(Value::$val(_) => Ty::$val,)+
                     // TODO promote below to match other values
                     Value::Unit => Ty::Unit,
+                    Value::Bit(_) => Ty::Bit,
                     Value::Float32(_) => Ty::Float32,
                     Value::Float64(_) => Ty::Float64,
                     Value::Ring64(_) => Ty::Ring64,
@@ -203,41 +238,209 @@ macro_rules! values {
         )+
 
         $(
-        impl KnownType<crate::kernels::ConcreteContext> for $val {
+        impl KnownType<crate::kernels::SyncSession> for $val {
             type Type = $val;
+            const TY: Ty = Ty::$val;
+        }
+        )+
+
+        #[derive(PartialEq, Clone, Debug)]
+        pub enum SymbolicValue {
+            $($val($sym_val),)+
+        }
+
+        impl SymbolicValue {
+            pub fn ty(&self) -> Ty {
+                match self {
+                    $(SymbolicValue::$val(_) => Ty::$val,)+
+                    // TODO promote below to match other values
+                    // SymbolicValue::Unit => Ty::Unit,
+                    // SymbolicValue::Bit(_) => Ty::Bit,
+                    // SymbolicValue::Float32(_) => Ty::Float32,
+                    // SymbolicValue::Float64(_) => Ty::Float64,
+                    // SymbolicValue::Ring64(_) => Ty::Ring64,
+                    // SymbolicValue::Ring128(_) => Ty::Ring128,
+                }
+            }
+        }
+
+        $(
+        impl From<$sym_val> for SymbolicValue {
+            fn from(x: $sym_val) -> Self {
+                SymbolicValue::$val(x)
+            }
+        }
+        )+
+
+        $(
+        impl TryFrom<SymbolicValue> for $sym_val {
+            type Error = Error;
+            fn try_from(v: SymbolicValue) -> Result<Self> {
+                match v {
+                    SymbolicValue::$val(x) => Ok(x),
+                    _ => Err(Error::TypeMismatch {
+                        expected: stringify!($val).to_string(),
+                        found: v.ty(),
+                    }),
+                }
+            }
+        }
+        )+
+
+        $(
+        impl KnownType<crate::symbolic::SymbolicSession> for $val {
+            type Type = $sym_val;
             const TY: Ty = Ty::$val;
         }
         )+
     };
 }
 
+impl From<Ring64Tensor> for Symbolic<Ring64Tensor> {
+    fn from(x: Ring64Tensor) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl From<Ring128Tensor> for Symbolic<Ring128Tensor> {
+    fn from(x: Ring128Tensor) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> From<AbstractReplicatedTensor<R>> for Symbolic<AbstractReplicatedTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
+where
+    K: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedSetup<K>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl From<Shape> for Symbolic<Shape> {
+    fn from(x: Shape) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractAdditiveTensor<R>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<R> TryFrom<Symbolic<AbstractReplicatedTensor<R>>> for AbstractReplicatedTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedTensor<R>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K>
+where
+    K: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedSetup<K>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
 values![
-    Shape,
-    Seed,
-    PrfKey,
-    Nonce,
-    String,
-    BitTensor,
-    Ring64Tensor,
-    Ring128Tensor,
-    Float32Tensor,
-    Float64Tensor,
-    Int8Tensor,
-    Int16Tensor,
-    Int32Tensor,
-    Int64Tensor,
-    Uint8Tensor,
-    Uint16Tensor,
-    Uint32Tensor,
-    Uint64Tensor,
-    Fixed64Tensor,
-    Fixed128Tensor,
-    Replicated64Tensor,
-    Replicated128Tensor,
-    ReplicatedBitTensor,
-    ReplicatedSetup,
-    Additive64Tensor,
-    Additive128Tensor,
+    (Shape, Symbolic<Shape>),
+    (Seed, Symbolic<Seed>),
+    (PrfKey, Symbolic<PrfKey>),
+    (Nonce, Symbolic<Nonce>),
+    (String, Symbolic<String>),
+    (BitTensor, Symbolic<BitTensor>),
+    (Ring64Tensor, Symbolic<Ring64Tensor>),
+    (Ring128Tensor, Symbolic<Ring128Tensor>),
+    (Float32Tensor, Symbolic<Float32Tensor>),
+    (Float64Tensor, Symbolic<Float64Tensor>),
+    (Int8Tensor, Symbolic<Int8Tensor>),
+    (Int16Tensor, Symbolic<Int16Tensor>),
+    (Int32Tensor, Symbolic<Int32Tensor>),
+    (Int64Tensor, Symbolic<Int64Tensor>),
+    (Uint8Tensor, Symbolic<Uint8Tensor>),
+    (Uint16Tensor, Symbolic<Uint16Tensor>),
+    (Uint32Tensor, Symbolic<Uint32Tensor>),
+    (Uint64Tensor, Symbolic<Uint64Tensor>),
+    (
+        Fixed64Tensor,
+        Symbolic<
+            FixedTensor<
+                <Ring64Tensor as KnownType<SymbolicSession>>::Type,
+                <Replicated64Tensor as KnownType<SymbolicSession>>::Type,
+            >,
+        >
+    ),
+    (
+        Fixed128Tensor,
+        Symbolic<
+            FixedTensor<
+                <Ring128Tensor as KnownType<SymbolicSession>>::Type,
+                <Replicated128Tensor as KnownType<SymbolicSession>>::Type,
+            >,
+        >
+    ),
+    (
+        Replicated64Tensor,
+        Symbolic<AbstractReplicatedTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        Replicated128Tensor,
+        Symbolic<AbstractReplicatedTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        ReplicatedBitTensor,
+        Symbolic<AbstractReplicatedTensor<<BitTensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        ReplicatedSetup,
+        Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        Additive64Tensor,
+        Symbolic<AbstractAdditiveTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        Additive128Tensor,
+        Symbolic<AbstractAdditiveTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
 ];
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
@@ -448,7 +651,7 @@ macro_rules! operators {
     ($($t:ident,)+) => {
 
         paste! {
-            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+            #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
             pub enum Operator {
                 $($t([<$t Op>]),)+
             }
@@ -474,6 +677,16 @@ macro_rules! operators {
             pub fn sig_mut(&mut self) -> &mut Signature {
                 match self {
                     $(Operator::$t(op) => &mut op.sig,)+
+                }
+            }
+        }
+
+        impl std::ops::Deref for Operator {
+            type Target = dyn HasShortName;
+
+            fn deref(&self) -> &Self::Target {
+                match self {
+                    $(Operator::$t(o) => o,)+
                 }
             }
         }
@@ -539,13 +752,16 @@ operators![
     RepShare,
     RepReveal,
     RepAdd,
+    RepSub,
     RepMul,
+    RepDot,
+    RepMean,
+    RepSum,
     RepTruncPr,
     RepToAdt,
 ];
 
 pub trait HasShortName {
-    const SHORT_NAME: &'static str;
     fn short_name(&self) -> &str;
 }
 
@@ -703,7 +919,7 @@ pub struct AdtFillOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
-    pub nonce: RawNonce,
+    pub sync_key: RawNonce,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -871,8 +1087,30 @@ pub struct RepAddOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepMulOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepDotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepMeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSumOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

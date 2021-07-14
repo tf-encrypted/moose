@@ -6,7 +6,7 @@ import numpy as np
 
 from moose import edsl
 from moose.logger import get_logger
-from moose.testing import TestRuntime as Runtime
+from moose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(unittest.TestCase):
@@ -49,18 +49,24 @@ class ReplicatedExample(unittest.TestCase):
 
             return (res_dave, abs_dave, res_eric)
 
-        concrete_comp = edsl.tracer.trace_and_compile(my_comp)
-
-        runtime = Runtime()
+        executors_storage = {
+            "alice": {},
+            "bob": {},
+            "carole": {},
+            "dave": {},
+            "eric": {},
+        }
+        runtime = LocalMooseRuntime(storage_mapping=executors_storage)
         runtime.evaluate_computation(
-            concrete_comp,
-            placement_instantiation={
-                alice: "worker0",
-                bob: "worker1",
-                carole: "worker2",
-                dave: "worker3",
-                eric: "worker4",
+            computation=my_comp,
+            role_assignment={
+                "alice": "alice",
+                "bob": "bob",
+                "carole": "carole",
+                "dave": "dave",
+                "eric": "eric",
             },
+            arguments={},
         )
 
         print("Done")

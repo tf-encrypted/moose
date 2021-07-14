@@ -1,4 +1,5 @@
 use moose::bit::BitTensor;
+use moose::compilation::print::print_graph;
 use moose::compilation::typing::update_types_one_hop;
 use moose::computation::{Computation, Role, SessionId, Value};
 use moose::execution::AsyncTestRuntime;
@@ -9,6 +10,7 @@ use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
 use moose::ring::Ring64Tensor;
 use moose::standard::{Float64Tensor, RawShape, StandardTensor};
+use moose::text_computation::ToTextual;
 use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
@@ -16,11 +18,13 @@ use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyFloat, PyString};
-use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList};
+use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
 pub mod python_computation;
+use moose::compilation::networking::NetworkingPass;
+use moose::compilation::pruning::prune_graph;
 use tokio::runtime::Runtime;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
@@ -398,44 +402,28 @@ impl LocalRuntime {
         role_assignments: HashMap<String, String>,
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
-        let arguments = arguments
-            .iter()
-            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
-            .collect::<HashMap<String, Value>>();
-
-        let valid_role_assignments = role_assignments
-            .into_iter()
-            .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
-            .collect::<HashMap<Role, Identity>>();
-
         let computation = create_computation_graph_from_py_bytes(computation);
         let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
         compiled_computation.toposort().unwrap();
 
-        let outputs =
-            self.runtime
-                .evaluate_computation(computation, valid_role_assignments, arguments);
+        self.evaluate_compiled_computation(py, &compiled_computation, role_assignments, arguments)
+    }
 
-        let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
-        match outputs {
-            Ok(Some(outputs)) => {
-                for (output_name, value) in outputs {
-                    match value {
-                        Value::Unit => None,
-                        // TODO: not sure what to support, should eventually standardize output types of computations
-                        Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
-                        Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
-                        // assume it's a tensor
-                        _ => outputs_py_val
-                            .insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
-                    };
-                }
-            }
-            Ok(None) => (),
-            Err(e) => return Err(PyRuntimeError::new_err(e.to_string())),
-        }
-
-        Ok(Some(outputs_py_val))
+    fn evaluate_compiled(
+        &self,
+        py: Python,
+        computation: PyObject,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let moose = MooseComputation::from_py(py, computation)?;
+        let computation = moose.try_borrow(py)?;
+        self.evaluate_compiled_computation(
+            py,
+            &computation.computation,
+            role_assignments,
+            arguments,
+        )
     }
 
     fn write_value_to_storage(
@@ -485,12 +473,116 @@ impl LocalRuntime {
             val
         });
 
+        // Return value as PyObject
         tensorval_to_pyobj(py, val)
     }
+}
+
+impl LocalRuntime {
+    fn evaluate_compiled_computation(
+        &self,
+        py: Python,
+        computation: &Computation,
+        role_assignments: HashMap<String, String>,
+        arguments: HashMap<String, PyObject>,
+    ) -> PyResult<Option<HashMap<String, PyObject>>> {
+        let arguments = arguments
+            .iter()
+            .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
+            .collect::<HashMap<String, Value>>();
+
+        let valid_role_assignments = role_assignments
+            .into_iter()
+            .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
+            .collect::<HashMap<Role, Identity>>();
+
+        let outputs =
+            self.runtime
+                .evaluate_computation(computation, valid_role_assignments, arguments);
+
+        let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
+        match outputs {
+            Ok(Some(outputs)) => {
+                for (output_name, value) in outputs {
+                    match value {
+                        Value::Unit => None,
+                        // TODO: not sure what to support, should eventually standardize output types of computations
+                        Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
+                        Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
+                        // assume it's a tensor
+                        _ => outputs_py_val
+                            .insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
+                    };
+                }
+            }
+            Ok(None) => (),
+            Err(e) => return Err(PyRuntimeError::new_err(e.to_string())),
+        }
+
+        Ok(Some(outputs_py_val))
+    }
+}
+
+#[pyclass]
+pub struct MooseComputation {
+    computation: Computation,
+}
+
+impl MooseComputation {
+    /// Convert an object after checking its type.
+    ///
+    /// The function uses an unsafe block inside exactly the way it is used in the PyO3 library.
+    /// The conversion traits already present inside library do not work due to the erroneous constraint
+    /// of PyNativeType on them.
+    pub fn from_py(py: Python, computation: PyObject) -> PyResult<Py<Self>> {
+        assert!(format!("{}", computation.as_ref(py).str()?)
+            .starts_with("<builtins.MooseComputation object at "));
+        let moose = unsafe { Py::from_borrowed_ptr(py, computation.as_ptr()) };
+        Ok(moose)
+    }
+}
+
+#[pymodule]
+fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
+    #[pyfn(m, "compile_computation")]
+    pub fn compile_computation(
+        _py: Python,
+        computation: Vec<u8>,
+        passes: Vec<String>,
+    ) -> PyResult<MooseComputation> {
+        fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+            match pass {
+                "networking" => NetworkingPass::pass(comp),
+                "print" => print_graph(comp),
+                "prune" => prune_graph(comp),
+                "typing" => update_types_one_hop(comp),
+                "dump" => {
+                    println!("{}", comp.to_textual());
+                    Ok(None)
+                }
+                missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
+            }
+        }
+        let mut computation = create_computation_graph_from_py_bytes(computation);
+        for pass in &passes {
+            if let Some(new_comp) =
+                do_pass(&pass, &computation).map_err(|e| PyRuntimeError::new_err(e.to_string()))?
+            {
+                computation = new_comp;
+            }
+        }
+        computation
+            .toposort()
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        Ok(MooseComputation { computation })
+    }
+
+    Ok(())
 }
 
 #[pymodule]
 fn moose_runtime(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<LocalRuntime>()?;
+    m.add_class::<MooseComputation>()?;
     Ok(())
 }

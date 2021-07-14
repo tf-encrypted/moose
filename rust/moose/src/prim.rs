@@ -1,10 +1,11 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
 use crate::error::Result;
 use crate::kernels::{
-    ConcreteContext, NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace,
+    NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
+    SyncSession,
 };
-
 use crate::prng::AesRng;
+use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -21,14 +22,37 @@ impl Placed for Seed {
     }
 }
 
-impl PlacementPlace<ConcreteContext, Seed> for HostPlacement {
-    fn place(&self, _ctx: &ConcreteContext, seed: Seed) -> Seed {
+impl PlacementPlace<SyncSession, Seed> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, seed: Seed) -> Seed {
         match seed.placement() {
             Ok(place) if &place == self => seed,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 Seed(seed.0, self.clone())
+            }
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<Seed>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<Seed>) -> Symbolic<Seed> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(seed) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(Seed(seed.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
             }
         }
     }
@@ -48,14 +72,37 @@ impl Placed for PrfKey {
     }
 }
 
-impl PlacementPlace<ConcreteContext, PrfKey> for HostPlacement {
-    fn place(&self, _ctx: &ConcreteContext, key: PrfKey) -> PrfKey {
+impl PlacementPlace<SyncSession, PrfKey> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, key: PrfKey) -> PrfKey {
         match key.placement() {
             Ok(place) if self == &place => key,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 PrfKey(key.0, self.clone())
+            }
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<PrfKey>) -> Symbolic<PrfKey> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(key) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(PrfKey(key.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
             }
         }
     }
@@ -82,14 +129,37 @@ impl Placed for Nonce {
     }
 }
 
-impl PlacementPlace<ConcreteContext, Nonce> for HostPlacement {
-    fn place(&self, _ctx: &ConcreteContext, nonce: Nonce) -> Nonce {
+impl PlacementPlace<SyncSession, Nonce> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, nonce: Nonce) -> Nonce {
         match nonce.placement() {
             Ok(place) if &place == self => nonce,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 Nonce(nonce.0, self.clone())
+            }
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<Nonce>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<Nonce>) -> Symbolic<Nonce> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(nonce) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(Nonce(nonce.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
             }
         }
     }
@@ -105,26 +175,37 @@ kernel! {
 }
 
 impl PrimPrfKeyGenOp {
-    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement) -> PrfKey {
+    fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> PrfKey {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
         PrfKey(raw_key, plc.clone())
     }
 }
 
-modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[nonce: RawNonce] (PrfKey) -> Seed, PrimDeriveSeedOp);
+modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[sync_key: RawNonce] (PrfKey) -> Seed, PrimDeriveSeedOp);
 
 kernel! {
     PrimDeriveSeedOp,
     [
-        (HostPlacement, (PrfKey) -> Seed => attributes[nonce] Self::kernel),
+        (HostPlacement, (PrfKey) -> Seed => attributes[sync_key] Self::kernel),
     ]
 }
 
 impl PrimDeriveSeedOp {
-    fn kernel(_ctx: &ConcreteContext, plc: &HostPlacement, nonce: RawNonce, key: PrfKey) -> Seed {
-        // TODO(SECURITY) take session id into account: seed = PRF(key, sid|nonce)
-        let raw_seed = RawSeed(crate::utils::derive_seed(&key.0 .0, &nonce.0));
-        Seed(raw_seed, plc.clone())
+    fn kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        sync_key: RawNonce,
+        key: PrfKey,
+    ) -> Seed {
+        let sid = sess.session_id();
+        let raw_key = key.0;
+
+        let mut nonce: Vec<u8> = vec![];
+        nonce.extend(sid.as_bytes());
+        nonce.extend(sync_key.0);
+
+        let raw_seed = crate::utils::derive_seed(&raw_key.0, &nonce);
+        Seed(RawSeed(raw_seed), plc.clone())
     }
 }
 

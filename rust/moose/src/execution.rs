@@ -1179,7 +1179,7 @@ impl AsyncTestRuntime {
     }
     pub fn evaluate_computation(
         &self,
-        computation: Computation,
+        computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
         arguments: HashMap<String, Value>,
     ) -> Result<Option<HashMap<String, Value>>> {
@@ -1318,7 +1318,7 @@ mod tests {
                     .collect::<HashMap<Role, Identity>>();
                 let executor = AsyncTestRuntime::new(storage_mapping);
                 let outputs = executor.evaluate_computation(
-                    computation,
+                    &computation,
                     valid_role_assignments,
                     arguments,
                 )?;
@@ -1336,7 +1336,7 @@ mod tests {
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let mut definition = String::from(
             r#"key = PrimPrfKeyGen() @Host(alice)
-        seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
         );
@@ -1375,7 +1375,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
-        seed = PrimDeriveSeed {nonce = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -1496,7 +1496,7 @@ mod tests {
                     .collect::<HashMap<Role, Identity>>();
                 let executor = AsyncTestRuntime::new(storage_mapping);
                 let _outputs = executor.evaluate_computation(
-                    source.try_into()?,
+                    &source.try_into()?,
                     valid_role_assignments,
                     arguments,
                 )?;
