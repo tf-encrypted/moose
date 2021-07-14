@@ -1247,7 +1247,7 @@ impl AsyncTestRuntime {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
         let val = rt.block_on(async {
-            let val = self.runtime_storage[&Identity::from(identity)]
+            let val = self.runtime_storage[&identity]
                 .load(&key, &SessionId::from("foobar"), None, "")
                 .await
                 .unwrap();
@@ -1265,7 +1265,6 @@ impl AsyncTestRuntime {
     ) -> Result<()> {
         let rt = Runtime::new().unwrap();
         let _guard = rt.enter();
-        let identity = Identity::from(identity);
         let identity_storage = match self.runtime_storage.get(&identity) {
             Some(store) => store,
             None => {
@@ -1438,12 +1437,9 @@ mod tests {
         z = StdAdd: (Int64Tensor, Int64Tensor) -> Int64Tensor (x, y) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (z) @Host(alice)
         "#;
-        let mut arguments: HashMap<String, Value> = hashmap!();
         let x: Value = "Int64Tensor([5]) @Host(alice)".try_into()?;
         let y: Value = "Int64Tensor([10]) @Host(alice)".try_into()?;
-        arguments.insert("x".to_string(), x);
-        arguments.insert("y".to_string(), y);
-
+        let arguments: HashMap<String, Value> = hashmap!("x".to_string() => x, "y".to_string()=> y);
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
             hashmap!("alice".to_string()=> hashmap!());
         let role_assignments: HashMap<String, String> =
@@ -1485,7 +1481,6 @@ mod tests {
         output = Output: (Unit) -> Unit (save) @Host(alice)
         "#;
         let source = source_template.replace("TensorType", &data_type_str);
-
         let arguments: HashMap<String, Value> = hashmap!("x_uri".to_string()=> Value::from("input_data".to_string()),
             "x_query".to_string() => Value::from("".to_string()),
             "saved_uri".to_string() => Value::from("saved_data".to_string()));
