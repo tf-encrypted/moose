@@ -13,7 +13,6 @@ from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
 from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation import utils
 from moose.computation.standard import StringType
@@ -138,7 +137,6 @@ class LinearRegressionExample(parameterized.TestCase):
             players=[x_owner, y_owner, model_owner], name="replicated-plc"
         )
 
-
         @edsl.computation
         def my_comp(
             x_uri: edsl.Argument(placement=x_owner, vtype=StringType()),
@@ -162,11 +160,10 @@ class LinearRegressionExample(parameterized.TestCase):
 
             with model_owner:
                 Z = edsl.cast(Z, dtype=edsl.float64)
-                res = (
-                    edsl.save(w_uri, Z),
-                )
+                res = (edsl.save(w_uri, Z),)
 
             return res
+
         return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
     def _linear_regression_eval(self, metric_name):
@@ -225,14 +222,16 @@ class LinearRegressionExample(parameterized.TestCase):
         comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
         rust_compiled = rust_compiler.compile_computation(
-            comp_bin, [
+            comp_bin,
+            [
                 "typing",
                 "replicated-lowering",
                 "prune",
                 "networking",
                 "typing",
-                "dump", "print",
-                ]
+                "dump",
+                "print",
+            ],
         )
 
         x_data, y_data = generate_data(seed=42, n_instances=10, n_features=1)
