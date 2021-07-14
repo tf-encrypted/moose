@@ -1,7 +1,8 @@
 use crate::computation::{
-    KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement, SymbolicValue,
+    HostPlacement, KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement,
+    SymbolicValue,
 };
-use crate::kernels::{DispatchKernel, Session};
+use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
 use crate::replicated::AbstractReplicatedSetup;
 use std::collections::HashMap;
@@ -124,6 +125,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::RepSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
@@ -133,7 +135,31 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Constant(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Input(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Output(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Load(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Save(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<String>) -> Symbolic<String> {
+        match x {
+            Symbolic::Concrete(x) => Symbolic::Concrete(x),
+            Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                Symbolic::Symbolic(SymbolicHandle {
+                    op,
+                    plc: Placement::Host(self.clone()),
+                })
+            }
         }
     }
 }

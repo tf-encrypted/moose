@@ -7,7 +7,13 @@ use crate::execution::{
 };
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
+use crate::ring::AbstractRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::standard::Int16Tensor;
+use crate::standard::Int8Tensor;
+use crate::standard::StandardTensor;
+use crate::standard::Uint16Tensor;
+use crate::standard::Uint8Tensor;
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
@@ -84,8 +90,8 @@ impl Session for SyncSession {
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            op => unimplemented!("{:?}", op), // TODO
+            Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO
         }
     }
 
@@ -282,33 +288,33 @@ where
     }
 }
 
-pub trait PlacementSample<S: Session, SeedT, ShapeT, O> {
-    fn sample(&self, sess: &S, max_value: Option<u64>, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSample<S: Session, ShapeT, SeedT, O> {
+    fn sample(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-pub trait PlacementSampleUniform<S: Session, SeedT, ShapeT, O> {
-    fn sample_uniform(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSampleUniform<S: Session, ShapeT, SeedT, O> {
+    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-impl<S: Session, SeedT, ShapeT, O, P> PlacementSampleUniform<S, SeedT, ShapeT, O> for P
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleUniform<S, ShapeT, SeedT, O> for P
 where
-    P: PlacementSample<S, SeedT, ShapeT, O>,
+    P: PlacementSample<S, ShapeT, SeedT, O>,
 {
-    fn sample_uniform(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O {
-        self.sample(sess, None, seed, shape)
+    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+        self.sample(sess, None, shape, seed)
     }
 }
 
-pub trait PlacementSampleBits<S: Session, SeedT, ShapeT, O> {
-    fn sample_bits(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O;
+pub trait PlacementSampleBits<S: Session, ShapeT, SeedT, O> {
+    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-impl<S: Session, SeedT, ShapeT, O, P> PlacementSampleBits<S, SeedT, ShapeT, O> for P
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleBits<S, ShapeT, SeedT, O> for P
 where
-    P: PlacementSample<S, SeedT, ShapeT, O>,
+    P: PlacementSample<S, ShapeT, SeedT, O>,
 {
-    fn sample_bits(&self, sess: &S, seed: &SeedT, shape: &ShapeT) -> O {
-        self.sample(sess, Some(1), seed, shape)
+    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+        self.sample(sess, Some(1), shape, seed)
     }
 }
 
@@ -330,6 +336,53 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
 
 pub trait PlacementPlace<S: Session, T> {
     fn place(&self, sess: &S, x: T) -> T;
+}
+
+pub trait PlacementConstant<S: Session, O> {
+    fn constant(&self, sess: &S, value: Constant) -> O;
+}
+
+pub trait PlacementInput<S: Session, O> {
+    fn input(&self, sess: &S, arg_name: String) -> O;
+}
+
+pub trait PlacementOutput<S: Session, T, O> {
+    fn output(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementLoad<S: Session, KeyT, QueryT, O> {
+    fn load(&self, sess: &S, key: &KeyT, query: &QueryT) -> O;
+}
+
+pub trait PlacementSave<S: Session, KeyT, T, O> {
+    fn save(&self, sess: &S, key: &KeyT, x: &T) -> O;
+}
+
+pub trait PlacementStdAtLeast2D<S: Session, T, O> {
+    fn std_at_least_2d(&self, sess: &S, to_column_vector: bool, x: &T) -> O;
+}
+
+pub trait PlacementFixedpointRingEncode<S: Session, T, O> {
+    fn fixedpoint_ring_encode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
+}
+
+pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
+    fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
+}
+
+pub trait PlacementStdMean<S: Session, T, O> {
+    fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
+pub trait EmptyTypeHolder<T> {}
+
+// The `T` type parameter is required by the modelled!() macros, but we are enforcing that T = ShapeT.
+pub trait PlacementSlice<S: Session, ShapeT, T>
+where
+    // Forces ShapeT = T
+    dyn EmptyTypeHolder<ShapeT>: EmptyTypeHolder<T>,
+{
+    fn slice(&self, sess: &S, start: u32, end: u32, x: &ShapeT) -> ShapeT;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
@@ -557,6 +610,14 @@ impl Compile<Kernel> for StdInverseOp {
     }
 }
 
+modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdMeanOp);
+
+kernel! {
+    StdMeanOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
+}
+
 impl Compile<Kernel> for StdMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|x| x as usize);
@@ -688,6 +749,27 @@ impl Compile<Kernel> for StdReshapeOp {
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
+    }
+}
+
+modelled!(PlacementStdAtLeast2D::std_at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, StdAtLeast2DOp);
+modelled!(PlacementStdAtLeast2D::std_at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, StdAtLeast2DOp);
+
+kernel! {
+    StdAtLeast2DOp, [
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[to_column_vector] Self::kernel),
+    ]
+}
+
+impl StdAtLeast2DOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _to_column_vector: bool,
+        _x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        unimplemented!()
     }
 }
 
@@ -1009,6 +1091,28 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
+modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Float64Tensor) -> Ring128Tensor, FixedpointRingEncodeOp);
+modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Float32Tensor) -> Ring64Tensor, FixedpointRingEncodeOp);
+
+kernel! {
+    FixedpointRingEncodeOp, [
+        (HostPlacement, (Float64Tensor) -> Ring128Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (Float32Tensor) -> Ring64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+    ]
+}
+
+impl FixedpointRingEncodeOp {
+    fn kernel<S: RuntimeSession, ST, TT>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _scaling_base: u64,
+        _scaling_exp: u32,
+        _x: StandardTensor<ST>,
+    ) -> AbstractRingTensor<TT> {
+        unimplemented!()
+    }
+}
+
 impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
@@ -1023,6 +1127,28 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
+    }
+}
+
+modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> Float64Tensor, FixedpointRingDecodeOp);
+modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring64Tensor) -> Float32Tensor, FixedpointRingDecodeOp);
+
+kernel! {
+    FixedpointRingDecodeOp, [
+        (HostPlacement, (Ring128Tensor) -> Float64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (Ring64Tensor) -> Float32Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+    ]
+}
+
+impl FixedpointRingDecodeOp {
+    fn kernel<S: RuntimeSession, ST, TT>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _scaling_base: u64,
+        _scaling_exp: u32,
+        _x: AbstractRingTensor<ST>,
+    ) -> StandardTensor<TT> {
+        unimplemented!()
     }
 }
 
@@ -1079,6 +1205,54 @@ impl Compile<Kernel> for ConstantOp {
     }
 }
 
+impl PlacementPlace<SyncSession, String> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: String) -> String {
+        match x.placement() {
+            Ok(Placement::Host(place)) if &place == self => x,
+            _ => unimplemented!("Not yet able to place strings"),
+        }
+    }
+}
+
+macro_rules! constant_kernels {
+    ($($val:ident),+) => {
+        $(
+            modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
+        )+
+
+        kernel! {
+            ConstantOp, [
+                $(
+                    (HostPlacement, () -> $val => attributes[value: $val] Self::kernel),
+                )+
+            ]
+        }
+    };
+}
+
+constant_kernels![
+    String,
+    Float32Tensor,
+    Float64Tensor,
+    Int8Tensor,
+    Int16Tensor,
+    Int32Tensor,
+    Int64Tensor,
+    Uint8Tensor,
+    Uint16Tensor,
+    Uint32Tensor,
+    Uint64Tensor
+];
+
+impl ConstantOp {
+    fn kernel<S: RuntimeSession, T: Placed>(sess: &S, plc: &HostPlacement, value: T) -> T
+    where
+        HostPlacement: PlacementPlace<S, T>,
+    {
+        plc.place(sess, value)
+    }
+}
+
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         let rendezvous_key = self.rendezvous_key.clone();
@@ -1096,7 +1270,9 @@ impl Compile<SyncKernel> for SendOp {
         Ok(SyncKernel::Unary(Box::new(move |sess, v| {
             sess.networking
                 .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
-            Ok(Value::Unit)
+            Ok(Value::Unit(Unit(HostPlacement {
+                owner: "TODO".into(),
+            })))
         })))
     }
 }
@@ -1126,7 +1302,9 @@ impl Compile<AsyncKernel> for SendOp {
                 sess.networking
                     .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
-                map_send_result(sender.send(Value::Unit))
+                map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                    owner: "TODO".into(),
+                }))))
             })
         })))
     }
@@ -1216,6 +1394,27 @@ impl Compile<AsyncKernel> for IdentityOp {
     }
 }
 
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> String, InputOp);
+// TODO: (lvorona) all the other types. Perhaps a macros?
+
+kernel! {
+    InputOp, [
+        (HostPlacement, () -> String => attributes[arg_name] Self::kernel_string),
+    ]
+}
+
+impl InputOp {
+    fn kernel_string<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        arg_name: String,
+    ) -> String {
+        // TODO: (lvorona) should we be placing the constant on the placement here?
+        // TODO: (lvorona) this is only good for the symbolic session
+        format!("Input value for {}", arg_name)
+    }
+}
+
 impl Compile<SyncKernel> for InputOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let arg_name = self.arg_name.clone();
@@ -1255,6 +1454,21 @@ impl Compile<AsyncKernel> for InputOp {
     }
 }
 
+modelled!(PlacementOutput::output, HostPlacement, (Unit) -> Unit, OutputOp);
+
+kernel! {
+    OutputOp, [
+        (HostPlacement, (Unit) -> Unit => Self::kernel),
+    ]
+}
+
+impl OutputOp {
+    fn kernel<S: RuntimeSession>(_sess: &S, _plc: &HostPlacement, _x: Unit) -> Unit {
+        // TODO: (lvorona)
+        unimplemented!()
+    }
+}
+
 impl Compile<SyncKernel> for OutputOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         Ok(SyncKernel::Unary(Box::new(move |_sess, x0| Ok(x0))))
@@ -1272,6 +1486,27 @@ impl Compile<AsyncKernel> for OutputOp {
     }
 }
 
+modelled!(PlacementSave::save, HostPlacement, (String, Float64Tensor) -> Unit, SaveOp);
+// TODO: (lvorona) all the other types. Perhaps a macros?
+
+kernel! {
+    SaveOp, [
+        (HostPlacement, (String, Float64Tensor) -> Unit => Self::kernel_float64tensor),
+    ]
+}
+
+impl SaveOp {
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: String,
+        _x: Float64Tensor,
+    ) -> Unit {
+        // TODO: (lvorona)
+        unimplemented!()
+    }
+}
+
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.sig.arg(1)?;
@@ -1280,7 +1515,9 @@ impl Compile<SyncKernel> for SaveOp {
             let key = String::try_from(key)?;
             check_type(&val, expected_ty)?;
             sess.storage.save(&key, &sess.sid, &val)?;
-            Ok(Value::Unit)
+            Ok(Value::Unit(Unit(HostPlacement {
+                owner: "TODO".into(),
+            })))
         })))
     }
 }
@@ -1298,10 +1535,33 @@ impl Compile<AsyncKernel> for SaveOp {
                     let val = val.await.map_err(map_receive_error)?;
                     check_type(&val, expected_ty)?;
                     sess.storage.save(&key, &sess.sid, &val).await?;
-                    map_send_result(sender.send(Value::Unit))
+                    map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
+                        owner: "TODO".into(),
+                    }))))
                 })
             },
         )))
+    }
+}
+
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float64Tensor, LoadOp);
+// TODO: (lvorona) all the other types. Perhaps a macros?
+
+kernel! {
+    LoadOp, [
+        (HostPlacement, (String, String) -> Float64Tensor => Self::kernel_float64tensor),
+    ]
+}
+
+impl LoadOp {
+    fn kernel_float64tensor<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _key: String,
+        _query: String,
+    ) -> Float64Tensor {
+        // TODO: (lvorona)
+        unimplemented!()
     }
 }
 

@@ -156,7 +156,6 @@ macro_rules! values {
             Unknown,
             $($val,)+
             // TODO promote below to match other values
-            Unit,
             Bit,
             Float32,
             Float64,
@@ -168,7 +167,6 @@ macro_rules! values {
         pub enum Value {
             $($val($val),)+
             // TODO promote below to match other values
-            Unit,
             Bit(u8),
             Float32(f32),
             Float64(f64),
@@ -181,7 +179,6 @@ macro_rules! values {
                 match self {
                     $(Value::$val(_) => Ty::$val,)+
                     // TODO promote below to match other values
-                    Value::Unit => Ty::Unit,
                     Value::Bit(_) => Ty::Bit,
                     Value::Float32(_) => Ty::Float32,
                     Value::Float64(_) => Ty::Float64,
@@ -381,6 +378,7 @@ where
 }
 
 values![
+    (Unit, Symbolic<Unit>),
     (Shape, Symbolic<Shape>),
     (Seed, Symbolic<Seed>),
     (PrfKey, Symbolic<PrfKey>),
@@ -442,6 +440,18 @@ values![
         Symbolic<AbstractAdditiveTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
     ),
 ];
+
+// Unit is still special. Placed unit is just a host placement.
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct Unit(pub HostPlacement);
+
+impl Placed for Unit {
+    type Placement = HostPlacement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.0.clone())
+    }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
 pub enum Signature {

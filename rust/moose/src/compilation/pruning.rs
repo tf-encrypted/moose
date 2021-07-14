@@ -106,7 +106,7 @@ mod tests {
             "mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp.contains(
-            r#"send_mul = Send {rendezvous_key="rdv_mul", receiver="alice"} (y) @Host(bob)"#
+            r#"send_mul = Send {rendezvous_key="rdv_mul", receiver="alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
         ));
         assert!(comp.contains(
             r#"recv_mul = Receive {rendezvous_key="rdv_mul", sender="bob"} : () -> Float32Tensor () @Host(alice)"#

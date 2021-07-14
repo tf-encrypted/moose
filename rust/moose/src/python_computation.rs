@@ -1355,27 +1355,28 @@ impl TryFrom<PyComputation> for Computation {
                     rep_RevealOperation(op) => Ok(Operation {
                         kind: RepRevealOp {
                             sig: Signature::unary(
-                                map_type(&op.output_type)?,
-                                map_type(&op.output_type)?,
+                                Ty::Replicated128Tensor, // TODO: deduct from the output type
+                                Ty::Ring128Tensor,
+                                // map_type(&op.output_type)?,
                             ),
-                            // TODO: Recipient field?
                         }
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
-                        placement: map_placement(&placements, &op.placement_name)?,
+                        placement: map_placement(&placements, &op.recipient_name)?,
                     }),
                     rep_ShareOperation(op) => Ok(Operation {
                         kind: RepShareOp {
-                            sig: Signature::unary(
-                                map_type(&op.output_type)?,
+                            sig: Signature::binary(
+                                Ty::ReplicatedSetup,
+                                Ty::Ring128Tensor, // TODO: should actually deduct from the output type
                                 map_type(&op.output_type)?,
                             ),
                         }
                         .into(),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["value"])
+                        inputs: map_inputs(&op.inputs, &["setup", "value"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),

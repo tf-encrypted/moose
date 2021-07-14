@@ -40,7 +40,7 @@ macro_rules! derive_runtime_kernel {
         }
     };
 
-    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
+    (nullary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
@@ -57,7 +57,7 @@ macro_rules! derive_runtime_kernel {
             })
         }
     };
-    (unary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
+    (unary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
@@ -74,7 +74,7 @@ macro_rules! derive_runtime_kernel {
             })
         }
     };
-    (binary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
+    (binary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
@@ -91,7 +91,7 @@ macro_rules! derive_runtime_kernel {
             })
         }
     };
-    (ternary, attributes[$($attr:ident$(: $prim_ty:ident)?)+] $k:expr, $self:ident) => {
+    (ternary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
         {
             $(
             let $attr = $self.$attr.clone();
@@ -359,7 +359,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => unimplemented!(), // ok
+                    _ => panic!("Not implemented kernel for {:?}", self), // ok
                 }
             }
         }
@@ -411,7 +411,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => unimplemented!(), // ok
+                    _ => panic!("No kernel for {:?}", self), // ok
                 }
             }
         }
@@ -466,7 +466,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => unimplemented!(), // ok
+                    _ => panic!("Not implemented kernel for {:?}", self), // ok
                 }
             }
         }
@@ -524,7 +524,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => unimplemented!(), // ok
+                    _ => panic!("Not implemented kernel for {:?}", self), // ok
                 }
             }
         }
