@@ -1355,7 +1355,7 @@ mod tests {
 
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1381,7 +1381,7 @@ mod tests {
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1413,7 +1413,7 @@ mod tests {
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1443,7 +1443,7 @@ mod tests {
         let y: Value = "Int64Tensor([10]) @Host(alice)".try_into()?;
         let arguments: HashMap<String, Value> = hashmap!("x".to_string() => x, "y".to_string()=> y);
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1488,7 +1488,7 @@ mod tests {
 
         let saved_data = match run_async {
             true => {
-                let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!("alice".to_string()=> hashmap!("input_data".to_string() => input_data.clone()));
+                let storage_mapping: HashMap<String, HashMap<String, Value>> = hashmap!("alice".to_string() => hashmap!("input_data".to_string() => input_data.clone()));
                 let role_assignments: HashMap<String, String> =
                     hashmap!("alice".to_string() => "alice".to_string());
                 let valid_role_assignments = role_assignments
@@ -1548,7 +1548,7 @@ mod tests {
         let source = source_template.replace("test_axis", &axis.to_string());
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1587,7 +1587,7 @@ mod tests {
         let computation: Computation = source.try_into()?;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!(), "bob".to_string()=>hashmap!());
+            hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
         let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
 
         let outputs = match run_async {
@@ -1627,7 +1627,7 @@ mod tests {
         let computation: Computation = source.try_into()?;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!(), "bob".to_string()=>hashmap!());
+            hashmap!("alice".to_string() => hashmap!(), "bob".to_string()=>hashmap!());
         let role_assignments: HashMap<String, String> = hashmap!("alice".to_string() => "alice".to_string(), "bob".to_string() => "bob".to_string());
 
         let outputs = match run_async {
@@ -1669,7 +1669,7 @@ mod tests {
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1708,7 +1708,7 @@ mod tests {
         let source = template.replace("dtype", &dtype);
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1769,7 +1769,7 @@ mod tests {
         output = Output: (Shape) -> Shape (shape) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1800,7 +1800,7 @@ mod tests {
         output = Output: (Int64Tensor) -> Int64Tensor (expand_dims) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1898,7 +1898,7 @@ mod tests {
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1938,7 +1938,7 @@ mod tests {
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -1973,7 +1973,7 @@ mod tests {
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -2011,7 +2011,7 @@ mod tests {
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -2087,7 +2087,7 @@ mod tests {
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -2154,7 +2154,7 @@ mod tests {
         );
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -2195,7 +2195,7 @@ mod tests {
         "#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
@@ -2228,7 +2228,7 @@ mod tests {
         let source = template_source.replace("Ring64Tensor", type_str.as_str());
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
-            hashmap!("alice".to_string()=> hashmap!());
+            hashmap!("alice".to_string() => hashmap!());
         let role_assignments: HashMap<String, String> =
             hashmap!("alice".to_string() => "alice".to_string());
         let outputs = _run_computation_test(
