@@ -1197,7 +1197,8 @@ impl AsyncTestRuntime {
         if !missing_role_assignments.is_empty() {
             let missing_roles: Vec<&Role> = missing_role_assignments.keys().collect();
             let missing_identities: Vec<&Identity> = missing_role_assignments.values().collect();
-            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", missing_identities, missing_roles)));
+            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", 
+                missing_identities, missing_roles)));
         }
 
         for (own_identity, executor) in self.executors.iter() {
@@ -1757,6 +1758,34 @@ mod tests {
             }
             _ => Err(anyhow::anyhow!("Failed to parse test case")),
         }
+    }
+
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_standard_shape(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
+        shape = Shape: (Float32Tensor) -> Shape (x) @Host(alice)
+        output = Output: (Shape) -> Shape (shape) @Host(alice)"#;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string()=> hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
+
+        let actual_shape: Shape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let actual_raw_shape = actual_shape.0;
+        let expected_raw_shape = RawShape(vec![2, 2]);
+        assert_eq!(actual_raw_shape, expected_raw_shape);
+
+        Ok(())
     }
 
     #[rstest]
