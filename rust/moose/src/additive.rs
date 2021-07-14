@@ -833,7 +833,7 @@ mod tests {
 
     macro_rules! adt_truncation_test {
         ($func_name:ident, $tt: ident) => {
-            fn $func_name(xs: ArrayD<$tt>, amount: usize) {
+            fn $func_name(xs: ArrayD<$tt>, amount: usize, ys: ArrayD<$tt>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
                 };
@@ -863,14 +863,9 @@ mod tests {
                 let x_trunc = adt.trunc_pr(&sess, amount, &carole, &x);
                 let _y = carole.reveal(&sess, &x_trunc);
 
-                let t_vec = xs.iter().map(|x| x >> amount).collect::<Vec<_>>();
-                let target = AbstractRingTensor::from_raw_plc(
-                    Array::from_shape_vec(IxDyn(&[t_vec.len()]), t_vec).unwrap(),
-                    carole,
-                );
-
+                let target_y = AbstractRingTensor::from_raw_plc(ys.clone(), carole.clone());
                 for (i, value) in _y.0.iter().enumerate() {
-                    let diff = value - target.0[i];
+                    let diff = value - target_y.0[i];
                     assert!(
                         diff == std::num::Wrapping(1)
                             || diff == std::num::Wrapping($tt::MAX)
@@ -878,7 +873,7 @@ mod tests {
                         "difference = {}, lhs = {}, rhs = {}",
                         diff,
                         value,
-                        target.0[i]
+                        target_y.0[i]
                     );
                 }
             }
@@ -892,15 +887,15 @@ mod tests {
         #[test]
         fn test_fuzzy_adt_trunc64(raw_vector in proptest::collection::vec(any_bounded_u64(), 1..5), amount in 0usize..62
         ) {
-            let ix = IxDyn(&[raw_vector.len()]);
-            test_adt_trunc64(Array::from_shape_vec(ix, raw_vector).unwrap(), amount);
+            let target = raw_vector.iter().map(|x| x >> amount).collect::<Vec<_>>();
+            test_adt_trunc64(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
 
         #[test]
         fn test_fuzzy_adt_trunc128(raw_vector in proptest::collection::vec(any_bounded_u128(), 1..5), amount in 0usize..126
         ) {
-            let ix = IxDyn(&[raw_vector.len()]);
-            test_adt_trunc128(Array::from_shape_vec(ix, raw_vector).unwrap(), amount);
+            let target = raw_vector.iter().map(|x| x >> amount).collect::<Vec<_>>();
+            test_adt_trunc128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
     }
 
