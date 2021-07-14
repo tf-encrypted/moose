@@ -1,7 +1,7 @@
 use crate::bit::BitTensor;
 use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdSliceOp};
 use crate::error::Result;
-use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession};
+use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -68,6 +68,15 @@ pub type Uint8Tensor = StandardTensor<u8>;
 pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
+
+impl<T> PlacementPlace<SyncSession, StandardTensor<T>> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: StandardTensor<T>) -> StandardTensor<T> {
+        match x.placement() {
+            Ok(Placement::Host(place)) if &place == self => x,
+            _ => StandardTensor(x.0, Placement::Host(self.clone())),
+        }
+    }
+}
 
 modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, ShapeOp);

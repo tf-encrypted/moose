@@ -9,7 +9,11 @@ use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::ring::AbstractRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::standard::Int16Tensor;
+use crate::standard::Int8Tensor;
 use crate::standard::StandardTensor;
+use crate::standard::Uint16Tensor;
+use crate::standard::Uint8Tensor;
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, Shape, Uint32Tensor, Uint64Tensor,
 };
@@ -736,22 +740,23 @@ impl Compile<Kernel> for StdReshapeOp {
     }
 }
 
+modelled!(PlacementStdAtLeast2D::std_at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, StdAtLeast2DOp);
 modelled!(PlacementStdAtLeast2D::std_at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, StdAtLeast2DOp);
 
 kernel! {
     StdAtLeast2DOp, [
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[to_column_vector] Self::kernel_float64tensor),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[to_column_vector] Self::kernel),
     ]
 }
 
 impl StdAtLeast2DOp {
-    fn kernel_float64tensor<S: RuntimeSession>(
+    fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
         _to_column_vector: bool,
-        _x: Float64Tensor,
-    ) -> Float64Tensor {
-        // TODO: (lvorona)
+        _x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
         unimplemented!()
     }
 }
@@ -1188,29 +1193,51 @@ impl Compile<Kernel> for ConstantOp {
     }
 }
 
-modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> String, ConstantOp);
-modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> Float64Tensor, ConstantOp);
-// TODO: (lvorona) all the other types. Perhaps a macros?
-
-kernel! {
-    ConstantOp, [
-        (HostPlacement, () -> String => attributes[value: String] Self::kernel_string),
-        (HostPlacement, () -> Float64Tensor => attributes[value: Float64Tensor] Self::kernel_float64tensor),
-    ]
+impl PlacementPlace<SyncSession, String> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: String) -> String {
+        match x.placement() {
+            Ok(Placement::Host(place)) if &place == self => x,
+            _ => unimplemented!("Not yet able to place strings"),
+        }
+    }
 }
 
-impl ConstantOp {
-    fn kernel_string<S: RuntimeSession>(_sess: &S, _plc: &HostPlacement, value: String) -> String {
-        // TODO: (lvorona) should we be placing the constant on the placement here?
-        value
-    }
+macro_rules! constant_kernels {
+    ($($val:ident),+) => {
+        $(
+            modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
+        )+
 
-    fn kernel_float64tensor<S: RuntimeSession>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        value: Float64Tensor,
-    ) -> Float64Tensor {
-        value
+        kernel! {
+            ConstantOp, [
+                $(
+                    (HostPlacement, () -> $val => attributes[value: $val] Self::kernel),
+                )+
+            ]
+        }
+    };
+}
+
+constant_kernels![
+    String,
+    Float32Tensor,
+    Float64Tensor,
+    Int8Tensor,
+    Int16Tensor,
+    Int32Tensor,
+    Int64Tensor,
+    Uint8Tensor,
+    Uint16Tensor,
+    Uint32Tensor,
+    Uint64Tensor
+];
+
+impl ConstantOp {
+    fn kernel<S: RuntimeSession, T: Placed>(sess: &S, plc: &HostPlacement, value: T) -> T
+    where
+        HostPlacement: PlacementPlace<S, T>,
+    {
+        plc.place(sess, value)
     }
 }
 

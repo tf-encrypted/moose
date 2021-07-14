@@ -1,7 +1,8 @@
 use crate::computation::{
-    KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement, SymbolicValue,
+    HostPlacement, KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement,
+    SymbolicValue,
 };
-use crate::kernels::{DispatchKernel, Session};
+use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
 use crate::replicated::AbstractReplicatedSetup;
 use std::collections::HashMap;
@@ -144,6 +145,20 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),
+        }
+    }
+}
+
+impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<String>) -> Symbolic<String> {
+        match x {
+            Symbolic::Concrete(x) => Symbolic::Concrete(x),
+            Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                Symbolic::Symbolic(SymbolicHandle {
+                    op,
+                    plc: Placement::Host(self.clone()),
+                })
+            }
         }
     }
 }
