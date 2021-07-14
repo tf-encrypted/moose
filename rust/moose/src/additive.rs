@@ -705,6 +705,8 @@ mod tests {
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
     };
     use ndarray::array;
+    use ndarray::prelude::*;
+    use proptest::prelude::*;
 
     #[test]
     fn test_add() {
@@ -818,6 +820,87 @@ mod tests {
                 value,
                 target.0[i]
             );
+        }
+    }
+
+    fn any_bounded_u64() -> impl Strategy<Value = u64> {
+        any::<u64>().prop_map(|x| (x >> 2) - 1)
+    }
+
+    fn any_bounded_u128() -> impl Strategy<Value = u128> {
+        any::<u128>().prop_map(|x| (x >> 2) - 1)
+    }
+
+    macro_rules! adt_truncation_test {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(xs: ArrayD<$tt>, amount: usize) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let bob = HostPlacement {
+                    owner: "bob".into(),
+                };
+
+                let carole = HostPlacement {
+                    owner: "carole".into(),
+                };
+
+                let adt = AdditivePlacement {
+                    owners: ["alice".into(), "bob".into()],
+                };
+
+                // creates an additive sharing of xs
+                let zero =
+                    Array::from_shape_vec(IxDyn(&[xs.len()]), vec![0 as $tt; xs.len()]).unwrap();
+                let x = AbstractAdditiveTensor {
+                    shares: [
+                        AbstractRingTensor::from_raw_plc(zero, alice),
+                        AbstractRingTensor::from_raw_plc(xs.clone(), bob),
+                    ],
+                };
+
+                let sess = SyncSession::default();
+                let x_trunc = adt.trunc_pr(&sess, amount, &carole, &x);
+                let _y = carole.reveal(&sess, &x_trunc);
+
+                let t_vec = xs.iter().map(|x| x >> amount).collect::<Vec<_>>();
+                let target = AbstractRingTensor::from_raw_plc(
+                    Array::from_shape_vec(IxDyn(&[t_vec.len()]), t_vec).unwrap(),
+                    carole,
+                );
+
+                for (i, value) in _y.0.iter().enumerate() {
+                    let diff = value - target.0[i];
+                    assert!(
+                        diff == std::num::Wrapping(1)
+                            || diff == std::num::Wrapping($tt::MAX)
+                            || diff == std::num::Wrapping(0),
+                        "difference = {}, lhs = {}, rhs = {}",
+                        diff,
+                        value,
+                        target.0[i]
+                    );
+                }
+            }
+        };
+    }
+
+    adt_truncation_test!(test_adt_trunc64, u64);
+    adt_truncation_test!(test_adt_trunc128, u128);
+
+    proptest! {
+        #[test]
+        fn test_fuzzy_adt_trunc64(raw_vector in proptest::collection::vec(any_bounded_u64(), 1..5), amount in 0usize..62
+        ) {
+            let ix = IxDyn(&[raw_vector.len()]);
+            test_adt_trunc64(Array::from_shape_vec(ix, raw_vector).unwrap(), amount);
+        }
+
+        #[test]
+        fn test_fuzzy_adt_trunc128(raw_vector in proptest::collection::vec(any_bounded_u128(), 1..5), amount in 0usize..126
+        ) {
+            let ix = IxDyn(&[raw_vector.len()]);
+            test_adt_trunc128(Array::from_shape_vec(ix, raw_vector).unwrap(), amount);
         }
     }
 

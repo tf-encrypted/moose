@@ -968,6 +968,7 @@ mod tests {
     use crate::kernels::SyncSession;
     use crate::ring::AbstractRingTensor;
     use ndarray::array;
+    use proptest::prelude::*;
 
     #[test]
     fn test_adt_to_rep() {
@@ -1137,6 +1138,83 @@ mod tests {
         test_rep_add128(x, y, z);
     }
 
+    macro_rules! rep_mul_test {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractRingTensor::from_raw_plc(ys, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+                let y_shared = rep.share(&sess, &setup, &y);
+
+                let sum = rep.mul(&sess, &setup, &x_shared, &y_shared);
+                let opened_product = alice.reveal(&sess, &sum);
+                assert_eq!(
+                    opened_product,
+                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_mul_test!(test_rep_mul64, u64);
+    rep_mul_test!(test_rep_mul128, u128);
+
+    macro_rules! pairwise_same_length {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name() -> impl Strategy<Value = (ArrayD<$tt>, ArrayD<$tt>)> {
+                (1usize..25)
+                    .prop_flat_map(|length| {
+                        (
+                            proptest::collection::vec(any::<$tt>(), length),
+                            proptest::collection::vec(any::<$tt>(), length),
+                        )
+                    })
+                    .prop_map(|(x, y)| {
+                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        (a, b)
+                    })
+                    .boxed()
+            }
+        };
+    }
+
+    pairwise_same_length!(pairwise_same_length64, u64);
+    pairwise_same_length!(pairwise_same_length128, u128);
+
+    proptest! {
+        #[test]
+        fn test_fuzzy_rep_mul64((a,b) in pairwise_same_length64())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+            }
+            test_rep_mul64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_mul128((a,b) in pairwise_same_length128())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+            }
+            test_rep_mul128(a, b, target);
+        }
+    }
+
     macro_rules! rep_truncation_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, amount: usize, ys: ArrayD<$tt>) {
@@ -1273,5 +1351,30 @@ mod tests {
         #[case] target: ArrayD<u128>,
     ) {
         test_rep_truncation128(x, amount, target);
+    }
+
+    fn any_bounded_u64() -> impl Strategy<Value = u64> {
+        any::<u64>().prop_map(|x| (x >> 2) - 1)
+    }
+
+    fn any_bounded_u128() -> impl Strategy<Value = u128> {
+        any::<u128>().prop_map(|x| (x >> 2) - 1)
+    }
+
+    proptest! {
+
+        #[test]
+        fn test_fuzzy_rep_trunc64(raw_vector in proptest::collection::vec(any_bounded_u64(), 1..5), amount in 0usize..62
+        ) {
+            let target = raw_vector.iter().map(|x| x >> amount).collect::<Vec<_>>();
+            test_rep_truncation64(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
+        }
+
+        #[test]
+        fn test_fuzzy_rep_trunc128(raw_vector in proptest::collection::vec(any_bounded_u128(), 1..5), amount in 0usize..126
+        ) {
+            let target = raw_vector.iter().map(|x| x >> amount).collect::<Vec<_>>();
+            test_rep_truncation128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
+        }
     }
 }
