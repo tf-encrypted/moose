@@ -1884,6 +1884,10 @@ mod tests {
         )?;
         parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
 
+        parse_assignment::<(&str, ErrorKind)>(
+            "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
+        )?;
+
         Ok(())
     }
 
