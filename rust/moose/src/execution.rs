@@ -1309,7 +1309,7 @@ mod tests {
         match run_async {
             false => {
                 let executor = TestExecutor::default();
-                let outputs = executor.run_computation(&computation.try_into()?, arguments)?;
+                let outputs = executor.run_computation(&computation, arguments)?;
                 Ok(outputs)
             }
             true => {
@@ -1325,7 +1325,7 @@ mod tests {
                 )?;
                 match outputs {
                     Some(outputs) => Ok(outputs),
-                    None => Ok(hashmap!().into()),
+                    None => Ok(hashmap!()),
                 }
             }
         }
@@ -1469,10 +1469,9 @@ mod tests {
     #[case("Float32Tensor([8]) @Host(alice)", false)]
     #[case("Float64Tensor([8]) @Host(alice)", false)]
     fn test_load_save(
-        #[case] x: Value,
+        #[case] input_data: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let input_data: Value = x.try_into()?;
         let data_type_str = input_data.ty().to_string();
         let source_template = r#"x_uri = Input {arg_name="x_uri"}: () -> String () @Host(alice)
         x_query = Input {arg_name="x_query"}: () -> String () @Host(alice)
@@ -1502,11 +1501,10 @@ mod tests {
                     arguments,
                 )?;
 
-                let saved_data = executor.read_value_from_storage(
+                executor.read_value_from_storage(
                     Identity::from("alice".to_string()),
                     "saved_data".to_string(),
-                )?;
-                saved_data
+                )?
             }
             false => {
                 let store: HashMap<String, Value> =
@@ -1514,10 +1512,7 @@ mod tests {
                 let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(store));
                 let executor = TestExecutor::from_storage(&storage);
                 let _outputs = executor.run_computation(&source.try_into()?, arguments)?;
-                let saved_data =
-                    storage.load("saved_data", &SessionId::from("foobar"), None, "")?;
-
-                saved_data
+                storage.load("saved_data", &SessionId::from("foobar"), None, "")?
             }
         };
 
