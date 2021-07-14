@@ -141,6 +141,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::Load(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::Save(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),

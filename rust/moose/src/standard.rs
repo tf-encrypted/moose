@@ -1,5 +1,5 @@
 use crate::bit::BitTensor;
-use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdSliceOp};
+use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdMeanOp, StdSliceOp};
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -246,6 +246,29 @@ where
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
                 StandardTensor::<T>(out, self.1)
+            }
+        }
+    }
+}
+
+impl StdMeanOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        match axis {
+            Some(i) => {
+                let reduced = x.0.mean_axis(Axis(i as usize)).unwrap();
+                StandardTensor::<T>(reduced, Placement::Host(plc.clone()))
+            }
+            None => {
+                let mean = x.0.mean().unwrap();
+                let out = Array::from_elem([], mean)
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
+                StandardTensor::<T>(out, Placement::Host(plc.clone()))
             }
         }
     }

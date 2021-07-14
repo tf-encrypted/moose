@@ -90,8 +90,8 @@ impl Session for SyncSession {
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            // Operator::Constant(op) => DispatchKernel::compile(&op, self, plc)(operands),
-            op => unimplemented!("{:?}", op), // TODO
+            Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO
         }
     }
 
@@ -370,6 +370,10 @@ pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
     fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 
+pub trait PlacementStdMean<S: Session, T, O> {
+    fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
 pub trait EmptyTypeHolder<T> {}
 
 // The `T` type parameter is required by the modelled!() macros, but we are enforcing that T = ShapeT.
@@ -604,6 +608,14 @@ impl Compile<Kernel> for StdInverseOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdMeanOp);
+
+kernel! {
+    StdMeanOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for StdMeanOp {
