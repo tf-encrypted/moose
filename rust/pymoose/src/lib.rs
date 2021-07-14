@@ -1,5 +1,6 @@
 use moose::bit::BitTensor;
 use moose::compilation::print::print_graph;
+use moose::compilation::replicated_lowering::replicated_lowering;
 use moose::compilation::typing::update_types_one_hop;
 use moose::computation::{Computation, Role, SessionId, Value};
 use moose::execution::{
@@ -570,7 +571,7 @@ impl LocalRuntime {
             for (output_name, output_future) in output_futures {
                 let value = output_future.await.unwrap();
                 match value {
-                    Value::Unit => None,
+                    Value::Unit(_) => None,
                     // TODO: not sure what to support, should eventually standardize output types of computations
                     Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
                     Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
@@ -618,6 +619,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 "print" => print_graph(comp),
                 "prune" => prune_graph(comp),
                 "typing" => update_types_one_hop(comp),
+                "replicated-lowering" => replicated_lowering(comp),
                 "dump" => {
                     println!("{}", comp.to_textual());
                     Ok(None)
@@ -633,7 +635,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 computation = new_comp;
             }
         }
-        computation
+        let computation = computation
             .toposort()
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })

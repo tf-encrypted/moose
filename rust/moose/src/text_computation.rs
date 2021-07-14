@@ -1203,9 +1203,10 @@ standard_op_to_textual!(LoadOp, "{op}: {}", sig);
 standard_op_to_textual!(SaveOp, "{op}: {}", sig);
 standard_op_to_textual!(
     SendOp,
-    "{op} {{rendezvous_key={}, receiver={}}}",
+    "{op} {{rendezvous_key={}, receiver={}}}: {}",
     rendezvous_key,
-    receiver
+    receiver,
+    sig
 );
 standard_op_to_textual!(
     ReceiveOp,

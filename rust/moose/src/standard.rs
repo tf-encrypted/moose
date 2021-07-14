@@ -1,7 +1,7 @@
 use crate::bit::BitTensor;
-use crate::computation::{HostPlacement, Placed, Placement, ShapeOp};
+use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdMeanOp, StdSliceOp};
 use crate::error::Result;
-use crate::kernels::{PlacementPlace, PlacementShape, RuntimeSession};
+use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -69,9 +69,19 @@ pub type Uint16Tensor = StandardTensor<u16>;
 pub type Uint32Tensor = StandardTensor<u32>;
 pub type Uint64Tensor = StandardTensor<u64>;
 
+impl<T> PlacementPlace<SyncSession, StandardTensor<T>> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: StandardTensor<T>) -> StandardTensor<T> {
+        match x.placement() {
+            Ok(Placement::Host(place)) if &place == self => x,
+            _ => StandardTensor(x.0, Placement::Host(self.clone())),
+        }
+    }
+}
+
 modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (BitTensor) -> Shape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> Shape, ShapeOp);
 
 kernel! {
     ShapeOp,
@@ -79,7 +89,40 @@ kernel! {
         (HostPlacement, (Ring64Tensor) -> Shape => Self::ring_kernel),
         (HostPlacement, (Ring128Tensor) -> Shape => Self::ring_kernel),
         (HostPlacement, (BitTensor) -> Shape => Self::bit_kernel),
+        (HostPlacement, (Float64Tensor) -> Shape => Self::std_kernel),
     ]
+}
+
+impl ShapeOp {
+    pub(crate) fn std_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+    ) -> Shape {
+        let raw_shape = RawShape(x.0.shape().into());
+        Shape(raw_shape, plc.clone().into())
+    }
+}
+
+modelled!(PlacementSlice::slice, HostPlacement, attributes[start: u32, end: u32] (Shape) -> Shape, StdSliceOp);
+
+kernel! {
+    StdSliceOp,
+    [
+        (HostPlacement, (Shape) -> Shape => attributes[start, end] Self::kernel),
+    ]
+}
+
+impl StdSliceOp {
+    pub(crate) fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _start: u32,
+        _end: u32,
+        _x: Shape,
+    ) -> Shape {
+        unimplemented!()
+    }
 }
 
 impl RawShape {
@@ -203,6 +246,29 @@ where
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
                 StandardTensor::<T>(out, self.1)
+            }
+        }
+    }
+}
+
+impl StdMeanOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        match axis {
+            Some(i) => {
+                let reduced = x.0.mean_axis(Axis(i as usize)).unwrap();
+                StandardTensor::<T>(reduced, Placement::Host(plc.clone()))
+            }
+            None => {
+                let mean = x.0.mean().unwrap();
+                let out = Array::from_elem([], mean)
+                    .into_dimensionality::<IxDyn>()
+                    .unwrap();
+                StandardTensor::<T>(out, Placement::Host(plc.clone()))
             }
         }
     }

@@ -170,7 +170,7 @@ hybrid_kernel! {
 }
 
 impl RepShareOp {
-    fn kernel<S: Session, SeedT, ShapeT, KeyT, RingT>(
+    fn kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
@@ -179,7 +179,7 @@ impl RepShareOp {
     where
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        HostPlacement: PlacementSampleUniform<S, SeedT, ShapeT, RingT>,
+        HostPlacement: PlacementSampleUniform<S, ShapeT, SeedT, RingT>,
         HostPlacement: PlacementZeros<S, ShapeT, RingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
@@ -200,12 +200,12 @@ impl RepShareOp {
                 let shape = x_player.shape(sess, &x);
 
                 let seed0 = player0.derive_seed(sess, sync_key.clone(), k00);
-                let x00 = x_player.sample_uniform(sess, &seed0, &shape);
+                let x00 = x_player.sample_uniform(sess, &shape, &seed0);
                 let x10 = with_context!(x_player, sess, x - x00);
 
                 let seed2 = player2.derive_seed(sess, sync_key, k02);
                 let x22 = player2.zeros(sess, &shape);
-                let x02 = player2.sample_uniform(sess, &seed2, &shape);
+                let x02 = player2.sample_uniform(sess, &shape, &seed2);
 
                 let x11 = x10.clone();
                 let x21 = player1.zeros(sess, &shape);
@@ -217,12 +217,12 @@ impl RepShareOp {
                 let shape = x_player.shape(sess, &x);
 
                 let seed1 = player1.derive_seed(sess, sync_key.clone(), k11);
-                let x11 = x_player.sample_uniform(sess, &seed1, &shape);
+                let x11 = x_player.sample_uniform(sess, &shape, &seed1);
                 let x21 = with_context!(x_player, sess, x - x11);
 
                 let seed0 = player0.derive_seed(sess, sync_key, k10);
                 let x00 = player0.zeros(sess, &shape);
-                let x10 = player0.sample_uniform(sess, &seed0, &shape);
+                let x10 = player0.sample_uniform(sess, &shape, &seed0);
 
                 let x22 = x21.clone();
                 let x02 = player2.zeros(sess, &shape);
@@ -234,12 +234,12 @@ impl RepShareOp {
                 let shape = x_player.shape(sess, &x);
 
                 let seed2 = player2.derive_seed(sess, sync_key.clone(), k22);
-                let x22 = player2.sample_uniform(sess, &seed2, &shape);
+                let x22 = player2.sample_uniform(sess, &shape, &seed2);
                 let x02 = with_context!(x_player, sess, x - x22);
 
                 let seed1 = player1.derive_seed(sess, sync_key, k21);
                 let x11 = player1.zeros(sess, &shape);
-                let x21 = player1.sample_uniform(sess, &seed1, &shape);
+                let x21 = player1.sample_uniform(sess, &shape, &seed1);
 
                 let x00 = x02.clone();
                 let x10 = player0.zeros(sess, &shape);
@@ -262,18 +262,18 @@ impl RepShareOp {
                 let seed11 = player1.derive_seed(sess, sync_key1.clone(), k11);
                 let seed10 = player0.derive_seed(sess, sync_key1, k10);
 
-                let x0 = x_player.sample_uniform(sess, &seed00, &shape);
-                let x1 = x_player.sample_uniform(sess, &seed11, &shape);
+                let x0 = x_player.sample_uniform(sess, &shape, &seed00);
+                let x1 = x_player.sample_uniform(sess, &shape, &seed11);
                 let x2 = with_context!(x_player, sess, x - x0 - x1);
 
-                let x00 = player0.sample_uniform(sess, &seed00, &shape);
-                let x10 = player0.sample_uniform(sess, &seed10, &shape);
+                let x00 = player0.sample_uniform(sess, &shape, &seed00);
+                let x10 = player0.sample_uniform(sess, &shape, &seed10);
 
-                let x11 = player1.sample_uniform(sess, &seed11, &shape);
+                let x11 = player1.sample_uniform(sess, &shape, &seed11);
                 let x21 = x2.clone();
 
                 let x22 = x2;
-                let x02 = player2.sample_uniform(sess, &seed02, &shape);
+                let x02 = player2.sample_uniform(sess, &shape, &seed02);
 
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
@@ -912,7 +912,7 @@ hybrid_kernel! {
 }
 
 impl AdtToRepOp {
-    fn kernel<S: Session, SeedT, ShapeT, KeyT, RingT>(
+    fn kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractAdditiveTensor<RingT>,
@@ -923,7 +923,7 @@ impl AdtToRepOp {
         <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
-        HostPlacement: PlacementSampleUniform<S, SeedT, ShapeT, RingT>,
+        HostPlacement: PlacementSampleUniform<S, ShapeT, SeedT, RingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         AdditivePlacement: PlacementSub<
             S,
@@ -962,11 +962,11 @@ impl AdtToRepOp {
         let seed1 = provider.derive_seed(sess, sync_key0, &k);
         let seed2 = provider.derive_seed(sess, sync_key1, &k);
 
-        let y0_provider = provider.sample_uniform(sess, &seed1, &shape);
-        let y1_provider = provider.sample_uniform(sess, &seed2, &shape);
+        let y0_provider = provider.sample_uniform(sess, &shape, &seed1);
+        let y1_provider = provider.sample_uniform(sess, &shape, &seed2);
 
-        let y0 = adt_player0.sample_uniform(sess, &seed1, &shape);
-        let y1 = adt_player1.sample_uniform(sess, &seed2, &adt_player1.shape(sess, x1));
+        let y0 = adt_player0.sample_uniform(sess, &shape, &seed1);
+        let y1 = adt_player1.sample_uniform(sess, &adt_player1.shape(sess, x1), &seed2);
 
         let y = AbstractAdditiveTensor {
             shares: [y0.clone(), y1.clone()],
@@ -1091,7 +1091,7 @@ where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
     Shape: KnownType<S>,
-    HostPlacement: PlacementSampleUniform<S, cs!(Seed), cs!(Shape), RingT>,
+    HostPlacement: PlacementSampleUniform<S, cs!(Shape), cs!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, cs!(PrfKey), cs!(Seed)>,
 {
@@ -1111,16 +1111,16 @@ where
             seeds: [[s00, s10], [s11, s21], [s22, s02]],
         } = &self.gen_seeds(sess, setup);
 
-        let r00 = player0.sample_uniform(sess, s00, shape0);
-        let r10 = player0.sample_uniform(sess, s10, shape0);
+        let r00 = player0.sample_uniform(sess, shape0, s00);
+        let r10 = player0.sample_uniform(sess, shape0, s10);
         let alpha0 = with_context!(player0, sess, r00 - r10);
 
-        let r11 = player1.sample_uniform(sess, s11, shape1);
-        let r21 = player1.sample_uniform(sess, s21, shape1);
+        let r11 = player1.sample_uniform(sess, shape1, s11);
+        let r21 = player1.sample_uniform(sess, shape1, s21);
         let alpha1 = with_context!(player1, sess, r11 - r21);
 
-        let r22 = player2.sample_uniform(sess, s22, shape2);
-        let r02 = player2.sample_uniform(sess, s02, shape2);
+        let r22 = player2.sample_uniform(sess, shape2, s22);
+        let r02 = player2.sample_uniform(sess, shape2, s02);
         let alpha2 = with_context!(player2, sess, r22 - r02);
 
         AbstractReplicatedZeroShare {
