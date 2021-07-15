@@ -50,7 +50,7 @@ nom = { version="~6.1", features=["regexp"] }
 criterion = "~0.3"
 env_logger = "~0.8"
 lazy_static = "~1.4"
-proptest = "~0.10"
+proptest = "~1.0"
 rstest = "~0.10"
 
 [[bench]]
