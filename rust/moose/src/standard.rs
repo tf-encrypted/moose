@@ -1,7 +1,7 @@
 use crate::bit::BitTensor;
 use crate::computation::{
     HostPlacement, Placed, Placement, ShapeOp, StdAddOp, StdDivOp, StdDotOp, StdMeanOp, StdMulOp,
-    StdSliceOp, StdSubOp,
+    StdOnesOp, StdSliceOp, StdSubOp,
 };
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
@@ -168,6 +168,19 @@ impl StdDotOp {
         HostPlacement: PlacementPlace<S, StandardTensor<T>>,
     {
         plc.place(sess, x.dot(y))
+    }
+}
+
+impl StdOnesOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar>(
+        sess: &S,
+        plc: &HostPlacement,
+        shape: Shape,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, StandardTensor::ones(shape))
     }
 }
 
