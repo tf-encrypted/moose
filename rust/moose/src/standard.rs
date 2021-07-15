@@ -1,5 +1,7 @@
 use crate::bit::BitTensor;
-use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdMeanOp, StdOnesOp, StdSliceOp};
+use crate::computation::{
+    HostPlacement, Placed, Placement, ShapeOp, StdMeanOp, StdOnesOp, StdSliceOp,
+};
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};

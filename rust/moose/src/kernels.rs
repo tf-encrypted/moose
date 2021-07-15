@@ -278,7 +278,7 @@ pub trait PlacementStdOnes<S: Session, ShapeT, O> {
 
 modelled!(PlacementStdOnes::std_ones, HostPlacement, (Shape) -> Float64Tensor, StdOnesOp);
 
-kernel!{
+kernel! {
     StdOnesOp, [
         (HostPlacement, (Shape) -> Float64Tensor => Self::kernel),
     ]
