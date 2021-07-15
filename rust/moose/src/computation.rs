@@ -679,14 +679,10 @@ macro_rules! operators {
                     $(Operator::$t(op) => &mut op.sig,)+
                 }
             }
-        }
 
-        impl std::ops::Deref for Operator {
-            type Target = dyn HasShortName;
-
-            fn deref(&self) -> &Self::Target {
+            pub fn short_name(&self) -> &str {
                 match self {
-                    $(Operator::$t(o) => o,)+
+                    $(Operator::$t(op) => op.short_name(),)+
                 }
             }
         }
