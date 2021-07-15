@@ -1,5 +1,5 @@
 use crate::bit::BitTensor;
-use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdMeanOp, StdSliceOp};
+use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdMeanOp, StdOnesOp, StdSliceOp};
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -75,6 +75,19 @@ impl<T> PlacementPlace<SyncSession, StandardTensor<T>> for HostPlacement {
             Ok(Placement::Host(place)) if &place == self => x,
             _ => StandardTensor(x.0, Placement::Host(self.clone())),
         }
+    }
+}
+
+impl StdOnesOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar>(
+        sess: &S,
+        plc: &HostPlacement,
+        shape: Shape,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, StandardTensor::ones(shape))
     }
 }
 

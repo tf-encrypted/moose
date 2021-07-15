@@ -91,6 +91,7 @@ impl Session for SyncSession {
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
             op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO
         }
     }
@@ -269,6 +270,18 @@ where
         let value = O::Scalar::from(0).into();
         self.fill(sess, value, shape)
     }
+}
+
+pub trait PlacementStdOnes<S: Session, ShapeT, O> {
+    fn std_ones(&self, sess: &S, shape: &ShapeT) -> O;
+}
+
+modelled!(PlacementStdOnes::std_ones, HostPlacement, (Shape) -> Float64Tensor, StdOnesOp);
+
+kernel!{
+    StdOnesOp, [
+        (HostPlacement, (Shape) -> Float64Tensor => Self::kernel),
+    ]
 }
 
 pub trait PlacementOnes<S: Session, ShapeT, O> {
