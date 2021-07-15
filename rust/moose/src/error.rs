@@ -38,6 +38,9 @@ pub enum Error {
 
     #[error("Storage error: {0}")]
     Storage(String),
+
+    #[error("Test runtime error: {0}")]
+    TestRuntime(String),
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

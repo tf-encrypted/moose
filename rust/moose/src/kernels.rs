@@ -1642,21 +1642,3 @@ impl Compile<AsyncKernel> for LoadOp {
         )))
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::execution::*;
-    use std::convert::TryInto;
-
-    #[test]
-    fn test_standard_shape_ops() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        shape = Shape: (Float32Tensor) -> Shape (x) @Host(alice)
-        expand_dims = StdExpandDims {axis = 2}: (Float32Tensor) -> Float32Tensor (x) @Host(alice)
-        transpose = StdTranspose : (Float32Tensor) -> Float32Tensor (x) @Host(alice)"#;
-
-        let exec = TestExecutor::default();
-        let _outputs = exec.run_computation(&source.try_into()?, SyncArgs::new())?;
-        Ok(())
-    }
-}

@@ -2,12 +2,10 @@ use moose::bit::BitTensor;
 use moose::compilation::print::print_graph;
 use moose::compilation::replicated_lowering::replicated_lowering;
 use moose::compilation::typing::update_types_one_hop;
-use moose::computation::{Computation, Role, SessionId, Value};
-use moose::execution::{
-    AsyncExecutor, AsyncNetworkingImpl, AsyncReceiver, AsyncSession, AsyncSessionHandle, Identity,
-};
+use moose::computation::{Computation, Role, Value};
+use moose::execution::AsyncTestRuntime;
+use moose::execution::Identity;
 use moose::fixedpoint::Convert;
-use moose::networking::{AsyncNetworking, LocalAsyncNetworking};
 use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
@@ -19,18 +17,15 @@ use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
 use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
 
-use pyo3::exceptions::{PyRuntimeError, PyValueError};
+use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyFloat, PyString};
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
-use std::sync::Arc;
 pub mod python_computation;
 use moose::compilation::networking::NetworkingPass;
 use moose::compilation::pruning::prune_graph;
-use moose::storage::{AsyncStorage, LocalAsyncStorage};
-use tokio::runtime::Runtime;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
@@ -377,45 +372,27 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
 
 #[pyclass(subclass)]
 pub struct LocalRuntime {
-    #[pyo3(get, set)]
-    identities: Vec<String>,
-    executors: HashMap<Identity, AsyncExecutor>,
-    runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>>,
-    networking: AsyncNetworkingImpl,
+    runtime: AsyncTestRuntime,
 }
 
 #[pymethods]
 impl LocalRuntime {
     #[new]
     fn new(py: Python, storage_mapping: HashMap<String, HashMap<String, PyObject>>) -> Self {
-        let mut executors: HashMap<Identity, AsyncExecutor> = HashMap::new();
-        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
-            Arc::new(LocalAsyncNetworking::default());
-        let mut runtime_storage: HashMap<Identity, Arc<dyn Send + Sync + AsyncStorage>> =
-            HashMap::new();
-        let mut identities = Vec::new();
+        let mut moose_storage_mapping: HashMap<String, HashMap<String, Value>> = HashMap::new();
         for (identity_str, storage) in storage_mapping {
-            let identity = Identity::from(identity_str.clone());
-            identities.push(identity_str);
             // TODO handle Result in map predicate instead of `unwrap`
             let storage = storage
                 .iter()
                 .map(|arg| (arg.0.to_owned(), pyobj_tensor_to_value(py, arg.1).unwrap()))
                 .collect::<HashMap<String, Value>>();
 
-            let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
-                Arc::new(LocalAsyncStorage::from_hashmap(storage));
-            runtime_storage.insert(identity.clone(), exec_storage);
+            moose_storage_mapping.insert(identity_str, storage);
+        }
 
-            let executor = AsyncExecutor::default();
-            executors.insert(identity, executor);
-        }
-        LocalRuntime {
-            identities,
-            executors,
-            runtime_storage,
-            networking,
-        }
+        let runtime = AsyncTestRuntime::new(moose_storage_mapping);
+
+        LocalRuntime { runtime }
     }
 
     fn evaluate_computation(
@@ -456,27 +433,13 @@ impl LocalRuntime {
         key: String,
         value: PyObject,
     ) -> PyResult<()> {
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
         let identity = Identity::from(identity);
-        let identity_storage = match self.runtime_storage.get(&identity) {
-            Some(store) => store,
-            None => {
-                return Err(PyRuntimeError::new_err(format!(
-                    "Runtime does not contain storage for identity {:?}.",
-                    identity.to_string()
-                )))
-            }
-        };
         let value_to_store = pyobj_to_value(py, value)?;
-        let result = rt.block_on(async {
-            identity_storage
-                .save(&key, &SessionId::from("yo"), &value_to_store)
-                .await
-        });
-        if let Err(e) = result {
-            return Err(PyRuntimeError::new_err(e.to_string()));
-        }
+        let _result = self
+            .runtime
+            .write_value_to_storage(identity, key, value_to_store)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+
         Ok(())
     }
 
@@ -486,17 +449,11 @@ impl LocalRuntime {
         identity: String,
         key: String,
     ) -> PyResult<PyObject> {
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
-        let val = rt.block_on(async {
-            let val = self.runtime_storage[&Identity::from(identity)]
-                .load(&key, &SessionId::from("foobar"), None, "")
-                .await
-                .unwrap();
-            val
-        });
+        let val = self
+            .runtime
+            .read_value_from_storage(Identity::from(identity), key)
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
 
-        // Return value as PyObject
         tensorval_to_pyobj(py, val)
     }
 }
@@ -514,75 +471,35 @@ impl LocalRuntime {
             .map(|arg| (arg.0.clone(), pyobj_to_value(py, arg.1.clone()).unwrap()))
             .collect::<HashMap<String, Value>>();
 
-        let (valid_role_assignments, missing_role_assignments): (
-            HashMap<String, String>,
-            HashMap<String, String>,
-        ) = role_assignments
-            .into_iter()
-            .partition(|kv| self.identities.contains(&kv.1));
-        if !missing_role_assignments.is_empty() {
-            let missing_roles: Vec<&String> = missing_role_assignments.keys().collect();
-            let missing_identities: Vec<&String> = missing_role_assignments.values().collect();
-            return Err(PyValueError::new_err(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", missing_identities, missing_roles)));
-        }
-
-        let valid_role_assignments = valid_role_assignments
+        let valid_role_assignments = role_assignments
             .into_iter()
             .map(|arg| (Role::from(&arg.0), Identity::from(&arg.1)))
             .collect::<HashMap<Role, Identity>>();
 
-        let mut session_handles: Vec<AsyncSessionHandle> = Vec::new();
-        let mut output_futures: HashMap<String, AsyncReceiver> = HashMap::new();
-        let rt = Runtime::new().unwrap();
-        let _guard = rt.enter();
+        let outputs =
+            self.runtime
+                .evaluate_computation(computation, valid_role_assignments, arguments);
 
-        for (own_identity, executor) in self.executors.iter() {
-            let moose_session = AsyncSession {
-                sid: SessionId::from("foobar"),
-                arguments: arguments.clone(),
-                networking: Arc::clone(&self.networking),
-                storage: Arc::clone(&self.runtime_storage[own_identity]),
-            };
-            let (moose_session_handle, outputs) = executor
-                .run_computation(
-                    &computation,
-                    &valid_role_assignments,
-                    &own_identity,
-                    moose_session,
-                )
-                .unwrap();
-
-            for (output_name, output_future) in outputs {
-                output_futures.insert(output_name, output_future);
+        let mut outputs_py_val: HashMap<String, PyObject> = HashMap::new();
+        match outputs {
+            Ok(Some(outputs)) => {
+                for (output_name, value) in outputs {
+                    match value {
+                        Value::Unit(_) => None,
+                        // TODO: not sure what to support, should eventually standardize output types of computations
+                        Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
+                        Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
+                        // assume it's a tensor
+                        _ => outputs_py_val
+                            .insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
+                    };
+                }
             }
-
-            session_handles.push(moose_session_handle)
+            Ok(None) => (),
+            Err(e) => return Err(PyRuntimeError::new_err(e.to_string())),
         }
 
-        for handle in session_handles {
-            let result = rt.block_on(handle.join_on_first_error());
-            if let Err(e) = result {
-                return Err(PyRuntimeError::new_err(e.to_string()));
-            }
-        }
-
-        let outputs = rt.block_on(async {
-            let mut outputs: HashMap<String, PyObject> = HashMap::new();
-            for (output_name, output_future) in output_futures {
-                let value = output_future.await.unwrap();
-                match value {
-                    Value::Unit(_) => None,
-                    // TODO: not sure what to support, should eventually standardize output types of computations
-                    Value::String(s) => Some(PyString::new(py, &s).to_object(py)),
-                    Value::Float64(f) => Some(PyFloat::new(py, f).to_object(py)),
-                    // assume it's a tensor
-                    _ => outputs.insert(output_name, tensorval_to_pyobj(py, value).unwrap()),
-                };
-            }
-            outputs
-        });
-
-        Ok(Some(outputs))
+        Ok(Some(outputs_py_val))
     }
 }
 
