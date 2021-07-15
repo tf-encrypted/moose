@@ -387,6 +387,26 @@ pub trait PlacementStdMean<S: Session, T, O> {
     fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
+pub trait PlacementStdAdd<S: Session, T1, T2, O> {
+    fn std_add(&self, sess: &S, x: &T1, y: &T2) -> O;
+}
+
+pub trait PlacementStdSub<S: Session, T1, T2, O> {
+    fn std_sub(&self, sess: &S, x: &T1, y: &T2) -> O;
+}
+
+pub trait PlacementStdMul<S: Session, T1, T2, O> {
+    fn std_mul(&self, sess: &S, x: &T1, y: &T2) -> O;
+}
+
+pub trait PlacementStdDiv<S: Session, T1, T2, O> {
+    fn std_div(&self, sess: &S, x: &T1, y: &T2) -> O;
+}
+
+pub trait PlacementStdDot<S: Session, T1, T2, O> {
+    fn std_dot(&self, sess: &S, x: &T1, y: &T2) -> O;
+}
+
 pub trait EmptyTypeHolder<T> {}
 
 // The `T` type parameter is required by the modelled!() macros, but we are enforcing that T = ShapeT.
@@ -573,7 +593,7 @@ macro_rules! std_unary_kernel {
 }
 
 macro_rules! std_binary_kernel {
-    ($op:ty, $k:expr) => {
+    ($op:ident, $t:ident::$f:ident, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
                 match self.sig {
@@ -599,14 +619,33 @@ macro_rules! std_binary_kernel {
                 }
             }
         }
+
+
+        modelled!($t::$f, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, $op);
+        modelled!($t::$f, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, $op);
+        modelled!($t::$f, HostPlacement, (Int32Tensor, Int32Tensor) -> Int32Tensor, $op);
+        modelled!($t::$f, HostPlacement, (Int64Tensor, Int64Tensor) -> Int64Tensor, $op);
+        modelled!($t::$f, HostPlacement, (Uint32Tensor, Uint32Tensor) -> Uint32Tensor, $op);
+        modelled!($t::$f, HostPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor, $op);
+
+        kernel! {
+            $op, [
+                (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => Self::kernel),
+                (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => Self::kernel),
+                (HostPlacement, (Int32Tensor, Int32Tensor) -> Int32Tensor => Self::kernel),
+                (HostPlacement, (Int64Tensor, Int64Tensor) -> Int64Tensor => Self::kernel),
+                (HostPlacement, (Uint32Tensor, Uint32Tensor) -> Uint32Tensor => Self::kernel),
+                (HostPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor => Self::kernel),
+            ]
+        }
     };
 }
 
-std_binary_kernel!(StdAddOp, |x, y| x + y);
-std_binary_kernel!(StdSubOp, |x, y| x - y);
-std_binary_kernel!(StdMulOp, |x, y| x * y);
-std_binary_kernel!(StdDivOp, |x, y| x / y);
-std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
+std_binary_kernel!(StdAddOp, PlacementStdAdd::std_add, |x, y| x + y);
+std_binary_kernel!(StdSubOp, PlacementStdSub::std_sub, |x, y| x - y);
+std_binary_kernel!(StdMulOp, PlacementStdMul::std_mul, |x, y| x * y);
+std_binary_kernel!(StdDivOp, PlacementStdDiv::std_div, |x, y| x / y);
+std_binary_kernel!(StdDotOp, PlacementStdDot::std_dot, |x, y| x.dot(y));
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
 impl Compile<Kernel> for StdInverseOp {

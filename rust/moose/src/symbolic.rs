@@ -146,6 +146,11 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdDiv(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),
         }
     }

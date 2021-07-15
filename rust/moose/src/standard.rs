@@ -1,10 +1,12 @@
 use crate::bit::BitTensor;
 use crate::computation::{
-    HostPlacement, Placed, Placement, ShapeOp, StdMeanOp, StdOnesOp, StdSliceOp,
+    HostPlacement, Placed, Placement, ShapeOp, StdAddOp, StdDivOp, StdDotOp, StdMeanOp, StdMulOp,
+    StdOnesOp, StdSliceOp, StdSubOp,
 };
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray_linalg::types::{Lapack, Scalar};
@@ -77,6 +79,95 @@ impl<T> PlacementPlace<SyncSession, StandardTensor<T>> for HostPlacement {
             Ok(Placement::Host(place)) if &place == self => x,
             _ => StandardTensor(x.0, Placement::Host(self.clone())),
         }
+    }
+}
+
+/// This implementation is required to do the `plc.place(x)`
+impl<T> PlacementPlace<SymbolicSession, Symbolic<StandardTensor<T>>> for HostPlacement {
+    fn place(
+        &self,
+        _sess: &SymbolicSession,
+        x: Symbolic<StandardTensor<T>>,
+    ) -> Symbolic<StandardTensor<T>> {
+        match x {
+            Symbolic::Concrete(x) => Symbolic::Concrete(x),
+            Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                Symbolic::Symbolic(SymbolicHandle {
+                    op,
+                    plc: Placement::Host(self.clone()),
+                })
+            }
+        }
+    }
+}
+
+impl StdAddOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x + y)
+    }
+}
+
+impl StdSubOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x - y)
+    }
+}
+
+impl StdMulOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x * y)
+    }
+}
+
+impl StdDivOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x / y)
+    }
+}
+
+impl StdDotOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x.dot(y))
     }
 }
 
