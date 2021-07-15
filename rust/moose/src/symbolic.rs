@@ -127,6 +127,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            // Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
@@ -142,6 +143,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::Save(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
@@ -151,6 +153,10 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::StdMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdDiv(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdExpandDims(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdConcatenate(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdTranspose(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::StdInverse(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),
         }
     }

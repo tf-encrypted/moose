@@ -1,8 +1,5 @@
 use crate::bit::BitTensor;
-use crate::computation::{
-    HostPlacement, Placed, Placement, ShapeOp, StdAddOp, StdDivOp, StdDotOp, StdMeanOp, StdMulOp,
-    StdOnesOp, StdSliceOp, StdSubOp,
-};
+use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdAddOp, StdConcatenateOp, StdDivOp, StdDotOp, StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp, StdSubOp, StdSumOp, StdTransposeOp};
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -377,6 +374,60 @@ impl StdMeanOp {
                 StandardTensor::<T>(out, Placement::Host(plc.clone()))
             }
         }
+    }
+}
+
+impl StdSumOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        unimplemented!()
+    }
+}
+
+impl StdExpandDimsOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        unimplemented!()
+    }
+}
+
+impl StdConcatenateOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        unimplemented!()
+    }
+}
+
+impl StdTransposeOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        unimplemented!()
+    }
+}
+
+impl StdInverseOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T> {
+        unimplemented!()
     }
 }
 

@@ -387,6 +387,18 @@ pub trait PlacementStdMean<S: Session, T, O> {
     fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
+pub trait PlacementStdSum<S: Session, T, O> {
+    fn std_sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
+pub trait PlacementStdExpandDims<S: Session, T, O> {
+    fn std_expand_dims(&self, sess: &S, axis: u32, x: &T) -> O;
+}
+
+pub trait PlacementStdConcatenate<S: Session, T1, T2, O> {
+    fn std_concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
+}
+
 pub trait PlacementStdAdd<S: Session, T1, T2, O> {
     fn std_add(&self, sess: &S, x: &T1, y: &T2) -> O;
 }
@@ -405,6 +417,14 @@ pub trait PlacementStdDiv<S: Session, T1, T2, O> {
 
 pub trait PlacementStdDot<S: Session, T1, T2, O> {
     fn std_dot(&self, sess: &S, x: &T1, y: &T2) -> O;
+}
+
+pub trait PlacementStdTranspose<S: Session, T, O> {
+    fn std_transpose(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementStdInverse<S: Session, T, O> {
+    fn std_inverse(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait EmptyTypeHolder<T> {}
@@ -648,6 +668,23 @@ std_binary_kernel!(StdDivOp, PlacementStdDiv::std_div, |x, y| x / y);
 std_binary_kernel!(StdDotOp, PlacementStdDot::std_dot, |x, y| x.dot(y));
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
+modelled!(PlacementStdTranspose::std_transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, StdTransposeOp);
+
+kernel! {
+    StdTransposeOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => Self::kernel),
+    ]
+}
+
+modelled!(PlacementStdInverse::std_inverse, HostPlacement, (Float64Tensor) -> Float64Tensor, StdInverseOp);
+
+kernel! {
+    StdInverseOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => Self::kernel),
+    ]
+}
+
+
 impl Compile<Kernel> for StdInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -723,6 +760,14 @@ impl Compile<Kernel> for StdOnesOp {
     }
 }
 
+modelled!(PlacementStdConcatenate::std_concatenate, HostPlacement, attributes[axis: u32] (Float64Tensor, Float64Tensor) -> Float64Tensor, StdConcatenateOp);
+
+kernel! {
+    StdConcatenateOp, [
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
+}
+
 impl Compile<Kernel> for StdConcatenateOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::standard::concatenate;
@@ -749,6 +794,14 @@ impl Compile<Kernel> for StdConcatenateOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementStdExpandDims::std_expand_dims, HostPlacement, attributes[axis: u32] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
+
+kernel! {
+    StdExpandDimsOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for StdExpandDimsOp {
@@ -864,6 +917,15 @@ impl Compile<Kernel> for StdSliceOp {
         }
     }
 }
+
+modelled!(PlacementStdSum::std_sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdSumOp);
+
+kernel! {
+    StdSumOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
+}
+
 
 impl Compile<Kernel> for StdSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
