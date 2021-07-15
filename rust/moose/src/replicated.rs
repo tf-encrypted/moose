@@ -1,14 +1,14 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp, RepMulOp,
-    RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepTruncPrOp, ReplicatedPlacement,
+    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp, RepMeanOp,
+    RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepTruncPrOp, ReplicatedPlacement,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
     PlacementAdd, PlacementAdtToRep, PlacementDeriveSeed, PlacementDot, PlacementDotSetup,
-    PlacementKeyGen, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt,
-    PlacementReveal, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
+    PlacementKeyGen, PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace,
+    PlacementRepToAdt, PlacementReveal, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
     PlacementShareSetup, PlacementSub, PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros,
     Session,
 };
@@ -942,6 +942,48 @@ impl RepDotOp {
         AbstractReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
+    }
+}
+
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Replicated128Tensor) -> Replicated128Tensor, RepMeanOp);
+
+hybrid_kernel! {
+    RepMeanOp,
+    [
+        (ReplicatedPlacement, (Replicated128Tensor) -> Replicated128Tensor => attributes[axis] Self::kernel),
+    ]
+}
+
+impl RepMeanOp {
+    fn kernel<S: Session, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        axis: Option<u32>,
+        x: AbstractReplicatedTensor<RingT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        HostPlacement: PlacementMean<S, RingT, RingT>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.mean(sess, axis, x00);
+        let z10 = player0.mean(sess, axis, x10);
+        let z11 = player1.mean(sess, axis, x11);
+        let z21 = player1.mean(sess, axis, x21);
+        let z22 = player2.mean(sess, axis, x22);
+        let z02 = player2.mean(sess, axis, x02);
+
+        rep.place(
+            sess,
+            AbstractReplicatedTensor {
+                shares: [[z00, z10], [z11, z21], [z22, z02]],
+            },
+        )
     }
 }
 

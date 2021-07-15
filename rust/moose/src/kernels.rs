@@ -267,6 +267,10 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
+pub trait PlacementMean<S: Session, T, O> {
+    fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,

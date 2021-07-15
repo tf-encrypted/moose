@@ -1,13 +1,13 @@
 use crate::bit::BitTensor;
 use crate::computation::{
-    Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
-    RingSampleOp, RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
+    Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMeanOp, RingMulOp,
+    RingNegOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementDot, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
-    PlacementSample, PlacementShl, PlacementShr, PlacementSub, RuntimeSession, Session,
-    SyncSession, Tensor,
+    PlacementAdd, PlacementDot, PlacementFill, PlacementMean, PlacementMul, PlacementNeg,
+    PlacementPlace, PlacementSample, PlacementShl, PlacementShr, PlacementSub, RuntimeSession,
+    Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -15,12 +15,12 @@ use crate::standard::{RawShape, Shape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
-use num_traits::Zero;
+use num_traits::{FromPrimitive, Zero};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::num::Wrapping;
-use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
+use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
@@ -301,6 +301,35 @@ impl RingDotOp {
         Wrapping<T>: LinalgScalar,
     {
         AbstractRingTensor(x.dot(y).0, plc.clone())
+    }
+}
+
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Ring64Tensor) -> Ring64Tensor, RingMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Ring128Tensor) -> Ring128Tensor, RingMeanOp);
+
+kernel! {
+    RingMeanOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[axis] Self::kernel),
+    ]
+}
+
+impl RingMeanOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        T: FromPrimitive + Zero,
+        Wrapping<T>: Clone,
+        Wrapping<T>: Add<Output = Wrapping<T>>,
+        Wrapping<T>: Div<Output = Wrapping<T>>,
+    {
+        let axis = axis.map(|a| Axis(a as usize)).unwrap_or(Axis(0));
+        AbstractRingTensor(x.0.mean_axis(axis).unwrap(), plc.clone())
     }
 }
 
