@@ -1,12 +1,13 @@
 use crate::bit::BitTensor;
 use crate::computation::{
-    Constant, HostPlacement, Placed, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
+    Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementShl, PlacementShr, PlacementSub, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementDot, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub, RuntimeSession, Session,
+    SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -273,6 +274,33 @@ impl RingMulOp {
         Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
     {
         AbstractRingTensor(x.0 * y.0, plc.clone())
+    }
+}
+
+modelled!(PlacementDot::dot, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingDotOp);
+
+kernel! {
+    RingDotOp,
+    [
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl RingDotOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+        y: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
+        Wrapping<T>: LinalgScalar,
+    {
+        AbstractRingTensor(x.dot(y).0, plc.clone())
     }
 }
 

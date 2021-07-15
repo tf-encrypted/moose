@@ -219,6 +219,10 @@ pub trait PlacementMul<S: Session, T, U, O> {
     fn mul(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementDot<S: Session, T, U, O> {
+    fn dot(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementShl<S: Session, T, O> {
     fn shl(&self, sess: &S, amount: usize, x: &T) -> O;
 }
@@ -237,6 +241,10 @@ pub trait PlacementAnd<S: Session, T, U, O> {
 
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
     fn mul(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
+    fn dot(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementShare<S: Session, T, O> {
@@ -684,7 +692,6 @@ kernel! {
     ]
 }
 
-
 impl Compile<Kernel> for StdInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -925,7 +932,6 @@ kernel! {
         (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
     ]
 }
-
 
 impl Compile<Kernel> for StdSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {

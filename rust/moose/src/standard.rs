@@ -1,5 +1,9 @@
 use crate::bit::BitTensor;
-use crate::computation::{HostPlacement, Placed, Placement, ShapeOp, StdAddOp, StdConcatenateOp, StdDivOp, StdDotOp, StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp, StdSubOp, StdSumOp, StdTransposeOp};
+use crate::computation::{
+    HostPlacement, Placed, Placement, ShapeOp, StdAddOp, StdConcatenateOp, StdDivOp, StdDotOp,
+    StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp, StdSubOp, StdSumOp,
+    StdTransposeOp,
+};
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -380,9 +384,9 @@ impl StdMeanOp {
 impl StdSumOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        x: StandardTensor<T>,
+        _plc: &HostPlacement,
+        _axis: Option<u32>,
+        _x: StandardTensor<T>,
     ) -> StandardTensor<T> {
         unimplemented!()
     }
@@ -391,9 +395,9 @@ impl StdSumOp {
 impl StdExpandDimsOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
-        plc: &HostPlacement,
-        axis: u32,
-        x: StandardTensor<T>,
+        _plc: &HostPlacement,
+        _axis: u32,
+        _x: StandardTensor<T>,
     ) -> StandardTensor<T> {
         unimplemented!()
     }
@@ -402,10 +406,10 @@ impl StdExpandDimsOp {
 impl StdConcatenateOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
-        plc: &HostPlacement,
-        axis: u32,
-        x: StandardTensor<T>,
-        y: StandardTensor<T>,
+        _plc: &HostPlacement,
+        _axis: u32,
+        _x: StandardTensor<T>,
+        _y: StandardTensor<T>,
     ) -> StandardTensor<T> {
         unimplemented!()
     }
@@ -414,8 +418,8 @@ impl StdConcatenateOp {
 impl StdTransposeOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
-        plc: &HostPlacement,
-        x: StandardTensor<T>,
+        _plc: &HostPlacement,
+        _x: StandardTensor<T>,
     ) -> StandardTensor<T> {
         unimplemented!()
     }
@@ -424,8 +428,8 @@ impl StdTransposeOp {
 impl StdInverseOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
-        plc: &HostPlacement,
-        x: StandardTensor<T>,
+        _plc: &HostPlacement,
+        _x: StandardTensor<T>,
     ) -> StandardTensor<T> {
         unimplemented!()
     }

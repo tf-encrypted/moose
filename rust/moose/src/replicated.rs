@@ -1,15 +1,16 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAddOp, RepMulOp,
+    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp, RepMulOp,
     RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepTruncPrOp, ReplicatedPlacement,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAdd, PlacementAdtToRep, PlacementDeriveSeed, PlacementKeyGen, PlacementMul,
-    PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session,
+    PlacementAdd, PlacementAdtToRep, PlacementDeriveSeed, PlacementDot, PlacementDotSetup,
+    PlacementKeyGen, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt,
+    PlacementReveal, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementSub, PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros,
+    Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -667,6 +668,7 @@ impl RepSubOp {
         rep.place(sess, AbstractReplicatedTensor { shares })
     }
 }
+
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
@@ -795,6 +797,147 @@ impl RepMulOp {
 
         let z22 = with_context!(player2, sess, x22 * y);
         let z02 = with_context!(player2, sess, x02 * y);
+
+        AbstractReplicatedTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+}
+
+modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepDotOp);
+// modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepDotOp);
+
+hybrid_kernel! {
+    RepDotOp,
+    [
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
+        // (ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
+    ]
+}
+
+impl RepDotOp {
+    fn rep_rep_kernel<S: Session, RingT, KeyT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        setup: AbstractReplicatedSetup<KeyT>,
+        x: AbstractReplicatedTensor<RingT>,
+        y: AbstractReplicatedTensor<RingT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        RingT: Clone,
+        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
+        HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
+        HostPlacement: PlacementShape<S, RingT, ShapeT>,
+        ReplicatedPlacement: ZeroShareGen<S, KeyT, RingT, ShapeT>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let AbstractReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = &y;
+
+        let v0 = with_context!(player0, sess, {
+            dot(x00, y00) + dot(x00, y10) + dot(x10, y00)
+        });
+        let v1 = with_context!(player1, sess, {
+            dot(x11, y11) + dot(x11, y21) + dot(x21, y11)
+        });
+        let v2 = with_context!(player2, sess, {
+            dot(x22, y22) + dot(x22, y02) + dot(x02, y22)
+        });
+
+        let s0 = player0.shape(sess, &v0);
+        let s1 = player1.shape(sess, &v1);
+        let s2 = player2.shape(sess, &v2);
+        let zero_shape = AbstractReplicatedShape {
+            shapes: [s0, s1, s2],
+        };
+
+        let AbstractReplicatedZeroShare {
+            alphas: [a0, a1, a2],
+        } = rep.gen_zero_share(sess, &setup, &zero_shape);
+
+        let z0 = with_context!(player0, sess, { v0 + a0 });
+        let z1 = with_context!(player1, sess, { v1 + a1 });
+        let z2 = with_context!(player2, sess, { v2 + a2 });
+
+        rep.place(
+            sess,
+            AbstractReplicatedTensor {
+                shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
+            },
+        )
+    }
+
+    fn ring_rep_kernel<S: Session, RingT, KeyT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        _setup: AbstractReplicatedSetup<KeyT>,
+        x: RingT,
+        y: AbstractReplicatedTensor<RingT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedTensor {
+            shares: [[y00, y10], [y11, y21], [y22, y02]],
+        } = &y;
+
+        let z00 = with_context!(player0, sess, dot(&x, y00));
+        let z10 = with_context!(player0, sess, dot(&x, y10));
+
+        let z11 = with_context!(player1, sess, dot(&x, y11));
+        let z21 = with_context!(player1, sess, dot(&x, y21));
+
+        let z22 = with_context!(player2, sess, dot(&x, y22));
+        let z02 = with_context!(player2, sess, dot(&x, y02));
+
+        AbstractReplicatedTensor {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+
+    fn rep_ring_kernel<S: Session, RingT, KeyT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        _setup: AbstractReplicatedSetup<KeyT>,
+        x: AbstractReplicatedTensor<RingT>,
+        y: RingT,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = with_context!(player0, sess, dot(x00, &y));
+        let z10 = with_context!(player0, sess, dot(x10, &y));
+
+        let z11 = with_context!(player1, sess, dot(x11, &y));
+        let z21 = with_context!(player1, sess, dot(x21, &y));
+
+        let z22 = with_context!(player2, sess, dot(x22, &y));
+        let z02 = with_context!(player2, sess, dot(x02, &y));
 
         AbstractReplicatedTensor {
             shares: [[z00, z10], [z11, z21], [z22, z02]],

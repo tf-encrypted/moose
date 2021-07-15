@@ -127,7 +127,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            // Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
