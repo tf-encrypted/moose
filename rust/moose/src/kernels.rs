@@ -271,6 +271,10 @@ pub trait PlacementMean<S: Session, T, O> {
     fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
+pub trait PlacementSum<S: Session, T, O> {
+    fn sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
 where
     P: PlacementFill<S, ShapeT, O>,

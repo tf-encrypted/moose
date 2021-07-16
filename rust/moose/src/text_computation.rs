@@ -1150,10 +1150,12 @@ impl ToTextual for Operator {
             StdSum(op) => op.to_textual(),
             StdTranspose(op) => op.to_textual(),
             StdInverse(op) => op.to_textual(),
+            RingNeg(op) => op.to_textual(),
             RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
             RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
+            RingMean(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
             RingSample(op) => op.to_textual(),
             RingShl(op) => op.to_textual(),
@@ -1238,6 +1240,7 @@ standard_op_to_textual!(StdSliceOp, "{op}{{start={}, end={}}}: {}", start, end, 
 standard_op_to_textual!(StdTransposeOp, "{op}: {}", sig);
 standard_op_to_textual!(StdInverseOp, "{op}: {}", sig);
 standard_op_to_textual!(ShapeOp, "{op}: {}", sig);
+standard_op_to_textual!(RingNegOp, "{op}: {}", sig);
 standard_op_to_textual!(RingAddOp, "{op}: {}", sig);
 standard_op_to_textual!(RingSubOp, "{op}: {}", sig);
 standard_op_to_textual!(RingMulOp, "{op}: {}", sig);
@@ -1296,6 +1299,7 @@ macro_rules! op_with_axis_to_textual {
 
 op_with_axis_to_textual!(StdMeanOp);
 op_with_axis_to_textual!(StdSumOp);
+op_with_axis_to_textual!(RingMeanOp);
 op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepMeanOp);
 op_with_axis_to_textual!(RepSumOp);

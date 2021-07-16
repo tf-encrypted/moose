@@ -1,13 +1,13 @@
 use crate::bit::BitTensor;
 use crate::computation::{
     Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMeanOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
+    RingNegOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementFill, PlacementMean, PlacementMul, PlacementNeg,
-    PlacementPlace, PlacementSample, PlacementShl, PlacementShr, PlacementSub, RuntimeSession,
-    Session, SyncSession, Tensor,
+    PlacementPlace, PlacementSample, PlacementShl, PlacementShr, PlacementSub, PlacementSum,
+    RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -318,9 +318,9 @@ kernel! {
 impl RingMeanOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        x: AbstractRingTensor<T>,
+        _plc: &HostPlacement,
+        _axis: Option<u32>,
+        _x: AbstractRingTensor<T>,
     ) -> AbstractRingTensor<T>
     where
         T: FromPrimitive + Zero,
@@ -328,8 +328,34 @@ impl RingMeanOp {
         Wrapping<T>: Add<Output = Wrapping<T>>,
         Wrapping<T>: Div<Output = Wrapping<T>>,
     {
-        let axis = axis.map(|a| Axis(a as usize)).unwrap_or(Axis(0));
-        AbstractRingTensor(x.0.mean_axis(axis).unwrap(), plc.clone())
+        unimplemented!("Call into a proper ring protocol")
+    }
+}
+
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Ring64Tensor) -> Ring64Tensor, RingSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Ring128Tensor) -> Ring128Tensor, RingSumOp);
+
+kernel! {
+    RingSumOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[axis] Self::kernel),
+    ]
+}
+
+impl RingSumOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _axis: Option<u32>,
+        _x: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        T: FromPrimitive + Zero,
+        Wrapping<T>: Clone,
+        Wrapping<T>: Add<Output = Wrapping<T>>,
+    {
+        unimplemented!("Call into a proper ring protocol")
     }
 }
 
