@@ -83,7 +83,7 @@ impl<T> PlacementPlace<SyncSession, StandardTensor<T>> for HostPlacement {
     }
 }
 
-/// This implementation is required to do the `plc.place(x)`
+/// This implementation is required to do the `plc.place(sess, x)`
 impl<T> PlacementPlace<SymbolicSession, Symbolic<StandardTensor<T>>> for HostPlacement {
     fn place(
         &self,
@@ -248,6 +248,10 @@ impl<T> StandardTensor<T>
 where
     T: LinalgScalar,
 {
+    pub fn place(plc: &HostPlacement, x: ArrayD<T>) -> StandardTensor<T> {
+        StandardTensor::<T>(x, Placement::Host(plc.clone()))
+    }
+
     pub fn atleast_2d(self, to_column_vector: bool) -> StandardTensor<T> {
         match self.0.ndim() {
             0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap(), self.1),
@@ -364,18 +368,21 @@ impl StdMeanOp {
         plc: &HostPlacement,
         axis: Option<u32>,
         x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
         match axis {
             Some(i) => {
-                let reduced = x.0.mean_axis(Axis(i as usize)).unwrap();
-                StandardTensor::<T>(reduced, Placement::Host(plc.clone()))
+                let reduced: ArrayD<T> = x.0.mean_axis(Axis(i as usize)).unwrap();
+                StandardTensor::place(plc, reduced)
             }
             None => {
                 let mean = x.0.mean().unwrap();
                 let out = Array::from_elem([], mean)
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::<T>(out, Placement::Host(plc.clone()))
+                StandardTensor::place(plc, out)
             }
         }
     }
@@ -480,15 +487,11 @@ where
 {
     type Output = StandardTensor<T>;
     fn add(self, other: StandardTensor<T>) -> Self::Output {
-        let placement = HostPlacement {
-            owner: "TODO".into(),
-        }
-        .into();
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() + other.0, placement)
+                StandardTensor::<T>(self_broadcasted.to_owned() + other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 + other.0, placement),
+            None => StandardTensor::<T>(self.0 + other.0, self.1.clone()),
         }
     }
 }
@@ -499,15 +502,11 @@ where
 {
     type Output = StandardTensor<T>;
     fn sub(self, other: StandardTensor<T>) -> Self::Output {
-        let placement = HostPlacement {
-            owner: "TODO".into(),
-        }
-        .into();
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() - other.0, placement)
+                StandardTensor::<T>(self_broadcasted.to_owned() - other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 - other.0, placement),
+            None => StandardTensor::<T>(self.0 - other.0, self.1.clone()),
         }
     }
 }
@@ -518,15 +517,11 @@ where
 {
     type Output = StandardTensor<T>;
     fn mul(self, other: StandardTensor<T>) -> Self::Output {
-        let placement = HostPlacement {
-            owner: "TODO".into(),
-        }
-        .into();
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() * other.0, placement)
+                StandardTensor::<T>(self_broadcasted.to_owned() * other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 * other.0, placement),
+            None => StandardTensor::<T>(self.0 * other.0, self.1.clone()),
         }
     }
 }
@@ -537,15 +532,11 @@ where
 {
     type Output = StandardTensor<T>;
     fn div(self, other: StandardTensor<T>) -> Self::Output {
-        let placement = HostPlacement {
-            owner: "TODO".into(),
-        }
-        .into();
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() / other.0, placement)
+                StandardTensor::<T>(self_broadcasted.to_owned() / other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 / other.0, placement),
+            None => StandardTensor::<T>(self.0 / other.0, self.1.clone()),
         }
     }
 }
