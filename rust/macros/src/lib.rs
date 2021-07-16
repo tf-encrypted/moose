@@ -4,7 +4,9 @@ use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, ExprCall, Ident, Token};
+use syn::{
+    parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, ExprCall, ExprPath, Ident, Token,
+};
 
 /// Macros to convert expression into player/context invocations.
 ///
@@ -82,7 +84,15 @@ fn unsugar(player: Expr, context: Ident, expr: &'_ mut Expr) {
                 Expr::Call(ExprCall {
                     ref func, ref args, ..
                 }) => {
-                    *expr = parse_quote!( #player.#func(#context,  #args) );
+                    match func.as_ref() {
+                        // It is only safe to work with individual idents (paths of len 1)
+                        Expr::Path(ExprPath { path, .. }) if path.segments.len() == 1 => {
+                            *expr = parse_quote!( #player.#func(#context,  #args) );
+                        }
+                        _ => {
+                            // Ignore anything else
+                        }
+                    }
                 }
                 _ => {
                     // Ignore, do not make any changes
@@ -184,7 +194,7 @@ mod tests {
         // Make sure the produced code matches the expectation
         let expected = r#"
         |fn main() {
-        |    let z = p.add(q, &a::new(d), &p.mul(q, &b.member, &func(c)));
+        |    let z = p.add(q, &a::new(d), &p.mul(q, &b.member, &p.func(q, c)));
         |}
         |"#
         .trim_margin()
