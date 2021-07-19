@@ -1517,9 +1517,9 @@ mod tests {
 
         let sess = SyncSession::default();
 
-        let res_rep = rep.mean(&sess, None, 0, &x1);
+        let res_rep = rep.mean(&sess, None, 24, &x1);
         let res = alice.reveal(&sess, &res_rep);
-        println!("Result: {:?}", res);
+        println!("Result: {}", res.0);
         // TODO: Asserts
     }
 
