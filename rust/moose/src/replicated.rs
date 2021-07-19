@@ -1537,8 +1537,8 @@ mod tests {
         test_rep_add128(x, y, z);
     }
 
-    macro_rules! rep_mul_test {
-        ($func_name:ident, $tt: ident) => {
+    macro_rules! rep_binary_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
@@ -1556,7 +1556,7 @@ mod tests {
                 let x_shared = rep.share(&sess, &setup, &x);
                 let y_shared = rep.share(&sess, &setup, &y);
 
-                let sum = rep.mul(&sess, &setup, &x_shared, &y_shared);
+                let sum = rep.$test_func(&sess, &setup, &x_shared, &y_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
@@ -1566,8 +1566,10 @@ mod tests {
         };
     }
 
-    rep_mul_test!(test_rep_mul64, u64);
-    rep_mul_test!(test_rep_mul128, u128);
+    rep_binary_func_test!(test_rep_mul64, mul<u64>);
+    rep_binary_func_test!(test_rep_mul128, mul<u128>);
+    rep_binary_func_test!(test_rep_dot64, dot<u64>);
+    rep_binary_func_test!(test_rep_dot128, dot<u128>);
 
     macro_rules! pairwise_same_length {
         ($func_name:ident, $tt: ident) => {
@@ -1612,6 +1614,29 @@ mod tests {
             }
             test_rep_mul128(a, b, target);
         }
+
+        #[test]
+        fn test_fuzzy_rep_dot64((a,b) in pairwise_same_length64())
+        {
+            let mut target = std::num::Wrapping(0);
+            for i in 0..a.len() {
+                target = target + std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+            }
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            test_rep_dot64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_dot128((a,b) in pairwise_same_length128())
+        {
+            let mut target = std::num::Wrapping(0);
+            for i in 0..a.len() {
+                target = target + std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+            }
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            test_rep_dot128(a, b, target);
+        }
+
     }
 
     macro_rules! rep_truncation_test {
