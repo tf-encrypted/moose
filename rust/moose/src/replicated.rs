@@ -975,6 +975,7 @@ impl RepMeanOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
+        let precision: u32 = precision.try_into().unwrap();
         let z00 = player0.ring_mean(sess, axis, 2, precision, x00);
         let z10 = player0.ring_mean(sess, axis, 2, precision, x10);
         let z11 = player1.ring_mean(sess, axis, 2, precision, x11);
