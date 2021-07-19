@@ -120,7 +120,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Operator::RingMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(sess, operands),

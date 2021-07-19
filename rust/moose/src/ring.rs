@@ -304,34 +304,6 @@ impl RingDotOp {
     }
 }
 
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Ring64Tensor) -> Ring64Tensor, RingMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Ring128Tensor) -> Ring128Tensor, RingMeanOp);
-
-kernel! {
-    RingMeanOp,
-    [
-        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[axis] Self::kernel),
-        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[axis] Self::kernel),
-    ]
-}
-
-impl RingMeanOp {
-    fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _axis: Option<u32>,
-        _x: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
-    where
-        T: FromPrimitive + Zero,
-        Wrapping<T>: Clone,
-        Wrapping<T>: Add<Output = Wrapping<T>>,
-        Wrapping<T>: Div<Output = Wrapping<T>>,
-    {
-        unimplemented!("Call into a proper ring protocol")
-    }
-}
-
 modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Ring64Tensor) -> Ring64Tensor, RingSumOp);
 modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Ring128Tensor) -> Ring128Tensor, RingSumOp);
 

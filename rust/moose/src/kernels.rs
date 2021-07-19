@@ -77,7 +77,6 @@ impl Session for SyncSession {
             Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),

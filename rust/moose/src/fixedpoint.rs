@@ -1,10 +1,12 @@
 use crate::computation::{Placed, Placement};
 use crate::error::Result;
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
+use num_traits::Zero;
 use serde::{Deserialize, Serialize};
+use std::num::Wrapping;
 use std::ops::Mul;
 
 pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
@@ -42,7 +44,7 @@ pub trait Convert<T> {
 
 impl Convert<Float64Tensor> for Ring64Tensor {
     type Scale = u64;
-    fn encode(x: &Float64Tensor, scaling_factor: u64) -> Ring64Tensor {
+    fn encode(x: &Float64Tensor, scaling_factor: Self::Scale) -> Ring64Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
         Ring64Tensor::from(x_converted)
@@ -61,6 +63,7 @@ impl Convert<Float64Tensor> for Ring128Tensor {
         let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
         Ring128Tensor::from(x_converted)
     }
+
     fn decode(x: &Self, scaling_factor: Self::Scale) -> Float64Tensor {
         let x_upshifted: ArrayD<i128> = x.into();
         let x_converted = x_upshifted.mapv(|el| el as f64);
@@ -68,41 +71,22 @@ impl Convert<Float64Tensor> for Ring128Tensor {
     }
 }
 
-impl Ring64Tensor {
-    pub fn ring_mean(x: Self, axis: Option<usize>, scaling_factor: u64) -> Ring64Tensor {
+impl<T> AbstractRingTensor<T>
+where
+    Wrapping<T>: Clone + Zero + Mul<Wrapping<T>, Output = Wrapping<T>>,
+    AbstractRingTensor<T>: Convert<Float64Tensor>,
+{
+    pub fn ring_mean(
+        x: Self,
+        axis: Option<usize>,
+        scaling_factor: <AbstractRingTensor<T> as Convert<Float64Tensor>>::Scale,
+    ) -> AbstractRingTensor<T> {
         let mean_weight = Self::compute_mean_weight(&x, &axis);
-        let encoded_weight = Ring64Tensor::encode(&mean_weight, scaling_factor);
+        let encoded_weight = AbstractRingTensor::<T>::encode(&mean_weight, scaling_factor);
         let operand_sum = x.sum(axis);
         operand_sum.mul(encoded_weight)
     }
-    fn compute_mean_weight(x: &Self, &axis: &Option<usize>) -> Float64Tensor {
-        let shape: &[usize] = x.0.shape();
-        if let Some(ax) = axis {
-            let dim_len = shape[ax] as f64;
-            Float64Tensor::from(
-                Array::from_elem([], 1.0 / dim_len)
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap(),
-            )
-        } else {
-            let dim_prod: usize = std::iter::Product::product(shape.iter());
-            let prod_inv = 1.0 / dim_prod as f64;
-            Float64Tensor::from(
-                Array::from_elem([], prod_inv)
-                    .into_dimensionality::<IxDyn>()
-                    .unwrap(),
-            )
-        }
-    }
-}
 
-impl Ring128Tensor {
-    pub fn ring_mean(x: Self, axis: Option<usize>, scaling_factor: u128) -> Ring128Tensor {
-        let mean_weight = Self::compute_mean_weight(&x, &axis);
-        let encoded_weight = Ring128Tensor::encode(&mean_weight, scaling_factor);
-        let operand_sum = x.sum(axis);
-        operand_sum.mul(encoded_weight)
-    }
     fn compute_mean_weight(x: &Self, &axis: &Option<usize>) -> Float64Tensor {
         let shape: &[usize] = x.0.shape();
         if let Some(ax) = axis {

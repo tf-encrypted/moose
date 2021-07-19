@@ -1155,7 +1155,6 @@ impl ToTextual for Operator {
             RingSub(op) => op.to_textual(),
             RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
-            RingMean(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
             RingSample(op) => op.to_textual(),
             RingShl(op) => op.to_textual(),
@@ -1299,7 +1298,6 @@ macro_rules! op_with_axis_to_textual {
 
 op_with_axis_to_textual!(StdMeanOp);
 op_with_axis_to_textual!(StdSumOp);
-op_with_axis_to_textual!(RingMeanOp);
 op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepMeanOp);
 op_with_axis_to_textual!(RepSumOp);
