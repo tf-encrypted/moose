@@ -1524,6 +1524,51 @@ mod tests {
     use ndarray::prelude::*;
     use rstest::rstest;
 
+    #[test]
+    fn test_rep_sum() {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let bob = HostPlacement {
+            owner: "bob".into(),
+        };
+        let carole = HostPlacement {
+            owner: "carole".into(),
+        };
+
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        fn ring_tensor(a: Array1<u64>, plc: &HostPlacement) -> Ring64Tensor {
+            AbstractRingTensor::from_raw_plc(a, plc.clone())
+        }
+
+        let x1 = Replicated64Tensor {
+            shares: [
+                [
+                    ring_tensor(array![1, 2, 3], &alice),
+                    ring_tensor(array![11, 12, 13], &alice),
+                ],
+                [
+                    ring_tensor(array![4, 5, 6], &bob),
+                    ring_tensor(array![14, 15, 16], &bob),
+                ],
+                [
+                    ring_tensor(array![7, 8, 9], &carole),
+                    ring_tensor(array![17, 18, 19], &carole),
+                ],
+            ],
+        };
+
+        let sess = SyncSession::default();
+
+        let res_rep = rep.sum(&sess, None, &x1);
+        let res = alice.reveal(&sess, &res_rep);
+        println!("Result: {:?}", res);
+        // TODO: Asserts
+    }
+
     macro_rules! rep_add_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
