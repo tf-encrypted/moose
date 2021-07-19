@@ -1,13 +1,13 @@
 use crate::bit::BitTensor;
 use crate::computation::{
-    Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMeanOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementDot, PlacementFill, PlacementMean, PlacementMul, PlacementNeg,
-    PlacementPlace, PlacementSample, PlacementShl, PlacementShr, PlacementSub, PlacementSum,
-    RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementDot, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub, PlacementSum, RuntimeSession,
+    Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -20,7 +20,7 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::num::Wrapping;
-use std::ops::{Add, Div, Mul, Neg, Shl, Shr, Sub};
+use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);

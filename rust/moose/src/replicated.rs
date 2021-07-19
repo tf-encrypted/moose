@@ -9,9 +9,9 @@ use crate::error::{Error, Result};
 use crate::kernels::{
     PlacementAdd, PlacementAdtToRep, PlacementDeriveSeed, PlacementDot, PlacementDotSetup,
     PlacementKeyGen, PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace,
-    PlacementRepToAdt, PlacementReveal, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
-    PlacementShareSetup, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
-    PlacementZeros, Session,
+    PlacementRepToAdt, PlacementReveal, PlacementRingMean, PlacementSampleUniform,
+    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementSum,
+    PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
@@ -946,14 +946,14 @@ impl RepDotOp {
     }
 }
 
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Replicated64Tensor) -> Replicated64Tensor, RepMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Replicated128Tensor) -> Replicated128Tensor, RepMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, precision: u64] (Replicated64Tensor) -> Replicated64Tensor, RepMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, precision: u64] (Replicated128Tensor) -> Replicated128Tensor, RepMeanOp);
 
 hybrid_kernel! {
     RepMeanOp,
     [
-        (ReplicatedPlacement, (Replicated64Tensor) -> Replicated64Tensor => attributes[axis] Self::kernel),
-        (ReplicatedPlacement, (Replicated128Tensor) -> Replicated128Tensor => attributes[axis] Self::kernel),
+        (ReplicatedPlacement, (Replicated64Tensor) -> Replicated64Tensor => attributes[axis, precision] Self::kernel),
+        (ReplicatedPlacement, (Replicated128Tensor) -> Replicated128Tensor => attributes[axis, precision] Self::kernel),
     ]
 }
 
@@ -962,10 +962,11 @@ impl RepMeanOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: Option<u32>,
+        precision: u64,
         x: AbstractReplicatedTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
-        HostPlacement: PlacementMean<S, RingT, RingT>,
+        HostPlacement: PlacementRingMean<S, RingT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -974,12 +975,12 @@ impl RepMeanOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let z00 = player0.mean(sess, axis, x00);
-        let z10 = player0.mean(sess, axis, x10);
-        let z11 = player1.mean(sess, axis, x11);
-        let z21 = player1.mean(sess, axis, x21);
-        let z22 = player2.mean(sess, axis, x22);
-        let z02 = player2.mean(sess, axis, x02);
+        let z00 = player0.ring_mean(sess, axis, 2, precision, x00);
+        let z10 = player0.ring_mean(sess, axis, 2, precision, x10);
+        let z11 = player1.ring_mean(sess, axis, 2, precision, x11);
+        let z21 = player1.ring_mean(sess, axis, 2, precision, x21);
+        let z22 = player2.ring_mean(sess, axis, 2, precision, x22);
+        let z02 = player2.ring_mean(sess, axis, 2, precision, x02);
 
         rep.place(
             sess,
@@ -1515,7 +1516,7 @@ mod tests {
 
         let sess = SyncSession::default();
 
-        let res_rep = rep.mean(&sess, None, &x1);
+        let res_rep = rep.mean(&sess, None, 0, &x1);
         let res = alice.reveal(&sess, &res_rep);
         println!("Result: {:?}", res);
         // TODO: Asserts

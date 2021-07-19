@@ -570,6 +570,7 @@ struct PyRepMeanOperation {
     placement_name: String,
     output_type: PyValueType,
     axis: Option<u32>,
+    precision: u64,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1328,7 +1329,7 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                            axis: op.axis.map(|x| x as usize),
+                            axis: op.axis,
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
                         }
@@ -1431,6 +1432,7 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
+                            precision: op.precision,
                         }
                         .into(),
                         name: op.name.clone(),

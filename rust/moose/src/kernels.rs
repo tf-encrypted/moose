@@ -273,7 +273,18 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
 }
 
 pub trait PlacementMean<S: Session, T, O> {
-    fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+    fn mean(&self, sess: &S, axis: Option<u32>, precision: u64, x: &T) -> O;
+}
+
+pub trait PlacementRingMean<S: Session, T, O> {
+    fn ring_mean(
+        &self,
+        sess: &S,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: &T,
+    ) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -1304,7 +1315,7 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
 
 impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis;
+        let axis = self.axis.map(|a| a as usize);
         match self.sig {
             signature![(_) -> Ty::Ring64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);

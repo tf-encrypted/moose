@@ -1,10 +1,11 @@
-use crate::computation::{Placed, Placement};
+use crate::computation::{FixedpointRingMeanOp, HostPlacement, Placed, Placement};
 use crate::error::Result;
+use crate::kernels::{PlacementPlace, PlacementRingMean, RuntimeSession};
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
 use std::num::Wrapping;
 use std::ops::Mul;
@@ -37,7 +38,7 @@ where
 }
 
 pub trait Convert<T> {
-    type Scale;
+    type Scale: One + Clone;
     fn encode(x: &T, scaling_factor: Self::Scale) -> Self;
     fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
 }
@@ -105,6 +106,53 @@ where
                     .unwrap(),
             )
         }
+    }
+}
+
+modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Ring64Tensor) -> Ring64Tensor, FixedpointRingMeanOp);
+modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> Ring128Tensor, FixedpointRingMeanOp);
+
+kernel! {
+    FixedpointRingMeanOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring64tensor),
+        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring128tensor),
+    ]
+}
+
+impl FixedpointRingMeanOp {
+    fn kernel_ring64tensor<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: Ring64Tensor,
+    ) -> Ring64Tensor
+    where
+        HostPlacement: PlacementPlace<S, Ring64Tensor>,
+    {
+        let scaling_factor = u64::pow(scaling_base, scaling_exp);
+        let axis = axis.map(|a| a as usize);
+        let mean = Ring64Tensor::ring_mean(x, axis, scaling_factor);
+        plc.place(sess, mean)
+    }
+
+    fn kernel_ring128tensor<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: Ring128Tensor,
+    ) -> Ring128Tensor
+    where
+        HostPlacement: PlacementPlace<S, Ring128Tensor>,
+    {
+        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
+        let axis = axis.map(|a| a as usize);
+        let mean = Ring128Tensor::ring_mean(x, axis, scaling_factor);
+        plc.place(sess, mean)
     }
 }
 
