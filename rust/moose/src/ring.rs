@@ -317,17 +317,19 @@ kernel! {
 
 impl RingSumOp {
     fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _axis: Option<u32>,
-        _x: AbstractRingTensor<T>,
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: AbstractRingTensor<T>,
     ) -> AbstractRingTensor<T>
     where
         T: FromPrimitive + Zero,
         Wrapping<T>: Clone,
         Wrapping<T>: Add<Output = Wrapping<T>>,
+        HostPlacement: PlacementPlace<S, AbstractRingTensor<T>>,
     {
-        unimplemented!("Call into a proper ring protocol")
+        let sum = x.sum(axis.map(|a| a as usize));
+        plc.place(sess, sum)
     }
 }
 

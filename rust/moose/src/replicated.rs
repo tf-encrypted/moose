@@ -1567,7 +1567,9 @@ mod tests {
 
         let res_rep = rep.sum(&sess, None, &x1);
         let res = alice.reveal(&sess, &res_rep);
-        println!("Result: {:?}", res);
+        println!("Result: {}", res.0);
+        println!("Result: {}", bob.reveal(&sess, &res_rep).0);
+        println!("Result: {}", carole.reveal(&sess, &res_rep).0);
         // TODO: Asserts
     }
 
