@@ -1494,32 +1494,19 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        fn ring_tensor(a: Array1<u64>, plc: &HostPlacement) -> Ring64Tensor {
-            AbstractRingTensor::from_raw_plc(a, plc.clone())
-        }
-
-        let x1 = Replicated64Tensor {
-            shares: [
-                [
-                    ring_tensor(array![1, 2, 3], &alice),
-                    ring_tensor(array![11, 12, 13], &alice),
-                ],
-                [
-                    ring_tensor(array![4, 5, 6], &bob),
-                    ring_tensor(array![14, 15, 16], &bob),
-                ],
-                [
-                    ring_tensor(array![7, 8, 9], &carole),
-                    ring_tensor(array![17, 18, 19], &carole),
-                ],
-            ],
-        };
+        let x = AbstractRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
 
         let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
 
-        let res_rep = rep.mean(&sess, None, 24, &x1);
-        let res = alice.reveal(&sess, &res_rep);
-        println!("Result: {}", res.0);
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let sum = rep.mean(&sess, None, 24, &x_shared);
+        let opened_result = alice.reveal(&sess, &sum);
+
+        println!("Result: {}", opened_result.0);
+        println!("Result: {}", bob.reveal(&sess, &sum).0);
+        println!("Result: {}", carole.reveal(&sess, &sum).0);
         // TODO: Asserts
     }
 
@@ -1531,46 +1518,21 @@ mod tests {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
-        let bob = HostPlacement {
-            owner: "bob".into(),
-        };
-        let carole = HostPlacement {
-            owner: "carole".into(),
-        };
-
         let rep = ReplicatedPlacement {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        fn ring_tensor(a: Array1<u64>, plc: &HostPlacement) -> Ring64Tensor {
-            AbstractRingTensor::from_raw_plc(a, plc.clone())
-        }
-
-        let x1 = Replicated64Tensor {
-            shares: [
-                [
-                    ring_tensor(array![1, 2, 3], &alice),
-                    ring_tensor(array![11, 12, 13], &alice),
-                ],
-                [
-                    ring_tensor(array![4, 5, 6], &bob),
-                    ring_tensor(array![14, 15, 16], &bob),
-                ],
-                [
-                    ring_tensor(array![7, 8, 9], &carole),
-                    ring_tensor(array![17, 18, 19], &carole),
-                ],
-            ],
-        };
+        let x = AbstractRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
 
         let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
 
-        let res_rep = rep.sum(&sess, None, &x1);
-        let res = alice.reveal(&sess, &res_rep);
-        println!("Result: {}", res.0);
-        println!("Result: {}", bob.reveal(&sess, &res_rep).0);
-        println!("Result: {}", carole.reveal(&sess, &res_rep).0);
-        // TODO: Asserts
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let sum = rep.sum(&sess, None, &x_shared);
+        let opened_result = alice.reveal(&sess, &sum);
+
+        assert_eq!(6, opened_result.0[[]].0);
     }
 
     macro_rules! rep_add_test {
