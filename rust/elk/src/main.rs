@@ -1,6 +1,7 @@
 use moose::compilation::networking::NetworkingPass;
 use moose::compilation::print::print_graph;
 use moose::compilation::pruning::prune_graph;
+use moose::compilation::replicated_lowering::replicated_lowering;
 use moose::computation::Computation;
 use moose::text_computation::verbose_parse_computation;
 use moose::text_computation::ToTextual;
@@ -56,6 +57,11 @@ fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>
         "networking" => NetworkingPass::pass(comp),
         "print" => print_graph(comp),
         "prune" => prune_graph(comp),
+        "replicated-lowering" => replicated_lowering(comp),
+        "dump" => {
+            println!("{}", comp.to_textual());
+            Ok(None)
+        }
         missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
     }
 }
