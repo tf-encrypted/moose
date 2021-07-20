@@ -1369,7 +1369,6 @@ mod tests {
     use crate::fixedpoint::Convert;
     use crate::kernels::SyncSession;
     use crate::ring::AbstractRingTensor;
-    use crate::standard::Float64Tensor;
     use ndarray::array;
     use proptest::prelude::*;
 
