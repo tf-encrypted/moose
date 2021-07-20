@@ -1675,7 +1675,7 @@ mod tests {
         {
             let mut target = std::num::Wrapping(0);
             for i in 0..a.len() {
-                target = target + std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+                target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
             }
             let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_rep_dot64(a, b, target);
@@ -1686,7 +1686,7 @@ mod tests {
         {
             let mut target = std::num::Wrapping(0);
             for i in 0..a.len() {
-                target = target + std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+                target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
             }
             let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
             test_rep_dot128(a, b, target);
