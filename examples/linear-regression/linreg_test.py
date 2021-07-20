@@ -1,5 +1,6 @@
 import argparse
 import logging
+from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 import unittest
 
 import numpy as np
@@ -129,43 +130,6 @@ class LinearRegressionExample(parameterized.TestCase):
 
         return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
-    def _build_simple_example(self, compiler_passes=None):
-        x_owner = edsl.host_placement(name="x-owner")
-        y_owner = edsl.host_placement(name="y-owner")
-        model_owner = edsl.host_placement(name="model-owner")
-        replicated_plc = edsl.replicated_placement(
-            players=[x_owner, y_owner, model_owner], name="replicated-plc"
-        )
-
-        @edsl.computation
-        def my_comp(
-            x_uri: edsl.Argument(placement=x_owner, vtype=StringType()),
-            y_uri: edsl.Argument(placement=y_owner, vtype=StringType()),
-            w_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
-        ):
-            with x_owner:
-                X = edsl.atleast_2d(
-                    edsl.load(x_uri, dtype=edsl.float64), to_column_vector=True
-                )
-                X = edsl.cast(X, dtype=FIXED)
-
-            with y_owner:
-                Y = edsl.atleast_2d(
-                    edsl.load(y_uri, dtype=edsl.float64), to_column_vector=True
-                )
-                Y = edsl.cast(Y, dtype=FIXED)
-
-            with replicated_plc:
-                Z = edsl.sub(X, Y)
-
-            with model_owner:
-                Z = edsl.cast(Z, dtype=edsl.float64)
-                res = (edsl.save(w_uri, Z),)
-
-            return res
-
-        return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
-
     def _linear_regression_eval(self, metric_name):
         linear_comp, placements = self._build_linear_regression_example(metric_name)
 
@@ -200,8 +164,7 @@ class LinearRegressionExample(parameterized.TestCase):
         self._linear_regression_eval("mse")
 
     def test_linear_regression_rust_compiler(self):
-        # linear_comp, placements = self._build_linear_regression_example("mse")
-        linear_comp, placements = self._build_simple_example()
+        linear_comp, placements = self._build_linear_regression_example("mse")
 
         # Compile in Python
         concrete_comp = edsl.trace_and_compile(
@@ -214,7 +177,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
                 HostRingLoweringPass(),
-                # ReplicatedLoweringPass(ring=128),
+#                ReplicatedLoweringPass(ring=128),
                 # PruningPass(),
                 # NetworkingPass(),
             ],
@@ -226,11 +189,12 @@ class LinearRegressionExample(parameterized.TestCase):
             [
                 "typing",
                 "replicated-lowering",
+#                "dump",
                 "prune",
                 "networking",
                 "typing",
-                "dump",
-                "print",
+#                "dump",
+#                "print",
             ],
         )
 

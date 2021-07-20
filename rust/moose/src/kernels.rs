@@ -565,6 +565,7 @@ impl Compile<AsyncKernel> for Operator {
             StdSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingNeg(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -1150,6 +1151,20 @@ impl Compile<Kernel> for RingSampleOp {
                 function_kernel!(Shape, Seed, |shape, seed| Ring128Tensor::sample_bits(
                     &shape.0, &seed.0
                 ))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+impl Compile<Kernel> for RingNegOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(_) -> Ty::Ring64Tensor] => {
+                closure_kernel!(Ring64Tensor, |x| AbstractRingTensor(-x.0, x.1))
+            }
+            signature![(_) -> Ty::Ring128Tensor] => {
+                closure_kernel!(Ring128Tensor, |x| AbstractRingTensor(-x.0, x.1))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
