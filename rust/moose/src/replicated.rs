@@ -962,19 +962,10 @@ impl RepMeanOp {
         axis: Option<u32>,
         precision: u64,
         x: AbstractReplicatedTensor<RingT>,
-    ) -> st!(AbstractReplicatedTensor<RingT>, S)
+    ) -> AbstractReplicatedTensor<RingT>
     where
         HostPlacement: PlacementRingMean<S, RingT, RingT>,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
-        // Needed to call into the trunc_pr
-        AbstractReplicatedTensor<RingT>: CanonicalType,
-        AbstractReplicatedTensor<RingT>: Into<st!(AbstractReplicatedTensor<RingT>)>,
-        <AbstractReplicatedTensor<RingT> as CanonicalType>::Type: KnownType<S>,
-        ReplicatedPlacement: PlacementTruncPr<
-            S,
-            st!(AbstractReplicatedTensor<RingT>),
-            st!(AbstractReplicatedTensor<RingT>),
-        >,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -990,13 +981,12 @@ impl RepMeanOp {
         let z22 = player2.ring_mean(sess, axis, 2, precision, x22);
         let z02 = player2.ring_mean(sess, axis, 2, precision, x02);
 
-        let result = rep.place(
+        rep.place(
             sess,
             AbstractReplicatedTensor {
                 shares: [[z00, z10], [z11, z21], [z22, z02]],
             },
-        );
-        rep.trunc_pr(sess, precision as usize, &result.into())
+        )
     }
 }
 
@@ -1510,14 +1500,11 @@ mod tests {
         let x_shared = rep.share(&sess, &setup, &x);
 
         let mean = rep.mean(&sess, None, 24, &x_shared);
+        let mean = rep.trunc_pr(&sess, 24, &mean);
         let opened_result = alice.reveal(&sess, &mean);
         let decoded_result = AbstractRingTensor::<u64>::decode(&opened_result, scaling_factor);
 
-        assert!(
-            num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01,
-            "Mean {} was too far for the expected 2.0",
-            decoded_result.0
-        );
+        assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }
 
     use ndarray::prelude::*;
