@@ -976,12 +976,13 @@ impl RepMeanOp {
         } = &x;
 
         let precision: u32 = precision.try_into().unwrap();
-        let z00 = player0.ring_mean(sess, axis, 2, precision, x00);
-        let z10 = player0.ring_mean(sess, axis, 2, precision, x10);
-        let z11 = player1.ring_mean(sess, axis, 2, precision, x11);
-        let z21 = player1.ring_mean(sess, axis, 2, precision, x21);
-        let z22 = player2.ring_mean(sess, axis, 2, precision, x22);
-        let z02 = player2.ring_mean(sess, axis, 2, precision, x02);
+        let scaling_factor: u32 = 2u64.pow(precision).try_into().unwrap();
+        let z00 = player0.ring_mean(sess, axis, 2, scaling_factor, x00);
+        let z10 = player0.ring_mean(sess, axis, 2, scaling_factor, x10);
+        let z11 = player1.ring_mean(sess, axis, 2, scaling_factor, x11);
+        let z21 = player1.ring_mean(sess, axis, 2, scaling_factor, x21);
+        let z22 = player2.ring_mean(sess, axis, 2, scaling_factor, x22);
+        let z02 = player2.ring_mean(sess, axis, 2, scaling_factor, x02);
 
         rep.place(
             sess,
@@ -1366,8 +1367,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::fixedpoint::Convert;
     use crate::kernels::SyncSession;
     use crate::ring::AbstractRingTensor;
+    use crate::standard::Float64Tensor;
     use ndarray::array;
     use proptest::prelude::*;
 
@@ -1493,20 +1496,22 @@ mod tests {
         let rep = ReplicatedPlacement {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
-
-        let x = AbstractRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let scaling_factor = 2u64.pow(4);
 
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
 
+        let x = alice.place(&sess, Float64Tensor::from(array![1f64, 2.0, 3.0]));
+        let x = AbstractRingTensor::<u64>::encode(&x, scaling_factor);
         let x_shared = rep.share(&sess, &setup, &x);
 
-        let sum = rep.mean(&sess, None, 24, &x_shared);
-        let opened_result = alice.reveal(&sess, &sum);
+        let mean = rep.mean(&sess, None, 4, &x_shared);
+        let opened_result = alice.reveal(&sess, &mean);
+        let decoded_result = AbstractRingTensor::<u64>::decode(&opened_result, scaling_factor);
 
-        println!("Result: {}", opened_result.0);
-        println!("Result: {}", bob.reveal(&sess, &sum).0);
-        println!("Result: {}", carole.reveal(&sess, &sum).0);
+        println!("Decoded Result: {}", decoded_result.0);
+        println!("Result: {}", bob.reveal(&sess, &mean).0);
+        println!("Result: {}", carole.reveal(&sess, &mean).0);
         // TODO: Asserts
     }
 
