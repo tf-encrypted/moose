@@ -1,6 +1,5 @@
 import argparse
 import logging
-from moose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 import unittest
 
 import numpy as np
@@ -177,7 +176,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
                 HostRingLoweringPass(),
-#                ReplicatedLoweringPass(ring=128),
+                # ReplicatedLoweringPass(ring=128),
                 # PruningPass(),
                 # NetworkingPass(),
             ],
@@ -189,12 +188,11 @@ class LinearRegressionExample(parameterized.TestCase):
             [
                 "typing",
                 "replicated-lowering",
-#                "dump",
                 "prune",
                 "networking",
                 "typing",
-#                "dump",
-#                "print",
+                # "dump",
+                # "print",
             ],
         )
 
