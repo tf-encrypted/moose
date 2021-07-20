@@ -1036,7 +1036,7 @@ pub struct FixedpointRingDecodeOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointRingMeanOp {
     pub sig: Signature,
-    pub axis: Option<usize>,
+    pub axis: Option<u32>,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
@@ -1111,6 +1111,7 @@ pub struct RepDotOp {
 pub struct RepMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+    pub precision: u64,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

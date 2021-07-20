@@ -359,7 +359,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => panic!("Not implemented kernel for {:?}", self), // ok
+                    _ => panic!("Not implemented kernel for {:?} on {:?}", self, plc), // ok
                 }
             }
         }
@@ -466,7 +466,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => panic!("Not implemented kernel for {:?}", self), // ok
+                    _ => panic!("Not implemented kernel for {:?} on {:?}", self, plc), // ok
                 }
             }
         }
@@ -513,7 +513,7 @@ macro_rules! symbolic_dispatch_kernel {
                             >>::compile(self, &plc);
 
                             Box::new(move |sess, operands| {
-                                assert_eq!(operands.len(), 1);
+                                assert_eq!(operands.len(), 3);
 
                                 let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into().unwrap();
                                 let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into().unwrap();
@@ -524,7 +524,7 @@ macro_rules! symbolic_dispatch_kernel {
                             })
                         }
                     )+
-                    _ => panic!("Not implemented kernel for {:?}", self), // ok
+                    _ => panic!("Not implemented kernel for {:?} on {:?}", self, plc), // ok
                 }
             }
         }

@@ -570,6 +570,7 @@ struct PyRepMeanOperation {
     placement_name: String,
     output_type: PyValueType,
     axis: Option<u32>,
+    precision: u64,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1328,7 +1329,7 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                            axis: op.axis.map(|x| x as usize),
+                            axis: op.axis,
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
                         }
@@ -1382,7 +1383,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     rep_MulOperation(op) => Ok(Operation {
                         kind: RepMulOp {
-                            sig: Signature::binary(
+                            sig: Signature::ternary(
+                                Ty::ReplicatedSetup,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
@@ -1390,7 +1392,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                        inputs: map_inputs(&op.inputs, &["setup", "lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1410,7 +1412,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     rep_DotOperation(op) => Ok(Operation {
                         kind: RepDotOp {
-                            sig: Signature::binary(
+                            sig: Signature::ternary(
+                                Ty::ReplicatedSetup,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
@@ -1418,7 +1421,7 @@ impl TryFrom<PyComputation> for Computation {
                         }
                         .into(),
                         name: op.name.clone(),
-                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                        inputs: map_inputs(&op.inputs, &["setup", "lhs", "rhs"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
@@ -1429,6 +1432,7 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
+                            precision: op.precision,
                         }
                         .into(),
                         name: op.name.clone(),

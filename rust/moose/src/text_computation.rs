@@ -1150,6 +1150,7 @@ impl ToTextual for Operator {
             StdSum(op) => op.to_textual(),
             StdTranspose(op) => op.to_textual(),
             StdInverse(op) => op.to_textual(),
+            RingNeg(op) => op.to_textual(),
             RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
             RingMul(op) => op.to_textual(),
@@ -1238,6 +1239,7 @@ standard_op_to_textual!(StdSliceOp, "{op}{{start={}, end={}}}: {}", start, end, 
 standard_op_to_textual!(StdTransposeOp, "{op}: {}", sig);
 standard_op_to_textual!(StdInverseOp, "{op}: {}", sig);
 standard_op_to_textual!(ShapeOp, "{op}: {}", sig);
+standard_op_to_textual!(RingNegOp, "{op}: {}", sig);
 standard_op_to_textual!(RingAddOp, "{op}: {}", sig);
 standard_op_to_textual!(RingSubOp, "{op}: {}", sig);
 standard_op_to_textual!(RingMulOp, "{op}: {}", sig);
@@ -1297,7 +1299,6 @@ macro_rules! op_with_axis_to_textual {
 op_with_axis_to_textual!(StdMeanOp);
 op_with_axis_to_textual!(StdSumOp);
 op_with_axis_to_textual!(RingSumOp);
-op_with_axis_to_textual!(RepMeanOp);
 op_with_axis_to_textual!(RepSumOp);
 
 impl ToTextual for FixedpointRingMeanOp {
@@ -1326,6 +1327,34 @@ impl ToTextual for FixedpointRingMeanOp {
                 "FixedpointRingMean{{scaling_base={}, scaling_exp={}}}: {}",
                 scaling_base,
                 scaling_exp,
+                sig.to_textual()
+            ),
+        }
+    }
+}
+
+impl ToTextual for RepMeanOp {
+    fn to_textual(&self) -> String {
+        match self {
+            RepMeanOp {
+                sig,
+                axis: Some(a),
+                precision,
+            } => {
+                format!(
+                    "FixedpointRingMean{{axis = {}, precision={}}}: {}",
+                    a,
+                    precision,
+                    sig.to_textual()
+                )
+            }
+            RepMeanOp {
+                sig,
+                axis: None,
+                precision,
+            } => format!(
+                "FixedpointRingMean{{precision={}}}: {}",
+                precision,
                 sig.to_textual()
             ),
         }

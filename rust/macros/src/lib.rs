@@ -4,7 +4,9 @@ use quote::{quote, quote_spanned};
 use syn::parse::{Parse, ParseStream, Result};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, Ident, Token};
+use syn::{
+    parse_macro_input, parse_quote, BinOp, Expr, ExprBinary, ExprCall, ExprPath, Ident, Token,
+};
 
 /// Macros to convert expression into player/context invocations.
 ///
@@ -61,26 +63,41 @@ fn unsugar(player: Expr, context: Ident, expr: &'_ mut Expr) {
             let player = &self.player;
             let context = &self.context;
 
-            let (left, op, right) = match *expr {
+            match *expr {
                 Expr::Binary(ExprBinary {
                     ref mut left,
                     op,
                     ref mut right,
                     ..
-                }) => (left, op, right),
-                _ => {
-                    return;
-                }
-            };
-            let span = op.span();
-            let bin_fun = match op {
-                BinOp::Add(_) => quote_spanned!(span=>#player.add),
-                BinOp::Sub(_) => quote_spanned!(span=>#player.sub),
-                BinOp::Mul(_) => quote_spanned!(span=>#player.mul),
-                _ => return,
-            };
+                }) => {
+                    let span = op.span();
+                    let bin_fun = match op {
+                        BinOp::Add(_) => quote_spanned!(span=>#player.add),
+                        BinOp::Sub(_) => quote_spanned!(span=>#player.sub),
+                        BinOp::Mul(_) => quote_spanned!(span=>#player.mul),
+                        BinOp::Div(_) => quote_spanned!(span=>#player.div),
+                        _ => return,
+                    };
 
-            *expr = parse_quote!( #bin_fun(#context,  &#left, &#right) );
+                    *expr = parse_quote!( #bin_fun(#context,  &#left, &#right) );
+                }
+                Expr::Call(ExprCall {
+                    ref func, ref args, ..
+                }) => {
+                    match func.as_ref() {
+                        // It is only safe to work with individual idents (paths of len 1)
+                        Expr::Path(ExprPath { path, .. }) if path.segments.len() == 1 => {
+                            *expr = parse_quote!( #player.#func(#context,  #args) );
+                        }
+                        _ => {
+                            // Ignore anything else
+                        }
+                    }
+                }
+                _ => {
+                    // Ignore, do not make any changes
+                }
+            }
         }
     }
 
@@ -177,7 +194,7 @@ mod tests {
         // Make sure the produced code matches the expectation
         let expected = r#"
         |fn main() {
-        |    let z = p.add(q, &a::new(d), &p.mul(q, &b.member, &func(c)));
+        |    let z = p.add(q, &a::new(d), &p.mul(q, &b.member, &p.func(q, c)));
         |}
         |"#
         .trim_margin()
@@ -197,7 +214,27 @@ mod tests {
         // Make sure the produced code matches the expectation
         let expected = r#"
         |fn main() {
-        |    let z = p.add(q, &a, &func(p.add(q, &b, &c)));
+        |    let z = p.add(q, &a, &p.func(q, p.add(q, &b, &c)));
+        |}
+        |"#
+        .trim_margin()
+        .unwrap();
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    /// Trying to do the custom functions
+    fn test_sub_expr_inside_expanded() {
+        let player: Expr = parse_quote!(p);
+        let context: Ident = parse_quote!(q);
+        let mut e: Expr = parse_quote!(a + func(&b, &c));
+        unsugar(player, context, &mut e);
+        let result = format_tokenstream(quote!(fn main() {let z = #e;}));
+
+        // Make sure the produced code matches the expectation
+        let expected = r#"
+        |fn main() {
+        |    let z = p.add(q, &a, &p.func(q, &b, &c));
         |}
         |"#
         .trim_margin()
