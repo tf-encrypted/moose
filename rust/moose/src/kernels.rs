@@ -64,7 +64,6 @@ impl Session for SyncSession {
         match op {
             Operator::Shape(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Convert(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -80,6 +79,7 @@ impl Session for SyncSession {
             Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingToBit(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -248,8 +248,8 @@ pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
-pub trait PlacementConvert<S: Session, T, O> {
-    fn convert(&self, sess: &S, x: &T) -> O;
+pub trait PlacementRingToBit<S: Session, T, O> {
+    fn ring_to_bit(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
@@ -387,8 +387,8 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
-pub trait PlacementAbs<S: Session, T, O> {
-    fn abs(&self, sess: &S, x: &T) -> O;
+pub trait PlacementAbs<S: Session, SetupT, T, O> {
+    fn abs(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementPlace<S: Session, T> {
@@ -508,7 +508,6 @@ impl Compile<SyncKernel> for Operator {
             Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
-            Convert(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -534,6 +533,7 @@ impl Compile<SyncKernel> for Operator {
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingToBit(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -1241,6 +1241,22 @@ impl Compile<Kernel> for RingInjectOp {
         }
     }
 }
+
+impl Compile<Kernel> for RingToBitOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Ring64Tensor) -> _] => {
+                closure_kernel!(Ring64Tensor, |x| x.bit_extract(0))
+            }
+            signature![(Ty::Ring128Tensor) -> _] => {
+                closure_kernel!(Ring128Tensor, |x| x.bit_extract(0))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+
 
 impl Compile<Kernel> for BitExtractOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {

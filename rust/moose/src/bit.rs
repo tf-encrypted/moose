@@ -1,9 +1,9 @@
 use crate::computation::{
-    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, ConvertOp, HostPlacement, Placed, ShapeOp,
+    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, RingToBitOp, HostPlacement, Placed, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementConvert, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementAdd, PlacementAnd, PlacementRingToBit, PlacementFill, PlacementMul, PlacementPlace,
     PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession, Session, SyncSession,
     Tensor,
 };
@@ -264,18 +264,18 @@ impl BitAnd for BitTensor {
     }
 }
 
-modelled!(PlacementConvert::convert, HostPlacement, (Ring64Tensor) -> BitTensor, ConvertOp);
-modelled!(PlacementConvert::convert, HostPlacement, (Ring128Tensor) -> BitTensor, ConvertOp);
+modelled!(PlacementRingToBit::ring_to_bit, HostPlacement, (Ring64Tensor) -> BitTensor, RingToBitOp);
+modelled!(PlacementRingToBit::ring_to_bit, HostPlacement, (Ring128Tensor) -> BitTensor, RingToBitOp);
 
 kernel! {
-    ConvertOp,
+    RingToBitOp,
     [
         (HostPlacement, (Ring64Tensor) -> BitTensor => Self::kernel64),
         (HostPlacement, (Ring128Tensor) -> BitTensor => Self::kernel128),
     ]
 }
 
-impl ConvertOp {
+impl RingToBitOp {
     fn kernel64<S: RuntimeSession>(_sess: &S, plc: &HostPlacement, x: Ring64Tensor) -> BitTensor {
         BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), x.1)
     }

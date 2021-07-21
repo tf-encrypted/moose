@@ -7,7 +7,7 @@ use crate::computation::{
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementConvert,
+    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementRingToBit,
     PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementKeyGen, PlacementMean,
     PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt,
     PlacementReveal, PlacementRingMean, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
@@ -1113,6 +1113,22 @@ impl<T> CanonicalType for Symbolic<AbstractRingTensor<T>> {
     type Type = AbstractRingTensor<T>;
 }
 
+impl CanonicalType for BitTensor {
+    type Type = BitTensor;
+}
+
+impl CanonicalType for Symbolic<BitTensor> {
+    type Type = BitTensor;
+}
+
+impl CanonicalType for ReplicatedSetup {
+    type Type = ReplicatedSetup;
+}
+
+impl CanonicalType for Symbolic<ReplicatedSetup> {
+    type Type = ReplicatedSetup;
+}
+
 impl<RingT: CanonicalType> CanonicalType for AbstractAdditiveTensor<RingT> {
     type Type = AbstractAdditiveTensor<<RingT as CanonicalType>::Type>;
 }
@@ -1254,14 +1270,14 @@ impl AdtToRepOp {
     }
 }
 
-modelled!(PlacementAbs::abs, ReplicatedPlacement, (Replicated64Tensor) -> Replicated64Tensor, RepAbsOp);
-modelled!(PlacementAbs::abs, ReplicatedPlacement, (Replicated128Tensor) -> Replicated128Tensor, RepAbsOp);
+modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepAbsOp);
+modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepAbsOp);
 
 hybrid_kernel! {
     RepAbsOp,
     [
-        (ReplicatedPlacement,  (Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement,  (Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
     ]
 }
 
@@ -1269,13 +1285,26 @@ impl RepAbsOp {
     fn kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
+        setup: ReplicatedSetup,
         x: AbstractReplicatedTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
+        RingT: RingSize,
+        BitTensor: KnownType<S>,
+        ReplicatedBitTensor: KnownType<S>,
+        PrfKey: KnownType<S>,
+
+        ReplicatedSetup: Into<st!(ReplicatedSetup)>,
+        st!(ReplicatedSetup): TryInto<ReplicatedSetup>,
+        ReplicatedSetup: CanonicalType,
+        ReplicatedSetup: KnownType<S>,
+        <ReplicatedSetup as CanonicalType>::Type: KnownType<S>,
+
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: RingBitDecompose<S, RingT>,
-        HostPlacement: PlacementConvert<S, RingT, BitTensor>,
+        HostPlacement: PlacementRingToBit<S, RingT, cs!(BitTensor)>,
+        ReplicatedPlacement: PlacementShareSetup<S, st!(ReplicatedSetup), cs!(BitTensor), cs!(ReplicatedBitTensor)>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedTensor {
@@ -1284,8 +1313,8 @@ impl RepAbsOp {
 
         let left = with_context!(player0, sess, x00 + x10);
         let left_ring_bs = player0.bit_decompose(sess, &left);
-        let bsl: BitTensor = player0.convert(sess, &left_ring_bs[0]);
-        // let rep_bits = rep.share(&sess, &setup, &carole_x1);
+        let bsl: Vec<_> = (0..RingT::SIZE).map(|i| player0.ring_to_bit(sess, &left_ring_bs[i])).collect();
+        let rep_bsl: Vec<_> = bsl.iter().map(|item| rep.share(sess, &setup.into(), item)).collect();
 
         rep.place(sess, x)
     }

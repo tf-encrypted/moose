@@ -305,6 +305,12 @@ impl From<Ring128Tensor> for Symbolic<Ring128Tensor> {
     }
 }
 
+impl From<BitTensor> for Symbolic<BitTensor> {
+    fn from(x: BitTensor) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl<R> From<AbstractReplicatedTensor<R>> for Symbolic<AbstractReplicatedTensor<R>>
 where
     R: Placed<Placement = HostPlacement>,
@@ -709,7 +715,6 @@ operators![
     Output,
     Constant,
     Shape,
-    Convert,
     BitFill,
     RingFill,
     AdtFill,
@@ -739,6 +744,7 @@ operators![
     RingShl,
     RingShr,
     RingInject,
+    RingToBit,
     BitExtract,
     BitSample,
     BitXor,
@@ -914,7 +920,7 @@ pub struct BitFillOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct ConvertOp {
+pub struct RingToBitOp {
     pub sig: Signature,
 }
 
