@@ -1121,12 +1121,12 @@ impl CanonicalType for Symbolic<BitTensor> {
     type Type = BitTensor;
 }
 
-impl CanonicalType for ReplicatedSetup {
-    type Type = ReplicatedSetup;
+impl<KeyT> CanonicalType for AbstractReplicatedSetup<KeyT> {
+    type Type = AbstractReplicatedSetup<KeyT>;
 }
 
-impl CanonicalType for Symbolic<ReplicatedSetup> {
-    type Type = ReplicatedSetup;
+impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType for Symbolic<AbstractReplicatedSetup<KeyT>> {
+    type Type = AbstractReplicatedSetup<KeyT>;
 }
 
 impl<RingT: CanonicalType> CanonicalType for AbstractAdditiveTensor<RingT> {
@@ -1282,39 +1282,36 @@ hybrid_kernel! {
 }
 
 impl RepAbsOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, KeyT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: ReplicatedSetup,
+        setup: AbstractReplicatedSetup<KeyT>,
         x: AbstractReplicatedTensor<RingT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
         RingT: RingSize,
         BitTensor: KnownType<S>,
         ReplicatedBitTensor: KnownType<S>,
-        PrfKey: KnownType<S>,
+        KeyT: Clone,
+        AbstractReplicatedSetup<KeyT>: KnownType<S>,
 
-        ReplicatedSetup: Into<st!(ReplicatedSetup)>,
-        st!(ReplicatedSetup): TryInto<ReplicatedSetup>,
-        ReplicatedSetup: CanonicalType,
-        ReplicatedSetup: KnownType<S>,
-        <ReplicatedSetup as CanonicalType>::Type: KnownType<S>,
-
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: RingBitDecompose<S, RingT>,
-        HostPlacement: PlacementRingToBit<S, RingT, cs!(BitTensor)>,
-        ReplicatedPlacement: PlacementShareSetup<S, st!(ReplicatedSetup), cs!(BitTensor), cs!(ReplicatedBitTensor)>,
-    {
-        let (player0, player1, player2) = rep.host_placements();
+        HostPlacement: PlacementRingToBit<S, RingT, st!(BitTensor)>,
+        AbstractReplicatedSetup<KeyT>: Into<st!(AbstractReplicatedSetup<KeyT>)>,
+        ReplicatedPlacement: PlacementShareSetup<S, st!(AbstractReplicatedSetup<KeyT>), st!(BitTensor), st!(ReplicatedBitTensor)>,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+
+        {
+        let (player0, _player1, _player2) = rep.host_placements();
         let AbstractReplicatedTensor {
-            shares: [[x00, x10], [x11, x21], [x22, x02]],
+            shares: [[x00, x10], [_x11, _x21], [_x22, _x02]],
         } = &x;
 
         let left = with_context!(player0, sess, x00 + x10);
         let left_ring_bs = player0.bit_decompose(sess, &left);
         let bsl: Vec<_> = (0..RingT::SIZE).map(|i| player0.ring_to_bit(sess, &left_ring_bs[i])).collect();
-        let rep_bsl: Vec<_> = bsl.iter().map(|item| rep.share(sess, &setup.into(), item)).collect();
+        let _rep_bsl: Vec<_> = bsl.iter().map(|item| rep.share(sess, &setup.clone().into(), item)).collect();
 
         rep.place(sess, x)
     }

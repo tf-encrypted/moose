@@ -320,6 +320,11 @@ where
     }
 }
 
+impl KnownType<SymbolicSession> for AbstractReplicatedSetup<Symbolic<PrfKey>> {
+    type Type = Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType<SymbolicSession>>::Type>>;
+    const TY: Ty = Ty::ReplicatedSetup;
+}
+
 impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
 where
     K: Placed<Placement = HostPlacement>,

@@ -9,13 +9,12 @@ use crate::kernels::{
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
-use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
+use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{RawShape, Shape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::num::Wrapping;
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -277,10 +276,10 @@ kernel! {
 
 impl RingToBitOp {
     fn kernel64<S: RuntimeSession>(_sess: &S, plc: &HostPlacement, x: Ring64Tensor) -> BitTensor {
-        BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), x.1)
+        BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
     }
     fn kernel128<S: RuntimeSession>(_sess: &S, plc: &HostPlacement, x: Ring128Tensor) -> BitTensor {
-        BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), x.1)
+        BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
     }
 }
 
