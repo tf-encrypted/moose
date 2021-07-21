@@ -1,5 +1,5 @@
 use crate::computation::{
-    BitAndOp, ConvertOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, ShapeOp,
+    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, ConvertOp, HostPlacement, Placed, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
@@ -276,22 +276,13 @@ kernel! {
 }
 
 impl ConvertOp {
-    fn kernel64<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: Ring64Tensor,
-    ) -> BitTensor {
+    fn kernel64<S: RuntimeSession>(_sess: &S, plc: &HostPlacement, x: Ring64Tensor) -> BitTensor {
         BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), x.1)
     }
-    fn kernel128<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: Ring128Tensor,
-    ) -> BitTensor {
+    fn kernel128<S: RuntimeSession>(_sess: &S, plc: &HostPlacement, x: Ring128Tensor) -> BitTensor {
         BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), x.1)
     }
 }
-
 
 #[cfg(test)]
 mod tests {

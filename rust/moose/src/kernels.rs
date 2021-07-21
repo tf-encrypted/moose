@@ -75,17 +75,22 @@ impl Session for SyncSession {
             Operator::RingAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -95,6 +100,7 @@ impl Session for SyncSession {
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO
         }
     }
@@ -222,6 +228,10 @@ pub trait PlacementMul<S: Session, T, U, O> {
     fn mul(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementDot<S: Session, T, U, O> {
+    fn dot(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementShl<S: Session, T, O> {
     fn shl(&self, sess: &S, amount: usize, x: &T) -> O;
 }
@@ -246,6 +256,10 @@ pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
     fn mul(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
+    fn dot(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementShare<S: Session, T, O> {
     fn share(&self, sess: &S, x: &T) -> O;
 }
@@ -264,6 +278,25 @@ pub trait PlacementFill<S: Session, ShapeT, O> {
 
 pub trait PlacementZeros<S: Session, ShapeT, O> {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
+}
+
+pub trait PlacementMean<S: Session, T, O> {
+    fn mean(&self, sess: &S, axis: Option<u32>, precision: u64, x: &T) -> O;
+}
+
+pub trait PlacementRingMean<S: Session, T, O> {
+    fn ring_mean(
+        &self,
+        sess: &S,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: &T,
+    ) -> O;
+}
+
+pub trait PlacementSum<S: Session, T, O> {
+    fn sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
 impl<S: Session, ShapeT, O, P> PlacementZeros<S, ShapeT, O> for P
@@ -398,6 +431,18 @@ pub trait PlacementStdMean<S: Session, T, O> {
     fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
+pub trait PlacementStdSum<S: Session, T, O> {
+    fn std_sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
+pub trait PlacementStdExpandDims<S: Session, T, O> {
+    fn std_expand_dims(&self, sess: &S, axis: u32, x: &T) -> O;
+}
+
+pub trait PlacementStdConcatenate<S: Session, T1, T2, O> {
+    fn std_concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
+}
+
 pub trait PlacementStdAdd<S: Session, T1, T2, O> {
     fn std_add(&self, sess: &S, x: &T1, y: &T2) -> O;
 }
@@ -416,6 +461,14 @@ pub trait PlacementStdDiv<S: Session, T1, T2, O> {
 
 pub trait PlacementStdDot<S: Session, T1, T2, O> {
     fn std_dot(&self, sess: &S, x: &T1, y: &T2) -> O;
+}
+
+pub trait PlacementStdTranspose<S: Session, T, O> {
+    fn std_transpose(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementStdInverse<S: Session, T, O> {
+    fn std_inverse(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait EmptyTypeHolder<T> {}
@@ -524,6 +577,7 @@ impl Compile<AsyncKernel> for Operator {
             StdSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingNeg(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -660,6 +714,22 @@ std_binary_kernel!(StdDivOp, PlacementStdDiv::std_div, |x, y| x / y);
 std_binary_kernel!(StdDotOp, PlacementStdDot::std_dot, |x, y| x.dot(y));
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
+modelled!(PlacementStdTranspose::std_transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, StdTransposeOp);
+
+kernel! {
+    StdTransposeOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => Self::kernel),
+    ]
+}
+
+modelled!(PlacementStdInverse::std_inverse, HostPlacement, (Float64Tensor) -> Float64Tensor, StdInverseOp);
+
+kernel! {
+    StdInverseOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => Self::kernel),
+    ]
+}
+
 impl Compile<Kernel> for StdInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -735,6 +805,14 @@ impl Compile<Kernel> for StdOnesOp {
     }
 }
 
+modelled!(PlacementStdConcatenate::std_concatenate, HostPlacement, attributes[axis: u32] (Float64Tensor, Float64Tensor) -> Float64Tensor, StdConcatenateOp);
+
+kernel! {
+    StdConcatenateOp, [
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
+}
+
 impl Compile<Kernel> for StdConcatenateOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::standard::concatenate;
@@ -761,6 +839,14 @@ impl Compile<Kernel> for StdConcatenateOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementStdExpandDims::std_expand_dims, HostPlacement, attributes[axis: u32] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
+
+kernel! {
+    StdExpandDimsOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for StdExpandDimsOp {
@@ -875,6 +961,14 @@ impl Compile<Kernel> for StdSliceOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementStdSum::std_sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdSumOp);
+
+kernel! {
+    StdSumOp, [
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for StdSumOp {
@@ -1089,6 +1183,20 @@ impl Compile<Kernel> for RingSampleOp {
     }
 }
 
+impl Compile<Kernel> for RingNegOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(_) -> Ty::Ring64Tensor] => {
+                closure_kernel!(Ring64Tensor, |x| AbstractRingTensor(-x.0, x.1))
+            }
+            signature![(_) -> Ty::Ring128Tensor] => {
+                closure_kernel!(Ring128Tensor, |x| AbstractRingTensor(-x.0, x.1))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
 impl Compile<Kernel> for RingShlOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
@@ -1249,7 +1357,7 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
 
 impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis;
+        let axis = self.axis.map(|a| a as usize);
         match self.sig {
             signature![(_) -> Ty::Ring64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
