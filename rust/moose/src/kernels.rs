@@ -64,6 +64,7 @@ impl Session for SyncSession {
         match op {
             Operator::Shape(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::Convert(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -71,6 +72,7 @@ impl Session for SyncSession {
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -82,6 +84,7 @@ impl Session for SyncSession {
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -235,6 +238,10 @@ pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementConvert<S: Session, T, O> {
+    fn convert(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
     fn mul(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
@@ -347,6 +354,10 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
 }
 
+pub trait PlacementAbs<S: Session, T, O> {
+    fn abs(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementPlace<S: Session, T> {
     fn place(&self, sess: &S, x: T) -> T;
 }
@@ -444,6 +455,7 @@ impl Compile<SyncKernel> for Operator {
             Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
+            Convert(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdMul(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -460,6 +472,7 @@ impl Compile<SyncKernel> for Operator {
             StdTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -468,7 +481,6 @@ impl Compile<SyncKernel> for Operator {
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -513,6 +525,7 @@ impl Compile<AsyncKernel> for Operator {
             StdTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -521,7 +534,6 @@ impl Compile<AsyncKernel> for Operator {
             RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitExtract(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -923,6 +935,20 @@ impl Compile<Kernel> for RingAddOp {
             }
             signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
                 function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x + y)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+impl Compile<Kernel> for RingAndOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
+                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x & y)
+            }
+            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
+                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x & y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

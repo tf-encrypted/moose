@@ -1,18 +1,19 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAddOp, RepMulOp,
+    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp, RepMulOp,
     RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepTruncPrOp, ReplicatedPlacement,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAdd, PlacementAdtToRep, PlacementDeriveSeed, PlacementKeyGen, PlacementMul,
-    PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementSampleUniform,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementSub, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session,
+    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementConvert, PlacementDeriveSeed,
+    PlacementKeyGen, PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace,
+    PlacementRepToAdt, PlacementReveal, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementShr, PlacementSub, PlacementTruncPr, PlacementTruncPrProvider,
+    PlacementZeros, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
 use crate::standard::Shape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -1018,6 +1019,66 @@ impl AdtToRepOp {
             }
         };
         rep.place(sess, AbstractReplicatedTensor { shares })
+    }
+}
+
+modelled!(PlacementAbs::abs, ReplicatedPlacement, (Replicated64Tensor) -> Replicated64Tensor, RepAbsOp);
+modelled!(PlacementAbs::abs, ReplicatedPlacement, (Replicated128Tensor) -> Replicated128Tensor, RepAbsOp);
+
+hybrid_kernel! {
+    RepAbsOp,
+    [
+        (ReplicatedPlacement,  (Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
+        (ReplicatedPlacement,  (Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
+    ]
+}
+
+impl RepAbsOp {
+    fn kernel<S: Session, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedTensor<RingT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
+        HostPlacement: RingBitDecompose<S, RingT>,
+        HostPlacement: PlacementConvert<S, RingT, BitTensor>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let AbstractReplicatedTensor {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let left = with_context!(player0, sess, x00 + x10);
+        let left_ring_bs = player0.bit_decompose(sess, &left);
+        let bsl: BitTensor = player0.convert(sess, &left_ring_bs[0]);
+        // let rep_bits = rep.share(&sess, &setup, &carole_x1);
+
+        rep.place(sess, x)
+    }
+}
+
+trait RingBitDecompose<S: Session, R> {
+    fn bit_decompose(&self, sess: &S, x: &R) -> Vec<R>;
+}
+
+impl<S: Session, R> RingBitDecompose<S, R> for HostPlacement
+where
+    R: RingSize,
+    Shape: KnownType<S>,
+    HostPlacement: PlacementOnes<S, cs!(Shape), R>,
+    HostPlacement: PlacementShape<S, R, cs!(Shape)>,
+    HostPlacement: PlacementShr<S, R, R>,
+    HostPlacement: PlacementAnd<S, R, R, R>,
+{
+    fn bit_decompose(&self, sess: &S, x: &R) -> Vec<R> {
+        let k = R::SIZE;
+        let shape = self.shape(sess, x);
+        let ones = self.ones(sess, &shape);
+        (0..k)
+            .map(|i| self.and(sess, &self.shr(sess, i, x), &ones))
+            .collect()
     }
 }
 

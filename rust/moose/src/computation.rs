@@ -709,6 +709,7 @@ operators![
     Output,
     Constant,
     Shape,
+    Convert,
     BitFill,
     RingFill,
     AdtFill,
@@ -728,6 +729,7 @@ operators![
     StdTranspose,
     StdInverse,
     RingAdd,
+    RingAnd,
     RingSub,
     RingNeg,
     RingMul,
@@ -754,6 +756,7 @@ operators![
     AdtMul,
     AdtShl,
     AdtToRep,
+    RepAbs,
     RepSetup,
     RepShare,
     RepReveal,
@@ -910,6 +913,14 @@ pub struct BitFillOp {
     pub value: Constant,
 }
 
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ConvertOp {
+    pub sig: Signature,
+}
+
+
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingFillOp {
     pub sig: Signature,
@@ -935,6 +946,11 @@ pub struct PrimPrfKeyGenOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RingAndOp {
     pub sig: Signature,
 }
 
@@ -1069,6 +1085,11 @@ pub struct AdtShlOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct AdtToRepOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepAbsOp {
     pub sig: Signature,
 }
 

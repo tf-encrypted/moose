@@ -1,12 +1,13 @@
 use crate::bit::BitTensor;
 use crate::computation::{
-    Constant, HostPlacement, Placed, RingAddOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
+    Constant, HostPlacement, Placed, RingAddOp, RingAndOp, RingFillOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingShlOp, RingShrOp, RingSubOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementShl, PlacementShr, PlacementSub, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub, RuntimeSession, Session,
+    SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -19,7 +20,7 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::num::Wrapping;
-use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
+use std::ops::{Add, BitAnd, Mul, Neg, Shl, Shr, Sub};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
@@ -325,6 +326,32 @@ impl RingShrOp {
         Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
     {
         AbstractRingTensor(x.0 >> amount, plc.clone())
+    }
+}
+
+modelled!(PlacementAnd::and, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAndOp);
+
+kernel! {
+    RingAndOp,
+    [
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl RingAndOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+        y: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 & y.0, plc.clone())
     }
 }
 
@@ -666,6 +693,17 @@ where
     type Output = AbstractRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
         AbstractRingTensor(self.0 >> other, self.1)
+    }
+}
+
+impl<T> BitAnd<AbstractRingTensor<T>> for AbstractRingTensor<T>
+where
+    Wrapping<T>: Clone,
+    Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+{
+    type Output = AbstractRingTensor<T>;
+    fn bitand(self, other: AbstractRingTensor<T>) -> Self::Output {
+        AbstractRingTensor(self.0 & other.0, self.1)
     }
 }
 

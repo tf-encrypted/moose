@@ -1,19 +1,21 @@
 use crate::computation::{
-    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, ShapeOp,
+    BitAndOp, ConvertOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementAdd, PlacementAnd, PlacementConvert, PlacementFill, PlacementMul, PlacementPlace,
     PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession, Session, SyncSession,
     Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
+use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::{RawShape, Shape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::num::Wrapping;
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -261,6 +263,35 @@ impl BitAnd for BitTensor {
         BitTensor(self.0 & other.0, self.1)
     }
 }
+
+modelled!(PlacementConvert::convert, HostPlacement, (Ring64Tensor) -> BitTensor, ConvertOp);
+modelled!(PlacementConvert::convert, HostPlacement, (Ring128Tensor) -> BitTensor, ConvertOp);
+
+kernel! {
+    ConvertOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> BitTensor => Self::kernel64),
+        (HostPlacement, (Ring128Tensor) -> BitTensor => Self::kernel128),
+    ]
+}
+
+impl ConvertOp {
+    fn kernel64<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: Ring64Tensor,
+    ) -> BitTensor {
+        BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), x.1)
+    }
+    fn kernel128<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: Ring128Tensor,
+    ) -> BitTensor {
+        BitTensor(x.0.mapv(|ai| (ai.0 & 1) as u8), x.1)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {
