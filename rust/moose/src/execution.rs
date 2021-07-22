@@ -1788,6 +1788,32 @@ mod tests {
         Ok(())
     }
 
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_shape_slice(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value = Shape([2, 3, 4, 5])} @Host(alice)
+        slice = StdSlice {start = 1, end = 3}: (Shape) -> Shape (x) @Host(alice)
+        output = Output: (Shape) -> Shape (slice) @Host(alice)"#;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string() => hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
+        let res: Shape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let actual_shape = res.0;
+        let expected_shape = RawShape(vec![3, 4]);
+        assert_eq!(expected_shape, actual_shape);
+        Ok(())
+    }
+
     // TODO test for axis as vector when textual representation can support it
     #[rstest]
     #[case(true)]

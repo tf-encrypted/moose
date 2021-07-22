@@ -223,12 +223,13 @@ kernel! {
 impl StdSliceOp {
     pub(crate) fn kernel<S: RuntimeSession>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _start: u32,
-        _end: u32,
-        _x: Shape,
+        plc: &HostPlacement,
+        start: u32,
+        end: u32,
+        x: Shape,
     ) -> Shape {
-        unimplemented!()
+        let slice = x.0.slice(start as usize, end as usize);
+        Shape(slice, plc.clone().into())
     }
 }
 
