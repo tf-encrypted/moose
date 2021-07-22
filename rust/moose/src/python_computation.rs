@@ -359,7 +359,7 @@ struct PyExpandDimsOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-    axis: u32,
+    axis: Vec<u32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -1096,7 +1096,7 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                            axis: op.axis,
+                            axis: op.axis.clone(),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

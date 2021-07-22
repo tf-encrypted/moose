@@ -374,7 +374,7 @@ fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn stdexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, axis) = attributes_single("axis", parse_int)(input)?;
+    let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((input, StdExpandDimsOp { sig, axis }.into()))
 }
@@ -1562,6 +1562,7 @@ macro_rules! use_debug_to_textual {
 use_debug_to_textual!(String);
 use_debug_to_textual!(usize);
 use_debug_to_textual!(u32);
+use_debug_to_textual!(Vec<u32>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
 
@@ -1875,7 +1876,7 @@ mod tests {
             r#"z = Input{arg_name = "prompt"}: () -> Float32Tensor () @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdExpandDims {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = StdExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = StdAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
