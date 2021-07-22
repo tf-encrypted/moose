@@ -391,12 +391,16 @@ impl StdMeanOp {
 
 impl StdSumOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _axis: Option<u32>,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>
+    {
+        let axis = axis.map(|a| a as usize);
+        plc.place(sess, x.sum(axis))
     }
 }
 

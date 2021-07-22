@@ -1916,7 +1916,7 @@ mod tests {
             axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
 
         let source = format!(
-            r#"s = Constant{{value=Float32Tensor([[1,2], [3, 4]])}} @Host(alice)
+            r#"s = Constant{{value=Float32Tensor([[1, 2], [3, 4]])}} @Host(alice)
             r = {} {}: (Float32Tensor) -> Float32Tensor (s) @Host(alice)
             output = Output : (Float32Tensor) -> Float32Tensor (r) @Host(alice)
         "#,
@@ -1951,6 +1951,7 @@ mod tests {
         }
         Ok(())
     }
+
     #[rstest]
     #[case("Int64Tensor([[1, 3], [2, 4]]) @Host(alice)", true)]
     #[case("Int64Tensor([[1, 3], [2, 4]]) @Host(alice)", false)]
