@@ -96,7 +96,10 @@ impl Session for SyncSession {
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO
         }
@@ -425,7 +428,7 @@ pub trait PlacementStdSum<S: Session, T, O> {
 }
 
 pub trait PlacementStdExpandDims<S: Session, T, O> {
-    fn std_expand_dims(&self, sess: &S, axis: u32, x: &T) -> O;
+    fn std_expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
 
 pub trait PlacementStdConcatenate<S: Session, T1, T2, O> {
@@ -829,7 +832,7 @@ impl Compile<Kernel> for StdConcatenateOp {
     }
 }
 
-modelled!(PlacementStdExpandDims::std_expand_dims, HostPlacement, attributes[axis: u32] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
+modelled!(PlacementStdExpandDims::std_expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
 
 kernel! {
     StdExpandDimsOp, [
@@ -839,25 +842,25 @@ kernel! {
 
 impl Compile<Kernel> for StdExpandDimsOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis as usize;
+        let axis: Vec<usize> = self.axis.iter().map(|a| *a as usize).collect();
         match self.sig {
             signature![(_) -> Ty::Float32Tensor] => {
-                closure_kernel!(Float32Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Float32Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Float64Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Int32Tensor] => {
-                closure_kernel!(Int32Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Int32Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Int64Tensor] => {
-                closure_kernel!(Int64Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Int64Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Uint32Tensor] => {
-                closure_kernel!(Uint32Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Uint32Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Uint64Tensor] => {
-                closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis.clone()))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

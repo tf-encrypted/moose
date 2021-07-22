@@ -175,7 +175,7 @@ class InverseOperation(StandardOperation):
 
 @dataclass
 class ExpandDimsOperation(StandardOperation):
-    axis: Optional[Union[int, Tuple[int]]]
+    axis: Tuple[int]
     output_type: ValueType
 
 

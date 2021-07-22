@@ -868,7 +868,7 @@ pub struct StdAtLeast2DOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdExpandDimsOp {
     pub sig: Signature,
-    pub axis: u32,
+    pub axis: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
