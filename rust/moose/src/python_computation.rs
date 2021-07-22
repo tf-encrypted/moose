@@ -855,7 +855,6 @@ impl TryFrom<PyComputation> for Computation {
                     }
                     ring_FillTensorOperation(op) => {
                         let ty = map_type(&op.output_type)?;
-                        // TODO: lvorona this can be moved somewhere else
                         let value = match ty {
                             Ty::Ring64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
                             Ty::Ring128Tensor => Constant::Ring128(u128::from_str(&op.value)?),

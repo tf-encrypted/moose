@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::prim::{RawNonce, RawPrfKey, RawSeed};
+use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::standard::{RawShape, Shape};
 use nom::{
     branch::{alt, permutation},
@@ -759,7 +759,9 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         constant_literal_helper("Shape", vector(parse_int), |v| {
             Constant::RawShape(RawShape(v))
         }),
-        // constant_literal_helper("Nonce", vector(parse_int), |v| Value::Nonce(Nonce(v))), // TODO
+        constant_literal_helper("Nonce", vector(parse_int), |v| {
+            Constant::RawNonce(RawNonce(v))
+        }),
         // 1D arrars
         alt((
             constant_literal_helper("Int8Tensor", vector(parse_int), |v| {
@@ -1417,7 +1419,6 @@ impl ToTextual for Ty {
     }
 }
 
-// TODO: This will need to be either removed or output the owner as well (lvorona)
 impl ToTextual for Value {
     fn to_textual(&self) -> String {
         match self {
@@ -1439,10 +1440,10 @@ impl ToTextual for Value {
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
             Value::Shape(Shape(x, _)) => format!("Shape({:?})", x),
-            // Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
-            // Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
-            // Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            _ => unimplemented!(), // TODO
+            Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
+            Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
+            Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
+            _ => unimplemented!(), // TODO Implement the missing branches
         }
     }
 }
@@ -1471,7 +1472,7 @@ impl ToTextual for Constant {
             Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            _ => unimplemented!(), // TODO
+            _ => unimplemented!(), // TODO Implement the missing branches for the BitTensors
         }
     }
 }
@@ -1513,7 +1514,7 @@ impl ToTextual for Role {
     }
 }
 
-// TODO: lvorona revisit this - this should not require a special ToTextual
+// Required to serialize PrimDeriveSeedOp
 impl ToTextual for RawNonce {
     fn to_textual(&self) -> String {
         format!("{:?}", self.0)
