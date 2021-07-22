@@ -96,7 +96,10 @@ impl Session for SyncSession {
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO
         }
