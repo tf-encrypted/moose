@@ -240,7 +240,7 @@ impl RawShape {
         match ax {
             Some(ax) => {
                 let (left, right) = self.0.split_at(ax);
-                RawShape::extend_singletons(RawShape([left, right].join(&1usize).into()), axis)
+                RawShape::extend_singletons(RawShape([left, right].join(&1usize)), axis)
             }
             None => self,
         }

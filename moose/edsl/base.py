@@ -403,7 +403,10 @@ def expand_dims(x, axis, placement=None):
     if isinstance(axis, (tuple, list)):
         for ax in axis:
             if not isinstance(ax, int):
-                raise ValueError(f"`axis` argument must be int or list/tuple of ints, found {type(ax)}")
+                raise ValueError(
+                    "`axis` argument must be int or list/tuple of ints, found "
+                    f"{type(ax)}"
+                )
     elif isinstance(axis, int):
         axes = [axis]
     placement = placement or get_current_placement()
