@@ -1550,6 +1550,7 @@ where
         st!(ReplicatedBitTensor),
     >,
     ReplicatedPlacement: PlacementFill<S, cs!(Shape), st!(ReplicatedBitTensor)>,
+    ReplicatedPlacement: PlacementShape<S, st!(ReplicatedBitTensor), cs!(Shape)>,
 {
     fn binary_adder(
         &self,
@@ -1583,11 +1584,9 @@ where
             .map(|i| rep.add(sess, &x[i].clone().into(), &y[i].clone().into()))
             .collect();
 
-        // let rep_shape = ReplicatedShape {
-        //     shapes: [player0.shape(sess, &x[0]), player1.shape(sess, &
-
-        // }
-        // let zero = rep.fill(sess, Constant::Bit(0_u8), &rep.shape(sess, &x[0]));
+        let rep_shape = rep.shape(sess, &x[0].clone().into());
+        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
+        let one = rep.fill(sess, Constant::Bit(1), &rep_shape);
     }
 }
 
