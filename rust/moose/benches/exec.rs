@@ -586,7 +586,7 @@ fn execute(c: &mut Criterion) {
     for size in [10_000, 100_000, 250_000, 500_000].iter() {
         let comp = gen_sample_graph(*size);
         let unit = Value::Unit(Unit(HostPlacement {
-            owner: "TODO".into(),
+            owner: "bench".into(),
         }));
 
         group.bench_function(BenchmarkId::new("sync_direct", size), |b| {

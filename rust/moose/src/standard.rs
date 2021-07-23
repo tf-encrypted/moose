@@ -489,6 +489,8 @@ where
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<ArrayD<T>> for StandardTensor<T>
 where
     T: LinalgScalar,
@@ -497,7 +499,7 @@ where
         StandardTensor::<T>(
             v,
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernels
             }
             .into(),
         )
@@ -564,36 +566,42 @@ where
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Vec<T>> for StandardTensor<T> {
     fn from(v: Vec<T>) -> StandardTensor<T> {
         StandardTensor(
             Array::from(v).into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Array1<T>> for StandardTensor<T> {
     fn from(v: Array1<T>) -> StandardTensor<T> {
         StandardTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Array2<T>> for StandardTensor<T> {
     fn from(v: Array2<T>) -> StandardTensor<T> {
         StandardTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )

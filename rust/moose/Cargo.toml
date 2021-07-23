@@ -10,6 +10,11 @@ keywords = ["", ""]
 categories = ["", ""]
 edition = "2018"
 
+[features]
+# TODO: Enable deprecation messages linked to the "symbolic" feature once the older kernels are deleted
+default = []
+symbolic = []
+
 [dependencies]
 aes = "~0.6"
 anyhow = "~1.0"
