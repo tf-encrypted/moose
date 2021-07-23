@@ -436,32 +436,49 @@ impl StdExpandDimsOp {
 impl StdConcatenateOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _axis: u32,
-        _x: StandardTensor<T>,
-        _y: StandardTensor<T>,
+        plc: &HostPlacement,
+        axis: u32,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
     ) -> StandardTensor<T> {
-        unimplemented!()
+        let ax = Axis(axis as usize);
+        let x = x.0.view();
+        let y = y.0.view();
+
+        let c =
+            ndarray::concatenate(ax, &[x, y]).expect("Failed to concatenate arrays with ndarray");
+        StandardTensor(c, plc.clone().into())
     }
 }
 
 impl StdTransposeOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x.transpose())
     }
 }
 
 impl StdInverseOp {
-    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _x: StandardTensor<T>,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
     ) -> StandardTensor<T> {
-        unimplemented!()
+        match x.0.ndim() {
+            2 => {
+                let dim2 = x.0.into_dimensionality::<Ix2>().unwrap();
+                let inv = Inverse::inv(&dim2).unwrap();
+                let dim_d = inv.into_dimensionality::<IxDyn>().unwrap();
+                StandardTensor::<T>(dim_d, plc.clone().into())
+            }
+            _ => unimplemented!("No implementation for reversing non-2D tensors"),
+        }
     }
 }
 
@@ -833,5 +850,58 @@ mod tests {
 
         assert_eq!(z_1, z_1_exp);
         assert_eq!(z_2, z_2_exp);
+    }
+
+    #[test]
+    fn test_kernel_inverse() {
+        use crate::kernels::PlacementStdInverse;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::standard::StandardTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let inv = alice.std_inverse(&sess, &x);
+        assert_eq!("[[-2, 1],\n [1.5, -0.5]]", format!("{}", inv.0));
+    }
+
+    #[test]
+    fn test_kernel_transpose() {
+        use crate::kernels::PlacementStdTranspose;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::standard::StandardTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let t = alice.std_transpose(&sess, &x);
+        assert_eq!("[[1, 3],\n [2, 4]]", format!("{}", t.0));
+    }
+
+    #[test]
+    fn test_kernel_concatenate() {
+        use crate::kernels::PlacementStdConcatenate;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::standard::StandardTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let y = crate::standard::StandardTensor::<f64>::from(
+            array![[5.0, 6.0], [7.0, 8.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let c = alice.std_concatenate(&sess, 0, &x, &y);
+        assert_eq!("[[1, 2],\n [3, 4],\n [5, 6],\n [7, 8]]", format!("{}", c.0));
     }
 }
