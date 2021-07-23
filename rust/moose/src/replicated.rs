@@ -1398,8 +1398,8 @@ impl RepAbsOp {
             st!(ReplicatedBitTensor),
         >,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
-        ReplicatedPlacement: BinaryAdder<S, KeyT>,
-        // st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
+        // UNCOMMENT THIS TO GET AN ERROR
+        // ReplicatedPlacement: BinaryAdder<S, KeyT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedTensor {
