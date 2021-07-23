@@ -185,9 +185,16 @@ impl AesRng {
 
     pub fn generate_random_key() -> [u8; SEED_SIZE] {
         let mut seed = [0u8; SEED_SIZE];
-        let _ = sodiumoxide::init();
-        randombytes_into(&mut seed);
-        seed
+        match sodiumoxide::init() {
+            Ok(()) => {
+                randombytes_into(&mut seed);
+                seed
+            }
+            Err(()) => {
+                // TODO: should this function return a Result<RngSeed> ?
+                panic!("failed to initialize sodiumoxide");
+            }
+        }
     }
 
     /// Method to fetch a PRNG where its seed is taken from /dev/random
