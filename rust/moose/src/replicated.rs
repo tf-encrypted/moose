@@ -3,7 +3,7 @@ use crate::bit::BitTensor;
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
     RepDotOp, RepFillOp, RepMeanOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
-    RepSumOp, RepTruncPrOp, ReplicatedPlacement,
+    RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
@@ -1334,7 +1334,7 @@ impl RepFillOp {
         let (player0, player1, player2) = rep.host_placements();
 
         let AbstractReplicatedShape {
-            shapes: [s0, s1, s2]
+            shapes: [s0, s1, s2],
         } = &rep_shape;
 
         let shares = [
@@ -1492,6 +1492,40 @@ trait BinaryAdder<S: Session, KeyT> {
     ) -> (); // Vec<ReplicatedBitTensor>;
 }
 
+// modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
+
+// kernel! {
+//     ShapeOp,
+//     [
+//         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_bit_kernel),
+//     ]
+// }
+
+impl ShapeOp {
+    pub(crate) fn rep_bit_kernel<S: Session, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: AbstractReplicatedTensor<RingT>,
+    ) -> ReplicatedShape
+    where
+        Shape: KnownType<S>,
+        cs!(Shape): TryInto<Shape>,
+        HostPlacement: PlacementShape<S, RingT, cs!(Shape)>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let AbstractReplicatedTensor {
+            shares: [[x00, _x10], [x11, _x21], [x22, _x02]],
+        } = &x;
+        AbstractReplicatedShape {
+            shapes: [
+                player0.shape(sess, x00).try_into().ok().unwrap(),
+                player1.shape(sess, x11).try_into().ok().unwrap(),
+                player2.shape(sess, x22).try_into().ok().unwrap(),
+            ],
+        }
+    }
+}
+
 impl<S: Session, KeyT> BinaryAdder<S, KeyT> for ReplicatedPlacement
 where
     ReplicatedBitTensor: KnownType<S>,
@@ -1525,6 +1559,11 @@ where
         y: Vec<ReplicatedBitTensor>,
     ) -> () {
         assert_eq!(x.len(), y.len());
+        assert!(x.len() > 0);
+
+        let rep = x[0].placement().unwrap();
+        let (player0, player1, player2) = rep.host_placements();
+
         let R = x.len();
         let N = (R as f64).log2() as usize; // we know that R = 64/128
 
@@ -1544,7 +1583,10 @@ where
             .map(|i| rep.add(sess, &x[i].clone().into(), &y[i].clone().into()))
             .collect();
 
+        // let rep_shape = ReplicatedShape {
+        //     shapes: [player0.shape(sess, &x[0]), player1.shape(sess, &
 
+        // }
         // let zero = rep.fill(sess, Constant::Bit(0_u8), &rep.shape(sess, &x[0]));
     }
 }
