@@ -1256,8 +1256,6 @@ impl Compile<Kernel> for RingToBitOp {
     }
 }
 
-
-
 impl Compile<Kernel> for BitExtractOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;

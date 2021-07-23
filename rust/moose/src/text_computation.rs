@@ -1410,6 +1410,7 @@ impl ToTextual for Ty {
             Ty::Replicated128Tensor => "Replicated128Tensor",
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor",
             Ty::ReplicatedSetup => "ReplicatedSetup",
+            Ty::ReplicatedShape => "ReplicatedShape",
             Ty::Additive64Tensor => "Additive64Tensor",
             Ty::Additive128Tensor => "Additive128Tensor",
         }

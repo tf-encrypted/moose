@@ -1,9 +1,10 @@
 use crate::computation::{
-    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, RingToBitOp, HostPlacement, Placed, ShapeOp,
+    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, RingToBitOp,
+    ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementRingToBit, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace, PlacementRingToBit,
     PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession, Session, SyncSession,
     Tensor,
 };

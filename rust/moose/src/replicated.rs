@@ -1,18 +1,18 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp, RepDotOp,
-    RepMeanOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepSumOp, RepTruncPrOp,
-    ReplicatedPlacement,
+    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
+    RepDotOp, RepFillOp, RepMeanOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
+    RepSumOp, RepTruncPrOp, ReplicatedPlacement,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementRingToBit,
-    PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementKeyGen, PlacementMean,
-    PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt,
-    PlacementReveal, PlacementRingMean, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
-    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session,
+    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
+    PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMul,
+    PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementRingMean, PlacementRingToBit, PlacementSampleUniform, PlacementSetupGen,
+    PlacementShape, PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum,
+    PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -38,9 +38,12 @@ pub struct AbstractReplicatedSetup<K> {
 
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
-struct AbstractReplicatedShape<S> {
-    shapes: [S; 3],
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractReplicatedShape<S> {
+    pub shapes: [S; 3],
 }
+
+pub type ReplicatedShape = AbstractReplicatedShape<Shape>;
 
 impl<R> Placed for AbstractReplicatedTensor<R>
 where
@@ -93,6 +96,26 @@ where
         } else {
             Err(Error::MalformedPlacement)
         }
+    }
+}
+
+impl<S> Placed for AbstractReplicatedShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Placement = ReplicatedPlacement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        let AbstractReplicatedShape {
+            shapes: [s0, s1, s2],
+        } = self;
+
+        let owner0 = s0.placement()?.owner;
+        let owner1 = s1.placement()?.owner;
+        let owner2 = s2.placement()?.owner;
+
+        let owners = [owner0, owner1, owner2];
+        Ok(ReplicatedPlacement { owners })
     }
 }
 
@@ -1125,8 +1148,20 @@ impl<KeyT> CanonicalType for AbstractReplicatedSetup<KeyT> {
     type Type = AbstractReplicatedSetup<KeyT>;
 }
 
-impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType for Symbolic<AbstractReplicatedSetup<KeyT>> {
+impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
+    for Symbolic<AbstractReplicatedSetup<KeyT>>
+{
     type Type = AbstractReplicatedSetup<KeyT>;
+}
+
+impl<ShapeT> CanonicalType for AbstractReplicatedShape<ShapeT> {
+    type Type = AbstractReplicatedShape<ShapeT>;
+}
+
+impl<ShapeT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
+    for Symbolic<AbstractReplicatedShape<ShapeT>>
+{
+    type Type = AbstractReplicatedShape<ShapeT>;
 }
 
 impl<RingT: CanonicalType> CanonicalType for AbstractAdditiveTensor<RingT> {
@@ -1270,6 +1305,58 @@ impl AdtToRepOp {
     }
 }
 
+// modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated64Tensor, RepFillOp);
+// modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated128Tensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
+
+hybrid_kernel! {
+    RepFillOp,
+    [
+        // (ReplicatedPlacement, (Shape) -> Replicated64Tensor => attributes[value] Self::ring_kernel),
+        // (ReplicatedPlacement, (Shape) -> Replicated128Tensor => attributes[value] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => attributes[value: Bit] Self::bit_kernel),
+    ]
+}
+
+impl RepFillOp {
+    fn bit_kernel<S: Session, ShapeT, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        value: u8,
+        rep_shape: AbstractReplicatedShape<ShapeT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        Shape: KnownType<S>,
+        HostPlacement: PlacementFill<S, ShapeT, RingT>,
+    {
+        // TODO should really return PublicReplicatedTensor, but we don't have that type yet
+        assert!(value == 0 || value == 1);
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedShape {
+            shapes: [s0, s1, s2]
+        } = &rep_shape;
+
+        let shares = [
+            [
+                player0.fill(sess, Constant::Bit(value), &s0),
+                player0.fill(sess, Constant::Bit(0_u8), &s0),
+            ],
+            [
+                player1.fill(sess, Constant::Bit(0_u8), &s1),
+                player1.fill(sess, Constant::Bit(0_u8), &s1),
+            ],
+            [
+                player2.fill(sess, Constant::Bit(0_u8), &s2),
+                player2.fill(sess, Constant::Bit(value), &s2),
+            ],
+        ];
+
+        let x = AbstractReplicatedTensor { shares };
+        x
+    }
+}
+
 modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepAbsOp);
 modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepAbsOp);
 
@@ -1292,26 +1379,81 @@ impl RepAbsOp {
         RingT: RingSize,
         BitTensor: KnownType<S>,
         ReplicatedBitTensor: KnownType<S>,
+        Shape: KnownType<S>,
         KeyT: Clone,
         AbstractReplicatedSetup<KeyT>: KnownType<S>,
 
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: RingBitDecompose<S, RingT>,
         HostPlacement: PlacementRingToBit<S, RingT, st!(BitTensor)>,
-        AbstractReplicatedSetup<KeyT>: Into<st!(AbstractReplicatedSetup<KeyT>)>,
-        ReplicatedPlacement: PlacementShareSetup<S, st!(AbstractReplicatedSetup<KeyT>), st!(BitTensor), st!(ReplicatedBitTensor)>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        st!(BitTensor): TryInto<BitTensor>,
 
-        {
-        let (player0, _player1, _player2) = rep.host_placements();
+        HostPlacement: PlacementShape<S, RingT, cs!(Shape)>,
+        HostPlacement: PlacementFill<S, cs!(Shape), st!(BitTensor)>,
+        AbstractReplicatedSetup<KeyT>: Into<st!(AbstractReplicatedSetup<KeyT>)>,
+        ReplicatedPlacement: PlacementShareSetup<
+            S,
+            st!(AbstractReplicatedSetup<KeyT>),
+            st!(BitTensor),
+            st!(ReplicatedBitTensor),
+        >,
+        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedTensor {
-            shares: [[x00, x10], [_x11, _x21], [_x22, _x02]],
+            shares: [[x00, x10], [x11, x21], [x22, _x02]],
         } = &x;
 
         let left = with_context!(player0, sess, x00 + x10);
         let left_ring_bs = player0.bit_decompose(sess, &left);
-        let bsl: Vec<_> = (0..RingT::SIZE).map(|i| player0.ring_to_bit(sess, &left_ring_bs[i])).collect();
-        let _rep_bsl: Vec<_> = bsl.iter().map(|item| rep.share(sess, &setup.clone().into(), item)).collect();
+        let bsl: Vec<_> = (0..RingT::SIZE)
+            .map(|i| player0.ring_to_bit(sess, &left_ring_bs[i]))
+            .collect();
+        let _rep_bsl: Vec<_> = bsl
+            .iter()
+            .map(|item| rep.share(sess, &setup.clone().into(), item))
+            .collect();
+
+        let p0_zero = player0
+            .fill(sess, 0_u8.into(), &player0.shape(sess, x00))
+            .try_into()
+            .ok()
+            .unwrap();
+        let p1_zero = player1
+            .fill(sess, 0_u8.into(), &player1.shape(sess, x11))
+            .try_into()
+            .ok()
+            .unwrap();
+        let p2_zero = player2
+            .fill(sess, 0_u8.into(), &player2.shape(sess, x22))
+            .try_into()
+            .ok()
+            .unwrap();
+
+        // transform x2 into boolean sharing
+        let x2_on_1: Vec<_> = player1
+            .bit_decompose(sess, x21)
+            .iter()
+            .map(|item| player1.ring_to_bit(sess, &item).try_into().ok().unwrap())
+            .collect();
+        let x2_on_2: Vec<_> = player2
+            .bit_decompose(sess, x22)
+            .iter()
+            .map(|item| player2.ring_to_bit(sess, &item).try_into().ok().unwrap())
+            .collect();
+
+        let rep_bsr: Vec<_> = (0..RingT::SIZE)
+            .map(|i| {
+                let x = ReplicatedBitTensor {
+                    shares: [
+                        [p0_zero.clone(), p0_zero.clone()],
+                        [p1_zero.clone(), x2_on_1[i].clone()],
+                        [x2_on_2[i].clone(), p2_zero.clone()],
+                    ],
+                };
+                x
+            })
+            .collect();
 
         rep.place(sess, x)
     }
@@ -1337,6 +1479,73 @@ where
         (0..k)
             .map(|i| self.and(sess, &self.shr(sess, i, x), &ones))
             .collect()
+    }
+}
+
+trait BinaryAdder<S: Session, KeyT> {
+    fn binary_adder(
+        &self,
+        sess: &S,
+        setup: AbstractReplicatedSetup<KeyT>,
+        x: Vec<ReplicatedBitTensor>,
+        y: Vec<ReplicatedBitTensor>,
+    ) -> (); // Vec<ReplicatedBitTensor>;
+}
+
+impl<S: Session, KeyT> BinaryAdder<S, KeyT> for ReplicatedPlacement
+where
+    ReplicatedBitTensor: KnownType<S>,
+    KeyT: Clone,
+    AbstractReplicatedSetup<KeyT>: KnownType<S>,
+    Shape: KnownType<S>,
+
+    AbstractReplicatedSetup<KeyT>: Into<st!(AbstractReplicatedSetup<KeyT>)>,
+    ReplicatedBitTensor: Into<st!(ReplicatedBitTensor)>,
+    st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
+    ReplicatedPlacement: PlacementMulSetup<
+        S,
+        st!(AbstractReplicatedSetup<KeyT>),
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+    >,
+    ReplicatedPlacement: PlacementAdd<
+        S,
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+    >,
+    ReplicatedPlacement: PlacementFill<S, cs!(Shape), st!(ReplicatedBitTensor)>,
+{
+    fn binary_adder(
+        &self,
+        sess: &S,
+        setup: AbstractReplicatedSetup<KeyT>,
+        x: Vec<ReplicatedBitTensor>,
+        y: Vec<ReplicatedBitTensor>,
+    ) -> () {
+        assert_eq!(x.len(), y.len());
+        let R = x.len();
+        let N = (R as f64).log2() as usize; // we know that R = 64/128
+
+        let rep = self;
+        let G: Vec<_> = (0..R)
+            .map(|i| {
+                rep.mul(
+                    sess,
+                    &setup.clone().into(),
+                    &x[i].clone().into(),
+                    &y[i].clone().into(),
+                )
+            })
+            .collect();
+
+        let P_store: Vec<_> = (0..R)
+            .map(|i| rep.add(sess, &x[i].clone().into(), &y[i].clone().into()))
+            .collect();
+
+
+        // let zero = rep.fill(sess, Constant::Bit(0_u8), &rep.shape(sess, &x[0]));
     }
 }
 

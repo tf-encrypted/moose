@@ -29,20 +29,33 @@ impl Placed for String {
 pub struct RawShape(pub Vec<usize>);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Shape(pub RawShape, pub Placement);
+pub struct Shape(pub RawShape, pub HostPlacement);
 
 impl Placed for Shape {
-    type Placement = Placement;
+    type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
         Ok(self.1.clone())
     }
 }
 
-impl<S: RuntimeSession> PlacementPlace<S, Shape> for Placement {
-    fn place(&self, _sess: &S, shape: Shape) -> Shape {
+// impl<S: RuntimeSession> PlacementPlace<S, Shape> for Placement {
+//     fn place(&self, _sess: &S, shape: Shape) -> Shape {
+//         match shape.placement() {
+//             Ok(place) if &place == self => shape,
+//             _ => {
+//                 // TODO just updating the placement isn't enough,
+//                 // we need this to eventually turn into Send + Recv
+//                 Shape(shape.0, self.clone())
+//             }
+//         }
+//     }
+// }
+
+impl PlacementPlace<SyncSession, Shape> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, shape: Shape) -> Shape {
         match shape.placement() {
-            Ok(place) if &place == self => shape,
+            Ok(place) if self == &place => shape,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
@@ -52,11 +65,34 @@ impl<S: RuntimeSession> PlacementPlace<S, Shape> for Placement {
     }
 }
 
+impl PlacementPlace<SymbolicSession, Symbolic<Shape>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<Shape>) -> Symbolic<Shape> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(shape) => {
+                        // TODO insert Place ops?
+                        Symbolic::Concrete(Shape(shape.0, self.clone()))
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
+            }
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct StandardTensor<T>(pub ArrayD<T>, pub Placement);
+pub struct StandardTensor<T>(pub ArrayD<T>, pub HostPlacement);
 
 impl<T> Placed for StandardTensor<T> {
-    type Placement = Placement;
+    type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
         Ok(self.1.clone())
@@ -77,8 +113,8 @@ pub type Uint64Tensor = StandardTensor<u64>;
 impl<T> PlacementPlace<SyncSession, StandardTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: StandardTensor<T>) -> StandardTensor<T> {
         match x.placement() {
-            Ok(Placement::Host(place)) if &place == self => x,
-            _ => StandardTensor(x.0, Placement::Host(self.clone())),
+            Ok(place) if &place == self => x,
+            _ => StandardTensor(x.0, self.clone()),
         }
     }
 }
@@ -95,7 +131,7 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<StandardTensor<T>>> for HostPla
             Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                 Symbolic::Symbolic(SymbolicHandle {
                     op,
-                    plc: Placement::Host(self.clone()),
+                    plc: self.clone(),
                 })
             }
         }
@@ -249,7 +285,7 @@ where
     T: LinalgScalar,
 {
     pub fn place(plc: &HostPlacement, x: ArrayD<T>) -> StandardTensor<T> {
-        StandardTensor::<T>(x, Placement::Host(plc.clone()))
+        StandardTensor::<T>(x, plc.clone())
     }
 
     pub fn atleast_2d(self, to_column_vector: bool) -> StandardTensor<T> {

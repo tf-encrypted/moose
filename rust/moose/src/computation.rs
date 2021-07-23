@@ -5,8 +5,8 @@ use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
-    AbstractReplicatedSetup, AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor,
-    ReplicatedBitTensor, ReplicatedSetup,
+    AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
+    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup, ReplicatedShape,
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
@@ -293,6 +293,12 @@ macro_rules! values {
     };
 }
 
+impl From<Shape> for Symbolic<Shape> {
+    fn from(x: Shape) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl From<Ring64Tensor> for Symbolic<Ring64Tensor> {
     fn from(x: Ring64Tensor) -> Self {
         Symbolic::Concrete(x)
@@ -334,17 +340,25 @@ where
     }
 }
 
+impl KnownType<SymbolicSession> for AbstractReplicatedShape<Symbolic<Shape>> {
+    type Type = Symbolic<AbstractReplicatedShape<<Shape as KnownType<SymbolicSession>>::Type>>;
+    const TY: Ty = Ty::ReplicatedShape;
+}
+
+impl<S> From<AbstractReplicatedShape<S>> for Symbolic<AbstractReplicatedShape<S>>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedShape<S>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
 where
     R: Placed<Placement = HostPlacement>,
 {
     fn from(x: AbstractAdditiveTensor<R>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<Shape> for Symbolic<Shape> {
-    fn from(x: Shape) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -381,6 +395,29 @@ where
 {
     type Error = Error;
     fn try_from(v: Symbolic<AbstractReplicatedSetup<K>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<S> TryFrom<Symbolic<AbstractReplicatedShape<S>>> for AbstractReplicatedShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedShape<S>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl TryFrom<Symbolic<BitTensor>> for BitTensor {
+    type Error = Error;
+    fn try_from(v: Symbolic<BitTensor>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
@@ -441,6 +478,10 @@ values![
     (
         ReplicatedSetup,
         Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        ReplicatedShape,
+        Symbolic<AbstractReplicatedShape<<Shape as KnownType<SymbolicSession>>::Type>>
     ),
     (
         Additive64Tensor,
@@ -723,6 +764,7 @@ operators![
     BitFill,
     RingFill,
     AdtFill,
+    RepFill,
     StdAdd,
     StdSub,
     StdMul,
@@ -1158,6 +1200,12 @@ pub struct RepTruncPrOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepToAdtOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepFillOp {
+    pub sig: Signature,
+    pub value: Constant,
 }
 
 pub trait KnownPlacement {
