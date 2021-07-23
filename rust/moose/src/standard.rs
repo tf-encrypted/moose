@@ -14,6 +14,7 @@ use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
+use std::cmp::Reverse;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 
 impl Placed for String {
@@ -223,24 +224,36 @@ kernel! {
 impl StdSliceOp {
     pub(crate) fn kernel<S: RuntimeSession>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _start: u32,
-        _end: u32,
-        _x: Shape,
+        plc: &HostPlacement,
+        start: u32,
+        end: u32,
+        x: Shape,
     ) -> Shape {
-        unimplemented!()
+        let slice = x.0.slice(start as usize, end as usize);
+        Shape(slice, plc.clone().into())
     }
 }
 
 impl RawShape {
-    pub fn expand(mut self, axis: usize) -> Self {
-        self.0.insert(axis, 1);
-        self
+    pub fn extend_singletons(self, mut axis: Vec<usize>) -> Self {
+        let ax = axis.pop();
+        match ax {
+            Some(ax) => {
+                let (left, right) = self.0.split_at(ax);
+                RawShape::extend_singletons(RawShape([left, right].join(&1usize)), axis)
+            }
+            None => self,
+        }
     }
 
     pub fn slice(self, begin: usize, end: usize) -> Self {
         let slc = &self.0[begin..end];
         RawShape(slc.to_vec())
+    }
+
+    pub fn unsqueeze(mut self, axis: usize) -> Self {
+        self.0.insert(axis, 1);
+        self
     }
 }
 
@@ -316,9 +329,11 @@ where
         StandardTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    pub fn expand_dims(self, axis: usize) -> Self {
-        let newshape = Shape(self.shape().0.expand(axis), self.1.clone());
-        self.reshape(newshape)
+    pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+        let plc = (&self.1).clone();
+        axis.sort_by_key(|ax| Reverse(*ax));
+        let newshape = self.shape().0.extend_singletons(axis);
+        self.reshape(Shape(newshape, plc))
     }
 
     pub fn shape(&self) -> Shape {
@@ -390,23 +405,31 @@ impl StdMeanOp {
 
 impl StdSumOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _axis: Option<u32>,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        let axis = axis.map(|a| a as usize);
+        plc.place(sess, x.sum(axis))
     }
 }
 
 impl StdExpandDimsOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _axis: u32,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Vec<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        let axis = axis.iter().map(|a| *a as usize).collect();
+        plc.place(sess, x.expand_dims(axis))
     }
 }
 
@@ -466,6 +489,8 @@ where
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<ArrayD<T>> for StandardTensor<T>
 where
     T: LinalgScalar,
@@ -474,7 +499,7 @@ where
         StandardTensor::<T>(
             v,
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernels
             }
             .into(),
         )
@@ -541,36 +566,42 @@ where
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Vec<T>> for StandardTensor<T> {
     fn from(v: Vec<T>) -> StandardTensor<T> {
         StandardTensor(
             Array::from(v).into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Array1<T>> for StandardTensor<T> {
     fn from(v: Array1<T>) -> StandardTensor<T> {
         StandardTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Array2<T>> for StandardTensor<T> {
     fn from(v: Array2<T>) -> StandardTensor<T> {
         StandardTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )

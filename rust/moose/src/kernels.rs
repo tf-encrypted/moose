@@ -5,6 +5,8 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
+use crate::fixedpoint::Fixed128Tensor;
+use crate::fixedpoint::Fixed64Tensor;
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::ring::AbstractRingTensor;
@@ -51,7 +53,7 @@ pub struct SyncSession {
 impl Default for SyncSession {
     fn default() -> Self {
         SyncSession {
-            session_id: "abcde".into(), // TODO
+            session_id: "abcde".into(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
             replicated_keys: Default::default(),
         }
     }
@@ -82,6 +84,7 @@ impl Session for SyncSession {
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -97,8 +100,27 @@ impl Session for SyncSession {
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::Input(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::Output(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::Load(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO
+            Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdConcatenate(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::StdInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO Remove the catch-all case once all the Ops have kernels.
         }
     }
 
@@ -121,15 +143,15 @@ pub struct AsyncSession {
 }
 
 impl Session for AsyncSession {
-    type Value = (); // TODO
+    type Value = (); // TODO AsyncExecutor for the new framework is not ready yet
     fn execute(&self, _op: Operator, _plc: &Placement, _operands: Vec<Self::Value>) -> Self::Value {
-        // TODO
+        // TODO AsyncExecutor for the new framework is not ready yet
         unimplemented!()
     }
 
-    type ReplicatedSetup = (); // TODO
+    type ReplicatedSetup = (); // TODO AsyncExecutor for the new framework is not ready yet
     fn replicated_setup(&self, _plc: &ReplicatedPlacement) -> &Self::ReplicatedSetup {
-        // TODO
+        // TODO AsyncExecutor for the new framework is not ready yet
         unimplemented!()
     }
 }
@@ -425,7 +447,7 @@ pub trait PlacementStdSum<S: Session, T, O> {
 }
 
 pub trait PlacementStdExpandDims<S: Session, T, O> {
-    fn std_expand_dims(&self, sess: &S, axis: u32, x: &T) -> O;
+    fn std_expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
 
 pub trait PlacementStdConcatenate<S: Session, T1, T2, O> {
@@ -829,7 +851,7 @@ impl Compile<Kernel> for StdConcatenateOp {
     }
 }
 
-modelled!(PlacementStdExpandDims::std_expand_dims, HostPlacement, attributes[axis: u32] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
+modelled!(PlacementStdExpandDims::std_expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
 
 kernel! {
     StdExpandDimsOp, [
@@ -839,25 +861,25 @@ kernel! {
 
 impl Compile<Kernel> for StdExpandDimsOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let axis = self.axis as usize;
+        let axis: Vec<usize> = self.axis.iter().map(|a| *a as usize).collect();
         match self.sig {
             signature![(_) -> Ty::Float32Tensor] => {
-                closure_kernel!(Float32Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Float32Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Float64Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Int32Tensor] => {
-                closure_kernel!(Int32Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Int32Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Int64Tensor] => {
-                closure_kernel!(Int64Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Int64Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Uint32Tensor] => {
-                closure_kernel!(Uint32Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Uint32Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Uint64Tensor] => {
-                closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis))
+                closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis.clone()))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -986,24 +1008,28 @@ impl Compile<Kernel> for StdSumOp {
     }
 }
 
+// This impl is only used by the old kernels, which are not aware of the placements. See PrimDeriveSeedOp::kernel for the new code
+#[cfg(not(feature = "symbolic"))]
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let nonce = self.sync_key.clone();
         closure_kernel!(PrfKey, |key| Seed(
             RawSeed::from_prf(&key.0, &nonce),
             HostPlacement {
-                owner: "TODO".into()
+                owner: "TODO".into() // Fake owner for the older kernels.
             }
         ))
     }
 }
 
+// This impl is only used by the old kernels, which are not aware of the placements. See PrimPrfKeyGenOp::kernel for the new code
+#[cfg(not(feature = "symbolic"))]
 impl Compile<Kernel> for PrimPrfKeyGenOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(|| PrfKey(
             RawPrfKey::generate(),
             HostPlacement {
-                owner: "TODO".into()
+                owner: "TODO".into() // Fake owner for the older kernels.
             }
         ))
     }
@@ -1354,12 +1380,14 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
     }
 }
 
+// This impl is only used by the old kernels, which are not aware of the placements. See ConstantOp::kernel for the new code
+#[cfg(not(feature = "symbolic"))]
 impl Compile<Kernel> for ConstantOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let value = self.value.clone();
         Ok(Kernel::NullaryClosure(Arc::new(move || {
             Ok(value.place(&HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the older kernels.
             }))
         })))
     }
@@ -1413,6 +1441,8 @@ impl ConstantOp {
     }
 }
 
+// This impl is only used by the old kernels, which are not aware of the placements.
+#[cfg(not(feature = "symbolic"))]
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         let rendezvous_key = self.rendezvous_key.clone();
@@ -1431,12 +1461,14 @@ impl Compile<SyncKernel> for SendOp {
             sess.networking
                 .send(&v, &receiver_id, &rendezvous_key, &sess.sid)?;
             Ok(Value::Unit(Unit(HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the older kernels.
             })))
         })))
     }
 }
 
+// This impl is only used by the old kernels, which are not aware of the placements.
+#[cfg(not(feature = "symbolic"))]
 impl Compile<AsyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
         let rendezvous_key = Arc::new(self.rendezvous_key.clone());
@@ -1463,7 +1495,7 @@ impl Compile<AsyncKernel> for SendOp {
                     .send(&v, &receiver_id, &rendezvous_key, &sess.sid)
                     .await?;
                 map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
-                    owner: "TODO".into(),
+                    owner: "TODO".into(), // Fake owner for the older kernels.
                 }))))
             })
         })))
@@ -1554,24 +1586,56 @@ impl Compile<AsyncKernel> for IdentityOp {
     }
 }
 
+// Not all the variants from the `values![]` list can be received as an input (nothing replicated, for instance).
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> String, InputOp);
-// TODO: (lvorona) all the other types. Perhaps a macros?
-
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Unit, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Shape, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Seed, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> PrfKey, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> BitTensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring128Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float32Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int8Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int16Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int32Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint8Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint16Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint32Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed128Tensor, InputOp);
 kernel! {
     InputOp, [
-        (HostPlacement, () -> String => attributes[arg_name] Self::kernel_string),
+        (HostPlacement, () -> String => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Unit => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Shape => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Seed => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> PrfKey => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> BitTensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Ring64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Ring128Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Float32Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Float64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Int8Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Int16Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Int32Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Int64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Uint8Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Uint16Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Uint32Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Uint64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Fixed64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> Fixed128Tensor => attributes[arg_name] Self::kernel),
+
     ]
 }
 
 impl InputOp {
-    fn kernel_string<S: RuntimeSession>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        arg_name: String,
-    ) -> String {
-        // TODO: (lvorona) should we be placing the constant on the placement here?
-        // TODO: (lvorona) this is only good for the symbolic session
-        format!("Input value for {}", arg_name)
+    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _arg_name: String) -> O {
+        unimplemented!() // TODO: Read the value from the environment for the Async and Sync sessions to work.
     }
 }
 
@@ -1614,18 +1678,56 @@ impl Compile<AsyncKernel> for InputOp {
     }
 }
 
+// Not all the variants from the `values![]` list can be saved as an output (nothing replicated, for instance).
 modelled!(PlacementOutput::output, HostPlacement, (Unit) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Shape) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Seed) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (PrfKey) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (String) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (BitTensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Ring64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Ring128Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Float32Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Int8Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Int16Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Int32Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Int64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Uint8Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Uint16Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Uint32Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Uint64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Fixed64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (Fixed128Tensor) -> Unit, OutputOp);
 
 kernel! {
     OutputOp, [
         (HostPlacement, (Unit) -> Unit => Self::kernel),
+        (HostPlacement, (Shape) -> Unit => Self::kernel),
+        (HostPlacement, (Seed) -> Unit => Self::kernel),
+        (HostPlacement, (PrfKey) -> Unit => Self::kernel),
+        (HostPlacement, (String) -> Unit => Self::kernel),
+        (HostPlacement, (BitTensor) -> Unit => Self::kernel),
+        (HostPlacement, (Ring64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Float32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Float64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Int8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Int16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Int32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Int64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Uint8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Uint16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Uint32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Uint64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (Fixed128Tensor) -> Unit => Self::kernel),
     ]
 }
 
 impl OutputOp {
-    fn kernel<S: RuntimeSession>(_sess: &S, _plc: &HostPlacement, _x: Unit) -> Unit {
-        // TODO: (lvorona)
-        unimplemented!()
+    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _x: O) -> Unit {
+        unimplemented!() // TODO: Save to the environment for the Sync and Async sessions to work.
     }
 }
 
@@ -1646,27 +1748,61 @@ impl Compile<AsyncKernel> for OutputOp {
     }
 }
 
+// Not all the variants from the `values![]` list can be saved (nothing replicated, for instance).
+modelled!(PlacementSave::save, HostPlacement, (String, Unit) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Shape) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Seed) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, PrfKey) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, String) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, BitTensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Ring64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Ring128Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Float32Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Float64Tensor) -> Unit, SaveOp);
-// TODO: (lvorona) all the other types. Perhaps a macros?
+modelled!(PlacementSave::save, HostPlacement, (String, Int8Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Int16Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Int32Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Int64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Uint8Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Uint16Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Uint32Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Uint64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Fixed64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Fixed128Tensor) -> Unit, SaveOp);
 
 kernel! {
     SaveOp, [
-        (HostPlacement, (String, Float64Tensor) -> Unit => Self::kernel_float64tensor),
+        (HostPlacement, (String, Unit) -> Unit => Self::kernel),
+        (HostPlacement, (String, Shape) -> Unit => Self::kernel),
+        (HostPlacement, (String, Seed) -> Unit => Self::kernel),
+        (HostPlacement, (String, PrfKey) -> Unit => Self::kernel),
+        (HostPlacement, (String, String) -> Unit => Self::kernel),
+        (HostPlacement, (String, BitTensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Ring64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Ring128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Float32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Float64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Int8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Int16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Int32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Int64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Uint8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Uint16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Uint32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Uint64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Fixed64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, Fixed128Tensor) -> Unit => Self::kernel),
     ]
 }
 
 impl SaveOp {
-    fn kernel_float64tensor<S: RuntimeSession>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _key: String,
-        _x: Float64Tensor,
-    ) -> Unit {
-        // TODO: (lvorona)
-        unimplemented!()
+    fn kernel<S: RuntimeSession, O>(_sess: &S, _plc: &HostPlacement, _key: String, _x: O) -> Unit {
+        unimplemented!() // TODO: Save the value into storage for the Async and Sync sessions to work.
     }
 }
 
+// This implementation is the old kernel.
+#[cfg(not(feature = "symbolic"))]
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.sig.arg(1)?;
@@ -1676,12 +1812,14 @@ impl Compile<SyncKernel> for SaveOp {
             check_type(&val, expected_ty)?;
             sess.storage.save(&key, &sess.sid, &val)?;
             Ok(Value::Unit(Unit(HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             })))
         })))
     }
 }
 
+// This implementation is the old kernel.
+#[cfg(not(feature = "symbolic"))]
 impl Compile<AsyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.sig.arg(1)?;
@@ -1696,7 +1834,7 @@ impl Compile<AsyncKernel> for SaveOp {
                     check_type(&val, expected_ty)?;
                     sess.storage.save(&key, &sess.sid, &val).await?;
                     map_send_result(sender.send(Value::Unit(Unit(HostPlacement {
-                        owner: "TODO".into(),
+                        owner: "TODO".into(), // Fake owner for the old kernel
                     }))))
                 })
             },
@@ -1704,24 +1842,60 @@ impl Compile<AsyncKernel> for SaveOp {
     }
 }
 
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Unit, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Shape, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Seed, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> PrfKey, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> String, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> BitTensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring128Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float32Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float64Tensor, LoadOp);
-// TODO: (lvorona) all the other types. Perhaps a macros?
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int8Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int16Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int32Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint8Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint16Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint32Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed128Tensor, LoadOp);
 
 kernel! {
     LoadOp, [
-        (HostPlacement, (String, String) -> Float64Tensor => Self::kernel_float64tensor),
+        (HostPlacement, (String, String) -> Unit => Self::kernel),
+        (HostPlacement, (String, String) -> Shape => Self::kernel),
+        (HostPlacement, (String, String) -> Seed => Self::kernel),
+        (HostPlacement, (String, String) -> PrfKey => Self::kernel),
+        (HostPlacement, (String, String) -> String => Self::kernel),
+        (HostPlacement, (String, String) -> BitTensor => Self::kernel),
+        (HostPlacement, (String, String) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Float32Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Float64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Int8Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Int16Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Int32Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Int64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Uint8Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Uint16Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Uint32Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Uint64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Fixed64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> Fixed128Tensor => Self::kernel),
     ]
 }
 
 impl LoadOp {
-    fn kernel_float64tensor<S: RuntimeSession>(
+    fn kernel<S: RuntimeSession, O>(
         _sess: &S,
         _plc: &HostPlacement,
         _key: String,
         _query: String,
-    ) -> Float64Tensor {
-        // TODO: (lvorona)
-        unimplemented!()
+    ) -> O {
+        unimplemented!() // TODO: Implement loading from storage for the Async and Sync sessions to work.
     }
 }
 

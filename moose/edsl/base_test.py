@@ -262,7 +262,7 @@ class EdslTest(parameterized.TestCase):
             placement_name="player0",
             name="expand_dims_0",
             inputs={"x": "constant_0"},
-            axis=1,
+            axis=[1],
             output_type=TensorType(dtype=dtypes.float64),
         )
 

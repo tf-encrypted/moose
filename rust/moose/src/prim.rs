@@ -211,6 +211,12 @@ impl PrimDeriveSeedOp {
 
 // TODO deprecated
 impl RawSeed {
+    #[cfg_attr(
+        feature = "symbolic",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements."
+        )
+    )]
     pub fn from_prf(key: &RawPrfKey, nonce: &RawNonce) -> RawSeed {
         let raw_seed = crate::utils::derive_seed(&key.0, &nonce.0);
         RawSeed(raw_seed)
@@ -219,6 +225,12 @@ impl RawSeed {
 
 // TODO deprecated
 impl RawPrfKey {
+    #[cfg_attr(
+        feature = "symbolic",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements."
+        )
+    )]
     pub fn generate() -> RawPrfKey {
         let raw_key = AesRng::generate_random_key();
         RawPrfKey(raw_key)
