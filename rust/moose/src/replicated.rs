@@ -1398,6 +1398,8 @@ impl RepAbsOp {
             st!(ReplicatedBitTensor),
         >,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        ReplicatedPlacement: BinaryAdder<S, KeyT>,
+        // st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedTensor {
@@ -1409,7 +1411,7 @@ impl RepAbsOp {
         let bsl: Vec<_> = (0..RingT::SIZE)
             .map(|i| player0.ring_to_bit(sess, &left_ring_bs[i]))
             .collect();
-        let _rep_bsl: Vec<_> = bsl
+        let rep_bsl: Vec<_> = bsl
             .iter()
             .map(|item| rep.share(sess, &setup.clone().into(), item))
             .collect();
@@ -1455,6 +1457,7 @@ impl RepAbsOp {
             })
             .collect();
 
+        // let bits = rep.binary_adder(sess, setup, rep_bsl.clone(), rep_bsr.clone());
         rep.place(sess, x)
     }
 }
@@ -1482,25 +1485,6 @@ where
     }
 }
 
-trait BinaryAdder<S: Session, KeyT> {
-    fn binary_adder(
-        &self,
-        sess: &S,
-        setup: AbstractReplicatedSetup<KeyT>,
-        x: Vec<ReplicatedBitTensor>,
-        y: Vec<ReplicatedBitTensor>,
-    ) -> (); // Vec<ReplicatedBitTensor>;
-}
-
-// modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
-
-// kernel! {
-//     ShapeOp,
-//     [
-//         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_bit_kernel),
-//     ]
-// }
-
 impl ShapeOp {
     pub(crate) fn rep_bit_kernel<S: Session, RingT>(
         sess: &S,
@@ -1525,6 +1509,16 @@ impl ShapeOp {
         }
     }
 }
+trait BinaryAdder<S: Session, KeyT> {
+    fn binary_adder(
+        &self,
+        sess: &S,
+        setup: AbstractReplicatedSetup<KeyT>,
+        x: Vec<ReplicatedBitTensor>,
+        y: Vec<ReplicatedBitTensor>,
+    ) -> Vec<ReplicatedBitTensor>;
+}
+
 
 impl<S: Session, KeyT> BinaryAdder<S, KeyT> for ReplicatedPlacement
 where
@@ -1558,35 +1552,87 @@ where
         setup: AbstractReplicatedSetup<KeyT>,
         x: Vec<ReplicatedBitTensor>,
         y: Vec<ReplicatedBitTensor>,
-    ) -> () {
+    ) -> Vec<ReplicatedBitTensor> {
         assert_eq!(x.len(), y.len());
         assert!(x.len() > 0);
 
         let rep = x[0].placement().unwrap();
-        let (player0, player1, player2) = rep.host_placements();
 
         let R = x.len();
         let N = (R as f64).log2() as usize; // we know that R = 64/128
 
         let rep = self;
-        let G: Vec<_> = (0..R)
+        let mut G: Vec<_> = (0..R)
             .map(|i| {
                 rep.mul(
                     sess,
                     &setup.clone().into(),
                     &x[i].clone().into(),
                     &y[i].clone().into(),
-                )
+                ).into()
             })
             .collect();
 
         let P_store: Vec<_> = (0..R)
-            .map(|i| rep.add(sess, &x[i].clone().into(), &y[i].clone().into()))
+            .map(|i| rep.add(sess, &x[i].clone().into(), &y[i].clone().into()).into())
             .collect();
 
         let rep_shape = rep.shape(sess, &x[0].clone().into());
-        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
-        let one = rep.fill(sess, Constant::Bit(1), &rep_shape);
+        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape).into();
+        let one = rep.fill(sess, Constant::Bit(1), &rep_shape).into();
+
+        let keep_masks: Vec<_> = (0..N).map(|i| {
+            let mask_int = (1 << (1 << i)) - 1;
+            let mask_bits: Vec<_> = (0..R).map(|j| {
+                if (mask_int >> j) & 1 == 1 {
+                    one.clone()
+                } else {
+                    zero.clone()
+                }
+            }).collect();
+            mask_bits
+        }).collect();
+
+        let mut P = P_store.clone();
+        for i in 0..N {
+            let g1: Vec<_> = (0..R).map(|j| {
+                if j < (1<<i) {
+                    zero.clone()
+                } else {
+                    G[j].clone()
+                }
+            }).collect();
+            let p1: Vec<_> = (0..R).map(|j| {
+                if j < (1<<i) {
+                    zero.clone()
+                } else {
+                    P[j].clone()
+                }
+            }).collect();
+            let p1_xor_masks: Vec<_> = (0..R).map(|index| rep.add(sess, &p1[index].clone().into(), &keep_masks[i][index].clone().into()).into()).collect();
+            let p_and_g: Vec<_> = (0..R).map(|j| {
+                rep.mul(sess, &setup.clone().into(), &p1_xor_masks[j].clone().into(), &g1[j].clone().into())
+            }).collect();
+
+            for j in 0..R {
+                G[j] = rep.add(sess, &G[j].clone().into(), &p_and_g[j]).into();
+            }
+            for j in 0..R {
+                P[j] = rep.mul(sess, &setup.clone().into(), &P[j].clone().into(), &p1[j].clone().into()).into();
+            }
+        }
+
+        let C: Vec<_> = (0..R).map(|i| {
+            if i < 1 {
+                zero.clone()
+            } else {
+               G[i].clone()
+            }
+        }).collect();
+        let z: Vec<_> = (0..R).map(|i| {
+            rep.add(sess, &C[i].clone().into(), &P_store[i].clone().into()).into()
+        }).collect();
+        z
     }
 }
 
