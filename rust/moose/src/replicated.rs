@@ -12,7 +12,7 @@ use crate::kernels::{
     PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
     PlacementRingMean, PlacementRingToBit, PlacementSampleUniform, PlacementSetupGen,
     PlacementShape, PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum,
-    PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, Session,
+    PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, Session, RuntimeSession,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -1399,63 +1399,63 @@ impl RepAbsOp {
         >,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
         // UNCOMMENT THIS TO GET AN ERROR
-        // ReplicatedPlacement: BinaryAdder<S, KeyT>,
+        // ReplicatedPlacement: BinaryAdder<S, KeyT, st!(BitTensor)>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedTensor {
             shares: [[x00, x10], [x11, x21], [x22, _x02]],
         } = &x;
 
-        let left = with_context!(player0, sess, x00 + x10);
-        let left_ring_bs = player0.bit_decompose(sess, &left);
-        let bsl: Vec<_> = (0..RingT::SIZE)
-            .map(|i| player0.ring_to_bit(sess, &left_ring_bs[i]))
-            .collect();
-        let rep_bsl: Vec<_> = bsl
-            .iter()
-            .map(|item| rep.share(sess, &setup.clone().into(), item))
-            .collect();
+        // let left = with_context!(player0, sess, x00 + x10);
+        // let left_ring_bs = player0.bit_decompose(sess, &left);
+        // let bsl: Vec<_> = (0..RingT::SIZE)
+        //     .map(|i| player0.ring_to_bit(sess, &left_ring_bs[i]))
+        //     .collect();
+        // let rep_bsl: Vec<_> = bsl
+        //     .iter()
+        //     .map(|item| rep.share(sess, &setup.clone().into(), item))
+        //     .collect();
 
-        let p0_zero = player0
-            .fill(sess, 0_u8.into(), &player0.shape(sess, x00))
-            .try_into()
-            .ok()
-            .unwrap();
-        let p1_zero = player1
-            .fill(sess, 0_u8.into(), &player1.shape(sess, x11))
-            .try_into()
-            .ok()
-            .unwrap();
-        let p2_zero = player2
-            .fill(sess, 0_u8.into(), &player2.shape(sess, x22))
-            .try_into()
-            .ok()
-            .unwrap();
+        // let p0_zero = player0
+        //     .fill(sess, 0_u8.into(), &player0.shape(sess, x00))
+        //     .try_into()
+        //     .ok()
+        //     .unwrap();
+        // let p1_zero = player1
+        //     .fill(sess, 0_u8.into(), &player1.shape(sess, x11))
+        //     .try_into()
+        //     .ok()
+        //     .unwrap();
+        // let p2_zero = player2
+        //     .fill(sess, 0_u8.into(), &player2.shape(sess, x22))
+        //     .try_into()
+        //     .ok()
+        //     .unwrap();
 
-        // transform x2 into boolean sharing
-        let x2_on_1: Vec<_> = player1
-            .bit_decompose(sess, x21)
-            .iter()
-            .map(|item| player1.ring_to_bit(sess, &item).try_into().ok().unwrap())
-            .collect();
-        let x2_on_2: Vec<_> = player2
-            .bit_decompose(sess, x22)
-            .iter()
-            .map(|item| player2.ring_to_bit(sess, &item).try_into().ok().unwrap())
-            .collect();
+        // // transform x2 into boolean sharing
+        // let x2_on_1: Vec<_> = player1
+        //     .bit_decompose(sess, x21)
+        //     .iter()
+        //     .map(|item| player1.ring_to_bit(sess, &item).try_into().ok().unwrap())
+        //     .collect();
+        // let x2_on_2: Vec<_> = player2
+        //     .bit_decompose(sess, x22)
+        //     .iter()
+        //     .map(|item| player2.ring_to_bit(sess, &item).try_into().ok().unwrap())
+        //     .collect();
 
-        let rep_bsr: Vec<_> = (0..RingT::SIZE)
-            .map(|i| {
-                let x = ReplicatedBitTensor {
-                    shares: [
-                        [p0_zero.clone(), p0_zero.clone()],
-                        [p1_zero.clone(), x2_on_1[i].clone()],
-                        [x2_on_2[i].clone(), p2_zero.clone()],
-                    ],
-                };
-                x
-            })
-            .collect();
+        // let rep_bsr: Vec<_> = (0..RingT::SIZE)
+        //     .map(|i| {
+        //         let x = ReplicatedBitTensor {
+        //             shares: [
+        //                 [p0_zero.clone(), p0_zero.clone()],
+        //                 [p1_zero.clone(), x2_on_1[i].clone()],
+        //                 [x2_on_2[i].clone(), p2_zero.clone()],
+        //             ],
+        //         };
+        //         x
+        //     })
+        //     .collect();
 
         // let bits = rep.binary_adder(sess, setup, rep_bsl.clone(), rep_bsr.clone());
         rep.place(sess, x)
@@ -1486,7 +1486,7 @@ where
 }
 
 impl ShapeOp {
-    pub(crate) fn rep_bit_kernel<S: Session, RingT>(
+    pub(crate) fn rep_bit_kernel<S: RuntimeSession, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedTensor<RingT>,
@@ -1509,50 +1509,49 @@ impl ShapeOp {
         }
     }
 }
-trait BinaryAdder<S: Session, KeyT> {
+trait BinaryAdder<S: Session, KeyT, R> {
     fn binary_adder(
         &self,
         sess: &S,
         setup: AbstractReplicatedSetup<KeyT>,
-        x: Vec<ReplicatedBitTensor>,
-        y: Vec<ReplicatedBitTensor>,
-    ) -> Vec<ReplicatedBitTensor>;
+        x: Vec<AbstractReplicatedTensor<R>>,
+        y: Vec<AbstractReplicatedTensor<R>>) -> Vec<AbstractReplicatedTensor<R>>;
 }
 
 
-impl<S: Session, KeyT> BinaryAdder<S, KeyT> for ReplicatedPlacement
+impl<S: Session, KeyT, R> BinaryAdder<S, KeyT, R> for ReplicatedPlacement
 where
-    ReplicatedBitTensor: KnownType<S>,
+    AbstractReplicatedTensor<R>: CanonicalType,
+    <AbstractReplicatedTensor<R> as CanonicalType>::Type: KnownType<S>,
+    R: Clone, 
     KeyT: Clone,
-    AbstractReplicatedSetup<KeyT>: KnownType<S>,
     Shape: KnownType<S>,
+    ReplicatedShape: KnownType<S>,
+    AbstractReplicatedTensor<R>: Placed<Placement = ReplicatedPlacement>,
 
-    AbstractReplicatedSetup<KeyT>: Into<st!(AbstractReplicatedSetup<KeyT>)>,
-    ReplicatedBitTensor: Into<st!(ReplicatedBitTensor)>,
-    st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
     ReplicatedPlacement: PlacementMulSetup<
         S,
-        st!(AbstractReplicatedSetup<KeyT>),
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
+        AbstractReplicatedSetup<KeyT>,
+        AbstractReplicatedTensor<R>,
+        AbstractReplicatedTensor<R>,
+        AbstractReplicatedTensor<R>,
     >,
     ReplicatedPlacement: PlacementAdd<
         S,
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
+        AbstractReplicatedTensor<R>,
+        AbstractReplicatedTensor<R>,
+        AbstractReplicatedTensor<R>,
     >,
-    ReplicatedPlacement: PlacementFill<S, cs!(Shape), st!(ReplicatedBitTensor)>,
-    ReplicatedPlacement: PlacementShape<S, st!(ReplicatedBitTensor), cs!(Shape)>,
+    ReplicatedPlacement: PlacementFill<S, cs!(ReplicatedShape), AbstractReplicatedTensor<R>>,
+    ReplicatedPlacement: PlacementShape<S, AbstractReplicatedTensor<R>, cs!(ReplicatedShape)>,
 {
     fn binary_adder(
         &self,
         sess: &S,
         setup: AbstractReplicatedSetup<KeyT>,
-        x: Vec<ReplicatedBitTensor>,
-        y: Vec<ReplicatedBitTensor>,
-    ) -> Vec<ReplicatedBitTensor> {
+        x: Vec<AbstractReplicatedTensor<R>>,
+        y: Vec<AbstractReplicatedTensor<R>>,
+    ) -> Vec<AbstractReplicatedTensor<R>> {
         assert_eq!(x.len(), y.len());
         assert!(x.len() > 0);
 
@@ -1566,20 +1565,20 @@ where
             .map(|i| {
                 rep.mul(
                     sess,
-                    &setup.clone().into(),
-                    &x[i].clone().into(),
-                    &y[i].clone().into(),
-                ).into()
+                    &setup,
+                    &x[i],
+                    &y[i],
+                )
             })
             .collect();
 
         let P_store: Vec<_> = (0..R)
-            .map(|i| rep.add(sess, &x[i].clone().into(), &y[i].clone().into()).into())
+            .map(|i| rep.add(sess, &x[i], &y[i]))
             .collect();
 
-        let rep_shape = rep.shape(sess, &x[0].clone().into());
-        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape).into();
-        let one = rep.fill(sess, Constant::Bit(1), &rep_shape).into();
+        let rep_shape = rep.shape(sess, &x[0].clone());
+        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
+        let one = rep.fill(sess, Constant::Bit(1), &rep_shape);
 
         let keep_masks: Vec<_> = (0..N).map(|i| {
             let mask_int = (1 << (1 << i)) - 1;
@@ -1609,16 +1608,16 @@ where
                     P[j].clone()
                 }
             }).collect();
-            let p1_xor_masks: Vec<_> = (0..R).map(|index| rep.add(sess, &p1[index].clone().into(), &keep_masks[i][index].clone().into()).into()).collect();
+            let p1_xor_masks: Vec<_> = (0..R).map(|index| rep.add(sess, &p1[index].clone(), &keep_masks[i][index].clone())).collect();
             let p_and_g: Vec<_> = (0..R).map(|j| {
-                rep.mul(sess, &setup.clone().into(), &p1_xor_masks[j].clone().into(), &g1[j].clone().into())
+                rep.mul(sess, &setup, &p1_xor_masks[j].clone(), &g1[j].clone())
             }).collect();
 
             for j in 0..R {
-                G[j] = rep.add(sess, &G[j].clone().into(), &p_and_g[j]).into();
+                G[j] = rep.add(sess, &G[j].clone(), &p_and_g[j]);
             }
             for j in 0..R {
-                P[j] = rep.mul(sess, &setup.clone().into(), &P[j].clone().into(), &p1[j].clone().into()).into();
+                P[j] = rep.mul(sess, &setup, &P[j].clone(), &p1[j].clone());
             }
         }
 
