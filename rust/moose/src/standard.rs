@@ -491,7 +491,7 @@ where
                         .unwrap()
                         .into_dimensionality::<IxDyn>()
                         .unwrap(),
-                    self.1.clone(),
+                    self.1,
                 )
             }
             other_rank => panic!(
