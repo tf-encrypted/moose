@@ -1,13 +1,13 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::BitTensor;
+use crate::bit::{BitTensor, BitFromRawPlc};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
-    RepDotOp, RepFillOp, RepMeanOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
+    RepDotOp, RepFillOp, RepMeanOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepMsbOp,
     RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
+    PlacementAbs, PlacementMsb, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
     PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMul,
     PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
     PlacementRingMean, PlacementRingToBit, PlacementSampleUniform, PlacementSetupGen,
@@ -1307,7 +1307,7 @@ impl AdtToRepOp {
 
 // modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated64Tensor, RepFillOp);
 // modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated128Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement,SyncSession attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
 
 hybrid_kernel! {
     RepFillOp,
@@ -1357,24 +1357,35 @@ impl RepFillOp {
     }
 }
 
-modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor, RepAbsOp);
-modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor, RepAbsOp);
+// modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> ReplicatedBitTensor, RepAbsOp);
+// modelled!(PlacementAbs::abs, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> ReplicatedBitTensor, RepAbsOp);
+
+// hybrid_kernel! {
+//     RepAbsOp,
+//     [
+//         (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
+//         (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
+//     ]
+// }
+
+modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor) -> ReplicatedBitTensor, RepMsbOp);
+modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor) -> ReplicatedBitTensor, RepMsbOp);
 
 hybrid_kernel! {
-    RepAbsOp,
+    RepMsbOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> Replicated128Tensor => Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated64Tensor) -> ReplicatedBitTensor => Self::kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, Replicated128Tensor) -> ReplicatedBitTensor => Self::kernel),
     ]
 }
 
-impl RepAbsOp {
+impl RepMsbOp {
     fn kernel<S: Session, KeyT, RingT, BitTensorT, ReplicatedBitTensorT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
         x: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> ReplicatedBitTensorT
     where
         RingT: RingSize,
         BitTensor: KnownType<S>,
@@ -1384,6 +1395,7 @@ impl RepAbsOp {
         KeyT: Clone,
         BitTensorT: Clone,
         ReplicatedBitTensorT: From<AbstractReplicatedTensor<BitTensorT>>,
+        ReplicatedBitTensorT: Clone,
 
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: RingBitDecompose<S, RingT>,
@@ -1448,7 +1460,7 @@ impl RepAbsOp {
             .collect();
 
         let bits = rep.binary_adder(sess, setup, rep_bsl, rep_bsr);
-        rep.place(sess, x)
+        bits[bits.len() - 1].clone()
     }
 }
 
@@ -1560,7 +1572,7 @@ where
                     &y[i],
                 )
             })
-            .collect();
+            .collSyncSessionect();
 
         let P_store: Vec<_> = (0..R)
             .map(|i| rep.add(sess, &x[i], &y[i]))
@@ -2225,5 +2237,44 @@ mod tests {
             let target = raw_vector.iter().map(|x| x >> amount).collect::<Vec<_>>();
             test_rep_truncation128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
+    }
+
+    macro_rules! rep_unary_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(xs: ArrayD<$tt>, zs: ArrayD<u8>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &x);
+
+                let sum = rep.$test_func(&sess, &setup, &x_shared);
+                let opened_product = alice.reveal(&sess, &sum);
+                assert_eq!(
+                    opened_product,
+                    BitTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_unary_func_test!(test_rep_msb64, msb<u64>);
+    // rep_unary_func_test!(test_rep_msb128, msb<u128>);
+
+    #[rstest]
+    #[case(array![-10_i64 as u64].into_dyn(), array![1 as u8].into_dyn())]
+    fn test_rep_msb_64(
+        #[case] x: ArrayD<u64>,
+        #[case] target: ArrayD<u8>,
+    ) {
+        test_rep_msb64(x, target);
     }
 }

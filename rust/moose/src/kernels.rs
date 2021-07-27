@@ -87,7 +87,8 @@ impl Session for SyncSession {
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            // Operator::RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -389,6 +390,10 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
 
 pub trait PlacementAbs<S: Session, SetupT, T, O> {
     fn abs(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+}
+
+pub trait PlacementMsb<S: Session, SetupT, T, O> {
+    fn msb(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementPlace<S: Session, T> {

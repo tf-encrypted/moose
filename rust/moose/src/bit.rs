@@ -205,6 +205,19 @@ impl BitTensor {
     }
 }
 
+pub trait BitFromRawPlc<P, T> {
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> BitTensor;
+}
+
+impl<P> BitFromRawPlc<P, u8> for BitTensor
+where
+    P: Into<HostPlacement>,
+{
+    fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: P) -> BitTensor {
+        BitTensor(raw_tensor.into_dyn(), plc.into())
+    }
+}
+
 impl From<ArrayD<u8>> for BitTensor {
     fn from(a: ArrayD<u8>) -> BitTensor {
         let wrapped = a.mapv(|ai| (ai & 1) as u8);

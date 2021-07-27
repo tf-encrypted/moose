@@ -816,6 +816,7 @@ operators![
     RepAdd,
     RepSub,
     RepMul,
+    RepMsb,
     RepDot,
     RepMean,
     RepSum,
@@ -1142,6 +1143,13 @@ pub struct AdtToRepOp {
 pub struct RepAbsOp {
     pub sig: Signature,
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepMsbOp {
+    pub sig: Signature,
+}
+
+
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSetupOp {
