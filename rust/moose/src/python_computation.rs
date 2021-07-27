@@ -54,6 +54,8 @@ enum PyOperation {
     std_SaveOperation(PySaveOperation),
     std_LoadOperation(PyLoadOperation),
     std_ReceiveOperation(PyReceiveOperation),
+    fixed_EncodeOperation(PyFixedEncodeOperation),
+    fixed_DecodeOperation(PyFixedDecodeOperation),
     fixed_RingEncodeOperation(PyFixedRingEncodeOperation),
     fixed_RingDecodeOperation(PyFixedRingDecodeOperation),
     fixed_RingMeanOperation(PyFixedRingMeanOperation),
@@ -482,6 +484,24 @@ struct PySaveOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyFixedEncodeOperation {
+    name: String,
+    precision: u32,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedDecodeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    precision: u32,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyFixedRingEncodeOperation {
     name: String,
     scaling_base: u64,
@@ -509,7 +529,6 @@ struct PyFixedRingDecodeOperation {
     placement_name: String,
     output_type: PyValueType,
     input_type: PyValueType,
-
     scaling_base: u64,
     scaling_exp: u32,
 }
@@ -1292,6 +1311,32 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_EncodeOperation(op) => Ok(Operation {
+                        kind: FixedpointEncodeOp {
+                            sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
+                            precision: op.precision,
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+
+                    fixed_DecodeOperation(op) => Ok(Operation {
+                        kind: FixedpointDecodeOp {
+                            sig: Signature::unary(
+                                Ty::Fixed128Tensor, // TODO: Derive from the output type
+                                map_type(&op.output_type)?,
+                            ),
+                            precision: op.precision,
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
