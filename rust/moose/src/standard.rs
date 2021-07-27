@@ -470,15 +470,7 @@ impl StdInverseOp {
         plc: &HostPlacement,
         x: StandardTensor<T>,
     ) -> StandardTensor<T> {
-        match x.0.ndim() {
-            2 => {
-                let dim2 = x.0.into_dimensionality::<Ix2>().unwrap();
-                let inv = Inverse::inv(&dim2).unwrap();
-                let dim_d = inv.into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(dim_d, plc.clone().into())
-            }
-            _ => unimplemented!("No implementation for reversing non-2D tensors"),
-        }
+        x.inv(plc)
     }
 }
 
@@ -486,16 +478,17 @@ impl<T> StandardTensor<T>
 where
     T: Scalar + Lapack,
 {
-    pub fn inv(self) -> Self {
+    pub fn inv(self, plc: &HostPlacement) -> Self {
         match self.0.ndim() {
             2 => {
                 let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
-                StandardTensor::<T>::from(
+                StandardTensor::<T>(
                     two_dim
                         .inv()
                         .unwrap()
                         .into_dimensionality::<IxDyn>()
                         .unwrap(),
+                    plc.clone().into(),
                 )
             }
             other_rank => panic!(
@@ -673,7 +666,9 @@ mod tests {
                 .unwrap(),
         );
 
-        let x_inv = x.inv();
+        let x_inv = x.inv(&HostPlacement {
+            owner: "TODO".into(),
+        });
 
         assert_eq!(
             x_inv,
