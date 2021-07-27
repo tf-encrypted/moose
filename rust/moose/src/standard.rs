@@ -466,11 +466,14 @@ impl StdTransposeOp {
 
 impl StdInverseOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
-        _sess: &S,
+        sess: &S,
         plc: &HostPlacement,
         x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        x.inv(plc)
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x.inv())
     }
 }
 
@@ -478,7 +481,7 @@ impl<T> StandardTensor<T>
 where
     T: Scalar + Lapack,
 {
-    pub fn inv(self, plc: &HostPlacement) -> Self {
+    pub fn inv(self) -> Self {
         match self.0.ndim() {
             2 => {
                 let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
@@ -488,7 +491,7 @@ where
                         .unwrap()
                         .into_dimensionality::<IxDyn>()
                         .unwrap(),
-                    plc.clone().into(),
+                    self.1.clone(),
                 )
             }
             other_rank => panic!(
@@ -666,9 +669,7 @@ mod tests {
                 .unwrap(),
         );
 
-        let x_inv = x.inv(&HostPlacement {
-            owner: "TODO".into(),
-        });
+        let x_inv = x.inv();
 
         assert_eq!(
             x_inv,

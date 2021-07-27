@@ -745,14 +745,10 @@ impl Compile<Kernel> for StdInverseOp {
         // Using a fake owner for the old kernel
         match self.sig {
             signature![(_) -> Ty::Float32Tensor] => {
-                closure_kernel!(Float32Tensor, |x| x.inv(&HostPlacement {
-                    owner: "TODO".into()
-                }))
+                closure_kernel!(Float32Tensor, |x| x.inv())
             }
             signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.inv(&HostPlacement {
-                    owner: "TODO".into()
-                }))
+                closure_kernel!(Float64Tensor, |x| x.inv())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
