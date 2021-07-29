@@ -3,21 +3,14 @@ use sodiumoxide::crypto::generichash;
 use crate::prng::{RngSeed, SEED_SIZE};
 
 pub fn derive_seed(key: &[u8], nonce: &[u8]) -> RngSeed {
-    match sodiumoxide::init() {
-        Ok(()) => {
-            let mut hasher = generichash::State::new(Some(SEED_SIZE), Some(key)).unwrap();
-            hasher.update(nonce).unwrap();
-            let h = hasher.finalize().unwrap();
+    sodiumoxide::init().expect("failed to initialize sodiumoxide");
+    let mut hasher = generichash::State::new(Some(SEED_SIZE), Some(key)).unwrap();
+    hasher.update(nonce).unwrap();
+    let h = hasher.finalize().unwrap();
 
-            let mut output: RngSeed = [0u8; SEED_SIZE];
-            output.copy_from_slice(h.as_ref());
-            output
-        }
-        Err(()) => {
-            // TODO: should this function return a Result<RngSeed> ?
-            panic!("failed to initialize sodiumoxide");
-        }
-    }
+    let mut output: RngSeed = [0u8; SEED_SIZE];
+    output.copy_from_slice(h.as_ref());
+    output
 }
 
 #[cfg(test)]
