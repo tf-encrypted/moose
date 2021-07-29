@@ -196,7 +196,7 @@ impl PrimDeriveSeedOp {
         plc: &HostPlacement,
         sync_key: RawNonce,
         key: PrfKey,
-    ) -> anyhow::Result<Seed> {
+    ) -> Seed {
         let sid = sess.session_id();
         let raw_key = key.0;
 
@@ -204,8 +204,8 @@ impl PrimDeriveSeedOp {
         nonce.extend(sid.as_bytes());
         nonce.extend(sync_key.0);
 
-        let raw_seed = crate::utils::derive_seed(&raw_key.0, &nonce)?;
-        Ok(Seed(RawSeed(raw_seed), plc.clone()))
+        let raw_seed = crate::utils::derive_seed(&raw_key.0, &nonce);
+        Seed(RawSeed(raw_seed), plc.clone())
     }
 }
 
@@ -217,9 +217,9 @@ impl RawSeed {
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
     )]
-    pub fn from_prf(key: &RawPrfKey, nonce: &RawNonce) -> anyhow::Result<RawSeed> {
-        let raw_seed = crate::utils::derive_seed(&key.0, &nonce.0)?;
-        Ok(RawSeed(raw_seed))
+    pub fn from_prf(key: &RawPrfKey, nonce: &RawNonce) -> RawSeed {
+        let raw_seed = crate::utils::derive_seed(&key.0, &nonce.0);
+        RawSeed(raw_seed)
     }
 }
 
