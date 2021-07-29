@@ -1015,7 +1015,7 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let nonce = self.sync_key.clone();
         closure_kernel!(PrfKey, |key| Seed(
-            RawSeed::from_prf(&key.0, &nonce),
+            RawSeed::from_prf(&key.0, &nonce)?,
             HostPlacement {
                 owner: "TODO".into() // Fake owner for the older kernels.
             }
