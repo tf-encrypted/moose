@@ -1210,9 +1210,9 @@ impl AsyncTestRuntime {
             };
             let (moose_session_handle, outputs) = executor
                 .run_computation(
-                    &computation,
+                    computation,
                     &valid_role_assignments,
-                    &own_identity,
+                    own_identity,
                     moose_session,
                 )
                 .unwrap();

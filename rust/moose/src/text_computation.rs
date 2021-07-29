@@ -299,6 +299,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             tag(FixedpointRingMeanOp::SHORT_NAME),
             cut(fixed_point_ring_mean),
         ),
+        preceded(tag(FixedpointEncodeOp::SHORT_NAME), cut(fixed_point_encode)),
+        preceded(tag(FixedpointDecodeOp::SHORT_NAME), cut(fixed_point_decode)),
     ));
     let part3 = alt((
         preceded(tag(RingInjectOp::SHORT_NAME), cut(ring_inject)),
@@ -529,6 +531,24 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
         }
         .into(),
     ))
+}
+
+/// Parses a FixedpointEncode operator.
+fn fixed_point_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, precision) = attributes_single("precision", parse_int)(input)?;
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((input, FixedpointEncodeOp { sig, precision }.into()))
+}
+
+/// Parses a FixedpointDecode operator.
+fn fixed_point_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, precision) = attributes_single("precision", parse_int)(input)?;
+    let (input, sig) = type_definition(1)(input)?;
+    Ok((input, FixedpointDecodeOp { sig, precision }.into()))
 }
 
 /// Parses a Save operator.
@@ -1168,6 +1188,8 @@ impl ToTextual for Operator {
             // BitAnd(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
+            FixedpointEncode(op) => op.to_textual(),
+            FixedpointDecode(op) => op.to_textual(),
             FixedpointRingEncode(op) => op.to_textual(),
             FixedpointRingDecode(op) => op.to_textual(),
             FixedpointRingMean(op) => op.to_textual(),
@@ -1253,6 +1275,18 @@ standard_op_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 standard_op_to_textual!(BitSampleOp, "{op}: {}", sig);
 standard_op_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 standard_op_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
+standard_op_to_textual!(
+    FixedpointEncodeOp,
+    "{op}{{precision={}}}: {}",
+    precision,
+    sig
+);
+standard_op_to_textual!(
+    FixedpointDecodeOp,
+    "{op}{{precision={}}}: {}",
+    precision,
+    sig
+);
 standard_op_to_textual!(
     FixedpointRingEncodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",

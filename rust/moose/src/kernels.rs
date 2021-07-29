@@ -742,6 +742,7 @@ kernel! {
 
 impl Compile<Kernel> for StdInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        // Using a fake owner for the old kernel
         match self.sig {
             signature![(_) -> Ty::Float32Tensor] => {
                 closure_kernel!(Float32Tensor, |x| x.inv())
