@@ -743,10 +743,15 @@ operators![
     BitAnd,
     PrimDeriveSeed,
     PrimPrfKeyGen,
-    FixedAdd,
-    FixedMul,
     FixedpointEncode,
     FixedpointDecode,
+    FixedpointAdd,
+    FixedpointSub,
+    FixedpointMul,
+    FixedpointDot,
+    FixedpointTruncPr,
+    FixedpointMean,
+    FixedpointSum,
     FixedpointRingEncode,
     FixedpointRingDecode,
     FixedpointRingMean,
@@ -1012,16 +1017,6 @@ pub struct BitAndOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedMulOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointEncodeOp {
     pub sig: Signature,
     pub precision: u32,
@@ -1031,6 +1026,47 @@ pub struct FixedpointEncodeOp {
 pub struct FixedpointDecodeOp {
     pub sig: Signature,
     pub precision: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointSubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointDotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointTruncPrOp {
+    pub sig: Signature,
+    pub precision: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointMeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+    pub precision: u32,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointSumOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

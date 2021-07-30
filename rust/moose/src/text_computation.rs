@@ -1190,6 +1190,13 @@ impl ToTextual for Operator {
             PrimPrfKeyGen(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
             FixedpointDecode(op) => op.to_textual(),
+            FixedpointAdd(op) => op.to_textual(),
+            FixedpointSub(op) => op.to_textual(),
+            FixedpointMul(op) => op.to_textual(),
+            FixedpointDot(op) => op.to_textual(),
+            FixedpointTruncPr(op) => op.to_textual(),
+            FixedpointMean(op) => op.to_textual(),
+            FixedpointSum(op) => op.to_textual(),
             FixedpointRingEncode(op) => op.to_textual(),
             FixedpointRingDecode(op) => op.to_textual(),
             FixedpointRingMean(op) => op.to_textual(),
@@ -1287,6 +1294,17 @@ standard_op_to_textual!(
     precision,
     sig
 );
+standard_op_to_textual!(FixedpointAddOp, "{op}: {}", sig);
+standard_op_to_textual!(FixedpointSubOp, "{op}: {}", sig);
+standard_op_to_textual!(FixedpointMulOp, "{op}: {}", sig);
+standard_op_to_textual!(FixedpointDotOp, "{op}: {}", sig);
+standard_op_to_textual!(
+    FixedpointTruncPrOp,
+    "{op}{{precision={}}}: {}",
+    precision,
+    sig
+);
+
 standard_op_to_textual!(
     FixedpointRingEncodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
@@ -1336,6 +1354,43 @@ op_with_axis_to_textual!(StdMeanOp);
 op_with_axis_to_textual!(StdSumOp);
 op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
+op_with_axis_to_textual!(FixedpointSumOp);
+
+impl ToTextual for FixedpointMeanOp {
+    fn to_textual(&self) -> String {
+        match self {
+            FixedpointMeanOp {
+                sig,
+                axis: Some(a),
+                precision,
+                scaling_base,
+                scaling_exp,
+            } => {
+                format!(
+                    "FixedpointRingMean{{axis = {}, precision={}, scaling_base={}, scaling_exp={}}}: {}",
+                    a,
+                    precision,
+                    scaling_base,
+                    scaling_exp,
+                    sig.to_textual()
+                )
+            }
+            FixedpointMeanOp {
+                sig,
+                axis: None,
+                precision,
+                scaling_base,
+                scaling_exp,
+            } => format!(
+                "FixedpointRingMean{{precision={}, scaling_base={}, scaling_exp={}}}: {}",
+                precision,
+                scaling_base,
+                scaling_exp,
+                sig.to_textual()
+            ),
+        }
+    }
+}
 
 impl ToTextual for FixedpointRingMeanOp {
     fn to_textual(&self) -> String {
