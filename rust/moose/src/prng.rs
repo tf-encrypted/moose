@@ -185,7 +185,7 @@ impl AesRng {
 
     pub fn generate_random_key() -> [u8; SEED_SIZE] {
         let mut seed = [0u8; SEED_SIZE];
-        let _ = sodiumoxide::init();
+        sodiumoxide::init().expect("failed to initialize sodiumoxide");
         randombytes_into(&mut seed);
         seed
     }
