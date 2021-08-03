@@ -1,7 +1,5 @@
 use moose::bit::BitTensor;
-use moose::compilation::host_ring_lowering::host_ring_lowering;
-use moose::compilation::print::print_graph;
-use moose::compilation::replicated_lowering::replicated_lowering;
+use moose::compilation::compile_passes;
 use moose::compilation::typing::update_types_one_hop;
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
@@ -12,7 +10,6 @@ use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
 use moose::ring::Ring64Tensor;
 use moose::standard::{Float64Tensor, RawShape, StandardTensor};
-use moose::text_computation::ToTextual;
 use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
@@ -25,8 +22,6 @@ use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
 pub mod python_computation;
-use moose::compilation::networking::NetworkingPass;
-use moose::compilation::pruning::prune_graph;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
@@ -531,31 +526,8 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         computation: Vec<u8>,
         passes: Vec<String>,
     ) -> PyResult<MooseComputation> {
-        fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
-            match pass {
-                "networking" => NetworkingPass::pass(comp),
-                "print" => print_graph(comp),
-                "prune" => prune_graph(comp),
-                "typing" => update_types_one_hop(comp),
-                "replicated-lowering" => replicated_lowering(comp),
-                "fixed-to-ring" => host_ring_lowering(comp),
-                "dump" => {
-                    println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
-                    Ok(None)
-                }
-                missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
-            }
-        }
-        let mut computation = create_computation_graph_from_py_bytes(computation);
-        for pass in &passes {
-            if let Some(new_comp) =
-                do_pass(pass, &computation).map_err(|e| PyRuntimeError::new_err(e.to_string()))?
-            {
-                computation = new_comp;
-            }
-        }
-        let computation = computation
-            .toposort()
+        let computation = create_computation_graph_from_py_bytes(computation);
+        let computation = compile_passes(&computation, &passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })
     }
