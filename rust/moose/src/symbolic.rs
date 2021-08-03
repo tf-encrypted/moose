@@ -1,6 +1,6 @@
 use crate::computation::{
-    HostPlacement, KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement,
-    SymbolicValue,
+    Computation, HostPlacement, KnownType, Operation, Operator, Placed, Placement,
+    ReplicatedPlacement, SymbolicValue,
 };
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
@@ -178,6 +178,33 @@ impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
                     plc: Placement::Host(self.clone()),
                 })
             }
+        }
+    }
+}
+
+pub struct SymbolicExecutor {
+    // TODO(lvorona) Any state we may want to keep in between the runs?
+}
+
+impl Default for SymbolicExecutor {
+    fn default() -> Self {
+        SymbolicExecutor {}
+    }
+}
+
+impl SymbolicExecutor {
+    pub fn run_computation(&self, computation: &Computation, session: &SymbolicSession) {
+        let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+
+        for op in computation.operations.iter() {
+            let operator = op.kind.clone();
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = session.execute(operator, &op.placement, operands);
+            env.insert(op.name.clone(), res);
         }
     }
 }

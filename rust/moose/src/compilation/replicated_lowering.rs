@@ -1,23 +1,19 @@
-use std::collections::HashMap;
-
-use crate::{computation::*, kernels::Session, symbolic::SymbolicSession};
+use crate::{
+    computation::Computation,
+    error::Error,
+    symbolic::{SymbolicExecutor, SymbolicSession},
+};
 
 pub fn replicated_lowering(comp: &Computation) -> anyhow::Result<Option<Computation>> {
     let sess = SymbolicSession::default();
-    let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+    SymbolicExecutor::default().run_computation(&comp.toposort()?, &sess);
 
-    for op in comp.operations.iter() {
-        let operator = op.kind.clone();
-        let operands = op
-            .inputs
-            .iter()
-            .map(|input_name| env.get(input_name).unwrap().clone())
-            .collect();
-        let res = sess.execute(operator, &op.placement, operands);
-        env.insert(op.name.clone(), res);
-    }
-
-    let ops = sess.ops.read().unwrap();
+    let ops = sess.ops.read().map_err(|e| {
+        Error::Compilation(format!(
+            "Failed to get operations from the Symbolic Session due to an error: {}",
+            e
+        ))
+    })?;
 
     Ok(Some(Computation {
         operations: ops.clone(),
