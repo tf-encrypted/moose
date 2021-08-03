@@ -247,6 +247,10 @@ pub trait PlacementMul<S: Session, T, U, O> {
     fn mul(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementDiv<S: Session, T, U, O> {
+    fn div(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementDot<S: Session, T, U, O> {
     fn dot(&self, sess: &S, x: &T, y: &U) -> O;
 }
@@ -327,11 +331,7 @@ where
     }
 }
 
-pub trait PlacementStdOnes<S: Session, ShapeT, O> {
-    fn std_ones(&self, sess: &S, shape: &ShapeT) -> O;
-}
-
-modelled!(PlacementStdOnes::std_ones, HostPlacement, (Shape) -> Float64Tensor, StdOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (Shape) -> Float64Tensor, StdOnesOp);
 
 kernel! {
     StdOnesOp, [
@@ -426,8 +426,8 @@ pub trait PlacementSave<S: Session, KeyT, T, O> {
     fn save(&self, sess: &S, key: &KeyT, x: &T) -> O;
 }
 
-pub trait PlacementStdAtLeast2D<S: Session, T, O> {
-    fn std_at_least_2d(&self, sess: &S, to_column_vector: bool, x: &T) -> O;
+pub trait PlacementAtLeast2D<S: Session, T, O> {
+    fn at_least_2d(&self, sess: &S, to_column_vector: bool, x: &T) -> O;
 }
 
 pub trait PlacementFixedpointRingEncode<S: Session, T, O> {
@@ -442,44 +442,20 @@ pub trait PlacementStdMean<S: Session, T, O> {
     fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
-pub trait PlacementStdSum<S: Session, T, O> {
-    fn std_sum(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+pub trait PlacementExpandDims<S: Session, T, O> {
+    fn expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
 
-pub trait PlacementStdExpandDims<S: Session, T, O> {
-    fn std_expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
+pub trait PlacementConcatenate<S: Session, T1, T2, O> {
+    fn concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
 }
 
-pub trait PlacementStdConcatenate<S: Session, T1, T2, O> {
-    fn std_concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
+pub trait PlacementTranspose<S: Session, T, O> {
+    fn transpose(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementStdAdd<S: Session, T1, T2, O> {
-    fn std_add(&self, sess: &S, x: &T1, y: &T2) -> O;
-}
-
-pub trait PlacementStdSub<S: Session, T1, T2, O> {
-    fn std_sub(&self, sess: &S, x: &T1, y: &T2) -> O;
-}
-
-pub trait PlacementStdMul<S: Session, T1, T2, O> {
-    fn std_mul(&self, sess: &S, x: &T1, y: &T2) -> O;
-}
-
-pub trait PlacementStdDiv<S: Session, T1, T2, O> {
-    fn std_div(&self, sess: &S, x: &T1, y: &T2) -> O;
-}
-
-pub trait PlacementStdDot<S: Session, T1, T2, O> {
-    fn std_dot(&self, sess: &S, x: &T1, y: &T2) -> O;
-}
-
-pub trait PlacementStdTranspose<S: Session, T, O> {
-    fn std_transpose(&self, sess: &S, x: &T) -> O;
-}
-
-pub trait PlacementStdInverse<S: Session, T, O> {
-    fn std_inverse(&self, sess: &S, x: &T) -> O;
+pub trait PlacementInverse<S: Session, T, O> {
+    fn inverse(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait EmptyTypeHolder<T> {}
@@ -717,14 +693,14 @@ macro_rules! std_binary_kernel {
     };
 }
 
-std_binary_kernel!(StdAddOp, PlacementStdAdd::std_add, |x, y| x + y);
-std_binary_kernel!(StdSubOp, PlacementStdSub::std_sub, |x, y| x - y);
-std_binary_kernel!(StdMulOp, PlacementStdMul::std_mul, |x, y| x * y);
-std_binary_kernel!(StdDivOp, PlacementStdDiv::std_div, |x, y| x / y);
-std_binary_kernel!(StdDotOp, PlacementStdDot::std_dot, |x, y| x.dot(y));
+std_binary_kernel!(StdAddOp, PlacementAdd::add, |x, y| x + y);
+std_binary_kernel!(StdSubOp, PlacementSub::sub, |x, y| x - y);
+std_binary_kernel!(StdMulOp, PlacementMul::mul, |x, y| x * y);
+std_binary_kernel!(StdDivOp, PlacementDiv::div, |x, y| x / y);
+std_binary_kernel!(StdDotOp, PlacementDot::dot, |x, y| x.dot(y));
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
-modelled!(PlacementStdTranspose::std_transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, StdTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, StdTransposeOp);
 
 kernel! {
     StdTransposeOp, [
@@ -732,7 +708,7 @@ kernel! {
     ]
 }
 
-modelled!(PlacementStdInverse::std_inverse, HostPlacement, (Float64Tensor) -> Float64Tensor, StdInverseOp);
+modelled!(PlacementInverse::inverse, HostPlacement, (Float64Tensor) -> Float64Tensor, StdInverseOp);
 
 kernel! {
     StdInverseOp, [
@@ -816,7 +792,7 @@ impl Compile<Kernel> for StdOnesOp {
     }
 }
 
-modelled!(PlacementStdConcatenate::std_concatenate, HostPlacement, attributes[axis: u32] (Float64Tensor, Float64Tensor) -> Float64Tensor, StdConcatenateOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Float64Tensor, Float64Tensor) -> Float64Tensor, StdConcatenateOp);
 
 kernel! {
     StdConcatenateOp, [
@@ -852,7 +828,7 @@ impl Compile<Kernel> for StdConcatenateOp {
     }
 }
 
-modelled!(PlacementStdExpandDims::std_expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
 
 kernel! {
     StdExpandDimsOp, [
@@ -913,8 +889,8 @@ impl Compile<Kernel> for StdReshapeOp {
     }
 }
 
-modelled!(PlacementStdAtLeast2D::std_at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, StdAtLeast2DOp);
-modelled!(PlacementStdAtLeast2D::std_at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, StdAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, StdAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, StdAtLeast2DOp);
 
 kernel! {
     StdAtLeast2DOp, [
@@ -974,7 +950,7 @@ impl Compile<Kernel> for StdSliceOp {
     }
 }
 
-modelled!(PlacementStdSum::std_sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdSumOp);
 
 kernel! {
     StdSumOp, [
