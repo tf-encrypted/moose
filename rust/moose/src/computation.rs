@@ -1058,7 +1058,6 @@ pub struct FixedpointTruncPrOp {
 pub struct FixedpointMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
-    pub precision: u32,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }

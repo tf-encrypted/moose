@@ -1485,7 +1485,6 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                            precision: op.precision,
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
                         }

@@ -1362,14 +1362,12 @@ impl ToTextual for FixedpointMeanOp {
             FixedpointMeanOp {
                 sig,
                 axis: Some(a),
-                precision,
                 scaling_base,
                 scaling_exp,
             } => {
                 format!(
-                    "FixedpointRingMean{{axis = {}, precision={}, scaling_base={}, scaling_exp={}}}: {}",
+                    "FixedpointRingMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
                     a,
-                    precision,
                     scaling_base,
                     scaling_exp,
                     sig.to_textual()
@@ -1378,12 +1376,10 @@ impl ToTextual for FixedpointMeanOp {
             FixedpointMeanOp {
                 sig,
                 axis: None,
-                precision,
                 scaling_base,
                 scaling_exp,
             } => format!(
-                "FixedpointRingMean{{precision={}, scaling_base={}, scaling_exp={}}}: {}",
-                precision,
+                "FixedpointRingMean{{scaling_base={}, scaling_exp={}}}: {}",
                 scaling_base,
                 scaling_exp,
                 sig.to_textual()
