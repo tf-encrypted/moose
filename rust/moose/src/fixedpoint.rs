@@ -1,7 +1,14 @@
-use crate::computation::{FixedpointRingMeanOp, HostPlacement, Placed, Placement};
+use crate::computation::{
+    FixedpointDotOp, FixedpointEncodeOp, FixedpointRingMeanOp, HostPlacement, KnownType, Placed,
+    Placement, ReplicatedPlacement,
+};
 use crate::error::Result;
-use crate::kernels::{PlacementPlace, PlacementRingMean, RuntimeSession};
-use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
+use crate::kernels::{
+    PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementPlace, PlacementReveal,
+    PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementTruncPr, RuntimeSession,
+    Session,
+};
+use crate::replicated::{Replicated128Tensor, Replicated64Tensor, ReplicatedSetup};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
@@ -153,6 +160,92 @@ impl FixedpointRingMeanOp {
         let axis = axis.map(|a| a as usize);
         let mean = Ring128Tensor::ring_mean(x, axis, scaling_factor);
         plc.place(sess, mean)
+    }
+}
+
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
+
+kernel! {
+    FixedpointEncodeOp,
+    [
+        (HostPlacement, (Float64Tensor) -> Fixed128Tensor => attributes[precision] Self::kernel),
+    ]
+}
+
+impl FixedpointEncodeOp {
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _precision: u32,
+        _x: Float64Tensor,
+    ) -> Fixed128Tensor {
+        todo!("Implement runtime kernel for FixedpointEncodeOp")
+    }
+}
+
+modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDotOp);
+
+hybrid_kernel! {
+    FixedpointDotOp,
+    [
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::kernel),
+    ]
+}
+
+impl FixedpointDotOp {
+    fn kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: cs!(Fixed128Tensor),
+        y: cs!(Fixed128Tensor),
+    ) -> Fixed128Tensor
+    where
+        Fixed128Tensor: KnownType<S>,
+        Ring128Tensor: KnownType<S>,
+        ReplicatedSetup: KnownType<S>,
+        Replicated128Tensor: KnownType<S>,
+        ReplicatedPlacement: PlacementSetupGen<S, cs!(ReplicatedSetup)>,
+        ReplicatedPlacement: PlacementShareSetup<
+            S,
+            cs!(ReplicatedSetup),
+            cs!(Ring128Tensor),
+            cs!(Replicated128Tensor),
+        >,
+        ReplicatedPlacement: PlacementDotSetup<
+            S,
+            cs!(ReplicatedSetup),
+            cs!(Replicated128Tensor),
+            cs!(Replicated128Tensor),
+            cs!(Replicated128Tensor),
+        >,
+        ReplicatedPlacement:
+            PlacementTruncPr<S, cs!(Replicated128Tensor), cs!(Replicated128Tensor)>,
+        HostPlacement: PlacementReveal<S, cs!(Replicated128Tensor), cs!(Ring128Tensor)>,
+    {
+        let setup = plc.gen_setup(sess);
+
+        // TODO(lvorona): This does not compile because FixedTensor can be either Ring or Replicated. In case of Ring we need to share it like this:
+        let x_shared = plc.share(sess, &setup, &x);
+        let y_shared = plc.share(sess, &setup, &y);
+        // If it is already shared, we only need to get it out of the enum.
+
+        // We need to specify which "dot" method we are calling, because the normal "dot" from `PlacementDot` is also in scope.
+        let result = PlacementDotSetup::<
+            S,
+            cs!(ReplicatedSetup),
+            cs!(Replicated128Tensor),
+            cs!(Replicated128Tensor),
+            cs!(Replicated128Tensor),
+        >::dot(plc, sess, &setup, &x_shared, &y_shared);
+        // TODO(lvorona): where to get the `amount` for the TruncPr from?
+        let result_truncated = plc.trunc_pr(sess, 27, &result);
+
+        // TODO(lvorona): how to find who should be the owner?
+        let (_, _, owner) = plc.host_placements();
+        let revealed = owner.reveal(sess, &result_truncated);
+
+        // TODO(lvorona): The reverse of the enum problem above. We should wrap it back, but this does not compile yet.
+        Fixed128Tensor::RingTensor(revealed)
     }
 }
 

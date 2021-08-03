@@ -438,6 +438,14 @@ pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
     fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 
+pub trait PlacementFixedpointEncode<S: Session, T, O> {
+    fn fixedpoint_encode(&self, sess: &S, precision: u32, x: &T) -> O;
+}
+
+pub trait PlacementFixedpointDecode<S: Session, T, O> {
+    fn fixedpoint_decode(&self, sess: &S, precision: u32, x: &T) -> O;
+}
+
 pub trait PlacementStdMean<S: Session, T, O> {
     fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
