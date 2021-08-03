@@ -850,7 +850,7 @@ mod tests {
 
     #[test]
     fn test_kernel_inverse() {
-        use crate::kernels::PlacementStdInverse;
+        use crate::kernels::PlacementInverse;
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -860,13 +860,13 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let inv = alice.std_inverse(&sess, &x);
+        let inv = alice.inverse(&sess, &x);
         assert_eq!("[[-2, 1],\n [1.5, -0.5]]", format!("{}", inv.0));
     }
 
     #[test]
     fn test_kernel_transpose() {
-        use crate::kernels::PlacementStdTranspose;
+        use crate::kernels::PlacementTranspose;
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -876,13 +876,13 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let t = alice.std_transpose(&sess, &x);
+        let t = alice.transpose(&sess, &x);
         assert_eq!("[[1, 3],\n [2, 4]]", format!("{}", t.0));
     }
 
     #[test]
     fn test_kernel_concatenate() {
-        use crate::kernels::PlacementStdConcatenate;
+        use crate::kernels::PlacementConcatenate;
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -897,7 +897,7 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let c = alice.std_concatenate(&sess, 0, &x, &y);
+        let c = alice.concatenate(&sess, 0, &x, &y);
         assert_eq!("[[1, 2],\n [3, 4],\n [5, 6],\n [7, 8]]", format!("{}", c.0));
     }
 }
