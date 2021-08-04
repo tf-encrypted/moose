@@ -5,7 +5,7 @@ use crate::computation::{
 use crate::error::Result;
 use crate::kernels::{
     PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementPlace, PlacementRingMean,
-    PlacementSetupGen, PlacementShareSetup, PlacementTruncPr, RuntimeSession, Session,
+    PlacementShareSetup, PlacementTruncPr, RuntimeSession, Session,
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor, ReplicatedSetup};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
@@ -182,61 +182,46 @@ impl FixedpointEncodeOp {
     }
 }
 
+modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDotOp);
 
 hybrid_kernel! {
     FixedpointDotOp,
     [
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
     ]
 }
 
 impl FixedpointDotOp {
-    fn rep_kernel<S: Session>(
+    fn rep_kernel<S: Session, RingT, RepT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<cs!(Ring128Tensor), cs!(Replicated128Tensor)>,
-        y: FixedTensor<cs!(Ring128Tensor), cs!(Replicated128Tensor)>,
-    ) -> FixedTensor<cs!(Ring128Tensor), cs!(Replicated128Tensor)>
+        x: FixedTensor<RingT, RepT>,
+        y: FixedTensor<RingT, RepT>,
+    ) -> FixedTensor<RingT, RepT>
     where
-        Fixed128Tensor: KnownType<S>,
-        Ring128Tensor: KnownType<S>,
         ReplicatedSetup: KnownType<S>,
-        Replicated128Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementSetupGen<S, cs!(ReplicatedSetup)>,
-        ReplicatedPlacement: PlacementShareSetup<
-            S,
-            cs!(ReplicatedSetup),
-            cs!(Ring128Tensor),
-            cs!(Replicated128Tensor),
-        >,
-        ReplicatedPlacement: PlacementDotSetup<
-            S,
-            cs!(ReplicatedSetup),
-            cs!(Replicated128Tensor),
-            cs!(Replicated128Tensor),
-            cs!(Replicated128Tensor),
-        >,
-        ReplicatedPlacement:
-            PlacementTruncPr<S, cs!(Replicated128Tensor), cs!(Replicated128Tensor)>,
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
+        ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementTruncPr<S, RepT, RepT>,
     {
-        let setup = plc.gen_setup(sess);
+        let setup = sess.replicated_setup(plc);
 
         let x_shared = match x {
-            FixedTensor::RingTensor(x) => plc.share(sess, &setup, &x),
+            FixedTensor::RingTensor(x) => plc.share(sess, setup, &x),
             FixedTensor::ReplicatedTensor(x) => x,
         };
         let y_shared = match y {
-            FixedTensor::RingTensor(x) => plc.share(sess, &setup, &x),
+            FixedTensor::RingTensor(x) => plc.share(sess, setup, &x),
             FixedTensor::ReplicatedTensor(x) => x,
         };
 
-        // We need to specify which "dot" method we are calling, because the normal "dot" from `PlacementDot` is also in scope.
-        let result = plc.dot_setup(sess, &setup, &x_shared, &y_shared);
-        // TODO(lvorona): where to get the `amount` for the TruncPr from?
+        let result = plc.dot_setup(sess, setup, &x_shared, &y_shared);
+        // TODO(lvorona): get the `amount` for the TruncPr from the FixedTensor?
         let truncated = plc.trunc_pr(sess, 27, &result);
 
-        FixedTensor::<cs!(Ring128Tensor), cs!(Replicated128Tensor)>::ReplicatedTensor(truncated)
+        FixedTensor::ReplicatedTensor(truncated)
     }
 }
 
