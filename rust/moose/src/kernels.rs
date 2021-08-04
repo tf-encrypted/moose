@@ -50,6 +50,15 @@ pub struct SyncSession {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
+impl SyncSession {
+    // Currently used in a test
+    pub fn new(replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>) -> Self {
+        SyncSession {
+            session_id: "abcde".into(),
+            replicated_keys,
+        }
+    }
+}
 impl Default for SyncSession {
     fn default() -> Self {
         SyncSession {
@@ -110,6 +119,11 @@ impl Session for SyncSession {
             Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSub(op) => DispatchKernel::compile(&op, plc)(self, operands),

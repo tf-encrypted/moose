@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementMul,
     PlacementMulSetup, PlacementPlace, PlacementReveal, PlacementRingMean, PlacementShareSetup,
-    PlacementSub, PlacementTruncPr, RuntimeSession, Session,
+    PlacementSub, RuntimeSession, Session,
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
@@ -362,7 +362,6 @@ impl FixedpointMulOp {
     where
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
-        ReplicatedPlacement: PlacementTruncPr<S, RepT, RepT>,
     {
         let setup = sess.replicated_setup(plc);
 
@@ -376,9 +375,7 @@ impl FixedpointMulOp {
         };
 
         let result = with_context!(plc, sess, mul_setup(setup, &x, &y));
-        // TODO(lvorona): get the `amount` for the TruncPr from the FixedTensor
-        let truncated = plc.trunc_pr(sess, 27, &result);
-        FixedTensor::ReplicatedTensor(truncated)
+        FixedTensor::ReplicatedTensor(result)
     }
 }
 modelled!(PlacementDot::dot, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
@@ -429,7 +426,6 @@ impl FixedpointDotOp {
     where
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
-        ReplicatedPlacement: PlacementTruncPr<S, RepT, RepT>,
     {
         let setup = sess.replicated_setup(plc);
 
@@ -443,16 +439,15 @@ impl FixedpointDotOp {
         };
 
         let result = plc.dot_setup(sess, setup, &x_shared, &y_shared);
-        // TODO(lvorona): get the `amount` for the TruncPr from the FixedTensor
-        let truncated = plc.trunc_pr(sess, 27, &result);
-
-        FixedTensor::ReplicatedTensor(truncated)
+        FixedTensor::ReplicatedTensor(result)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::kernels::SyncSession;
+    use proptest::prelude::*;
 
     #[test]
     fn ring_fixedpoint() {
@@ -527,5 +522,309 @@ mod tests {
             dec.0.into_shape((1,)).unwrap(),
             array![2.5].into_shape((1,)).unwrap()
         );
+    }
+
+    macro_rules! host_binary_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+
+                let x =
+                    FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(xs, alice.clone()));
+                let y =
+                    FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(ys, alice.clone()));
+
+                let sess = SyncSession::default();
+
+                let sum = alice.$test_func(&sess, &x, &y);
+                let opened_product = match sum {
+                    FixedTensor::RingTensor(r) => r,
+                    _ => panic!("Should not produce a replicated tensor on a host placement"),
+                };
+                assert_eq!(
+                    opened_product,
+                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    host_binary_func_test!(test_host_add64, add<u64>);
+    host_binary_func_test!(test_host_add128, add<u128>);
+    host_binary_func_test!(test_host_sub64, sub<u64>);
+    host_binary_func_test!(test_host_sub128, sub<u128>);
+    host_binary_func_test!(test_host_mul64, mul<u64>);
+    host_binary_func_test!(test_host_mul128, mul<u128>);
+    host_binary_func_test!(test_host_dot64, dot<u64>);
+    host_binary_func_test!(test_host_dot128, dot<u128>);
+
+    #[test]
+    fn test_fixed_host_mul64() {
+        let a = vec![1u64, 2];
+        let b = vec![3u64, 4];
+        let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
+        let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
+        let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+        for i in 0..a.len() {
+            target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+        }
+        test_host_mul64(a, b, target);
+    }
+
+    macro_rules! rep_binary_func_test {
+        ($func_name:ident, $test_func: ident<$tt: ty>) => {
+            fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let x = FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(xs, alice.clone()));
+                let y = FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(ys, alice.clone()));
+
+                // TODO(lvorona): Looks like we have a problem with the replicated setup generation in the session.
+                // `SyncSession::replicated_setup(rep)` fails if there was never a setup for this placement.
+                // Instead, it should create a new setup and insert in its own HashMap. But it is not doing that.
+                // And SymbolicSession should add a `RepSetupOp` in its own ops set and also cache its symbolic result.
+                //
+                // The code below is a temporary plug to get around this problem.
+                use crate::prim::{PrfKey, RawPrfKey};
+                let mut rep_setup = std::collections::HashMap::new();
+                let key = PrfKey(RawPrfKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), alice.clone());
+                rep_setup.insert(rep.clone(), crate::replicated::AbstractReplicatedSetup {
+                    keys: [
+                        [key.clone(), key.clone()],
+                        [key.clone(), key.clone()],
+                        [key.clone(), key],
+                    ]}
+                );
+                let sess = SyncSession::new(rep_setup);
+
+                let sum = rep.$test_func(&sess, &x, &y);
+                let opened_product = match sum {
+                    FixedTensor::ReplicatedTensor(r) => alice.reveal(&sess, &r),
+                    _ => panic!("Should not produce an unreplicated tensor on a replicated placement"),
+                };
+                assert_eq!(
+                    opened_product,
+                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                );
+            }
+        };
+    }
+
+    rep_binary_func_test!(test_rep_add64, add<u64>);
+    rep_binary_func_test!(test_rep_add128, add<u128>);
+    rep_binary_func_test!(test_rep_sub64, sub<u64>);
+    rep_binary_func_test!(test_rep_sub128, sub<u128>);
+    rep_binary_func_test!(test_rep_mul64, mul<u64>);
+    rep_binary_func_test!(test_rep_mul128, mul<u128>);
+    rep_binary_func_test!(test_rep_dot64, dot<u64>);
+    rep_binary_func_test!(test_rep_dot128, dot<u128>);
+
+    macro_rules! pairwise_same_length {
+        ($func_name:ident, $tt: ident) => {
+            fn $func_name() -> impl Strategy<Value = (ArrayD<$tt>, ArrayD<$tt>)> {
+                (1usize..25)
+                    .prop_flat_map(|length| {
+                        (
+                            proptest::collection::vec(any::<$tt>(), length),
+                            proptest::collection::vec(any::<$tt>(), length),
+                        )
+                    })
+                    .prop_map(|(x, y)| {
+                        let a = Array::from_shape_vec(IxDyn(&[x.len()]), x).unwrap();
+                        let b = Array::from_shape_vec(IxDyn(&[y.len()]), y).unwrap();
+                        (a, b)
+                    })
+                    .boxed()
+            }
+        };
+    }
+
+    pairwise_same_length!(pairwise_same_length64, u64);
+    pairwise_same_length!(pairwise_same_length128, u128);
+
+    #[test]
+    fn test_fixed_rep_mul64() {
+        let a = vec![1u64, 2];
+        let b = vec![3u64, 4];
+        let a = Array::from_shape_vec(IxDyn(&[a.len()]), a).unwrap();
+        let b = Array::from_shape_vec(IxDyn(&[b.len()]), b).unwrap();
+        let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+        for i in 0..a.len() {
+            target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+        }
+        test_rep_mul64(a, b, target);
+    }
+
+    proptest! {
+        #[test]
+        fn test_fuzzy_host_add64((a,b) in pairwise_same_length64())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) + std::num::Wrapping(b[i])).0;
+            }
+            test_host_add64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_host_add128((a,b) in pairwise_same_length128())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) + std::num::Wrapping(b[i])).0;
+            }
+            test_host_add128(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_host_sub64((a,b) in pairwise_same_length64())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) - std::num::Wrapping(b[i])).0;
+            }
+            test_host_sub64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_host_sub128((a,b) in pairwise_same_length128())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) - std::num::Wrapping(b[i])).0;
+            }
+            test_host_sub128(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_host_mul64((a,b) in pairwise_same_length64())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+            }
+            test_host_mul64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_host_mul128((a,b) in pairwise_same_length128())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+            }
+            test_host_mul128(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_host_dot64((a,b) in pairwise_same_length64())
+        {
+            let mut target = std::num::Wrapping(0);
+            for i in 0..a.len() {
+                target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+            }
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            test_host_dot64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_host_dot128((a,b) in pairwise_same_length128())
+        {
+            let mut target = std::num::Wrapping(0);
+            for i in 0..a.len() {
+                target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+            }
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            test_host_dot128(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_add64((a,b) in pairwise_same_length64())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) + std::num::Wrapping(b[i])).0;
+            }
+            test_rep_add64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_add128((a,b) in pairwise_same_length128())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) + std::num::Wrapping(b[i])).0;
+            }
+            test_rep_add128(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_sub64((a,b) in pairwise_same_length64())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) - std::num::Wrapping(b[i])).0;
+            }
+            test_rep_sub64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_sub128((a,b) in pairwise_same_length128())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) - std::num::Wrapping(b[i])).0;
+            }
+            test_rep_sub128(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_mul64((a,b) in pairwise_same_length64())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u64; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+            }
+            test_rep_mul64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_mul128((a,b) in pairwise_same_length128())
+        {
+            let mut target = Array::from_shape_vec(IxDyn(&[a.len()]), vec![0u128; a.len()]).unwrap();
+            for i in 0..a.len() {
+                target[i] = (std::num::Wrapping(a[i]) * std::num::Wrapping(b[i])).0;
+            }
+            test_rep_mul128(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_dot64((a,b) in pairwise_same_length64())
+        {
+            let mut target = std::num::Wrapping(0);
+            for i in 0..a.len() {
+                target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+            }
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            test_rep_dot64(a, b, target);
+        }
+
+        #[test]
+        fn test_fuzzy_rep_dot128((a,b) in pairwise_same_length128())
+        {
+            let mut target = std::num::Wrapping(0);
+            for i in 0..a.len() {
+                target += std::num::Wrapping(a[i]) * std::num::Wrapping(b[i]);
+            }
+            let target = Array::from_shape_vec(IxDyn(&[]), vec![target.0]).unwrap();
+            test_rep_dot128(a, b, target);
+        }
     }
 }
