@@ -805,12 +805,12 @@ impl RepMulOp {
     }
 }
 
-modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepDotOp);
 
 hybrid_kernel! {
     RepDotOp,
@@ -1621,8 +1621,8 @@ mod tests {
 
     rep_binary_func_test!(test_rep_mul64, mul<u64>);
     rep_binary_func_test!(test_rep_mul128, mul<u128>);
-    rep_binary_func_test!(test_rep_dot64, dot<u64>);
-    rep_binary_func_test!(test_rep_dot128, dot<u128>);
+    rep_binary_func_test!(test_rep_dot64, dot_setup<u64>);
+    rep_binary_func_test!(test_rep_dot128, dot_setup<u128>);
 
     macro_rules! pairwise_same_length {
         ($func_name:ident, $tt: ident) => {

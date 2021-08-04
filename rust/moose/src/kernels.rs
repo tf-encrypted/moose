@@ -276,7 +276,7 @@ pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
 }
 
 pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
-    fn dot(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+    fn dot_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementShare<S: Session, T, O> {

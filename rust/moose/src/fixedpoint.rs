@@ -4,9 +4,8 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementPlace, PlacementReveal,
-    PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementTruncPr, RuntimeSession,
-    Session,
+    PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementPlace, PlacementRingMean,
+    PlacementSetupGen, PlacementShareSetup, PlacementTruncPr, RuntimeSession, Session,
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor, ReplicatedSetup};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
@@ -233,13 +232,7 @@ impl FixedpointDotOp {
         };
 
         // We need to specify which "dot" method we are calling, because the normal "dot" from `PlacementDot` is also in scope.
-        let result = PlacementDotSetup::<
-            S,
-            cs!(ReplicatedSetup),
-            cs!(Replicated128Tensor),
-            cs!(Replicated128Tensor),
-            cs!(Replicated128Tensor),
-        >::dot(plc, sess, &setup, &x_shared, &y_shared);
+        let result = plc.dot_setup(sess, &setup, &x_shared, &y_shared);
         // TODO(lvorona): where to get the `amount` for the TruncPr from?
         let truncated = plc.trunc_pr(sess, 27, &result);
 
