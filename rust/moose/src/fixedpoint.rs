@@ -241,10 +241,11 @@ impl FixedpointDecodeOp {
         plc: &HostPlacement,
         precision: u32,
         x: FixedTensor<RingT, RepT>,
-    ) -> Float64Tensor
+    ) -> cs!(Float64Tensor)
     where
         HostPlacement: PlacementReveal<S, RepT, RingT>,
-        RingT: Convert<Float64Tensor, Scale = u128>,
+        Float64Tensor: KnownType<S>,
+        RingT: Convert<cs!(Float64Tensor), Scale = u128>,
     {
         let x = match x {
             FixedTensor::RingTensor(v) => v,
