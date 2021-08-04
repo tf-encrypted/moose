@@ -1,12 +1,13 @@
 use crate::computation::{
-    FixedpointAddOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMulOp, FixedpointRingMeanOp,
-    FixedpointSubOp, HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
+    FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMulOp,
+    FixedpointRingMeanOp, FixedpointSubOp, FixedpointSumOp, HostPlacement, KnownType, Placed,
+    Placement, ReplicatedPlacement,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementMul,
-    PlacementMulSetup, PlacementPlace, PlacementReveal, PlacementRingMean, PlacementShareSetup,
-    PlacementSub, RuntimeSession, Session,
+    PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
+    PlacementFixedpointEncode, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
+    PlacementRingMean, PlacementShareSetup, PlacementSub, PlacementSum, RuntimeSession, Session,
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
@@ -181,6 +182,54 @@ impl FixedpointEncodeOp {
         _x: Float64Tensor,
     ) -> Fixed128Tensor {
         todo!("Implement runtime kernel for FixedpointEncodeOp")
+    }
+}
+
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, ReplicatedPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointDecodeOp);
+
+hybrid_kernel! {
+    FixedpointDecodeOp,
+    [
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::host_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::rep_kernel),
+    ]
+}
+
+impl FixedpointDecodeOp {
+    fn host_kernel<S: Session, RingT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        _precision: u32,
+        x: FixedTensor<RingT, RepT>,
+    ) -> FixedTensor<RingT, RepT>
+    where
+        HostPlacement: PlacementReveal<S, RepT, RingT>,
+    {
+        let x = match x {
+            FixedTensor::RingTensor(v) => v,
+            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+        };
+        FixedTensor::RingTensor(x)
+    }
+
+    fn rep_kernel<S: Session, RingT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        _precision: u32,
+        x: FixedTensor<RingT, RepT>,
+    ) -> FixedTensor<RingT, RepT>
+    where
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
+    {
+        let x = match x {
+            FixedTensor::RingTensor(v) => {
+                let setup = sess.replicated_setup(plc);
+                plc.share(sess, setup, &v)
+            }
+            FixedTensor::ReplicatedTensor(v) => v,
+        };
+        FixedTensor::ReplicatedTensor(x)
     }
 }
 
@@ -439,6 +488,64 @@ impl FixedpointDotOp {
         };
 
         let result = plc.dot_setup(sess, setup, &x_shared, &y_shared);
+        FixedTensor::ReplicatedTensor(result)
+    }
+}
+
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Fixed128Tensor) -> Fixed128Tensor, FixedpointSumOp);
+modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointSumOp);
+modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (Fixed128Tensor) -> Fixed128Tensor, FixedpointSumOp);
+
+hybrid_kernel! {
+    FixedpointSumOp,
+    [
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[axis] Self::host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[axis] Self::host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[axis] Self::rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[axis] Self::rep_kernel),
+    ]
+}
+
+impl FixedpointSumOp {
+    fn host_kernel<S: Session, RingT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: FixedTensor<RingT, RepT>,
+    ) -> FixedTensor<RingT, RepT>
+    where
+        HostPlacement: PlacementReveal<S, RepT, RingT>,
+        HostPlacement: PlacementSum<S, RingT, RingT>,
+    {
+        let x_revealed = match x {
+            FixedTensor::RingTensor(x) => x,
+            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+        };
+
+        let result = plc.sum(sess, axis, &x_revealed);
+        FixedTensor::RingTensor(result)
+    }
+
+    fn rep_kernel<S: Session, RingT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<u32>,
+        x: FixedTensor<RingT, RepT>,
+    ) -> FixedTensor<RingT, RepT>
+    where
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
+        ReplicatedPlacement: PlacementSum<S, RepT, RepT>,
+    {
+        let x_shared = match x {
+            FixedTensor::RingTensor(x) => {
+                let setup = sess.replicated_setup(plc);
+                plc.share(sess, setup, &x)
+            }
+            FixedTensor::ReplicatedTensor(x) => x,
+        };
+
+        let result = plc.sum(sess, axis, &x_shared);
         FixedTensor::ReplicatedTensor(result)
     }
 }

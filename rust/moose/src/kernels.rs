@@ -124,6 +124,7 @@ impl Session for SyncSession {
             Operator::FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
