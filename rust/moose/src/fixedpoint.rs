@@ -4,10 +4,10 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementPlace, PlacementRingMean,
-    PlacementShareSetup, PlacementTruncPr, RuntimeSession, Session,
+    PlacementDot, PlacementDotSetup, PlacementFixedpointEncode, PlacementPlace, PlacementReveal,
+    PlacementRingMean, PlacementShareSetup, PlacementTruncPr, RuntimeSession, Session,
 };
-use crate::replicated::{Replicated128Tensor, Replicated64Tensor, ReplicatedSetup};
+use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::Float64Tensor;
 use ndarray::prelude::*;
@@ -182,18 +182,45 @@ impl FixedpointEncodeOp {
     }
 }
 
+modelled!(PlacementDot::dot, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDotOp);
 
 hybrid_kernel! {
     FixedpointDotOp,
     [
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
         (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
     ]
 }
 
 impl FixedpointDotOp {
+    fn host_kernel<S: Session, RingT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedTensor<RingT, RepT>,
+        y: FixedTensor<RingT, RepT>,
+    ) -> FixedTensor<RingT, RepT>
+    where
+        HostPlacement: PlacementReveal<S, RepT, RingT>,
+        HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
+    {
+        let x_revealed = match x {
+            FixedTensor::RingTensor(x) => x,
+            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+        };
+        let y_revealed = match y {
+            FixedTensor::RingTensor(x) => x,
+            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+        };
+
+        let result = plc.dot(sess, &x_revealed, &y_revealed);
+        FixedTensor::RingTensor(result)
+    }
+
     fn rep_kernel<S: Session, RingT, RepT>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -201,7 +228,6 @@ impl FixedpointDotOp {
         y: FixedTensor<RingT, RepT>,
     ) -> FixedTensor<RingT, RepT>
     where
-        ReplicatedSetup: KnownType<S>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
         ReplicatedPlacement: PlacementTruncPr<S, RepT, RepT>,
@@ -218,7 +244,7 @@ impl FixedpointDotOp {
         };
 
         let result = plc.dot_setup(sess, setup, &x_shared, &y_shared);
-        // TODO(lvorona): get the `amount` for the TruncPr from the FixedTensor?
+        // TODO(lvorona): get the `amount` for the TruncPr from the FixedTensor
         let truncated = plc.trunc_pr(sess, 27, &result);
 
         FixedTensor::ReplicatedTensor(truncated)
