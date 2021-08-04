@@ -188,12 +188,12 @@ modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tenso
 hybrid_kernel! {
     FixedpointDotOp,
     [
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
     ]
 }
 
 impl FixedpointDotOp {
-    fn kernel<S: Session>(
+    fn rep_kernel<S: Session>(
         sess: &S,
         plc: &ReplicatedPlacement,
         x: FixedTensor<cs!(Ring128Tensor), cs!(Replicated128Tensor)>,

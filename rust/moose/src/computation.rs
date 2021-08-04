@@ -314,6 +314,16 @@ where
     }
 }
 
+impl<RingT, RepT> From<FixedTensor<RingT, RepT>> for Symbolic<FixedTensor<RingT, RepT>>
+where
+    RingT: Placed<Placement = HostPlacement>,
+    RepT: Placed<Placement = ReplicatedPlacement>,
+{
+    fn from(x: FixedTensor<RingT, RepT>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
 where
     K: Placed<Placement = HostPlacement>,
@@ -357,6 +367,20 @@ where
 {
     type Error = Error;
     fn try_from(v: Symbolic<AbstractReplicatedTensor<R>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<RingT, RepT> TryFrom<Symbolic<FixedTensor<RingT, RepT>>> for FixedTensor<RingT, RepT>
+where
+    RingT: Placed<Placement = HostPlacement>,
+    RepT: Placed<Placement = ReplicatedPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<FixedTensor<RingT, RepT>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
