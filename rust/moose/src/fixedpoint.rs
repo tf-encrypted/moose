@@ -187,12 +187,16 @@ impl FixedpointEncodeOp {
 
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointDecodeOp);
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, ReplicatedPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointDecodeOp);
+// TODO(lvorona): Uncomment the following line and the line in the block below to get an error
+// modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Float64Tensor, FixedpointDecodeOp);
 
 hybrid_kernel! {
     FixedpointDecodeOp,
     [
         (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::host_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::rep_kernel),
+        // TODO(lvorona): Uncomment the following line to get an error
+        // (HostPlacement, (Fixed128Tensor) -> Float64Tensor => attributes[precision] Self::reveal_kernel),
     ]
 }
 
@@ -230,6 +234,24 @@ impl FixedpointDecodeOp {
             FixedTensor::ReplicatedTensor(v) => v,
         };
         FixedTensor::ReplicatedTensor(x)
+    }
+
+    fn reveal_kernel<S: Session, RingT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        precision: u32,
+        x: FixedTensor<RingT, RepT>,
+    ) -> Float64Tensor
+    where
+        HostPlacement: PlacementReveal<S, RepT, RingT>,
+        RingT: Convert<Float64Tensor, Scale = u128>,
+    {
+        let x = match x {
+            FixedTensor::RingTensor(v) => v,
+            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+        };
+        let scaling_factor = precision as u128;
+        Convert::decode(&x, scaling_factor)
     }
 }
 
