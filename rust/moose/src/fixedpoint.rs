@@ -268,17 +268,18 @@ impl FixedpointAddOp {
         y: FixedTensor<RingT, RepT>,
     ) -> FixedTensor<RingT, RepT>
     where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
     {
-        let setup = sess.replicated_setup(plc);
+        let setup = plc.gen_setup(sess);
 
         let x = match x {
-            FixedTensor::RingTensor(v) => plc.share(sess, setup, &v),
+            FixedTensor::RingTensor(v) => plc.share(sess, &setup, &v),
             FixedTensor::ReplicatedTensor(v) => v,
         };
         let y = match y {
-            FixedTensor::RingTensor(v) => plc.share(sess, setup, &v),
+            FixedTensor::RingTensor(v) => plc.share(sess, &setup, &v),
             FixedTensor::ReplicatedTensor(v) => v,
         };
 
@@ -399,21 +400,22 @@ impl FixedpointMulOp {
         y: FixedTensor<RingT, RepT>,
     ) -> FixedTensor<RingT, RepT>
     where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementMulSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
     {
-        let setup = sess.replicated_setup(plc);
+        let setup = plc.gen_setup(sess);
 
         let x = match x {
-            FixedTensor::RingTensor(v) => plc.share(sess, setup, &v),
+            FixedTensor::RingTensor(v) => plc.share(sess, &setup, &v),
             FixedTensor::ReplicatedTensor(v) => v,
         };
         let y = match y {
-            FixedTensor::RingTensor(v) => plc.share(sess, setup, &v),
+            FixedTensor::RingTensor(v) => plc.share(sess, &setup, &v),
             FixedTensor::ReplicatedTensor(v) => v,
         };
 
-        let result = with_context!(plc, sess, mul_setup(setup, &x, &y));
+        let result = with_context!(plc, sess, mul_setup(&setup, &x, &y));
         FixedTensor::ReplicatedTensor(result)
     }
 }
@@ -463,21 +465,22 @@ impl FixedpointDotOp {
         y: FixedTensor<RingT, RepT>,
     ) -> FixedTensor<RingT, RepT>
     where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementDotSetup<S, S::ReplicatedSetup, RepT, RepT, RepT>,
     {
-        let setup = sess.replicated_setup(plc);
+        let setup = plc.gen_setup(sess);
 
         let x_shared = match x {
-            FixedTensor::RingTensor(x) => plc.share(sess, setup, &x),
+            FixedTensor::RingTensor(x) => plc.share(sess, &setup, &x),
             FixedTensor::ReplicatedTensor(x) => x,
         };
         let y_shared = match y {
-            FixedTensor::RingTensor(x) => plc.share(sess, setup, &x),
+            FixedTensor::RingTensor(x) => plc.share(sess, &setup, &x),
             FixedTensor::ReplicatedTensor(x) => x,
         };
 
-        let result = plc.dot_setup(sess, setup, &x_shared, &y_shared);
+        let result = plc.dot_setup(sess, &setup, &x_shared, &y_shared);
         FixedTensor::ReplicatedTensor(result)
     }
 }
@@ -524,13 +527,14 @@ impl FixedpointSumOp {
         x: FixedTensor<RingT, RepT>,
     ) -> FixedTensor<RingT, RepT>
     where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementSum<S, RepT, RepT>,
     {
         let x_shared = match x {
             FixedTensor::RingTensor(x) => {
-                let setup = sess.replicated_setup(plc);
-                plc.share(sess, setup, &x)
+                let setup = plc.gen_setup(sess);
+                plc.share(sess, &setup, &x)
             }
             FixedTensor::ReplicatedTensor(x) => x,
         };
@@ -683,23 +687,7 @@ mod tests {
                 let x = FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(xs, alice.clone()));
                 let y = FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(ys, alice.clone()));
 
-                // TODO(lvorona): Looks like we have a problem with the replicated setup generation in the session.
-                // `SyncSession::replicated_setup(rep)` fails if there was never a setup for this placement.
-                // Instead, it should create a new setup and insert in its own HashMap. But it is not doing that.
-                // And SymbolicSession should add a `RepSetupOp` in its own ops set and also cache its symbolic result.
-                //
-                // The code below is a temporary plug to get around this problem.
-                use crate::prim::{PrfKey, RawPrfKey};
-                let mut rep_setup = std::collections::HashMap::new();
-                let key = PrfKey(RawPrfKey([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]), alice.clone());
-                rep_setup.insert(rep.clone(), crate::replicated::AbstractReplicatedSetup {
-                    keys: [
-                        [key.clone(), key.clone()],
-                        [key.clone(), key.clone()],
-                        [key.clone(), key],
-                    ]}
-                );
-                let sess = SyncSession::new(rep_setup);
+                let sess = SyncSession::default();
 
                 let sum = rep.$test_func(&sess, &x, &y);
                 let opened_product = match sum {
