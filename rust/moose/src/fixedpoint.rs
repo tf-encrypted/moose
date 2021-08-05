@@ -6,12 +6,13 @@ use crate::computation::{
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
-    PlacementFixedpointEncode, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
-    PlacementRingMean, PlacementShareSetup, PlacementSub, PlacementSum, RuntimeSession, Session,
+    PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode,
+    PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal, PlacementRingMean,
+    PlacementSetupGen, PlacementShareSetup, PlacementSub, PlacementSum, RuntimeSession, Session,
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
-use crate::standard::Float64Tensor;
+use crate::standard::{Float32Tensor, Float64Tensor};
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
@@ -165,94 +166,59 @@ impl FixedpointRingMeanOp {
     }
 }
 
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 
-kernel! {
+hybrid_kernel! {
     FixedpointEncodeOp,
     [
+        (HostPlacement, (Float32Tensor) -> Fixed64Tensor => attributes[precision] Self::kernel),
         (HostPlacement, (Float64Tensor) -> Fixed128Tensor => attributes[precision] Self::kernel),
     ]
 }
 
 impl FixedpointEncodeOp {
-    fn kernel<S: RuntimeSession>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _precision: u32,
-        _x: Float64Tensor,
-    ) -> Fixed128Tensor {
-        todo!("Implement runtime kernel for FixedpointEncodeOp")
+    fn kernel<S: Session, StdT, RingT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        precision: u32,
+        x: StdT,
+    ) -> FixedTensor<RingT, RepT>
+    where
+        HostPlacement: PlacementFixedpointRingEncode<S, StdT, RingT>,
+    {
+        let x = plc.fixedpoint_ring_encode(sess, 2, precision, &x);
+        FixedTensor::RingTensor(x)
     }
 }
 
-modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointDecodeOp);
-modelled!(PlacementFixedpointDecode::fixedpoint_decode, ReplicatedPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointDecodeOp);
-// TODO(lvorona): Uncomment the following line and the line in the block below to get an error
-// modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Float64Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> Float32Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Float64Tensor, FixedpointDecodeOp);
 
 hybrid_kernel! {
     FixedpointDecodeOp,
     [
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::host_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::rep_kernel),
-        // TODO(lvorona): Uncomment the following line to get an error
-        // (HostPlacement, (Fixed128Tensor) -> Float64Tensor => attributes[precision] Self::reveal_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Float32Tensor => attributes[precision] Self::kernel),
+        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => attributes[precision] Self::kernel),
     ]
 }
 
 impl FixedpointDecodeOp {
-    fn host_kernel<S: Session, RingT, RepT>(
-        sess: &S,
-        plc: &HostPlacement,
-        _precision: u32,
-        x: FixedTensor<RingT, RepT>,
-    ) -> FixedTensor<RingT, RepT>
-    where
-        HostPlacement: PlacementReveal<S, RepT, RingT>,
-    {
-        let x = match x {
-            FixedTensor::RingTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
-        };
-        FixedTensor::RingTensor(x)
-    }
-
-    fn rep_kernel<S: Session, RingT, RepT>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        _precision: u32,
-        x: FixedTensor<RingT, RepT>,
-    ) -> FixedTensor<RingT, RepT>
-    where
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
-    {
-        let x = match x {
-            FixedTensor::RingTensor(v) => {
-                let setup = sess.replicated_setup(plc);
-                plc.share(sess, setup, &v)
-            }
-            FixedTensor::ReplicatedTensor(v) => v,
-        };
-        FixedTensor::ReplicatedTensor(x)
-    }
-
-    fn reveal_kernel<S: Session, RingT, RepT>(
+    fn kernel<S: Session, StdT, RingT, RepT>(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
         x: FixedTensor<RingT, RepT>,
-    ) -> cs!(Float64Tensor)
+    ) -> StdT
     where
         HostPlacement: PlacementReveal<S, RepT, RingT>,
-        Float64Tensor: KnownType<S>,
-        RingT: Convert<cs!(Float64Tensor), Scale = u128>,
+        HostPlacement: PlacementFixedpointRingDecode<S, RingT, StdT>,
     {
         let x = match x {
             FixedTensor::RingTensor(v) => v,
             FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
         };
-        let scaling_factor = precision as u128;
-        Convert::decode(&x, scaling_factor)
+        plc.fixedpoint_ring_decode(sess, 2, precision, &x)
     }
 }
 
@@ -367,17 +333,18 @@ impl FixedpointSubOp {
         y: FixedTensor<RingT, RepT>,
     ) -> FixedTensor<RingT, RepT>
     where
+        ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
         ReplicatedPlacement: PlacementSub<S, RepT, RepT, RepT>,
     {
-        let setup = sess.replicated_setup(plc);
+        let setup = plc.gen_setup(sess);
 
         let x = match x {
-            FixedTensor::RingTensor(v) => plc.share(sess, setup, &v),
+            FixedTensor::RingTensor(v) => plc.share(sess, &setup, &v),
             FixedTensor::ReplicatedTensor(v) => v,
         };
         let y = match y {
-            FixedTensor::RingTensor(v) => plc.share(sess, setup, &v),
+            FixedTensor::RingTensor(v) => plc.share(sess, &setup, &v),
             FixedTensor::ReplicatedTensor(v) => v,
         };
 
