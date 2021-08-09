@@ -1197,7 +1197,7 @@ impl AsyncTestRuntime {
         if !missing_role_assignments.is_empty() {
             let missing_roles: Vec<&Role> = missing_role_assignments.keys().collect();
             let missing_identities: Vec<&Identity> = missing_role_assignments.values().collect();
-            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.", 
+            return Err(Error::TestRuntime(format!("Role assignment included identities unknown to Moose runtime: missing identities {:?} for roles {:?}.",
                 missing_identities, missing_roles)));
         }
 
@@ -1942,8 +1942,7 @@ mod tests {
                 RawShape(vec![1]),
                 HostPlacement {
                     owner: "alice".into(),
-                }
-                .into(),
+                },
             ));
             assert_eq!(expected_result, Value::Float32(shaped_result.0[0]));
         } else {

@@ -552,8 +552,7 @@ where
             v,
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernels
-            }
-            .into(),
+            },
         )
     }
 }
@@ -626,8 +625,7 @@ impl<T> From<Vec<T>> for StandardTensor<T> {
             Array::from(v).into_dyn(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
-            }
-            .into(),
+            },
         )
     }
 }
@@ -640,8 +638,7 @@ impl<T> From<Array1<T>> for StandardTensor<T> {
             v.into_dyn(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
-            }
-            .into(),
+            },
         )
     }
 }
@@ -654,8 +651,7 @@ impl<T> From<Array2<T>> for StandardTensor<T> {
             v.into_dyn(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
-            }
-            .into(),
+            },
         )
     }
 }
@@ -672,8 +668,7 @@ where
         c,
         HostPlacement {
             owner: "TODO".into(),
-        }
-        .into(),
+        },
     )
 }
 
