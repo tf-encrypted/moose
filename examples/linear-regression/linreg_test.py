@@ -12,7 +12,6 @@ from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
 from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from moose.computation import utils
 from moose.computation.standard import StringType
 from moose.logger import get_logger
@@ -173,7 +172,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 HostEncodingPass(),
                 HostLoweringPass(),
                 ReplicatedEncodingPass(),
-                ReplicatedOpsPass(),
+                # ReplicatedOpsPass(),
                 # HostRingLoweringPass(),
                 # ReplicatedLoweringPass(ring=128),
                 # PruningPass(),
@@ -186,7 +185,6 @@ class LinearRegressionExample(parameterized.TestCase):
             comp_bin,
             [
                 "typing",
-                "fixed-to-ring",
                 "replicated-lowering",
                 "prune",
                 "networking",

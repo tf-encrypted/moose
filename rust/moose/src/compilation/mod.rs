@@ -1,4 +1,3 @@
-use crate::compilation::host_ring_lowering::host_ring_lowering;
 use crate::compilation::networking::NetworkingPass;
 use crate::compilation::print::print_graph;
 use crate::compilation::pruning::prune_graph;
@@ -7,7 +6,6 @@ use crate::compilation::typing::update_types_one_hop;
 use crate::computation::Computation;
 use crate::text_computation::ToTextual;
 
-pub mod host_ring_lowering;
 pub mod networking;
 pub mod print;
 pub mod pruning;
@@ -30,9 +28,8 @@ fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>
         "networking" => NetworkingPass::pass(comp),
         "print" => print_graph(comp),
         "prune" => prune_graph(comp),
-        "typing" => update_types_one_hop(comp),
         "replicated-lowering" => replicated_lowering(comp),
-        "fixed-to-ring" => host_ring_lowering(comp),
+        "typing" => update_types_one_hop(comp),
         "dump" => {
             println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
             Ok(None)
