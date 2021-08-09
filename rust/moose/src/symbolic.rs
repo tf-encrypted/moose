@@ -2,6 +2,7 @@ use crate::computation::{
     Computation, HostPlacement, KnownType, Operation, Operator, Placed, Placement,
     ReplicatedPlacement, SymbolicValue,
 };
+use crate::error::Error;
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
 use crate::replicated::AbstractReplicatedSetup;
@@ -202,8 +203,13 @@ impl Default for SymbolicExecutor {
 }
 
 impl SymbolicExecutor {
-    pub fn run_computation(&self, computation: &Computation, session: &SymbolicSession) {
+    pub fn run_computation(
+        &self,
+        computation: &Computation,
+        session: &SymbolicSession,
+    ) -> anyhow::Result<Computation> {
         let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+        let computation = computation.toposort()?;
 
         for op in computation.operations.iter() {
             let operator = op.kind.clone();
@@ -215,5 +221,14 @@ impl SymbolicExecutor {
             let res = session.execute(operator, &op.placement, operands);
             env.insert(op.name.clone(), res);
         }
+        let ops = session.ops.read().map_err(|e| {
+            Error::Compilation(format!(
+                "Failed to get operations from the Symbolic Session due to an error: {}",
+                e
+            ))
+        })?;
+        Ok(Computation {
+            operations: ops.clone(),
+        })
     }
 }

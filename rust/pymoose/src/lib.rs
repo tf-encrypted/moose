@@ -1,6 +1,6 @@
 use moose::bit::BitTensor;
-use moose::compilation::compile_passes;
 use moose::compilation::typing::update_types_one_hop;
+use moose::compilation::{compile_passes, into_pass};
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
@@ -527,6 +527,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         passes: Vec<String>,
     ) -> PyResult<MooseComputation> {
         let computation = create_computation_graph_from_py_bytes(computation);
+        let passes = into_pass(&passes).map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         let computation = compile_passes(&computation, &passes)
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         Ok(MooseComputation { computation })

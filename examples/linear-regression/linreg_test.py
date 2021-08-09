@@ -185,7 +185,9 @@ class LinearRegressionExample(parameterized.TestCase):
             comp_bin,
             [
                 "typing",
-                "replicated-lowering",
+                # All of the symbolic passes. Currently combines functionality of
+                # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
+                "symbolic",
                 "prune",
                 "networking",
                 "typing",

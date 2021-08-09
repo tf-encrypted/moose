@@ -12,7 +12,32 @@ pub mod pruning;
 pub mod replicated_lowering;
 pub mod typing;
 
-pub fn compile_passes(comp: &Computation, passes: &[String]) -> anyhow::Result<Computation> {
+pub enum Pass {
+    Networking,
+    Print,
+    Prune,
+    Symbolic,
+    Typing,
+    Dump,
+}
+
+fn parse_pass(name: &str) -> anyhow::Result<Pass> {
+    match name {
+        "networking" => Ok(Pass::Networking),
+        "print" => Ok(Pass::Print),
+        "prune" => Ok(Pass::Prune),
+        "symbolic" => Ok(Pass::Symbolic),
+        "typing" => Ok(Pass::Typing),
+        "dump" => Ok(Pass::Dump),
+        missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
+    }
+}
+
+pub fn into_pass(passes: &[String]) -> anyhow::Result<Vec<Pass>> {
+    passes.iter().map(|s| parse_pass(s.as_str())).collect()
+}
+
+pub fn compile_passes(comp: &Computation, passes: &[Pass]) -> anyhow::Result<Computation> {
     let mut computation = comp.toposort()?;
 
     for pass in passes {
@@ -23,17 +48,16 @@ pub fn compile_passes(comp: &Computation, passes: &[String]) -> anyhow::Result<C
     Ok(computation)
 }
 
-fn do_pass(pass: &str, comp: &Computation) -> anyhow::Result<Option<Computation>> {
+fn do_pass(pass: &Pass, comp: &Computation) -> anyhow::Result<Option<Computation>> {
     match pass {
-        "networking" => NetworkingPass::pass(comp),
-        "print" => print_graph(comp),
-        "prune" => prune_graph(comp),
-        "replicated-lowering" => replicated_lowering(comp),
-        "typing" => update_types_one_hop(comp),
-        "dump" => {
+        Pass::Networking => NetworkingPass::pass(comp),
+        Pass::Print => print_graph(comp),
+        Pass::Prune => prune_graph(comp),
+        Pass::Symbolic => replicated_lowering(comp),
+        Pass::Typing => update_types_one_hop(comp),
+        Pass::Dump => {
             println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
             Ok(None)
         }
-        missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
     }
 }

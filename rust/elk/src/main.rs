@@ -1,4 +1,4 @@
-use moose::compilation::compile_passes;
+use moose::compilation::{compile_passes, into_pass};
 use moose::text_computation::verbose_parse_computation;
 use moose::text_computation::ToTextual;
 use std::fs::{read_to_string, write};
@@ -28,7 +28,8 @@ fn main() -> anyhow::Result<()> {
     let opt = Opt::from_args();
     let source = read_to_string(opt.input)?;
     let comp = verbose_parse_computation(&source)?;
-    let comp = compile_passes(&comp, &opt.passes.unwrap_or_else(all_passes))?;
+    let passes = into_pass(&opt.passes.unwrap_or_else(all_passes))?;
+    let comp = compile_passes(&comp, &passes)?;
     // After all the passes are done, ensure the computation is a DAG and sort it.
     let comp = comp.toposort()?;
     match opt.output {
