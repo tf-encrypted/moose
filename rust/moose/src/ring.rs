@@ -170,7 +170,7 @@ impl ShapeOp {
         x: AbstractRingTensor<T>,
     ) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone().into())
+        Shape(raw_shape, plc.clone())
     }
 }
 
@@ -593,7 +593,7 @@ where
 
 impl<T> AbstractRingTensor<T> {
     pub fn shape(&self) -> Shape {
-        Shape(RawShape(self.0.shape().into()), self.1.clone().into())
+        Shape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
 

@@ -1434,25 +1434,24 @@ impl RepMsbOp {
         let x2_on_1: Vec<_> = player1
             .bit_decompose(sess, x21)
             .iter()
-            .map(|item| player1.ring_to_bit(sess, &item))
+            .map(|item| player1.ring_to_bit(sess, item))
             .collect();
         let x2_on_2: Vec<_> = player2
             .bit_decompose(sess, x22)
             .iter()
-            .map(|item| player2.ring_to_bit(sess, &item))
+            .map(|item| player2.ring_to_bit(sess, item))
             .collect();
 
         let rep_bsr: Vec<_> = (0..RingT::SIZE)
             .map(|i| {
-                let x = AbstractReplicatedTensor {
+                AbstractReplicatedTensor {
                     shares: [
                         [p0_zero.clone(), p0_zero.clone()],
                         [p1_zero.clone(), x2_on_1[i].clone()],
                         [x2_on_2[i].clone(), p2_zero.clone()],
                     ],
                 }
-                .into();
-                x
+                .into()
             })
             .collect();
 
@@ -1540,8 +1539,10 @@ where
         x: Vec<RT>,
         y: Vec<RT>,
     ) -> Vec<RT> {
+        #![allow(clippy::many_single_char_names)]
+
         assert_eq!(x.len(), y.len());
-        assert!(x.len() > 0);
+        assert!(!x.is_empty());
 
         let ring_size = x.len();
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
@@ -1576,7 +1577,7 @@ where
             .collect();
 
         let mut p = p_store.clone();
-        for i in 0..log_r {
+        for (i, km) in keep_masks.iter().enumerate().take(log_r) {
             let g1: Vec<_> = (0..ring_size)
                 .map(|j| {
                     if j < (1 << i) {
@@ -1596,7 +1597,7 @@ where
                 })
                 .collect();
             let p1_xor_masks: Vec<_> = (0..ring_size)
-                .map(|index| rep.add(sess, &p1[index].clone(), &keep_masks[i][index].clone()))
+                .map(|index| rep.add(sess, &p1[index].clone(), &km[index].clone()))
                 .collect();
             let p_and_g: Vec<_> = (0..ring_size)
                 .map(|j| {

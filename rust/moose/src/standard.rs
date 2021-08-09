@@ -247,7 +247,7 @@ impl ShapeOp {
         x: StandardTensor<T>,
     ) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone().into())
+        Shape(raw_shape, plc.clone())
     }
 }
 
@@ -269,7 +269,7 @@ impl StdSliceOp {
         x: Shape,
     ) -> Shape {
         let slice = x.0.slice(start as usize, end as usize);
-        Shape(slice, plc.clone().into())
+        Shape(slice, plc.clone())
     }
 }
 
@@ -486,7 +486,7 @@ impl StdConcatenateOp {
 
         let c =
             ndarray::concatenate(ax, &[x, y]).expect("Failed to concatenate arrays with ndarray");
-        StandardTensor(c, plc.clone().into())
+        StandardTensor(c, plc.clone())
     }
 }
 
