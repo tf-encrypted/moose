@@ -8,8 +8,8 @@ use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
     PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode,
     PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
-    PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementSub, PlacementSum,
-    PlacementTruncPr, RuntimeSession, Session,
+    PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
+    PlacementSum, PlacementTruncPr, RuntimeSession, Session,
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
@@ -486,41 +486,40 @@ impl FixedpointDotOp {
     }
 }
 
-// TODO(lvorona): Do we need host kernels for the TruncPr? At the moment we do not have a `HostPlacement: PlacementTruncPr<S, RingT, RingT>,` implemented
-// modelled!(PlacementTruncPr::trunc_pr, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointTruncPrOp);
-// modelled!(PlacementTruncPr::trunc_pr, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointTruncPrOp);
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[precision: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointTruncPrOp);
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[precision: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointTruncPrOp);
 
 hybrid_kernel! {
     FixedpointTruncPrOp,
     [
-        // (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[precision] Self::host_kernel),
-        // (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::host_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[precision] Self::host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::host_kernel),
         (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[precision] Self::rep_kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::rep_kernel),
     ]
 }
 
 impl FixedpointTruncPrOp {
-    // fn host_kernel<S: Session, RingT, RepT>(
-    //     sess: &S,
-    //     plc: &HostPlacement,
-    //     precision: u32,
-    //     x: FixedTensor<RingT, RepT>,
-    // ) -> FixedTensor<RingT, RepT>
-    // where
-    //     HostPlacement: PlacementReveal<S, RepT, RingT>,
-    //     HostPlacement: PlacementTruncPr<S, RingT, RingT>,
-    // {
-    //     let x_revealed = match x {
-    //         FixedTensor::RingTensor(x) => x,
-    //         FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
-    //     };
+    fn host_kernel<S: Session, RingT, RepT>(
+        sess: &S,
+        plc: &HostPlacement,
+        precision: u32,
+        x: FixedTensor<RingT, RepT>,
+    ) -> FixedTensor<RingT, RepT>
+    where
+        HostPlacement: PlacementReveal<S, RepT, RingT>,
+        HostPlacement: PlacementShr<S, RingT, RingT>,
+    {
+        let x_revealed = match x {
+            FixedTensor::RingTensor(x) => x,
+            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+        };
 
-    //     let result = plc.trunc_pr(sess, precision, &x_revealed);
-    //     FixedTensor::RingTensor(result)
-    // }
+        let result = plc.shr(sess, precision as usize, &x_revealed);
+        FixedTensor::RingTensor(result)
+    }
 
     fn rep_kernel<S: Session, RingT, RepT>(
         sess: &S,
