@@ -1,13 +1,13 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::{BitFromRawPlc, BitTensor};
+use crate::bit::{BitTensor};
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
+    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp,
     RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp,
     RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
+    PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
     PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul,
     PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
     PlacementRingMean, PlacementRingToBit, PlacementSampleUniform, PlacementSetupGen,
@@ -1339,21 +1339,20 @@ impl RepFillOp {
 
         let shares = [
             [
-                player0.fill(sess, Constant::Bit(value), &s0),
-                player0.fill(sess, Constant::Bit(0_u8), &s0),
+                player0.fill(sess, Constant::Bit(value), s0),
+                player0.fill(sess, Constant::Bit(0_u8), s0),
             ],
             [
-                player1.fill(sess, Constant::Bit(0_u8), &s1),
-                player1.fill(sess, Constant::Bit(0_u8), &s1),
+                player1.fill(sess, Constant::Bit(0_u8), s1),
+                player1.fill(sess, Constant::Bit(0_u8), s1),
             ],
             [
-                player2.fill(sess, Constant::Bit(0_u8), &s2),
-                player2.fill(sess, Constant::Bit(value), &s2),
+                player2.fill(sess, Constant::Bit(0_u8), s2),
+                player2.fill(sess, Constant::Bit(value),s2),
             ],
         ];
 
-        let x = AbstractReplicatedTensor { shares };
-        x
+        AbstractReplicatedTensor { shares }
     }
 }
 
@@ -1544,26 +1543,24 @@ where
         assert_eq!(x.len(), y.len());
         assert!(x.len() > 0);
 
-        let rep = x[0].placement().unwrap();
-
-        let R = x.len();
-        let N = (R as f64).log2() as usize; // we know that R = 64/128
+        let ring_size = x.len();
+        let log_r= (ring_size as f64).log2() as usize; // we know that R = 64/128
 
         let rep = self;
-        let mut G: Vec<_> = (0..R)
+        let mut g: Vec<_> = (0..ring_size)
             .map(|i| rep.mul(sess, &setup.clone().into(), &x[i], &y[i]))
             .collect();
 
-        let P_store: Vec<_> = (0..R).map(|i| rep.add(sess, &x[i], &y[i])).collect();
+        let p_store: Vec<_> = (0..ring_size).map(|i| rep.add(sess, &x[i], &y[i])).collect();
 
         let rep_shape = rep.shape(sess, &x[0]);
         let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
         let one = rep.fill(sess, Constant::Bit(1), &rep_shape);
 
-        let keep_masks: Vec<_> = (0..N)
+        let keep_masks: Vec<_> = (0..log_r)
             .map(|i| {
                 let mask_int = (1_u128 << (1_u128 << i)) - 1;
-                let mask_bits: Vec<_> = (0..R)
+                let mask_bits: Vec<_> = (0..ring_size)
                     .map(|j| {
                         if (mask_int >> j) & 1 == 1 {
                             one.clone()
@@ -1576,30 +1573,30 @@ where
             })
             .collect();
 
-        let mut P = P_store.clone();
-        for i in 0..N {
-            let g1: Vec<_> = (0..R)
+        let mut p = p_store.clone();
+        for i in 0..log_r {
+            let g1: Vec<_> = (0..ring_size)
                 .map(|j| {
                     if j < (1 << i) {
                         zero.clone()
                     } else {
-                        G[j].clone()
+                        g[j].clone()
                     }
                 })
                 .collect();
-            let p1: Vec<_> = (0..R)
+            let p1: Vec<_> = (0..ring_size)
                 .map(|j| {
                     if j < (1 << i) {
                         zero.clone()
                     } else {
-                        P[j].clone()
+                        p[j].clone()
                     }
                 })
                 .collect();
-            let p1_xor_masks: Vec<_> = (0..R)
+            let p1_xor_masks: Vec<_> = (0..ring_size)
                 .map(|index| rep.add(sess, &p1[index].clone(), &keep_masks[i][index].clone()))
                 .collect();
-            let p_and_g: Vec<_> = (0..R)
+            let p_and_g: Vec<_> = (0..ring_size)
                 .map(|j| {
                     rep.mul(
                         sess,
@@ -1610,18 +1607,18 @@ where
                 })
                 .collect();
 
-            for j in 0..R {
-                G[j] = rep.add(sess, &G[j].clone(), &p_and_g[j]);
+            for j in 0..ring_size {
+                g[j] = rep.add(sess, &g[j].clone(), &p_and_g[j]);
             }
-            for j in 0..R {
-                P[j] = rep.mul(sess, &setup.clone().into(), &P[j].clone(), &p1[j].clone());
+            for j in 0..ring_size {
+                p[j] = rep.mul(sess, &setup.clone().into(), &p[j].clone(), &p1[j].clone());
             }
         }
 
-        let C: Vec<_> = (0..R)
-            .map(|i| if i < 1 { zero.clone() } else { G[i].clone() })
+        let c: Vec<_> = (0..ring_size)
+            .map(|i| if i < 1 { zero.clone() } else { g[i].clone() })
             .collect();
-        let z: Vec<_> = (0..R).map(|i| rep.add(sess, &C[i], &P_store[i])).collect();
+        let z: Vec<_> = (0..ring_size).map(|i| rep.add(sess, &c[i], &p_store[i])).collect();
         z
     }
 }
@@ -2228,6 +2225,9 @@ mod tests {
         }
     }
 
+
+    use crate::bit::{BitFromRawPlc};
+
     macro_rules! rep_unary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, zs: ArrayD<u8>) {
@@ -2256,13 +2256,13 @@ mod tests {
     rep_unary_func_test!(test_rep_msb128, msb<u128>);
 
     #[rstest]
-    #[case(array![-10_i64 as u64, -100_i64 as u64, -200000_i64 as u64, 0, 1].into_dyn(), array![1 as u8, 1, 1, 0, 0].into_dyn())]
+    #[case(array![-10_i64 as u64, -100_i64 as u64, -200000_i64 as u64, 0, 1].into_dyn(), array![1_u8, 1, 1, 0, 0].into_dyn())]
     fn test_rep_msb_64(#[case] x: ArrayD<u64>, #[case] target: ArrayD<u8>) {
         test_rep_msb64(x, target);
     }
 
     #[rstest]
-    #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1].into_dyn(), array![1 as u8, 1, 1, 0, 0].into_dyn())]
+    #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1].into_dyn(), array![1_u8, 1, 1, 0, 0].into_dyn())]
     fn test_rep_msb_128(#[case] x: ArrayD<u128>, #[case] target: ArrayD<u8>) {
         test_rep_msb128(x, target);
     }

@@ -80,7 +80,7 @@ impl ShapeOp {
         x: BitTensor,
     ) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone().into())
+        Shape(raw_shape, plc.clone())
     }
 }
 
