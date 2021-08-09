@@ -80,6 +80,7 @@ impl Session for SyncSession {
             Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingToBit(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),

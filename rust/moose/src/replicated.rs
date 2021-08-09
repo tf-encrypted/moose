@@ -1,18 +1,18 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::{BitTensor, BitFromRawPlc};
+use crate::bit::{BitFromRawPlc, BitTensor};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
-    RepDotOp, RepFillOp, RepMeanOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp, RepMsbOp,
-    RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
+    RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp,
+    RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAbs, PlacementMsb, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
-    PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMul,
+    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
+    PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul,
     PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
     PlacementRingMean, PlacementRingToBit, PlacementSampleUniform, PlacementSetupGen,
     PlacementShape, PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum,
-    PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, Session, RuntimeSession,
+    PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, RuntimeSession, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -1307,7 +1307,7 @@ impl AdtToRepOp {
 
 // modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated64Tensor, RepFillOp);
 // modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated128Tensor, RepFillOp);
-modelled!(PlacementFill::fill, ReplicatedPlacement,SyncSession attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
 
 hybrid_kernel! {
     RepFillOp,
@@ -1427,12 +1427,9 @@ impl RepMsbOp {
             .map(|item| rep.share(sess, &setup.clone().into(), item))
             .collect();
 
-        let p0_zero = player0
-            .fill(sess, 0_u8.into(), &player0.shape(sess, x00));
-        let p1_zero = player1
-            .fill(sess, 0_u8.into(), &player1.shape(sess, x11));
-        let p2_zero = player2
-            .fill(sess, 0_u8.into(), &player2.shape(sess, x22));
+        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
+        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
+        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
 
         // transform x2 into boolean sharing
         let x2_on_1: Vec<_> = player1
@@ -1454,7 +1451,8 @@ impl RepMsbOp {
                         [p1_zero.clone(), x2_on_1[i].clone()],
                         [x2_on_2[i].clone(), p2_zero.clone()],
                     ],
-                }.into();
+                }
+                .into();
                 x
             })
             .collect();
@@ -1517,9 +1515,9 @@ trait BinaryAdder<S: Session, KeyT, RT> {
         sess: &S,
         setup: AbstractReplicatedSetup<KeyT>,
         x: Vec<RT>,
-        y: Vec<RT>) -> Vec<RT>;
+        y: Vec<RT>,
+    ) -> Vec<RT>;
 }
-
 
 impl<S: Session, KeyT, RT> BinaryAdder<S, KeyT, RT> for ReplicatedPlacement
 where
@@ -1531,19 +1529,8 @@ where
     AbstractReplicatedSetup<KeyT>: KnownType<S>,
     cs!(AbstractReplicatedSetup<KeyT>): From<AbstractReplicatedSetup<KeyT>>,
 
-    ReplicatedPlacement: PlacementMulSetup<
-        S,
-        cs!(AbstractReplicatedSetup<KeyT>),
-        RT,
-        RT,
-        RT,
-    >,
-    ReplicatedPlacement: PlacementAdd<
-        S,
-        RT,
-        RT,
-        RT,
-    >,
+    ReplicatedPlacement: PlacementMulSetup<S, cs!(AbstractReplicatedSetup<KeyT>), RT, RT, RT>,
+    ReplicatedPlacement: PlacementAdd<S, RT, RT, RT>,
     ReplicatedPlacement: PlacementFill<S, cs!(AbstractReplicatedShape<cs!(Shape)>), RT>,
     ReplicatedPlacement: PlacementShape<S, RT, cs!(AbstractReplicatedShape<cs!(Shape)>)>,
 {
@@ -1564,56 +1551,64 @@ where
 
         let rep = self;
         let mut G: Vec<_> = (0..R)
-            .map(|i| {
-                rep.mul(
-                    sess,
-                    &setup.clone().into(),
-                    &x[i],
-                    &y[i],
-                )
-            })
-            .collSyncSessionect();
-
-        let P_store: Vec<_> = (0..R)
-            .map(|i| rep.add(sess, &x[i], &y[i]))
+            .map(|i| rep.mul(sess, &setup.clone().into(), &x[i], &y[i]))
             .collect();
+
+        let P_store: Vec<_> = (0..R).map(|i| rep.add(sess, &x[i], &y[i])).collect();
 
         let rep_shape = rep.shape(sess, &x[0]);
         let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
         let one = rep.fill(sess, Constant::Bit(1), &rep_shape);
 
-        let keep_masks: Vec<_> = (0..N).map(|i| {
-            let mask_int = (1 << (1 << i)) - 1;
-            let mask_bits: Vec<_> = (0..R).map(|j| {
-                if (mask_int >> j) & 1 == 1 {
-                    one.clone()
-                } else {
-                    zero.clone()
-                }
-            }).collect();
-            mask_bits
-        }).collect();
+        let keep_masks: Vec<_> = (0..N)
+            .map(|i| {
+                let mask_int = (1_u128 << (1_u128 << i)) - 1;
+                let mask_bits: Vec<_> = (0..R)
+                    .map(|j| {
+                        if (mask_int >> j) & 1 == 1 {
+                            one.clone()
+                        } else {
+                            zero.clone()
+                        }
+                    })
+                    .collect();
+                mask_bits
+            })
+            .collect();
 
         let mut P = P_store.clone();
         for i in 0..N {
-            let g1: Vec<_> = (0..R).map(|j| {
-                if j < (1<<i) {
-                    zero.clone()
-                } else {
-                    G[j].clone()
-                }
-            }).collect();
-            let p1: Vec<_> = (0..R).map(|j| {
-                if j < (1<<i) {
-                    zero.clone()
-                } else {
-                    P[j].clone()
-                }
-            }).collect();
-            let p1_xor_masks: Vec<_> = (0..R).map(|index| rep.add(sess, &p1[index].clone(), &keep_masks[i][index].clone())).collect();
-            let p_and_g: Vec<_> = (0..R).map(|j| {
-                rep.mul(sess, &setup.clone().into(), &p1_xor_masks[j].clone(), &g1[j].clone())
-            }).collect();
+            let g1: Vec<_> = (0..R)
+                .map(|j| {
+                    if j < (1 << i) {
+                        zero.clone()
+                    } else {
+                        G[j].clone()
+                    }
+                })
+                .collect();
+            let p1: Vec<_> = (0..R)
+                .map(|j| {
+                    if j < (1 << i) {
+                        zero.clone()
+                    } else {
+                        P[j].clone()
+                    }
+                })
+                .collect();
+            let p1_xor_masks: Vec<_> = (0..R)
+                .map(|index| rep.add(sess, &p1[index].clone(), &keep_masks[i][index].clone()))
+                .collect();
+            let p_and_g: Vec<_> = (0..R)
+                .map(|j| {
+                    rep.mul(
+                        sess,
+                        &setup.clone().into(),
+                        &p1_xor_masks[j].clone(),
+                        &g1[j].clone(),
+                    )
+                })
+                .collect();
 
             for j in 0..R {
                 G[j] = rep.add(sess, &G[j].clone(), &p_and_g[j]);
@@ -1623,16 +1618,10 @@ where
             }
         }
 
-        let C: Vec<_> = (0..R).map(|i| {
-            if i < 1 {
-                zero.clone()
-            } else {
-               G[i].clone()
-            }
-        }).collect();
-        let z: Vec<_> = (0..R).map(|i| {
-            rep.add(sess, &C[i], &P_store[i])
-        }).collect();
+        let C: Vec<_> = (0..R)
+            .map(|i| if i < 1 { zero.clone() } else { G[i].clone() })
+            .collect();
+        let z: Vec<_> = (0..R).map(|i| rep.add(sess, &C[i], &P_store[i])).collect();
         z
     }
 }
@@ -2258,23 +2247,43 @@ mod tests {
 
                 let sum = rep.$test_func(&sess, &setup, &x_shared);
                 let opened_product = alice.reveal(&sess, &sum);
-                assert_eq!(
-                    opened_product,
-                    BitTensor::from_raw_plc(zs, alice.clone())
-                );
+                assert_eq!(opened_product, BitTensor::from_raw_plc(zs, alice.clone()));
             }
         };
     }
 
     rep_unary_func_test!(test_rep_msb64, msb<u64>);
-    // rep_unary_func_test!(test_rep_msb128, msb<u128>);
+    rep_unary_func_test!(test_rep_msb128, msb<u128>);
 
     #[rstest]
-    #[case(array![-10_i64 as u64].into_dyn(), array![1 as u8].into_dyn())]
-    fn test_rep_msb_64(
-        #[case] x: ArrayD<u64>,
-        #[case] target: ArrayD<u8>,
-    ) {
+    #[case(array![-10_i64 as u64, -100_i64 as u64, -200000_i64 as u64, 0, 1].into_dyn(), array![1 as u8, 1, 1, 0, 0].into_dyn())]
+    fn test_rep_msb_64(#[case] x: ArrayD<u64>, #[case] target: ArrayD<u8>) {
         test_rep_msb64(x, target);
+    }
+
+    #[rstest]
+    #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1].into_dyn(), array![1 as u8, 1, 1, 0, 0].into_dyn())]
+    fn test_rep_msb_128(#[case] x: ArrayD<u128>, #[case] target: ArrayD<u8>) {
+        test_rep_msb128(x, target);
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(10))]
+
+        #[test]
+        fn test_fuzzy_rep_msb64(raw_vector in proptest::collection::vec(any::<i64>().prop_map(|x| x as u64), 1..5)) {
+            let target = raw_vector.iter().map(|x|
+                (*x as i64).is_negative() as u8
+            ).collect::<Vec<_>>();
+            test_rep_msb64(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
+        }
+
+        #[test]
+        fn test_fuzzy_rep_msb128(raw_vector in proptest::collection::vec(any::<i128>().prop_map(|x| x as u128), 1..5)) {
+            let target = raw_vector.iter().map(|x|
+                (*x as i128).is_negative() as u8
+            ).collect::<Vec<_>>();
+            test_rep_msb128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
+        }
     }
 }

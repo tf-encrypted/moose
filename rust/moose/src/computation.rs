@@ -1149,8 +1149,6 @@ pub struct RepMsbOp {
     pub sig: Signature,
 }
 
-
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSetupOp {
     pub sig: Signature,
