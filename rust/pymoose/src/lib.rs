@@ -1,4 +1,5 @@
 use moose::bit::BitTensor;
+use moose::compilation::host_ring_lowering::host_ring_lowering;
 use moose::compilation::print::print_graph;
 use moose::compilation::replicated_lowering::replicated_lowering;
 use moose::compilation::typing::update_types_one_hop;
@@ -537,8 +538,9 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
                 "prune" => prune_graph(comp),
                 "typing" => update_types_one_hop(comp),
                 "replicated-lowering" => replicated_lowering(comp),
+                "fixed-to-ring" => host_ring_lowering(comp),
                 "dump" => {
-                    println!("{}", comp.to_textual());
+                    println!("\nDumping a computation:\n{}\n\n", comp.to_textual());
                     Ok(None)
                 }
                 missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
@@ -547,7 +549,7 @@ fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         let mut computation = create_computation_graph_from_py_bytes(computation);
         for pass in &passes {
             if let Some(new_comp) =
-                do_pass(&pass, &computation).map_err(|e| PyRuntimeError::new_err(e.to_string()))?
+                do_pass(pass, &computation).map_err(|e| PyRuntimeError::new_err(e.to_string()))?
             {
                 computation = new_comp;
             }

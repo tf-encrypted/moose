@@ -15,6 +15,7 @@ use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
+use std::cmp::Reverse;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 
 impl Placed for String {
@@ -262,24 +263,36 @@ kernel! {
 impl StdSliceOp {
     pub(crate) fn kernel<S: RuntimeSession>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _start: u32,
-        _end: u32,
-        _x: Shape,
+        plc: &HostPlacement,
+        start: u32,
+        end: u32,
+        x: Shape,
     ) -> Shape {
-        unimplemented!()
+        let slice = x.0.slice(start as usize, end as usize);
+        Shape(slice, plc.clone().into())
     }
 }
 
 impl RawShape {
-    pub fn expand(mut self, axis: usize) -> Self {
-        self.0.insert(axis, 1);
-        self
+    pub fn extend_singletons(self, mut axis: Vec<usize>) -> Self {
+        let ax = axis.pop();
+        match ax {
+            Some(ax) => {
+                let (left, right) = self.0.split_at(ax);
+                RawShape::extend_singletons(RawShape([left, right].join(&1usize)), axis)
+            }
+            None => self,
+        }
     }
 
     pub fn slice(self, begin: usize, end: usize) -> Self {
         let slc = &self.0[begin..end];
         RawShape(slc.to_vec())
+    }
+
+    pub fn unsqueeze(mut self, axis: usize) -> Self {
+        self.0.insert(axis, 1);
+        self
     }
 }
 
@@ -355,9 +368,11 @@ where
         StandardTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
-    pub fn expand_dims(self, axis: usize) -> Self {
-        let newshape = Shape(self.shape().0.expand(axis), self.1.clone());
-        self.reshape(newshape)
+    pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
+        let plc = (&self.1).clone();
+        axis.sort_by_key(|ax| Reverse(*ax));
+        let newshape = self.shape().0.extend_singletons(axis);
+        self.reshape(Shape(newshape, plc))
     }
 
     pub fn shape(&self) -> Shape {
@@ -429,55 +444,75 @@ impl StdMeanOp {
 
 impl StdSumOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _axis: Option<u32>,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        let axis = axis.map(|a| a as usize);
+        plc.place(sess, x.sum(axis))
     }
 }
 
 impl StdExpandDimsOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _axis: u32,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Vec<u32>,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        let axis = axis.iter().map(|a| *a as usize).collect();
+        plc.place(sess, x.expand_dims(axis))
     }
 }
 
 impl StdConcatenateOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
-        _plc: &HostPlacement,
-        _axis: u32,
-        _x: StandardTensor<T>,
-        _y: StandardTensor<T>,
+        plc: &HostPlacement,
+        axis: u32,
+        x: StandardTensor<T>,
+        y: StandardTensor<T>,
     ) -> StandardTensor<T> {
-        unimplemented!()
+        let ax = Axis(axis as usize);
+        let x = x.0.view();
+        let y = y.0.view();
+
+        let c =
+            ndarray::concatenate(ax, &[x, y]).expect("Failed to concatenate arrays with ndarray");
+        StandardTensor(c, plc.clone().into())
     }
 }
 
 impl StdTransposeOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x.transpose())
     }
 }
 
 impl StdInverseOp {
-    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
-        unimplemented!()
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: StandardTensor<T>,
+    ) -> StandardTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+    {
+        plc.place(sess, x.inv())
     }
 }
 
@@ -489,12 +524,13 @@ where
         match self.0.ndim() {
             2 => {
                 let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
-                StandardTensor::<T>::from(
+                StandardTensor::<T>(
                     two_dim
                         .inv()
                         .unwrap()
                         .into_dimensionality::<IxDyn>()
                         .unwrap(),
+                    self.1,
                 )
             }
             other_rank => panic!(
@@ -505,6 +541,8 @@ where
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<ArrayD<T>> for StandardTensor<T>
 where
     T: LinalgScalar,
@@ -513,7 +551,7 @@ where
         StandardTensor::<T>(
             v,
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernels
             }
             .into(),
         )
@@ -580,36 +618,42 @@ where
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Vec<T>> for StandardTensor<T> {
     fn from(v: Vec<T>) -> StandardTensor<T> {
         StandardTensor(
             Array::from(v).into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Array1<T>> for StandardTensor<T> {
     fn from(v: Array1<T>) -> StandardTensor<T> {
         StandardTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Array2<T>> for StandardTensor<T> {
     fn from(v: Array2<T>) -> StandardTensor<T> {
         StandardTensor(
             v.into_dyn(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the old kernel
             }
             .into(),
         )
@@ -841,5 +885,58 @@ mod tests {
 
         assert_eq!(z_1, z_1_exp);
         assert_eq!(z_2, z_2_exp);
+    }
+
+    #[test]
+    fn test_kernel_inverse() {
+        use crate::kernels::PlacementInverse;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::standard::StandardTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let inv = alice.inverse(&sess, &x);
+        assert_eq!("[[-2, 1],\n [1.5, -0.5]]", format!("{}", inv.0));
+    }
+
+    #[test]
+    fn test_kernel_transpose() {
+        use crate::kernels::PlacementTranspose;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::standard::StandardTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let t = alice.transpose(&sess, &x);
+        assert_eq!("[[1, 3],\n [2, 4]]", format!("{}", t.0));
+    }
+
+    #[test]
+    fn test_kernel_concatenate() {
+        use crate::kernels::PlacementConcatenate;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::standard::StandardTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let y = crate::standard::StandardTensor::<f64>::from(
+            array![[5.0, 6.0], [7.0, 8.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let c = alice.concatenate(&sess, 0, &x, &y);
+        assert_eq!("[[1, 2],\n [3, 4],\n [5, 6],\n [7, 8]]", format!("{}", c.0));
     }
 }

@@ -142,7 +142,7 @@ class BinaryOpExpression(Expression):
 
 @dataclass
 class ExpandDimsExpression(Expression):
-    axis: Optional[Union[int, Tuple[int]]]
+    axis: Tuple[int]
 
     def __hash__(self):
         return id(self)
@@ -400,9 +400,18 @@ def inverse(x, placement=None):
 
 def expand_dims(x, axis, placement=None):
     assert isinstance(x, Expression)
+    if isinstance(axis, (tuple, list)):
+        for ax in axis:
+            if not isinstance(ax, int):
+                raise ValueError(
+                    "`axis` argument must be int or list/tuple of ints, found "
+                    f"{type(ax)}"
+                )
+    elif isinstance(axis, int):
+        axes = [axis]
     placement = placement or get_current_placement()
     return ExpandDimsExpression(
-        placement=placement, inputs=[x], axis=axis, vtype=x.vtype
+        placement=placement, inputs=[x], axis=axes, vtype=x.vtype
     )
 
 

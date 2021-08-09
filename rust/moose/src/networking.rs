@@ -193,7 +193,7 @@ mod tests {
         let bob = "bob".into();
 
         let unit = Value::Unit(Unit(HostPlacement {
-            owner: "TODO".into(),
+            owner: "alice".into(),
         }));
 
         net.send(&unit, &bob, "rdv", &SessionId::from("12345"))
@@ -228,7 +228,7 @@ mod tests {
         let task3 = tokio::spawn(async move {
             let bob = "bob".into();
             let unit = Value::Unit(Unit(HostPlacement {
-                owner: "TODO".into(),
+                owner: "alice".into(),
             }));
             net3.send(&unit, &bob, "rdv", &SessionId::from("12345"))
                 .await
@@ -238,7 +238,7 @@ mod tests {
         let task4 = tokio::spawn(async move {
             let bob = "bob".into();
             let unit = Value::Unit(Unit(HostPlacement {
-                owner: "TODO".into(),
+                owner: "alice".into(),
             }));
             net4.send(&unit, &bob, "rdv", &SessionId::from("67890"))
                 .await

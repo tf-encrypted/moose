@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::prim::{RawNonce, RawPrfKey, RawSeed};
+use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::standard::{RawShape, Shape};
 use nom::{
     branch::{alt, permutation},
@@ -299,6 +299,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             tag(FixedpointRingMeanOp::SHORT_NAME),
             cut(fixed_point_ring_mean),
         ),
+        preceded(tag(FixedpointEncodeOp::SHORT_NAME), cut(fixed_point_encode)),
+        preceded(tag(FixedpointDecodeOp::SHORT_NAME), cut(fixed_point_decode)),
     ));
     let part3 = alt((
         preceded(tag(RingInjectOp::SHORT_NAME), cut(ring_inject)),
@@ -374,7 +376,7 @@ fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn stdexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, axis) = attributes_single("axis", parse_int)(input)?;
+    let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((input, StdExpandDimsOp { sig, axis }.into()))
 }
@@ -529,6 +531,24 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
         }
         .into(),
     ))
+}
+
+/// Parses a FixedpointEncode operator.
+fn fixed_point_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, precision) = attributes_single("precision", parse_int)(input)?;
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((input, FixedpointEncodeOp { sig, precision }.into()))
+}
+
+/// Parses a FixedpointDecode operator.
+fn fixed_point_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, precision) = attributes_single("precision", parse_int)(input)?;
+    let (input, sig) = type_definition(1)(input)?;
+    Ok((input, FixedpointDecodeOp { sig, precision }.into()))
 }
 
 /// Parses a Save operator.
@@ -759,7 +779,9 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         constant_literal_helper("Shape", vector(parse_int), |v| {
             Constant::RawShape(RawShape(v))
         }),
-        // constant_literal_helper("Nonce", vector(parse_int), |v| Value::Nonce(Nonce(v))), // TODO
+        constant_literal_helper("Nonce", vector(parse_int), |v| {
+            Constant::RawNonce(RawNonce(v))
+        }),
         // 1D arrars
         alt((
             constant_literal_helper("Int8Tensor", vector(parse_int), |v| {
@@ -1166,6 +1188,8 @@ impl ToTextual for Operator {
             // BitAnd(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
+            FixedpointEncode(op) => op.to_textual(),
+            FixedpointDecode(op) => op.to_textual(),
             FixedpointRingEncode(op) => op.to_textual(),
             FixedpointRingDecode(op) => op.to_textual(),
             FixedpointRingMean(op) => op.to_textual(),
@@ -1251,6 +1275,18 @@ standard_op_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 standard_op_to_textual!(BitSampleOp, "{op}: {}", sig);
 standard_op_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 standard_op_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
+standard_op_to_textual!(
+    FixedpointEncodeOp,
+    "{op}{{precision={}}}: {}",
+    precision,
+    sig
+);
+standard_op_to_textual!(
+    FixedpointDecodeOp,
+    "{op}{{precision={}}}: {}",
+    precision,
+    sig
+);
 standard_op_to_textual!(
     FixedpointRingEncodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
@@ -1418,7 +1454,6 @@ impl ToTextual for Ty {
     }
 }
 
-// TODO: This will need to be either removed or output the owner as well (lvorona)
 impl ToTextual for Value {
     fn to_textual(&self) -> String {
         match self {
@@ -1440,10 +1475,10 @@ impl ToTextual for Value {
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
             Value::Shape(Shape(x, _)) => format!("Shape({:?})", x),
-            // Value::Nonce(Nonce(x)) => format!("Nonce({:?})", x),
-            // Value::Seed(Seed(x)) => format!("Seed({})", x.to_textual()),
-            // Value::PrfKey(PrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            _ => unimplemented!(), // TODO
+            Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
+            Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
+            Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
+            _ => unimplemented!(), // TODO Implement the missing branches
         }
     }
 }
@@ -1472,7 +1507,7 @@ impl ToTextual for Constant {
             Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            _ => unimplemented!(), // TODO
+            _ => unimplemented!(), // TODO Implement the missing branches for the BitTensors
         }
     }
 }
@@ -1514,7 +1549,7 @@ impl ToTextual for Role {
     }
 }
 
-// TODO: lvorona revisit this - this should not require a special ToTextual
+// Required to serialize PrimDeriveSeedOp
 impl ToTextual for RawNonce {
     fn to_textual(&self) -> String {
         format!("{:?}", self.0)
@@ -1563,6 +1598,7 @@ macro_rules! use_debug_to_textual {
 use_debug_to_textual!(String);
 use_debug_to_textual!(usize);
 use_debug_to_textual!(u32);
+use_debug_to_textual!(Vec<u32>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
 
@@ -1876,7 +1912,7 @@ mod tests {
             r#"z = Input{arg_name = "prompt"}: () -> Float32Tensor () @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdExpandDims {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = StdExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = StdAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",

@@ -281,7 +281,7 @@ class StandardKernelTest(parameterized.TestCase):
 
     @parameterized.parameters(
         {"axis": ax, "expected_shape": exp}
-        for ax, exp in [(1, (2, 1, 2)), (-1, (2, 2, 1)), ((1, 3), (2, 1, 2, 1))]
+        for ax, exp in [([1], (2, 1, 2)), ([-1], (2, 2, 1)), ((1, 3), (2, 1, 2, 1))]
     )
     def test_unsqueeze(self, axis, expected_shape):
         x = np.array([[1, 2], [3, 4]])

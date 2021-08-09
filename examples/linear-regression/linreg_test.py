@@ -10,7 +10,6 @@ from pymoose import elk_compiler as rust_compiler
 from moose import edsl
 from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
 from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from moose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
 from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
@@ -175,7 +174,7 @@ class LinearRegressionExample(parameterized.TestCase):
                 HostLoweringPass(),
                 ReplicatedEncodingPass(),
                 ReplicatedOpsPass(),
-                HostRingLoweringPass(),
+                # HostRingLoweringPass(),
                 # ReplicatedLoweringPass(ring=128),
                 # PruningPass(),
                 # NetworkingPass(),
@@ -187,6 +186,7 @@ class LinearRegressionExample(parameterized.TestCase):
             comp_bin,
             [
                 "typing",
+                "fixed-to-ring",
                 "replicated-lowering",
                 "prune",
                 "networking",

@@ -1,3 +1,4 @@
+pub mod host_ring_lowering;
 pub mod networking;
 pub mod print;
 pub mod pruning;

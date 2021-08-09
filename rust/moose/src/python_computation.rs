@@ -54,6 +54,8 @@ enum PyOperation {
     std_SaveOperation(PySaveOperation),
     std_LoadOperation(PyLoadOperation),
     std_ReceiveOperation(PyReceiveOperation),
+    fixed_EncodeOperation(PyFixedEncodeOperation),
+    fixed_DecodeOperation(PyFixedDecodeOperation),
     fixed_RingEncodeOperation(PyFixedRingEncodeOperation),
     fixed_RingDecodeOperation(PyFixedRingDecodeOperation),
     fixed_RingMeanOperation(PyFixedRingMeanOperation),
@@ -359,7 +361,7 @@ struct PyExpandDimsOperation {
     inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
-    axis: u32,
+    axis: Vec<u32>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -482,6 +484,24 @@ struct PySaveOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyFixedEncodeOperation {
+    name: String,
+    precision: u32,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedDecodeOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    precision: u32,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyFixedRingEncodeOperation {
     name: String,
     scaling_base: u64,
@@ -509,7 +529,6 @@ struct PyFixedRingDecodeOperation {
     placement_name: String,
     output_type: PyValueType,
     input_type: PyValueType,
-
     scaling_base: u64,
     scaling_exp: u32,
 }
@@ -855,7 +874,6 @@ impl TryFrom<PyComputation> for Computation {
                     }
                     ring_FillTensorOperation(op) => {
                         let ty = map_type(&op.output_type)?;
-                        // TODO: lvorona this can be moved somewhere else
                         let value = match ty {
                             Ty::Ring64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
                             Ty::Ring128Tensor => Constant::Ring128(u128::from_str(&op.value)?),
@@ -1096,7 +1114,7 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                            axis: op.axis,
+                            axis: op.axis.clone(),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -1293,6 +1311,32 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_EncodeOperation(op) => Ok(Operation {
+                        kind: FixedpointEncodeOp {
+                            sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
+                            precision: op.precision,
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+
+                    fixed_DecodeOperation(op) => Ok(Operation {
+                        kind: FixedpointDecodeOp {
+                            sig: Signature::unary(
+                                Ty::Fixed128Tensor, // TODO: Derive from the output type
+                                map_type(&op.output_type)?,
+                            ),
+                            precision: op.precision,
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),

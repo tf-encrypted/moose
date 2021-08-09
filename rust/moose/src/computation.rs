@@ -800,6 +800,8 @@ operators![
     PrimPrfKeyGen,
     FixedAdd,
     FixedMul,
+    FixedpointEncode,
+    FixedpointDecode,
     FixedpointRingEncode,
     FixedpointRingDecode,
     FixedpointRingMean,
@@ -925,7 +927,7 @@ pub struct StdAtLeast2DOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct StdExpandDimsOp {
     pub sig: Signature,
-    pub axis: u32,
+    pub axis: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1084,6 +1086,18 @@ pub struct FixedAddOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedMulOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointEncodeOp {
+    pub sig: Signature,
+    pub precision: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointDecodeOp {
+    pub sig: Signature,
+    pub precision: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

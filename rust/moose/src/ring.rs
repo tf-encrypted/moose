@@ -569,16 +569,23 @@ where
     }
 }
 
-// deprecated
+// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> AbstractRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
+    #[cfg_attr(
+        feature = "symbolic",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements."
+        )
+    )]
     pub fn fill(shape: &RawShape, el: T) -> AbstractRingTensor<T> {
         AbstractRingTensor(
             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }
@@ -590,6 +597,8 @@ impl<T> AbstractRingTensor<T> {
     }
 }
 
+// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<ArrayD<T>> for AbstractRingTensor<T>
 where
     T: Clone,
@@ -599,47 +608,59 @@ where
         AbstractRingTensor(
             wrapped,
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl From<ArrayD<i64>> for AbstractRingTensor<u64> {
     fn from(a: ArrayD<i64>) -> AbstractRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
         AbstractRingTensor(
             ring_rep,
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl From<ArrayD<i128>> for AbstractRingTensor<u128> {
     fn from(a: ArrayD<i128>) -> AbstractRingTensor<u128> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
         AbstractRingTensor(
             ring_rep,
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }
 }
 
 impl<T> AbstractRingTensor<T> {
+    #[cfg_attr(
+        feature = "symbolic",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements."
+        )
+    )]
     pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractRingTensor<T> {
         AbstractRingTensor(
             a,
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<BitTensor> for AbstractRingTensor<T>
 where
     T: From<u8>,
@@ -649,7 +670,7 @@ where
         AbstractRingTensor(
             ring_rep,
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }
@@ -667,6 +688,8 @@ impl From<&AbstractRingTensor<u128>> for ArrayD<i128> {
     }
 }
 
+// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<Vec<T>> for AbstractRingTensor<T> {
     fn from(v: Vec<T>) -> AbstractRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
@@ -675,12 +698,14 @@ impl<T> From<Vec<T>> for AbstractRingTensor<T> {
         AbstractRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl<T> From<&[T]> for AbstractRingTensor<T>
 where
     T: Copy,
@@ -691,7 +716,7 @@ where
         AbstractRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
-                owner: Role::from("TODO"),
+                owner: Role::from("TODO"), // Fake owner for the old kernels
             },
         )
     }

@@ -175,6 +175,12 @@ impl BitAndOp {
 }
 
 impl BitTensor {
+    #[cfg_attr(
+        feature = "symbolic",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleOp::kernel for the new code"
+        )
+    )]
     pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
@@ -183,13 +189,19 @@ impl BitTensor {
         BitTensor(
             Array::from_shape_vec(ix, values).unwrap(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the older kernels.
             },
         )
     }
 }
 
 impl BitTensor {
+    #[cfg_attr(
+        feature = "symbolic",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements. See BitFillOp::kernel for the new code"
+        )
+    )]
     pub fn fill(shape: &RawShape, el: u8) -> BitTensor {
         assert!(
             el == 0 || el == 1,
@@ -199,7 +211,7 @@ impl BitTensor {
         BitTensor(
             ArrayD::from_elem(shape.0.as_ref(), el & 1),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the older kernels.
             },
         )
     }
@@ -218,30 +230,36 @@ where
     }
 }
 
+// This implementation is only used by the old kernels. Construct BitTensor(raw_tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl From<ArrayD<u8>> for BitTensor {
     fn from(a: ArrayD<u8>) -> BitTensor {
         let wrapped = a.mapv(|ai| (ai & 1) as u8);
         BitTensor(
             wrapped,
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the older kernels.
             },
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct BitTensor(raw_tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl From<Vec<u8>> for BitTensor {
     fn from(v: Vec<u8>) -> BitTensor {
         let ix = IxDyn(&[v.len()]);
         BitTensor(
             Array::from_shape_vec(ix, v).unwrap(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the older kernels.
             },
         )
     }
 }
 
+// This implementation is only used by the old kernels. Construct BitTensor(raw_tensor, plc.clone()) with a proper placement instead.
+#[cfg(not(feature = "symbolic"))]
 impl From<&[u8]> for BitTensor {
     fn from(v: &[u8]) -> BitTensor {
         let ix = IxDyn(&[v.len()]);
@@ -249,7 +267,7 @@ impl From<&[u8]> for BitTensor {
         BitTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
-                owner: "TODO".into(),
+                owner: "TODO".into(), // Fake owner for the older kernels.
             },
         )
     }

@@ -1210,9 +1210,9 @@ impl AsyncTestRuntime {
             };
             let (moose_session_handle, outputs) = executor
                 .run_computation(
-                    &computation,
+                    computation,
                     &valid_role_assignments,
-                    &own_identity,
+                    own_identity,
                     moose_session,
                 )
                 .unwrap();
@@ -1788,6 +1788,32 @@ mod tests {
         Ok(())
     }
 
+    #[rstest]
+    #[case(true)]
+    #[case(false)]
+    fn test_shape_slice(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
+        let source = r#"x = Constant{value = Shape([2, 3, 4, 5])} @Host(alice)
+        slice = StdSlice {start = 1, end = 3}: (Shape) -> Shape (x) @Host(alice)
+        output = Output: (Shape) -> Shape (slice) @Host(alice)"#;
+        let arguments: HashMap<String, Value> = hashmap!();
+        let storage_mapping: HashMap<String, HashMap<String, Value>> =
+            hashmap!("alice".to_string() => hashmap!());
+        let role_assignments: HashMap<String, String> =
+            hashmap!("alice".to_string() => "alice".to_string());
+        let outputs = _run_computation_test(
+            source.try_into()?,
+            storage_mapping,
+            role_assignments,
+            arguments,
+            run_async,
+        )?;
+        let res: Shape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let actual_shape = res.0;
+        let expected_shape = RawShape(vec![3, 4]);
+        assert_eq!(expected_shape, actual_shape);
+        Ok(())
+    }
+
     // TODO test for axis as vector when textual representation can support it
     #[rstest]
     #[case(true)]
@@ -1796,7 +1822,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value = Int64Tensor([1, 2])} @Host(alice)
-        expand_dims = StdExpandDims {axis = 1}: (Int64Tensor) -> Int64Tensor (x) @Host(alice)
+        expand_dims = StdExpandDims {axis = [1]}: (Int64Tensor) -> Int64Tensor (x) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (expand_dims) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -1890,7 +1916,7 @@ mod tests {
             axis_test.map_or_else(|| "".to_string(), |v| format!("{{axis={}}}", v));
 
         let source = format!(
-            r#"s = Constant{{value=Float32Tensor([[1,2], [3, 4]])}} @Host(alice)
+            r#"s = Constant{{value=Float32Tensor([[1, 2], [3, 4]])}} @Host(alice)
             r = {} {}: (Float32Tensor) -> Float32Tensor (s) @Host(alice)
             output = Output : (Float32Tensor) -> Float32Tensor (r) @Host(alice)
         "#,
@@ -1925,6 +1951,7 @@ mod tests {
         }
         Ok(())
     }
+
     #[rstest]
     #[case("Int64Tensor([[1, 3], [2, 4]]) @Host(alice)", true)]
     #[case("Int64Tensor([[1, 3], [2, 4]]) @Host(alice)", false)]

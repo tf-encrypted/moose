@@ -1,9 +1,9 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::{BitTensor};
+use crate::bit::BitTensor;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp,
-    RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp,
-    RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
+    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp,
+    RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
+    RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
@@ -1348,7 +1348,7 @@ impl RepFillOp {
             ],
             [
                 player2.fill(sess, Constant::Bit(0_u8), s2),
-                player2.fill(sess, Constant::Bit(value),s2),
+                player2.fill(sess, Constant::Bit(value), s2),
             ],
         ];
 
@@ -1544,14 +1544,16 @@ where
         assert!(x.len() > 0);
 
         let ring_size = x.len();
-        let log_r= (ring_size as f64).log2() as usize; // we know that R = 64/128
+        let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
 
         let rep = self;
         let mut g: Vec<_> = (0..ring_size)
             .map(|i| rep.mul(sess, &setup.clone().into(), &x[i], &y[i]))
             .collect();
 
-        let p_store: Vec<_> = (0..ring_size).map(|i| rep.add(sess, &x[i], &y[i])).collect();
+        let p_store: Vec<_> = (0..ring_size)
+            .map(|i| rep.add(sess, &x[i], &y[i]))
+            .collect();
 
         let rep_shape = rep.shape(sess, &x[0]);
         let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
@@ -1618,7 +1620,9 @@ where
         let c: Vec<_> = (0..ring_size)
             .map(|i| if i < 1 { zero.clone() } else { g[i].clone() })
             .collect();
-        let z: Vec<_> = (0..ring_size).map(|i| rep.add(sess, &c[i], &p_store[i])).collect();
+        let z: Vec<_> = (0..ring_size)
+            .map(|i| rep.add(sess, &c[i], &p_store[i]))
+            .collect();
         z
     }
 }
@@ -2225,8 +2229,7 @@ mod tests {
         }
     }
 
-
-    use crate::bit::{BitFromRawPlc};
+    use crate::bit::BitFromRawPlc;
 
     macro_rules! rep_unary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {

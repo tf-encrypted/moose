@@ -10,6 +10,11 @@ keywords = ["", ""]
 categories = ["", ""]
 edition = "2018"
 
+[features]
+# TODO: Enable deprecation messages linked to the "symbolic" feature once the older kernels are deleted
+default = []
+symbolic = []
+
 [dependencies]
 aes = "~0.6"
 anyhow = "~1.0"
@@ -41,7 +46,7 @@ serde_bytes="~0.11"
 smallvec = "~1.6"
 sodiumoxide = "~0.2"
 thiserror = "~1.0"
-tokio = { version="~1.4", features=["full"] }
+tokio = { version="~1.9", features=["full"] }
 tracing = { version="~0.1", features=["log"] }
 vec-utils = "~0.3"
 nom = { version="~6.1", features=["regexp"] }
