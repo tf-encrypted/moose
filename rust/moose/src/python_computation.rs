@@ -631,7 +631,7 @@ struct PyRepTruncPrOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
-    precision: usize,
+    precision: u32,
     output_type: PyValueType,
 }
 
@@ -1465,7 +1465,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_TruncPrOperation(op) => Ok(Operation {
-                        kind: FixedpointDecodeOp {
+                        kind: FixedpointTruncPrOp {
                             sig: Signature::unary(
                                 Ty::Fixed128Tensor, // TODO: Derive from the output type
                                 map_type(&op.output_type)?,

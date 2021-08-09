@@ -1036,8 +1036,8 @@ impl RepSumOp {
 
 use std::convert::TryInto;
 
-modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
-modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: usize] (Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (Replicated64Tensor) -> Replicated64Tensor, RepTruncPrOp);
+modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (Replicated128Tensor) -> Replicated128Tensor, RepTruncPrOp);
 
 hybrid_kernel! {
     RepTruncPrOp,
@@ -1051,7 +1051,7 @@ impl RepTruncPrOp {
     fn kernel<S: Session, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        amount: usize,
+        amount: u32,
         xe: AbstractReplicatedTensor<RingT>,
     ) -> st!(AbstractReplicatedTensor<RingT>, S)
     where
@@ -1092,7 +1092,7 @@ impl RepTruncPrOp {
         let provider = player2;
 
         let x_adt = adt.rep_to_adt(sess, &xe.into()).try_into().ok().unwrap();
-        let y_adt = adt.trunc_pr(sess, amount, &provider, &x_adt);
+        let y_adt = adt.trunc_pr(sess, amount as usize, &provider, &x_adt);
         rep.adt_to_rep(sess, &y_adt.into())
     }
 }
@@ -1694,7 +1694,7 @@ mod tests {
 
     macro_rules! rep_truncation_test {
         ($func_name:ident, $tt: ident) => {
-            fn $func_name(xs: ArrayD<$tt>, amount: usize, ys: ArrayD<$tt>) {
+            fn $func_name(xs: ArrayD<$tt>, amount: u32, ys: ArrayD<$tt>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
                 };
@@ -1800,7 +1800,7 @@ mod tests {
     #[case(array![-1152921504606846976_i64 as u64].into_dyn(), 60, array![-1_i64 as u64].into_dyn())]
     fn test_rep_truncation_64(
         #[case] x: ArrayD<u64>,
-        #[case] amount: usize,
+        #[case] amount: u32,
         #[case] target: ArrayD<u64>,
     ) {
         test_rep_truncation64(x, amount, target);
@@ -1824,7 +1824,7 @@ mod tests {
     #[case(array![-1152921504606846976_i128 as u128].into_dyn(), 60, array![-1_i128 as u128].into_dyn())]
     fn test_rep_truncation_128(
         #[case] x: ArrayD<u128>,
-        #[case] amount: usize,
+        #[case] amount: u32,
         #[case] target: ArrayD<u128>,
     ) {
         test_rep_truncation128(x, amount, target);
@@ -1841,14 +1841,14 @@ mod tests {
     proptest! {
 
         #[test]
-        fn test_fuzzy_rep_trunc64(raw_vector in proptest::collection::vec(any_bounded_u64(), 1..5), amount in 0usize..62
+        fn test_fuzzy_rep_trunc64(raw_vector in proptest::collection::vec(any_bounded_u64(), 1..5), amount in 0u32..62
         ) {
             let target = raw_vector.iter().map(|x| x >> amount).collect::<Vec<_>>();
             test_rep_truncation64(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
 
         #[test]
-        fn test_fuzzy_rep_trunc128(raw_vector in proptest::collection::vec(any_bounded_u128(), 1..5), amount in 0usize..126
+        fn test_fuzzy_rep_trunc128(raw_vector in proptest::collection::vec(any_bounded_u128(), 1..5), amount in 0u32..126
         ) {
             let target = raw_vector.iter().map(|x| x >> amount).collect::<Vec<_>>();
             test_rep_truncation128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), amount, Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());

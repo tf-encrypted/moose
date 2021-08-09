@@ -1212,7 +1212,7 @@ pub struct RepSumOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepTruncPrOp {
     pub sig: Signature,
-    pub amount: usize,
+    pub amount: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

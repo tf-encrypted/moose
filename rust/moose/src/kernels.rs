@@ -124,7 +124,9 @@ impl Session for SyncSession {
             Operator::FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -410,7 +412,7 @@ pub trait PlacementAdtToRep<S: Session, T, O> {
 }
 
 pub trait PlacementTruncPr<S: Session, T, O> {
-    fn trunc_pr(&self, sess: &S, amount: usize, x: &T) -> O;
+    fn trunc_pr(&self, sess: &S, amount: u32, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {
