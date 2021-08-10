@@ -10,12 +10,13 @@ use crate::kernels::{
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::{RawShape, Shape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::num::Wrapping;
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -154,23 +155,41 @@ impl BitXorOp {
 }
 
 modelled!(PlacementAnd::and, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, BitAndOp);
+
 modelled_alias!(PlacementMul::mul, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementAnd::and); // mul = and in Z2
 
 kernel! {
     BitAndOp,
     [
-        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::bit_kernel),
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::ring_kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::ring_kernel),
     ]
 }
 
 impl BitAndOp {
-    fn kernel<S: RuntimeSession>(
+    fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: BitTensor,
         y: BitTensor,
     ) -> BitTensor {
         BitTensor(x.0 & y.0, plc.clone())
+    }
+
+    fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+        y: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 & y.0, plc.clone())
     }
 }
 

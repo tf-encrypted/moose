@@ -1395,12 +1395,7 @@ impl RepMsbOp {
         HostPlacement: PlacementRingToBit<S, RingT, BitTensorT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementFill<S, ShapeT, BitTensorT>,
-        ReplicatedPlacement: PlacementShareSetup<
-            S,
-            SetupT,
-            BitTensorT,
-            ReplicatedBitTensorT,
-        >,
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitTensorT, ReplicatedBitTensorT>,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
         ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitTensorT>,
     {
@@ -1501,13 +1496,7 @@ impl ShapeOp {
     }
 }
 trait BinaryAdder<S: Session, SetupT, R> {
-    fn binary_adder(
-        &self,
-        sess: &S,
-        setup: SetupT,
-        x: Vec<R>,
-        y: Vec<R>,
-    ) -> Vec<R>;
+    fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<R>, y: Vec<R>) -> Vec<R>;
 }
 
 impl<S: Session, SetupT, RT> BinaryAdder<S, SetupT, RT> for ReplicatedPlacement
@@ -1520,13 +1509,7 @@ where
     ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<Shape>), RT>,
     ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<Shape>)>,
 {
-    fn binary_adder(
-        &self,
-        sess: &S,
-        setup: SetupT,
-        x: Vec<RT>,
-        y: Vec<RT>,
-    ) -> Vec<RT> {
+    fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<RT>, y: Vec<RT>) -> Vec<RT> {
         #![allow(clippy::many_single_char_names)]
 
         assert_eq!(x.len(), y.len());
@@ -1588,14 +1571,7 @@ where
                 .map(|index| rep.add(sess, &p1[index].clone(), &km[index].clone()))
                 .collect();
             let p_and_g: Vec<_> = (0..ring_size)
-                .map(|j| {
-                    rep.mul(
-                        sess,
-                        &setup,
-                        &p1_xor_masks[j].clone(),
-                        &g1[j].clone(),
-                    )
-                })
+                .map(|j| rep.mul(sess, &setup, &p1_xor_masks[j].clone(), &g1[j].clone()))
                 .collect();
 
             for j in 0..ring_size {

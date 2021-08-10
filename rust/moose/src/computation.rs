@@ -771,7 +771,6 @@ operators![
     StdTranspose,
     StdInverse,
     RingAdd,
-    RingAnd,
     RingSub,
     RingNeg,
     RingMul,
@@ -989,11 +988,6 @@ pub struct PrimPrfKeyGenOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RingAndOp {
     pub sig: Signature,
 }
 

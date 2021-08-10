@@ -1,13 +1,13 @@
 use crate::bit::BitTensor;
 use crate::computation::{
-    Constant, HostPlacement, Placed, RingAddOp, RingAndOp, RingDotOp, RingFillOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementDot, PlacementFill, PlacementMul, PlacementNeg,
-    PlacementPlace, PlacementSample, PlacementShl, PlacementShr, PlacementSub, PlacementSum,
-    RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementDot, PlacementFill, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementShl, PlacementShr, PlacementSub, PlacementSum, RuntimeSession,
+    Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -382,32 +382,6 @@ impl RingShrOp {
         Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
     {
         AbstractRingTensor(x.0 >> amount, plc.clone())
-    }
-}
-
-modelled!(PlacementAnd::and, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAndOp);
-modelled!(PlacementAnd::and, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAndOp);
-
-kernel! {
-    RingAndOp,
-    [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
-    ]
-}
-
-impl RingAndOp {
-    fn kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
-        y: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
-    where
-        Wrapping<T>: Clone,
-        Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
-    {
-        AbstractRingTensor(x.0 & y.0, plc.clone())
     }
 }
 

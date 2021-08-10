@@ -73,7 +73,6 @@ impl Session for SyncSession {
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -528,7 +527,6 @@ impl Compile<SyncKernel> for Operator {
             StdTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -537,6 +535,7 @@ impl Compile<SyncKernel> for Operator {
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
+            BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingToBit(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -583,7 +582,6 @@ impl Compile<AsyncKernel> for Operator {
             StdInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingNeg(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            RingAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -1044,20 +1042,6 @@ impl Compile<Kernel> for RingAddOp {
     }
 }
 
-impl Compile<Kernel> for RingAndOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
-                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x & y)
-            }
-            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
-                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x & y)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
 impl Compile<Kernel> for RingSubOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1296,7 +1280,18 @@ impl Compile<Kernel> for BitXorOp {
 
 impl Compile<Kernel> for BitAndOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(BitTensor, BitTensor, |x, y| x & y)
+        match self.sig {
+            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
+                closure_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x & y)
+            }
+            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
+                closure_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x & y)
+            }
+            signature![(Ty::BitTensor, Ty::BitTensor) -> _] => {
+                closure_kernel!(BitTensor, BitTensor, |x, y| x & y)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
