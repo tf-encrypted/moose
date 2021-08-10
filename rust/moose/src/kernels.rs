@@ -670,7 +670,7 @@ macro_rules! std_unary_kernel {
 }
 
 macro_rules! std_binary_kernel {
-    ($op:ident, $t:ident::$f:ident, $k:expr) => {
+    ($op:ident, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
                 match self.sig {
@@ -696,7 +696,11 @@ macro_rules! std_binary_kernel {
                 }
             }
         }
+    }
+}
 
+macro_rules! new_std_binary_kernel {
+    ($op:ident, $t:ident::$f:ident) => {
 
         modelled!($t::$f, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, $op);
         modelled!($t::$f, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, $op);
@@ -718,12 +722,18 @@ macro_rules! std_binary_kernel {
     };
 }
 
-std_binary_kernel!(StdAddOp, PlacementAdd::add, |x, y| x + y);
-std_binary_kernel!(StdSubOp, PlacementSub::sub, |x, y| x - y);
-std_binary_kernel!(StdMulOp, PlacementMul::mul, |x, y| x * y);
-std_binary_kernel!(StdDivOp, PlacementDiv::div, |x, y| x / y);
-std_binary_kernel!(StdDotOp, PlacementDot::dot, |x, y| x.dot(y));
+std_binary_kernel!(StdAddOp, |x, y| x + y);
+std_binary_kernel!(StdSubOp, |x, y| x - y);
+std_binary_kernel!(StdMulOp, |x, y| x * y);
+std_binary_kernel!(StdDivOp, |x, y| x / y);
+std_binary_kernel!(StdDotOp, |x, y| x.dot(y));
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
+
+new_std_binary_kernel!(StdAddOp, PlacementAdd::add);
+// new_std_binary_kernel!(StdSubOp, PlacementSub::sub);
+new_std_binary_kernel!(StdMulOp, PlacementMul::mul);
+new_std_binary_kernel!(StdDivOp, PlacementDiv::div);
+new_std_binary_kernel!(StdDotOp, PlacementDot::dot);
 
 modelled!(PlacementTranspose::transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, StdTransposeOp);
 

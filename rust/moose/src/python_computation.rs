@@ -108,6 +108,7 @@ enum PyDType {
     int64,
     uint32,
     uint64,
+    fixed8_27,
     fixed14_23,
 }
 
@@ -797,7 +798,8 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             PyDType::int64 => Ok(Ty::Int64Tensor),
             PyDType::uint32 => Ok(Ty::Uint32Tensor),
             PyDType::uint64 => Ok(Ty::Uint64Tensor),
-            PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
+            PyDType::fixed8_27 => Ok(Ty::Fixed128Tensor), // TODO: store the precision (27)
+            t => Err(anyhow::anyhow!("unimplemented dtype '{:?}'", t)),
         },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),

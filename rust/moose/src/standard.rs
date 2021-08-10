@@ -1,13 +1,11 @@
 use crate::bit::BitTensor;
-use crate::computation::{
-    HostPlacement, Placed, Placement, ShapeOp, StdAddOp, StdConcatenateOp, StdDivOp, StdDotOp,
-    StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp, StdSubOp, StdSumOp,
-    StdTransposeOp,
-};
+use crate::computation::{KnownType, HostPlacement, Placed, Placement, ReplicatedPlacement, ShapeOp, StdAddOp, StdConcatenateOp, StdDivOp, StdDotOp, StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp, StdSubOp, StdSumOp, StdTransposeOp};
 use crate::error::Result;
-use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, PlacementSub, RuntimeSession, Session, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+use macros::with_context;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray_linalg::types::{Lapack, Scalar};
@@ -128,6 +126,44 @@ impl StdSubOp {
         HostPlacement: PlacementPlace<S, StandardTensor<T>>,
     {
         plc.place(sess, x - y)
+    }
+}
+
+hybrid_kernel! {
+    StdSubOp,
+    [
+        // (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
+        // (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
+    ]
+}
+
+impl StdSubOp {
+    fn host_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: cs!(Fixed128Tensor),
+        y: cs!(Fixed128Tensor),
+    ) -> cs!(Fixed128Tensor)
+    where
+        Fixed128Tensor: KnownType<S>,
+        HostPlacement: PlacementSub<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+    {
+        with_context!(plc, sess, x - y)
+    }
+
+    fn rep_kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: cs!(Fixed128Tensor),
+        y: cs!(Fixed128Tensor),
+    ) -> cs!(Fixed128Tensor)
+    where
+        Fixed128Tensor: KnownType<S>,
+        ReplicatedPlacement: PlacementSub<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+    {
+        with_context!(plc, sess, x - y)
     }
 }
 
