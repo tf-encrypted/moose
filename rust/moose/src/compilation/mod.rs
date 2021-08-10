@@ -26,10 +26,10 @@ fn parse_pass(name: &str) -> anyhow::Result<Pass> {
         "networking" => Ok(Pass::Networking),
         "print" => Ok(Pass::Print),
         "prune" => Ok(Pass::Prune),
-        "symbolic" => Ok(Pass::Symbolic),
+        "full" => Ok(Pass::Symbolic),
         "typing" => Ok(Pass::Typing),
         "dump" => Ok(Pass::Dump),
-        missing_pass => Err(anyhow::anyhow!("Unknwon pass requested: {}", missing_pass)),
+        missing_pass => Err(anyhow::anyhow!("Unknown pass requested: {}", missing_pass)),
     }
 }
 

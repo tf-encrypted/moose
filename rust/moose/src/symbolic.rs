@@ -193,7 +193,7 @@ impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
 }
 
 pub struct SymbolicExecutor {
-    // TODO(lvorona) Any state we may want to keep in between the runs?
+    // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
 }
 
 impl Default for SymbolicExecutor {

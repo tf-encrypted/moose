@@ -385,11 +385,11 @@ where
     RingT: Placed<Placement = HostPlacement>,
     RepT: Placed<Placement = ReplicatedPlacement>,
 {
-    type Error = Error;
-    fn try_from(v: Symbolic<FixedTensor<RingT, RepT>>) -> crate::error::Result<Self> {
+    type Error = ();
+    fn try_from(v: Symbolic<FixedTensor<RingT, RepT>>) -> std::result::Result<Self, ()> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
+            _ => Err(()),
         }
     }
 }
