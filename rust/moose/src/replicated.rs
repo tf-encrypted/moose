@@ -1313,15 +1313,15 @@ impl AdtToRepOp {
     }
 }
 
-// modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated64Tensor, RepFillOp);
-// modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (Shape) -> Replicated128Tensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Replicated64Tensor, RepFillOp);
+modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> Replicated128Tensor, RepFillOp);
 modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] (ReplicatedShape) -> ReplicatedBitTensor, RepFillOp);
 
 hybrid_kernel! {
     RepFillOp,
     [
-        // (ReplicatedPlacement, (Shape) -> Replicated64Tensor => attributes[value] Self::ring_kernel),
-        // (ReplicatedPlacement, (Shape) -> Replicated128Tensor => attributes[value] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> Replicated64Tensor => attributes[value: Ring64] Self::ring64_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> Replicated128Tensor => attributes[value: Ring128] Self::ring128_kernel),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => attributes[value: Bit] Self::bit_kernel),
     ]
 }
@@ -1357,6 +1357,76 @@ impl RepFillOp {
             [
                 player2.fill(sess, Constant::Bit(0_u8), s2),
                 player2.fill(sess, Constant::Bit(value), s2),
+            ],
+        ];
+
+        AbstractReplicatedTensor { shares }
+    }
+
+    fn ring64_kernel<S: Session, ShapeT, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        value: u64,
+        rep_shape: AbstractReplicatedShape<ShapeT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        Shape: KnownType<S>,
+        HostPlacement: PlacementFill<S, ShapeT, RingT>,
+    {
+        // TODO should really return PublicReplicatedTensor, but we don't have that type yet
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedShape {
+            shapes: [s0, s1, s2],
+        } = &rep_shape;
+
+        let shares = [
+            [
+                player0.fill(sess, Constant::Ring64(value), s0),
+                player0.fill(sess, Constant::Ring64(0_u64), s0),
+            ],
+            [
+                player1.fill(sess, Constant::Ring64(0_u64), s1),
+                player1.fill(sess, Constant::Ring64(0_u64), s1),
+            ],
+            [
+                player2.fill(sess, Constant::Ring64(0_u64), s2),
+                player2.fill(sess, Constant::Ring64(0_u64), s2),
+            ],
+        ];
+
+        AbstractReplicatedTensor { shares }
+    }
+
+    fn ring128_kernel<S: Session, ShapeT, RingT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        value: u128,
+        rep_shape: AbstractReplicatedShape<ShapeT>,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        Shape: KnownType<S>,
+        HostPlacement: PlacementFill<S, ShapeT, RingT>,
+    {
+        // TODO should really return PublicReplicatedTensor, but we don't have that type yet
+        let (player0, player1, player2) = rep.host_placements();
+
+        let AbstractReplicatedShape {
+            shapes: [s0, s1, s2],
+        } = &rep_shape;
+
+        let shares = [
+            [
+                player0.fill(sess, Constant::Ring128(value), s0),
+                player0.fill(sess, Constant::Ring128(0_u128), s0),
+            ],
+            [
+                player1.fill(sess, Constant::Ring128(0_u128), s1),
+                player1.fill(sess, Constant::Ring128(0_u128), s1),
+            ],
+            [
+                player2.fill(sess, Constant::Ring128(0_u128), s2),
+                player2.fill(sess, Constant::Ring128(0_u128), s2),
             ],
         ];
 

@@ -41,19 +41,6 @@ impl Placed for Shape {
     }
 }
 
-// impl<S: RuntimeSession> PlacementPlace<S, Shape> for Placement {
-//     fn place(&self, _sess: &S, shape: Shape) -> Shape {
-//         match shape.placement() {
-//             Ok(place) if &place == self => shape,
-//             _ => {
-//                 // TODO just updating the placement isn't enough,
-//                 // we need this to eventually turn into Send + Recv
-//                 Shape(shape.0, self.clone())
-//             }
-//         }
-//     }
-// }
-
 impl PlacementPlace<SyncSession, Shape> for HostPlacement {
     fn place(&self, _sess: &SyncSession, shape: Shape) -> Shape {
         match shape.placement() {
