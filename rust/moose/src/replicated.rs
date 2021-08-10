@@ -1379,37 +1379,30 @@ hybrid_kernel! {
 }
 
 impl RepMsbOp {
-    fn kernel<S: Session, KeyT, RingT, BitTensorT, ReplicatedBitTensorT, ShapeT>(
+    fn kernel<S: Session, SetupT, RingT, BitTensorT, ReplicatedBitTensorT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        setup: AbstractReplicatedSetup<KeyT>,
+        setup: SetupT,
         x: AbstractReplicatedTensor<RingT>,
     ) -> ReplicatedBitTensorT
     where
         RingT: RingSize,
-        BitTensor: KnownType<S>,
-        ReplicatedBitTensor: KnownType<S>,
-        AbstractReplicatedSetup<KeyT>: KnownType<S>,
-        cs!(AbstractReplicatedSetup<KeyT>): From<AbstractReplicatedSetup<KeyT>>,
-        KeyT: Clone,
         BitTensorT: Clone,
         ReplicatedBitTensorT: From<AbstractReplicatedTensor<BitTensorT>>,
         ReplicatedBitTensorT: Clone,
-
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: RingBitDecompose<S, RingT>,
         HostPlacement: PlacementRingToBit<S, RingT, BitTensorT>,
-
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementFill<S, ShapeT, BitTensorT>,
         ReplicatedPlacement: PlacementShareSetup<
             S,
-            cs!(AbstractReplicatedSetup<KeyT>),
+            SetupT,
             BitTensorT,
             ReplicatedBitTensorT,
         >,
         ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
-        ReplicatedPlacement: BinaryAdder<S, KeyT, ReplicatedBitTensorT>,
+        ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitTensorT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedTensor {
@@ -1423,7 +1416,7 @@ impl RepMsbOp {
             .collect();
         let rep_bsl: Vec<_> = bsl
             .iter()
-            .map(|item| rep.share(sess, &setup.clone().into(), item))
+            .map(|item| rep.share(sess, &setup, item))
             .collect();
 
         let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
@@ -1507,35 +1500,30 @@ impl ShapeOp {
         }
     }
 }
-trait BinaryAdder<S: Session, KeyT, RT> {
+trait BinaryAdder<S: Session, SetupT, R> {
     fn binary_adder(
         &self,
         sess: &S,
-        setup: AbstractReplicatedSetup<KeyT>,
-        x: Vec<RT>,
-        y: Vec<RT>,
-    ) -> Vec<RT>;
+        setup: SetupT,
+        x: Vec<R>,
+        y: Vec<R>,
+    ) -> Vec<R>;
 }
 
-impl<S: Session, KeyT, RT> BinaryAdder<S, KeyT, RT> for ReplicatedPlacement
+impl<S: Session, SetupT, RT> BinaryAdder<S, SetupT, RT> for ReplicatedPlacement
 where
     RT: Clone,
-    KeyT: Clone,
     RT: Placed<Placement = ReplicatedPlacement>,
-    Shape: KnownType<S>,
-    AbstractReplicatedShape<cs!(Shape)>: KnownType<S>,
-    AbstractReplicatedSetup<KeyT>: KnownType<S>,
-    cs!(AbstractReplicatedSetup<KeyT>): From<AbstractReplicatedSetup<KeyT>>,
-
-    ReplicatedPlacement: PlacementMulSetup<S, cs!(AbstractReplicatedSetup<KeyT>), RT, RT, RT>,
+    AbstractReplicatedShape<Shape>: KnownType<S>,
+    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RT, RT, RT>,
     ReplicatedPlacement: PlacementAdd<S, RT, RT, RT>,
-    ReplicatedPlacement: PlacementFill<S, cs!(AbstractReplicatedShape<cs!(Shape)>), RT>,
-    ReplicatedPlacement: PlacementShape<S, RT, cs!(AbstractReplicatedShape<cs!(Shape)>)>,
+    ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<Shape>), RT>,
+    ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<Shape>)>,
 {
     fn binary_adder(
         &self,
         sess: &S,
-        setup: AbstractReplicatedSetup<KeyT>,
+        setup: SetupT,
         x: Vec<RT>,
         y: Vec<RT>,
     ) -> Vec<RT> {
@@ -1549,7 +1537,7 @@ where
 
         let rep = self;
         let mut g: Vec<_> = (0..ring_size)
-            .map(|i| rep.mul(sess, &setup.clone().into(), &x[i], &y[i]))
+            .map(|i| rep.mul(sess, &setup, &x[i], &y[i]))
             .collect();
 
         let p_store: Vec<_> = (0..ring_size)
@@ -1603,7 +1591,7 @@ where
                 .map(|j| {
                     rep.mul(
                         sess,
-                        &setup.clone().into(),
+                        &setup,
                         &p1_xor_masks[j].clone(),
                         &g1[j].clone(),
                     )
@@ -1614,7 +1602,7 @@ where
                 g[j] = rep.add(sess, &g[j].clone(), &p_and_g[j]);
             }
             for j in 0..ring_size {
-                p[j] = rep.mul(sess, &setup.clone().into(), &p[j].clone(), &p1[j].clone());
+                p[j] = rep.mul(sess, &setup, &p[j].clone(), &p1[j].clone());
             }
         }
 

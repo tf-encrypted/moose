@@ -326,11 +326,6 @@ where
     }
 }
 
-impl KnownType<SymbolicSession> for AbstractReplicatedSetup<Symbolic<PrfKey>> {
-    type Type = Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType<SymbolicSession>>::Type>>;
-    const TY: Ty = Ty::ReplicatedSetup;
-}
-
 impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
 where
     K: Placed<Placement = HostPlacement>,
@@ -338,11 +333,6 @@ where
     fn from(x: AbstractReplicatedSetup<K>) -> Self {
         Symbolic::Concrete(x)
     }
-}
-
-impl KnownType<SymbolicSession> for AbstractReplicatedShape<Symbolic<Shape>> {
-    type Type = Symbolic<AbstractReplicatedShape<<Shape as KnownType<SymbolicSession>>::Type>>;
-    const TY: Ty = Ty::ReplicatedShape;
 }
 
 impl<S> From<AbstractReplicatedShape<S>> for Symbolic<AbstractReplicatedShape<S>>
