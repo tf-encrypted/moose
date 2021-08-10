@@ -1144,24 +1144,32 @@ impl CanonicalType for Symbolic<BitTensor> {
     type Type = BitTensor;
 }
 
-impl<KeyT> CanonicalType for AbstractReplicatedSetup<KeyT> {
+impl CanonicalType for Shape {
+    type Type = Shape;
+}
+
+impl CanonicalType for Symbolic<Shape> {
+    type Type = Shape;
+}
+
+impl<KeyT: CanonicalType> CanonicalType for AbstractReplicatedSetup<KeyT> {
     type Type = AbstractReplicatedSetup<KeyT>;
 }
 
 impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
     for Symbolic<AbstractReplicatedSetup<KeyT>>
 {
-    type Type = AbstractReplicatedSetup<KeyT>;
+    type Type = AbstractReplicatedSetup<<KeyT as CanonicalType>::Type>;
 }
 
-impl<ShapeT> CanonicalType for AbstractReplicatedShape<ShapeT> {
-    type Type = AbstractReplicatedShape<ShapeT>;
+impl<ShapeT: CanonicalType> CanonicalType for AbstractReplicatedShape<ShapeT> {
+    type Type = AbstractReplicatedShape<<ShapeT as CanonicalType>::Type>;
 }
 
 impl<ShapeT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
     for Symbolic<AbstractReplicatedShape<ShapeT>>
 {
-    type Type = AbstractReplicatedShape<ShapeT>;
+    type Type = AbstractReplicatedShape<<ShapeT as CanonicalType>::Type>;
 }
 
 impl<RingT: CanonicalType> CanonicalType for AbstractAdditiveTensor<RingT> {
