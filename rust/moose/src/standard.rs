@@ -1,8 +1,8 @@
 use crate::bit::BitTensor;
-use crate::computation::{KnownType, HostPlacement, Placed, Placement, ReplicatedPlacement, ShapeOp, StdAddOp, StdConcatenateOp, StdDivOp, StdDotOp, StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp, StdSubOp, StdSumOp, StdTransposeOp};
+use crate::computation::{CastOp, HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, ShapeOp, StdAddOp, StdConcatenateOp, StdDivOp, StdDotOp, StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp, StdSubOp, StdSumOp, StdTransposeOp};
 use crate::error::Result;
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
-use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, PlacementSub, RuntimeSession, Session, SyncSession};
+use crate::fixedpoint::{Convert, Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::kernels::{PlacementCast, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementPlace, PlacementShape, PlacementSlice, PlacementSub, RuntimeSession, Session, SyncSession};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use macros::with_context;
@@ -511,6 +511,46 @@ impl StdInverseOp {
     {
         plc.place(sess, x.inv())
     }
+}
+
+modelled!(PlacementCast::cast, HostPlacement, (Float64Tensor) -> Fixed128Tensor, CastOp);
+modelled!(PlacementCast::cast, HostPlacement, (Fixed128Tensor) -> Float64Tensor, CastOp);
+
+hybrid_kernel! {
+    CastOp,
+    [
+        (HostPlacement, (Float64Tensor) -> Fixed128Tensor => Self::encode_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => Self::decode_kernel),
+    ]
+}
+
+impl CastOp {
+    fn encode_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: cs!(Float64Tensor),
+    ) -> cs!(Fixed128Tensor)
+    where
+        Float64Tensor: KnownType<S>,
+        Fixed128Tensor: KnownType<S>,
+        HostPlacement: PlacementFixedpointEncode<S, cs!(Float64Tensor), cs!(Fixed128Tensor)>
+    {
+        plc.fixedpoint_encode(sess, 27, &x) // TODO: Get the precision from python
+    }
+
+    fn decode_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: cs!(Fixed128Tensor),
+    ) -> cs!(Float64Tensor)
+    where
+        Float64Tensor: KnownType<S>,
+        Fixed128Tensor: KnownType<S>,
+        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), cs!(Float64Tensor)>
+    {
+        plc.fixedpoint_decode(sess, 27, &x) // TODO: Get the precision from python
+    }
+
 }
 
 impl<T> StandardTensor<T>

@@ -741,6 +741,7 @@ macro_rules! operators {
 
 operators![
     Identity,
+    Cast,
     Load,
     Save,
     Send,
@@ -850,6 +851,11 @@ pub struct OutputOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct LoadOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct CastOp {
     pub sig: Signature,
 }
 

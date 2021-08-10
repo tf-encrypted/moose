@@ -1147,6 +1147,7 @@ impl ToTextual for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.to_textual(),
+            Cast(op) => op.to_textual(),
             Load(op) => op.to_textual(),
             Save(op) => op.to_textual(),
             Send(op) => op.to_textual(),
@@ -1231,6 +1232,7 @@ macro_rules! standard_op_to_textual {
 
 standard_op_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
 standard_op_to_textual!(IdentityOp, "{op}: {}", sig);
+standard_op_to_textual!(CastOp, "{op}: {}", sig);
 standard_op_to_textual!(LoadOp, "{op}: {}", sig);
 standard_op_to_textual!(SaveOp, "{op}: {}", sig);
 standard_op_to_textual!(

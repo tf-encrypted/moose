@@ -142,6 +142,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::Cast(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::Input(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::Output(op) => DispatchKernel::compile(&op, plc)(sess, operands),

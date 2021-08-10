@@ -483,6 +483,10 @@ pub trait PlacementInverse<S: Session, T, O> {
     fn inverse(&self, sess: &S, x: &T) -> O;
 }
 
+pub trait PlacementCast<S: Session, T, O> {
+    fn cast(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait EmptyTypeHolder<T> {}
 
 // The `T` type parameter is required by the modelled!() macros, but we are enforcing that T = ShapeT.
