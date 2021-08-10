@@ -590,6 +590,7 @@ impl Compile<AsyncKernel> for Operator {
             RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            BitExtract(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
