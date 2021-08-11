@@ -561,7 +561,6 @@ impl Compile<SyncKernel> for Operator {
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
-            RingToBit(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -1255,20 +1254,6 @@ impl Compile<Kernel> for RingInjectOp {
             }
             signature![(_) -> Ty::Ring128Tensor] => {
                 closure_kernel!(BitTensor, |x| Ring128Tensor::from(x) << bit_idx)
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-impl Compile<Kernel> for RingToBitOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::Ring64Tensor) -> _] => {
-                closure_kernel!(Ring64Tensor, |x| x.bit_extract(0))
-            }
-            signature![(Ty::Ring128Tensor) -> _] => {
-                closure_kernel!(Ring128Tensor, |x| x.bit_extract(0))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

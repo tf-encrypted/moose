@@ -236,8 +236,9 @@ impl BitTensor {
     }
 }
 
+#[allow(dead_code)]
 impl BitTensor {
-    pub fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> BitTensor {
+    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> BitTensor {
         BitTensor(raw_tensor.into_dyn(), plc)
     }
 }

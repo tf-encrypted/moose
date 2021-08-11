@@ -6,7 +6,9 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
-use crate::replicated::{ReplicatedBitTensor, ReplicatedShape};
+use crate::replicated::{
+    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedShape,
+};
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
@@ -215,6 +217,8 @@ modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, ShapeO
 modelled!(PlacementShape::shape, HostPlacement, (BitTensor) -> Shape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> Shape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
+modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape, ShapeOp);
+modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape, ShapeOp);
 
 kernel! {
     ShapeOp,
@@ -223,7 +227,9 @@ kernel! {
         (HostPlacement, (Ring128Tensor) -> Shape => Self::ring_kernel),
         (HostPlacement, (BitTensor) -> Shape => Self::bit_kernel),
         (HostPlacement, (Float64Tensor) -> Shape => Self::std_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_bit_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_kernel),
+        (ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape => Self::rep_kernel),
+        (ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape => Self::rep_kernel),
     ]
 }
 

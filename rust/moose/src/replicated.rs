@@ -1550,7 +1550,7 @@ where
 }
 
 impl ShapeOp {
-    pub(crate) fn rep_bit_kernel<S: RuntimeSession, RingT>(
+    pub(crate) fn rep_kernel<S: RuntimeSession, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedTensor<RingT>,
