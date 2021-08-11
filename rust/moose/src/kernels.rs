@@ -80,6 +80,7 @@ impl Session for SyncSession {
             Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::BitToRing(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -294,6 +295,10 @@ pub trait PlacementAnd<S: Session, T, U, O> {
 
 pub trait PlacementRingToBit<S: Session, T, O> {
     fn ring_to_bit(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementBitToRing<S: Session, T, O> {
+    fn bit_to_ring(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
