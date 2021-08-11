@@ -2272,8 +2272,6 @@ mod tests {
         }
     }
 
-    use crate::bit::BitFromRawPlc;
-
     macro_rules! rep_unary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
             fn $func_name(xs: ArrayD<$tt>, zs: ArrayD<u8>) {

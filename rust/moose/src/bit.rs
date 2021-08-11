@@ -236,16 +236,9 @@ impl BitTensor {
     }
 }
 
-pub trait BitFromRawPlc<P, T> {
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> BitTensor;
-}
-
-impl<P> BitFromRawPlc<P, u8> for BitTensor
-where
-    P: Into<HostPlacement>,
-{
-    fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: P) -> BitTensor {
-        BitTensor(raw_tensor.into_dyn(), plc.into())
+impl BitTensor {
+    pub fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> BitTensor {
+        BitTensor(raw_tensor.into_dyn(), plc)
     }
 }
 
