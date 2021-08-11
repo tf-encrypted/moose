@@ -56,6 +56,13 @@ enum PyOperation {
     std_ReceiveOperation(PyReceiveOperation),
     fixed_EncodeOperation(PyFixedEncodeOperation),
     fixed_DecodeOperation(PyFixedDecodeOperation),
+    fixed_AddOperation(PyFixedAddOperation),
+    fixed_SubOperation(PyFixedSubOperation),
+    fixed_MulOperation(PyFixedMulOperation),
+    fixed_DotOperation(PyFixedDotOperation),
+    fixed_TruncPrOperation(PyFixedTruncPrOperation),
+    fixed_MeanOperation(PyFixedMeanOperation),
+    fixed_SumOperation(PyFixedSumOperation),
     fixed_RingEncodeOperation(PyFixedRingEncodeOperation),
     fixed_RingDecodeOperation(PyFixedRingDecodeOperation),
     fixed_RingMeanOperation(PyFixedRingMeanOperation),
@@ -502,6 +509,68 @@ struct PyFixedDecodeOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PyFixedAddOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedSubOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedMulOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedDotOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedTruncPrOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    precision: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedMeanOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    axis: Option<u32>,
+    precision: u32,
+    scaling_base: u64,
+    scaling_exp: u32,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyFixedSumOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+    axis: Option<u32>,
+}
+
+#[derive(Deserialize, Debug)]
 struct PyFixedRingEncodeOperation {
     name: String,
     scaling_base: u64,
@@ -562,7 +631,7 @@ struct PyRepTruncPrOperation {
     name: String,
     inputs: Inputs,
     placement_name: String,
-    precision: usize,
+    precision: u32,
     output_type: PyValueType,
 }
 
@@ -1325,7 +1394,6 @@ impl TryFrom<PyComputation> for Computation {
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
-
                     fixed_DecodeOperation(op) => Ok(Operation {
                         kind: FixedpointDecodeOp {
                             sig: Signature::unary(
@@ -1333,6 +1401,106 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             precision: op.precision,
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_AddOperation(op) => Ok(Operation {
+                        kind: FixedpointAddOp {
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_SubOperation(op) => Ok(Operation {
+                        kind: FixedpointSubOp {
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_MulOperation(op) => Ok(Operation {
+                        kind: FixedpointMulOp {
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_DotOperation(op) => Ok(Operation {
+                        kind: FixedpointDotOp {
+                            sig: Signature::binary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["lhs", "rhs"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_TruncPrOperation(op) => Ok(Operation {
+                        kind: FixedpointTruncPrOp {
+                            sig: Signature::unary(
+                                Ty::Fixed128Tensor, // TODO: Derive from the output type
+                                map_type(&op.output_type)?,
+                            ),
+                            precision: op.precision,
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["value"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_MeanOperation(op) => Ok(Operation {
+                        kind: FixedpointMeanOp {
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                            axis: op.axis,
+                            scaling_base: op.scaling_base,
+                            scaling_exp: op.scaling_exp,
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    fixed_SumOperation(op) => Ok(Operation {
+                        kind: FixedpointSumOp {
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                            axis: op.axis,
                         }
                         .into(),
                         name: op.name.clone(),

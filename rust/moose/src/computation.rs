@@ -11,7 +11,7 @@ use crate::replicated::{
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
-    Shape, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    Shape, StandardTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
@@ -326,6 +326,16 @@ where
     }
 }
 
+impl<RingT, RepT> From<FixedTensor<RingT, RepT>> for Symbolic<FixedTensor<RingT, RepT>>
+where
+    RingT: Placed<Placement = HostPlacement>,
+    RepT: Placed<Placement = ReplicatedPlacement>,
+{
+    fn from(x: FixedTensor<RingT, RepT>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
 where
     K: Placed<Placement = HostPlacement>,
@@ -353,6 +363,12 @@ where
     }
 }
 
+impl<T> From<StandardTensor<T>> for Symbolic<StandardTensor<T>> {
+    fn from(x: StandardTensor<T>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
 where
     R: Placed<Placement = HostPlacement>,
@@ -375,6 +391,20 @@ where
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<RingT, RepT> TryFrom<Symbolic<FixedTensor<RingT, RepT>>> for FixedTensor<RingT, RepT>
+where
+    RingT: Placed<Placement = HostPlacement>,
+    RepT: Placed<Placement = ReplicatedPlacement>,
+{
+    type Error = ();
+    fn try_from(v: Symbolic<FixedTensor<RingT, RepT>>) -> std::result::Result<Self, ()> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(()),
         }
     }
 }
@@ -408,6 +438,16 @@ where
 impl TryFrom<Symbolic<BitTensor>> for BitTensor {
     type Error = Error;
     fn try_from(v: Symbolic<BitTensor>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<T> TryFrom<Symbolic<StandardTensor<T>>> for StandardTensor<T> {
+    type Error = Error;
+    fn try_from(v: Symbolic<StandardTensor<T>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
@@ -787,10 +827,15 @@ operators![
     BitAnd,
     PrimDeriveSeed,
     PrimPrfKeyGen,
-    FixedAdd,
-    FixedMul,
     FixedpointEncode,
     FixedpointDecode,
+    FixedpointAdd,
+    FixedpointSub,
+    FixedpointMul,
+    FixedpointDot,
+    FixedpointTruncPr,
+    FixedpointMean,
+    FixedpointSum,
     FixedpointRingEncode,
     FixedpointRingDecode,
     FixedpointRingMean,
@@ -1063,16 +1108,6 @@ pub struct BitAndOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedAddOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedMulOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointEncodeOp {
     pub sig: Signature,
     pub precision: u32,
@@ -1082,6 +1117,46 @@ pub struct FixedpointEncodeOp {
 pub struct FixedpointDecodeOp {
     pub sig: Signature,
     pub precision: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointSubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointDotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointTruncPrOp {
+    pub sig: Signature,
+    pub precision: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointMeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FixedpointSumOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1198,7 +1273,7 @@ pub struct RepSumOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepTruncPrOp {
     pub sig: Signature,
-    pub amount: usize,
+    pub amount: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

@@ -1,7 +1,8 @@
 use crate::computation::{
-    HostPlacement, KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement,
-    SymbolicValue,
+    Computation, HostPlacement, KnownType, Operation, Operator, Placed, Placement,
+    ReplicatedPlacement, SymbolicValue,
 };
+use crate::error::Error;
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
 use crate::replicated::AbstractReplicatedSetup;
@@ -153,6 +154,15 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::FixedpointMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
@@ -180,5 +190,46 @@ impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
                 })
             }
         }
+    }
+}
+
+pub struct SymbolicExecutor {
+    // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
+}
+
+impl Default for SymbolicExecutor {
+    fn default() -> Self {
+        SymbolicExecutor {}
+    }
+}
+
+impl SymbolicExecutor {
+    pub fn run_computation(
+        &self,
+        computation: &Computation,
+        session: &SymbolicSession,
+    ) -> anyhow::Result<Computation> {
+        let mut env: HashMap<String, SymbolicValue> = HashMap::default();
+        let computation = computation.toposort()?;
+
+        for op in computation.operations.iter() {
+            let operator = op.kind.clone();
+            let operands = op
+                .inputs
+                .iter()
+                .map(|input_name| env.get(input_name).unwrap().clone())
+                .collect();
+            let res = session.execute(operator, &op.placement, operands);
+            env.insert(op.name.clone(), res);
+        }
+        let ops = session.ops.read().map_err(|e| {
+            Error::Compilation(format!(
+                "Failed to get operations from the Symbolic Session due to an error: {}",
+                e
+            ))
+        })?;
+        Ok(Computation {
+            operations: ops.clone(),
+        })
     }
 }

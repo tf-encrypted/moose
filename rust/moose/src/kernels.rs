@@ -50,6 +50,15 @@ pub struct SyncSession {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
+impl SyncSession {
+    // Currently used in a test
+    pub fn new(replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>) -> Self {
+        SyncSession {
+            session_id: "abcde".into(),
+            replicated_keys,
+        }
+    }
+}
 impl Default for SyncSession {
     fn default() -> Self {
         SyncSession {
@@ -114,6 +123,14 @@ impl Session for SyncSession {
             Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -280,11 +297,11 @@ pub trait PlacementRingToBit<S: Session, T, O> {
 }
 
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
-    fn mul(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+    fn mul_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementDotSetup<S: Session, SetupT, T, U, O> {
-    fn dot(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+    fn dot_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementShare<S: Session, T, O> {
@@ -403,7 +420,7 @@ pub trait PlacementAdtToRep<S: Session, T, O> {
 }
 
 pub trait PlacementTruncPr<S: Session, T, O> {
-    fn trunc_pr(&self, sess: &S, amount: usize, x: &T) -> O;
+    fn trunc_pr(&self, sess: &S, amount: u32, x: &T) -> O;
 }
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {
@@ -452,6 +469,14 @@ pub trait PlacementFixedpointRingEncode<S: Session, T, O> {
 
 pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
     fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
+}
+
+pub trait PlacementFixedpointEncode<S: Session, T, O> {
+    fn fixedpoint_encode(&self, sess: &S, precision: u32, x: &T) -> O;
+}
+
+pub trait PlacementFixedpointDecode<S: Session, T, O> {
+    fn fixedpoint_decode(&self, sess: &S, precision: u32, x: &T) -> O;
 }
 
 pub trait PlacementStdMean<S: Session, T, O> {
