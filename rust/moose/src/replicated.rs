@@ -1597,6 +1597,7 @@ trait BinaryAdder<S: Session, SetupT, R> {
     fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<R>, y: Vec<R>) -> Vec<R>;
 }
 
+/// Binary addition protocol
 impl<S: Session, SetupT, RT> BinaryAdder<S, SetupT, RT> for ReplicatedPlacement
 where
     RT: Clone,
@@ -1607,6 +1608,9 @@ where
     ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<Shape>), RT>,
     ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<Shape>)>,
 {
+    /// Binary addition protocol
+    ///
+    /// `x` and `y` are collections of tensors. The number of tensors matches the ring size (64 or 128)
     fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<RT>, y: Vec<RT>) -> Vec<RT> {
         #![allow(clippy::many_single_char_names)]
 
@@ -1617,21 +1621,26 @@ where
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
 
         let rep = self;
+        // Perform `g = x * y` for every tensor
         let mut g: Vec<_> = (0..ring_size)
             .map(|i| rep.mul_setup(sess, &setup, &x[i], &y[i]))
             .collect();
 
+        // Perform `p_store = x + y` for every tensor
         let p_store: Vec<_> = (0..ring_size)
             .map(|i| rep.add(sess, &x[i], &y[i]))
             .collect();
 
         let rep_shape = rep.shape(sess, &x[0]);
+        // We will need tensors of ones and zeroes later
         let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
         let one = rep.fill(sess, Constant::Bit(1), &rep_shape);
 
+        // For every bit it the ring size...
         let keep_masks: Vec<_> = (0..log_r)
             .map(|i| {
                 let mask_int = (1_u128 << (1_u128 << i)) - 1;
+                // ... compute the collection of masks. An individual mask is either all `1` or all `0`
                 let mask_bits: Vec<_> = (0..ring_size)
                     .map(|j| {
                         if (mask_int >> j) & 1 == 1 {
@@ -1646,7 +1655,9 @@ where
             .collect();
 
         let mut p = p_store.clone();
+        // For every bit it the ring size (again)...
         for (i, km) in keep_masks.iter().enumerate().take(log_r) {
+            // Compute g1 and p1, zeroed out up until the current bit
             let g1: Vec<_> = (0..ring_size)
                 .map(|j| {
                     if j < (1 << i) {
@@ -1665,13 +1676,16 @@ where
                     }
                 })
                 .collect();
+            // `p1_xor_masks = p1 + mask` for every tensor
             let p1_xor_masks: Vec<_> = (0..ring_size)
                 .map(|index| rep.add(sess, &p1[index].clone(), &km[index].clone()))
                 .collect();
+            // `p_and_g = p1_xor_masks * g1` for every tensor
             let p_and_g: Vec<_> = (0..ring_size)
                 .map(|j| rep.mul_setup(sess, &setup, &p1_xor_masks[j].clone(), &g1[j].clone()))
                 .collect();
 
+            // Modify the g, `g = g + p_and_g` and `p = p * p1`
             for j in 0..ring_size {
                 g[j] = rep.add(sess, &g[j].clone(), &p_and_g[j]);
             }
@@ -1680,9 +1694,11 @@ where
             }
         }
 
+        // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
         let c: Vec<_> = (0..ring_size)
             .map(|i| if i < 1 { zero.clone() } else { g[i].clone() })
             .collect();
+        // final result is `z = c + p_store` (which is the original `x + y`)
         let z: Vec<_> = (0..ring_size)
             .map(|i| rep.add(sess, &c[i], &p_store[i]))
             .collect();
