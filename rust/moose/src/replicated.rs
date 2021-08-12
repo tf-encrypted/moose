@@ -1505,14 +1505,6 @@ impl RepMsbOp {
 
         let left = with_context!(player0, sess, x00 + x10);
         let left_ring_bs = player0.bit_decompose(sess, &left);
-        let bsl: Vec<_> = left_ring_bs
-            .iter()
-            .map(|item| player0.ring_to_bit(sess, item))
-            .collect();
-        let rep_bsl: Vec<_> = bsl
-            .iter()
-            .map(|item| rep.share(sess, &setup, item))
-            .collect();
 
         let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
         let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
@@ -1528,6 +1520,17 @@ impl RepMsbOp {
             .bit_decompose(sess, x22)
             .iter()
             .map(|item| player2.ring_to_bit(sess, item))
+            .collect();
+
+        // bit-decompose bsl
+        let bsl: Vec<_> = left_ring_bs
+            .iter()
+            .map(|item| player0.ring_to_bit(sess, item))
+            .collect();
+
+        let rep_bsl: Vec<_> = bsl
+            .iter()
+            .map(|item| rep.share(sess, &setup, item))
             .collect();
 
         let rep_bsr: Vec<_> = (0..RingT::SIZE)
@@ -1548,6 +1551,7 @@ impl RepMsbOp {
     }
 }
 
+// TODO(Morten): might be able to return [R; R::SIZE] in the future, see https://github.com/rust-lang/rust/issues/60551
 trait RingBitDecompose<S: Session, R> {
     fn bit_decompose(&self, sess: &S, x: &R) -> Vec<R>;
 }
