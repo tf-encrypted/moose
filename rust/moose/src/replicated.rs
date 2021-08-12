@@ -1,3 +1,5 @@
+//! Placements backed by replicated secret sharing
+
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::computation::{

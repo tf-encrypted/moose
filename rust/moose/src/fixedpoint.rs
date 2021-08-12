@@ -1,3 +1,5 @@
+//! Support for fixed-point arithmetic
+
 use crate::computation::{
     FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp,
     FixedpointMulOp, FixedpointRingMeanOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
@@ -21,8 +23,10 @@ use serde::{Deserialize, Serialize};
 use std::num::Wrapping;
 use std::ops::Mul;
 
+/// Fixed-point tensor backed by Z_{2^64} arithmetic
 pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
 
+/// Fixed-point tensor backed by Z_{2^128} arithmetic
 pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -420,6 +424,7 @@ impl FixedpointMulOp {
         FixedTensor::ReplicatedTensor(result)
     }
 }
+
 modelled!(PlacementDot::dot, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointDotOp);
