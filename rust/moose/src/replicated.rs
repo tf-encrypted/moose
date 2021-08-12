@@ -1412,7 +1412,7 @@ impl RepFillOp {
             ],
             [
                 player2.fill(sess, Constant::Ring64(0_u64), s2),
-                player2.fill(sess, Constant::Ring64(0_u64), s2),
+                player2.fill(sess, Constant::Ring64(value), s2),
             ],
         ];
 
@@ -1447,7 +1447,7 @@ impl RepFillOp {
             ],
             [
                 player2.fill(sess, Constant::Ring128(0_u128), s2),
-                player2.fill(sess, Constant::Ring128(0_u128), s2),
+                player2.fill(sess, Constant::Ring128(value), s2),
             ],
         ];
 
