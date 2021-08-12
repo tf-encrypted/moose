@@ -1639,78 +1639,68 @@ where
                 .map(|(x, y)| rep.add(sess, x, y))
                 .collect()
         };
+        // g is part of the generator set, p propagator set
+        // A few helpful diagrams to understand what is happening here:
+        // https://www.chessprogramming.org/Kogge-Stone_Algorithm or here: https://inst.eecs.berkeley.edu/~eecs151/sp19/files/lec20-adders.pdf
+
+        // P[i:j] = propagate bits for positions [i...i+j]
+        // G[i:j] = generator bits for positions [i...i+j]
+
+        // consider we have inputs a, b to the P,G computing gate
+        // P = P_a & P_b
+        // G = G_b + G_a & P_b
+        // C_{i+1} = G_i + P_i & C_i
+
+        // P, G can be computed in a tree fashion, performing ops on chunks of len 2^i
+        // Note the first level is computed as P0 = x ^ y, G0 = x & y;
 
         // Perform `g = x * y` for every tensor
         let mut g = bitwise_and(&x, &y);
 
-        // Perform `p_store = x + y` for every tensor
+        // Perform `p_store = x + y` (just a helper to avoid compute bitwise_xor() twice)
         let p_store = bitwise_xor(&x, &y);
 
         let rep_shape = rep.shape(sess, &x[0]);
-        // We will need tensors of ones and zeroes later
-        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
-        let one = rep.fill(sess, Constant::Bit(1), &rep_shape);
 
-        // For every bit it the ring size...
-        let keep_masks: Vec<_> = (0..log_r)
-            .map(|i| {
-                let mask_int = (1_u128 << (1_u128 << i)) - 1;
-                // ... compute the collection of masks. An individual mask is either all `1` or all `0`
-                let mask_bits: Vec<_> = (0..ring_size)
-                    .map(|j| {
-                        if (mask_int >> j) & 1 == 1 {
-                            one.clone()
-                        } else {
-                            zero.clone()
-                        }
-                    })
-                    .collect();
-                mask_bits
-            })
-            .collect();
+        // We will need tensors of zeros later
+        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
 
         let mut p = p_store.clone();
-        // For every bit it the ring size (again)...
-        for (i, km) in keep_masks.iter().enumerate().take(log_r) {
+
+        // computes a >> amount
+        let rotate_left = |a: &Vec<RT>, amount: usize| -> Vec<RT> {
+            assert!(amount <= a.len());
+            (0..a.len())
+                .map(|i| {
+                    if i < a.len() - amount {
+                        a[amount + i].clone()
+                    } else {
+                        zero.clone()
+                    }
+                })
+                .collect()
+        };
+
+        // For chunk of length 2^i...
+        for i in 0..log_r {
             // Compute g1 and p1, zeroed out up until the current bit
-            let g1: Vec<_> = (0..ring_size)
-                .map(|j| {
-                    if j < (1 << i) {
-                        zero.clone()
-                    } else {
-                        g[j].clone()
-                    }
-                })
-                .collect();
-            let p1: Vec<_> = (0..ring_size)
-                .map(|j| {
-                    if j < (1 << i) {
-                        zero.clone()
-                    } else {
-                        p[j].clone()
-                    }
-                })
-                .collect();
-            // `p1_xor_masks = p1 + mask` for every tensor
-            let p1_xor_masks = bitwise_xor(&p1, &km);
+            let g1 = rotate_left(&g, 1 << i);
+            let p1 = rotate_left(&p, 1 << i);
 
-            // `p_and_g = p1_xor_masks * g1` for every tensor
-            let p_and_g = bitwise_and(&p1_xor_masks, &g1);
+            // `p_and_g = p1 * g1` for every tensor
+            let p_and_g = bitwise_and(&p1, &g1);
 
-            // Modify the g, `g = g + p_and_g` and `p = p * p1`
+            // Update `g = g + p_and_g`
             g = bitwise_xor(&g, &p_and_g);
+
+            // update `p = p * p1`
             p = bitwise_and(&p, &p1);
         }
 
         // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
-        let c: Vec<_> = (0..ring_size)
-            .map(|i| if i < 1 { zero.clone() } else { g[i].clone() })
-            .collect();
+        let c = rotate_left(&g, 1);
         // final result is `z = c + p_store` (which is the original `x + y`)
-        let z: Vec<_> = (0..ring_size)
-            .map(|i| rep.add(sess, &c[i], &p_store[i]))
-            .collect();
-        z
+        bitwise_xor(&c, &p_store)
     }
 }
 
