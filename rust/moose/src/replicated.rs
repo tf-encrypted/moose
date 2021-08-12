@@ -7,12 +7,12 @@ use crate::computation::{
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementDeriveSeed, PlacementDot,
-    PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul,
-    PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingMean, PlacementRingToBit, PlacementSampleUniform, PlacementSetupGen,
-    PlacementShape, PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum,
-    PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, RuntimeSession, Session,
+    PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract, PlacementDeriveSeed,
+    PlacementDot, PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMsb,
+    PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt,
+    PlacementReveal, PlacementRingMean, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementTruncPrProvider, PlacementZeros, RuntimeSession, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -1491,7 +1491,7 @@ impl RepMsbOp {
         ReplicatedBitTensorT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: RingBitDecompose<S, RingT>,
-        HostPlacement: PlacementRingToBit<S, RingT, BitTensorT>,
+        HostPlacement: PlacementBitExtract<S, RingT, BitTensorT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementFill<S, ShapeT, BitTensorT>,
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitTensorT, ReplicatedBitTensorT>,
@@ -1514,18 +1514,18 @@ impl RepMsbOp {
         let x2_on_1: Vec<_> = player1
             .bit_decompose(sess, x21)
             .iter()
-            .map(|item| player1.ring_to_bit(sess, item))
+            .map(|item| player1.bit_extract(sess, 0, item))
             .collect();
         let x2_on_2: Vec<_> = player2
             .bit_decompose(sess, x22)
             .iter()
-            .map(|item| player2.ring_to_bit(sess, item))
+            .map(|item| player2.bit_extract(sess, 0, item))
             .collect();
 
         // bit-decompose bsl
         let bsl: Vec<_> = left_ring_bs
             .iter()
-            .map(|item| player0.ring_to_bit(sess, item))
+            .map(|item| player0.bit_extract(sess, 0, item))
             .collect();
 
         let rep_bsl: Vec<_> = bsl
