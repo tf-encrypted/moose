@@ -1,3 +1,5 @@
+//! Ring arithmetic on host placements
+
 use crate::bit::BitTensor;
 use crate::computation::{
     Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
@@ -25,8 +27,10 @@ use std::ops::{Add, BitAnd, Mul, Neg, Shl, Shr, Sub};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
+/// Tensor for ring arithmetic over Z_{2^64}
 pub type Ring64Tensor = AbstractRingTensor<u64>;
 
+/// Tensor for ring arithmetic over Z_{2^128}
 pub type Ring128Tensor = AbstractRingTensor<u128>;
 
 impl<S: Session, T> Tensor<S> for AbstractRingTensor<T> {

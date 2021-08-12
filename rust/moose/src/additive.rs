@@ -1,3 +1,5 @@
+//! Placements backed by additive secret sharing
+
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
     HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
