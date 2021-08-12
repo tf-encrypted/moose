@@ -24,10 +24,13 @@ pub struct AbstractReplicatedTensor<R> {
     pub shares: [[R; 2]; 3],
 }
 
+/// Replicated tensor over Z_{2^64}.
 pub type Replicated64Tensor = AbstractReplicatedTensor<Ring64Tensor>;
 
+/// Replicated tensor over Z_{2^128}.
 pub type Replicated128Tensor = AbstractReplicatedTensor<Ring128Tensor>;
 
+/// Replicated tensor over Z_2.
 pub type ReplicatedBitTensor = AbstractReplicatedTensor<BitTensor>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
