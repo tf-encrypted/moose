@@ -1,19 +1,22 @@
 use crate::computation::{
-    BitAndOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed, ShapeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed,
+    ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementFill, PlacementMul, PlacementPlace,
     PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession, Session, SyncSession,
     Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
+use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::{RawShape, Shape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::num::Wrapping;
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -78,7 +81,7 @@ impl ShapeOp {
         x: BitTensor,
     ) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone().into())
+        Shape(raw_shape, plc.clone())
     }
 }
 
@@ -152,23 +155,41 @@ impl BitXorOp {
 }
 
 modelled!(PlacementAnd::and, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, BitAndOp);
+
 modelled_alias!(PlacementMul::mul, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementAnd::and); // mul = and in Z2
 
 kernel! {
     BitAndOp,
     [
-        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::bit_kernel),
+        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::ring_kernel),
+        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::ring_kernel),
     ]
 }
 
 impl BitAndOp {
-    fn kernel<S: RuntimeSession>(
+    fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: BitTensor,
         y: BitTensor,
     ) -> BitTensor {
         BitTensor(x.0 & y.0, plc.clone())
+    }
+
+    fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractRingTensor<T>,
+        y: AbstractRingTensor<T>,
+    ) -> AbstractRingTensor<T>
+    where
+        Wrapping<T>: Clone,
+        Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+    {
+        AbstractRingTensor(x.0 & y.0, plc.clone())
     }
 }
 
@@ -212,6 +233,13 @@ impl BitTensor {
                 owner: "TODO".into(), // Fake owner for the older kernels.
             },
         )
+    }
+}
+
+#[allow(dead_code)]
+impl BitTensor {
+    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> BitTensor {
+        BitTensor(raw_tensor.into_dyn(), plc)
     }
 }
 
@@ -277,6 +305,36 @@ impl BitAnd for BitTensor {
     fn bitand(self, other: Self) -> Self::Output {
         assert_eq!(self.1, other.1);
         BitTensor(self.0 & other.0, self.1)
+    }
+}
+
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring64Tensor) -> BitTensor, BitExtractOp);
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring128Tensor) -> BitTensor, BitExtractOp);
+
+kernel! {
+    BitExtractOp,
+    [
+        (HostPlacement, (Ring64Tensor) -> BitTensor => attributes[bit_idx] Self::kernel64),
+        (HostPlacement, (Ring128Tensor) -> BitTensor => attributes[bit_idx] Self::kernel128),
+    ]
+}
+
+impl BitExtractOp {
+    fn kernel64<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        bit_idx: usize,
+        x: Ring64Tensor,
+    ) -> BitTensor {
+        BitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
+    }
+    fn kernel128<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        bit_idx: usize,
+        x: Ring128Tensor,
+    ) -> BitTensor {
+        BitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
     }
 }
 

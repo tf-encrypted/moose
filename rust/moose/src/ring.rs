@@ -20,7 +20,7 @@ use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::fmt::Debug;
 use std::num::Wrapping;
-use std::ops::{Add, Mul, Neg, Shl, Shr, Sub};
+use std::ops::{Add, BitAnd, Mul, Neg, Shl, Shr, Sub};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
@@ -170,7 +170,7 @@ impl ShapeOp {
         x: AbstractRingTensor<T>,
     ) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone().into())
+        Shape(raw_shape, plc.clone())
     }
 }
 
@@ -567,7 +567,7 @@ where
 
 impl<T> AbstractRingTensor<T> {
     pub fn shape(&self) -> Shape {
-        Shape(RawShape(self.0.shape().into()), self.1.clone().into())
+        Shape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
 
@@ -748,6 +748,17 @@ where
     type Output = AbstractRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
         AbstractRingTensor(self.0 >> other, self.1)
+    }
+}
+
+impl<T> BitAnd<AbstractRingTensor<T>> for AbstractRingTensor<T>
+where
+    Wrapping<T>: Clone,
+    Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
+{
+    type Output = AbstractRingTensor<T>;
+    fn bitand(self, other: AbstractRingTensor<T>) -> Self::Output {
+        AbstractRingTensor(self.0 & other.0, self.1)
     }
 }
 

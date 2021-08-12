@@ -80,6 +80,7 @@ impl Session for SyncSession {
             Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::BitExtract(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -89,6 +90,7 @@ impl Session for SyncSession {
             Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -97,6 +99,8 @@ impl Session for SyncSession {
             Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            // Operator::RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -288,6 +292,10 @@ pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementBitExtract<S: Session, T, O> {
+    fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
+}
+
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
     fn mul_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
@@ -417,6 +425,14 @@ pub trait PlacementTruncPr<S: Session, T, O> {
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
+}
+
+pub trait PlacementAbs<S: Session, SetupT, T, O> {
+    fn abs(&self, sess: &S, setup: &SetupT, x: &T) -> O;
+}
+
+pub trait PlacementMsb<S: Session, SetupT, T, O> {
+    fn msb(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementPlace<S: Session, T> {
@@ -1275,7 +1291,18 @@ impl Compile<Kernel> for BitXorOp {
 
 impl Compile<Kernel> for BitAndOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(BitTensor, BitTensor, |x, y| x & y)
+        match self.sig {
+            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
+                closure_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x & y)
+            }
+            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
+                closure_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x & y)
+            }
+            signature![(Ty::BitTensor, Ty::BitTensor) -> _] => {
+                closure_kernel!(BitTensor, BitTensor, |x, y| x & y)
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
     }
 }
 
