@@ -885,12 +885,16 @@ macro_rules! hybrid_kernel {
                     use std::convert::TryInto;
 
                     let op = self.clone();
+
                     Box::new(move |
                         sess: &SymbolicSession,
                         plc: &$plc,
                         x0: <$t0 as KnownType<SymbolicSession>>::Type,
                     | {
                         // TODO derive k outside box (using self instead of op)
+                        // Magic by Morten
+                        let op = &op;
+
                         let k = derive_runtime_kernel![unary, $($kp)+, op];
 
                         let v0 = x0.clone().try_into();
@@ -902,7 +906,7 @@ macro_rules! hybrid_kernel {
                             }
                             _ => match x0 {
                                 Symbolic::Symbolic(h0) => {
-                                    let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
+                                    let op_name = sess.add_operation(op, &[&h0.op], &plc.clone().into());
                                     Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
                                 }
                                 _ => unimplemented!() // ok

@@ -1152,10 +1152,6 @@ impl CanonicalType for Symbolic<Shape> {
     type Type = Shape;
 }
 
-impl<KeyT: CanonicalType> CanonicalType for AbstractReplicatedSetup<KeyT> {
-    type Type = AbstractReplicatedSetup<KeyT>;
-}
-
 impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
     for Symbolic<AbstractReplicatedSetup<KeyT>>
 {
@@ -1320,9 +1316,36 @@ modelled!(PlacementFill::fill, ReplicatedPlacement, attributes[value: Constant] 
 hybrid_kernel! {
     RepFillOp,
     [
-        (ReplicatedPlacement, (ReplicatedShape) -> Replicated64Tensor => attributes[value: Ring64] Self::ring64_kernel),
-        (ReplicatedPlacement, (ReplicatedShape) -> Replicated128Tensor => attributes[value: Ring128] Self::ring128_kernel),
-        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => attributes[value: Bit] Self::bit_kernel),
+        (ReplicatedPlacement, (ReplicatedShape) -> Replicated64Tensor => custom |op| {
+                let value: u64 = match op.value {
+                    Constant::Ring64(v) => v,
+                    _ => unimplemented!()
+                };
+                assert!(value == 0 || value == 1);
+                Box::new(move |sess, rep, rep_shape| {
+                    Self::ring64_kernel(sess, rep, value, rep_shape)
+                })
+            }),
+        (ReplicatedPlacement, (ReplicatedShape) -> Replicated128Tensor => custom |op| {
+                let value: u128 = match op.value {
+                    Constant::Ring128(v) => v,
+                    _ => unimplemented!()
+                };
+                assert!(value == 0 || value == 1);
+                Box::new(move |sess, rep, rep_shape| {
+                    Self::ring128_kernel(sess, rep, value, rep_shape)
+                })
+        }),
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => custom |op| {
+                let value: u8 = match op.value {
+                    Constant::Bit(v) => v,
+                    _ => unimplemented!()
+                };
+                assert!(value == 0 || value == 1);
+                Box::new(move |sess, rep, rep_shape| {
+                    Self::bit_kernel(sess, rep, value, rep_shape)
+                })
+        }),
     ]
 }
 
@@ -1334,11 +1357,9 @@ impl RepFillOp {
         rep_shape: AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
-        Shape: KnownType<S>,
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
-        assert!(value == 0 || value == 1);
         let (player0, player1, player2) = rep.host_placements();
 
         let AbstractReplicatedShape {
@@ -1484,8 +1505,9 @@ impl RepMsbOp {
 
         let left = with_context!(player0, sess, x00 + x10);
         let left_ring_bs = player0.bit_decompose(sess, &left);
-        let bsl: Vec<_> = (0..RingT::SIZE)
-            .map(|i| player0.ring_to_bit(sess, &left_ring_bs[i]))
+        let bsl: Vec<_> = left_ring_bs
+            .iter()
+            .map(|item| player0.ring_to_bit(sess, item))
             .collect();
         let rep_bsl: Vec<_> = bsl
             .iter()
@@ -1550,15 +1572,13 @@ where
 }
 
 impl ShapeOp {
-    pub(crate) fn rep_kernel<S: RuntimeSession, RingT>(
+    pub(crate) fn rep_kernel<S: RuntimeSession, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedTensor<RingT>,
-    ) -> ReplicatedShape
+    ) -> AbstractReplicatedShape<ShapeT>
     where
-        Shape: KnownType<S>,
-        cs!(Shape): TryInto<Shape>,
-        HostPlacement: PlacementShape<S, RingT, cs!(Shape)>,
+        HostPlacement: PlacementShape<S, RingT, ShapeT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let AbstractReplicatedTensor {
@@ -1566,9 +1586,9 @@ impl ShapeOp {
         } = &x;
         AbstractReplicatedShape {
             shapes: [
-                player0.shape(sess, x00).try_into().ok().unwrap(),
-                player1.shape(sess, x11).try_into().ok().unwrap(),
-                player2.shape(sess, x22).try_into().ok().unwrap(),
+                player0.shape(sess, x00),
+                player1.shape(sess, x11),
+                player2.shape(sess, x22),
             ],
         }
     }
