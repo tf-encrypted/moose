@@ -1621,15 +1621,30 @@ where
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
 
         let rep = self;
+
+        let bitwise_and = |a: &Vec<RT>, b: &Vec<RT>| -> Vec<RT> {
+            assert!(a.len() == ring_size);
+            assert!(b.len() == ring_size);
+            a.iter()
+                .zip(b.iter())
+                .map(|(x, y)| rep.mul_setup(sess, &setup, x, y))
+                .collect()
+        };
+
+        let bitwise_xor = |a: &Vec<RT>, b: &Vec<RT>| -> Vec<RT> {
+            assert!(a.len() == ring_size);
+            assert!(b.len() == ring_size);
+            a.iter()
+                .zip(b.iter())
+                .map(|(x, y)| rep.add(sess, x, y))
+                .collect()
+        };
+
         // Perform `g = x * y` for every tensor
-        let mut g: Vec<_> = (0..ring_size)
-            .map(|i| rep.mul_setup(sess, &setup, &x[i], &y[i]))
-            .collect();
+        let mut g = bitwise_and(&x, &y);
 
         // Perform `p_store = x + y` for every tensor
-        let p_store: Vec<_> = (0..ring_size)
-            .map(|i| rep.add(sess, &x[i], &y[i]))
-            .collect();
+        let p_store = bitwise_xor(&x, &y);
 
         let rep_shape = rep.shape(sess, &x[0]);
         // We will need tensors of ones and zeroes later
@@ -1677,21 +1692,14 @@ where
                 })
                 .collect();
             // `p1_xor_masks = p1 + mask` for every tensor
-            let p1_xor_masks: Vec<_> = (0..ring_size)
-                .map(|index| rep.add(sess, &p1[index].clone(), &km[index].clone()))
-                .collect();
+            let p1_xor_masks = bitwise_xor(&p1, &km);
+
             // `p_and_g = p1_xor_masks * g1` for every tensor
-            let p_and_g: Vec<_> = (0..ring_size)
-                .map(|j| rep.mul_setup(sess, &setup, &p1_xor_masks[j].clone(), &g1[j].clone()))
-                .collect();
+            let p_and_g = bitwise_and(&p1_xor_masks, &g1);
 
             // Modify the g, `g = g + p_and_g` and `p = p * p1`
-            for j in 0..ring_size {
-                g[j] = rep.add(sess, &g[j].clone(), &p_and_g[j]);
-            }
-            for j in 0..ring_size {
-                p[j] = rep.mul_setup(sess, &setup, &p[j].clone(), &p1[j].clone());
-            }
+            g = bitwise_xor(&g, &p_and_g);
+            p = bitwise_and(&p, &p1);
         }
 
         // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
