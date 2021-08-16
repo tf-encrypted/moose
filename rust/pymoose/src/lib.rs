@@ -8,7 +8,7 @@ use moose::fixedpoint::Convert;
 use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
-use moose::ring::Ring64Tensor;
+use moose::host::Ring64Tensor;
 use moose::host::{HostFloat64Tensor, RawShape, HostTensor};
 use moose::utils;
 use ndarray::IxDyn;

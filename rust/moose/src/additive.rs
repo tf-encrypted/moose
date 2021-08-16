@@ -14,7 +14,7 @@ use crate::kernels::{
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::CanonicalType;
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
-use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
+use crate::host::{Ring128Tensor, Ring64Tensor, RingSize};
 use crate::host::HostShape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -703,7 +703,7 @@ mod tests {
     use crate::{
         computation::{Operation, Operator, Placement, RingAddOp},
         kernels::SyncSession,
-        ring::AbstractRingTensor,
+        host::AbstractRingTensor,
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
     };
     use ndarray::array;

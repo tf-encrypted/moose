@@ -9,8 +9,8 @@ use crate::fixedpoint::Fixed128Tensor;
 use crate::fixedpoint::Fixed64Tensor;
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
-use crate::ring::AbstractRingTensor;
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::host::AbstractRingTensor;
+use crate::host::{Ring128Tensor, Ring64Tensor};
 use crate::host::{HostInt16Tensor, HostInt8Tensor, HostTensor, HostUint16Tensor, HostUint8Tensor, 
     HostFloat32Tensor, HostFloat64Tensor, HostInt32Tensor, HostInt64Tensor, HostShape, HostUint32Tensor, HostUint64Tensor,
 };

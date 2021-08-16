@@ -8,7 +8,7 @@ use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup, ReplicatedShape,
 };
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::host::{Ring128Tensor, Ring64Tensor};
 use crate::host::{
     HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, RawShape,
     HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,

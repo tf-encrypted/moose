@@ -463,7 +463,7 @@ criterion_group!(prim, prim_arc, prim_closure, prim_capture);
 
 fn gen_sample_graph(size: usize) -> Computation {
     use moose::computation::*;
-    use moose::ring::*;
+    use moose::host::*;
 
     let operator = Operator::RingMul(RingMulOp {
         sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),

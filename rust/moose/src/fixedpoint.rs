@@ -14,7 +14,7 @@ use crate::kernels::{
     PlacementSum, PlacementTruncPr, RuntimeSession, Session,
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
-use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
+use crate::host::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor};
 use macros::with_context;
 use ndarray::prelude::*;

@@ -17,7 +17,7 @@ use crate::kernels::{
     PlacementTruncPrProvider, PlacementZeros, RuntimeSession, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
-use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
+use crate::host::{Ring128Tensor, Ring64Tensor, RingSize};
 use crate::host::HostShape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
@@ -1130,7 +1130,7 @@ pub trait CanonicalType {
     type Type;
 }
 
-use crate::ring::AbstractRingTensor;
+use crate::host::AbstractRingTensor;
 use crate::symbolic::Symbolic;
 
 impl<T> CanonicalType for AbstractRingTensor<T> {
@@ -1824,7 +1824,7 @@ mod tests {
     use super::*;
     use crate::fixedpoint::Convert;
     use crate::kernels::SyncSession;
-    use crate::ring::AbstractRingTensor;
+    use crate::host::AbstractRingTensor;
     use ndarray::array;
     use proptest::prelude::*;
 

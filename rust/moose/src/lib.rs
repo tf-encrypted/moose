@@ -1376,7 +1376,6 @@ pub mod prim;
 pub mod prng;
 pub mod python_computation;
 pub mod replicated;
-pub mod ring;
 pub mod storage;
 pub mod symbolic;
 pub mod text_computation;

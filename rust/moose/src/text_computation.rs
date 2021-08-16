@@ -1734,7 +1734,7 @@ mod tests {
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = crate::ring::Ring64Tensor::from(x_backing);
+        let x = crate::host::Ring64Tensor::from(x_backing);
 
         assert_eq!(parsed_ring64, Constant::Ring64Tensor(x));
 

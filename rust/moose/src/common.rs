@@ -5,7 +5,7 @@ use crate::replicated::{
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedShape,
 };
 use crate::host::{HostShape, HostFloat64Tensor};
-use crate::ring::{Ring128Tensor, Ring64Tensor};
+use crate::host::{Ring128Tensor, Ring64Tensor};
 
 modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> HostShape, ShapeOp);

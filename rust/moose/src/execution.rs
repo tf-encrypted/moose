@@ -1293,7 +1293,7 @@ mod tests {
     use super::*;
     use crate::compilation::networking::NetworkingPass;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
-    use crate::ring::{Ring128Tensor, Ring64Tensor};
+    use crate::host::{Ring128Tensor, Ring64Tensor};
     use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, RawShape, HostShape};
     use itertools::Itertools;
     use maplit::hashmap;
