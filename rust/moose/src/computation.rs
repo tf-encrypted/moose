@@ -10,7 +10,8 @@ use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedBitTensor, ReplicatedSetup, ReplicatedShape,
+    ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
+    ReplicatedShape,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;

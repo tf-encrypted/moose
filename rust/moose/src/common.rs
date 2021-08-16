@@ -4,7 +4,7 @@ use crate::host::{
 };
 use crate::kernels::PlacementShape;
 use crate::replicated::{
-    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedBitTensor, ReplicatedShape,
+    ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
 
 modelled!(PlacementShape::shape, HostPlacement, (HostRing64Tensor) -> HostShape, ShapeOp);

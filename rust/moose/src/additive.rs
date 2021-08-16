@@ -14,7 +14,9 @@ use crate::kernels::{
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::CanonicalType;
-use crate::replicated::{AbstractReplicatedTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor};
+use crate::replicated::{
+    AbstractReplicatedTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
+};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
