@@ -1,7 +1,7 @@
 use moose::computation::*;
 use moose::execution::*;
-use moose::prim::RawNonce;
 use moose::host::RawShape;
+use moose::prim::RawNonce;
 
 fn main() {
     let key_op = Operation {

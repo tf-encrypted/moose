@@ -1,13 +1,13 @@
 //! Placements backed by replicated secret sharing
 
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::host::HostBitTensor;
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp,
     RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
     RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
+use crate::host::{HostBitTensor, HostShape, Ring128Tensor, Ring64Tensor, RingSize};
 use crate::kernels::{
     PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract, PlacementDeriveSeed,
     PlacementDot, PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMsb,
@@ -17,8 +17,6 @@ use crate::kernels::{
     PlacementTruncPrProvider, PlacementZeros, RuntimeSession, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
-use crate::host::{Ring128Tensor, Ring64Tensor, RingSize};
-use crate::host::HostShape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
@@ -1823,8 +1821,8 @@ where
 mod tests {
     use super::*;
     use crate::fixedpoint::Convert;
-    use crate::kernels::SyncSession;
     use crate::host::AbstractRingTensor;
+    use crate::kernels::SyncSession;
     use ndarray::array;
     use proptest::prelude::*;
 
@@ -2332,7 +2330,10 @@ mod tests {
 
                 let sum = rep.$test_func(&sess, &setup, &x_shared);
                 let opened_product = alice.reveal(&sess, &sum);
-                assert_eq!(opened_product, HostBitTensor::from_raw_plc(zs, alice.clone()));
+                assert_eq!(
+                    opened_product,
+                    HostBitTensor::from_raw_plc(zs, alice.clone())
+                );
             }
         };
     }

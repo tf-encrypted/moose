@@ -5,6 +5,7 @@ use crate::computation::{
     HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
 };
 use crate::error::Result;
+use crate::host::{HostShape, Ring128Tensor, Ring64Tensor, RingSize};
 use crate::kernels::{
     PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul, PlacementNeg,
     PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
@@ -14,8 +15,6 @@ use crate::kernels::{
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::CanonicalType;
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
-use crate::host::{Ring128Tensor, Ring64Tensor, RingSize};
-use crate::host::HostShape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
@@ -702,8 +701,8 @@ mod tests {
     use super::*;
     use crate::{
         computation::{Operation, Operator, Placement, RingAddOp},
-        kernels::SyncSession,
         host::AbstractRingTensor,
+        kernels::SyncSession,
         symbolic::{Symbolic, SymbolicHandle, SymbolicSession},
     };
     use ndarray::array;

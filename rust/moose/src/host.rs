@@ -1,43 +1,33 @@
 use crate::computation::{
-    HostPlacement, Placed, Placement, ShapeOp, HostAddOp, HostConcatenateOp,
-    HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostSliceOp,
-    HostSubOp, HostSumOp, HostTransposeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp,
+    HostConcatenateOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
+    HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp,
+    Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp,
+    RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
-use crate::kernels::{PlacementPlace, PlacementSlice, RuntimeSession, SyncSession};
+use crate::kernels::{
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
+    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleUniform, PlacementShl,
+    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
+    Session, SyncSession, Tensor,
+};
+use crate::prim::{RawSeed, Seed};
+use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
 use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
+use num_traits::Zero;
+use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
-use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
-use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant
-};
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementFill, PlacementMul,
-    PlacementSampleUniform, PlacementSub, PlacementXor, Session,
-    Tensor,
-};
-use crate::prim::{RawSeed, Seed};
-use crate::prng::AesRng;
-use rand::prelude::*;
-use std::num::Wrapping;
-use std::ops::{BitAnd, BitXor};
-use crate::computation::{
-    RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
-    RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-};
-use crate::kernels::{
-    PlacementDot, PlacementNeg, 
-    PlacementSample, PlacementShl, PlacementShr, PlacementSum,
-};
-use num_traits::{Zero};
 use std::fmt::Debug;
-use std::ops::{Neg, Shl, Shr};
+use std::num::Wrapping;
+use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
+use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
 
 impl Placed for String {
     type Placement = Placement;
@@ -696,7 +686,11 @@ impl PlacementPlace<SyncSession, HostBitTensor> for HostPlacement {
 }
 
 impl PlacementPlace<SymbolicSession, Symbolic<HostBitTensor>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<HostBitTensor>) -> Symbolic<HostBitTensor> {
+    fn place(
+        &self,
+        _sess: &SymbolicSession,
+        x: Symbolic<HostBitTensor>,
+    ) -> Symbolic<HostBitTensor> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
@@ -1914,8 +1908,7 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let d_exp =
-            HostTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
+        let d_exp = HostTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
         let ax = a.atleast_2d(true);
         let bx = b.atleast_2d(false);
         let cx = c.atleast_2d(true);
@@ -1929,13 +1922,11 @@ mod tests {
     #[test]
     fn test_add_broadcasting() {
         let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 =
-            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.add(y_1);
         let z_1_exp =
             HostTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 =
-            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.add(y_2);
         let z_2_exp =
@@ -1948,13 +1939,11 @@ mod tests {
     #[test]
     fn test_sub_broadcasting() {
         let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 =
-            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.sub(y_1);
         let z_1_exp =
             HostTensor::<f32>::from(array![1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 =
-            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.sub(y_2);
         let z_2_exp =
@@ -1967,13 +1956,11 @@ mod tests {
     #[test]
     fn test_mul_broadcasting() {
         let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 =
-            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.mul(y_1);
         let z_1_exp =
             HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 =
-            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 = HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.mul(y_2);
         let z_2_exp =
@@ -1986,13 +1973,11 @@ mod tests {
     #[test]
     fn test_div_broadcasting() {
         let x_1 = HostTensor::<f32>::from(array![1.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_1 =
-            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_1 = HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.div(y_1);
         let z_1_exp =
             HostTensor::<f32>::from(array![0.5, 0.25].into_dimensionality::<IxDyn>().unwrap());
-        let x_2 =
-            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_2 = HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
         let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.div(y_2);
         let z_2_exp =

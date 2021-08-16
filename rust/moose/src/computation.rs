@@ -1,17 +1,16 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::host::HostBitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::host::{
+    HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
+    HostInt64Tensor, HostInt8Tensor, HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor,
+    HostUint64Tensor, HostUint8Tensor, RawShape, Ring128Tensor, Ring64Tensor,
+};
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
     Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup, ReplicatedShape,
-};
-use crate::host::{Ring128Tensor, Ring64Tensor};
-use crate::host::{
-    HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, RawShape,
-    HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;

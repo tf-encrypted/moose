@@ -1,19 +1,17 @@
-use crate::host::HostBitTensor;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::Fixed128Tensor;
-use crate::fixedpoint::Fixed64Tensor;
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::host::{
+    AbstractRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
+    HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostShape, HostTensor, HostUint16Tensor,
+    HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, Ring128Tensor, Ring64Tensor,
+};
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
-use crate::host::AbstractRingTensor;
-use crate::host::{Ring128Tensor, Ring64Tensor};
-use crate::host::{HostInt16Tensor, HostInt8Tensor, HostTensor, HostUint16Tensor, HostUint8Tensor, 
-    HostFloat32Tensor, HostFloat64Tensor, HostInt32Tensor, HostInt64Tensor, HostShape, HostUint32Tensor, HostUint64Tensor,
-};
 use crate::{closure_kernel, function_kernel};
 use std::collections::HashMap;
 use std::convert::TryFrom;
@@ -902,22 +900,28 @@ impl Compile<Kernel> for StdReshapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(_, _) -> Ty::HostFloat32Tensor] => {
-                function_kernel!(HostFloat32Tensor, HostShape, |x, newshape| x.reshape(newshape))
+                function_kernel!(HostFloat32Tensor, HostShape, |x, newshape| x
+                    .reshape(newshape))
             }
             signature![(_, _) -> Ty::HostFloat64Tensor] => {
-                function_kernel!(HostFloat64Tensor, HostShape, |x, newshape| x.reshape(newshape))
+                function_kernel!(HostFloat64Tensor, HostShape, |x, newshape| x
+                    .reshape(newshape))
             }
             signature![(_, _) -> Ty::HostInt32Tensor] => {
-                function_kernel!(HostInt32Tensor, HostShape, |x, newshape| x.reshape(newshape))
+                function_kernel!(HostInt32Tensor, HostShape, |x, newshape| x
+                    .reshape(newshape))
             }
             signature![(_, _) -> Ty::HostInt64Tensor] => {
-                function_kernel!(HostInt64Tensor, HostShape, |x, newshape| x.reshape(newshape))
+                function_kernel!(HostInt64Tensor, HostShape, |x, newshape| x
+                    .reshape(newshape))
             }
             signature![(_, _) -> Ty::HostUint32Tensor] => {
-                function_kernel!(HostUint32Tensor, HostShape, |x, newshape| x.reshape(newshape))
+                function_kernel!(HostUint32Tensor, HostShape, |x, newshape| x
+                    .reshape(newshape))
             }
             signature![(_, _) -> Ty::HostUint64Tensor] => {
-                function_kernel!(HostUint64Tensor, HostShape, |x, newshape| x.reshape(newshape))
+                function_kernel!(HostUint64Tensor, HostShape, |x, newshape| x
+                    .reshape(newshape))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1157,7 +1161,10 @@ impl Compile<Kernel> for RingFillOp {
                 closure_kernel!(HostShape, |shape| Ring64Tensor::fill(&shape.0, value))
             }
             (signature![(_) -> Ty::Ring128Tensor], Constant::Ring64(value)) => {
-                closure_kernel!(HostShape, |shape| Ring128Tensor::fill(&shape.0, value as u128))
+                closure_kernel!(HostShape, |shape| Ring128Tensor::fill(
+                    &shape.0,
+                    value as u128
+                ))
             }
             (signature![(_) -> Ty::Ring128Tensor], Constant::Ring128(value)) => {
                 closure_kernel!(HostShape, |shape| Ring128Tensor::fill(&shape.0, value))
@@ -1181,9 +1188,11 @@ impl Compile<Kernel> for RingSampleOp {
                 ))
             }
             (signature![(_, _) -> Ty::Ring128Tensor], None) => {
-                function_kernel!(HostShape, Seed, |shape, seed| Ring128Tensor::sample_uniform(
-                    &shape.0, &seed.0
-                ))
+                function_kernel!(
+                    HostShape,
+                    Seed,
+                    |shape, seed| Ring128Tensor::sample_uniform(&shape.0, &seed.0)
+                )
             }
             (signature![(_, _) -> Ty::Ring128Tensor], Some(max_value)) if max_value == 1 => {
                 function_kernel!(HostShape, Seed, |shape, seed| Ring128Tensor::sample_bits(
@@ -1271,9 +1280,11 @@ impl Compile<Kernel> for BitExtractOp {
 
 impl Compile<Kernel> for BitSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(HostShape, Seed, |shape, seed| HostBitTensor::sample_uniform(
-            &shape.0, &seed.0
-        ))
+        function_kernel!(
+            HostShape,
+            Seed,
+            |shape, seed| HostBitTensor::sample_uniform(&shape.0, &seed.0)
+        )
     }
 }
 
@@ -1328,11 +1339,17 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
         match self.sig {
             signature![(Ty::HostFloat64Tensor) -> Ty::Ring64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(HostFloat64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
+                closure_kernel!(HostFloat64Tensor, |x| Ring64Tensor::encode(
+                    &x,
+                    scaling_factor
+                ))
             }
             signature![(Ty::HostFloat64Tensor) -> Ty::Ring128Tensor] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(HostFloat64Tensor, |x| Ring128Tensor::encode(&x, scaling_factor))
+                closure_kernel!(HostFloat64Tensor, |x| Ring128Tensor::encode(
+                    &x,
+                    scaling_factor
+                ))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }

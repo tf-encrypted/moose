@@ -5,8 +5,7 @@ use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
@@ -917,7 +916,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSampleOp {
-                            sig: Signature::binary(Ty::HostShape, Ty::Seed, map_type(&op.output_type)?),
+                            sig: Signature::binary(
+                                Ty::HostShape,
+                                Ty::Seed,
+                                map_type(&op.output_type)?,
+                            ),
                             max_value: op.max_value,
                         }
                         .into(),
@@ -1029,7 +1032,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
                         kind: BitXorOp {
-                            sig: Signature::binary(Ty::HostBitTensor, Ty::HostBitTensor, Ty::HostBitTensor),
+                            sig: Signature::binary(
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                            ),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1039,7 +1046,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
                         kind: BitAndOp {
-                            sig: Signature::binary(Ty::HostBitTensor, Ty::HostBitTensor, Ty::HostBitTensor),
+                            sig: Signature::binary(
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                            ),
                         }
                         .into(),
                         name: op.name.clone(),

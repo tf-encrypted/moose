@@ -1,6 +1,6 @@
 use crate::computation::*;
+use crate::host::{HostShape, RawShape};
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
-use crate::host::{RawShape, HostShape};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -266,14 +266,20 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(HostSliceOp::SHORT_NAME), cut(stdslice)),
     ));
     let part2 = alt((
-        preceded(tag(HostSumOp::SHORT_NAME), cut(operation_on_axis!(HostSumOp))),
+        preceded(
+            tag(HostSumOp::SHORT_NAME),
+            cut(operation_on_axis!(HostSumOp)),
+        ),
         preceded(tag(HostOnesOp::SHORT_NAME), cut(std_unary!(HostOnesOp))),
         preceded(tag(HostConcatenateOp::SHORT_NAME), cut(stdconcatenate)),
         preceded(
             tag(HostTransposeOp::SHORT_NAME),
             cut(std_unary!(HostTransposeOp)),
         ),
-        preceded(tag(HostInverseOp::SHORT_NAME), cut(std_unary!(HostInverseOp))),
+        preceded(
+            tag(HostInverseOp::SHORT_NAME),
+            cut(std_unary!(HostInverseOp)),
+        ),
         preceded(tag(RingAddOp::SHORT_NAME), cut(std_binary!(RingAddOp))),
         preceded(tag(RingSubOp::SHORT_NAME), cut(std_binary!(RingSubOp))),
         preceded(tag(RingMulOp::SHORT_NAME), cut(std_binary!(RingMulOp))),
@@ -1480,7 +1486,7 @@ impl ToTextual for Ty {
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
             Ty::Nonce => "Nonce",
-            Ty::HostFloat32Tensor => "Float32Tensor",  // TODO change textual symbol as well
+            Ty::HostFloat32Tensor => "Float32Tensor", // TODO change textual symbol as well
             Ty::HostFloat64Tensor => "Float64Tensor", // TODO
             Ty::HostInt8Tensor => "Int8Tensor",
             Ty::HostInt16Tensor => "Int16Tensor",
@@ -1750,7 +1756,11 @@ mod tests {
         )?;
         assert_eq!(
             parsed,
-            Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat64Tensor, Ty::HostUint16Tensor),
+            Signature::binary(
+                Ty::HostFloat32Tensor,
+                Ty::HostFloat64Tensor,
+                Ty::HostUint16Tensor
+            ),
         );
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
@@ -1808,7 +1818,11 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::HostAdd(HostAddOp {
-                sig: Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
+                sig: Signature::binary(
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor
+                ),
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
@@ -1818,7 +1832,11 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::HostMul(HostMulOp {
-                sig: Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
+                sig: Signature::binary(
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor
+                ),
             })
         );
         Ok(())
@@ -2036,7 +2054,11 @@ mod tests {
         assert_eq!(
             comp.operations[2].kind,
             Operator::HostAdd(HostAddOp {
-                sig: Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
+                sig: Signature::binary(
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor
+                ),
             })
         );
         assert_eq!(comp.operations[2].inputs, vec!("x", "y"));

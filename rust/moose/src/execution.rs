@@ -1292,9 +1292,9 @@ impl AsyncTestRuntime {
 mod tests {
     use super::*;
     use crate::compilation::networking::NetworkingPass;
-    use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
+    use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, RawShape};
     use crate::host::{Ring128Tensor, Ring64Tensor};
-    use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, RawShape, HostShape};
+    use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
