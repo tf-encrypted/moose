@@ -13,7 +13,7 @@ use crate::ring::AbstractRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::Int16Tensor;
 use crate::standard::Int8Tensor;
-use crate::standard::StandardTensor;
+use crate::standard::HostTensor;
 use crate::standard::Uint16Tensor;
 use crate::standard::Uint8Tensor;
 use crate::standard::{
@@ -945,8 +945,8 @@ impl StdAtLeast2DOp {
         _sess: &S,
         _plc: &HostPlacement,
         _to_column_vector: bool,
-        _x: StandardTensor<T>,
-    ) -> StandardTensor<T> {
+        _x: HostTensor<T>,
+    ) -> HostTensor<T> {
         unimplemented!()
     }
 }
@@ -1322,7 +1322,7 @@ impl FixedpointRingEncodeOp {
         _plc: &HostPlacement,
         _scaling_base: u64,
         _scaling_exp: u32,
-        _x: StandardTensor<ST>,
+        _x: HostTensor<ST>,
     ) -> AbstractRingTensor<TT> {
         unimplemented!()
     }
@@ -1362,7 +1362,7 @@ impl FixedpointRingDecodeOp {
         _scaling_base: u64,
         _scaling_exp: u32,
         _x: AbstractRingTensor<ST>,
-    ) -> StandardTensor<TT> {
+    ) -> HostTensor<TT> {
         unimplemented!()
     }
 }

@@ -80,9 +80,9 @@ impl PlacementPlace<SymbolicSession, Symbolic<Shape>> for HostPlacement {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct StandardTensor<T>(pub ArrayD<T>, pub HostPlacement);
+pub struct HostTensor<T>(pub ArrayD<T>, pub HostPlacement);
 
-impl<T> Placed for StandardTensor<T> {
+impl<T> Placed for HostTensor<T> {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -90,33 +90,33 @@ impl<T> Placed for StandardTensor<T> {
     }
 }
 
-pub type Float32Tensor = StandardTensor<f32>;
-pub type Float64Tensor = StandardTensor<f64>;
-pub type Int8Tensor = StandardTensor<i8>;
-pub type Int16Tensor = StandardTensor<i16>;
-pub type Int32Tensor = StandardTensor<i32>;
-pub type Int64Tensor = StandardTensor<i64>;
-pub type Uint8Tensor = StandardTensor<u8>;
-pub type Uint16Tensor = StandardTensor<u16>;
-pub type Uint32Tensor = StandardTensor<u32>;
-pub type Uint64Tensor = StandardTensor<u64>;
+pub type Float32Tensor = HostTensor<f32>;
+pub type Float64Tensor = HostTensor<f64>;
+pub type Int8Tensor = HostTensor<i8>;
+pub type Int16Tensor = HostTensor<i16>;
+pub type Int32Tensor = HostTensor<i32>;
+pub type Int64Tensor = HostTensor<i64>;
+pub type Uint8Tensor = HostTensor<u8>;
+pub type Uint16Tensor = HostTensor<u16>;
+pub type Uint32Tensor = HostTensor<u32>;
+pub type Uint64Tensor = HostTensor<u64>;
 
-impl<T> PlacementPlace<SyncSession, StandardTensor<T>> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, x: StandardTensor<T>) -> StandardTensor<T> {
+impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
         match x.placement() {
             Ok(place) if &place == self => x,
-            _ => StandardTensor(x.0, self.clone()),
+            _ => HostTensor(x.0, self.clone()),
         }
     }
 }
 
 /// This implementation is required to do the `plc.place(sess, x)`
-impl<T> PlacementPlace<SymbolicSession, Symbolic<StandardTensor<T>>> for HostPlacement {
+impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlacement {
     fn place(
         &self,
         _sess: &SymbolicSession,
-        x: Symbolic<StandardTensor<T>>,
-    ) -> Symbolic<StandardTensor<T>> {
+        x: Symbolic<HostTensor<T>>,
+    ) -> Symbolic<HostTensor<T>> {
         match x {
             Symbolic::Concrete(x) => Symbolic::Concrete(x),
             Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
@@ -133,11 +133,11 @@ impl StdAddOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
-        y: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         plc.place(sess, x + y)
     }
@@ -147,11 +147,11 @@ impl StdSubOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
-        y: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         plc.place(sess, x - y)
     }
@@ -161,11 +161,11 @@ impl StdMulOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
-        y: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         plc.place(sess, x * y)
     }
@@ -175,11 +175,11 @@ impl StdDivOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
-        y: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         plc.place(sess, x / y)
     }
@@ -189,11 +189,11 @@ impl StdDotOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
-        y: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         plc.place(sess, x.dot(y))
     }
@@ -204,11 +204,11 @@ impl StdOnesOp {
         sess: &S,
         plc: &HostPlacement,
         shape: Shape,
-    ) -> StandardTensor<T>
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
-        plc.place(sess, StandardTensor::ones(shape))
+        plc.place(sess, HostTensor::ones(shape))
     }
 }
 
@@ -237,7 +237,7 @@ impl ShapeOp {
     pub(crate) fn std_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
+        x: HostTensor<T>,
     ) -> Shape {
         let raw_shape = RawShape(x.0.shape().into());
         Shape(raw_shape, plc.clone())
@@ -289,17 +289,17 @@ impl RawShape {
     }
 }
 
-impl<T> StandardTensor<T>
+impl<T> HostTensor<T>
 where
     T: LinalgScalar,
 {
-    pub fn place(plc: &HostPlacement, x: ArrayD<T>) -> StandardTensor<T> {
-        StandardTensor::<T>(x, plc.clone())
+    pub fn place(plc: &HostPlacement, x: ArrayD<T>) -> HostTensor<T> {
+        HostTensor::<T>(x, plc.clone())
     }
 
-    pub fn atleast_2d(self, to_column_vector: bool) -> StandardTensor<T> {
+    pub fn atleast_2d(self, to_column_vector: bool) -> HostTensor<T> {
         match self.0.ndim() {
-            0 => StandardTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap(), self.1),
+            0 => HostTensor::<T>(self.0.into_shape(IxDyn(&[1, 1])).unwrap(), self.1),
             1 => {
                 let length = self.0.len();
                 let newshape = if to_column_vector {
@@ -307,7 +307,7 @@ where
                 } else {
                     IxDyn(&[1, length])
                 };
-                StandardTensor::<T>(self.0.into_shape(newshape).unwrap(), self.1)
+                HostTensor::<T>(self.0.into_shape(newshape).unwrap(), self.1)
             }
             2 => self,
             otherwise => panic!(
@@ -317,7 +317,7 @@ where
         }
     }
 
-    pub fn dot(self, other: StandardTensor<T>) -> StandardTensor<T> {
+    pub fn dot(self, other: HostTensor<T>) -> HostTensor<T> {
         match (self.0.ndim(), other.0.ndim()) {
             (1, 1) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
@@ -325,40 +325,40 @@ where
                 let res = Array::from_elem([], l.dot(&r))
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::<T>(res, self.1)
+                HostTensor::<T>(res, self.1)
             }
             (1, 2) => {
                 let l = self.0.into_dimensionality::<Ix1>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res, self.1)
+                HostTensor::<T>(res, self.1)
             }
             (2, 1) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix1>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res, self.1)
+                HostTensor::<T>(res, self.1)
             }
             (2, 2) => {
                 let l = self.0.into_dimensionality::<Ix2>().unwrap();
                 let r = other.0.into_dimensionality::<Ix2>().unwrap();
                 let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                StandardTensor::<T>(res, self.1)
+                HostTensor::<T>(res, self.1)
             }
             (self_rank, other_rank) => panic!(
                 // TODO: replace with proper error handling
-                "Dot<StandardTensor> not implemented between tensors of rank {:?} and {:?}.",
+                "Dot<HostTensor> not implemented between tensors of rank {:?} and {:?}.",
                 self_rank, other_rank,
             ),
         }
     }
 
     pub fn ones(shape: Shape) -> Self {
-        StandardTensor::<T>(ArrayD::ones(shape.0 .0), shape.1)
+        HostTensor::<T>(ArrayD::ones(shape.0 .0), shape.1)
     }
 
     pub fn reshape(self, newshape: Shape) -> Self {
-        StandardTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
+        HostTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
     pub fn expand_dims(self, mut axis: Vec<usize>) -> Self {
@@ -374,21 +374,21 @@ where
 
     pub fn sum(self, axis: Option<usize>) -> Self {
         if let Some(i) = axis {
-            StandardTensor::<T>(self.0.sum_axis(Axis(i)), self.1)
+            HostTensor::<T>(self.0.sum_axis(Axis(i)), self.1)
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
-            StandardTensor::<T>(out, self.1)
+            HostTensor::<T>(out, self.1)
         }
     }
 
     pub fn transpose(self) -> Self {
-        StandardTensor::<T>(self.0.reversed_axes(), self.1)
+        HostTensor::<T>(self.0.reversed_axes(), self.1)
     }
 }
 
-impl<T> StandardTensor<T>
+impl<T> HostTensor<T>
 where
     T: LinalgScalar + FromPrimitive,
 {
@@ -396,14 +396,14 @@ where
         match axis {
             Some(i) => {
                 let reduced = self.0.mean_axis(Axis(i)).unwrap();
-                StandardTensor::<T>(reduced, self.1)
+                HostTensor::<T>(reduced, self.1)
             }
             None => {
                 let mean = self.0.mean().unwrap();
                 let out = Array::from_elem([], mean)
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::<T>(out, self.1)
+                HostTensor::<T>(out, self.1)
             }
         }
     }
@@ -414,22 +414,22 @@ impl StdMeanOp {
         _sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         match axis {
             Some(i) => {
                 let reduced: ArrayD<T> = x.0.mean_axis(Axis(i as usize)).unwrap();
-                StandardTensor::place(plc, reduced)
+                HostTensor::place(plc, reduced)
             }
             None => {
                 let mean = x.0.mean().unwrap();
                 let out = Array::from_elem([], mean)
                     .into_dimensionality::<IxDyn>()
                     .unwrap();
-                StandardTensor::place(plc, out)
+                HostTensor::place(plc, out)
             }
         }
     }
@@ -440,10 +440,10 @@ impl StdSumOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let axis = axis.map(|a| a as usize);
         plc.place(sess, x.sum(axis))
@@ -455,10 +455,10 @@ impl StdExpandDimsOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
-        x: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         let axis = axis.iter().map(|a| *a as usize).collect();
         plc.place(sess, x.expand_dims(axis))
@@ -470,16 +470,16 @@ impl StdConcatenateOp {
         _sess: &S,
         plc: &HostPlacement,
         axis: u32,
-        x: StandardTensor<T>,
-        y: StandardTensor<T>,
-    ) -> StandardTensor<T> {
+        x: HostTensor<T>,
+        y: HostTensor<T>,
+    ) -> HostTensor<T> {
         let ax = Axis(axis as usize);
         let x = x.0.view();
         let y = y.0.view();
 
         let c =
             ndarray::concatenate(ax, &[x, y]).expect("Failed to concatenate arrays with ndarray");
-        StandardTensor(c, plc.clone())
+        HostTensor(c, plc.clone())
     }
 }
 
@@ -487,10 +487,10 @@ impl StdTransposeOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         plc.place(sess, x.transpose())
     }
@@ -500,16 +500,16 @@ impl StdInverseOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
         plc: &HostPlacement,
-        x: StandardTensor<T>,
-    ) -> StandardTensor<T>
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
     where
-        HostPlacement: PlacementPlace<S, StandardTensor<T>>,
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
     {
         plc.place(sess, x.inv())
     }
 }
 
-impl<T> StandardTensor<T>
+impl<T> HostTensor<T>
 where
     T: Scalar + Lapack,
 {
@@ -517,7 +517,7 @@ where
         match self.0.ndim() {
             2 => {
                 let two_dim: Array2<T> = self.0.into_dimensionality::<Ix2>().unwrap();
-                StandardTensor::<T>(
+                HostTensor::<T>(
                     two_dim
                         .inv()
                         .unwrap()
@@ -534,14 +534,14 @@ where
     }
 }
 
-// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<ArrayD<T>> for StandardTensor<T>
+impl<T> From<ArrayD<T>> for HostTensor<T>
 where
     T: LinalgScalar,
 {
-    fn from(v: ArrayD<T>) -> StandardTensor<T> {
-        StandardTensor::<T>(
+    fn from(v: ArrayD<T>) -> HostTensor<T> {
+        HostTensor::<T>(
             v,
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernels
@@ -550,71 +550,71 @@ where
     }
 }
 
-impl<T> Add for StandardTensor<T>
+impl<T> Add for HostTensor<T>
 where
     T: LinalgScalar,
 {
-    type Output = StandardTensor<T>;
-    fn add(self, other: StandardTensor<T>) -> Self::Output {
+    type Output = HostTensor<T>;
+    fn add(self, other: HostTensor<T>) -> Self::Output {
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() + other.0, self.1.clone())
+                HostTensor::<T>(self_broadcasted.to_owned() + other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 + other.0, self.1.clone()),
+            None => HostTensor::<T>(self.0 + other.0, self.1.clone()),
         }
     }
 }
 
-impl<T> Sub for StandardTensor<T>
+impl<T> Sub for HostTensor<T>
 where
     T: LinalgScalar,
 {
-    type Output = StandardTensor<T>;
-    fn sub(self, other: StandardTensor<T>) -> Self::Output {
+    type Output = HostTensor<T>;
+    fn sub(self, other: HostTensor<T>) -> Self::Output {
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() - other.0, self.1.clone())
+                HostTensor::<T>(self_broadcasted.to_owned() - other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 - other.0, self.1.clone()),
+            None => HostTensor::<T>(self.0 - other.0, self.1.clone()),
         }
     }
 }
 
-impl<T> Mul for StandardTensor<T>
+impl<T> Mul for HostTensor<T>
 where
     T: LinalgScalar,
 {
-    type Output = StandardTensor<T>;
-    fn mul(self, other: StandardTensor<T>) -> Self::Output {
+    type Output = HostTensor<T>;
+    fn mul(self, other: HostTensor<T>) -> Self::Output {
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() * other.0, self.1.clone())
+                HostTensor::<T>(self_broadcasted.to_owned() * other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 * other.0, self.1.clone()),
+            None => HostTensor::<T>(self.0 * other.0, self.1.clone()),
         }
     }
 }
 
-impl<T> Div for StandardTensor<T>
+impl<T> Div for HostTensor<T>
 where
     T: LinalgScalar,
 {
-    type Output = StandardTensor<T>;
-    fn div(self, other: StandardTensor<T>) -> Self::Output {
+    type Output = HostTensor<T>;
+    fn div(self, other: HostTensor<T>) -> Self::Output {
         match self.0.broadcast(other.0.dim()) {
             Some(self_broadcasted) => {
-                StandardTensor::<T>(self_broadcasted.to_owned() / other.0, self.1.clone())
+                HostTensor::<T>(self_broadcasted.to_owned() / other.0, self.1.clone())
             }
-            None => StandardTensor::<T>(self.0 / other.0, self.1.clone()),
+            None => HostTensor::<T>(self.0 / other.0, self.1.clone()),
         }
     }
 }
 
-// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<Vec<T>> for StandardTensor<T> {
-    fn from(v: Vec<T>) -> StandardTensor<T> {
-        StandardTensor(
+impl<T> From<Vec<T>> for HostTensor<T> {
+    fn from(v: Vec<T>) -> HostTensor<T> {
+        HostTensor(
             Array::from(v).into_dyn(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
@@ -623,11 +623,11 @@ impl<T> From<Vec<T>> for StandardTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<Array1<T>> for StandardTensor<T> {
-    fn from(v: Array1<T>) -> StandardTensor<T> {
-        StandardTensor(
+impl<T> From<Array1<T>> for HostTensor<T> {
+    fn from(v: Array1<T>) -> HostTensor<T> {
+        HostTensor(
             v.into_dyn(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
@@ -636,11 +636,11 @@ impl<T> From<Array1<T>> for StandardTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct StandardTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<Array2<T>> for StandardTensor<T> {
-    fn from(v: Array2<T>) -> StandardTensor<T> {
-        StandardTensor(
+impl<T> From<Array2<T>> for HostTensor<T> {
+    fn from(v: Array2<T>) -> HostTensor<T> {
+        HostTensor(
             v.into_dyn(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the old kernel
@@ -649,7 +649,7 @@ impl<T> From<Array2<T>> for StandardTensor<T> {
     }
 }
 
-pub fn concatenate<T>(axis: usize, arrays: &[StandardTensor<T>]) -> StandardTensor<T>
+pub fn concatenate<T>(axis: usize, arrays: &[HostTensor<T>]) -> HostTensor<T>
 where
     T: LinalgScalar,
 {
@@ -657,7 +657,7 @@ where
     let inner_arrays: Vec<_> = arrays.iter().map(|a| a.0.view()).collect();
 
     let c = ndarray::concatenate(ax, &inner_arrays).unwrap();
-    StandardTensor::<T>(
+    HostTensor::<T>(
         c,
         HostPlacement {
             owner: "TODO".into(),
@@ -671,7 +671,7 @@ mod tests {
 
     #[test]
     fn dot_prod_f32() {
-        let x = StandardTensor::<f32>::from(
+        let x = HostTensor::<f32>::from(
             array![[1.0, -2.0], [3.0, -4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -680,7 +680,7 @@ mod tests {
         let z = x.dot(y);
         assert_eq!(
             z,
-            StandardTensor::<f32>::from(
+            HostTensor::<f32>::from(
                 array![[-5.0, 6.0], [-9.0, 10.0]]
                     .into_dimensionality::<IxDyn>()
                     .unwrap()
@@ -690,7 +690,7 @@ mod tests {
 
     #[test]
     fn test_inverse() {
-        let x = StandardTensor::<f32>::from(
+        let x = HostTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -700,7 +700,7 @@ mod tests {
 
         assert_eq!(
             x_inv,
-            StandardTensor::<f32>::from(
+            HostTensor::<f32>::from(
                 array![[-2.0, 1.0], [1.5, -0.5]]
                     .into_dimensionality::<IxDyn>()
                     .unwrap()
@@ -717,7 +717,7 @@ mod tests {
 
     #[test]
     fn test_transpose() {
-        let x = StandardTensor::<f32>::from(
+        let x = HostTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -725,7 +725,7 @@ mod tests {
         let y = x.transpose();
         assert_eq!(
             y,
-            StandardTensor::<f32>::from(
+            HostTensor::<f32>::from(
                 array![[1.0, 3.0], [2.0, 4.0]]
                     .into_dimensionality::<IxDyn>()
                     .unwrap()
@@ -735,17 +735,17 @@ mod tests {
 
     #[test]
     fn test_concatenate() {
-        let a = StandardTensor::<f32>::from(
+        let a = HostTensor::<f32>::from(
             array![[[1.0, 2.0], [3.0, 4.0]]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let b = StandardTensor::<f32>::from(
+        let b = HostTensor::<f32>::from(
             array![[[1.0, 2.0], [3.0, 4.0]]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let expected = StandardTensor::<f32>::from(
+        let expected = HostTensor::<f32>::from(
             array![[[1.0, 2.0], [3.0, 4.0]], [[1.0, 2.0], [3.0, 4.0]]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -756,39 +756,39 @@ mod tests {
 
     #[test]
     fn test_atleast_2d() {
-        let a = StandardTensor::<f32>::from(
+        let a = HostTensor::<f32>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
         let a_exp = a.clone();
-        let b = StandardTensor::<f32>::from(
+        let b = HostTensor::<f32>::from(
             array![1.0, 2.0, 3.0, 4.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let b_exp = StandardTensor::<f32>::from(
+        let b_exp = HostTensor::<f32>::from(
             array![[1.0, 2.0, 3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let c = StandardTensor::<f32>::from(
+        let c = HostTensor::<f32>::from(
             array![1.0, 2.0, 3.0, 4.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let c_exp = StandardTensor::<f32>::from(
+        let c_exp = HostTensor::<f32>::from(
             array![[1.0], [2.0], [3.0], [4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let d = StandardTensor::<f32>::from(
+        let d = HostTensor::<f32>::from(
             Array::from_elem([], 1.0)
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
         let d_exp =
-            StandardTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![[1.0]].into_dimensionality::<IxDyn>().unwrap());
         let ax = a.atleast_2d(true);
         let bx = b.atleast_2d(false);
         let cx = c.atleast_2d(true);
@@ -801,18 +801,18 @@ mod tests {
 
     #[test]
     fn test_add_broadcasting() {
-        let x_1 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let y_1 =
-            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.add(y_1);
         let z_1_exp =
-            StandardTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
         let x_2 =
-            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.add(y_2);
         let z_2_exp =
-            StandardTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![3.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
 
         assert_eq!(z_1, z_1_exp);
         assert_eq!(z_2, z_2_exp);
@@ -820,18 +820,18 @@ mod tests {
 
     #[test]
     fn test_sub_broadcasting() {
-        let x_1 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let y_1 =
-            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.sub(y_1);
         let z_1_exp =
-            StandardTensor::<f32>::from(array![1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
         let x_2 =
-            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.sub(y_2);
         let z_2_exp =
-            StandardTensor::<f32>::from(array![-1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![-1.0, 0.0].into_dimensionality::<IxDyn>().unwrap());
 
         assert_eq!(z_1, z_1_exp);
         assert_eq!(z_2, z_2_exp);
@@ -839,18 +839,18 @@ mod tests {
 
     #[test]
     fn test_mul_broadcasting() {
-        let x_1 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_1 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let y_1 =
-            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.mul(y_1);
         let z_1_exp =
-            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
         let x_2 =
-            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.mul(y_2);
         let z_2_exp =
-            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
 
         assert_eq!(z_1, z_1_exp);
         assert_eq!(z_2, z_2_exp);
@@ -858,18 +858,18 @@ mod tests {
 
     #[test]
     fn test_div_broadcasting() {
-        let x_1 = StandardTensor::<f32>::from(array![1.0].into_dimensionality::<IxDyn>().unwrap());
+        let x_1 = HostTensor::<f32>::from(array![1.0].into_dimensionality::<IxDyn>().unwrap());
         let y_1 =
-            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
         let z_1 = x_1.div(y_1);
         let z_1_exp =
-            StandardTensor::<f32>::from(array![0.5, 0.25].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![0.5, 0.25].into_dimensionality::<IxDyn>().unwrap());
         let x_2 =
-            StandardTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
-        let y_2 = StandardTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![2.0, 4.0].into_dimensionality::<IxDyn>().unwrap());
+        let y_2 = HostTensor::<f32>::from(array![2.0].into_dimensionality::<IxDyn>().unwrap());
         let z_2 = x_2.div(y_2);
         let z_2_exp =
-            StandardTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
+            HostTensor::<f32>::from(array![1.0, 2.0].into_dimensionality::<IxDyn>().unwrap());
 
         assert_eq!(z_1, z_1_exp);
         assert_eq!(z_2, z_2_exp);
@@ -882,7 +882,7 @@ mod tests {
             owner: "alice".into(),
         };
         let sess = SyncSession::default();
-        let x = crate::standard::StandardTensor::<f64>::from(
+        let x = crate::standard::HostTensor::<f64>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -898,7 +898,7 @@ mod tests {
             owner: "alice".into(),
         };
         let sess = SyncSession::default();
-        let x = crate::standard::StandardTensor::<f64>::from(
+        let x = crate::standard::HostTensor::<f64>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -914,12 +914,12 @@ mod tests {
             owner: "alice".into(),
         };
         let sess = SyncSession::default();
-        let x = crate::standard::StandardTensor::<f64>::from(
+        let x = crate::standard::HostTensor::<f64>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let y = crate::standard::StandardTensor::<f64>::from(
+        let y = crate::standard::HostTensor::<f64>::from(
             array![[5.0, 6.0], [7.0, 8.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),

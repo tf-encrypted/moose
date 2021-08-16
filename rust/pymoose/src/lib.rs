@@ -9,7 +9,7 @@ use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
 use moose::ring::Ring64Tensor;
-use moose::standard::{Float64Tensor, RawShape, StandardTensor};
+use moose::standard::{Float64Tensor, RawShape, HostTensor};
 use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
@@ -312,12 +312,12 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
     }
 }
 
-fn pyobj_tensor_to_std_tensor<T>(py: Python, obj: &PyObject) -> StandardTensor<T>
+fn pyobj_tensor_to_std_tensor<T>(py: Python, obj: &PyObject) -> HostTensor<T>
 where
     T: Element + LinalgScalar,
 {
     let pyarray = obj.cast_as::<PyArrayDyn<T>>(py).unwrap();
-    StandardTensor::from(
+    HostTensor::from(
         pyarray
             .to_owned_array()
             .into_dimensionality::<IxDyn>()

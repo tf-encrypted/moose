@@ -11,7 +11,7 @@ use crate::replicated::{
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
-    Shape, StandardTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    Shape, HostTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
@@ -363,8 +363,8 @@ where
     }
 }
 
-impl<T> From<StandardTensor<T>> for Symbolic<StandardTensor<T>> {
-    fn from(x: StandardTensor<T>) -> Self {
+impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
+    fn from(x: HostTensor<T>) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -445,9 +445,9 @@ impl TryFrom<Symbolic<BitTensor>> for BitTensor {
     }
 }
 
-impl<T> TryFrom<Symbolic<StandardTensor<T>>> for StandardTensor<T> {
+impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
     type Error = Error;
-    fn try_from(v: Symbolic<StandardTensor<T>>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<HostTensor<T>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message

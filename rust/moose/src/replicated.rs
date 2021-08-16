@@ -1951,7 +1951,7 @@ mod tests {
         let setup = rep.gen_setup(&sess);
 
         let scaling_factor = u64::pow(2, 24);
-        let x = crate::standard::StandardTensor::<f64>::from(
+        let x = crate::standard::HostTensor::<f64>::from(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
