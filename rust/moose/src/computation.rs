@@ -10,7 +10,7 @@ use crate::replicated::{
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::host::{
-    HostFloat32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
+    HostFloat32Tensor, HostFloat64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
     HostShape, HostTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
@@ -114,7 +114,7 @@ constants![
     Ring64Tensor,
     Ring128Tensor,
     HostFloat32Tensor,
-    Float64Tensor,
+    HostFloat64Tensor,
     Int8Tensor,
     Int16Tensor,
     Int32Tensor,
@@ -466,7 +466,7 @@ values![
     (Ring64Tensor, Symbolic<Ring64Tensor>),
     (Ring128Tensor, Symbolic<Ring128Tensor>),
     (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
-    (Float64Tensor, Symbolic<Float64Tensor>),
+    (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
     (Int8Tensor, Symbolic<Int8Tensor>),
     (Int16Tensor, Symbolic<Int16Tensor>),
     (Int32Tensor, Symbolic<Int32Tensor>),

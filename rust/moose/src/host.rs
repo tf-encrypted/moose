@@ -92,7 +92,7 @@ impl<T> Placed for HostTensor<T> {
 
 // TODO these should have Host prefix
 pub type HostFloat32Tensor = HostTensor<f32>;
-pub type Float64Tensor = HostTensor<f64>;
+pub type HostFloat64Tensor = HostTensor<f64>;
 pub type Int8Tensor = HostTensor<i8>;
 pub type Int16Tensor = HostTensor<i16>;
 pub type Int32Tensor = HostTensor<i32>;
@@ -216,7 +216,7 @@ impl StdOnesOp {
 modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (BitTensor) -> HostShape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> HostShape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (HostFloat64Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape, ShapeOp);
@@ -227,7 +227,7 @@ kernel! {
         (HostPlacement, (Ring64Tensor) -> HostShape => Self::ring_kernel),
         (HostPlacement, (Ring128Tensor) -> HostShape => Self::ring_kernel),
         (HostPlacement, (BitTensor) -> HostShape => Self::bit_kernel),
-        (HostPlacement, (Float64Tensor) -> HostShape => Self::std_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostShape => Self::std_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_kernel),
         (ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape => Self::rep_kernel),
         (ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape => Self::rep_kernel),

@@ -1,6 +1,6 @@
 //! Parser for computations defined in Python
 
-use crate::host::{HostFloat32Tensor, Float64Tensor, RawShape};
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape};
 use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
@@ -779,7 +779,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
-                Ok(Float64Tensor::from(tensor).into())
+                Ok(HostFloat64Tensor::from(tensor).into())
             }
         },
     }
@@ -794,7 +794,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_StringType => Ok(Ty::String),
         PyValueType::std_TensorType { dtype } => match dtype {
             PyDType::float32 => Ok(Ty::HostFloat32Tensor),
-            PyDType::float64 => Ok(Ty::Float64Tensor),
+            PyDType::float64 => Ok(Ty::HostFloat64Tensor),
             PyDType::int32 => Ok(Ty::Int32Tensor),
             PyDType::int64 => Ok(Ty::Int64Tensor),
             PyDType::uint32 => Ok(Ty::Uint32Tensor),
@@ -1145,7 +1145,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: ShapeOp {
-                            sig: Signature::unary(Ty::Float64Tensor, Ty::HostShape),
+                            sig: Signature::unary(Ty::HostFloat64Tensor, Ty::HostShape),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

@@ -4,7 +4,7 @@ mod tests {
     use moose::compilation::typing::update_types_one_hop;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
-    use moose::{computation::*, python_computation::PyComputation, host::Float64Tensor};
+    use moose::{computation::*, python_computation::PyComputation, host::HostFloat64Tensor};
     use ndarray::prelude::*;
     use numpy::ToPyArray;
     use pyo3::prelude::*;
@@ -213,7 +213,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x1) * Float64Tensor::from(y1))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1))
         );
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -228,7 +228,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x2) + Float64Tensor::from(y2))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2))
         );
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -243,7 +243,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x3) - Float64Tensor::from(y3))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3))
         );
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -258,7 +258,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4)))
         );
     }
 
@@ -388,7 +388,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x1) * Float64Tensor::from(y1))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x1) * HostFloat64Tensor::from(y1))
         );
 
         let x2 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -403,7 +403,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x2) + Float64Tensor::from(y2))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x2) + HostFloat64Tensor::from(y2))
         );
 
         let x3 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -418,7 +418,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x3) - Float64Tensor::from(y3))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x3) - HostFloat64Tensor::from(y3))
         );
 
         let x4 = array![[1.0, 2.0], [3.0, 4.0]]
@@ -433,7 +433,7 @@ def f(arg1, arg2):
 
         assert_eq!(
             result,
-            Value::Float64Tensor(Float64Tensor::from(x4).dot(Float64Tensor::from(y4)))
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(x4).dot(HostFloat64Tensor::from(y4)))
         );
     }
     #[test]
@@ -560,7 +560,7 @@ def f():
 "#;
 
         let comp = graph_from_run_call0_func(py_code);
-        let x = Value::from(Float64Tensor::from(
+        let x = Value::from(HostFloat64Tensor::from(
             array![
                 [-0.76943992],
                 [0.32067753],
@@ -577,7 +577,7 @@ def f():
             .unwrap(),
         ));
 
-        let y = Value::from(Float64Tensor::from(
+        let y = Value::from(HostFloat64Tensor::from(
             array![
                 7.69168025,
                 10.9620326,
@@ -605,7 +605,7 @@ def f():
         let res = array![[9.9999996], [2.999999]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let diff = Float64Tensor::try_from(
+        let diff = HostFloat64Tensor::try_from(
             storage
                 .load("regression_weights", &SessionId::from("foobar"), None, "")
                 .unwrap(),
@@ -711,6 +711,6 @@ def f(arg1):
 
         let result = run_unary_func(&x1, py_code);
         let y1 = x1.mapv(f64::abs);
-        assert_eq!(result, Value::Float64Tensor(Float64Tensor::from(y1)));
+        assert_eq!(result, Value::HostFloat64Tensor(HostFloat64Tensor::from(y1)));
     }
 }

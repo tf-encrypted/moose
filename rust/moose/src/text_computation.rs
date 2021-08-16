@@ -718,7 +718,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Ring64Tensor" => Ok((i, Ty::Ring64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
         "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)), // TODO change textual
-        "Float64Tensor" => Ok((i, Ty::Float64Tensor)),
+        "Float64Tensor" => Ok((i, Ty::HostFloat64Tensor)), // TODO
         "Int8Tensor" => Ok((i, Ty::Int8Tensor)),
         "Int16Tensor" => Ok((i, Ty::Int16Tensor)),
         "Int32Tensor" => Ok((i, Ty::Int32Tensor)),
@@ -812,7 +812,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 Constant::HostFloat32Tensor(v.into())
             }),
             constant_literal_helper("Float64Tensor", vector(double), |v| {
-                Constant::Float64Tensor(v.into())
+                Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper("Ring64Tensor", vector(parse_int), |v| {
                 Constant::Ring64Tensor(v.into())
@@ -851,7 +851,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 Constant::HostFloat32Tensor(v.into())
             }),
             constant_literal_helper("Float64Tensor", vector2(double), |v| {
-                Constant::Float64Tensor(v.into())
+                Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper(
                 "Ring64Tensor",
@@ -1481,7 +1481,7 @@ impl ToTextual for Ty {
             Ty::PrfKey => "PrfKey",
             Ty::Nonce => "Nonce",
             Ty::HostFloat32Tensor => "Float32Tensor",  // TODO change textual symbol as well
-            Ty::Float64Tensor => "Float64Tensor",
+            Ty::HostFloat64Tensor => "Float64Tensor", // TODO
             Ty::Int8Tensor => "Int8Tensor",
             Ty::Int16Tensor => "Int16Tensor",
             Ty::Int32Tensor => "Int32Tensor",
@@ -1517,7 +1517,7 @@ impl ToTextual for Value {
             Value::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
             Value::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
             Value::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
-            Value::Float64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
+            Value::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
             Value::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
             Value::Ring128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Value::Float32(x) => format!("Float32({})", x),
@@ -1546,7 +1546,7 @@ impl ToTextual for Constant {
             Constant::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
             Constant::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
             Constant::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
-            Constant::Float64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
+            Constant::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
             Constant::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
             Constant::Ring128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Constant::Float32(x) => format!("Float32({})", x),
@@ -1750,7 +1750,7 @@ mod tests {
         )?;
         assert_eq!(
             parsed,
-            Signature::binary(Ty::HostFloat32Tensor, Ty::Float64Tensor, Ty::Uint16Tensor),
+            Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat64Tensor, Ty::Uint16Tensor),
         );
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");

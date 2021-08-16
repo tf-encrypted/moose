@@ -9,7 +9,7 @@ use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
 use moose::ring::Ring64Tensor;
-use moose::host::{Float64Tensor, RawShape, HostTensor};
+use moose::host::{HostFloat64Tensor, RawShape, HostTensor};
 use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
@@ -260,7 +260,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<f64>,
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<u64> {
-        let x = Float64Tensor::from(x.to_owned_array());
+        let x = HostFloat64Tensor::from(x.to_owned_array());
         let y = Ring64Tensor::encode(&x, scaling_factor);
         ring64_to_array(y).to_pyarray(py)
     }
@@ -350,7 +350,7 @@ fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Er
 fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
     match tensor {
         Value::HostFloat32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Float64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostFloat64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Int8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Int16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Int32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),

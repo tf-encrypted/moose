@@ -15,7 +15,7 @@ use crate::kernels::{
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
-use crate::host::{HostFloat32Tensor, Float64Tensor};
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor};
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
@@ -58,44 +58,44 @@ pub trait Convert<T> {
     fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
 }
 
-impl Convert<Float64Tensor> for Ring64Tensor {
+impl Convert<HostFloat64Tensor> for Ring64Tensor {
     type Scale = u64;
-    fn encode(x: &Float64Tensor, scaling_factor: Self::Scale) -> Ring64Tensor {
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> Ring64Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
         Ring64Tensor::from(x_converted)
     }
-    fn decode(x: &Self, scaling_factor: Self::Scale) -> Float64Tensor {
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
         let x_upshifted: ArrayD<i64> = x.into();
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        Float64Tensor::from(x_converted / scaling_factor as f64)
+        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
     }
 }
 
-impl Convert<Float64Tensor> for Ring128Tensor {
+impl Convert<HostFloat64Tensor> for Ring128Tensor {
     type Scale = u128;
-    fn encode(x: &Float64Tensor, scaling_factor: Self::Scale) -> Ring128Tensor {
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> Ring128Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
         Ring128Tensor::from(x_converted)
     }
 
-    fn decode(x: &Self, scaling_factor: Self::Scale) -> Float64Tensor {
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
         let x_upshifted: ArrayD<i128> = x.into();
         let x_converted = x_upshifted.mapv(|el| el as f64);
-        Float64Tensor::from(x_converted / scaling_factor as f64)
+        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
     }
 }
 
 impl<T> AbstractRingTensor<T>
 where
     Wrapping<T>: Clone + Zero + Mul<Wrapping<T>, Output = Wrapping<T>>,
-    AbstractRingTensor<T>: Convert<Float64Tensor>,
+    AbstractRingTensor<T>: Convert<HostFloat64Tensor>,
 {
     pub fn ring_mean(
         x: Self,
         axis: Option<usize>,
-        scaling_factor: <AbstractRingTensor<T> as Convert<Float64Tensor>>::Scale,
+        scaling_factor: <AbstractRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
     ) -> AbstractRingTensor<T> {
         let mean_weight = Self::compute_mean_weight(&x, &axis);
         let encoded_weight = AbstractRingTensor::<T>::encode(&mean_weight, scaling_factor);
@@ -103,11 +103,11 @@ where
         operand_sum.mul(encoded_weight)
     }
 
-    fn compute_mean_weight(x: &Self, &axis: &Option<usize>) -> Float64Tensor {
+    fn compute_mean_weight(x: &Self, &axis: &Option<usize>) -> HostFloat64Tensor {
         let shape: &[usize] = x.0.shape();
         if let Some(ax) = axis {
             let dim_len = shape[ax] as f64;
-            Float64Tensor::from(
+            HostFloat64Tensor::from(
                 Array::from_elem([], 1.0 / dim_len)
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
@@ -115,7 +115,7 @@ where
         } else {
             let dim_prod: usize = std::iter::Product::product(shape.iter());
             let prod_inv = 1.0 / dim_prod as f64;
-            Float64Tensor::from(
+            HostFloat64Tensor::from(
                 Array::from_elem([], prod_inv)
                     .into_dimensionality::<IxDyn>()
                     .unwrap(),
@@ -172,13 +172,13 @@ impl FixedpointRingMeanOp {
 }
 
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
-modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 
 hybrid_kernel! {
     FixedpointEncodeOp,
     [
         (HostPlacement, (HostFloat32Tensor) -> Fixed64Tensor => attributes[precision] Self::kernel),
-        (HostPlacement, (Float64Tensor) -> Fixed128Tensor => attributes[precision] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => attributes[precision] Self::kernel),
     ]
 }
 
@@ -198,13 +198,13 @@ impl FixedpointEncodeOp {
 }
 
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> HostFloat32Tensor, FixedpointDecodeOp);
-modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Float64Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> HostFloat64Tensor, FixedpointDecodeOp);
 
 hybrid_kernel! {
     FixedpointDecodeOp,
     [
         (HostPlacement, (Fixed64Tensor) -> HostFloat32Tensor => attributes[precision] Self::kernel),
-        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => attributes[precision] Self::kernel),
+        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => attributes[precision] Self::kernel),
     ]
 }
 
@@ -679,7 +679,7 @@ mod tests {
 
     #[test]
     fn ring_fixedpoint() {
-        let x = Float64Tensor::from(
+        let x = HostFloat64Tensor::from(
             array![1.0, -2.0, 3.0, -4.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -718,7 +718,7 @@ mod tests {
 
     #[test]
     fn ring_mean_with_axis() {
-        let x_backing: Float64Tensor = Float64Tensor::from(
+        let x_backing: HostFloat64Tensor = HostFloat64Tensor::from(
             array![[1., 2.], [3., 4.]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -730,13 +730,13 @@ mod tests {
         let dec = Ring64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec,
-            Float64Tensor::from(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
+            HostFloat64Tensor::from(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
         );
     }
 
     #[test]
     fn ring_mean_no_axis() {
-        let x_backing: Float64Tensor = Float64Tensor::from(
+        let x_backing: HostFloat64Tensor = HostFloat64Tensor::from(
             array![[1., 2.], [3., 4.]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),

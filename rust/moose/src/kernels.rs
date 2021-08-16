@@ -12,7 +12,7 @@ use crate::replicated::ReplicatedSetup;
 use crate::ring::AbstractRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::host::{Int16Tensor, Int8Tensor, HostTensor, Uint16Tensor, Uint8Tensor, 
-    HostFloat32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, HostShape, Uint32Tensor, Uint64Tensor,
+    HostFloat32Tensor, HostFloat64Tensor, Int32Tensor, Int64Tensor, HostShape, Uint32Tensor, Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
 use std::collections::HashMap;
@@ -351,11 +351,11 @@ where
     }
 }
 
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Float64Tensor, StdOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat64Tensor, StdOnesOp);
 
 kernel! {
     StdOnesOp, [
-        (HostPlacement, (HostShape) -> Float64Tensor => Self::kernel),
+        (HostPlacement, (HostShape) -> HostFloat64Tensor => Self::kernel),
     ]
 }
 
@@ -658,8 +658,8 @@ macro_rules! std_unary_kernel {
                     signature![(Ty::HostFloat32Tensor) -> _] => {
                         function_kernel!(HostFloat32Tensor, $k)
                     }
-                    signature![(Ty::Float64Tensor) -> _] => {
-                        function_kernel!(Float64Tensor, $k)
+                    signature![(Ty::HostFloat64Tensor) -> _] => {
+                        function_kernel!(HostFloat64Tensor, $k)
                     }
                     signature![(Ty::Int32Tensor) -> _] => {
                         function_kernel!(Int32Tensor, $k)
@@ -688,8 +688,8 @@ macro_rules! std_binary_kernel {
                     signature![(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor) -> _] => {
                         function_kernel!(HostFloat32Tensor, HostFloat32Tensor, $k)
                     }
-                    signature![(Ty::Float64Tensor, Ty::Float64Tensor) -> _] => {
-                        function_kernel!(Float64Tensor, Float64Tensor, $k)
+                    signature![(Ty::HostFloat64Tensor, Ty::HostFloat64Tensor) -> _] => {
+                        function_kernel!(HostFloat64Tensor, HostFloat64Tensor, $k)
                     }
                     signature![(Ty::Int32Tensor, Ty::Int32Tensor) -> _] => {
                         function_kernel!(Int32Tensor, Int32Tensor, $k)
@@ -710,7 +710,7 @@ macro_rules! std_binary_kernel {
 
 
         modelled!($t::$f, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, $op);
+        modelled!($t::$f, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, $op);
         modelled!($t::$f, HostPlacement, (Int32Tensor, Int32Tensor) -> Int32Tensor, $op);
         modelled!($t::$f, HostPlacement, (Int64Tensor, Int64Tensor) -> Int64Tensor, $op);
         modelled!($t::$f, HostPlacement, (Uint32Tensor, Uint32Tensor) -> Uint32Tensor, $op);
@@ -719,7 +719,7 @@ macro_rules! std_binary_kernel {
         kernel! {
             $op, [
                 (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => Self::kernel),
-                (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => Self::kernel),
+                (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
                 (HostPlacement, (Int32Tensor, Int32Tensor) -> Int32Tensor => Self::kernel),
                 (HostPlacement, (Int64Tensor, Int64Tensor) -> Int64Tensor => Self::kernel),
                 (HostPlacement, (Uint32Tensor, Uint32Tensor) -> Uint32Tensor => Self::kernel),
@@ -736,19 +736,19 @@ std_binary_kernel!(StdDivOp, PlacementDiv::div, |x, y| x / y);
 std_binary_kernel!(StdDotOp, PlacementDot::dot, |x, y| x.dot(y));
 std_unary_kernel!(StdTransposeOp, |x| x.transpose());
 
-modelled!(PlacementTranspose::transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, StdTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, StdTransposeOp);
 
 kernel! {
     StdTransposeOp, [
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
     ]
 }
 
-modelled!(PlacementInverse::inverse, HostPlacement, (Float64Tensor) -> Float64Tensor, StdInverseOp);
+modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, StdInverseOp);
 
 kernel! {
     StdInverseOp, [
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
     ]
 }
 
@@ -759,19 +759,19 @@ impl Compile<Kernel> for StdInverseOp {
             signature![(_) -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(HostFloat32Tensor, |x| x.inv())
             }
-            signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.inv())
+            signature![(_) -> Ty::HostFloat64Tensor] => {
+                closure_kernel!(HostFloat64Tensor, |x| x.inv())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
 
-modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdMeanOp);
+modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, StdMeanOp);
 
 kernel! {
     StdMeanOp, [
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
@@ -782,8 +782,8 @@ impl Compile<Kernel> for StdMeanOp {
             signature![(_) -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(HostFloat32Tensor, |x| x.mean(axis))
             }
-            signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.mean(axis))
+            signature![(_) -> Ty::HostFloat64Tensor] => {
+                closure_kernel!(HostFloat64Tensor, |x| x.mean(axis))
             }
             signature![(_) -> Ty::Int32Tensor] => {
                 closure_kernel!(Int32Tensor, |x| x.mean(axis))
@@ -808,8 +808,8 @@ impl Compile<Kernel> for StdOnesOp {
             signature![(_) -> Ty::HostFloat32Tensor] => {
                 function_kernel!(HostShape, |shape| HostFloat32Tensor::ones(shape))
             }
-            signature![(_) -> Ty::Float64Tensor] => {
-                function_kernel!(HostShape, |shape| Float64Tensor::ones(shape))
+            signature![(_) -> Ty::HostFloat64Tensor] => {
+                function_kernel!(HostShape, |shape| HostFloat64Tensor::ones(shape))
             }
             signature![(_) -> Ty::Int32Tensor] => {
                 function_kernel!(HostShape, |shape| Int32Tensor::ones(shape))
@@ -828,11 +828,11 @@ impl Compile<Kernel> for StdOnesOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Float64Tensor, Float64Tensor) -> Float64Tensor, StdConcatenateOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, StdConcatenateOp);
 
 kernel! {
     StdConcatenateOp, [
-        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
@@ -844,8 +844,8 @@ impl Compile<Kernel> for StdConcatenateOp {
             signature![(_, _) -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(vec[HostFloat32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::Float64Tensor] => {
-                closure_kernel!(vec[Float64Tensor], |xs| concatenate(axis, &xs))
+            signature![(_, _) -> Ty::HostFloat64Tensor] => {
+                closure_kernel!(vec[HostFloat64Tensor], |xs| concatenate(axis, &xs))
             }
             signature![(_, _) -> Ty::Int32Tensor] => {
                 closure_kernel!(vec[Int32Tensor], |xs| concatenate(axis, &xs))
@@ -864,11 +864,11 @@ impl Compile<Kernel> for StdConcatenateOp {
     }
 }
 
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, StdExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, StdExpandDimsOp);
 
 kernel! {
     StdExpandDimsOp, [
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
@@ -879,8 +879,8 @@ impl Compile<Kernel> for StdExpandDimsOp {
             signature![(_) -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(HostFloat32Tensor, |x| x.expand_dims(axis.clone()))
             }
-            signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.expand_dims(axis.clone()))
+            signature![(_) -> Ty::HostFloat64Tensor] => {
+                closure_kernel!(HostFloat64Tensor, |x| x.expand_dims(axis.clone()))
             }
             signature![(_) -> Ty::Int32Tensor] => {
                 closure_kernel!(Int32Tensor, |x| x.expand_dims(axis.clone()))
@@ -905,8 +905,8 @@ impl Compile<Kernel> for StdReshapeOp {
             signature![(_, _) -> Ty::HostFloat32Tensor] => {
                 function_kernel!(HostFloat32Tensor, HostShape, |x, newshape| x.reshape(newshape))
             }
-            signature![(_, _) -> Ty::Float64Tensor] => {
-                function_kernel!(Float64Tensor, HostShape, |x, newshape| x.reshape(newshape))
+            signature![(_, _) -> Ty::HostFloat64Tensor] => {
+                function_kernel!(HostFloat64Tensor, HostShape, |x, newshape| x.reshape(newshape))
             }
             signature![(_, _) -> Ty::Int32Tensor] => {
                 function_kernel!(Int32Tensor, HostShape, |x, newshape| x.reshape(newshape))
@@ -926,12 +926,12 @@ impl Compile<Kernel> for StdReshapeOp {
 }
 
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, StdAtLeast2DOp);
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, StdAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, StdAtLeast2DOp);
 
 kernel! {
     StdAtLeast2DOp, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => attributes[to_column_vector] Self::kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[to_column_vector] Self::kernel),
     ]
 }
 
@@ -951,22 +951,22 @@ impl Compile<Kernel> for StdAtLeast2DOp {
         let tcv = self.to_column_vector;
         match self.sig {
             signature![(_) -> Ty::HostFloat32Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
-            signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+            signature![(_) -> Ty::HostFloat64Tensor] => {
+                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
             signature![(_) -> Ty::Int32Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
             signature![(_) -> Ty::Int64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
             signature![(_) -> Ty::Uint32Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
             signature![(_) -> Ty::Uint64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.atleast_2d(tcv))
+                closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -986,11 +986,11 @@ impl Compile<Kernel> for StdSliceOp {
     }
 }
 
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, StdSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, StdSumOp);
 
 kernel! {
     StdSumOp, [
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
@@ -1001,8 +1001,8 @@ impl Compile<Kernel> for StdSumOp {
             signature![(_) -> Ty::HostFloat32Tensor] => {
                 closure_kernel!(HostFloat32Tensor, |x| x.sum(axis))
             }
-            signature![(_) -> Ty::Float64Tensor] => {
-                closure_kernel!(Float64Tensor, |x| x.sum(axis))
+            signature![(_) -> Ty::HostFloat64Tensor] => {
+                closure_kernel!(HostFloat64Tensor, |x| x.sum(axis))
             }
             signature![(_) -> Ty::Int32Tensor] => {
                 closure_kernel!(Int32Tensor, |x| x.sum(axis))
@@ -1123,8 +1123,8 @@ impl Compile<Kernel> for ShapeOp {
             signature![(Ty::HostFloat32Tensor) -> Ty::HostShape] => {
                 function_kernel!(HostFloat32Tensor, |x| x.shape())
             }
-            signature![(Ty::Float64Tensor) -> Ty::HostShape] => {
-                function_kernel!(Float64Tensor, |x| x.shape())
+            signature![(Ty::HostFloat64Tensor) -> Ty::HostShape] => {
+                function_kernel!(HostFloat64Tensor, |x| x.shape())
             }
             signature![(Ty::Ring64Tensor) -> Ty::HostShape] => {
                 function_kernel!(Ring64Tensor, |x| x.shape())
@@ -1301,12 +1301,12 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
-modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Float64Tensor) -> Ring128Tensor, FixedpointRingEncodeOp);
+modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> Ring128Tensor, FixedpointRingEncodeOp);
 modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> Ring64Tensor, FixedpointRingEncodeOp);
 
 kernel! {
     FixedpointRingEncodeOp, [
-        (HostPlacement, (Float64Tensor) -> Ring128Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Ring128Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
         (HostPlacement, (HostFloat32Tensor) -> Ring64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
@@ -1327,25 +1327,25 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         match self.sig {
-            signature![(Ty::Float64Tensor) -> Ty::Ring64Tensor] => {
+            signature![(Ty::HostFloat64Tensor) -> Ty::Ring64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(Float64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
+                closure_kernel!(HostFloat64Tensor, |x| Ring64Tensor::encode(&x, scaling_factor))
             }
-            signature![(Ty::Float64Tensor) -> Ty::Ring128Tensor] => {
+            signature![(Ty::HostFloat64Tensor) -> Ty::Ring128Tensor] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(Float64Tensor, |x| Ring128Tensor::encode(&x, scaling_factor))
+                closure_kernel!(HostFloat64Tensor, |x| Ring128Tensor::encode(&x, scaling_factor))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
 }
 
-modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> Float64Tensor, FixedpointRingDecodeOp);
+modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> HostFloat64Tensor, FixedpointRingDecodeOp);
 modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring64Tensor) -> HostFloat32Tensor, FixedpointRingDecodeOp);
 
 kernel! {
     FixedpointRingDecodeOp, [
-        (HostPlacement, (Ring128Tensor) -> Float64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (Ring128Tensor) -> HostFloat64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
         (HostPlacement, (Ring64Tensor) -> HostFloat32Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
@@ -1445,7 +1445,7 @@ macro_rules! constant_kernels {
 constant_kernels![
     String,
     HostFloat32Tensor,
-    Float64Tensor,
+    HostFloat64Tensor,
     Int8Tensor,
     Int16Tensor,
     Int32Tensor,
@@ -1620,7 +1620,7 @@ modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () 
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring64Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring128Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Float64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat64Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int8Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int16Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int32Tensor, InputOp);
@@ -1642,7 +1642,7 @@ kernel! {
         (HostPlacement, () -> Ring64Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Ring128Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFloat32Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Float64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostFloat64Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Int8Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Int16Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Int32Tensor => attributes[arg_name] Self::kernel),
@@ -1712,7 +1712,7 @@ modelled!(PlacementOutput::output, HostPlacement, (BitTensor) -> Unit, OutputOp)
 modelled!(PlacementOutput::output, HostPlacement, (Ring64Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Ring128Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostFloat32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Float64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostFloat64Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Int8Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Int16Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Int32Tensor) -> Unit, OutputOp);
@@ -1735,7 +1735,7 @@ kernel! {
         (HostPlacement, (Ring64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (Ring128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostFloat32Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Float64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (Int8Tensor) -> Unit => Self::kernel),
         (HostPlacement, (Int16Tensor) -> Unit => Self::kernel),
         (HostPlacement, (Int32Tensor) -> Unit => Self::kernel),
@@ -1782,7 +1782,7 @@ modelled!(PlacementSave::save, HostPlacement, (String, BitTensor) -> Unit, SaveO
 modelled!(PlacementSave::save, HostPlacement, (String, Ring64Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Ring128Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostFloat32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Float64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostFloat64Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Int8Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Int16Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Int32Tensor) -> Unit, SaveOp);
@@ -1805,7 +1805,7 @@ kernel! {
         (HostPlacement, (String, Ring64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Ring128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostFloat32Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Float64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostFloat64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Int8Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Int16Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Int32Tensor) -> Unit => Self::kernel),
@@ -1875,7 +1875,7 @@ modelled!(PlacementLoad::load, HostPlacement, (String, String) -> BitTensor, Loa
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring128Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int8Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int16Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int32Tensor, LoadOp);
@@ -1898,7 +1898,7 @@ kernel! {
         (HostPlacement, (String, String) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (String, String) -> Ring128Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostFloat32Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Float64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostFloat64Tensor => Self::kernel),
         (HostPlacement, (String, String) -> Int8Tensor => Self::kernel),
         (HostPlacement, (String, String) -> Int16Tensor => Self::kernel),
         (HostPlacement, (String, String) -> Int32Tensor => Self::kernel),

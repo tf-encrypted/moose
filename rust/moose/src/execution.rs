@@ -1294,7 +1294,7 @@ mod tests {
     use crate::compilation::networking::NetworkingPass;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use crate::ring::{Ring128Tensor, Ring64Tensor};
-    use crate::host::{HostFloat32Tensor, Float64Tensor, Int64Tensor, RawShape, HostShape};
+    use crate::host::{HostFloat32Tensor, HostFloat64Tensor, Int64Tensor, RawShape, HostShape};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1473,7 +1473,9 @@ mod tests {
         #[case] input_data: Value,
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
-        let data_type_str = input_data.ty().to_string();
+        use crate::text_computation::ToTextual;
+
+        let data_type_str = input_data.ty().to_textual();
         let source_template = r#"x_uri = Input {arg_name="x_uri"}: () -> String () @Host(alice)
         x_query = Input {arg_name="x_query"}: () -> String () @Host(alice)
         saved_uri = Constant{value = String("saved_data")} () @Host(alice)
@@ -1733,10 +1735,10 @@ mod tests {
                 Ok(())
             }
             "Float64Tensor" => {
-                let r: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    Float64Tensor::from(
+                    HostFloat64Tensor::from(
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
@@ -2010,7 +2012,7 @@ mod tests {
             run_async,
         )?;
 
-        let comp_result: Float64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostFloat64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
