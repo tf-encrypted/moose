@@ -1,4 +1,4 @@
-use crate::bit::HostBitTensor;
+use crate::host::HostBitTensor;
 use crate::computation::{HostPlacement, Placed, ReplicatedPlacement, ShapeOp};
 use crate::kernels::{PlacementShape};
 use crate::replicated::{

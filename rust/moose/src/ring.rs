@@ -1,6 +1,6 @@
 //! Ring arithmetic on host placements
 
-use crate::bit::HostBitTensor;
+use crate::host::HostBitTensor;
 use crate::computation::{
     Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
     RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,

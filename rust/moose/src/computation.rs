@@ -1,5 +1,5 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::HostBitTensor;
+use crate::host::HostBitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::kernels::Session;

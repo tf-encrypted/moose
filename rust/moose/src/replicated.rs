@@ -1,7 +1,7 @@
 //! Placements backed by replicated secret sharing
 
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::HostBitTensor;
+use crate::host::HostBitTensor;
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp,
     RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,

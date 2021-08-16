@@ -1,4 +1,4 @@
-use moose::bit::HostBitTensor;
+use moose::host::HostBitTensor;
 use moose::compilation::typing::update_types_one_hop;
 use moose::compilation::{compile_passes, into_pass};
 use moose::computation::{Computation, Role, Value};

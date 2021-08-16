@@ -1,4 +1,4 @@
-use crate::bit::HostBitTensor;
+use crate::host::HostBitTensor;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
