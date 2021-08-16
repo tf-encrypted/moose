@@ -10,8 +10,8 @@ use crate::replicated::{
 };
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::host::{
-    HostFloat32Tensor, HostFloat64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
-    HostShape, HostTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, RawShape,
+    HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
@@ -115,14 +115,14 @@ constants![
     Ring128Tensor,
     HostFloat32Tensor,
     HostFloat64Tensor,
-    Int8Tensor,
-    Int16Tensor,
-    Int32Tensor,
-    Int64Tensor,
-    Uint8Tensor,
-    Uint16Tensor,
-    Uint32Tensor,
-    Uint64Tensor,
+    HostInt8Tensor,
+    HostInt16Tensor,
+    HostInt32Tensor,
+    HostInt64Tensor,
+    HostUint8Tensor,
+    HostUint16Tensor,
+    HostUint32Tensor,
+    HostUint64Tensor,
 ];
 
 impl From<u8> for Constant {
@@ -467,14 +467,14 @@ values![
     (Ring128Tensor, Symbolic<Ring128Tensor>),
     (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
     (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
-    (Int8Tensor, Symbolic<Int8Tensor>),
-    (Int16Tensor, Symbolic<Int16Tensor>),
-    (Int32Tensor, Symbolic<Int32Tensor>),
-    (Int64Tensor, Symbolic<Int64Tensor>),
-    (Uint8Tensor, Symbolic<Uint8Tensor>),
-    (Uint16Tensor, Symbolic<Uint16Tensor>),
-    (Uint32Tensor, Symbolic<Uint32Tensor>),
-    (Uint64Tensor, Symbolic<Uint64Tensor>),
+    (HostInt8Tensor, Symbolic<HostInt8Tensor>),
+    (HostInt16Tensor, Symbolic<HostInt16Tensor>),
+    (HostInt32Tensor, Symbolic<HostInt32Tensor>),
+    (HostInt64Tensor, Symbolic<HostInt64Tensor>),
+    (HostUint8Tensor, Symbolic<HostUint8Tensor>),
+    (HostUint16Tensor, Symbolic<HostUint16Tensor>),
+    (HostUint32Tensor, Symbolic<HostUint32Tensor>),
+    (HostUint64Tensor, Symbolic<HostUint64Tensor>),
     (
         Fixed64Tensor,
         Symbolic<

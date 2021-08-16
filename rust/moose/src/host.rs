@@ -90,17 +90,16 @@ impl<T> Placed for HostTensor<T> {
     }
 }
 
-// TODO these should have Host prefix
 pub type HostFloat32Tensor = HostTensor<f32>;
 pub type HostFloat64Tensor = HostTensor<f64>;
-pub type Int8Tensor = HostTensor<i8>;
-pub type Int16Tensor = HostTensor<i16>;
-pub type Int32Tensor = HostTensor<i32>;
-pub type Int64Tensor = HostTensor<i64>;
-pub type Uint8Tensor = HostTensor<u8>;
-pub type Uint16Tensor = HostTensor<u16>;
-pub type Uint32Tensor = HostTensor<u32>;
-pub type Uint64Tensor = HostTensor<u64>;
+pub type HostInt8Tensor = HostTensor<i8>;
+pub type HostInt16Tensor = HostTensor<i16>;
+pub type HostInt32Tensor = HostTensor<i32>;
+pub type HostInt64Tensor = HostTensor<i64>;
+pub type HostUint8Tensor = HostTensor<u8>;
+pub type HostUint16Tensor = HostTensor<u16>;
+pub type HostUint32Tensor = HostTensor<u32>;
+pub type HostUint64Tensor = HostTensor<u64>;
 
 impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {

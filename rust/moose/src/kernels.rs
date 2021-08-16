@@ -11,8 +11,8 @@ use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::ring::AbstractRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
-use crate::host::{Int16Tensor, Int8Tensor, HostTensor, Uint16Tensor, Uint8Tensor, 
-    HostFloat32Tensor, HostFloat64Tensor, Int32Tensor, Int64Tensor, HostShape, Uint32Tensor, Uint64Tensor,
+use crate::host::{HostInt16Tensor, HostInt8Tensor, HostTensor, HostUint16Tensor, HostUint8Tensor, 
+    HostFloat32Tensor, HostFloat64Tensor, HostInt32Tensor, HostInt64Tensor, HostShape, HostUint32Tensor, HostUint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
 use std::collections::HashMap;
@@ -661,17 +661,17 @@ macro_rules! std_unary_kernel {
                     signature![(Ty::HostFloat64Tensor) -> _] => {
                         function_kernel!(HostFloat64Tensor, $k)
                     }
-                    signature![(Ty::Int32Tensor) -> _] => {
-                        function_kernel!(Int32Tensor, $k)
+                    signature![(Ty::HostInt32Tensor) -> _] => {
+                        function_kernel!(HostInt32Tensor, $k)
                     }
-                    signature![(Ty::Int64Tensor) -> _] => {
-                        function_kernel!(Int64Tensor, $k)
+                    signature![(Ty::HostInt64Tensor) -> _] => {
+                        function_kernel!(HostInt64Tensor, $k)
                     }
-                    signature![(Ty::Uint32Tensor) -> _] => {
-                        function_kernel!(Uint32Tensor, $k)
+                    signature![(Ty::HostUint32Tensor) -> _] => {
+                        function_kernel!(HostUint32Tensor, $k)
                     }
-                    signature![(Ty::Uint64Tensor) -> _] => {
-                        function_kernel!(Uint64Tensor, $k)
+                    signature![(Ty::HostUint64Tensor) -> _] => {
+                        function_kernel!(HostUint64Tensor, $k)
                     }
                     _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
                 }
@@ -691,17 +691,17 @@ macro_rules! std_binary_kernel {
                     signature![(Ty::HostFloat64Tensor, Ty::HostFloat64Tensor) -> _] => {
                         function_kernel!(HostFloat64Tensor, HostFloat64Tensor, $k)
                     }
-                    signature![(Ty::Int32Tensor, Ty::Int32Tensor) -> _] => {
-                        function_kernel!(Int32Tensor, Int32Tensor, $k)
+                    signature![(Ty::HostInt32Tensor, Ty::HostInt32Tensor) -> _] => {
+                        function_kernel!(HostInt32Tensor, HostInt32Tensor, $k)
                     }
-                    signature![(Ty::Int64Tensor, Ty::Int64Tensor) -> _] => {
-                        function_kernel!(Int64Tensor, Int64Tensor, $k)
+                    signature![(Ty::HostInt64Tensor, Ty::HostInt64Tensor) -> _] => {
+                        function_kernel!(HostInt64Tensor, HostInt64Tensor, $k)
                     }
-                    signature![(Ty::Uint32Tensor, Ty::Uint32Tensor) -> _] => {
-                        function_kernel!(Uint32Tensor, Uint32Tensor, $k)
+                    signature![(Ty::HostUint32Tensor, Ty::HostUint32Tensor) -> _] => {
+                        function_kernel!(HostUint32Tensor, HostUint32Tensor, $k)
                     }
-                    signature![(Ty::Uint64Tensor, Ty::Uint64Tensor) -> _] => {
-                        function_kernel!(Uint64Tensor, Uint64Tensor, $k)
+                    signature![(Ty::HostUint64Tensor, Ty::HostUint64Tensor) -> _] => {
+                        function_kernel!(HostUint64Tensor, HostUint64Tensor, $k)
                     }
                     _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
                 }
@@ -711,19 +711,19 @@ macro_rules! std_binary_kernel {
 
         modelled!($t::$f, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, $op);
         modelled!($t::$f, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, $op);
-        modelled!($t::$f, HostPlacement, (Int32Tensor, Int32Tensor) -> Int32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (Int64Tensor, Int64Tensor) -> Int64Tensor, $op);
-        modelled!($t::$f, HostPlacement, (Uint32Tensor, Uint32Tensor) -> Uint32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor, $op);
+        modelled!($t::$f, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, $op);
+        modelled!($t::$f, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, $op);
+        modelled!($t::$f, HostPlacement, (HostUint32Tensor, HostUint32Tensor) -> HostUint32Tensor, $op);
+        modelled!($t::$f, HostPlacement, (HostUint64Tensor, HostUint64Tensor) -> HostUint64Tensor, $op);
 
         kernel! {
             $op, [
                 (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => Self::kernel),
                 (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
-                (HostPlacement, (Int32Tensor, Int32Tensor) -> Int32Tensor => Self::kernel),
-                (HostPlacement, (Int64Tensor, Int64Tensor) -> Int64Tensor => Self::kernel),
-                (HostPlacement, (Uint32Tensor, Uint32Tensor) -> Uint32Tensor => Self::kernel),
-                (HostPlacement, (Uint64Tensor, Uint64Tensor) -> Uint64Tensor => Self::kernel),
+                (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => Self::kernel),
+                (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => Self::kernel),
+                (HostPlacement, (HostUint32Tensor, HostUint32Tensor) -> HostUint32Tensor => Self::kernel),
+                (HostPlacement, (HostUint64Tensor, HostUint64Tensor) -> HostUint64Tensor => Self::kernel),
             ]
         }
     };
@@ -785,17 +785,17 @@ impl Compile<Kernel> for StdMeanOp {
             signature![(_) -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.mean(axis))
             }
-            signature![(_) -> Ty::Int32Tensor] => {
-                closure_kernel!(Int32Tensor, |x| x.mean(axis))
+            signature![(_) -> Ty::HostInt32Tensor] => {
+                closure_kernel!(HostInt32Tensor, |x| x.mean(axis))
             }
-            signature![(_) -> Ty::Int64Tensor] => {
-                closure_kernel!(Int64Tensor, |x| x.mean(axis))
+            signature![(_) -> Ty::HostInt64Tensor] => {
+                closure_kernel!(HostInt64Tensor, |x| x.mean(axis))
             }
-            signature![(_) -> Ty::Uint32Tensor] => {
-                closure_kernel!(Uint32Tensor, |x| x.mean(axis))
+            signature![(_) -> Ty::HostUint32Tensor] => {
+                closure_kernel!(HostUint32Tensor, |x| x.mean(axis))
             }
-            signature![(_) -> Ty::Uint64Tensor] => {
-                closure_kernel!(Uint64Tensor, |x| x.mean(axis))
+            signature![(_) -> Ty::HostUint64Tensor] => {
+                closure_kernel!(HostUint64Tensor, |x| x.mean(axis))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -811,17 +811,17 @@ impl Compile<Kernel> for StdOnesOp {
             signature![(_) -> Ty::HostFloat64Tensor] => {
                 function_kernel!(HostShape, |shape| HostFloat64Tensor::ones(shape))
             }
-            signature![(_) -> Ty::Int32Tensor] => {
-                function_kernel!(HostShape, |shape| Int32Tensor::ones(shape))
+            signature![(_) -> Ty::HostInt32Tensor] => {
+                function_kernel!(HostShape, |shape| HostInt32Tensor::ones(shape))
             }
-            signature![(_) -> Ty::Int64Tensor] => {
-                function_kernel!(HostShape, |shape| Int64Tensor::ones(shape))
+            signature![(_) -> Ty::HostInt64Tensor] => {
+                function_kernel!(HostShape, |shape| HostInt64Tensor::ones(shape))
             }
-            signature![(_) -> Ty::Uint32Tensor] => {
-                function_kernel!(HostShape, |shape| Uint32Tensor::ones(shape))
+            signature![(_) -> Ty::HostUint32Tensor] => {
+                function_kernel!(HostShape, |shape| HostUint32Tensor::ones(shape))
             }
-            signature![(_) -> Ty::Uint64Tensor] => {
-                function_kernel!(HostShape, |shape| Uint64Tensor::ones(shape))
+            signature![(_) -> Ty::HostUint64Tensor] => {
+                function_kernel!(HostShape, |shape| HostUint64Tensor::ones(shape))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -847,17 +847,17 @@ impl Compile<Kernel> for StdConcatenateOp {
             signature![(_, _) -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(vec[HostFloat64Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::Int32Tensor] => {
-                closure_kernel!(vec[Int32Tensor], |xs| concatenate(axis, &xs))
+            signature![(_, _) -> Ty::HostInt32Tensor] => {
+                closure_kernel!(vec[HostInt32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::Int64Tensor] => {
-                closure_kernel!(vec[Int64Tensor], |xs| concatenate(axis, &xs))
+            signature![(_, _) -> Ty::HostInt64Tensor] => {
+                closure_kernel!(vec[HostInt64Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::Uint32Tensor] => {
-                closure_kernel!(vec[Uint32Tensor], |xs| concatenate(axis, &xs))
+            signature![(_, _) -> Ty::HostUint32Tensor] => {
+                closure_kernel!(vec[HostUint32Tensor], |xs| concatenate(axis, &xs))
             }
-            signature![(_, _) -> Ty::Uint64Tensor] => {
-                closure_kernel!(vec[Uint64Tensor], |xs| concatenate(axis, &xs))
+            signature![(_, _) -> Ty::HostUint64Tensor] => {
+                closure_kernel!(vec[HostUint64Tensor], |xs| concatenate(axis, &xs))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -882,17 +882,17 @@ impl Compile<Kernel> for StdExpandDimsOp {
             signature![(_) -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.expand_dims(axis.clone()))
             }
-            signature![(_) -> Ty::Int32Tensor] => {
-                closure_kernel!(Int32Tensor, |x| x.expand_dims(axis.clone()))
+            signature![(_) -> Ty::HostInt32Tensor] => {
+                closure_kernel!(HostInt32Tensor, |x| x.expand_dims(axis.clone()))
             }
-            signature![(_) -> Ty::Int64Tensor] => {
-                closure_kernel!(Int64Tensor, |x| x.expand_dims(axis.clone()))
+            signature![(_) -> Ty::HostInt64Tensor] => {
+                closure_kernel!(HostInt64Tensor, |x| x.expand_dims(axis.clone()))
             }
-            signature![(_) -> Ty::Uint32Tensor] => {
-                closure_kernel!(Uint32Tensor, |x| x.expand_dims(axis.clone()))
+            signature![(_) -> Ty::HostUint32Tensor] => {
+                closure_kernel!(HostUint32Tensor, |x| x.expand_dims(axis.clone()))
             }
-            signature![(_) -> Ty::Uint64Tensor] => {
-                closure_kernel!(Uint64Tensor, |x| x.expand_dims(axis.clone()))
+            signature![(_) -> Ty::HostUint64Tensor] => {
+                closure_kernel!(HostUint64Tensor, |x| x.expand_dims(axis.clone()))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -908,17 +908,17 @@ impl Compile<Kernel> for StdReshapeOp {
             signature![(_, _) -> Ty::HostFloat64Tensor] => {
                 function_kernel!(HostFloat64Tensor, HostShape, |x, newshape| x.reshape(newshape))
             }
-            signature![(_, _) -> Ty::Int32Tensor] => {
-                function_kernel!(Int32Tensor, HostShape, |x, newshape| x.reshape(newshape))
+            signature![(_, _) -> Ty::HostInt32Tensor] => {
+                function_kernel!(HostInt32Tensor, HostShape, |x, newshape| x.reshape(newshape))
             }
-            signature![(_, _) -> Ty::Int64Tensor] => {
-                function_kernel!(Int64Tensor, HostShape, |x, newshape| x.reshape(newshape))
+            signature![(_, _) -> Ty::HostInt64Tensor] => {
+                function_kernel!(HostInt64Tensor, HostShape, |x, newshape| x.reshape(newshape))
             }
-            signature![(_, _) -> Ty::Uint32Tensor] => {
-                function_kernel!(Uint32Tensor, HostShape, |x, newshape| x.reshape(newshape))
+            signature![(_, _) -> Ty::HostUint32Tensor] => {
+                function_kernel!(HostUint32Tensor, HostShape, |x, newshape| x.reshape(newshape))
             }
-            signature![(_, _) -> Ty::Uint64Tensor] => {
-                function_kernel!(Uint64Tensor, HostShape, |x, newshape| x.reshape(newshape))
+            signature![(_, _) -> Ty::HostUint64Tensor] => {
+                function_kernel!(HostUint64Tensor, HostShape, |x, newshape| x.reshape(newshape))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -956,16 +956,16 @@ impl Compile<Kernel> for StdAtLeast2DOp {
             signature![(_) -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
-            signature![(_) -> Ty::Int32Tensor] => {
+            signature![(_) -> Ty::HostInt32Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
-            signature![(_) -> Ty::Int64Tensor] => {
+            signature![(_) -> Ty::HostInt64Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
-            signature![(_) -> Ty::Uint32Tensor] => {
+            signature![(_) -> Ty::HostUint32Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
-            signature![(_) -> Ty::Uint64Tensor] => {
+            signature![(_) -> Ty::HostUint64Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.atleast_2d(tcv))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1004,17 +1004,17 @@ impl Compile<Kernel> for StdSumOp {
             signature![(_) -> Ty::HostFloat64Tensor] => {
                 closure_kernel!(HostFloat64Tensor, |x| x.sum(axis))
             }
-            signature![(_) -> Ty::Int32Tensor] => {
-                closure_kernel!(Int32Tensor, |x| x.sum(axis))
+            signature![(_) -> Ty::HostInt32Tensor] => {
+                closure_kernel!(HostInt32Tensor, |x| x.sum(axis))
             }
-            signature![(_) -> Ty::Int64Tensor] => {
-                closure_kernel!(Int64Tensor, |x| x.sum(axis))
+            signature![(_) -> Ty::HostInt64Tensor] => {
+                closure_kernel!(HostInt64Tensor, |x| x.sum(axis))
             }
-            signature![(_) -> Ty::Uint32Tensor] => {
-                closure_kernel!(Uint32Tensor, |x| x.sum(axis))
+            signature![(_) -> Ty::HostUint32Tensor] => {
+                closure_kernel!(HostUint32Tensor, |x| x.sum(axis))
             }
-            signature![(_) -> Ty::Uint64Tensor] => {
-                closure_kernel!(Uint64Tensor, |x| x.sum(axis))
+            signature![(_) -> Ty::HostUint64Tensor] => {
+                closure_kernel!(HostUint64Tensor, |x| x.sum(axis))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1446,14 +1446,14 @@ constant_kernels![
     String,
     HostFloat32Tensor,
     HostFloat64Tensor,
-    Int8Tensor,
-    Int16Tensor,
-    Int32Tensor,
-    Int64Tensor,
-    Uint8Tensor,
-    Uint16Tensor,
-    Uint32Tensor,
-    Uint64Tensor
+    HostInt8Tensor,
+    HostInt16Tensor,
+    HostInt32Tensor,
+    HostInt64Tensor,
+    HostUint8Tensor,
+    HostUint16Tensor,
+    HostUint32Tensor,
+    HostUint64Tensor
 ];
 
 impl ConstantOp {
@@ -1621,14 +1621,14 @@ modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () 
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring128Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat32Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int8Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int16Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Int64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint8Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint16Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Uint64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt8Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt16Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt32Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint8Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint16Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint32Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint64Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed64Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed128Tensor, InputOp);
 kernel! {
@@ -1643,14 +1643,14 @@ kernel! {
         (HostPlacement, () -> Ring128Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFloat32Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFloat64Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Int8Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Int16Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Int32Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Int64Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Uint8Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Uint16Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Uint32Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Uint64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostInt8Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostInt16Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostInt32Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostInt64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostUint8Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostUint16Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostUint32Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostUint64Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Fixed64Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Fixed128Tensor => attributes[arg_name] Self::kernel),
 
@@ -1713,14 +1713,14 @@ modelled!(PlacementOutput::output, HostPlacement, (Ring64Tensor) -> Unit, Output
 modelled!(PlacementOutput::output, HostPlacement, (Ring128Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostFloat32Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostFloat64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Int8Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Int16Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Int32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Int64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Uint8Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Uint16Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Uint32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Uint64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostInt8Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostInt16Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostInt32Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostInt64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostUint8Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostUint16Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostUint32Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostUint64Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Fixed64Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Fixed128Tensor) -> Unit, OutputOp);
 
@@ -1736,14 +1736,14 @@ kernel! {
         (HostPlacement, (Ring128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostFloat32Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Int8Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Int16Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Int32Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Int64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Uint8Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Uint16Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Uint32Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Uint64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostUint8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (Fixed64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (Fixed128Tensor) -> Unit => Self::kernel),
     ]
@@ -1783,14 +1783,14 @@ modelled!(PlacementSave::save, HostPlacement, (String, Ring64Tensor) -> Unit, Sa
 modelled!(PlacementSave::save, HostPlacement, (String, Ring128Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostFloat32Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostFloat64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Int8Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Int16Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Int32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Int64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Uint8Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Uint16Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Uint32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Uint64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostInt8Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostInt16Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostInt32Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostInt64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostUint8Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostUint16Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostUint32Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostUint64Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Fixed64Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Fixed128Tensor) -> Unit, SaveOp);
 
@@ -1806,14 +1806,14 @@ kernel! {
         (HostPlacement, (String, Ring128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostFloat32Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostFloat64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Int8Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Int16Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Int32Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Int64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Uint8Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Uint16Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Uint32Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Uint64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostInt8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostInt16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostInt32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostInt64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostUint8Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostUint16Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostUint32Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostUint64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Fixed64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Fixed128Tensor) -> Unit => Self::kernel),
     ]
@@ -1876,14 +1876,14 @@ modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring64Tensor, 
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring128Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat32Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int8Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int16Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Int64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint8Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint16Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Uint64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt8Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt16Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt32Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint8Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint16Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint32Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed128Tensor, LoadOp);
 
@@ -1899,14 +1899,14 @@ kernel! {
         (HostPlacement, (String, String) -> Ring128Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostFloat32Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostFloat64Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Int8Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Int16Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Int32Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Int64Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Uint8Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Uint16Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Uint32Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Uint64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostInt8Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostInt16Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostInt32Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostInt64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostUint8Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostUint16Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostUint32Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostUint64Tensor => Self::kernel),
         (HostPlacement, (String, String) -> Fixed64Tensor => Self::kernel),
         (HostPlacement, (String, String) -> Fixed128Tensor => Self::kernel),
     ]

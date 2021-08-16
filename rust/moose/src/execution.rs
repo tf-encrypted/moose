@@ -1294,7 +1294,7 @@ mod tests {
     use crate::compilation::networking::NetworkingPass;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use crate::ring::{Ring128Tensor, Ring64Tensor};
-    use crate::host::{HostFloat32Tensor, HostFloat64Tensor, Int64Tensor, RawShape, HostShape};
+    use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, RawShape, HostShape};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1454,7 +1454,7 @@ mod tests {
             run_async,
         )?;
 
-        let z: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let z: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         let expected: Value = "Int64Tensor([15]) @Host(alice)".try_into()?;
         assert_eq!(expected, z.into());
         Ok(())
@@ -1561,7 +1561,7 @@ mod tests {
             run_async,
         )?;
 
-        let concatenated: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let concatenated: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, concatenated.into());
         Ok(())
     }
@@ -1612,7 +1612,7 @@ mod tests {
             )?,
         };
 
-        let res: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, res.into());
         Ok(())
     }
@@ -1747,10 +1747,10 @@ mod tests {
                 Ok(())
             }
             "Int64Tensor" => {
-                let r: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    Int64Tensor::from(
+                    HostInt64Tensor::from(
                         array![[1, 1], [1, 1]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
@@ -1839,7 +1839,7 @@ mod tests {
             run_async,
         )?;
 
-        let res: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         let actual_shape = res.shape().0;
         let expected_shape = RawShape(vec![2, 1]);
         assert_eq!(expected_shape, actual_shape);
@@ -1977,7 +1977,7 @@ mod tests {
             run_async,
         )?;
 
-        let comp_result: Int64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostInt64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }

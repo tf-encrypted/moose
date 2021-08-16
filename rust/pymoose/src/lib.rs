@@ -351,14 +351,14 @@ fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
     match tensor {
         Value::HostFloat32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::HostFloat64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         otherwise => Err(PyTypeError::new_err(format!(
             r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#,
             otherwise

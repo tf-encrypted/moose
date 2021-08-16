@@ -719,14 +719,14 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
         "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)), // TODO change textual
         "Float64Tensor" => Ok((i, Ty::HostFloat64Tensor)), // TODO
-        "Int8Tensor" => Ok((i, Ty::Int8Tensor)),
-        "Int16Tensor" => Ok((i, Ty::Int16Tensor)),
-        "Int32Tensor" => Ok((i, Ty::Int32Tensor)),
-        "Int64Tensor" => Ok((i, Ty::Int64Tensor)),
-        "Uint8Tensor" => Ok((i, Ty::Uint8Tensor)),
-        "Uint16Tensor" => Ok((i, Ty::Uint16Tensor)),
-        "Uint32Tensor" => Ok((i, Ty::Uint32Tensor)),
-        "Uint64Tensor" => Ok((i, Ty::Uint64Tensor)),
+        "Int8Tensor" => Ok((i, Ty::HostInt8Tensor)),
+        "Int16Tensor" => Ok((i, Ty::HostInt16Tensor)),
+        "Int32Tensor" => Ok((i, Ty::HostInt32Tensor)),
+        "Int64Tensor" => Ok((i, Ty::HostInt64Tensor)),
+        "Uint8Tensor" => Ok((i, Ty::HostUint8Tensor)),
+        "Uint16Tensor" => Ok((i, Ty::HostUint16Tensor)),
+        "Uint32Tensor" => Ok((i, Ty::HostUint32Tensor)),
+        "Uint64Tensor" => Ok((i, Ty::HostUint64Tensor)),
         "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
         "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
         "Replicated64Tensor" => Ok((i, Ty::Replicated64Tensor)),
@@ -785,28 +785,28 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         // 1D arrars
         alt((
             constant_literal_helper("Int8Tensor", vector(parse_int), |v| {
-                Constant::Int8Tensor(v.into())
+                Constant::HostInt8Tensor(v.into())
             }),
             constant_literal_helper("Int16Tensor", vector(parse_int), |v| {
-                Constant::Int16Tensor(v.into())
+                Constant::HostInt16Tensor(v.into())
             }),
             constant_literal_helper("Int32Tensor", vector(parse_int), |v| {
-                Constant::Int32Tensor(v.into())
+                Constant::HostInt32Tensor(v.into())
             }),
             constant_literal_helper("Int64Tensor", vector(parse_int), |v| {
-                Constant::Int64Tensor(v.into())
+                Constant::HostInt64Tensor(v.into())
             }),
             constant_literal_helper("Uint8Tensor", vector(parse_int), |v| {
-                Constant::Uint8Tensor(v.into())
+                Constant::HostUint8Tensor(v.into())
             }),
             constant_literal_helper("Uint16Tensor", vector(parse_int), |v| {
-                Constant::Uint16Tensor(v.into())
+                Constant::HostUint16Tensor(v.into())
             }),
             constant_literal_helper("Uint32Tensor", vector(parse_int), |v| {
-                Constant::Uint32Tensor(v.into())
+                Constant::HostUint32Tensor(v.into())
             }),
             constant_literal_helper("Uint64Tensor", vector(parse_int), |v| {
-                Constant::Uint64Tensor(v.into())
+                Constant::HostUint64Tensor(v.into())
             }),
             constant_literal_helper("Float32Tensor", vector(float), |v| {
                 Constant::HostFloat32Tensor(v.into())
@@ -824,28 +824,28 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         // 2D arrars
         alt((
             constant_literal_helper("Int8Tensor", vector2(parse_int), |v| {
-                Constant::Int8Tensor(v.into())
+                Constant::HostInt8Tensor(v.into())
             }),
             constant_literal_helper("Int16Tensor", vector2(parse_int), |v| {
-                Constant::Int16Tensor(v.into())
+                Constant::HostInt16Tensor(v.into())
             }),
             constant_literal_helper("Int32Tensor", vector2(parse_int), |v| {
-                Constant::Int32Tensor(v.into())
+                Constant::HostInt32Tensor(v.into())
             }),
             constant_literal_helper("Int64Tensor", vector2(parse_int), |v| {
-                Constant::Int64Tensor(v.into())
+                Constant::HostInt64Tensor(v.into())
             }),
             constant_literal_helper("Uint8Tensor", vector2(parse_int), |v| {
-                Constant::Uint8Tensor(v.into())
+                Constant::HostUint8Tensor(v.into())
             }),
             constant_literal_helper("Uint16Tensor", vector2(parse_int), |v| {
-                Constant::Uint16Tensor(v.into())
+                Constant::HostUint16Tensor(v.into())
             }),
             constant_literal_helper("Uint32Tensor", vector2(parse_int), |v| {
-                Constant::Uint32Tensor(v.into())
+                Constant::HostUint32Tensor(v.into())
             }),
             constant_literal_helper("Uint64Tensor", vector2(parse_int), |v| {
-                Constant::Uint64Tensor(v.into())
+                Constant::HostUint64Tensor(v.into())
             }),
             constant_literal_helper("Float32Tensor", vector2(float), |v| {
                 Constant::HostFloat32Tensor(v.into())
@@ -1482,14 +1482,14 @@ impl ToTextual for Ty {
             Ty::Nonce => "Nonce",
             Ty::HostFloat32Tensor => "Float32Tensor",  // TODO change textual symbol as well
             Ty::HostFloat64Tensor => "Float64Tensor", // TODO
-            Ty::Int8Tensor => "Int8Tensor",
-            Ty::Int16Tensor => "Int16Tensor",
-            Ty::Int32Tensor => "Int32Tensor",
-            Ty::Int64Tensor => "Int64Tensor",
-            Ty::Uint8Tensor => "Uint8Tensor",
-            Ty::Uint16Tensor => "Uint16Tensor",
-            Ty::Uint32Tensor => "Uint32Tensor",
-            Ty::Uint64Tensor => "Uint64Tensor",
+            Ty::HostInt8Tensor => "Int8Tensor",
+            Ty::HostInt16Tensor => "Int16Tensor",
+            Ty::HostInt32Tensor => "Int32Tensor",
+            Ty::HostInt64Tensor => "Int64Tensor",
+            Ty::HostUint8Tensor => "Uint8Tensor",
+            Ty::HostUint16Tensor => "Uint16Tensor",
+            Ty::HostUint32Tensor => "Uint32Tensor",
+            Ty::HostUint64Tensor => "Uint64Tensor",
             Ty::Unknown => "Unknown",
             Ty::Fixed64Tensor => "Fixed64Tensor",
             Ty::Fixed128Tensor => "Fixed128Tensor",
@@ -1508,14 +1508,14 @@ impl ToTextual for Ty {
 impl ToTextual for Value {
     fn to_textual(&self) -> String {
         match self {
-            Value::Int8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
-            Value::Int16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
-            Value::Int32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
-            Value::Int64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
-            Value::Uint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
-            Value::Uint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
-            Value::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
-            Value::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
+            Value::HostInt8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
+            Value::HostInt16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
+            Value::HostInt32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
+            Value::HostInt64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
+            Value::HostUint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
+            Value::HostUint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
+            Value::HostUint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
+            Value::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
             Value::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
             Value::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
             Value::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
@@ -1537,14 +1537,14 @@ impl ToTextual for Value {
 impl ToTextual for Constant {
     fn to_textual(&self) -> String {
         match self {
-            Constant::Int8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
-            Constant::Int16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
-            Constant::Int32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
-            Constant::Int64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
-            Constant::Uint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
-            Constant::Uint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
-            Constant::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
-            Constant::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
+            Constant::HostInt8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
+            Constant::HostInt16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
+            Constant::HostInt32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
+            Constant::HostInt64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
+            Constant::HostUint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
+            Constant::HostUint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
+            Constant::HostUint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
+            Constant::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
             Constant::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
             Constant::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
             Constant::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
@@ -1698,7 +1698,7 @@ mod tests {
         let (_, parsed_u8_tensor) = constant_literal::<(&str, ErrorKind)>("Uint8Tensor([1,2,3])")?;
         assert_eq!(
             parsed_u8_tensor,
-            Constant::Uint8Tensor(vec![1, 2, 3].into())
+            Constant::HostUint8Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_seed) =
             constant_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
@@ -1750,7 +1750,7 @@ mod tests {
         )?;
         assert_eq!(
             parsed,
-            Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat64Tensor, Ty::Uint16Tensor),
+            Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat64Tensor, Ty::HostUint16Tensor),
         );
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
