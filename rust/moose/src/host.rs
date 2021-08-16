@@ -91,7 +91,7 @@ impl<T> Placed for HostTensor<T> {
 }
 
 // TODO these should have Host prefix
-pub type Float32Tensor = HostTensor<f32>;
+pub type HostFloat32Tensor = HostTensor<f32>;
 pub type Float64Tensor = HostTensor<f64>;
 pub type Int8Tensor = HostTensor<i8>;
 pub type Int16Tensor = HostTensor<i16>;

@@ -15,7 +15,7 @@ use crate::kernels::{
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
-use crate::host::{Float32Tensor, Float64Tensor};
+use crate::host::{HostFloat32Tensor, Float64Tensor};
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
@@ -171,13 +171,13 @@ impl FixedpointRingMeanOp {
     }
 }
 
-modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (Float64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 
 hybrid_kernel! {
     FixedpointEncodeOp,
     [
-        (HostPlacement, (Float32Tensor) -> Fixed64Tensor => attributes[precision] Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> Fixed64Tensor => attributes[precision] Self::kernel),
         (HostPlacement, (Float64Tensor) -> Fixed128Tensor => attributes[precision] Self::kernel),
     ]
 }
@@ -197,13 +197,13 @@ impl FixedpointEncodeOp {
     }
 }
 
-modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> Float32Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> HostFloat32Tensor, FixedpointDecodeOp);
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> Float64Tensor, FixedpointDecodeOp);
 
 hybrid_kernel! {
     FixedpointDecodeOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> Float32Tensor => attributes[precision] Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> HostFloat32Tensor => attributes[precision] Self::kernel),
         (HostPlacement, (Fixed128Tensor) -> Float64Tensor => attributes[precision] Self::kernel),
     ]
 }

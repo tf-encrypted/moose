@@ -1294,7 +1294,7 @@ mod tests {
     use crate::compilation::networking::NetworkingPass;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use crate::ring::{Ring128Tensor, Ring64Tensor};
-    use crate::host::{Float32Tensor, Float64Tensor, Int64Tensor, RawShape, HostShape};
+    use crate::host::{HostFloat32Tensor, Float64Tensor, Int64Tensor, RawShape, HostShape};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1650,7 +1650,7 @@ mod tests {
             )?,
         };
 
-        let expected_output = Value::from(Float32Tensor::from(
+        let expected_output = Value::from(HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -1680,12 +1680,12 @@ mod tests {
             run_async,
         )?;
 
-        let expected_output = Float32Tensor::from(
+        let expected_output = HostFloat32Tensor::from(
             array![[0.6, -0.40000004], [-0.40000004, 0.6]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let x_inv: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let x_inv: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_output, x_inv);
         Ok(())
     }
@@ -1721,10 +1721,10 @@ mod tests {
 
         match dtype.as_str() {
             "Float32Tensor" => {
-                let r: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+                let r: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(
                     r,
-                    Float32Tensor::from(
+                    HostFloat32Tensor::from(
                         array![[1.0, 1.0], [1.0, 1.0]]
                             .into_dimensionality::<IxDyn>()
                             .unwrap(),
@@ -1935,7 +1935,7 @@ mod tests {
             run_async,
         )?;
 
-        let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostFloat32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
         if unwrap_flag {
             let shaped_result = comp_result.reshape(HostShape(

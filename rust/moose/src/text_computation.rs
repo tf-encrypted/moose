@@ -717,7 +717,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "BitTensor" => Ok((i, Ty::BitTensor)),
         "Ring64Tensor" => Ok((i, Ty::Ring64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
-        "Float32Tensor" => Ok((i, Ty::Float32Tensor)),
+        "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)), // TODO change textual
         "Float64Tensor" => Ok((i, Ty::Float64Tensor)),
         "Int8Tensor" => Ok((i, Ty::Int8Tensor)),
         "Int16Tensor" => Ok((i, Ty::Int16Tensor)),
@@ -809,7 +809,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 Constant::Uint64Tensor(v.into())
             }),
             constant_literal_helper("Float32Tensor", vector(float), |v| {
-                Constant::Float32Tensor(v.into())
+                Constant::HostFloat32Tensor(v.into())
             }),
             constant_literal_helper("Float64Tensor", vector(double), |v| {
                 Constant::Float64Tensor(v.into())
@@ -848,7 +848,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 Constant::Uint64Tensor(v.into())
             }),
             constant_literal_helper("Float32Tensor", vector2(float), |v| {
-                Constant::Float32Tensor(v.into())
+                Constant::HostFloat32Tensor(v.into())
             }),
             constant_literal_helper("Float64Tensor", vector2(double), |v| {
                 Constant::Float64Tensor(v.into())
@@ -1480,7 +1480,7 @@ impl ToTextual for Ty {
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
             Ty::Nonce => "Nonce",
-            Ty::Float32Tensor => "Float32Tensor",
+            Ty::HostFloat32Tensor => "Float32Tensor",  // TODO change textual symbol as well
             Ty::Float64Tensor => "Float64Tensor",
             Ty::Int8Tensor => "Int8Tensor",
             Ty::Int16Tensor => "Int16Tensor",
@@ -1516,7 +1516,7 @@ impl ToTextual for Value {
             Value::Uint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
             Value::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
             Value::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
-            Value::Float32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
+            Value::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
             Value::Float64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
             Value::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
             Value::Ring128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
@@ -1545,7 +1545,7 @@ impl ToTextual for Constant {
             Constant::Uint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
             Constant::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
             Constant::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
-            Constant::Float32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
+            Constant::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
             Constant::Float64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
             Constant::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
             Constant::Ring128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
@@ -1721,13 +1721,13 @@ mod tests {
         use std::convert::TryInto;
         let parsed_f32: Constant = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
 
-        let x = crate::host::Float32Tensor::from(
+        let x = crate::host::HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
 
-        assert_eq!(parsed_f32, Constant::Float32Tensor(x));
+        assert_eq!(parsed_f32, Constant::HostFloat32Tensor(x));
 
         let parsed_ring64: Constant = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
 
@@ -1750,7 +1750,7 @@ mod tests {
         )?;
         assert_eq!(
             parsed,
-            Signature::binary(Ty::Float32Tensor, Ty::Float64Tensor, Ty::Uint16Tensor),
+            Signature::binary(Ty::HostFloat32Tensor, Ty::Float64Tensor, Ty::Uint16Tensor),
         );
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
@@ -1774,14 +1774,14 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(vec![1.0].into())
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(vec![1.0].into())
             })
         );
 
         // 2D tensor
         use ndarray::prelude::*;
-        let x = crate::host::Float32Tensor::from(
+        let x = crate::host::HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -1792,8 +1792,8 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(x)
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(x)
             })
         );
         Ok(())
@@ -1808,7 +1808,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::StdAdd(StdAddOp {
-                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
+                sig: Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
@@ -1818,7 +1818,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::StdMul(StdMulOp {
-                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
+                sig: Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
             })
         );
         Ok(())
@@ -1884,7 +1884,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Receive(ReceiveOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
                 rendezvous_key: "abc".into(),
                 sender: Role::from("bob"),
             })
@@ -1918,7 +1918,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: Some(0),
                 scaling_base: 3,
                 scaling_exp: 1,
@@ -1931,7 +1931,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: None,
                 scaling_base: 3,
                 scaling_exp: 1,
@@ -2021,22 +2021,22 @@ mod tests {
         assert_eq!(
             comp.operations[0].kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(vec![1.0].into())
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(vec![1.0].into())
             })
         );
         assert_eq!(
             comp.operations[1].kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(vec![2.0].into())
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(vec![2.0].into())
             })
         );
         assert_eq!(comp.operations[2].name, "z");
         assert_eq!(
             comp.operations[2].kind,
             Operator::StdAdd(StdAddOp {
-                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
+                sig: Signature::binary(Ty::HostFloat32Tensor, Ty::HostFloat32Tensor, Ty::HostFloat32Tensor),
             })
         );
         assert_eq!(comp.operations[2].inputs, vec!("x", "y"));
@@ -2075,7 +2075,7 @@ mod tests {
     fn test_value_try_into() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
         let v: Constant = "Float32Tensor([1.0, 2.0, 3.0])".try_into()?;
-        assert_eq!(v, Constant::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
+        assert_eq!(v, Constant::HostFloat32Tensor(vec![1.0, 2.0, 3.0].into()));
         Ok(())
     }
 

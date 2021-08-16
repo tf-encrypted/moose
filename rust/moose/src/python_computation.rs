@@ -1,6 +1,6 @@
 //! Parser for computations defined in Python
 
-use crate::host::{Float32Tensor, Float64Tensor, RawShape};
+use crate::host::{HostFloat32Tensor, Float64Tensor, RawShape};
 use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
@@ -771,7 +771,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
-                Ok(Float32Tensor::from(tensor).into())
+                Ok(HostFloat32Tensor::from(tensor).into())
             }
             PyNdarray::float64 {
                 ref items,
@@ -793,7 +793,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_UnitType => Ok(Ty::Unit),
         PyValueType::std_StringType => Ok(Ty::String),
         PyValueType::std_TensorType { dtype } => match dtype {
-            PyDType::float32 => Ok(Ty::Float32Tensor),
+            PyDType::float32 => Ok(Ty::HostFloat32Tensor),
             PyDType::float64 => Ok(Ty::Float64Tensor),
             PyDType::int32 => Ok(Ty::Int32Tensor),
             PyDType::int64 => Ok(Ty::Int64Tensor),

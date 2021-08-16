@@ -349,7 +349,7 @@ fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Er
 
 fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
     match tensor {
-        Value::Float32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostFloat32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Float64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Int8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         Value::Int16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
