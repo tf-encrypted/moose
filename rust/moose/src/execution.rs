@@ -1293,7 +1293,7 @@ mod tests {
     use super::*;
     use crate::compilation::networking::NetworkingPass;
     use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, RawShape};
-    use crate::host::{Ring128Tensor, Ring64Tensor};
+    use crate::host::{HostRing128Tensor, HostRing64Tensor};
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use itertools::Itertools;
     use maplit::hashmap;
@@ -1424,7 +1424,7 @@ mod tests {
             run_async,
         )?;
 
-        let x_sampled: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let x_sampled: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(x_sampled.shape().0, RawShape(vec![2, 2]));
 
         Ok(())
@@ -2050,7 +2050,7 @@ mod tests {
             run_async,
         )?;
 
-        let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -2128,13 +2128,13 @@ mod tests {
 
         match type_str.as_str() {
             "Ring64Tensor" => {
-                let comp_result: Ring64Tensor =
+                let comp_result: HostRing64Tensor =
                     (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "Ring128Tensor" => {
-                let comp_result: Ring128Tensor =
+                let comp_result: HostRing128Tensor =
                     (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
@@ -2195,13 +2195,13 @@ mod tests {
 
         match type_str.as_str() {
             "Ring64" => {
-                let comp_result: Ring64Tensor =
+                let comp_result: HostRing64Tensor =
                     (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "Ring128" => {
-                let comp_result: Ring128Tensor =
+                let comp_result: HostRing128Tensor =
                     (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
@@ -2234,7 +2234,7 @@ mod tests {
             run_async,
         )?;
 
-        let comp_result: Ring64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
+        let comp_result: HostRing64Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(expected_result, comp_result.into());
         Ok(())
     }
@@ -2269,13 +2269,13 @@ mod tests {
 
         match type_str.as_str() {
             "Ring64Tensor" => {
-                let comp_result: Ring64Tensor =
+                let comp_result: HostRing64Tensor =
                     (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())
             }
             "Ring128Tensor" => {
-                let comp_result: Ring128Tensor =
+                let comp_result: HostRing128Tensor =
                     (outputs.get("output").unwrap().clone()).try_into()?;
                 assert_eq!(expected_result, comp_result.into());
                 Ok(())

@@ -6,9 +6,9 @@ use crate::execution::{
 };
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::host::{
-    AbstractRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
-    HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostShape, HostTensor, HostUint16Tensor,
-    HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, Ring128Tensor, Ring64Tensor,
+    AbstractHostRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
+    HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
+    HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
@@ -1054,11 +1054,11 @@ impl Compile<Kernel> for PrimPrfKeyGenOp {
 impl Compile<Kernel> for RingAddOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
-                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x + y)
+            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
+                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x + y)
             }
-            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
-                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x + y)
+            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
+                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x + y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1068,11 +1068,11 @@ impl Compile<Kernel> for RingAddOp {
 impl Compile<Kernel> for RingSubOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
-                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x - y)
+            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
+                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x - y)
             }
-            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
-                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x - y)
+            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
+                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x - y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1082,11 +1082,11 @@ impl Compile<Kernel> for RingSubOp {
 impl Compile<Kernel> for RingMulOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
-                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x * y)
+            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
+                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x * y)
             }
-            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
-                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x * y)
+            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
+                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x * y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1096,11 +1096,11 @@ impl Compile<Kernel> for RingMulOp {
 impl Compile<Kernel> for RingDotOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
-                function_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x.dot(y))
+            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
+                function_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x.dot(y))
             }
-            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
-                function_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x.dot(y))
+            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
+                function_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x.dot(y))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1111,9 +1111,11 @@ impl Compile<Kernel> for RingSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
         match self.sig {
-            signature![(_) -> Ty::Ring64Tensor] => closure_kernel!(Ring64Tensor, |x| x.sum(axis)),
-            signature![(_) -> Ty::Ring128Tensor] => {
-                closure_kernel!(Ring128Tensor, |x| x.sum(axis))
+            signature![(_) -> Ty::HostRing64Tensor] => {
+                closure_kernel!(HostRing64Tensor, |x| x.sum(axis))
+            }
+            signature![(_) -> Ty::HostRing128Tensor] => {
+                closure_kernel!(HostRing128Tensor, |x| x.sum(axis))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1129,11 +1131,11 @@ impl Compile<Kernel> for ShapeOp {
             signature![(Ty::HostFloat64Tensor) -> Ty::HostShape] => {
                 function_kernel!(HostFloat64Tensor, |x| x.shape())
             }
-            signature![(Ty::Ring64Tensor) -> Ty::HostShape] => {
-                function_kernel!(Ring64Tensor, |x| x.shape())
+            signature![(Ty::HostRing64Tensor) -> Ty::HostShape] => {
+                function_kernel!(HostRing64Tensor, |x| x.shape())
             }
-            signature![(Ty::Ring128Tensor) -> Ty::HostShape] => {
-                function_kernel!(Ring128Tensor, |x| x.shape())
+            signature![(Ty::HostRing128Tensor) -> Ty::HostShape] => {
+                function_kernel!(HostRing128Tensor, |x| x.shape())
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1157,17 +1159,17 @@ impl Compile<Kernel> for BitFillOp {
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
-            (signature![(_) -> Ty::Ring64Tensor], Constant::Ring64(value)) => {
-                closure_kernel!(HostShape, |shape| Ring64Tensor::fill(&shape.0, value))
+            (signature![(_) -> Ty::HostRing64Tensor], Constant::Ring64(value)) => {
+                closure_kernel!(HostShape, |shape| HostRing64Tensor::fill(&shape.0, value))
             }
-            (signature![(_) -> Ty::Ring128Tensor], Constant::Ring64(value)) => {
-                closure_kernel!(HostShape, |shape| Ring128Tensor::fill(
+            (signature![(_) -> Ty::HostRing128Tensor], Constant::Ring64(value)) => {
+                closure_kernel!(HostShape, |shape| HostRing128Tensor::fill(
                     &shape.0,
                     value as u128
                 ))
             }
-            (signature![(_) -> Ty::Ring128Tensor], Constant::Ring128(value)) => {
-                closure_kernel!(HostShape, |shape| Ring128Tensor::fill(&shape.0, value))
+            (signature![(_) -> Ty::HostRing128Tensor], Constant::Ring128(value)) => {
+                closure_kernel!(HostShape, |shape| HostRing128Tensor::fill(&shape.0, value))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1177,27 +1179,27 @@ impl Compile<Kernel> for RingFillOp {
 impl Compile<Kernel> for RingSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.max_value) {
-            (signature![(_, _) -> Ty::Ring64Tensor], None) => {
-                function_kernel!(HostShape, Seed, |shape, seed| Ring64Tensor::sample_uniform(
-                    &shape.0, &seed.0
-                ))
+            (signature![(_, _) -> Ty::HostRing64Tensor], None) => {
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing64Tensor::sample_uniform(&shape.0, &seed.0)
+                })
             }
-            (signature!((_, _) -> Ty::Ring64Tensor), Some(max_value)) if max_value == 1 => {
-                function_kernel!(HostShape, Seed, |shape, seed| Ring64Tensor::sample_bits(
-                    &shape.0, &seed.0
-                ))
-            }
-            (signature![(_, _) -> Ty::Ring128Tensor], None) => {
+            (signature!((_, _) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
                 function_kernel!(
                     HostShape,
                     Seed,
-                    |shape, seed| Ring128Tensor::sample_uniform(&shape.0, &seed.0)
+                    |shape, seed| HostRing64Tensor::sample_bits(&shape.0, &seed.0)
                 )
             }
-            (signature![(_, _) -> Ty::Ring128Tensor], Some(max_value)) if max_value == 1 => {
-                function_kernel!(HostShape, Seed, |shape, seed| Ring128Tensor::sample_bits(
-                    &shape.0, &seed.0
-                ))
+            (signature![(_, _) -> Ty::HostRing128Tensor], None) => {
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing128Tensor::sample_uniform(&shape.0, &seed.0)
+                })
+            }
+            (signature![(_, _) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing128Tensor::sample_bits(&shape.0, &seed.0)
+                })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1207,11 +1209,11 @@ impl Compile<Kernel> for RingSampleOp {
 impl Compile<Kernel> for RingNegOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(_) -> Ty::Ring64Tensor] => {
-                closure_kernel!(Ring64Tensor, |x| AbstractRingTensor(-x.0, x.1))
+            signature![(_) -> Ty::HostRing64Tensor] => {
+                closure_kernel!(HostRing64Tensor, |x| AbstractHostRingTensor(-x.0, x.1))
             }
-            signature![(_) -> Ty::Ring128Tensor] => {
-                closure_kernel!(Ring128Tensor, |x| AbstractRingTensor(-x.0, x.1))
+            signature![(_) -> Ty::HostRing128Tensor] => {
+                closure_kernel!(HostRing128Tensor, |x| AbstractHostRingTensor(-x.0, x.1))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1222,11 +1224,11 @@ impl Compile<Kernel> for RingShlOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
         match self.sig {
-            signature![(_) -> Ty::Ring64Tensor] => {
-                closure_kernel!(Ring64Tensor, |x| x << amount)
+            signature![(_) -> Ty::HostRing64Tensor] => {
+                closure_kernel!(HostRing64Tensor, |x| x << amount)
             }
-            signature![(_) -> Ty::Ring128Tensor] => {
-                closure_kernel!(Ring128Tensor, |x| x << amount)
+            signature![(_) -> Ty::HostRing128Tensor] => {
+                closure_kernel!(HostRing128Tensor, |x| x << amount)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1237,11 +1239,11 @@ impl Compile<Kernel> for RingShrOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
         match self.sig {
-            signature![(_) -> Ty::Ring64Tensor] => {
-                closure_kernel!(Ring64Tensor, |x| x >> amount)
+            signature![(_) -> Ty::HostRing64Tensor] => {
+                closure_kernel!(HostRing64Tensor, |x| x >> amount)
             }
-            signature![(_) -> Ty::Ring128Tensor] => {
-                closure_kernel!(Ring128Tensor, |x| x >> amount)
+            signature![(_) -> Ty::HostRing128Tensor] => {
+                closure_kernel!(HostRing128Tensor, |x| x >> amount)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1252,11 +1254,11 @@ impl Compile<Kernel> for RingInjectOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
         match self.sig {
-            signature![(_) -> Ty::Ring64Tensor] => {
-                closure_kernel!(HostBitTensor, |x| Ring64Tensor::from(x) << bit_idx)
+            signature![(_) -> Ty::HostRing64Tensor] => {
+                closure_kernel!(HostBitTensor, |x| HostRing64Tensor::from(x) << bit_idx)
             }
-            signature![(_) -> Ty::Ring128Tensor] => {
-                closure_kernel!(HostBitTensor, |x| Ring128Tensor::from(x) << bit_idx)
+            signature![(_) -> Ty::HostRing128Tensor] => {
+                closure_kernel!(HostBitTensor, |x| HostRing128Tensor::from(x) << bit_idx)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1267,11 +1269,11 @@ impl Compile<Kernel> for BitExtractOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
         match self.sig {
-            signature![(Ty::Ring64Tensor) -> _] => {
-                closure_kernel!(Ring64Tensor, |x| x.bit_extract(bit_idx))
+            signature![(Ty::HostRing64Tensor) -> _] => {
+                closure_kernel!(HostRing64Tensor, |x| x.bit_extract(bit_idx))
             }
-            signature![(Ty::Ring128Tensor) -> _] => {
-                closure_kernel!(Ring128Tensor, |x| x.bit_extract(bit_idx))
+            signature![(Ty::HostRing128Tensor) -> _] => {
+                closure_kernel!(HostRing128Tensor, |x| x.bit_extract(bit_idx))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1297,11 +1299,11 @@ impl Compile<Kernel> for BitXorOp {
 impl Compile<Kernel> for BitAndOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Ring64Tensor, Ty::Ring64Tensor) -> _] => {
-                closure_kernel!(Ring64Tensor, Ring64Tensor, |x, y| x & y)
+            signature![(Ty::HostRing64Tensor, Ty::HostRing64Tensor) -> _] => {
+                closure_kernel!(HostRing64Tensor, HostRing64Tensor, |x, y| x & y)
             }
-            signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
-                closure_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x & y)
+            signature![(Ty::HostRing128Tensor, Ty::HostRing128Tensor) -> _] => {
+                closure_kernel!(HostRing128Tensor, HostRing128Tensor, |x, y| x & y)
             }
             signature![(Ty::HostBitTensor, Ty::HostBitTensor) -> _] => {
                 closure_kernel!(HostBitTensor, HostBitTensor, |x, y| x & y)
@@ -1311,13 +1313,13 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
-modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> Ring128Tensor, FixedpointRingEncodeOp);
-modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> Ring64Tensor, FixedpointRingEncodeOp);
+modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, FixedpointRingEncodeOp);
+modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, FixedpointRingEncodeOp);
 
 kernel! {
     FixedpointRingEncodeOp, [
-        (HostPlacement, (HostFloat64Tensor) -> Ring128Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
-        (HostPlacement, (HostFloat32Tensor) -> Ring64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
@@ -1328,7 +1330,7 @@ impl FixedpointRingEncodeOp {
         _scaling_base: u64,
         _scaling_exp: u32,
         _x: HostTensor<ST>,
-    ) -> AbstractRingTensor<TT> {
+    ) -> AbstractHostRingTensor<TT> {
         unimplemented!()
     }
 }
@@ -1337,16 +1339,16 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         match self.sig {
-            signature![(Ty::HostFloat64Tensor) -> Ty::Ring64Tensor] => {
+            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(HostFloat64Tensor, |x| Ring64Tensor::encode(
+                closure_kernel!(HostFloat64Tensor, |x| HostRing64Tensor::encode(
                     &x,
                     scaling_factor
                 ))
             }
-            signature![(Ty::HostFloat64Tensor) -> Ty::Ring128Tensor] => {
+            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing128Tensor] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(HostFloat64Tensor, |x| Ring128Tensor::encode(
+                closure_kernel!(HostFloat64Tensor, |x| HostRing128Tensor::encode(
                     &x,
                     scaling_factor
                 ))
@@ -1356,13 +1358,13 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
     }
 }
 
-modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> HostFloat64Tensor, FixedpointRingDecodeOp);
-modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (Ring64Tensor) -> HostFloat32Tensor, FixedpointRingDecodeOp);
+modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, FixedpointRingDecodeOp);
+modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, FixedpointRingDecodeOp);
 
 kernel! {
     FixedpointRingDecodeOp, [
-        (HostPlacement, (Ring128Tensor) -> HostFloat64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
-        (HostPlacement, (Ring64Tensor) -> HostFloat32Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
@@ -1372,7 +1374,7 @@ impl FixedpointRingDecodeOp {
         _plc: &HostPlacement,
         _scaling_base: u64,
         _scaling_exp: u32,
-        _x: AbstractRingTensor<ST>,
+        _x: AbstractHostRingTensor<ST>,
     ) -> HostTensor<TT> {
         unimplemented!()
     }
@@ -1382,13 +1384,19 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         match self.sig {
-            signature![(Ty::Ring64Tensor) -> _] => {
+            signature![(Ty::HostRing64Tensor) -> _] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(Ring64Tensor, |x| Ring64Tensor::decode(&x, scaling_factor))
+                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::decode(
+                    &x,
+                    scaling_factor
+                ))
             }
-            signature![(Ty::Ring128Tensor) -> _] => {
+            signature![(Ty::HostRing128Tensor) -> _] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(Ring128Tensor, |x| Ring128Tensor::decode(&x, scaling_factor))
+                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::decode(
+                    &x,
+                    scaling_factor
+                ))
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1399,17 +1407,17 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
         match self.sig {
-            signature![(_) -> Ty::Ring64Tensor] => {
+            signature![(_) -> Ty::HostRing64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(Ring64Tensor, |x| Ring64Tensor::ring_mean(
+                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::ring_mean(
                     x,
                     axis,
                     scaling_factor
                 ))
             }
-            signature![(_) -> Ty::Ring128Tensor] => {
+            signature![(_) -> Ty::HostRing128Tensor] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(Ring128Tensor, |x| Ring128Tensor::ring_mean(
+                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::ring_mean(
                     x,
                     axis,
                     scaling_factor
@@ -1633,8 +1641,8 @@ modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () 
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Seed, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> PrfKey, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitTensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring128Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostRing64Tensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostRing128Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat32Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat64Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt8Tensor, InputOp);
@@ -1655,8 +1663,8 @@ kernel! {
         (HostPlacement, () -> Seed => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> PrfKey => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostBitTensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Ring64Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Ring128Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostRing64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostRing128Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFloat32Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFloat64Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostInt8Tensor => attributes[arg_name] Self::kernel),
@@ -1725,8 +1733,8 @@ modelled!(PlacementOutput::output, HostPlacement, (Seed) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (PrfKey) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (String) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostBitTensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Ring64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Ring128Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostRing64Tensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostRing128Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostFloat32Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostFloat64Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostInt8Tensor) -> Unit, OutputOp);
@@ -1748,8 +1756,8 @@ kernel! {
         (HostPlacement, (PrfKey) -> Unit => Self::kernel),
         (HostPlacement, (String) -> Unit => Self::kernel),
         (HostPlacement, (HostBitTensor) -> Unit => Self::kernel),
-        (HostPlacement, (Ring64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Ring128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostFloat32Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostInt8Tensor) -> Unit => Self::kernel),
@@ -1795,8 +1803,8 @@ modelled!(PlacementSave::save, HostPlacement, (String, Seed) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, PrfKey) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, String) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostBitTensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Ring64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Ring128Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostRing64Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostRing128Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostFloat32Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostFloat64Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostInt8Tensor) -> Unit, SaveOp);
@@ -1818,8 +1826,8 @@ kernel! {
         (HostPlacement, (String, PrfKey) -> Unit => Self::kernel),
         (HostPlacement, (String, String) -> Unit => Self::kernel),
         (HostPlacement, (String, HostBitTensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Ring64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Ring128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostRing64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostRing128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostFloat32Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostFloat64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostInt8Tensor) -> Unit => Self::kernel),
@@ -1888,8 +1896,8 @@ modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Seed, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> PrfKey, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> String, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostBitTensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring128Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostRing64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostRing128Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat32Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt8Tensor, LoadOp);
@@ -1911,8 +1919,8 @@ kernel! {
         (HostPlacement, (String, String) -> PrfKey => Self::kernel),
         (HostPlacement, (String, String) -> String => Self::kernel),
         (HostPlacement, (String, String) -> HostBitTensor => Self::kernel),
-        (HostPlacement, (String, String) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostRing128Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostFloat32Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostFloat64Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostInt8Tensor => Self::kernel),

@@ -45,7 +45,7 @@ fn main() {
     let x_op = Operation {
         name: "x".into(),
         kind: RingSampleOp {
-            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::Ring64Tensor),
+            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostRing64Tensor),
             max_value: None,
         }
         .into(),
@@ -60,7 +60,11 @@ fn main() {
         operations.push(Operation {
             name: format!("y{}", i),
             kind: RingMulOp {
-                sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
+                sig: Signature::binary(
+                    Ty::HostRing64Tensor,
+                    Ty::HostRing64Tensor,
+                    Ty::HostRing64Tensor,
+                ),
             }
             .into(),
             inputs: vec!["x".into(), "x".into()],

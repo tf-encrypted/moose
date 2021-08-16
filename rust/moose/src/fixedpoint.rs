@@ -7,7 +7,8 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::host::{
-    AbstractRingTensor, HostFloat32Tensor, HostFloat64Tensor, Ring128Tensor, Ring64Tensor,
+    AbstractHostRingTensor, HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor,
+    HostRing64Tensor,
 };
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
@@ -25,10 +26,10 @@ use std::num::Wrapping;
 use std::ops::Mul;
 
 /// Fixed-point tensor backed by Z_{2^64} arithmetic
-pub type Fixed64Tensor = FixedTensor<Ring64Tensor, Replicated64Tensor>;
+pub type Fixed64Tensor = FixedTensor<HostRing64Tensor, Replicated64Tensor>;
 
 /// Fixed-point tensor backed by Z_{2^128} arithmetic
-pub type Fixed128Tensor = FixedTensor<Ring128Tensor, Replicated128Tensor>;
+pub type Fixed128Tensor = FixedTensor<HostRing128Tensor, Replicated128Tensor>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
@@ -59,12 +60,12 @@ pub trait Convert<T> {
     fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
 }
 
-impl Convert<HostFloat64Tensor> for Ring64Tensor {
+impl Convert<HostFloat64Tensor> for HostRing64Tensor {
     type Scale = u64;
-    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> Ring64Tensor {
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing64Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
-        Ring64Tensor::from(x_converted)
+        HostRing64Tensor::from(x_converted)
     }
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
         let x_upshifted: ArrayD<i64> = x.into();
@@ -73,12 +74,12 @@ impl Convert<HostFloat64Tensor> for Ring64Tensor {
     }
 }
 
-impl Convert<HostFloat64Tensor> for Ring128Tensor {
+impl Convert<HostFloat64Tensor> for HostRing128Tensor {
     type Scale = u128;
-    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> Ring128Tensor {
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing128Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
-        Ring128Tensor::from(x_converted)
+        HostRing128Tensor::from(x_converted)
     }
 
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
@@ -88,18 +89,18 @@ impl Convert<HostFloat64Tensor> for Ring128Tensor {
     }
 }
 
-impl<T> AbstractRingTensor<T>
+impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone + Zero + Mul<Wrapping<T>, Output = Wrapping<T>>,
-    AbstractRingTensor<T>: Convert<HostFloat64Tensor>,
+    AbstractHostRingTensor<T>: Convert<HostFloat64Tensor>,
 {
     pub fn ring_mean(
         x: Self,
         axis: Option<usize>,
-        scaling_factor: <AbstractRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
-    ) -> AbstractRingTensor<T> {
+        scaling_factor: <AbstractHostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
+    ) -> AbstractHostRingTensor<T> {
         let mean_weight = Self::compute_mean_weight(&x, &axis);
-        let encoded_weight = AbstractRingTensor::<T>::encode(&mean_weight, scaling_factor);
+        let encoded_weight = AbstractHostRingTensor::<T>::encode(&mean_weight, scaling_factor);
         let operand_sum = x.sum(axis);
         operand_sum.mul(encoded_weight)
     }
@@ -125,14 +126,14 @@ where
     }
 }
 
-modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Ring64Tensor) -> Ring64Tensor, FixedpointRingMeanOp);
-modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Ring128Tensor) -> Ring128Tensor, FixedpointRingMeanOp);
+modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, FixedpointRingMeanOp);
+modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, FixedpointRingMeanOp);
 
 kernel! {
     FixedpointRingMeanOp,
     [
-        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring64tensor),
-        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring128tensor),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring64tensor),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring128tensor),
     ]
 }
 
@@ -143,14 +144,14 @@ impl FixedpointRingMeanOp {
         axis: Option<u32>,
         scaling_base: u64,
         scaling_exp: u32,
-        x: Ring64Tensor,
-    ) -> Ring64Tensor
+        x: HostRing64Tensor,
+    ) -> HostRing64Tensor
     where
-        HostPlacement: PlacementPlace<S, Ring64Tensor>,
+        HostPlacement: PlacementPlace<S, HostRing64Tensor>,
     {
         let scaling_factor = u64::pow(scaling_base, scaling_exp);
         let axis = axis.map(|a| a as usize);
-        let mean = Ring64Tensor::ring_mean(x, axis, scaling_factor);
+        let mean = HostRing64Tensor::ring_mean(x, axis, scaling_factor);
         plc.place(sess, mean)
     }
 
@@ -160,14 +161,14 @@ impl FixedpointRingMeanOp {
         axis: Option<u32>,
         scaling_base: u64,
         scaling_exp: u32,
-        x: Ring128Tensor,
-    ) -> Ring128Tensor
+        x: HostRing128Tensor,
+    ) -> HostRing128Tensor
     where
-        HostPlacement: PlacementPlace<S, Ring128Tensor>,
+        HostPlacement: PlacementPlace<S, HostRing128Tensor>,
     {
         let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
         let axis = axis.map(|a| a as usize);
-        let mean = Ring128Tensor::ring_mean(x, axis, scaling_factor);
+        let mean = HostRing128Tensor::ring_mean(x, axis, scaling_factor);
         plc.place(sess, mean)
     }
 }
@@ -687,10 +688,10 @@ mod tests {
         );
 
         let scaling_factor = 2u64.pow(16);
-        let x_encoded = Ring64Tensor::encode(&x, scaling_factor);
+        let x_encoded = HostRing64Tensor::encode(&x, scaling_factor);
         assert_eq!(
             x_encoded,
-            Ring64Tensor::from(vec![
+            HostRing64Tensor::from(vec![
                 65536,
                 18446744073709420544,
                 196608,
@@ -698,14 +699,14 @@ mod tests {
             ])
         );
 
-        let x_decoded = Ring64Tensor::decode(&x_encoded, scaling_factor);
+        let x_decoded = HostRing64Tensor::decode(&x_encoded, scaling_factor);
         assert_eq!(x_decoded, x);
 
         let scaling_factor_long = 2u128.pow(80);
-        let x_encoded = Ring128Tensor::encode(&x, scaling_factor_long);
+        let x_encoded = HostRing128Tensor::encode(&x, scaling_factor_long);
         assert_eq!(
             x_encoded,
-            Ring128Tensor::from(vec![
+            HostRing128Tensor::from(vec![
                 1208925819614629174706176,
                 340282366920936045611735378173418799104,
                 3626777458843887524118528,
@@ -713,7 +714,7 @@ mod tests {
             ])
         );
 
-        let x_decoded_long = Ring128Tensor::decode(&x_encoded, scaling_factor_long);
+        let x_decoded_long = HostRing128Tensor::decode(&x_encoded, scaling_factor_long);
         assert_eq!(x_decoded_long, x);
     }
 
@@ -726,9 +727,9 @@ mod tests {
         );
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = Ring64Tensor::encode(&x_backing, encoding_factor);
-        let out = Ring64Tensor::ring_mean(x, Some(0), encoding_factor);
-        let dec = Ring64Tensor::decode(&out, decoding_factor);
+        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
+        let out = HostRing64Tensor::ring_mean(x, Some(0), encoding_factor);
+        let dec = HostRing64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec,
             HostFloat64Tensor::from(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
@@ -744,9 +745,9 @@ mod tests {
         );
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = Ring64Tensor::encode(&x_backing, encoding_factor);
-        let out = Ring64Tensor::ring_mean(x, None, encoding_factor);
-        let dec = Ring64Tensor::decode(&out, decoding_factor);
+        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
+        let out = HostRing64Tensor::ring_mean(x, None, encoding_factor);
+        let dec = HostRing64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec.0.into_shape((1,)).unwrap(),
             array![2.5].into_shape((1,)).unwrap()
@@ -760,10 +761,14 @@ mod tests {
                     owner: "alice".into(),
                 };
 
-                let x =
-                    FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(xs, alice.clone()));
-                let y =
-                    FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(ys, alice.clone()));
+                let x = FixedTensor::RingTensor(AbstractHostRingTensor::from_raw_plc(
+                    xs,
+                    alice.clone(),
+                ));
+                let y = FixedTensor::RingTensor(AbstractHostRingTensor::from_raw_plc(
+                    ys,
+                    alice.clone(),
+                ));
 
                 let sess = SyncSession::default();
 
@@ -774,7 +779,7 @@ mod tests {
                 };
                 assert_eq!(
                     opened_product,
-                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -812,8 +817,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(xs, alice.clone()));
-                let y = FixedTensor::RingTensor(AbstractRingTensor::from_raw_plc(ys, alice.clone()));
+                let x = FixedTensor::RingTensor(AbstractHostRingTensor::from_raw_plc(xs, alice.clone()));
+                let y = FixedTensor::RingTensor(AbstractHostRingTensor::from_raw_plc(ys, alice.clone()));
 
                 let sess = SyncSession::default();
 
@@ -824,7 +829,7 @@ mod tests {
                 };
                 assert_eq!(
                     opened_product,
-                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };

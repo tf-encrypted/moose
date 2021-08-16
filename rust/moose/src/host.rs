@@ -793,8 +793,8 @@ impl BitXorOp {
 }
 
 modelled!(PlacementAnd::and, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitAndOp);
-modelled!(PlacementAnd::and, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, BitAndOp);
-modelled!(PlacementAnd::and, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, BitAndOp);
 
 modelled_alias!(PlacementMul::mul, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementAnd::and); // mul = and in Z2
 
@@ -802,8 +802,8 @@ kernel! {
     BitAndOp,
     [
         (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => Self::bit_kernel),
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::ring_kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::ring_kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::ring_kernel),
     ]
 }
 
@@ -820,14 +820,14 @@ impl BitAndOp {
     fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
-        y: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+        y: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
     {
-        AbstractRingTensor(x.0 & y.0, plc.clone())
+        AbstractHostRingTensor(x.0 & y.0, plc.clone())
     }
 }
 
@@ -946,14 +946,14 @@ impl BitAnd for HostBitTensor {
     }
 }
 
-modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring64Tensor) -> HostBitTensor, BitExtractOp);
-modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring128Tensor) -> HostBitTensor, BitExtractOp);
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (HostRing64Tensor) -> HostBitTensor, BitExtractOp);
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (HostRing128Tensor) -> HostBitTensor, BitExtractOp);
 
 kernel! {
     BitExtractOp,
     [
-        (HostPlacement, (Ring64Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel64),
-        (HostPlacement, (Ring128Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel128),
+        (HostPlacement, (HostRing64Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel64),
+        (HostPlacement, (HostRing128Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel128),
     ]
 }
 
@@ -962,7 +962,7 @@ impl BitExtractOp {
         _sess: &S,
         plc: &HostPlacement,
         bit_idx: usize,
-        x: Ring64Tensor,
+        x: HostRing64Tensor,
     ) -> HostBitTensor {
         HostBitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
     }
@@ -970,30 +970,30 @@ impl BitExtractOp {
         _sess: &S,
         plc: &HostPlacement,
         bit_idx: usize,
-        x: Ring128Tensor,
+        x: HostRing128Tensor,
     ) -> HostBitTensor {
         HostBitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
     }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
+pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
 /// Tensor for ring arithmetic over Z_{2^64}
-pub type Ring64Tensor = AbstractRingTensor<u64>;
+pub type HostRing64Tensor = AbstractHostRingTensor<u64>;
 
 /// Tensor for ring arithmetic over Z_{2^128}
-pub type Ring128Tensor = AbstractRingTensor<u128>;
+pub type HostRing128Tensor = AbstractHostRingTensor<u128>;
 
-impl<S: Session, T> Tensor<S> for AbstractRingTensor<T> {
+impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
     type Scalar = T;
 }
 
-impl<S: Session, T> Tensor<S> for Symbolic<AbstractRingTensor<T>> {
+impl<S: Session, T> Tensor<S> for Symbolic<AbstractHostRingTensor<T>> {
     type Scalar = T;
 }
 
-impl<T> Placed for AbstractRingTensor<T> {
+impl<T> Placed for AbstractHostRingTensor<T> {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -1005,35 +1005,35 @@ pub trait RingSize {
     const SIZE: usize;
 }
 
-impl RingSize for Ring64Tensor {
+impl RingSize for HostRing64Tensor {
     const SIZE: usize = 64;
 }
 
-impl RingSize for Ring128Tensor {
+impl RingSize for HostRing128Tensor {
     const SIZE: usize = 128;
 }
 
 pub trait FromRawPlc<P, T> {
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractRingTensor<T>;
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractHostRingTensor<T>;
 }
 
-impl<P> FromRawPlc<P, u64> for Ring64Tensor
+impl<P> FromRawPlc<P, u64> for HostRing64Tensor
 where
     P: Into<HostPlacement>,
 {
-    fn from_raw_plc(raw_tensor: ArrayD<u64>, plc: P) -> Ring64Tensor {
+    fn from_raw_plc(raw_tensor: ArrayD<u64>, plc: P) -> HostRing64Tensor {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        AbstractRingTensor(tensor, plc.into())
+        AbstractHostRingTensor(tensor, plc.into())
     }
 }
 
-impl<P> FromRawPlc<P, u128> for Ring128Tensor
+impl<P> FromRawPlc<P, u128> for HostRing128Tensor
 where
     P: Into<HostPlacement>,
 {
-    fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> Ring128Tensor {
+    fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> HostRing128Tensor {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        AbstractRingTensor(tensor, plc.into())
+        AbstractHostRingTensor(tensor, plc.into())
     }
 }
 
@@ -1041,35 +1041,39 @@ impl<R: RingSize + Placed> RingSize for Symbolic<R> {
     const SIZE: usize = R::SIZE;
 }
 
-impl<T> PlacementPlace<SyncSession, AbstractRingTensor<T>> for HostPlacement
+impl<T> PlacementPlace<SyncSession, AbstractHostRingTensor<T>> for HostPlacement
 where
-    AbstractRingTensor<T>: Placed<Placement = HostPlacement>,
+    AbstractHostRingTensor<T>: Placed<Placement = HostPlacement>,
 {
-    fn place(&self, _sess: &SyncSession, x: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
+    fn place(
+        &self,
+        _sess: &SyncSession,
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                AbstractRingTensor(x.0, self.clone())
+                AbstractHostRingTensor(x.0, self.clone())
             }
         }
     }
 }
 
-impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractRingTensor<T>>> for HostPlacement {
+impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractHostRingTensor<T>>> for HostPlacement {
     fn place(
         &self,
         _sess: &SymbolicSession,
-        x: Symbolic<AbstractRingTensor<T>>,
-    ) -> Symbolic<AbstractRingTensor<T>> {
+        x: Symbolic<AbstractHostRingTensor<T>>,
+    ) -> Symbolic<AbstractHostRingTensor<T>> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 match x {
                     Symbolic::Concrete(x) => {
                         // TODO insert Place ops?
-                        Symbolic::Concrete(AbstractRingTensor(x.0, self.clone()))
+                        Symbolic::Concrete(AbstractHostRingTensor(x.0, self.clone()))
                     }
                     Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
@@ -1084,14 +1088,14 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractRingTensor<T>>> for Hos
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> Ring64Tensor, RingFillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> Ring128Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, RingFillOp);
 
 kernel! {
     RingFillOp,
     [
-        (HostPlacement, (HostShape) -> Ring64Tensor => attributes[value: Ring64] Self::ring64_kernel),
-        (HostPlacement, (HostShape) -> Ring128Tensor => attributes[value: Ring128] Self::ring128_kernel),
+        (HostPlacement, (HostShape) -> HostRing64Tensor => attributes[value: Ring64] Self::ring64_kernel),
+        (HostPlacement, (HostShape) -> HostRing128Tensor => attributes[value: Ring128] Self::ring128_kernel),
     ]
 }
 
@@ -1101,10 +1105,10 @@ impl RingFillOp {
         plc: &HostPlacement,
         value: u64,
         shape: HostShape,
-    ) -> Ring64Tensor {
+    ) -> HostRing64Tensor {
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
-        AbstractRingTensor(raw_tensor, plc.clone())
+        AbstractHostRingTensor(raw_tensor, plc.clone())
     }
 
     fn ring128_kernel<S: RuntimeSession>(
@@ -1112,10 +1116,10 @@ impl RingFillOp {
         plc: &HostPlacement,
         value: u128,
         shape: HostShape,
-    ) -> Ring128Tensor {
+    ) -> HostRing128Tensor {
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
-        AbstractRingTensor(raw_tensor, plc.clone())
+        AbstractHostRingTensor(raw_tensor, plc.clone())
     }
 }
 
@@ -1123,21 +1127,21 @@ impl ShapeOp {
     pub(crate) fn ring_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
+        x: AbstractHostRingTensor<T>,
     ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
         HostShape(raw_shape, plc.clone())
     }
 }
 
-modelled!(PlacementAdd::add, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingAddOp);
-modelled!(PlacementAdd::add, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingAddOp);
 
 kernel! {
     RingAddOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
     ]
 }
 
@@ -1145,25 +1149,25 @@ impl RingAddOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
-        y: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+        y: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
     {
-        AbstractRingTensor(x.0 + y.0, plc.clone())
+        AbstractHostRingTensor(x.0 + y.0, plc.clone())
     }
 }
 
-modelled!(PlacementSub::sub, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingSubOp);
-modelled!(PlacementSub::sub, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingSubOp);
 
 kernel! {
     RingSubOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
     ]
 }
 
@@ -1171,25 +1175,25 @@ impl RingSubOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
-        y: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+        y: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
     {
-        AbstractRingTensor(x.0 - y.0, plc.clone())
+        AbstractHostRingTensor(x.0 - y.0, plc.clone())
     }
 }
 
-modelled!(PlacementNeg::neg, HostPlacement, (Ring64Tensor) -> Ring64Tensor, RingNegOp);
-modelled!(PlacementNeg::neg, HostPlacement, (Ring128Tensor) -> Ring128Tensor, RingNegOp);
+modelled!(PlacementNeg::neg, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, RingNegOp);
+modelled!(PlacementNeg::neg, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, RingNegOp);
 
 kernel! {
     RingNegOp,
     [
-        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
     ]
 }
 
@@ -1197,24 +1201,24 @@ impl RingNegOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Neg<Output = Wrapping<T>>,
     {
-        AbstractRingTensor(x.0.neg(), plc.clone())
+        AbstractHostRingTensor(x.0.neg(), plc.clone())
     }
 }
 
-modelled!(PlacementMul::mul, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingMulOp);
-modelled!(PlacementMul::mul, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingMulOp);
 
 kernel! {
     RingMulOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
     ]
 }
 
@@ -1222,25 +1226,25 @@ impl RingMulOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
-        y: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+        y: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
     {
-        AbstractRingTensor(x.0 * y.0, plc.clone())
+        AbstractHostRingTensor(x.0 * y.0, plc.clone())
     }
 }
 
-modelled!(PlacementDot::dot, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, RingDotOp);
-modelled!(PlacementDot::dot, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, RingDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor, RingDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor, RingDotOp);
 
 kernel! {
     RingDotOp,
     [
-        (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
     ]
 }
 
@@ -1248,26 +1252,26 @@ impl RingDotOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        x: AbstractRingTensor<T>,
-        y: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+        y: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
         Wrapping<T>: LinalgScalar,
     {
-        AbstractRingTensor(x.dot(y).0, plc.clone())
+        AbstractHostRingTensor(x.dot(y).0, plc.clone())
     }
 }
 
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Ring64Tensor) -> Ring64Tensor, RingSumOp);
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Ring128Tensor) -> Ring128Tensor, RingSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing64Tensor) -> HostRing64Tensor, RingSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostRing128Tensor) -> HostRing128Tensor, RingSumOp);
 
 kernel! {
     RingSumOp,
     [
-        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[axis] Self::kernel),
-        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis] Self::kernel),
     ]
 }
 
@@ -1276,27 +1280,27 @@ impl RingSumOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        x: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         T: FromPrimitive + Zero,
         Wrapping<T>: Clone,
         Wrapping<T>: Add<Output = Wrapping<T>>,
-        HostPlacement: PlacementPlace<S, AbstractRingTensor<T>>,
+        HostPlacement: PlacementPlace<S, AbstractHostRingTensor<T>>,
     {
         let sum = x.sum(axis.map(|a| a as usize));
         plc.place(sess, sum)
     }
 }
 
-modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShlOp);
-modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing64Tensor) -> HostRing64Tensor, RingShlOp);
+modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing128Tensor) -> HostRing128Tensor, RingShlOp);
 
 kernel! {
     RingShlOp,
     [
-        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[amount] Self::kernel),
-        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[amount] Self::kernel),
     ]
 }
 
@@ -1305,24 +1309,24 @@ impl RingShlOp {
         _sess: &S,
         plc: &HostPlacement,
         amount: usize,
-        x: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
     {
-        AbstractRingTensor(x.0 << amount, plc.clone())
+        AbstractHostRingTensor(x.0 << amount, plc.clone())
     }
 }
 
-modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring64Tensor) -> Ring64Tensor, RingShrOp);
-modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (Ring128Tensor) -> Ring128Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (HostRing64Tensor) -> HostRing64Tensor, RingShrOp);
+modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (HostRing128Tensor) -> HostRing128Tensor, RingShrOp);
 
 kernel! {
     RingShrOp,
     [
-        (HostPlacement, (Ring64Tensor) -> Ring64Tensor => attributes[amount] Self::kernel),
-        (HostPlacement, (Ring128Tensor) -> Ring128Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[amount] Self::kernel),
     ]
 }
 
@@ -1331,23 +1335,23 @@ impl RingShrOp {
         _sess: &S,
         plc: &HostPlacement,
         amount: usize,
-        x: AbstractRingTensor<T>,
-    ) -> AbstractRingTensor<T>
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
     where
         Wrapping<T>: Clone,
         Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
     {
-        AbstractRingTensor(x.0 >> amount, plc.clone())
+        AbstractHostRingTensor(x.0 >> amount, plc.clone())
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> Ring64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> Ring128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,
     [
-        (HostPlacement, (HostShape, Seed) -> Ring64Tensor => custom |op| {
+        (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u64(ctx, plc, shape, seed)
@@ -1358,7 +1362,7 @@ kernel! {
                 _ => unimplemented!(),
             }
         }),
-        (HostPlacement, (HostShape, Seed) -> Ring128Tensor => custom |op| {
+        (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u128(ctx, plc, shape, seed)
@@ -1378,13 +1382,13 @@ impl RingSampleOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> Ring64Tensor {
+    ) -> HostRing64Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
         let raw_array = Array::from_shape_vec(ix, values).unwrap();
-        AbstractRingTensor(raw_array, plc.clone())
+        AbstractHostRingTensor(raw_array, plc.clone())
     }
 
     fn kernel_bits_u64<S: RuntimeSession>(
@@ -1392,12 +1396,12 @@ impl RingSampleOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> Ring64Tensor {
+    ) -> HostRing64Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 
     fn kernel_uniform_u128<S: RuntimeSession>(
@@ -1405,14 +1409,14 @@ impl RingSampleOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> Ring128Tensor {
+    ) -> HostRing128Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size)
             .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
             .collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 
     fn kernel_bits_u128<S: RuntimeSession>(
@@ -1420,33 +1424,33 @@ impl RingSampleOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> Ring128Tensor {
+    ) -> HostRing128Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        AbstractRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 }
 
-impl Ring64Tensor {
-    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Ring64Tensor {
+impl HostRing64Tensor {
+    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0.as_ref());
-        Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
     pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
         let ix = IxDyn(shape.0.as_ref());
-        Ring64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 }
 
-impl Ring128Tensor {
+impl HostRing128Tensor {
     pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
@@ -1458,7 +1462,7 @@ impl Ring128Tensor {
             })
             .collect();
         let ix = IxDyn(shape.0.as_ref());
-        Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 
     pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
@@ -1466,11 +1470,11 @@ impl Ring128Tensor {
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
         let ix = IxDyn(shape.0.as_ref());
-        Ring128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 }
 
-impl Ring64Tensor {
+impl HostRing64Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
@@ -1478,7 +1482,7 @@ impl Ring64Tensor {
     }
 }
 
-impl Ring128Tensor {
+impl HostRing128Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
@@ -1486,22 +1490,22 @@ impl Ring128Tensor {
     }
 }
 
-impl<T> AbstractRingTensor<T>
+impl<T> AbstractHostRingTensor<T>
 where
     T: Clone,
 {
     pub fn from_raw_plc<D: ndarray::Dimension, P: Into<HostPlacement>>(
         raw_tensor: Array<T, D>,
         plc: P,
-    ) -> AbstractRingTensor<T> {
+    ) -> AbstractHostRingTensor<T> {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
-        AbstractRingTensor(tensor, plc.into())
+        AbstractHostRingTensor(tensor, plc.into())
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> AbstractRingTensor<T>
+impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
@@ -1511,8 +1515,8 @@ where
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
     )]
-    pub fn fill(shape: &RawShape, el: T) -> AbstractRingTensor<T> {
-        AbstractRingTensor(
+    pub fn fill(shape: &RawShape, el: T) -> AbstractHostRingTensor<T> {
+        AbstractHostRingTensor(
             ArrayD::from_elem(shape.0.as_ref(), Wrapping(el)),
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1521,21 +1525,21 @@ where
     }
 }
 
-impl<T> AbstractRingTensor<T> {
+impl<T> AbstractHostRingTensor<T> {
     pub(crate) fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<ArrayD<T>> for AbstractRingTensor<T>
+impl<T> From<ArrayD<T>> for AbstractHostRingTensor<T>
 where
     T: Clone,
 {
-    fn from(a: ArrayD<T>) -> AbstractRingTensor<T> {
+    fn from(a: ArrayD<T>) -> AbstractHostRingTensor<T> {
         let wrapped = a.mapv(Wrapping);
-        AbstractRingTensor(
+        AbstractHostRingTensor(
             wrapped,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1544,12 +1548,12 @@ where
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl From<ArrayD<i64>> for AbstractRingTensor<u64> {
-    fn from(a: ArrayD<i64>) -> AbstractRingTensor<u64> {
+impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
+    fn from(a: ArrayD<i64>) -> AbstractHostRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
-        AbstractRingTensor(
+        AbstractHostRingTensor(
             ring_rep,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1558,12 +1562,12 @@ impl From<ArrayD<i64>> for AbstractRingTensor<u64> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl From<ArrayD<i128>> for AbstractRingTensor<u128> {
-    fn from(a: ArrayD<i128>) -> AbstractRingTensor<u128> {
+impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
+    fn from(a: ArrayD<i128>) -> AbstractHostRingTensor<u128> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
-        AbstractRingTensor(
+        AbstractHostRingTensor(
             ring_rep,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1572,15 +1576,15 @@ impl From<ArrayD<i128>> for AbstractRingTensor<u128> {
     }
 }
 
-impl<T> AbstractRingTensor<T> {
+impl<T> AbstractHostRingTensor<T> {
     #[cfg_attr(
         feature = "symbolic",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
     )]
-    pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractRingTensor<T> {
-        AbstractRingTensor(
+    pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractHostRingTensor<T> {
+        AbstractHostRingTensor(
             a,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1589,15 +1593,15 @@ impl<T> AbstractRingTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<HostBitTensor> for AbstractRingTensor<T>
+impl<T> From<HostBitTensor> for AbstractHostRingTensor<T>
 where
     T: From<u8>,
 {
-    fn from(b: HostBitTensor) -> AbstractRingTensor<T> {
+    fn from(b: HostBitTensor) -> AbstractHostRingTensor<T> {
         let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
-        AbstractRingTensor(
+        AbstractHostRingTensor(
             ring_rep,
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1606,26 +1610,26 @@ where
     }
 }
 
-impl From<&AbstractRingTensor<u64>> for ArrayD<i64> {
-    fn from(r: &AbstractRingTensor<u64>) -> ArrayD<i64> {
+impl From<&AbstractHostRingTensor<u64>> for ArrayD<i64> {
+    fn from(r: &AbstractHostRingTensor<u64>) -> ArrayD<i64> {
         r.0.mapv(|element| element.0 as i64)
     }
 }
 
-impl From<&AbstractRingTensor<u128>> for ArrayD<i128> {
-    fn from(r: &AbstractRingTensor<u128>) -> ArrayD<i128> {
+impl From<&AbstractHostRingTensor<u128>> for ArrayD<i128> {
+    fn from(r: &AbstractHostRingTensor<u128>) -> ArrayD<i128> {
         r.0.mapv(|element| element.0 as i128)
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<Vec<T>> for AbstractRingTensor<T> {
-    fn from(v: Vec<T>) -> AbstractRingTensor<T> {
+impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
+    fn from(v: Vec<T>) -> AbstractHostRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         use vec_utils::VecExt;
         let v_wrapped: Vec<_> = v.map(Wrapping);
-        AbstractRingTensor(
+        AbstractHostRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1634,16 +1638,16 @@ impl<T> From<Vec<T>> for AbstractRingTensor<T> {
     }
 }
 
-// This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<&[T]> for AbstractRingTensor<T>
+impl<T> From<&[T]> for AbstractHostRingTensor<T>
 where
     T: Copy,
 {
-    fn from(v: &[T]) -> AbstractRingTensor<T> {
+    fn from(v: &[T]) -> AbstractHostRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| Wrapping(*vi)).collect();
-        AbstractRingTensor(
+        AbstractHostRingTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
                 owner: Role::from("TODO"), // Fake owner for the old kernels
@@ -1652,77 +1656,77 @@ where
     }
 }
 
-impl<T> Add<AbstractRingTensor<T>> for AbstractRingTensor<T>
+impl<T> Add<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Add<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractRingTensor<T>;
-    fn add(self, other: AbstractRingTensor<T>) -> Self::Output {
-        AbstractRingTensor(self.0 + other.0, self.1)
+    type Output = AbstractHostRingTensor<T>;
+    fn add(self, other: AbstractHostRingTensor<T>) -> Self::Output {
+        AbstractHostRingTensor(self.0 + other.0, self.1)
     }
 }
 
-impl<T> Mul<AbstractRingTensor<T>> for AbstractRingTensor<T>
+impl<T> Mul<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Mul<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractRingTensor<T>;
-    fn mul(self, other: AbstractRingTensor<T>) -> Self::Output {
-        AbstractRingTensor(self.0 * other.0, self.1)
+    type Output = AbstractHostRingTensor<T>;
+    fn mul(self, other: AbstractHostRingTensor<T>) -> Self::Output {
+        AbstractHostRingTensor(self.0 * other.0, self.1)
     }
 }
 
-impl<T> Sub<AbstractRingTensor<T>> for AbstractRingTensor<T>
+impl<T> Sub<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Sub<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractRingTensor<T>;
-    fn sub(self, other: AbstractRingTensor<T>) -> Self::Output {
-        AbstractRingTensor(self.0 - other.0, self.1)
+    type Output = AbstractHostRingTensor<T>;
+    fn sub(self, other: AbstractHostRingTensor<T>) -> Self::Output {
+        AbstractHostRingTensor(self.0 - other.0, self.1)
     }
 }
 
-impl<T> Shl<usize> for AbstractRingTensor<T>
+impl<T> Shl<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
 {
-    type Output = AbstractRingTensor<T>;
+    type Output = AbstractHostRingTensor<T>;
     fn shl(self, other: usize) -> Self::Output {
-        AbstractRingTensor(self.0 << other, self.1)
+        AbstractHostRingTensor(self.0 << other, self.1)
     }
 }
 
-impl<T> Shr<usize> for AbstractRingTensor<T>
+impl<T> Shr<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
 {
-    type Output = AbstractRingTensor<T>;
+    type Output = AbstractHostRingTensor<T>;
     fn shr(self, other: usize) -> Self::Output {
-        AbstractRingTensor(self.0 >> other, self.1)
+        AbstractHostRingTensor(self.0 >> other, self.1)
     }
 }
 
-impl<T> BitAnd<AbstractRingTensor<T>> for AbstractRingTensor<T>
+impl<T> BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
     Wrapping<T>: BitAnd<Wrapping<T>, Output = Wrapping<T>>,
 {
-    type Output = AbstractRingTensor<T>;
-    fn bitand(self, other: AbstractRingTensor<T>) -> Self::Output {
-        AbstractRingTensor(self.0 & other.0, self.1)
+    type Output = AbstractHostRingTensor<T>;
+    fn bitand(self, other: AbstractHostRingTensor<T>) -> Self::Output {
+        AbstractHostRingTensor(self.0 & other.0, self.1)
     }
 }
 
-impl<T> AbstractRingTensor<T>
+impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
 {
-    pub fn dot(self, rhs: AbstractRingTensor<T>) -> AbstractRingTensor<T> {
+    pub fn dot(self, rhs: AbstractHostRingTensor<T>) -> AbstractHostRingTensor<T> {
         match self.0.ndim() {
             1 => match rhs.0.ndim() {
                 1 => {
@@ -1731,16 +1735,16 @@ where
                     let res = Array::from_elem([], l.dot(&r))
                         .into_dimensionality::<IxDyn>()
                         .unwrap();
-                    AbstractRingTensor(res, self.1)
+                    AbstractHostRingTensor(res, self.1)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix1>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    AbstractRingTensor(res, self.1)
+                    AbstractHostRingTensor(res, self.1)
                 }
                 other => panic!(
-                    "Dot<AbstractRingTensor> cannot handle argument of rank {:?} ",
+                    "Dot<AbstractHostRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ),
             },
@@ -1749,39 +1753,39 @@ where
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix1>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    AbstractRingTensor(res, self.1)
+                    AbstractHostRingTensor(res, self.1)
                 }
                 2 => {
                     let l = self.0.into_dimensionality::<Ix2>().unwrap();
                     let r = rhs.0.into_dimensionality::<Ix2>().unwrap();
                     let res = l.dot(&r).into_dimensionality::<IxDyn>().unwrap();
-                    AbstractRingTensor(res, self.1)
+                    AbstractHostRingTensor(res, self.1)
                 }
                 other => panic!(
-                    "Dot<AbstractRingTensor> cannot handle argument of rank {:?} ",
+                    "Dot<AbstractHostRingTensor> cannot handle argument of rank {:?} ",
                     other
                 ),
             },
             other => panic!(
-                "Dot<AbstractRingTensor> not implemented for tensors of rank {:?}",
+                "Dot<AbstractHostRingTensor> not implemented for tensors of rank {:?}",
                 other
             ),
         }
     }
 }
 
-impl<T> AbstractRingTensor<T>
+impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone + Zero,
 {
-    pub fn sum(self, axis: Option<usize>) -> AbstractRingTensor<T> {
+    pub fn sum(self, axis: Option<usize>) -> AbstractHostRingTensor<T> {
         if let Some(i) = axis {
-            AbstractRingTensor(self.0.sum_axis(Axis(i)), self.1)
+            AbstractHostRingTensor(self.0.sum_axis(Axis(i)), self.1)
         } else {
             let out = Array::from_elem([], self.0.sum())
                 .into_dimensionality::<IxDyn>()
                 .unwrap();
-            AbstractRingTensor(out, self.1)
+            AbstractHostRingTensor(out, self.1)
         }
     }
 }
@@ -2101,11 +2105,11 @@ mod tests {
         let array_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = Ring64Tensor::from(array_backing);
-        let y = Ring64Tensor::from(vec![1, 1]);
+        let x = HostRing64Tensor::from(array_backing);
+        let y = HostRing64Tensor::from(vec![1, 1]);
         let z = x.dot(y);
 
-        let result = Ring64Tensor::from(vec![3, 7]);
+        let result = HostRing64Tensor::from(vec![3, 7]);
         assert_eq!(result, z)
     }
 
@@ -2117,14 +2121,14 @@ mod tests {
         let y_backing: ArrayD<i64> = array![[1, 0], [0, 1]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = Ring64Tensor::from(x_backing);
-        let y = Ring64Tensor::from(y_backing);
+        let x = HostRing64Tensor::from(x_backing);
+        let y = HostRing64Tensor::from(y_backing);
         let z = x.dot(y);
 
         let r_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let result = Ring64Tensor::from(r_backing);
+        let result = HostRing64Tensor::from(r_backing);
         assert_eq!(result, z)
     }
 
@@ -2132,14 +2136,14 @@ mod tests {
     fn ring_vector_prod() {
         let x_backing = vec![1, 2];
         let y_backing = vec![1, 1];
-        let x = Ring64Tensor::from(x_backing);
-        let y = Ring64Tensor::from(y_backing);
+        let x = HostRing64Tensor::from(x_backing);
+        let y = HostRing64Tensor::from(y_backing);
         let z = x.dot(y);
 
         let r_backing = Array::from_elem([], Wrapping(3))
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let result = Ring64Tensor::new(r_backing);
+        let result = HostRing64Tensor::new(r_backing);
         assert_eq!(result, z)
     }
 
@@ -2147,10 +2151,10 @@ mod tests {
     fn ring_sample() {
         let shape = RawShape(vec![5]);
         let seed = RawSeed([0u8; 16]);
-        let r = Ring64Tensor::sample_uniform(&shape, &seed);
+        let r = HostRing64Tensor::sample_uniform(&shape, &seed);
         assert_eq!(
             r,
-            Ring64Tensor::from(vec![
+            HostRing64Tensor::from(vec![
                 4263935709876578662,
                 3326810793440857224,
                 17325099178452873543,
@@ -2159,10 +2163,10 @@ mod tests {
             ])
         );
 
-        let r128 = Ring128Tensor::sample_uniform(&shape, &seed);
+        let r128 = HostRing128Tensor::sample_uniform(&shape, &seed);
         assert_eq!(
             r128,
-            Ring128Tensor::from(vec![
+            HostRing128Tensor::from(vec![
                 78655730786844307471556614669614075016,
                 319591670596555766473793801091584867161,
                 177455464885365520564027128957528354027,
@@ -2171,17 +2175,17 @@ mod tests {
             ])
         );
 
-        let r_bits = Ring64Tensor::sample_bits(&shape, &seed);
-        assert_eq!(r_bits, Ring64Tensor::from(vec![0, 1, 1, 0, 0]));
+        let r_bits = HostRing64Tensor::sample_bits(&shape, &seed);
+        assert_eq!(r_bits, HostRing64Tensor::from(vec![0, 1, 1, 0, 0]));
 
-        let r128_bits = Ring128Tensor::sample_bits(&shape, &seed);
-        assert_eq!(r128_bits, Ring128Tensor::from(vec![0, 1, 1, 0, 0]));
+        let r128_bits = HostRing128Tensor::sample_bits(&shape, &seed);
+        assert_eq!(r128_bits, HostRing128Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 
     #[test]
     fn ring_fill() {
-        let r = Ring64Tensor::fill(&RawShape(vec![2]), 1);
-        assert_eq!(r, Ring64Tensor::from(vec![1, 1]))
+        let r = HostRing64Tensor::fill(&RawShape(vec![2]), 1);
+        assert_eq!(r, HostRing64Tensor::from(vec![1, 1]))
     }
 
     #[test]
@@ -2189,9 +2193,9 @@ mod tests {
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = Ring64Tensor::from(x_backing);
+        let x = HostRing64Tensor::from(x_backing);
         let out = x.sum(Some(0));
-        assert_eq!(out, Ring64Tensor::from(vec![4, 6]))
+        assert_eq!(out, HostRing64Tensor::from(vec![4, 6]))
     }
 
     #[test]
@@ -2199,12 +2203,12 @@ mod tests {
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = Ring64Tensor::from(x_backing);
+        let x = HostRing64Tensor::from(x_backing);
         let exp_v: u64 = 10;
         let exp_backing = Array::from_elem([], exp_v)
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let exp = Ring64Tensor::from(exp_backing);
+        let exp = HostRing64Tensor::from(exp_backing);
         let out = x.sum(None);
         assert_eq!(out, exp)
     }
@@ -2214,16 +2218,16 @@ mod tests {
         let shape = RawShape(vec![5]);
         let value = 7;
 
-        let r0 = Ring64Tensor::fill(&shape, value).bit_extract(0);
+        let r0 = HostRing64Tensor::fill(&shape, value).bit_extract(0);
         assert_eq!(HostBitTensor::fill(&shape, 1), r0,);
 
-        let r1 = Ring64Tensor::fill(&shape, value).bit_extract(1);
+        let r1 = HostRing64Tensor::fill(&shape, value).bit_extract(1);
         assert_eq!(HostBitTensor::fill(&shape, 1), r1,);
 
-        let r2 = Ring64Tensor::fill(&shape, value).bit_extract(2);
+        let r2 = HostRing64Tensor::fill(&shape, value).bit_extract(2);
         assert_eq!(HostBitTensor::fill(&shape, 1), r2,);
 
-        let r3 = Ring64Tensor::fill(&shape, value).bit_extract(3);
+        let r3 = HostRing64Tensor::fill(&shape, value).bit_extract(3);
         assert_eq!(HostBitTensor::fill(&shape, 0), r3,)
     }
 }

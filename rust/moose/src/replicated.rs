@@ -7,7 +7,7 @@ use crate::computation::{
     RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
-use crate::host::{HostBitTensor, HostShape, Ring128Tensor, Ring64Tensor, RingSize};
+use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
 use crate::kernels::{
     PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract, PlacementDeriveSeed,
     PlacementDot, PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMsb,
@@ -26,10 +26,10 @@ pub struct AbstractReplicatedTensor<R> {
 }
 
 /// Replicated tensor over Z_{2^64}.
-pub type Replicated64Tensor = AbstractReplicatedTensor<Ring64Tensor>;
+pub type Replicated64Tensor = AbstractReplicatedTensor<HostRing64Tensor>;
 
 /// Replicated tensor over Z_{2^128}.
-pub type Replicated128Tensor = AbstractReplicatedTensor<Ring128Tensor>;
+pub type Replicated128Tensor = AbstractReplicatedTensor<HostRing128Tensor>;
 
 /// Replicated tensor over Z_2.
 pub type ReplicatedBitTensor = AbstractReplicatedTensor<HostBitTensor>;
@@ -185,15 +185,15 @@ impl RepSetupOp {
     }
 }
 
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor) -> Replicated64Tensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor) -> Replicated128Tensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> Replicated64Tensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> Replicated128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
 
 hybrid_kernel! {
     RepShareOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor) -> Replicated64Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor) -> Replicated128Tensor => Self::kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> Replicated64Tensor => Self::kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> Replicated128Tensor => Self::kernel),
         (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::kernel),
     ]
 }
@@ -312,15 +312,15 @@ impl RepShareOp {
     }
 }
 
-modelled!(PlacementReveal::reveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
-modelled!(PlacementReveal::reveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (Replicated64Tensor) -> HostRing64Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (Replicated128Tensor) -> HostRing128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostBitTensor, RepRevealOp);
 
 hybrid_kernel! {
     RepRevealOp,
     [
-        (HostPlacement, (Replicated64Tensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (Replicated128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (Replicated64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (Replicated128Tensor) -> HostRing128Tensor => Self::kernel),
         (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => Self::kernel),
     ]
 }
@@ -363,10 +363,10 @@ impl RepRevealOp {
 
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepAddOp);
-modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor, RepAddOp);
+modelled!(PlacementAdd::add, ReplicatedPlacement, (Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor, RepAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepAddOp);
 
 hybrid_kernel! {
@@ -374,10 +374,10 @@ hybrid_kernel! {
     [
         (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
         (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
-        (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
-        (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
     ]
 }
@@ -531,10 +531,10 @@ impl RepAddOp {
 
 modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepSubOp);
 modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepSubOp);
-modelled!(PlacementSub::sub, ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepSubOp);
-modelled!(PlacementSub::sub, ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepSubOp);
-modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepSubOp);
-modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor, RepSubOp);
+modelled!(PlacementSub::sub, ReplicatedPlacement, (Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor, RepSubOp);
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepSubOp);
 
 hybrid_kernel! {
@@ -542,10 +542,10 @@ hybrid_kernel! {
     [
         (ReplicatedPlacement, (Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
         (ReplicatedPlacement, (Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
-        (ReplicatedPlacement, (Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
-        (ReplicatedPlacement, (Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
     ]
 }
@@ -699,10 +699,10 @@ impl RepSubOp {
 
 modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepMulOp);
-modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor, RepMulOp);
+modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor, RepMulOp);
 modelled!(PlacementMulSetup::mul_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor, RepMulOp);
 
 hybrid_kernel! {
@@ -711,10 +711,10 @@ hybrid_kernel! {
         (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
     ]
 }
 
@@ -834,20 +834,20 @@ impl RepMulOp {
 
 modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
 modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor, RepDotOp);
-modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor, RepDotOp);
+modelled!(PlacementDotSetup::dot_setup, ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor, RepDotOp);
 
 hybrid_kernel! {
     RepDotOp,
     [
         (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::rep_rep_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::rep_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, Ring64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, Ring128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor, Replicated64Tensor) -> Replicated64Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor, Replicated128Tensor) -> Replicated128Tensor => Self::ring_rep_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated64Tensor, HostRing64Tensor) -> Replicated64Tensor => Self::rep_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, Replicated128Tensor, HostRing128Tensor) -> Replicated128Tensor => Self::rep_ring_kernel),
     ]
 }
 
@@ -1128,15 +1128,15 @@ pub trait CanonicalType {
     type Type;
 }
 
-use crate::host::AbstractRingTensor;
+use crate::host::AbstractHostRingTensor;
 use crate::symbolic::Symbolic;
 
-impl<T> CanonicalType for AbstractRingTensor<T> {
-    type Type = AbstractRingTensor<T>;
+impl<T> CanonicalType for AbstractHostRingTensor<T> {
+    type Type = AbstractHostRingTensor<T>;
 }
 
-impl<T> CanonicalType for Symbolic<AbstractRingTensor<T>> {
-    type Type = AbstractRingTensor<T>;
+impl<T> CanonicalType for Symbolic<AbstractHostRingTensor<T>> {
+    type Type = AbstractHostRingTensor<T>;
 }
 
 impl CanonicalType for HostBitTensor {
@@ -1821,7 +1821,7 @@ where
 mod tests {
     use super::*;
     use crate::fixedpoint::Convert;
-    use crate::host::AbstractRingTensor;
+    use crate::host::AbstractHostRingTensor;
     use crate::kernels::SyncSession;
     use ndarray::array;
     use proptest::prelude::*;
@@ -1844,13 +1844,13 @@ mod tests {
 
         let x1 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "alice".into(),
                     },
                 ),
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "bob".into(),
@@ -1868,13 +1868,13 @@ mod tests {
 
         let x2 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "bob".into(),
                     },
                 ),
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "alice".into(),
@@ -1890,13 +1890,13 @@ mod tests {
 
         let x3 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "david".into(),
                     },
                 ),
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "eric".into(),
@@ -1912,13 +1912,13 @@ mod tests {
 
         let x4 = Additive64Tensor {
             shares: [
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![1, 2, 3],
                     HostPlacement {
                         owner: "alice".into(),
                     },
                 ),
-                AbstractRingTensor::from_raw_plc(
+                AbstractHostRingTensor::from_raw_plc(
                     array![4, 5, 6],
                     HostPlacement {
                         owner: "eric".into(),
@@ -1952,13 +1952,13 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let x = AbstractRingTensor::<u64>::encode(&x, scaling_factor);
+        let x = AbstractHostRingTensor::<u64>::encode(&x, scaling_factor);
         let x_shared = rep.share(&sess, &setup, &x);
 
         let mean = rep.mean(&sess, None, 24, &x_shared);
         let mean = rep.trunc_pr(&sess, 24, &mean);
         let opened_result = alice.reveal(&sess, &mean);
-        let decoded_result = AbstractRingTensor::<u64>::decode(&opened_result, scaling_factor);
+        let decoded_result = AbstractHostRingTensor::<u64>::decode(&opened_result, scaling_factor);
 
         assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }
@@ -1975,7 +1975,7 @@ mod tests {
             owners: ["alice".into(), "bob".into(), "carole".into()],
         };
 
-        let x = AbstractRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
+        let x = AbstractHostRingTensor::from_raw_plc(array![1u64, 2, 3], alice.clone());
 
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
@@ -1998,8 +1998,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractRingTensor::from_raw_plc(ys, alice.clone());
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
                 let setup = rep.gen_setup(&sess);
@@ -2011,7 +2011,7 @@ mod tests {
                 let opened_sum = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_sum,
-                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -2056,8 +2056,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
-                let y = AbstractRingTensor::from_raw_plc(ys, alice.clone());
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+                let y = AbstractHostRingTensor::from_raw_plc(ys, alice.clone());
 
                 let sess = SyncSession::default();
                 let setup = rep.gen_setup(&sess);
@@ -2069,7 +2069,7 @@ mod tests {
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
-                    AbstractRingTensor::from_raw_plc(zs, alice.clone())
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -2168,12 +2168,12 @@ mod tests {
                 let sess = SyncSession::default();
                 let setup = rep.gen_setup(&sess);
 
-                let alice_x1 = AbstractRingTensor::from_raw_plc(xs.clone(), alice.clone());
+                let alice_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), alice.clone());
                 let alice_rep = rep.share(&sess, &setup, &alice_x1);
                 let alice_tr = rep.trunc_pr(&sess, amount, &alice_rep);
                 let alice_open = alice.reveal(&sess, &alice_tr);
 
-                let alice_y = AbstractRingTensor::from_raw_plc(ys.clone(), alice.clone());
+                let alice_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), alice.clone());
                 assert_eq!(alice_open.1, alice_y.1); // make sure placements are equal
 
                 // truncation can be off by 1
@@ -2190,12 +2190,12 @@ mod tests {
                     );
                 }
 
-                let bob_x1 = AbstractRingTensor::from_raw_plc(xs.clone(), bob.clone());
+                let bob_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), bob.clone());
                 let bob_rep = rep.share(&sess, &setup, &bob_x1);
                 let bob_tr = rep.trunc_pr(&sess, amount, &bob_rep);
                 let bob_open = bob.reveal(&sess, &bob_tr);
 
-                let bob_y = AbstractRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                let bob_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), bob.clone());
                 assert_eq!(bob_open.1, bob);
 
                 for (i, value) in bob_y.0.iter().enumerate() {
@@ -2211,12 +2211,12 @@ mod tests {
                     );
                 }
 
-                let carole_x1 = AbstractRingTensor::from_raw_plc(xs.clone(), carole.clone());
+                let carole_x1 = AbstractHostRingTensor::from_raw_plc(xs.clone(), carole.clone());
                 let carole_rep = rep.share(&sess, &setup, &carole_x1);
                 let carole_tr = rep.trunc_pr(&sess, amount, &carole_rep);
                 let carole_open = carole.reveal(&sess, &carole_tr);
 
-                let carole_y = AbstractRingTensor::from_raw_plc(ys.clone(), bob.clone());
+                let carole_y = AbstractHostRingTensor::from_raw_plc(ys.clone(), bob.clone());
                 assert_eq!(carole_open.1, carole);
 
                 for (i, value) in carole_y.0.iter().enumerate() {
@@ -2321,7 +2321,7 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = AbstractRingTensor::from_raw_plc(xs, alice.clone());
+                let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
 
                 let sess = SyncSession::default();
                 let setup = rep.gen_setup(&sess);

@@ -3,8 +3,8 @@ use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
     HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor,
-    HostUint64Tensor, HostUint8Tensor, RawShape, Ring128Tensor, Ring64Tensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
 };
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
@@ -110,8 +110,8 @@ constants![
     RawNonce Nonce,
     String,
     HostBitTensor,
-    Ring64Tensor,
-    Ring128Tensor,
+    HostRing64Tensor,
+    HostRing128Tensor,
     HostFloat32Tensor,
     HostFloat64Tensor,
     HostInt8Tensor,
@@ -298,14 +298,14 @@ impl From<HostShape> for Symbolic<HostShape> {
     }
 }
 
-impl From<Ring64Tensor> for Symbolic<Ring64Tensor> {
-    fn from(x: Ring64Tensor) -> Self {
+impl From<HostRing64Tensor> for Symbolic<HostRing64Tensor> {
+    fn from(x: HostRing64Tensor) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl From<Ring128Tensor> for Symbolic<Ring128Tensor> {
-    fn from(x: Ring128Tensor) -> Self {
+impl From<HostRing128Tensor> for Symbolic<HostRing128Tensor> {
+    fn from(x: HostRing128Tensor) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -462,8 +462,8 @@ values![
     (Nonce, Symbolic<Nonce>),
     (String, Symbolic<String>),
     (HostBitTensor, Symbolic<HostBitTensor>),
-    (Ring64Tensor, Symbolic<Ring64Tensor>),
-    (Ring128Tensor, Symbolic<Ring128Tensor>),
+    (HostRing64Tensor, Symbolic<HostRing64Tensor>),
+    (HostRing128Tensor, Symbolic<HostRing128Tensor>),
     (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
     (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
     (HostInt8Tensor, Symbolic<HostInt8Tensor>),
@@ -478,7 +478,7 @@ values![
         Fixed64Tensor,
         Symbolic<
             FixedTensor<
-                <Ring64Tensor as KnownType<SymbolicSession>>::Type,
+                <HostRing64Tensor as KnownType<SymbolicSession>>::Type,
                 <Replicated64Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
@@ -487,18 +487,18 @@ values![
         Fixed128Tensor,
         Symbolic<
             FixedTensor<
-                <Ring128Tensor as KnownType<SymbolicSession>>::Type,
+                <HostRing128Tensor as KnownType<SymbolicSession>>::Type,
                 <Replicated128Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
     ),
     (
         Replicated64Tensor,
-        Symbolic<AbstractReplicatedTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractReplicatedTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
         Replicated128Tensor,
-        Symbolic<AbstractReplicatedTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractReplicatedTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
         ReplicatedBitTensor,
@@ -514,11 +514,11 @@ values![
     ),
     (
         Additive64Tensor,
-        Symbolic<AbstractAdditiveTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
         Additive128Tensor,
-        Symbolic<AbstractAdditiveTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
     ),
 ];
 

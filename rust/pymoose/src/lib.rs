@@ -8,7 +8,7 @@ use moose::fixedpoint::Convert;
 use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
-use moose::host::Ring64Tensor;
+use moose::host::HostRing64Tensor;
 use moose::host::{HostFloat64Tensor, RawShape, HostTensor};
 use moose::utils;
 use ndarray::IxDyn;
@@ -23,12 +23,12 @@ use std::convert::TryInto;
 use std::num::Wrapping;
 pub mod python_computation;
 
-fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
+fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> HostRing64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
-    Ring64Tensor::new(arr_wrap)
+    HostRing64Tensor::new(arr_wrap)
 }
 
-fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
+fn ring64_to_array(r: HostRing64Tensor) -> ArrayD<u64> {
     let inner_arr = r.0;
     let shape = inner_arr.shape();
     let unwrapped = inner_arr.mapv(|x| x.0);
@@ -39,7 +39,7 @@ fn binary_pyfn<'py>(
     py: Python<'py>,
     x: PyReadonlyArrayDyn<u64>,
     y: PyReadonlyArrayDyn<u64>,
-    binary_op: impl Fn(Ring64Tensor, Ring64Tensor) -> Ring64Tensor,
+    binary_op: impl Fn(HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor,
 ) -> &'py PyArrayDyn<u64> {
     let x_ring = dynarray_to_ring64(&x);
     let y_ring = dynarray_to_ring64(&y);
@@ -129,7 +129,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "ring_fill")]
     fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
         let shape = RawShape(shape);
-        let res = Ring64Tensor::fill(&shape, el);
+        let res = HostRing64Tensor::fill(&shape, el);
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
@@ -142,13 +142,13 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         max_value: Option<u64>,
     ) -> &'py PyArrayDyn<u64> {
         let res = match max_value {
-            None => Ring64Tensor::sample_uniform(
+            None => HostRing64Tensor::sample_uniform(
                 &RawShape(shape),
                 &RawSeed(seed.as_bytes().try_into().unwrap()),
             ),
             Some(max_value) => {
                 if max_value == 1 {
-                    Ring64Tensor::sample_bits(
+                    HostRing64Tensor::sample_bits(
                         &RawShape(shape),
                         &RawSeed(seed.as_bytes().try_into().unwrap()),
                     )
@@ -244,7 +244,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         bit_idx: usize,
     ) -> &'py PyArrayDyn<u64> {
         let b = HostBitTensor::from(x.to_owned_array());
-        let res = Ring64Tensor::from(b) << bit_idx;
+        let res = HostRing64Tensor::from(b) << bit_idx;
         ring64_to_array(res).to_pyarray(py)
     }
 
@@ -261,7 +261,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<u64> {
         let x = HostFloat64Tensor::from(x.to_owned_array());
-        let y = Ring64Tensor::encode(&x, scaling_factor);
+        let y = HostRing64Tensor::encode(&x, scaling_factor);
         ring64_to_array(y).to_pyarray(py)
     }
 
@@ -272,7 +272,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<f64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = Ring64Tensor::decode(&x_ring, scaling_factor);
+        let y = HostRing64Tensor::decode(&x_ring, scaling_factor);
         y.0.to_pyarray(py)
     }
 
@@ -284,7 +284,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         precision: u32,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = Ring64Tensor::ring_mean(x_ring, axis, 2u64.pow(precision));
+        let y = HostRing64Tensor::ring_mean(x_ring, axis, 2u64.pow(precision));
         ring64_to_array(y).to_pyarray(py)
     }
 

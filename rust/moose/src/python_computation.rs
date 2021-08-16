@@ -802,7 +802,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
-        PyValueType::ring_RingTensorType => Ok(Ty::Ring128Tensor),
+        PyValueType::ring_RingTensorType => Ok(Ty::HostRing128Tensor),
         PyValueType::bit_BitTensorType => Ok(Ty::HostBitTensor),
         PyValueType::rep_ReplicatedSetupType => Ok(Ty::ReplicatedSetup),
         PyValueType::rep_ReplicatedRingTensorType => Ok(Ty::Replicated128Tensor),
@@ -906,7 +906,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: ShapeOp {
-                            sig: Signature::unary(Ty::Ring128Tensor, Ty::HostShape),
+                            sig: Signature::unary(Ty::HostRing128Tensor, Ty::HostShape),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -949,8 +949,8 @@ impl TryFrom<PyComputation> for Computation {
                     ring_FillTensorOperation(op) => {
                         let ty = map_type(&op.output_type)?;
                         let value = match ty {
-                            Ty::Ring64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
-                            Ty::Ring128Tensor => Constant::Ring128(u128::from_str(&op.value)?),
+                            Ty::HostRing64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
+                            Ty::HostRing128Tensor => Constant::Ring128(u128::from_str(&op.value)?),
                             _ => {
                                 return Err(anyhow::anyhow!(
                                     "unsupported return type for ring fill: {:?}",
@@ -1582,7 +1582,7 @@ impl TryFrom<PyComputation> for Computation {
                         kind: RepRevealOp {
                             sig: Signature::unary(
                                 Ty::Replicated128Tensor, // TODO: deduct from the output type
-                                Ty::Ring128Tensor,
+                                Ty::HostRing128Tensor,
                                 // map_type(&op.output_type)?,
                             ),
                         }
@@ -1596,7 +1596,7 @@ impl TryFrom<PyComputation> for Computation {
                         kind: RepShareOp {
                             sig: Signature::binary(
                                 Ty::ReplicatedSetup,
-                                Ty::Ring128Tensor, // TODO: should actually deduct from the output type
+                                Ty::HostRing128Tensor, // TODO: should actually deduct from the output type
                                 map_type(&op.output_type)?,
                             ),
                         }

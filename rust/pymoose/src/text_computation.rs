@@ -721,7 +721,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Nonce" => Ok((i, Ty::Nonce)),
         "String" => Ok((i, Ty::String)),
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
-        "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
+        "HostRing64Tensor" => Ok((i, Ty::HostRing64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::HostRing128Tensor)),
         "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)), // TODO change textual
         "Float64Tensor" => Ok((i, Ty::HostFloat64Tensor)), // TODO
@@ -820,7 +820,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             constant_literal_helper("Float64Tensor", vector(double), |v| {
                 Constant::HostFloat64Tensor(v.into())
             }),
-            constant_literal_helper("Ring64Tensor", vector(parse_int), |v| {
+            constant_literal_helper("HostRing64Tensor", vector(parse_int), |v| {
                 Constant::HostRing64Tensor(v.into())
             }),
             constant_literal_helper("Ring128Tensor", vector(parse_int), |v| {
@@ -860,7 +860,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper(
-                "Ring64Tensor",
+                "HostRing64Tensor",
                 vector2(parse_int),
                 |v: ndarray::ArrayD<u64>| Constant::HostRing64Tensor(v.into()),
             ),
@@ -1478,7 +1478,7 @@ impl ToTextual for Ty {
             Ty::Float64 => "Float64",
             Ty::Ring64 => "Ring64",
             Ty::Ring128 => "Ring128",
-            Ty::HostRing64Tensor => "Ring64Tensor",
+            Ty::HostRing64Tensor => "HostRing64Tensor",
             Ty::HostRing128Tensor => "Ring128Tensor",
             Ty::Bit => "Bit",
             Ty::HostBitTensor => "BitTensor",
@@ -1524,7 +1524,7 @@ impl ToTextual for Value {
             Value::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
             Value::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
             Value::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
-            Value::HostRing64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
+            Value::HostRing64Tensor(x) => format!("HostRing64Tensor({})", x.0.to_textual()),
             Value::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Value::Float32(x) => format!("Float32({})", x),
             Value::Float64(x) => format!("Float64({})", x),
@@ -1553,7 +1553,7 @@ impl ToTextual for Constant {
             Constant::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
             Constant::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
             Constant::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
-            Constant::HostRing64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
+            Constant::HostRing64Tensor(x) => format!("HostRing64Tensor({})", x.0.to_textual()),
             Constant::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Constant::Float32(x) => format!("Float32({})", x),
             Constant::Float64(x) => format!("Float64({})", x),
@@ -1688,7 +1688,7 @@ mod tests {
         let (_, parsed_str) = constant_literal::<(&str, ErrorKind)>("\"1. 2\\\"3\"")?;
         assert_eq!(parsed_str, Constant::String("1. 2\"3".into()));
         let (_, parsed_ring64_tensor) =
-            constant_literal::<(&str, ErrorKind)>("Ring64Tensor([1,2,3])")?;
+            constant_literal::<(&str, ErrorKind)>("HostRing64Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring64_tensor,
             Constant::HostRing64Tensor(vec![1, 2, 3].into())
@@ -1735,7 +1735,7 @@ mod tests {
 
         assert_eq!(parsed_f32, Constant::HostFloat32Tensor(x));
 
-        let parsed_ring64: Constant = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
+        let parsed_ring64: Constant = "HostRing64Tensor([[1, 2], [3, 4]])".try_into()?;
 
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
@@ -1913,7 +1913,7 @@ mod tests {
     #[test]
     fn test_output() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = Output: (Ring64Tensor) -> Ring64Tensor (x10) @Host(alice)",
+            "z = Output: (HostRing64Tensor) -> HostRing64Tensor (x10) @Host(alice)",
         )?;
         assert_eq!(op.name, "z");
         Ok(())
@@ -1922,7 +1922,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSample{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+            "x10 = RingSample{max_value = 1}: (Shape, Seed) -> HostRing64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
