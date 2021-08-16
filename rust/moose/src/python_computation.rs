@@ -805,7 +805,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::ring_RingTensorType => Ok(Ty::HostRing128Tensor),
         PyValueType::bit_BitTensorType => Ok(Ty::HostBitTensor),
         PyValueType::rep_ReplicatedSetupType => Ok(Ty::ReplicatedSetup),
-        PyValueType::rep_ReplicatedRingTensorType => Ok(Ty::Replicated128Tensor),
+        PyValueType::rep_ReplicatedRingTensorType => Ok(Ty::ReplicatedRing128Tensor),
         PyValueType::fixed_EncodedTensorType => Ok(Ty::Fixed128Tensor),
     }
 }
@@ -1581,7 +1581,7 @@ impl TryFrom<PyComputation> for Computation {
                     rep_RevealOperation(op) => Ok(Operation {
                         kind: RepRevealOp {
                             sig: Signature::unary(
-                                Ty::Replicated128Tensor, // TODO: deduct from the output type
+                                Ty::ReplicatedRing128Tensor, // TODO: deduct from the output type
                                 Ty::HostRing128Tensor,
                                 // map_type(&op.output_type)?,
                             ),

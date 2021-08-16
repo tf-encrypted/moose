@@ -1,4 +1,4 @@
-use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
+use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
@@ -10,7 +10,7 @@ use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
-    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup, ReplicatedShape,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedBitTensor, ReplicatedSetup, ReplicatedShape,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
@@ -479,7 +479,7 @@ values![
         Symbolic<
             FixedTensor<
                 <HostRing64Tensor as KnownType<SymbolicSession>>::Type,
-                <Replicated64Tensor as KnownType<SymbolicSession>>::Type,
+                <ReplicatedRing64Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
     ),
@@ -488,16 +488,16 @@ values![
         Symbolic<
             FixedTensor<
                 <HostRing128Tensor as KnownType<SymbolicSession>>::Type,
-                <Replicated128Tensor as KnownType<SymbolicSession>>::Type,
+                <ReplicatedRing128Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
     ),
     (
-        Replicated64Tensor,
+        ReplicatedRing64Tensor,
         Symbolic<AbstractReplicatedTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
-        Replicated128Tensor,
+        ReplicatedRing128Tensor,
         Symbolic<AbstractReplicatedTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
@@ -513,11 +513,11 @@ values![
         Symbolic<AbstractReplicatedShape<<HostShape as KnownType<SymbolicSession>>::Type>>
     ),
     (
-        Additive64Tensor,
+        AdditiveRing64Tensor,
         Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
-        Additive128Tensor,
+        AdditiveRing128Tensor,
         Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
     ),
 ];

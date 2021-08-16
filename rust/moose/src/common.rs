@@ -4,7 +4,7 @@ use crate::host::{
 };
 use crate::kernels::PlacementShape;
 use crate::replicated::{
-    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedShape,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedBitTensor, ReplicatedShape,
 };
 
 modelled!(PlacementShape::shape, HostPlacement, (HostRing64Tensor) -> HostShape, ShapeOp);
@@ -12,8 +12,8 @@ modelled!(PlacementShape::shape, HostPlacement, (HostRing128Tensor) -> HostShape
 modelled!(PlacementShape::shape, HostPlacement, (HostBitTensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, HostPlacement, (HostFloat64Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape, ShapeOp);
-modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape, ShapeOp);
+modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape, ShapeOp);
+modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape, ShapeOp);
 
 kernel! {
     ShapeOp,
@@ -23,7 +23,7 @@ kernel! {
         (HostPlacement, (HostBitTensor) -> HostShape => Self::bit_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostShape => Self::host_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_kernel),
-        (ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape => Self::rep_kernel),
-        (ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape => Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape => Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => Self::rep_kernel),
     ]
 }

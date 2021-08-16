@@ -735,12 +735,12 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Uint64Tensor" => Ok((i, Ty::HostUint64Tensor)),
         "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
         "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
-        "Replicated64Tensor" => Ok((i, Ty::Replicated64Tensor)),
-        "Replicated128Tensor" => Ok((i, Ty::Replicated128Tensor)),
+        "Replicated64Tensor" => Ok((i, Ty::ReplicatedRing64Tensor)),
+        "Replicated128Tensor" => Ok((i, Ty::ReplicatedRing128Tensor)),
         "ReplicatedBitTensor" => Ok((i, Ty::ReplicatedBitTensor)),
         "ReplicatedSetup" => Ok((i, Ty::ReplicatedSetup)),
-        "Additive64Tensor" => Ok((i, Ty::Additive64Tensor)),
-        "Additive128Tensor" => Ok((i, Ty::Additive128Tensor)),
+        "Additive64Tensor" => Ok((i, Ty::AdditiveRing64Tensor)),
+        "Additive128Tensor" => Ok((i, Ty::AdditiveRing128Tensor)),
         "Unit" => Ok((i, Ty::Unit)),
         "Float32" => Ok((i, Ty::Float32)),
         "Float64" => Ok((i, Ty::Float64)),
@@ -1499,13 +1499,13 @@ impl ToTextual for Ty {
             Ty::Unknown => "Unknown",
             Ty::Fixed64Tensor => "Fixed64Tensor",
             Ty::Fixed128Tensor => "Fixed128Tensor",
-            Ty::Replicated64Tensor => "Replicated64Tensor",
-            Ty::Replicated128Tensor => "Replicated128Tensor",
+            Ty::ReplicatedRing64Tensor => "Replicated64Tensor",
+            Ty::ReplicatedRing128Tensor => "Replicated128Tensor",
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor",
             Ty::ReplicatedSetup => "ReplicatedSetup",
             Ty::ReplicatedShape => "ReplicatedShape",
-            Ty::Additive64Tensor => "Additive64Tensor",
-            Ty::Additive128Tensor => "Additive128Tensor",
+            Ty::AdditiveRing64Tensor => "Additive64Tensor",
+            Ty::AdditiveRing128Tensor => "Additive128Tensor",
         }
         .to_string()
     }
@@ -1993,7 +1993,7 @@ mod tests {
             "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = RingFill {value = Ring64(42)}: (Shape) -> HostRing64Tensor (s) @Host(alice)",
+            "z = RingFill {value = Ring64(42)}: (Shape) -> Ring64Tensor (s) @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingShl {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",

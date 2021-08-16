@@ -17,7 +17,7 @@ use crate::kernels::{
     PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
     PlacementSum, PlacementTruncPr, RuntimeSession, Session,
 };
-use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
+use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor};
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
@@ -26,10 +26,10 @@ use std::num::Wrapping;
 use std::ops::Mul;
 
 /// Fixed-point tensor backed by Z_{2^64} arithmetic
-pub type Fixed64Tensor = FixedTensor<HostRing64Tensor, Replicated64Tensor>;
+pub type Fixed64Tensor = FixedTensor<HostRing64Tensor, ReplicatedRing64Tensor>;
 
 /// Fixed-point tensor backed by Z_{2^128} arithmetic
-pub type Fixed128Tensor = FixedTensor<HostRing128Tensor, Replicated128Tensor>;
+pub type Fixed128Tensor = FixedTensor<HostRing128Tensor, ReplicatedRing128Tensor>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<RingTensorT, ReplicatedTensorT> {
