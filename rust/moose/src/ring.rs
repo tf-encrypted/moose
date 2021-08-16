@@ -1,6 +1,6 @@
 //! Ring arithmetic on host placements
 
-use crate::bit::BitTensor;
+use crate::bit::HostBitTensor;
 use crate::computation::{
     Constant, HostPlacement, Placed, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp,
     RingSampleOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
@@ -519,18 +519,18 @@ impl Ring128Tensor {
 }
 
 impl Ring64Tensor {
-    pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
+    pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
-        BitTensor::from(lsb)
+        HostBitTensor::from(lsb)
     }
 }
 
 impl Ring128Tensor {
-    pub fn bit_extract(&self, bit_idx: usize) -> BitTensor {
+    pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
         let lsb = temp.mapv(|ai| (ai.0 & 1) as u8);
-        BitTensor::from(lsb)
+        HostBitTensor::from(lsb)
     }
 }
 
@@ -639,11 +639,11 @@ impl<T> AbstractRingTensor<T> {
 
 // This implementation is only used by the old kernels. Construct AbstractRingTensor(tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl<T> From<BitTensor> for AbstractRingTensor<T>
+impl<T> From<HostBitTensor> for AbstractRingTensor<T>
 where
     T: From<u8>,
 {
-    fn from(b: BitTensor) -> AbstractRingTensor<T> {
+    fn from(b: HostBitTensor) -> AbstractRingTensor<T> {
         let ring_rep = b.0.mapv(|ai| Wrapping(ai.into()));
         AbstractRingTensor(
             ring_rep,
@@ -957,15 +957,15 @@ mod tests {
         let value = 7;
 
         let r0 = Ring64Tensor::fill(&shape, value).bit_extract(0);
-        assert_eq!(BitTensor::fill(&shape, 1), r0,);
+        assert_eq!(HostBitTensor::fill(&shape, 1), r0,);
 
         let r1 = Ring64Tensor::fill(&shape, value).bit_extract(1);
-        assert_eq!(BitTensor::fill(&shape, 1), r1,);
+        assert_eq!(HostBitTensor::fill(&shape, 1), r1,);
 
         let r2 = Ring64Tensor::fill(&shape, value).bit_extract(2);
-        assert_eq!(BitTensor::fill(&shape, 1), r2,);
+        assert_eq!(HostBitTensor::fill(&shape, 1), r2,);
 
         let r3 = Ring64Tensor::fill(&shape, value).bit_extract(3);
-        assert_eq!(BitTensor::fill(&shape, 0), r3,)
+        assert_eq!(HostBitTensor::fill(&shape, 0), r3,)
     }
 }

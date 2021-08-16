@@ -804,7 +804,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
         PyValueType::ring_RingTensorType => Ok(Ty::Ring128Tensor),
-        PyValueType::bit_BitTensorType => Ok(Ty::BitTensor),
+        PyValueType::bit_BitTensorType => Ok(Ty::HostBitTensor),
         PyValueType::rep_ReplicatedSetupType => Ok(Ty::ReplicatedSetup),
         PyValueType::rep_ReplicatedRingTensorType => Ok(Ty::Replicated128Tensor),
         PyValueType::fixed_EncodedTensorType => Ok(Ty::Fixed128Tensor),
@@ -997,7 +997,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitExtractOperation(op) => Ok(Operation {
                         kind: BitExtractOp {
-                            sig: Signature::unary(map_type(&op.ring_type)?, Ty::BitTensor),
+                            sig: Signature::unary(map_type(&op.ring_type)?, Ty::HostBitTensor),
                             bit_idx: op.bit_idx as usize,
                         }
                         .into(),
@@ -1008,7 +1008,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitSampleOperation(op) => Ok(Operation {
                         kind: BitSampleOp {
-                            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::BitTensor),
+                            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostBitTensor),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1018,7 +1018,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitFillTensorOperation(op) => Ok(Operation {
                         kind: BitFillOp {
-                            sig: Signature::unary(Ty::HostShape, Ty::BitTensor),
+                            sig: Signature::unary(Ty::HostShape, Ty::HostBitTensor),
                             value: Constant::Ring64(u64::from(op.value)),
                         }
                         .into(),
@@ -1029,7 +1029,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
                         kind: BitXorOp {
-                            sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
+                            sig: Signature::binary(Ty::HostBitTensor, Ty::HostBitTensor, Ty::HostBitTensor),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1039,7 +1039,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
                         kind: BitAndOp {
-                            sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
+                            sig: Signature::binary(Ty::HostBitTensor, Ty::HostBitTensor, Ty::HostBitTensor),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1049,7 +1049,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_RingInjectOperation(op) => Ok(Operation {
                         kind: RingInjectOp {
-                            sig: Signature::unary(Ty::BitTensor, map_type(&op.output_type)?),
+                            sig: Signature::unary(Ty::HostBitTensor, map_type(&op.output_type)?),
                             bit_idx: op.bit_idx as usize,
                         }
                         .into(),

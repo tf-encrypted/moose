@@ -1,4 +1,4 @@
-use moose::bit::BitTensor;
+use moose::bit::HostBitTensor;
 use moose::compilation::typing::update_types_one_hop;
 use moose::compilation::{compile_passes, into_pass};
 use moose::computation::{Computation, Role, Value};
@@ -191,8 +191,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u8>,
         y: PyReadonlyArrayDyn<u8>,
     ) -> &'py PyArrayDyn<u8> {
-        let b1 = BitTensor::from(x.to_owned_array());
-        let b2 = BitTensor::from(y.to_owned_array());
+        let b1 = HostBitTensor::from(x.to_owned_array());
+        let b2 = HostBitTensor::from(y.to_owned_array());
         ArrayD::<u8>::from(b1 ^ b2).to_pyarray(py)
     }
 
@@ -202,8 +202,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u8>,
         y: PyReadonlyArrayDyn<u8>,
     ) -> &'py PyArrayDyn<u8> {
-        let b1 = BitTensor::from(x.to_owned_array());
-        let b2 = BitTensor::from(y.to_owned_array());
+        let b1 = HostBitTensor::from(x.to_owned_array());
+        let b2 = HostBitTensor::from(y.to_owned_array());
         ArrayD::<u8>::from(b1 & b2).to_pyarray(py)
     }
 
@@ -215,14 +215,14 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u8> {
         let shape = RawShape(shape);
         let seed = RawSeed(seed.as_bytes().try_into().unwrap());
-        let b = BitTensor::sample_uniform(&shape, &seed);
+        let b = HostBitTensor::sample_uniform(&shape, &seed);
         ArrayD::<u8>::from(b).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_fill")]
     fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
         let shape = RawShape(shape);
-        let res = BitTensor::fill(&shape, el);
+        let res = HostBitTensor::fill(&shape, el);
         ArrayD::<u8>::from(res).to_pyarray(py)
     }
 
@@ -243,7 +243,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u8>,
         bit_idx: usize,
     ) -> &'py PyArrayDyn<u64> {
-        let b = BitTensor::from(x.to_owned_array());
+        let b = HostBitTensor::from(x.to_owned_array());
         let res = Ring64Tensor::from(b) << bit_idx;
         ring64_to_array(res).to_pyarray(py)
     }

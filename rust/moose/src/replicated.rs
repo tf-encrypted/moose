@@ -1,7 +1,7 @@
 //! Placements backed by replicated secret sharing
 
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::BitTensor;
+use crate::bit::HostBitTensor;
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp,
     RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
@@ -34,7 +34,7 @@ pub type Replicated64Tensor = AbstractReplicatedTensor<Ring64Tensor>;
 pub type Replicated128Tensor = AbstractReplicatedTensor<Ring128Tensor>;
 
 /// Replicated tensor over Z_2.
-pub type ReplicatedBitTensor = AbstractReplicatedTensor<BitTensor>;
+pub type ReplicatedBitTensor = AbstractReplicatedTensor<HostBitTensor>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedSetup<K> {
@@ -189,14 +189,14 @@ impl RepSetupOp {
 
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor) -> Replicated64Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor) -> Replicated128Tensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, BitTensor) -> ReplicatedBitTensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
 
 hybrid_kernel! {
     RepShareOp,
     [
         (ReplicatedPlacement, (ReplicatedSetup, Ring64Tensor) -> Replicated64Tensor => Self::kernel),
         (ReplicatedPlacement, (ReplicatedSetup, Ring128Tensor) -> Replicated128Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, BitTensor) -> ReplicatedBitTensor => Self::kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::kernel),
     ]
 }
 
@@ -316,14 +316,14 @@ impl RepShareOp {
 
 modelled!(PlacementReveal::reveal, HostPlacement, (Replicated64Tensor) -> Ring64Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (Replicated128Tensor) -> Ring128Tensor, RepRevealOp);
-modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> BitTensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostBitTensor, RepRevealOp);
 
 hybrid_kernel! {
     RepRevealOp,
     [
         (HostPlacement, (Replicated64Tensor) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (Replicated128Tensor) -> Ring128Tensor => Self::kernel),
-        (HostPlacement, (ReplicatedBitTensor) -> BitTensor => Self::kernel),
+        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => Self::kernel),
     ]
 }
 
@@ -1141,12 +1141,12 @@ impl<T> CanonicalType for Symbolic<AbstractRingTensor<T>> {
     type Type = AbstractRingTensor<T>;
 }
 
-impl CanonicalType for BitTensor {
-    type Type = BitTensor;
+impl CanonicalType for HostBitTensor {
+    type Type = HostBitTensor;
 }
 
-impl CanonicalType for Symbolic<BitTensor> {
-    type Type = BitTensor;
+impl CanonicalType for Symbolic<HostBitTensor> {
+    type Type = HostBitTensor;
 }
 
 impl CanonicalType for HostShape {
@@ -2332,7 +2332,7 @@ mod tests {
 
                 let sum = rep.$test_func(&sess, &setup, &x_shared);
                 let opened_product = alice.reveal(&sess, &sum);
-                assert_eq!(opened_product, BitTensor::from_raw_plc(zs, alice.clone()));
+                assert_eq!(opened_product, HostBitTensor::from_raw_plc(zs, alice.clone()));
             }
         };
     }

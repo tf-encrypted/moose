@@ -20,17 +20,17 @@ use std::num::Wrapping;
 use std::ops::{BitAnd, BitXor};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
+pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
 
-impl<S: Session> Tensor<S> for BitTensor {
+impl<S: Session> Tensor<S> for HostBitTensor {
     type Scalar = u8;
 }
 
-impl<S: Session> Tensor<S> for Symbolic<BitTensor> {
+impl<S: Session> Tensor<S> for Symbolic<HostBitTensor> {
     type Scalar = u8;
 }
 
-impl Placed for BitTensor {
+impl Placed for HostBitTensor {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -38,28 +38,28 @@ impl Placed for BitTensor {
     }
 }
 
-impl PlacementPlace<SyncSession, BitTensor> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, x: BitTensor) -> BitTensor {
+impl PlacementPlace<SyncSession, HostBitTensor> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, x: HostBitTensor) -> HostBitTensor {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                BitTensor(x.0, self.clone())
+                HostBitTensor(x.0, self.clone())
             }
         }
     }
 }
 
-impl PlacementPlace<SymbolicSession, Symbolic<BitTensor>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<BitTensor>) -> Symbolic<BitTensor> {
+impl PlacementPlace<SymbolicSession, Symbolic<HostBitTensor>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<HostBitTensor>) -> Symbolic<HostBitTensor> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 match x {
                     Symbolic::Concrete(x) => {
                         // TODO insert Place ops?
-                        Symbolic::Concrete(BitTensor(x.0, self.clone()))
+                        Symbolic::Concrete(HostBitTensor(x.0, self.clone()))
                     }
                     Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
@@ -78,19 +78,19 @@ impl ShapeOp {
     pub(crate) fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        x: BitTensor,
+        x: HostBitTensor,
     ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
         HostShape(raw_shape, plc.clone())
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> BitTensor, BitFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, BitFillOp);
 
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (HostShape) -> BitTensor => attributes[value: Bit] Self::kernel),
+        (HostPlacement, (HostShape) -> HostBitTensor => attributes[value: Bit] Self::kernel),
     ]
 }
 
@@ -100,20 +100,20 @@ impl BitFillOp {
         plc: &HostPlacement,
         value: u8,
         shape: HostShape,
-    ) -> BitTensor {
+    ) -> HostBitTensor {
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
-        BitTensor(raw_tensor, plc.clone())
+        HostBitTensor(raw_tensor, plc.clone())
     }
 }
 
-modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape, Seed) -> BitTensor, BitSampleOp);
+modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape, Seed) -> HostBitTensor, BitSampleOp);
 
 kernel! {
     BitSampleOp,
     [
-        (HostPlacement, (HostShape, Seed) -> BitTensor => Self::kernel),
+        (HostPlacement, (HostShape, Seed) -> HostBitTensor => Self::kernel),
     ]
 }
 
@@ -123,23 +123,23 @@ impl BitSampleOp {
         plc: &HostPlacement,
         shape: HostShape,
         seed: Seed,
-    ) -> BitTensor {
+    ) -> HostBitTensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
         let size = shape.0 .0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape.0 .0.as_ref());
-        BitTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+        HostBitTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 }
 
-modelled!(PlacementXor::xor, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitXorOp);
-modelled_alias!(PlacementAdd::add, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // add = xor in Z2
-modelled_alias!(PlacementSub::sub, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementXor::xor); // sub = xor in Z2
+modelled!(PlacementXor::xor, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitXorOp);
+modelled_alias!(PlacementAdd::add, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // add = xor in Z2
+modelled_alias!(PlacementSub::sub, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementXor::xor); // sub = xor in Z2
 
 kernel! {
     BitXorOp,
     [
-        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::kernel),
+        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => Self::kernel),
     ]
 }
 
@@ -147,23 +147,23 @@ impl BitXorOp {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        x: BitTensor,
-        y: BitTensor,
-    ) -> BitTensor {
-        BitTensor(x.0 ^ y.0, plc.clone())
+        x: HostBitTensor,
+        y: HostBitTensor,
+    ) -> HostBitTensor {
+        HostBitTensor(x.0 ^ y.0, plc.clone())
     }
 }
 
-modelled!(PlacementAnd::and, HostPlacement, (BitTensor, BitTensor) -> BitTensor, BitAndOp);
+modelled!(PlacementAnd::and, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor, BitAndOp);
 modelled!(PlacementAnd::and, HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor, BitAndOp);
 modelled!(PlacementAnd::and, HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor, BitAndOp);
 
-modelled_alias!(PlacementMul::mul, HostPlacement, (BitTensor, BitTensor) -> BitTensor => PlacementAnd::and); // mul = and in Z2
+modelled_alias!(PlacementMul::mul, HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => PlacementAnd::and); // mul = and in Z2
 
 kernel! {
     BitAndOp,
     [
-        (HostPlacement, (BitTensor, BitTensor) -> BitTensor => Self::bit_kernel),
+        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => Self::bit_kernel),
         (HostPlacement, (Ring64Tensor, Ring64Tensor) -> Ring64Tensor => Self::ring_kernel),
         (HostPlacement, (Ring128Tensor, Ring128Tensor) -> Ring128Tensor => Self::ring_kernel),
     ]
@@ -173,10 +173,10 @@ impl BitAndOp {
     fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        x: BitTensor,
-        y: BitTensor,
-    ) -> BitTensor {
-        BitTensor(x.0 & y.0, plc.clone())
+        x: HostBitTensor,
+        y: HostBitTensor,
+    ) -> HostBitTensor {
+        HostBitTensor(x.0 & y.0, plc.clone())
     }
 
     fn ring_kernel<S: RuntimeSession, T>(
@@ -193,7 +193,7 @@ impl BitAndOp {
     }
 }
 
-impl BitTensor {
+impl HostBitTensor {
     #[cfg_attr(
         feature = "symbolic",
         deprecated(
@@ -205,7 +205,7 @@ impl BitTensor {
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
         let ix = IxDyn(shape.0.as_ref());
-        BitTensor(
+        HostBitTensor(
             Array::from_shape_vec(ix, values).unwrap(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the older kernels.
@@ -214,20 +214,20 @@ impl BitTensor {
     }
 }
 
-impl BitTensor {
+impl HostBitTensor {
     #[cfg_attr(
         feature = "symbolic",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitFillOp::kernel for the new code"
         )
     )]
-    pub fn fill(shape: &RawShape, el: u8) -> BitTensor {
+    pub fn fill(shape: &RawShape, el: u8) -> HostBitTensor {
         assert!(
             el == 0 || el == 1,
-            "cannot fill a BitTensor with a value {:?}",
+            "cannot fill a HostBitTensor with a value {:?}",
             el
         );
-        BitTensor(
+        HostBitTensor(
             ArrayD::from_elem(shape.0.as_ref(), el & 1),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the older kernels.
@@ -237,18 +237,18 @@ impl BitTensor {
 }
 
 #[allow(dead_code)]
-impl BitTensor {
-    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> BitTensor {
-        BitTensor(raw_tensor.into_dyn(), plc)
+impl HostBitTensor {
+    pub(crate) fn from_raw_plc(raw_tensor: ArrayD<u8>, plc: HostPlacement) -> HostBitTensor {
+        HostBitTensor(raw_tensor.into_dyn(), plc)
     }
 }
 
-// This implementation is only used by the old kernels. Construct BitTensor(raw_tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl From<ArrayD<u8>> for BitTensor {
-    fn from(a: ArrayD<u8>) -> BitTensor {
+impl From<ArrayD<u8>> for HostBitTensor {
+    fn from(a: ArrayD<u8>) -> HostBitTensor {
         let wrapped = a.mapv(|ai| (ai & 1) as u8);
-        BitTensor(
+        HostBitTensor(
             wrapped,
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the older kernels.
@@ -257,12 +257,12 @@ impl From<ArrayD<u8>> for BitTensor {
     }
 }
 
-// This implementation is only used by the old kernels. Construct BitTensor(raw_tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl From<Vec<u8>> for BitTensor {
-    fn from(v: Vec<u8>) -> BitTensor {
+impl From<Vec<u8>> for HostBitTensor {
+    fn from(v: Vec<u8>) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
-        BitTensor(
+        HostBitTensor(
             Array::from_shape_vec(ix, v).unwrap(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the older kernels.
@@ -271,13 +271,13 @@ impl From<Vec<u8>> for BitTensor {
     }
 }
 
-// This implementation is only used by the old kernels. Construct BitTensor(raw_tensor, plc.clone()) with a proper placement instead.
+// This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
 #[cfg(not(feature = "symbolic"))]
-impl From<&[u8]> for BitTensor {
-    fn from(v: &[u8]) -> BitTensor {
+impl From<&[u8]> for HostBitTensor {
+    fn from(v: &[u8]) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
         let v_wrapped: Vec<_> = v.iter().map(|vi| *vi & 1).collect();
-        BitTensor(
+        HostBitTensor(
             Array::from_shape_vec(ix, v_wrapped).unwrap(),
             HostPlacement {
                 owner: "TODO".into(), // Fake owner for the older kernels.
@@ -286,36 +286,36 @@ impl From<&[u8]> for BitTensor {
     }
 }
 
-impl From<BitTensor> for ArrayD<u8> {
-    fn from(b: BitTensor) -> ArrayD<u8> {
+impl From<HostBitTensor> for ArrayD<u8> {
+    fn from(b: HostBitTensor) -> ArrayD<u8> {
         b.0
     }
 }
 
-impl BitXor for BitTensor {
-    type Output = BitTensor;
+impl BitXor for HostBitTensor {
+    type Output = HostBitTensor;
     fn bitxor(self, other: Self) -> Self::Output {
         assert_eq!(self.1, other.1);
-        BitTensor(self.0 ^ other.0, self.1)
+        HostBitTensor(self.0 ^ other.0, self.1)
     }
 }
 
-impl BitAnd for BitTensor {
-    type Output = BitTensor;
+impl BitAnd for HostBitTensor {
+    type Output = HostBitTensor;
     fn bitand(self, other: Self) -> Self::Output {
         assert_eq!(self.1, other.1);
-        BitTensor(self.0 & other.0, self.1)
+        HostBitTensor(self.0 & other.0, self.1)
     }
 }
 
-modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring64Tensor) -> BitTensor, BitExtractOp);
-modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring128Tensor) -> BitTensor, BitExtractOp);
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring64Tensor) -> HostBitTensor, BitExtractOp);
+modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: usize] (Ring128Tensor) -> HostBitTensor, BitExtractOp);
 
 kernel! {
     BitExtractOp,
     [
-        (HostPlacement, (Ring64Tensor) -> BitTensor => attributes[bit_idx] Self::kernel64),
-        (HostPlacement, (Ring128Tensor) -> BitTensor => attributes[bit_idx] Self::kernel128),
+        (HostPlacement, (Ring64Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel64),
+        (HostPlacement, (Ring128Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel128),
     ]
 }
 
@@ -325,16 +325,16 @@ impl BitExtractOp {
         plc: &HostPlacement,
         bit_idx: usize,
         x: Ring64Tensor,
-    ) -> BitTensor {
-        BitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
+    ) -> HostBitTensor {
+        HostBitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
     }
     fn kernel128<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         bit_idx: usize,
         x: Ring128Tensor,
-    ) -> BitTensor {
-        BitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
+    ) -> HostBitTensor {
+        HostBitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
     }
 }
 
@@ -346,15 +346,15 @@ mod tests {
     fn bit_sample() {
         let shape = RawShape(vec![5]);
         let seed = RawSeed([0u8; 16]);
-        let r = BitTensor::sample_uniform(&shape, &seed);
-        assert_eq!(r, BitTensor::from(vec![0, 1, 1, 0, 0,]));
+        let r = HostBitTensor::sample_uniform(&shape, &seed);
+        assert_eq!(r, HostBitTensor::from(vec![0, 1, 1, 0, 0,]));
     }
 
     #[test]
     fn bit_fill() {
         let shape = RawShape(vec![2]);
-        let r = BitTensor::fill(&shape, 1);
-        assert_eq!(r, BitTensor::from(vec![1, 1]))
+        let r = HostBitTensor::fill(&shape, 1);
+        assert_eq!(r, HostBitTensor::from(vec![1, 1]))
     }
 
     #[test]
@@ -363,38 +363,38 @@ mod tests {
 
         // test xor
         assert_eq!(
-            BitTensor::fill(&shape, 0) ^ BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 1)
+            HostBitTensor::fill(&shape, 0) ^ HostBitTensor::fill(&shape, 1),
+            HostBitTensor::fill(&shape, 1)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) ^ BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 1)
+            HostBitTensor::fill(&shape, 1) ^ HostBitTensor::fill(&shape, 0),
+            HostBitTensor::fill(&shape, 1)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) ^ BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 0)
+            HostBitTensor::fill(&shape, 1) ^ HostBitTensor::fill(&shape, 1),
+            HostBitTensor::fill(&shape, 0)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 0) ^ BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 0)
+            HostBitTensor::fill(&shape, 0) ^ HostBitTensor::fill(&shape, 0),
+            HostBitTensor::fill(&shape, 0)
         );
 
         // test and
         assert_eq!(
-            BitTensor::fill(&shape, 0) & BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 0)
+            HostBitTensor::fill(&shape, 0) & HostBitTensor::fill(&shape, 1),
+            HostBitTensor::fill(&shape, 0)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) & BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 0)
+            HostBitTensor::fill(&shape, 1) & HostBitTensor::fill(&shape, 0),
+            HostBitTensor::fill(&shape, 0)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 1) & BitTensor::fill(&shape, 1),
-            BitTensor::fill(&shape, 1)
+            HostBitTensor::fill(&shape, 1) & HostBitTensor::fill(&shape, 1),
+            HostBitTensor::fill(&shape, 1)
         );
         assert_eq!(
-            BitTensor::fill(&shape, 0) & BitTensor::fill(&shape, 0),
-            BitTensor::fill(&shape, 0)
+            HostBitTensor::fill(&shape, 0) & HostBitTensor::fill(&shape, 0),
+            HostBitTensor::fill(&shape, 0)
         );
     }
 }

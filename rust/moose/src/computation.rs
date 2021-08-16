@@ -1,5 +1,5 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::BitTensor;
+use crate::bit::HostBitTensor;
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::kernels::Session;
@@ -110,7 +110,7 @@ constants![
     RawPrfKey PrfKey,
     RawNonce Nonce,
     String,
-    BitTensor,
+    HostBitTensor,
     Ring64Tensor,
     Ring128Tensor,
     HostFloat32Tensor,
@@ -311,8 +311,8 @@ impl From<Ring128Tensor> for Symbolic<Ring128Tensor> {
     }
 }
 
-impl From<BitTensor> for Symbolic<BitTensor> {
-    fn from(x: BitTensor) -> Self {
+impl From<HostBitTensor> for Symbolic<HostBitTensor> {
+    fn from(x: HostBitTensor) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -435,9 +435,9 @@ where
     }
 }
 
-impl TryFrom<Symbolic<BitTensor>> for BitTensor {
+impl TryFrom<Symbolic<HostBitTensor>> for HostBitTensor {
     type Error = Error;
-    fn try_from(v: Symbolic<BitTensor>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<HostBitTensor>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
@@ -462,7 +462,7 @@ values![
     (PrfKey, Symbolic<PrfKey>),
     (Nonce, Symbolic<Nonce>),
     (String, Symbolic<String>),
-    (BitTensor, Symbolic<BitTensor>),
+    (HostBitTensor, Symbolic<HostBitTensor>),
     (Ring64Tensor, Symbolic<Ring64Tensor>),
     (Ring128Tensor, Symbolic<Ring128Tensor>),
     (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
@@ -503,7 +503,7 @@ values![
     ),
     (
         ReplicatedBitTensor,
-        Symbolic<AbstractReplicatedTensor<<BitTensor as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractReplicatedTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
         ReplicatedSetup,

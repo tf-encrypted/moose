@@ -1,4 +1,4 @@
-use crate::bit::BitTensor;
+use crate::bit::HostBitTensor;
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
@@ -1139,10 +1139,10 @@ impl Compile<Kernel> for ShapeOp {
 impl Compile<Kernel> for BitFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
-            (signature![(_) -> Ty::BitTensor], Constant::Ring64(value)) => {
+            (signature![(_) -> Ty::HostBitTensor], Constant::Ring64(value)) => {
                 closure_kernel!(HostShape, |shape| {
                     assert!(value == 0 || value == 1);
-                    BitTensor::fill(&shape.0, value as u8)
+                    HostBitTensor::fill(&shape.0, value as u8)
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1244,10 +1244,10 @@ impl Compile<Kernel> for RingInjectOp {
         let bit_idx = self.bit_idx;
         match self.sig {
             signature![(_) -> Ty::Ring64Tensor] => {
-                closure_kernel!(BitTensor, |x| Ring64Tensor::from(x) << bit_idx)
+                closure_kernel!(HostBitTensor, |x| Ring64Tensor::from(x) << bit_idx)
             }
             signature![(_) -> Ty::Ring128Tensor] => {
-                closure_kernel!(BitTensor, |x| Ring128Tensor::from(x) << bit_idx)
+                closure_kernel!(HostBitTensor, |x| Ring128Tensor::from(x) << bit_idx)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1271,7 +1271,7 @@ impl Compile<Kernel> for BitExtractOp {
 
 impl Compile<Kernel> for BitSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(HostShape, Seed, |shape, seed| BitTensor::sample_uniform(
+        function_kernel!(HostShape, Seed, |shape, seed| HostBitTensor::sample_uniform(
             &shape.0, &seed.0
         ))
     }
@@ -1279,7 +1279,7 @@ impl Compile<Kernel> for BitSampleOp {
 
 impl Compile<Kernel> for BitXorOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(BitTensor, BitTensor, |x, y| x ^ y)
+        function_kernel!(HostBitTensor, HostBitTensor, |x, y| x ^ y)
     }
 }
 
@@ -1292,8 +1292,8 @@ impl Compile<Kernel> for BitAndOp {
             signature![(Ty::Ring128Tensor, Ty::Ring128Tensor) -> _] => {
                 closure_kernel!(Ring128Tensor, Ring128Tensor, |x, y| x & y)
             }
-            signature![(Ty::BitTensor, Ty::BitTensor) -> _] => {
-                closure_kernel!(BitTensor, BitTensor, |x, y| x & y)
+            signature![(Ty::HostBitTensor, Ty::HostBitTensor) -> _] => {
+                closure_kernel!(HostBitTensor, HostBitTensor, |x, y| x & y)
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
@@ -1615,7 +1615,7 @@ modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () 
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostShape, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Seed, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> PrfKey, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> BitTensor, InputOp);
+modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitTensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring64Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Ring128Tensor, InputOp);
 modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat32Tensor, InputOp);
@@ -1637,7 +1637,7 @@ kernel! {
         (HostPlacement, () -> HostShape => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Seed => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> PrfKey => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> BitTensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostBitTensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Ring64Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> Ring128Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostFloat32Tensor => attributes[arg_name] Self::kernel),
@@ -1707,7 +1707,7 @@ modelled!(PlacementOutput::output, HostPlacement, (HostShape) -> Unit, OutputOp)
 modelled!(PlacementOutput::output, HostPlacement, (Seed) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (PrfKey) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (String) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (BitTensor) -> Unit, OutputOp);
+modelled!(PlacementOutput::output, HostPlacement, (HostBitTensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Ring64Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (Ring128Tensor) -> Unit, OutputOp);
 modelled!(PlacementOutput::output, HostPlacement, (HostFloat32Tensor) -> Unit, OutputOp);
@@ -1730,7 +1730,7 @@ kernel! {
         (HostPlacement, (Seed) -> Unit => Self::kernel),
         (HostPlacement, (PrfKey) -> Unit => Self::kernel),
         (HostPlacement, (String) -> Unit => Self::kernel),
-        (HostPlacement, (BitTensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostBitTensor) -> Unit => Self::kernel),
         (HostPlacement, (Ring64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (Ring128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostFloat32Tensor) -> Unit => Self::kernel),
@@ -1777,7 +1777,7 @@ modelled!(PlacementSave::save, HostPlacement, (String, HostShape) -> Unit, SaveO
 modelled!(PlacementSave::save, HostPlacement, (String, Seed) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, PrfKey) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, String) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, BitTensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, HostBitTensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Ring64Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, Ring128Tensor) -> Unit, SaveOp);
 modelled!(PlacementSave::save, HostPlacement, (String, HostFloat32Tensor) -> Unit, SaveOp);
@@ -1800,7 +1800,7 @@ kernel! {
         (HostPlacement, (String, Seed) -> Unit => Self::kernel),
         (HostPlacement, (String, PrfKey) -> Unit => Self::kernel),
         (HostPlacement, (String, String) -> Unit => Self::kernel),
-        (HostPlacement, (String, BitTensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostBitTensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Ring64Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, Ring128Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostFloat32Tensor) -> Unit => Self::kernel),
@@ -1870,7 +1870,7 @@ modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostShape, Loa
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Seed, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> PrfKey, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> String, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> BitTensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostBitTensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring64Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Ring128Tensor, LoadOp);
 modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat32Tensor, LoadOp);
@@ -1893,7 +1893,7 @@ kernel! {
         (HostPlacement, (String, String) -> Seed => Self::kernel),
         (HostPlacement, (String, String) -> PrfKey => Self::kernel),
         (HostPlacement, (String, String) -> String => Self::kernel),
-        (HostPlacement, (String, String) -> BitTensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostBitTensor => Self::kernel),
         (HostPlacement, (String, String) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (String, String) -> Ring128Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostFloat32Tensor => Self::kernel),

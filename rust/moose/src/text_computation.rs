@@ -605,7 +605,7 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_args) = opt(type_definition(0))(input)?;
-    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
+    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitSampleOp { sig }.into()))
 }
 
@@ -614,7 +614,7 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_sig) = opt(type_definition(0))(input)?;
-    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
+    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitXorOp { sig }.into()))
 }
 
@@ -714,7 +714,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "PrfKey" => Ok((i, Ty::PrfKey)),
         "Nonce" => Ok((i, Ty::Nonce)),
         "String" => Ok((i, Ty::String)),
-        "BitTensor" => Ok((i, Ty::BitTensor)),
+        "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "Ring64Tensor" => Ok((i, Ty::Ring64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
         "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)), // TODO change textual
@@ -1475,7 +1475,7 @@ impl ToTextual for Ty {
             Ty::Ring64Tensor => "Ring64Tensor",
             Ty::Ring128Tensor => "Ring128Tensor",
             Ty::Bit => "Bit",
-            Ty::BitTensor => "BitTensor",
+            Ty::HostBitTensor => "BitTensor",
             Ty::HostShape => "Shape", // TODO change textual symbol as well
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
