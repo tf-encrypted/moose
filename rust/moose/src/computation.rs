@@ -11,7 +11,7 @@ use crate::replicated::{
 use crate::ring::{Ring128Tensor, Ring64Tensor};
 use crate::standard::{
     Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
-    Shape, HostTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    HostShape, HostTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
@@ -105,7 +105,7 @@ macro_rules! constants {
 // The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
 // The lines with 1 identifier are for linking to the "Unplaced" values, where the Constant and Value are essentially the same and can be converted easily.
 constants![
-    RawShape Shape,
+    RawShape HostShape,
     RawSeed Seed,
     RawPrfKey PrfKey,
     RawNonce Nonce,
@@ -293,8 +293,8 @@ macro_rules! values {
     };
 }
 
-impl From<Shape> for Symbolic<Shape> {
-    fn from(x: Shape) -> Self {
+impl From<HostShape> for Symbolic<HostShape> {
+    fn from(x: HostShape) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -457,7 +457,7 @@ impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
 
 values![
     (Unit, Symbolic<Unit>),
-    (Shape, Symbolic<Shape>),
+    (HostShape, Symbolic<HostShape>),
     (Seed, Symbolic<Seed>),
     (PrfKey, Symbolic<PrfKey>),
     (Nonce, Symbolic<Nonce>),
@@ -511,7 +511,7 @@ values![
     ),
     (
         ReplicatedShape,
-        Symbolic<AbstractReplicatedShape<<Shape as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractReplicatedShape<<HostShape as KnownType<SymbolicSession>>::Type>>
     ),
     (
         Additive64Tensor,

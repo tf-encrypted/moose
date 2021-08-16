@@ -11,7 +11,7 @@ use crate::kernels::{
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
-use crate::standard::{RawShape, Shape};
+use crate::standard::{RawShape, HostShape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use rand::prelude::*;
@@ -79,18 +79,18 @@ impl ShapeOp {
         _sess: &S,
         plc: &HostPlacement,
         x: BitTensor,
-    ) -> Shape {
+    ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone())
+        HostShape(raw_shape, plc.clone())
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> BitTensor, BitFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> BitTensor, BitFillOp);
 
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (Shape) -> BitTensor => attributes[value: Bit] Self::kernel),
+        (HostPlacement, (HostShape) -> BitTensor => attributes[value: Bit] Self::kernel),
     ]
 }
 
@@ -99,7 +99,7 @@ impl BitFillOp {
         _sess: &S,
         plc: &HostPlacement,
         value: u8,
-        shape: Shape,
+        shape: HostShape,
     ) -> BitTensor {
         assert!(value == 0 || value == 1);
         let raw_shape = shape.0 .0;
@@ -108,12 +108,12 @@ impl BitFillOp {
     }
 }
 
-modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (Shape, Seed) -> BitTensor, BitSampleOp);
+modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape, Seed) -> BitTensor, BitSampleOp);
 
 kernel! {
     BitSampleOp,
     [
-        (HostPlacement, (Shape, Seed) -> BitTensor => Self::kernel),
+        (HostPlacement, (HostShape, Seed) -> BitTensor => Self::kernel),
     ]
 }
 
@@ -121,7 +121,7 @@ impl BitSampleOp {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        shape: Shape,
+        shape: HostShape,
         seed: Seed,
     ) -> BitTensor {
         let mut rng = AesRng::from_seed(seed.0 .0);

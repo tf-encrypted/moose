@@ -32,7 +32,7 @@ fn main() {
     let x_shape_op = Operation {
         name: "x_shape".into(),
         kind: ConstantOp {
-            sig: Signature::nullary(Ty::Shape),
+            sig: Signature::nullary(Ty::HostShape),
             value: Constant::RawShape(RawShape(vec![2, 3])),
         }
         .into(),
@@ -45,7 +45,7 @@ fn main() {
     let x_op = Operation {
         name: "x".into(),
         kind: RingSampleOp {
-            sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::Ring64Tensor),
+            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::Ring64Tensor),
             max_value: None,
         }
         .into(),

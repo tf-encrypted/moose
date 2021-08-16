@@ -33,9 +33,9 @@ impl Placed for String {
 pub struct RawShape(pub Vec<usize>);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Shape(pub RawShape, pub HostPlacement);
+pub struct HostShape(pub RawShape, pub HostPlacement);
 
-impl Placed for Shape {
+impl Placed for HostShape {
     type Placement = HostPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
@@ -43,28 +43,28 @@ impl Placed for Shape {
     }
 }
 
-impl PlacementPlace<SyncSession, Shape> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, shape: Shape) -> Shape {
+impl PlacementPlace<SyncSession, HostShape> for HostPlacement {
+    fn place(&self, _sess: &SyncSession, shape: HostShape) -> HostShape {
         match shape.placement() {
             Ok(place) if self == &place => shape,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
-                Shape(shape.0, self.clone())
+                HostShape(shape.0, self.clone())
             }
         }
     }
 }
 
-impl PlacementPlace<SymbolicSession, Symbolic<Shape>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<Shape>) -> Symbolic<Shape> {
+impl PlacementPlace<SymbolicSession, Symbolic<HostShape>> for HostPlacement {
+    fn place(&self, _sess: &SymbolicSession, x: Symbolic<HostShape>) -> Symbolic<HostShape> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 match x {
                     Symbolic::Concrete(shape) => {
                         // TODO insert Place ops?
-                        Symbolic::Concrete(Shape(shape.0, self.clone()))
+                        Symbolic::Concrete(HostShape(shape.0, self.clone()))
                     }
                     Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
                         // TODO insert `Place` ops here?
@@ -90,6 +90,7 @@ impl<T> Placed for HostTensor<T> {
     }
 }
 
+// TODO these should have Host prefix
 pub type Float32Tensor = HostTensor<f32>;
 pub type Float64Tensor = HostTensor<f64>;
 pub type Int8Tensor = HostTensor<i8>;
@@ -203,7 +204,7 @@ impl StdOnesOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
-        shape: Shape,
+        shape: HostShape,
     ) -> HostTensor<T>
     where
         HostPlacement: PlacementPlace<S, HostTensor<T>>,
@@ -212,10 +213,10 @@ impl StdOnesOp {
     }
 }
 
-modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> Shape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> Shape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (BitTensor) -> Shape, ShapeOp);
-modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> Shape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Ring64Tensor) -> HostShape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Ring128Tensor) -> HostShape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (BitTensor) -> HostShape, ShapeOp);
+modelled!(PlacementShape::shape, HostPlacement, (Float64Tensor) -> HostShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape, ShapeOp);
 modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape, ShapeOp);
@@ -223,10 +224,10 @@ modelled!(PlacementShape::shape, ReplicatedPlacement, (Replicated128Tensor) -> R
 kernel! {
     ShapeOp,
     [
-        (HostPlacement, (Ring64Tensor) -> Shape => Self::ring_kernel),
-        (HostPlacement, (Ring128Tensor) -> Shape => Self::ring_kernel),
-        (HostPlacement, (BitTensor) -> Shape => Self::bit_kernel),
-        (HostPlacement, (Float64Tensor) -> Shape => Self::std_kernel),
+        (HostPlacement, (Ring64Tensor) -> HostShape => Self::ring_kernel),
+        (HostPlacement, (Ring128Tensor) -> HostShape => Self::ring_kernel),
+        (HostPlacement, (BitTensor) -> HostShape => Self::bit_kernel),
+        (HostPlacement, (Float64Tensor) -> HostShape => Self::std_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_kernel),
         (ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape => Self::rep_kernel),
         (ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape => Self::rep_kernel),
@@ -238,18 +239,18 @@ impl ShapeOp {
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
-    ) -> Shape {
+    ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone())
+        HostShape(raw_shape, plc.clone())
     }
 }
 
-modelled!(PlacementSlice::slice, HostPlacement, attributes[start: u32, end: u32] (Shape) -> Shape, StdSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[start: u32, end: u32] (HostShape) -> HostShape, StdSliceOp);
 
 kernel! {
     StdSliceOp,
     [
-        (HostPlacement, (Shape) -> Shape => attributes[start, end] Self::kernel),
+        (HostPlacement, (HostShape) -> HostShape => attributes[start, end] Self::kernel),
     ]
 }
 
@@ -259,10 +260,10 @@ impl StdSliceOp {
         plc: &HostPlacement,
         start: u32,
         end: u32,
-        x: Shape,
-    ) -> Shape {
+        x: HostShape,
+    ) -> HostShape {
         let slice = x.0.slice(start as usize, end as usize);
-        Shape(slice, plc.clone())
+        HostShape(slice, plc.clone())
     }
 }
 
@@ -353,11 +354,11 @@ where
         }
     }
 
-    pub fn ones(shape: Shape) -> Self {
+    pub fn ones(shape: HostShape) -> Self {
         HostTensor::<T>(ArrayD::ones(shape.0 .0), shape.1)
     }
 
-    pub fn reshape(self, newshape: Shape) -> Self {
+    pub fn reshape(self, newshape: HostShape) -> Self {
         HostTensor::<T>(self.0.into_shape(newshape.0 .0).unwrap(), self.1) // TODO need to be fix (unwrap)
     }
 
@@ -365,11 +366,11 @@ where
         let plc = (&self.1).clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
-        self.reshape(Shape(newshape, plc))
+        self.reshape(HostShape(newshape, plc))
     }
 
-    pub fn shape(&self) -> Shape {
-        Shape(RawShape(self.0.shape().into()), self.1.clone())
+    pub fn shape(&self) -> HostShape {
+        HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 
     pub fn sum(self, axis: Option<usize>) -> Self {

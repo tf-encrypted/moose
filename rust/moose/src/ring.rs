@@ -13,7 +13,7 @@ use crate::kernels::{
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
-use crate::standard::{RawShape, Shape};
+use crate::standard::{RawShape, HostShape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -132,14 +132,14 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractRingTensor<T>>> for Hos
     }
 }
 
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring64Tensor, RingFillOp);
-modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (Shape) -> Ring128Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> Ring64Tensor, RingFillOp);
+modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> Ring128Tensor, RingFillOp);
 
 kernel! {
     RingFillOp,
     [
-        (HostPlacement, (Shape) -> Ring64Tensor => attributes[value: Ring64] Self::ring64_kernel),
-        (HostPlacement, (Shape) -> Ring128Tensor => attributes[value: Ring128] Self::ring128_kernel),
+        (HostPlacement, (HostShape) -> Ring64Tensor => attributes[value: Ring64] Self::ring64_kernel),
+        (HostPlacement, (HostShape) -> Ring128Tensor => attributes[value: Ring128] Self::ring128_kernel),
     ]
 }
 
@@ -148,7 +148,7 @@ impl RingFillOp {
         _sess: &S,
         plc: &HostPlacement,
         value: u64,
-        shape: Shape,
+        shape: HostShape,
     ) -> Ring64Tensor {
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
@@ -159,7 +159,7 @@ impl RingFillOp {
         _sess: &S,
         plc: &HostPlacement,
         value: u128,
-        shape: Shape,
+        shape: HostShape,
     ) -> Ring128Tensor {
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), Wrapping(value));
@@ -172,9 +172,9 @@ impl ShapeOp {
         _sess: &S,
         plc: &HostPlacement,
         x: AbstractRingTensor<T>,
-    ) -> Shape {
+    ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
-        Shape(raw_shape, plc.clone())
+        HostShape(raw_shape, plc.clone())
     }
 }
 
@@ -389,13 +389,13 @@ impl RingShrOp {
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Shape, Seed) -> Ring64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (Shape, Seed) -> Ring128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> Ring64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> Ring128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,
     [
-        (HostPlacement, (Shape, Seed) -> Ring64Tensor => custom |op| {
+        (HostPlacement, (HostShape, Seed) -> Ring64Tensor => custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u64(ctx, plc, shape, seed)
@@ -406,7 +406,7 @@ kernel! {
                 _ => unimplemented!(),
             }
         }),
-        (HostPlacement, (Shape, Seed) -> Ring128Tensor => custom |op| {
+        (HostPlacement, (HostShape, Seed) -> Ring128Tensor => custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u128(ctx, plc, shape, seed)
@@ -424,7 +424,7 @@ impl RingSampleOp {
     fn kernel_uniform_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        shape: Shape,
+        shape: HostShape,
         seed: Seed,
     ) -> Ring64Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
@@ -438,7 +438,7 @@ impl RingSampleOp {
     fn kernel_bits_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        shape: Shape,
+        shape: HostShape,
         seed: Seed,
     ) -> Ring64Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
@@ -451,7 +451,7 @@ impl RingSampleOp {
     fn kernel_uniform_u128<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        shape: Shape,
+        shape: HostShape,
         seed: Seed,
     ) -> Ring128Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
@@ -466,7 +466,7 @@ impl RingSampleOp {
     fn kernel_bits_u128<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
-        shape: Shape,
+        shape: HostShape,
         seed: Seed,
     ) -> Ring128Tensor {
         let mut rng = AesRng::from_seed(seed.0 .0);
@@ -570,8 +570,8 @@ where
 }
 
 impl<T> AbstractRingTensor<T> {
-    pub fn shape(&self) -> Shape {
-        Shape(RawShape(self.0.shape().into()), self.1.clone())
+    pub(crate) fn shape(&self) -> HostShape {
+        HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
 }
 

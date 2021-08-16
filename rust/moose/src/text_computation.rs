@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
-use crate::standard::{RawShape, Shape};
+use crate::standard::{RawShape, HostShape};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -709,7 +709,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
         "Unknown" => Ok((i, Ty::Unknown)),
-        "Shape" => Ok((i, Ty::Shape)),
+        "Shape" => Ok((i, Ty::HostShape)), // TODO change textual symbol as well
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
         "Nonce" => Ok((i, Ty::Nonce)),
@@ -1476,7 +1476,7 @@ impl ToTextual for Ty {
             Ty::Ring128Tensor => "Ring128Tensor",
             Ty::Bit => "Bit",
             Ty::BitTensor => "BitTensor",
-            Ty::Shape => "Shape",
+            Ty::HostShape => "Shape", // TODO change textual symbol as well
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
             Ty::Nonce => "Nonce",
@@ -1525,7 +1525,7 @@ impl ToTextual for Value {
             Value::String(x) => format!("String({})", x.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
-            Value::Shape(Shape(x, _)) => format!("Shape({:?})", x),
+            Value::HostShape(HostShape(x, _)) => format!("Shape({:?})", x), // TODO change textual symbolc as well
             Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),

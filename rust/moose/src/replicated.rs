@@ -18,7 +18,7 @@ use crate::kernels::{
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
-use crate::standard::Shape;
+use crate::standard::HostShape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
@@ -48,7 +48,7 @@ pub struct AbstractReplicatedShape<S> {
     pub shapes: [S; 3],
 }
 
-pub type ReplicatedShape = AbstractReplicatedShape<Shape>;
+pub type ReplicatedShape = AbstractReplicatedShape<HostShape>;
 
 impl<R> Placed for AbstractReplicatedTensor<R>
 where
@@ -1149,12 +1149,12 @@ impl CanonicalType for Symbolic<BitTensor> {
     type Type = BitTensor;
 }
 
-impl CanonicalType for Shape {
-    type Type = Shape;
+impl CanonicalType for HostShape {
+    type Type = HostShape;
 }
 
-impl CanonicalType for Symbolic<Shape> {
-    type Type = Shape;
+impl CanonicalType for Symbolic<HostShape> {
+    type Type = HostShape;
 }
 
 impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
@@ -1396,7 +1396,6 @@ impl RepFillOp {
         rep_shape: AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
-        Shape: KnownType<S>,
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
@@ -1431,7 +1430,6 @@ impl RepFillOp {
         rep_shape: AbstractReplicatedShape<ShapeT>,
     ) -> AbstractReplicatedTensor<RingT>
     where
-        Shape: KnownType<S>,
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
         // TODO should really return PublicReplicatedTensor, but we don't have that type yet
@@ -1564,9 +1562,9 @@ trait RingBitDecompose<S: Session, R> {
 impl<S: Session, R> RingBitDecompose<S, R> for HostPlacement
 where
     R: RingSize,
-    Shape: KnownType<S>,
-    HostPlacement: PlacementOnes<S, cs!(Shape), R>,
-    HostPlacement: PlacementShape<S, R, cs!(Shape)>,
+    HostShape: KnownType<S>,
+    HostPlacement: PlacementOnes<S, cs!(HostShape), R>,
+    HostPlacement: PlacementShape<S, R, cs!(HostShape)>,
     HostPlacement: PlacementShr<S, R, R>,
     HostPlacement: PlacementAnd<S, R, R, R>,
 {
@@ -1611,11 +1609,11 @@ impl<S: Session, SetupT, RT> BinaryAdder<S, SetupT, RT> for ReplicatedPlacement
 where
     RT: Clone,
     RT: Placed<Placement = ReplicatedPlacement>,
-    AbstractReplicatedShape<Shape>: KnownType<S>,
+    AbstractReplicatedShape<HostShape>: KnownType<S>,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RT, RT, RT>,
     ReplicatedPlacement: PlacementAdd<S, RT, RT, RT>,
-    ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<Shape>), RT>,
-    ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<Shape>)>,
+    ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<HostShape>), RT>,
+    ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<HostShape>)>,
 {
     /// Binary addition protocol
     ///
@@ -1778,12 +1776,12 @@ trait ZeroShareGen<S: Session, KeyT, RingT, ShapeT> {
     ) -> AbstractReplicatedZeroShare<RingT>;
 }
 
-impl<S: Session, RingT> ZeroShareGen<S, cs!(PrfKey), RingT, cs!(Shape)> for ReplicatedPlacement
+impl<S: Session, RingT> ZeroShareGen<S, cs!(PrfKey), RingT, cs!(HostShape)> for ReplicatedPlacement
 where
     PrfKey: KnownType<S>,
     Seed: KnownType<S>,
-    Shape: KnownType<S>,
-    HostPlacement: PlacementSampleUniform<S, cs!(Shape), cs!(Seed), RingT>,
+    HostShape: KnownType<S>,
+    HostPlacement: PlacementSampleUniform<S, cs!(HostShape), cs!(Seed), RingT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     ReplicatedPlacement: ReplicatedSeedsGen<S, cs!(PrfKey), cs!(Seed)>,
 {
@@ -1791,7 +1789,7 @@ where
         &self,
         sess: &S,
         setup: &AbstractReplicatedSetup<cs!(PrfKey)>,
-        shape: &AbstractReplicatedShape<cs!(Shape)>,
+        shape: &AbstractReplicatedShape<cs!(HostShape)>,
     ) -> AbstractReplicatedZeroShare<RingT> {
         let (player0, player1, player2) = self.host_placements();
 

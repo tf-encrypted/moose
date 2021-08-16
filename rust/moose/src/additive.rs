@@ -15,7 +15,7 @@ use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::CanonicalType;
 use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
-use crate::standard::Shape;
+use crate::standard::HostShape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
@@ -64,14 +64,14 @@ where
     }
 }
 
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (Shape) -> Additive64Tensor, AdtFillOp);
-modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (Shape) -> Additive128Tensor, AdtFillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> Additive64Tensor, AdtFillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> Additive128Tensor, AdtFillOp);
 
 hybrid_kernel! {
     AdtFillOp,
     [
-        (AdditivePlacement, (Shape) -> Additive64Tensor => attributes[value] Self::kernel),
-        (AdditivePlacement, (Shape) -> Additive128Tensor => attributes[value] Self::kernel),
+        (AdditivePlacement, (HostShape) -> Additive64Tensor => attributes[value] Self::kernel),
+        (AdditivePlacement, (HostShape) -> Additive128Tensor => attributes[value] Self::kernel),
     ]
 }
 
@@ -447,15 +447,15 @@ pub trait TruncMaskGen<S: Session, ShapeT, RingT> {
     );
 }
 
-impl<S: Session, R> TruncMaskGen<S, cs!(Shape), R> for HostPlacement
+impl<S: Session, R> TruncMaskGen<S, cs!(HostShape), R> for HostPlacement
 where
     PrfKey: KnownType<S>,
-    Shape: KnownType<S>,
+    HostShape: KnownType<S>,
     Seed: KnownType<S>,
     R: RingSize + Clone,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
-    HostPlacement: PlacementSampleBits<S, cs!(Shape), cs!(Seed), R>,
-    HostPlacement: PlacementSampleUniform<S, cs!(Shape), cs!(Seed), R>,
+    HostPlacement: PlacementSampleBits<S, cs!(HostShape), cs!(Seed), R>,
+    HostPlacement: PlacementSampleUniform<S, cs!(HostShape), cs!(Seed), R>,
     HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
     HostPlacement: PlacementSub<S, R, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
@@ -465,7 +465,7 @@ where
         &self,
         sess: &S,
         amount: usize,
-        shape: &cs!(Shape),
+        shape: &cs!(HostShape), // TODO(Morten) take AdditiveShape instead?
     ) -> (
         AbstractAdditiveTensor<R>,
         AbstractAdditiveTensor<R>,
@@ -508,11 +508,11 @@ where
     AbstractReplicatedTensor<R>: CanonicalType,
     <AbstractReplicatedTensor<R> as CanonicalType>::Type: KnownType<S>,
     R: RingSize,
-    Shape: KnownType<S>,
-    HostPlacement: TruncMaskGen<S, cs!(Shape), R>,
+    HostShape: KnownType<S>,
+    HostPlacement: TruncMaskGen<S, cs!(HostShape), R>,
     HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<R>), R>,
-    HostPlacement: PlacementOnes<S, cs!(Shape), R>,
-    HostPlacement: PlacementShape<S, R, cs!(Shape)>,
+    HostPlacement: PlacementOnes<S, cs!(HostShape), R>,
+    HostPlacement: PlacementShape<S, R, cs!(HostShape)>,
     HostPlacement: PlacementShl<S, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
     AbstractAdditiveTensor<R>: Clone + Into<st!(AbstractAdditiveTensor<R>)>,

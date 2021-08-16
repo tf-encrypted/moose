@@ -1294,7 +1294,7 @@ mod tests {
     use crate::compilation::networking::NetworkingPass;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use crate::ring::{Ring128Tensor, Ring64Tensor};
-    use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor, RawShape, Shape};
+    use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor, RawShape, HostShape};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1780,7 +1780,7 @@ mod tests {
             run_async,
         )?;
 
-        let actual_shape: Shape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let actual_shape: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
         let actual_raw_shape = actual_shape.0;
         let expected_raw_shape = RawShape(vec![2, 2]);
         assert_eq!(actual_raw_shape, expected_raw_shape);
@@ -1807,7 +1807,7 @@ mod tests {
             arguments,
             run_async,
         )?;
-        let res: Shape = (outputs.get("output").unwrap().clone()).try_into()?;
+        let res: HostShape = (outputs.get("output").unwrap().clone()).try_into()?;
         let actual_shape = res.0;
         let expected_shape = RawShape(vec![3, 4]);
         assert_eq!(expected_shape, actual_shape);
@@ -1938,7 +1938,7 @@ mod tests {
         let comp_result: Float32Tensor = (outputs.get("output").unwrap().clone()).try_into()?;
 
         if unwrap_flag {
-            let shaped_result = comp_result.reshape(Shape(
+            let shaped_result = comp_result.reshape(HostShape(
                 RawShape(vec![1]),
                 HostPlacement {
                     owner: "alice".into(),
