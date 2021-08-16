@@ -1,10 +1,12 @@
 use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed,
+    BitToRingOp,
     ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementBitToRing,
     PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession, Session, SyncSession,
     Tensor,
 };
@@ -335,6 +337,25 @@ impl BitExtractOp {
         x: Ring128Tensor,
     ) -> BitTensor {
         BitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
+    }
+}
+
+modelled!(PlacementBitToRing::bit_to_ring, HostPlacement, (BitTensor) -> Ring64Tensor, BitToRingOp);
+modelled!(PlacementBitToRing::bit_to_ring, HostPlacement, (BitTensor) -> Ring128Tensor, BitToRingOp);
+
+kernel! {
+    BitToRingOp,
+    [
+        (HostPlacement, (BitTensor) -> Ring64Tensor => Self::kernel),
+        (HostPlacement, (BitTensor) -> Ring128Tensor => Self::kernel),
+    ]
+}
+
+impl BitToRingOp {
+    fn kernel<S: RuntimeSession, T>(_sess: &S, plc: &HostPlacement, x: BitTensor) -> AbstractRingTensor<T>
+    where T: From<u8>
+    {
+        AbstractRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai))), plc.clone())
     }
 }
 

@@ -820,7 +820,7 @@ operators![
     RingShl,
     RingShr,
     RingInject,
-    RingToBit,
+    BitToRing,
     BitExtract,
     BitSample,
     BitXor,
@@ -1004,7 +1004,7 @@ pub struct BitFillOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RingToBitOp {
+pub struct BitToRingOp {
     pub sig: Signature,
 }
 
