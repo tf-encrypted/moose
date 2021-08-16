@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
-use crate::standard::{RawShape, HostShape};
+use crate::host::{RawShape, HostShape};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -1721,7 +1721,7 @@ mod tests {
         use std::convert::TryInto;
         let parsed_f32: Constant = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
 
-        let x = crate::standard::Float32Tensor::from(
+        let x = crate::host::Float32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -1781,7 +1781,7 @@ mod tests {
 
         // 2D tensor
         use ndarray::prelude::*;
-        let x = crate::standard::Float32Tensor::from(
+        let x = crate::host::Float32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),

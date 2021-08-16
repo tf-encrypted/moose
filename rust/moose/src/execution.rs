@@ -1294,7 +1294,7 @@ mod tests {
     use crate::compilation::networking::NetworkingPass;
     use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
     use crate::ring::{Ring128Tensor, Ring64Tensor};
-    use crate::standard::{Float32Tensor, Float64Tensor, Int64Tensor, RawShape, HostShape};
+    use crate::host::{Float32Tensor, Float64Tensor, Int64Tensor, RawShape, HostShape};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;

@@ -883,7 +883,7 @@ mod tests {
             owner: "alice".into(),
         };
         let sess = SyncSession::default();
-        let x = crate::standard::HostTensor::<f64>::from(
+        let x = crate::host::HostTensor::<f64>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -899,7 +899,7 @@ mod tests {
             owner: "alice".into(),
         };
         let sess = SyncSession::default();
-        let x = crate::standard::HostTensor::<f64>::from(
+        let x = crate::host::HostTensor::<f64>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -915,12 +915,12 @@ mod tests {
             owner: "alice".into(),
         };
         let sess = SyncSession::default();
-        let x = crate::standard::HostTensor::<f64>::from(
+        let x = crate::host::HostTensor::<f64>::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let y = crate::standard::HostTensor::<f64>::from(
+        let y = crate::host::HostTensor::<f64>::from(
             array![[5.0, 6.0], [7.0, 8.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),

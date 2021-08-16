@@ -4,7 +4,7 @@ mod tests {
     use moose::compilation::typing::update_types_one_hop;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
-    use moose::{computation::*, python_computation::PyComputation, standard::Float64Tensor};
+    use moose::{computation::*, python_computation::PyComputation, host::Float64Tensor};
     use ndarray::prelude::*;
     use numpy::ToPyArray;
     use pyo3::prelude::*;

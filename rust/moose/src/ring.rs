@@ -13,7 +13,7 @@ use crate::kernels::{
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
-use crate::standard::{RawShape, HostShape};
+use crate::host::{RawShape, HostShape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;

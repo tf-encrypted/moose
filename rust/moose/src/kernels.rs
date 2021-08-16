@@ -11,12 +11,7 @@ use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::ring::AbstractRingTensor;
 use crate::ring::{Ring128Tensor, Ring64Tensor};
-use crate::standard::Int16Tensor;
-use crate::standard::Int8Tensor;
-use crate::standard::HostTensor;
-use crate::standard::Uint16Tensor;
-use crate::standard::Uint8Tensor;
-use crate::standard::{
+use crate::host::{Int16Tensor, Int8Tensor, HostTensor, Uint16Tensor, Uint8Tensor, 
     Float32Tensor, Float64Tensor, Int32Tensor, Int64Tensor, HostShape, Uint32Tensor, Uint64Tensor,
 };
 use crate::{closure_kernel, function_kernel};
@@ -843,7 +838,7 @@ kernel! {
 
 impl Compile<Kernel> for StdConcatenateOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::standard::concatenate;
+        use crate::host::concatenate;
         let axis = self.axis as usize;
         match self.sig {
             signature![(_, _) -> Ty::Float32Tensor] => {

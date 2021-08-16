@@ -1,6 +1,6 @@
 //! Parser for computations defined in Python
 
-use crate::standard::{Float32Tensor, Float64Tensor, RawShape};
+use crate::host::{Float32Tensor, Float64Tensor, RawShape};
 use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;

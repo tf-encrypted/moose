@@ -15,7 +15,7 @@ use crate::kernels::{
 };
 use crate::replicated::{Replicated128Tensor, Replicated64Tensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
-use crate::standard::{Float32Tensor, Float64Tensor};
+use crate::host::{Float32Tensor, Float64Tensor};
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};

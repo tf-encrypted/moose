@@ -18,7 +18,7 @@ use crate::kernels::{
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
-use crate::standard::HostShape;
+use crate::host::HostShape;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
@@ -1949,7 +1949,7 @@ mod tests {
         let setup = rep.gen_setup(&sess);
 
         let scaling_factor = u64::pow(2, 24);
-        let x = crate::standard::HostTensor::<f64>::from(
+        let x = crate::host::HostTensor::<f64>::from(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
