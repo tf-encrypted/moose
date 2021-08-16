@@ -1364,6 +1364,7 @@ macro_rules! modelled_alias {
 
 pub mod additive;
 pub mod bit;
+pub mod common;
 pub mod compilation;
 pub mod computation;
 pub mod error;
