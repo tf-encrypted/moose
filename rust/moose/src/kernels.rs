@@ -107,14 +107,14 @@ impl Session for SyncSession {
             Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Input(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Output(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Load(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::StdAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -126,16 +126,16 @@ impl Session for SyncSession {
             Operator::FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdConcatenate(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostConcatenate(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO Remove the catch-all case once all the Ops have kernels.
         }
     }
@@ -351,10 +351,10 @@ where
     }
 }
 
-modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat64Tensor, StdOnesOp);
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> HostFloat64Tensor, HostOnesOp);
 
 kernel! {
-    StdOnesOp, [
+    HostOnesOp, [
         (HostPlacement, (HostShape) -> HostFloat64Tensor => Self::kernel),
     ]
 }
@@ -531,21 +531,21 @@ impl Compile<SyncKernel> for Operator {
             Shape(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitFill(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdSub(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdMul(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdDiv(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdDot(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdConcatenate(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostMul(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostDiv(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostDot(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostMean(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostConcatenate(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdSlice(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdSum(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostSlice(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -584,21 +584,21 @@ impl Compile<AsyncKernel> for Operator {
             Shape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingFill(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdDiv(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdConcatenate(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostDiv(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostConcatenate(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdSlice(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostSlice(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostInverse(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingNeg(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -680,7 +680,7 @@ macro_rules! std_unary_kernel {
     };
 }
 
-macro_rules! std_binary_kernel {
+macro_rules! host_binary_kernel {
     ($op:ident, $t:ident::$f:ident, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
@@ -708,7 +708,6 @@ macro_rules! std_binary_kernel {
             }
         }
 
-
         modelled!($t::$f, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, $op);
         modelled!($t::$f, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, $op);
         modelled!($t::$f, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, $op);
@@ -729,30 +728,30 @@ macro_rules! std_binary_kernel {
     };
 }
 
-std_binary_kernel!(StdAddOp, PlacementAdd::add, |x, y| x + y);
-std_binary_kernel!(StdSubOp, PlacementSub::sub, |x, y| x - y);
-std_binary_kernel!(StdMulOp, PlacementMul::mul, |x, y| x * y);
-std_binary_kernel!(StdDivOp, PlacementDiv::div, |x, y| x / y);
-std_binary_kernel!(StdDotOp, PlacementDot::dot, |x, y| x.dot(y));
-std_unary_kernel!(StdTransposeOp, |x| x.transpose());
+host_binary_kernel!(HostAddOp, PlacementAdd::add, |x, y| x + y);
+host_binary_kernel!(HostSubOp, PlacementSub::sub, |x, y| x - y);
+host_binary_kernel!(HostMulOp, PlacementMul::mul, |x, y| x * y);
+host_binary_kernel!(HostDivOp, PlacementDiv::div, |x, y| x / y);
+host_binary_kernel!(HostDotOp, PlacementDot::dot, |x, y| x.dot(y));
+std_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
-modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, StdTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
 
 kernel! {
-    StdTransposeOp, [
+    HostTransposeOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
     ]
 }
 
-modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, StdInverseOp);
+modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostInverseOp);
 
 kernel! {
-    StdInverseOp, [
+    HostInverseOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
     ]
 }
 
-impl Compile<Kernel> for StdInverseOp {
+impl Compile<Kernel> for HostInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         // Using a fake owner for the old kernel
         match self.sig {
@@ -767,15 +766,15 @@ impl Compile<Kernel> for StdInverseOp {
     }
 }
 
-modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, StdMeanOp);
+modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
 
 kernel! {
-    StdMeanOp, [
+    HostMeanOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
-impl Compile<Kernel> for StdMeanOp {
+impl Compile<Kernel> for HostMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|x| x as usize);
         match self.sig {
@@ -802,7 +801,7 @@ impl Compile<Kernel> for StdMeanOp {
     }
 }
 
-impl Compile<Kernel> for StdOnesOp {
+impl Compile<Kernel> for HostOnesOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(_) -> Ty::HostFloat32Tensor] => {
@@ -828,15 +827,15 @@ impl Compile<Kernel> for StdOnesOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, StdConcatenateOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostConcatenateOp);
 
 kernel! {
-    StdConcatenateOp, [
+    HostConcatenateOp, [
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
-impl Compile<Kernel> for StdConcatenateOp {
+impl Compile<Kernel> for HostConcatenateOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::host::concatenate;
         let axis = self.axis as usize;
@@ -864,15 +863,15 @@ impl Compile<Kernel> for StdConcatenateOp {
     }
 }
 
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, StdExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostExpandDimsOp);
 
 kernel! {
-    StdExpandDimsOp, [
+    HostExpandDimsOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
-impl Compile<Kernel> for StdExpandDimsOp {
+impl Compile<Kernel> for HostExpandDimsOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis: Vec<usize> = self.axis.iter().map(|a| *a as usize).collect();
         match self.sig {
@@ -973,7 +972,7 @@ impl Compile<Kernel> for StdAtLeast2DOp {
     }
 }
 
-impl Compile<Kernel> for StdSliceOp {
+impl Compile<Kernel> for HostSliceOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let start = self.start as usize;
         let end = self.end as usize;
@@ -986,15 +985,15 @@ impl Compile<Kernel> for StdSliceOp {
     }
 }
 
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, StdSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostSumOp);
 
 kernel! {
-    StdSumOp, [
+    HostSumOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
-impl Compile<Kernel> for StdSumOp {
+impl Compile<Kernel> for HostSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
         match self.sig {

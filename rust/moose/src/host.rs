@@ -1,8 +1,8 @@
 use crate::bit::BitTensor;
 use crate::computation::{
-    HostPlacement, Placed, Placement, ReplicatedPlacement, ShapeOp, StdAddOp, StdConcatenateOp,
-    StdDivOp, StdDotOp, StdExpandDimsOp, StdInverseOp, StdMeanOp, StdMulOp, StdOnesOp, StdSliceOp,
-    StdSubOp, StdSumOp, StdTransposeOp,
+    HostPlacement, Placed, Placement, ReplicatedPlacement, ShapeOp, HostAddOp, HostConcatenateOp,
+    HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostSliceOp,
+    HostSubOp, HostSumOp, HostTransposeOp,
 };
 use crate::error::Result;
 use crate::kernels::{PlacementPlace, PlacementShape, PlacementSlice, RuntimeSession, SyncSession};
@@ -31,6 +31,29 @@ impl Placed for String {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawShape(pub Vec<usize>);
+
+impl RawShape {
+    pub fn extend_singletons(self, mut axis: Vec<usize>) -> Self {
+        let ax = axis.pop();
+        match ax {
+            Some(ax) => {
+                let (left, right) = self.0.split_at(ax);
+                RawShape::extend_singletons(RawShape([left, right].join(&1usize)), axis)
+            }
+            None => self,
+        }
+    }
+
+    pub fn slice(self, begin: usize, end: usize) -> Self {
+        let slc = &self.0[begin..end];
+        RawShape(slc.to_vec())
+    }
+
+    pub fn unsqueeze(mut self, axis: usize) -> Self {
+        self.0.insert(axis, 1);
+        self
+    }
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostShape(pub RawShape, pub HostPlacement);
@@ -129,7 +152,7 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlaceme
     }
 }
 
-impl StdAddOp {
+impl HostAddOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -143,7 +166,7 @@ impl StdAddOp {
     }
 }
 
-impl StdSubOp {
+impl HostSubOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -157,7 +180,7 @@ impl StdSubOp {
     }
 }
 
-impl StdMulOp {
+impl HostMulOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -171,7 +194,7 @@ impl StdMulOp {
     }
 }
 
-impl StdDivOp {
+impl HostDivOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -185,7 +208,7 @@ impl StdDivOp {
     }
 }
 
-impl StdDotOp {
+impl HostDotOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -199,7 +222,7 @@ impl StdDotOp {
     }
 }
 
-impl StdOnesOp {
+impl HostOnesOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar>(
         sess: &S,
         plc: &HostPlacement,
@@ -226,7 +249,7 @@ kernel! {
         (HostPlacement, (Ring64Tensor) -> HostShape => Self::ring_kernel),
         (HostPlacement, (Ring128Tensor) -> HostShape => Self::ring_kernel),
         (HostPlacement, (BitTensor) -> HostShape => Self::bit_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostShape => Self::std_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostShape => Self::host_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => Self::rep_kernel),
         (ReplicatedPlacement, (Replicated64Tensor) -> ReplicatedShape => Self::rep_kernel),
         (ReplicatedPlacement, (Replicated128Tensor) -> ReplicatedShape => Self::rep_kernel),
@@ -234,7 +257,7 @@ kernel! {
 }
 
 impl ShapeOp {
-    pub(crate) fn std_kernel<S: RuntimeSession, T>(
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostTensor<T>,
@@ -244,16 +267,16 @@ impl ShapeOp {
     }
 }
 
-modelled!(PlacementSlice::slice, HostPlacement, attributes[start: u32, end: u32] (HostShape) -> HostShape, StdSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[start: u32, end: u32] (HostShape) -> HostShape, HostSliceOp);
 
 kernel! {
-    StdSliceOp,
+    HostSliceOp,
     [
         (HostPlacement, (HostShape) -> HostShape => attributes[start, end] Self::kernel),
     ]
 }
 
-impl StdSliceOp {
+impl HostSliceOp {
     pub(crate) fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -263,29 +286,6 @@ impl StdSliceOp {
     ) -> HostShape {
         let slice = x.0.slice(start as usize, end as usize);
         HostShape(slice, plc.clone())
-    }
-}
-
-impl RawShape {
-    pub fn extend_singletons(self, mut axis: Vec<usize>) -> Self {
-        let ax = axis.pop();
-        match ax {
-            Some(ax) => {
-                let (left, right) = self.0.split_at(ax);
-                RawShape::extend_singletons(RawShape([left, right].join(&1usize)), axis)
-            }
-            None => self,
-        }
-    }
-
-    pub fn slice(self, begin: usize, end: usize) -> Self {
-        let slc = &self.0[begin..end];
-        RawShape(slc.to_vec())
-    }
-
-    pub fn unsqueeze(mut self, axis: usize) -> Self {
-        self.0.insert(axis, 1);
-        self
     }
 }
 
@@ -409,7 +409,7 @@ where
     }
 }
 
-impl StdMeanOp {
+impl HostMeanOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
@@ -435,7 +435,7 @@ impl StdMeanOp {
     }
 }
 
-impl StdSumOp {
+impl HostSumOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -450,7 +450,7 @@ impl StdSumOp {
     }
 }
 
-impl StdExpandDimsOp {
+impl HostExpandDimsOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -465,7 +465,7 @@ impl StdExpandDimsOp {
     }
 }
 
-impl StdConcatenateOp {
+impl HostConcatenateOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
@@ -483,7 +483,7 @@ impl StdConcatenateOp {
     }
 }
 
-impl StdTransposeOp {
+impl HostTransposeOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -496,7 +496,7 @@ impl StdTransposeOp {
     }
 }
 
-impl StdInverseOp {
+impl HostInverseOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive + Lapack>(
         sess: &S,
         plc: &HostPlacement,

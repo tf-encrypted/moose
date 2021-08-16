@@ -795,21 +795,21 @@ operators![
     RingFill,
     AdtFill,
     RepFill,
-    StdAdd,
-    StdSub,
-    StdMul,
-    StdDiv,
-    StdDot,
-    StdMean,
-    StdExpandDims,
+    HostAdd,
+    HostSub,
+    HostMul,
+    HostDiv,
+    HostDot,
+    HostMean,
+    HostExpandDims,
     StdReshape,
     StdAtLeast2D,
-    StdSlice,
-    StdSum,
-    StdOnes,
-    StdConcatenate,
-    StdTranspose,
-    StdInverse,
+    HostSlice,
+    HostSum,
+    HostOnes,
+    HostConcatenate,
+    HostTranspose,
+    HostInverse,
     RingAdd,
     RingSub,
     RingNeg,
@@ -911,43 +911,43 @@ pub struct ConstantOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdAddOp {
+pub struct HostAddOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdSubOp {
+pub struct HostSubOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdMulOp {
+pub struct HostMulOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdDivOp {
+pub struct HostDivOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdDotOp {
+pub struct HostDotOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdMeanOp {
+pub struct HostMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdOnesOp {
+pub struct HostOnesOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdConcatenateOp {
+pub struct HostConcatenateOp {
     pub sig: Signature,
     pub axis: u32,
 }
@@ -959,7 +959,7 @@ pub struct StdAtLeast2DOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdExpandDimsOp {
+pub struct HostExpandDimsOp {
     pub sig: Signature,
     pub axis: Vec<u32>,
 }
@@ -970,25 +970,25 @@ pub struct StdReshapeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdSliceOp {
+pub struct HostSliceOp {
     pub sig: Signature,
     pub start: u32,
     pub end: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdSumOp {
+pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdTransposeOp {
+pub struct HostTransposeOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdInverseOp {
+pub struct HostInverseOp {
     pub sig: Signature,
 }
 
