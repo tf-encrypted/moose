@@ -4,7 +4,7 @@ mod tests {
     use moose::compilation::typing::update_types_one_hop;
     use moose::execution::*;
     use moose::storage::{LocalSyncStorage, SyncStorage};
-    use moose::{computation::*, python_computation::PyComputation, host::HostFloat64Tensor};
+    use moose::{computation::*, host::HostFloat64Tensor, python_computation::PyComputation};
     use ndarray::prelude::*;
     use numpy::ToPyArray;
     use pyo3::prelude::*;
@@ -711,6 +711,9 @@ def f(arg1):
 
         let result = run_unary_func(&x1, py_code);
         let y1 = x1.mapv(f64::abs);
-        assert_eq!(result, Value::HostFloat64Tensor(HostFloat64Tensor::from(y1)));
+        assert_eq!(
+            result,
+            Value::HostFloat64Tensor(HostFloat64Tensor::from(y1))
+        );
     }
 }
