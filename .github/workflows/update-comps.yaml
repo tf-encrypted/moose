@@ -36,24 +36,27 @@ jobs:
       - name: Install OpenBLAS.
         run: |
           sudo apt install libopenblas-dev
-      - name: Create virtual environment.
+      - name: Install dependencies
         run: |
           python -m venv venv
+          . venv/bin/activate
           make pydep
           make pylib
-          make build
+          pip install pycape
       - uses: actions/checkout@v2
-        name: Checkout infrastructure
+        name: Checkout coordinator
         with:
           repository: capeprivacy/coordinator
           token: ${{ secrets.PAT }}
-      - run: |
-          python -m venv venv
-          python computations/linear_regression.py \
+          path: coordinator
+      - name: Update computations
+        run: |
+          . venv/bin/activate
+          python coordinator/computations/linear_regression.py \
             --coordinator https://demo.capeprivacy.com \
             --token ${{ secrets.DEMO_TOKEN }} \
             --runtime-version main#${{ github.sha }}
-          python computations/linear_regression.py \
+          python coordinator/computations/linear_regression.py \
             --coordinator https://app.capeprivacy.com \
             --token ${{ secrets.PROD_TOKEN }} \
             --runtime-version main#${{ github.sha }}
