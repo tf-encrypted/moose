@@ -33,8 +33,8 @@ pub type Fixed128Tensor = FixedTensor<HostRing128Tensor, ReplicatedRing128Tensor
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<HostTensorT, ReplicatedTensorT> {
-    HostTensor(HostTensorT),
-    ReplicatedTensor(ReplicatedTensorT),
+    Host(HostTensorT),
+    Replicated(ReplicatedTensorT),
 }
 
 impl<RingTensorT, ReplicatedTensorT> Placed for FixedTensor<RingTensorT, ReplicatedTensorT>
@@ -48,8 +48,8 @@ where
 
     fn placement(&self) -> Result<Self::Placement> {
         match self {
-            FixedTensor::HostTensor(x) => Ok(x.placement()?.into()),
-            FixedTensor::ReplicatedTensor(x) => Ok(x.placement()?.into()),
+            FixedTensor::Host(x) => Ok(x.placement()?.into()),
+            FixedTensor::Replicated(x) => Ok(x.placement()?.into()),
         }
     }
 }
@@ -195,7 +195,7 @@ impl FixedpointEncodeOp {
         HostPlacement: PlacementFixedpointRingEncode<S, StdT, RingT>,
     {
         let x = plc.fixedpoint_ring_encode(sess, 2, precision, &x);
-        FixedTensor::HostTensor(x)
+        FixedTensor::Host(x)
     }
 }
 
@@ -222,8 +222,8 @@ impl FixedpointDecodeOp {
         HostPlacement: PlacementFixedpointRingDecode<S, RingT, StdT>,
     {
         let x = match x {
-            FixedTensor::HostTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         plc.fixedpoint_ring_decode(sess, 2, precision, &x)
     }
@@ -256,16 +256,16 @@ impl FixedpointAddOp {
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
     {
         let x = match x {
-            FixedTensor::HostTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
-            FixedTensor::HostTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
         let result = with_context!(plc, sess, x + y);
-        FixedTensor::HostTensor(result)
+        FixedTensor::Host(result)
     }
 
     fn rep_kernel<S: Session, RingT, RepT>(
@@ -282,16 +282,16 @@ impl FixedpointAddOp {
         let setup = plc.gen_setup(sess);
 
         let x = match x {
-            FixedTensor::HostTensor(v) => plc.share(sess, &setup, &v),
-            FixedTensor::ReplicatedTensor(v) => v,
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::HostTensor(v) => plc.share(sess, &setup, &v),
-            FixedTensor::ReplicatedTensor(v) => v,
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
         };
 
         let result = with_context!(plc, sess, x + y);
-        FixedTensor::ReplicatedTensor(result)
+        FixedTensor::Replicated(result)
     }
 }
 
@@ -322,16 +322,16 @@ impl FixedpointSubOp {
         HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     {
         let x = match x {
-            FixedTensor::HostTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
-            FixedTensor::HostTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
         let result = with_context!(plc, sess, x - y);
-        FixedTensor::HostTensor(result)
+        FixedTensor::Host(result)
     }
 
     fn rep_kernel<S: Session, RingT, RepT>(
@@ -348,16 +348,16 @@ impl FixedpointSubOp {
         let setup = plc.gen_setup(sess);
 
         let x = match x {
-            FixedTensor::HostTensor(v) => plc.share(sess, &setup, &v),
-            FixedTensor::ReplicatedTensor(v) => v,
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::HostTensor(v) => plc.share(sess, &setup, &v),
-            FixedTensor::ReplicatedTensor(v) => v,
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
         };
 
         let result = with_context!(plc, sess, x - y);
-        FixedTensor::ReplicatedTensor(result)
+        FixedTensor::Replicated(result)
     }
 }
 
@@ -388,16 +388,16 @@ impl FixedpointMulOp {
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
     {
         let x = match x {
-            FixedTensor::HostTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
         let y = match y {
-            FixedTensor::HostTensor(v) => v,
-            FixedTensor::ReplicatedTensor(v) => plc.reveal(sess, &v),
+            FixedTensor::Host(v) => v,
+            FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
 
         let result = with_context!(plc, sess, x * y);
-        FixedTensor::HostTensor(result)
+        FixedTensor::Host(result)
     }
 
     fn rep_kernel<S: Session, RingT, RepT>(
@@ -414,16 +414,16 @@ impl FixedpointMulOp {
         let setup = plc.gen_setup(sess);
 
         let x = match x {
-            FixedTensor::HostTensor(v) => plc.share(sess, &setup, &v),
-            FixedTensor::ReplicatedTensor(v) => v,
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
         };
         let y = match y {
-            FixedTensor::HostTensor(v) => plc.share(sess, &setup, &v),
-            FixedTensor::ReplicatedTensor(v) => v,
+            FixedTensor::Host(v) => plc.share(sess, &setup, &v),
+            FixedTensor::Replicated(v) => v,
         };
 
         let result = with_context!(plc, sess, mul_setup(&setup, &x, &y));
-        FixedTensor::ReplicatedTensor(result)
+        FixedTensor::Replicated(result)
     }
 }
 
@@ -454,16 +454,16 @@ impl FixedpointDotOp {
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
     {
         let x_revealed = match x {
-            FixedTensor::HostTensor(x) => x,
-            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
         let y_revealed = match y {
-            FixedTensor::HostTensor(x) => x,
-            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
         let result = plc.dot(sess, &x_revealed, &y_revealed);
-        FixedTensor::HostTensor(result)
+        FixedTensor::Host(result)
     }
 
     fn rep_kernel<S: Session, RingT, RepT>(
@@ -480,16 +480,16 @@ impl FixedpointDotOp {
         let setup = plc.gen_setup(sess);
 
         let x_shared = match x {
-            FixedTensor::HostTensor(x) => plc.share(sess, &setup, &x),
-            FixedTensor::ReplicatedTensor(x) => x,
+            FixedTensor::Host(x) => plc.share(sess, &setup, &x),
+            FixedTensor::Replicated(x) => x,
         };
         let y_shared = match y {
-            FixedTensor::HostTensor(x) => plc.share(sess, &setup, &x),
-            FixedTensor::ReplicatedTensor(x) => x,
+            FixedTensor::Host(x) => plc.share(sess, &setup, &x),
+            FixedTensor::Replicated(x) => x,
         };
 
         let result = plc.dot_setup(sess, &setup, &x_shared, &y_shared);
-        FixedTensor::ReplicatedTensor(result)
+        FixedTensor::Replicated(result)
     }
 }
 
@@ -520,12 +520,12 @@ impl FixedpointTruncPrOp {
         HostPlacement: PlacementShr<S, RingT, RingT>,
     {
         let x_revealed = match x {
-            FixedTensor::HostTensor(x) => x,
-            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
         let result = plc.shr(sess, precision as usize, &x_revealed);
-        FixedTensor::HostTensor(result)
+        FixedTensor::Host(result)
     }
 
     fn rep_kernel<S: Session, RingT, RepT>(
@@ -542,12 +542,12 @@ impl FixedpointTruncPrOp {
         let setup = plc.gen_setup(sess);
 
         let x_shared = match x {
-            FixedTensor::HostTensor(x) => plc.share(sess, &setup, &x),
-            FixedTensor::ReplicatedTensor(x) => x,
+            FixedTensor::Host(x) => plc.share(sess, &setup, &x),
+            FixedTensor::Replicated(x) => x,
         };
 
         let result = plc.trunc_pr(sess, precision, &x_shared);
-        FixedTensor::ReplicatedTensor(result)
+        FixedTensor::Replicated(result)
     }
 }
 
@@ -578,12 +578,12 @@ impl FixedpointSumOp {
         HostPlacement: PlacementSum<S, RingT, RingT>,
     {
         let x_revealed = match x {
-            FixedTensor::HostTensor(x) => x,
-            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
         let result = plc.sum(sess, axis, &x_revealed);
-        FixedTensor::HostTensor(result)
+        FixedTensor::Host(result)
     }
 
     fn rep_kernel<S: Session, RingT, RepT>(
@@ -598,15 +598,15 @@ impl FixedpointSumOp {
         ReplicatedPlacement: PlacementSum<S, RepT, RepT>,
     {
         let x_shared = match x {
-            FixedTensor::HostTensor(x) => {
+            FixedTensor::Host(x) => {
                 let setup = plc.gen_setup(sess);
                 plc.share(sess, &setup, &x)
             }
-            FixedTensor::ReplicatedTensor(x) => x,
+            FixedTensor::Replicated(x) => x,
         };
 
         let result = plc.sum(sess, axis, &x_shared);
-        FixedTensor::ReplicatedTensor(result)
+        FixedTensor::Replicated(result)
     }
 }
 
@@ -639,12 +639,12 @@ impl FixedpointMeanOp {
         HostPlacement: PlacementRingMean<S, RingT, RingT>,
     {
         let x_revealed = match x {
-            FixedTensor::HostTensor(x) => x,
-            FixedTensor::ReplicatedTensor(x) => plc.reveal(sess, &x),
+            FixedTensor::Host(x) => x,
+            FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
         let result = plc.ring_mean(sess, axis, scaling_base, scaling_exp, &x_revealed);
-        FixedTensor::HostTensor(result)
+        FixedTensor::Host(result)
     }
 
     fn rep_kernel<S: Session, RingT, RepT>(
@@ -661,15 +661,15 @@ impl FixedpointMeanOp {
         ReplicatedPlacement: PlacementMean<S, RepT, RepT>,
     {
         let x_shared = match x {
-            FixedTensor::HostTensor(x) => {
+            FixedTensor::Host(x) => {
                 let setup = plc.gen_setup(sess);
                 plc.share(sess, &setup, &x)
             }
-            FixedTensor::ReplicatedTensor(x) => x,
+            FixedTensor::Replicated(x) => x,
         };
 
         let result = plc.mean(sess, axis, scaling_exp.into(), &x_shared);
-        FixedTensor::ReplicatedTensor(result)
+        FixedTensor::Replicated(result)
     }
 }
 
