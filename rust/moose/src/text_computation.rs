@@ -198,7 +198,7 @@ macro_rules! attributes {
 }
 
 /// Constructs a parser for a simple unary operation.
-macro_rules! std_unary {
+macro_rules! unary {
     ($sub:ident) => {
         |input: &'a str| {
             let (input, sig) = type_definition(1)(input)?;
@@ -208,7 +208,7 @@ macro_rules! std_unary {
 }
 
 /// Constructs a parser for a simple binary operation.
-macro_rules! std_binary {
+macro_rules! binary {
     ($sub:ident) => {
         |input: &'a str| {
             let (input, sig) = type_definition(2)(input)?;
@@ -240,50 +240,50 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let part1 = alt((
-        preceded(tag(IdentityOp::SHORT_NAME), cut(std_unary!(IdentityOp))),
-        preceded(tag(LoadOp::SHORT_NAME), cut(std_unary!(LoadOp))),
+        preceded(tag(IdentityOp::SHORT_NAME), cut(unary!(IdentityOp))),
+        preceded(tag(LoadOp::SHORT_NAME), cut(unary!(LoadOp))),
         preceded(tag(SendOp::SHORT_NAME), cut(send_operator)),
         preceded(tag(ReceiveOp::SHORT_NAME), cut(receive_operator)),
         preceded(tag(InputOp::SHORT_NAME), cut(input_operator)),
-        preceded(tag(OutputOp::SHORT_NAME), cut(std_unary!(OutputOp))),
+        preceded(tag(OutputOp::SHORT_NAME), cut(unary!(OutputOp))),
         preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
-        preceded(tag(ShapeOp::SHORT_NAME), cut(std_unary!(ShapeOp))),
+        preceded(tag(ShapeOp::SHORT_NAME), cut(unary!(ShapeOp))),
         preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
         preceded(tag(RingFillOp::SHORT_NAME), cut(ring_fill)),
         preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
-        preceded(tag(HostAddOp::SHORT_NAME), cut(std_binary!(HostAddOp))),
-        preceded(tag(HostSubOp::SHORT_NAME), cut(std_binary!(HostSubOp))),
-        preceded(tag(HostMulOp::SHORT_NAME), cut(std_binary!(HostMulOp))),
-        preceded(tag(HostDivOp::SHORT_NAME), cut(std_binary!(HostDivOp))),
-        preceded(tag(HostDotOp::SHORT_NAME), cut(std_binary!(HostDotOp))),
+        preceded(tag(HostAddOp::SHORT_NAME), cut(binary!(HostAddOp))),
+        preceded(tag(HostSubOp::SHORT_NAME), cut(binary!(HostSubOp))),
+        preceded(tag(HostMulOp::SHORT_NAME), cut(binary!(HostMulOp))),
+        preceded(tag(HostDivOp::SHORT_NAME), cut(binary!(HostDivOp))),
+        preceded(tag(HostDotOp::SHORT_NAME), cut(binary!(HostDotOp))),
         preceded(
             tag(HostMeanOp::SHORT_NAME),
             cut(operation_on_axis!(HostMeanOp)),
         ),
         preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
-        preceded(tag(HostReshapeOp::SHORT_NAME), cut(std_unary!(HostReshapeOp))),
+        preceded(tag(HostReshapeOp::SHORT_NAME), cut(unary!(HostReshapeOp))),
         preceded(tag(HostAtLeast2DOp::SHORT_NAME), cut(hostatleast2d)),
-        preceded(tag(HostSliceOp::SHORT_NAME), cut(stdslice)),
+        preceded(tag(HostSliceOp::SHORT_NAME), cut(hostslice)),
     ));
     let part2 = alt((
         preceded(
             tag(HostSumOp::SHORT_NAME),
             cut(operation_on_axis!(HostSumOp)),
         ),
-        preceded(tag(HostOnesOp::SHORT_NAME), cut(std_unary!(HostOnesOp))),
-        preceded(tag(HostConcatenateOp::SHORT_NAME), cut(stdconcatenate)),
+        preceded(tag(HostOnesOp::SHORT_NAME), cut(unary!(HostOnesOp))),
+        preceded(tag(HostConcatenateOp::SHORT_NAME), cut(hostconcatenate)),
         preceded(
             tag(HostTransposeOp::SHORT_NAME),
-            cut(std_unary!(HostTransposeOp)),
+            cut(unary!(HostTransposeOp)),
         ),
         preceded(
             tag(HostInverseOp::SHORT_NAME),
-            cut(std_unary!(HostInverseOp)),
+            cut(unary!(HostInverseOp)),
         ),
-        preceded(tag(RingAddOp::SHORT_NAME), cut(std_binary!(RingAddOp))),
-        preceded(tag(RingSubOp::SHORT_NAME), cut(std_binary!(RingSubOp))),
-        preceded(tag(RingMulOp::SHORT_NAME), cut(std_binary!(RingMulOp))),
-        preceded(tag(RingDotOp::SHORT_NAME), cut(std_binary!(RingDotOp))),
+        preceded(tag(RingAddOp::SHORT_NAME), cut(binary!(RingAddOp))),
+        preceded(tag(RingSubOp::SHORT_NAME), cut(binary!(RingSubOp))),
+        preceded(tag(RingMulOp::SHORT_NAME), cut(binary!(RingMulOp))),
+        preceded(tag(RingDotOp::SHORT_NAME), cut(binary!(RingDotOp))),
         preceded(
             tag(RingSumOp::SHORT_NAME),
             cut(operation_on_axis!(RingSumOp)),
@@ -404,7 +404,7 @@ fn hostatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 }
 
 /// Parses a HostSlice operator.
-fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (start, end)) = attributes!((
@@ -416,7 +416,7 @@ fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 }
 
 /// Parses a HostConcatenate operator.
-fn stdconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+fn hostconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
