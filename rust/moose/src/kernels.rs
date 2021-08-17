@@ -648,7 +648,7 @@ macro_rules! signature {
     };
 }
 
-macro_rules! std_unary_kernel {
+macro_rules! host_unary_kernel {
     ($op:ty, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
@@ -731,7 +731,7 @@ host_binary_kernel!(HostSubOp, PlacementSub::sub, |x, y| x - y);
 host_binary_kernel!(HostMulOp, PlacementMul::mul, |x, y| x * y);
 host_binary_kernel!(HostDivOp, PlacementDiv::div, |x, y| x / y);
 host_binary_kernel!(HostDotOp, PlacementDot::dot, |x, y| x.dot(y));
-std_unary_kernel!(HostTransposeOp, |x| x.transpose());
+host_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
 modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
 
