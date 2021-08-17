@@ -1,17 +1,16 @@
 use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed,
-    BitToRingOp,
-    ShapeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitToRingOp, BitXorOp, Constant, HostPlacement,
+    Placed, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementFill, PlacementMul, PlacementPlace,
-    PlacementBitToRing,
-    PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession, Session, SyncSession,
-    Tensor,
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementBitToRing, PlacementFill,
+    PlacementMul, PlacementPlace, PlacementSampleUniform, PlacementSub, PlacementXor,
+    RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
+use crate::replicated::{Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor};
 use crate::ring::{AbstractRingTensor, Ring128Tensor, Ring64Tensor};
 use crate::standard::{RawShape, Shape};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
@@ -342,18 +341,27 @@ impl BitExtractOp {
 
 modelled!(PlacementBitToRing::bit_to_ring, HostPlacement, (BitTensor) -> Ring64Tensor, BitToRingOp);
 modelled!(PlacementBitToRing::bit_to_ring, HostPlacement, (BitTensor) -> Ring128Tensor, BitToRingOp);
+modelled!(PlacementBitToRing::bit_to_ring, ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated64Tensor, BitToRingOp);
+modelled!(PlacementBitToRing::bit_to_ring, ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated128Tensor, BitToRingOp);
 
 kernel! {
     BitToRingOp,
     [
         (HostPlacement, (BitTensor) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (BitTensor) -> Ring128Tensor => Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated64Tensor => Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated128Tensor => Self::rep_kernel),
     ]
 }
 
 impl BitToRingOp {
-    fn kernel<S: RuntimeSession, T>(_sess: &S, plc: &HostPlacement, x: BitTensor) -> AbstractRingTensor<T>
-    where T: From<u8>
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: BitTensor,
+    ) -> AbstractRingTensor<T>
+    where
+        T: From<u8>,
     {
         AbstractRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai))), plc.clone())
     }

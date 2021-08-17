@@ -301,6 +301,10 @@ pub trait PlacementBitToRing<S: Session, T, O> {
     fn bit_to_ring(&self, sess: &S, x: &T) -> O;
 }
 
+pub trait PlacementDaBit<S: Session, O1, O2> {
+    fn get_dabit(&self, sess: &S) -> (O1, O2);
+}
+
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
     fn mul_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
@@ -430,6 +434,10 @@ pub trait PlacementTruncPr<S: Session, T, O> {
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
+}
+
+pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
+    fn get_dabit(&self, sess: &S, shape: ShapeT, provider: &HostPlacement) -> (O1, O2);
 }
 
 pub trait PlacementAbs<S: Session, SetupT, T, O> {

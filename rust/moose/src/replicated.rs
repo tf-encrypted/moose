@@ -3,18 +3,19 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp,
-    RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
-    RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
+    AdditivePlacement, AdtToRepOp, BitToRingOp, Constant, HostPlacement, KnownType, Placed,
+    RepAddOp, RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp,
+    RepShareOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract, PlacementDeriveSeed,
-    PlacementDot, PlacementDotSetup, PlacementFill, PlacementKeyGen, PlacementMean, PlacementMsb,
-    PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt,
-    PlacementReveal, PlacementRingMean, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
-    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, RuntimeSession, Session,
+    PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract, PlacementBitToRing,
+    PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
+    PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup, PlacementOnes,
+    PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingMean, PlacementSampleUniform,
+    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShr, PlacementSub,
+    PlacementSum, PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, RuntimeSession,
+    Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -1713,6 +1714,75 @@ where
     }
 }
 
+impl BitToRingOp {
+    pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitTensorT, BitTensorT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        x: ReplicatedBitTensorT,
+    ) -> AbstractReplicatedTensor<RingT>
+    where
+        ReplicatedPlacement:
+            PlacementShape<S, ReplicatedBitTensorT, AbstractReplicatedShape<ShapeT>>,
+        ReplicatedPlacement:
+            PlacementAdtToRep<S, AbstractAdditiveTensor<RingT>, AbstractReplicatedTensor<RingT>>,
+        AdditivePlacement: PlacementDaBitProvider<
+            S,
+            ShapeT,
+            AbstractAdditiveTensor<RingT>,
+            AbstractAdditiveTensor<BitTensorT>,
+        >,
+        AdditivePlacement:
+            PlacementRepToAdt<S, ReplicatedBitTensorT, AbstractAdditiveTensor<BitTensorT>>,
+        AdditivePlacement: PlacementAdd<
+            S,
+            AbstractAdditiveTensor<BitTensorT>,
+            AbstractAdditiveTensor<BitTensorT>,
+            AbstractAdditiveTensor<BitTensorT>,
+        >,
+        AdditivePlacement:
+            PlacementAdd<S, AbstractAdditiveTensor<RingT>, RingT, AbstractAdditiveTensor<RingT>>,
+        AdditivePlacement:
+            PlacementMul<S, AbstractAdditiveTensor<RingT>, RingT, AbstractAdditiveTensor<RingT>>,
+        AdditivePlacement: PlacementSub<
+            S,
+            AbstractAdditiveTensor<RingT>,
+            AbstractAdditiveTensor<RingT>,
+            AbstractAdditiveTensor<RingT>,
+        >,
+        HostPlacement: PlacementReveal<S, AbstractAdditiveTensor<BitTensorT>, BitTensorT>,
+        HostPlacement: PlacementBitToRing<S, BitTensorT, RingT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+
+        let adt = AdditivePlacement {
+            owners: [player0.clone().owner, player1.owner],
+        };
+        let provider = player2;
+
+        let x_shape = rep.shape(sess, &x);
+        let AbstractReplicatedShape { shapes: [s0, _, _] } = x_shape;
+
+        // TODO(Dragos) this could be optimized by having an AdtShape structure
+        // to avoid sending shapes around
+        let (b_ring, b_bin): (
+            AbstractAdditiveTensor<RingT>,
+            AbstractAdditiveTensor<BitTensorT>,
+        ) = adt.get_dabit(sess, s0, &provider);
+
+        let x_adt = adt.rep_to_adt(sess, &x);
+
+        let c = with_context!(adt, sess, x_adt + b_bin);
+        let c_open = player0.reveal(sess, &c);
+        let c_ring = player0.bit_to_ring(sess, &c_open);
+        let x_adt_ring = with_context!(
+            adt,
+            sess,
+            b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
+        );
+        rep.adt_to_rep(sess, &x_adt_ring)
+    }
+}
+
 struct AbstractReplicatedSeeds<T> {
     seeds: [[T; 2]; 3],
 }
@@ -2372,5 +2442,32 @@ mod tests {
             ).collect::<Vec<_>>();
             test_rep_msb128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
+    }
+
+    #[rstest]
+    #[case(array![0_u8, 1, 0].into_dyn())]
+    fn test_bit_to_ring(#[case] xs: ArrayD<u8>) {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = BitTensor::from_raw_plc(xs.clone(), alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let x_ring64: Replicated64Tensor = rep.bit_to_ring(&sess, &x_shared);
+        let x_ring128: Replicated128Tensor = rep.bit_to_ring(&sess, &x_shared);
+
+        let target64 = Ring64Tensor::from_raw_plc(xs.map(|x| *x as u64), alice.clone());
+        let target128 = Ring128Tensor::from_raw_plc(xs.map(|x| *x as u128), alice.clone());
+
+        assert_eq!(alice.reveal(&sess, &x_ring64), target64);
+        assert_eq!(alice.reveal(&sess, &x_ring128), target128);
     }
 }

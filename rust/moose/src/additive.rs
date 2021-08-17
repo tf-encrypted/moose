@@ -1,19 +1,22 @@
 //! Placements backed by additive secret sharing
 
+use crate::bit::BitTensor;
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
     HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementDeriveSeed, PlacementFill, PlacementKeyGen, PlacementMul, PlacementNeg,
-    PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementSampleBits,
-    PlacementSampleUniform, PlacementShape, PlacementShl, PlacementShr, PlacementSub,
-    PlacementTruncPrProvider, Session,
+    PlacementAdd, PlacementBitToRing, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill,
+    PlacementKeyGen, PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt,
+    PlacementReveal, PlacementSampleBits, PlacementSampleUniform, PlacementShape, PlacementShl,
+    PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::CanonicalType;
-use crate::replicated::{AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor};
+use crate::replicated::{
+    AbstractReplicatedTensor, Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor,
+};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
 use crate::standard::Shape;
 use macros::with_context;
@@ -27,6 +30,8 @@ pub struct AbstractAdditiveTensor<R> {
 pub type Additive64Tensor = AbstractAdditiveTensor<Ring64Tensor>;
 
 pub type Additive128Tensor = AbstractAdditiveTensor<Ring128Tensor>;
+
+pub type AdditiveBitTensor = AbstractAdditiveTensor<BitTensor>;
 
 impl<R> Placed for AbstractAdditiveTensor<R>
 where
@@ -99,12 +104,14 @@ impl AdtFillOp {
 
 modelled!(PlacementReveal::reveal, HostPlacement, (Additive64Tensor) -> Ring64Tensor, AdtRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (Additive128Tensor) -> Ring128Tensor, AdtRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (AdditiveBitTensor) -> BitTensor, AdtRevealOp);
 
 hybrid_kernel! {
     AdtRevealOp,
     [
         (HostPlacement, (Additive64Tensor) -> Ring64Tensor => Self::kernel),
         (HostPlacement, (Additive128Tensor) -> Ring128Tensor => Self::kernel),
+        (HostPlacement, (AdditiveBitTensor) -> BitTensor => Self::kernel),
     ]
 }
 
@@ -124,20 +131,26 @@ impl AdtRevealOp {
 
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor, AdtAddOp);
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor, AdtAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor, AdtAddOp);
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor, AdtAddOp);
 modelled!(PlacementAdd::add, AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor, AdtAddOp);
 modelled!(PlacementAdd::add, AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor, AdtAddOp);
 modelled!(PlacementAdd::add, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdtAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (BitTensor, AdditiveBitTensor) -> AdditiveBitTensor, AdtAddOp);
+modelled!(PlacementAdd::add, AdditivePlacement, (AdditiveBitTensor, BitTensor) -> AdditiveBitTensor, AdtAddOp);
 
 hybrid_kernel! {
     AdtAddOp,
     [
         (AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor => Self::adt_adt_kernel),
         (AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor => Self::adt_adt_kernel),
+        (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => Self::adt_adt_kernel),
         (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::adt_ring_kernel),
         (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::adt_ring_kernel),
+        (AdditivePlacement, (AdditiveBitTensor, BitTensor) -> AdditiveBitTensor => Self::adt_ring_kernel),
         (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::ring_adt_kernel),
         (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::ring_adt_kernel),
+        (AdditivePlacement, (BitTensor, AdditiveBitTensor) -> AdditiveBitTensor => Self::ring_adt_kernel),
     ]
 }
 
@@ -217,12 +230,14 @@ modelled!(PlacementSub::sub, AdditivePlacement, (Additive64Tensor, Ring64Tensor)
 modelled!(PlacementSub::sub, AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor, AdtSubOp);
 modelled!(PlacementSub::sub, AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor, AdtSubOp);
 modelled!(PlacementSub::sub, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdtSubOp);
+modelled!(PlacementSub::sub, AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor, AdtSubOp);
 
 hybrid_kernel! {
     AdtSubOp,
     [
         (AdditivePlacement, (Additive64Tensor, Additive64Tensor) -> Additive64Tensor => Self::adt_adt_kernel),
         (AdditivePlacement, (Additive128Tensor, Additive128Tensor) -> Additive128Tensor => Self::adt_adt_kernel),
+        (AdditivePlacement, (AdditiveBitTensor, AdditiveBitTensor) -> AdditiveBitTensor => Self::adt_adt_kernel),
         (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::adt_ring_kernel),
         (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::adt_ring_kernel),
         (AdditivePlacement, (Ring64Tensor, Additive64Tensor) -> Additive64Tensor => Self::ring_adt_kernel),
@@ -305,6 +320,8 @@ modelled!(PlacementMul::mul, AdditivePlacement, (Ring64Tensor, Additive64Tensor)
 modelled!(PlacementMul::mul, AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor, AdtMulOp);
 modelled!(PlacementMul::mul, AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor, AdtMulOp);
 modelled!(PlacementMul::mul, AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor, AdtMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (BitTensor, AdditiveBitTensor) -> AdditiveBitTensor, AdtMulOp);
+modelled!(PlacementMul::mul, AdditivePlacement, (AdditiveBitTensor, BitTensor) -> AdditiveBitTensor, AdtMulOp);
 
 hybrid_kernel! {
     AdtMulOp,
@@ -313,6 +330,8 @@ hybrid_kernel! {
         (AdditivePlacement, (Additive64Tensor, Ring64Tensor) -> Additive64Tensor => Self::adt_ring_kernel),
         (AdditivePlacement, (Additive128Tensor, Ring128Tensor) -> Additive128Tensor => Self::adt_ring_kernel),
         (AdditivePlacement, (Ring128Tensor, Additive128Tensor) -> Additive128Tensor => Self::ring_adt_kernel),
+        (AdditivePlacement, (AdditiveBitTensor, BitTensor) -> AdditiveBitTensor => Self::adt_ring_kernel),
+        (AdditivePlacement, (BitTensor, AdditiveBitTensor) -> AdditiveBitTensor => Self::ring_adt_kernel),
     ]
 }
 
@@ -617,12 +636,14 @@ where
 
 modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor, RepToAdtOp);
 modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor, RepToAdtOp);
+modelled!(PlacementRepToAdt::rep_to_adt, AdditivePlacement, (ReplicatedBitTensor) -> AdditiveBitTensor, RepToAdtOp);
 
 hybrid_kernel! {
     RepToAdtOp,
     [
         (AdditivePlacement, (Replicated64Tensor) -> Additive64Tensor => Self::rep_to_adt_kernel),
         (AdditivePlacement, (Replicated128Tensor) -> Additive128Tensor => Self::rep_to_adt_kernel),
+        (AdditivePlacement, (ReplicatedBitTensor) -> AdditiveBitTensor => Self::rep_to_adt_kernel),
     ]
 }
 
@@ -694,6 +715,66 @@ impl RepToAdtOp {
             }
         };
         adt.place(sess, AbstractAdditiveTensor { shares })
+    }
+}
+
+impl<S: Session, ShapeT, RingT, BitT>
+    PlacementDaBitProvider<S, ShapeT, AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<BitT>>
+    for AdditivePlacement
+where
+    RingT: Clone,
+    Seed: KnownType<S>,
+    PrfKey: KnownType<S>,
+    HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
+    HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
+    HostPlacement: PlacementSampleUniform<S, ShapeT, cs!(Seed), BitT>,
+    HostPlacement: PlacementSampleUniform<S, ShapeT, cs!(Seed), RingT>,
+    HostPlacement: PlacementSub<S, BitT, BitT, BitT>,
+    HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
+    HostPlacement: PlacementBitToRing<S, BitT, RingT>,
+    AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
+    AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<BitT>>,
+{
+    fn get_dabit(
+        &self,
+        sess: &S,
+        shape: ShapeT,
+        provider: &HostPlacement,
+    ) -> (AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<BitT>) {
+        let adt = self;
+        let (player_a, player_b) = adt.host_placements();
+        assert!(provider != &player_a);
+        assert!(provider != &player_b);
+
+        let key = provider.gen_key(sess);
+
+        let sync_key = RawNonce::generate();
+        let seed0 = provider.derive_seed(sess, sync_key, &key);
+        let b: BitT = provider.sample_uniform(sess, &shape, &seed0);
+        let b2k = provider.bit_to_ring(sess, &b);
+
+        let sync_key2 = RawNonce::generate();
+        let seed2 = provider.derive_seed(sess, sync_key2, &key);
+        let b20 = provider.sample_uniform(sess, &shape, &seed2);
+        let b21 = with_context!(provider, sess, b - b20);
+
+        let sync_key2k = RawNonce::generate();
+        let seed2k = provider.derive_seed(sess, sync_key2k, &key);
+        let b2k0: RingT = provider.sample_uniform(sess, &shape, &seed2k);
+        let b2k1 = with_context!(provider, sess, b2k - b2k0);
+
+        let b20: BitT = player_a.sample_uniform(sess, &shape, &seed2);
+        let b2k0: RingT = player_a.sample_uniform(sess, &shape, &seed2k);
+
+        (
+            adt.place(
+                sess,
+                AbstractAdditiveTensor {
+                    shares: [b2k0, b2k1],
+                },
+            ),
+            adt.place(sess, AbstractAdditiveTensor { shares: [b20, b21] }),
+        )
     }
 }
 

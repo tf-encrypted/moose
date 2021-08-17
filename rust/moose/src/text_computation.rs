@@ -1500,6 +1500,7 @@ impl ToTextual for Ty {
             Ty::ReplicatedShape => "ReplicatedShape",
             Ty::Additive64Tensor => "Additive64Tensor",
             Ty::Additive128Tensor => "Additive128Tensor",
+            Ty::AdditiveBitTensor => "AdditiveBitTensor",
         }
         .to_string()
     }
