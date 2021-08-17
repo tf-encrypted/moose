@@ -712,7 +712,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
         "Unknown" => Ok((i, Ty::Unknown)),
-        "Shape" => Ok((i, Ty::HostShape)), // TODO change textual symbol as well
+        "Shape" => Ok((i, Ty::HostShape)),
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
         "Nonce" => Ok((i, Ty::Nonce)),
@@ -720,8 +720,8 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
         "Ring128Tensor" => Ok((i, Ty::HostRing128Tensor)),
-        "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)), // TODO change textual
-        "Float64Tensor" => Ok((i, Ty::HostFloat64Tensor)), // TODO
+        "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)),
+        "Float64Tensor" => Ok((i, Ty::HostFloat64Tensor)),
         "Int8Tensor" => Ok((i, Ty::HostInt8Tensor)),
         "Int16Tensor" => Ok((i, Ty::HostInt16Tensor)),
         "Int32Tensor" => Ok((i, Ty::HostInt32Tensor)),
@@ -1479,12 +1479,12 @@ impl ToTextual for Ty {
             Ty::HostRing128Tensor => "Ring128Tensor",
             Ty::Bit => "Bit",
             Ty::HostBitTensor => "BitTensor",
-            Ty::HostShape => "Shape", // TODO change textual symbol as well
+            Ty::HostShape => "Shape",
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
             Ty::Nonce => "Nonce",
-            Ty::HostFloat32Tensor => "Float32Tensor", // TODO change textual symbol as well
-            Ty::HostFloat64Tensor => "Float64Tensor", // TODO
+            Ty::HostFloat32Tensor => "Float32Tensor",
+            Ty::HostFloat64Tensor => "Float64Tensor",
             Ty::HostInt8Tensor => "Int8Tensor",
             Ty::HostInt16Tensor => "Int16Tensor",
             Ty::HostInt32Tensor => "Int32Tensor",
@@ -1528,7 +1528,7 @@ impl ToTextual for Value {
             Value::String(x) => format!("String({})", x.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
-            Value::HostShape(HostShape(x, _)) => format!("Shape({:?})", x), // TODO change textual symbolc as well
+            Value::HostShape(HostShape(x, _)) => format!("Shape({:?})", x),
             Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
