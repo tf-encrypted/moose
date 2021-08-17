@@ -1,4 +1,3 @@
-use moose::host::HostBitTensor;
 use moose::compilation::typing::update_types_one_hop;
 use moose::compilation::{compile_passes, into_pass};
 use moose::computation::{Computation, Role, Value};
@@ -8,19 +7,18 @@ use moose::fixedpoint::Convert;
 use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
-use moose::host::HostRing64Tensor;
-use moose::host::{HostFloat64Tensor, RawShape, HostTensor};
+use moose::host::{HostBitTensor, HostRing64Tensor, HostFloat64Tensor, RawShape, HostTensor};
 use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
 use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
-
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyFloat, PyString};
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
+
 pub mod python_computation;
 
 fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> HostRing64Tensor {
