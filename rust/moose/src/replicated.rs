@@ -1231,11 +1231,6 @@ impl AdtToRepOp {
         let adt = x.placement().unwrap();
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = rep.host_placements();
-
-        let sync_key0 = RawNonce::generate();
-        let sync_key1 = RawNonce::generate();
-        let shape = adt_player0.shape(sess, x0);
-
         let (provider, provider_index, rep_others) = match () {
             _ if rep_player0 != adt_player0 && rep_player0 != adt_player1 => {
                 (rep_player0, 0, [rep_player1, rep_player2])
@@ -1249,15 +1244,21 @@ impl AdtToRepOp {
             _ => unimplemented!(), // something is wrong in the protocol otherwise
         };
 
+        let sync_key0 = RawNonce::generate();
+        let sync_key1 = RawNonce::generate();
+
         let k = provider.gen_key(sess);
         let seed1 = provider.derive_seed(sess, sync_key0, &k);
         let seed2 = provider.derive_seed(sess, sync_key1, &k);
 
-        let y0_provider = provider.sample_uniform(sess, &shape, &seed1);
-        let y1_provider = provider.sample_uniform(sess, &shape, &seed2);
+        let shape0 = adt_player0.shape(sess, x0);
+        let shape1 = adt_player1.shape(sess, x1);
 
-        let y0 = adt_player0.sample_uniform(sess, &shape, &seed1);
-        let y1 = adt_player1.sample_uniform(sess, &adt_player1.shape(sess, x1), &seed2);
+        let y0 = adt_player0.sample_uniform(sess, &shape0, &seed1);
+        let y1 = adt_player1.sample_uniform(sess, &shape1, &seed2);
+
+        let y0_provider = provider.sample_uniform(sess, &shape0, &seed1);
+        let y1_provider = provider.sample_uniform(sess, &shape0, &seed2);
 
         let y = AbstractAdditiveTensor {
             shares: [y0.clone(), y1.clone()],
