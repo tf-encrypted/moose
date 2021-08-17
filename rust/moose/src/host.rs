@@ -1,9 +1,9 @@
 use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp,
-    HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
-    HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp,
-    Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp, HostConcatOp,
+    HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
+    HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement,
+    RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
+    RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
