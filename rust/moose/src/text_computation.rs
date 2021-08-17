@@ -1221,7 +1221,7 @@ impl ToTextual for Operator {
     }
 }
 
-macro_rules! standard_op_to_textual {
+macro_rules! impl_to_textual {
     ($op:ty, $format:expr, $($member:tt),* ) => {
         impl ToTextual for $op {
             fn to_textual(&self) -> String {
@@ -1235,104 +1235,104 @@ macro_rules! standard_op_to_textual {
     };
 }
 
-standard_op_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
-standard_op_to_textual!(IdentityOp, "{op}: {}", sig);
-standard_op_to_textual!(LoadOp, "{op}: {}", sig);
-standard_op_to_textual!(SaveOp, "{op}: {}", sig);
-standard_op_to_textual!(
+impl_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
+impl_to_textual!(IdentityOp, "{op}: {}", sig);
+impl_to_textual!(LoadOp, "{op}: {}", sig);
+impl_to_textual!(SaveOp, "{op}: {}", sig);
+impl_to_textual!(
     SendOp,
     "{op} {{rendezvous_key={}, receiver={}}}: {}",
     rendezvous_key,
     receiver,
     sig
 );
-standard_op_to_textual!(
+impl_to_textual!(
     ReceiveOp,
     "{op} {{rendezvous_key={}, sender={}}} : {}",
     rendezvous_key,
     sender,
     sig
 );
-standard_op_to_textual!(InputOp, "{op} {{arg_name={}}}: {}", arg_name, sig);
-standard_op_to_textual!(OutputOp, "{op}: {}", sig);
-standard_op_to_textual!(HostAddOp, "{op}: {}", sig);
-standard_op_to_textual!(HostSubOp, "{op}: {}", sig);
-standard_op_to_textual!(HostMulOp, "{op}: {}", sig);
-standard_op_to_textual!(HostDivOp, "{op}: {}", sig);
-standard_op_to_textual!(HostDotOp, "{op}: {}", sig);
-standard_op_to_textual!(HostOnesOp, "{op}: {}", sig);
-standard_op_to_textual!(HostConcatenateOp, "{op}{{axis={}}}: {}", axis, sig);
-standard_op_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
-standard_op_to_textual!(HostReshapeOp, "{op}: {}", sig);
-standard_op_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
-standard_op_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
-standard_op_to_textual!(
+impl_to_textual!(InputOp, "{op} {{arg_name={}}}: {}", arg_name, sig);
+impl_to_textual!(OutputOp, "{op}: {}", sig);
+impl_to_textual!(HostAddOp, "{op}: {}", sig);
+impl_to_textual!(HostSubOp, "{op}: {}", sig);
+impl_to_textual!(HostMulOp, "{op}: {}", sig);
+impl_to_textual!(HostDivOp, "{op}: {}", sig);
+impl_to_textual!(HostDotOp, "{op}: {}", sig);
+impl_to_textual!(HostOnesOp, "{op}: {}", sig);
+impl_to_textual!(HostConcatenateOp, "{op}{{axis={}}}: {}", axis, sig);
+impl_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
+impl_to_textual!(HostReshapeOp, "{op}: {}", sig);
+impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(
     HostAtLeast2DOp,
     "{op}{{to_column_vector={}}}: {}",
     to_column_vector,
     sig
 );
-standard_op_to_textual!(HostSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
-standard_op_to_textual!(HostTransposeOp, "{op}: {}", sig);
-standard_op_to_textual!(HostInverseOp, "{op}: {}", sig);
-standard_op_to_textual!(ShapeOp, "{op}: {}", sig);
-standard_op_to_textual!(RingNegOp, "{op}: {}", sig);
-standard_op_to_textual!(RingAddOp, "{op}: {}", sig);
-standard_op_to_textual!(RingSubOp, "{op}: {}", sig);
-standard_op_to_textual!(RingMulOp, "{op}: {}", sig);
-standard_op_to_textual!(RingDotOp, "{op}: {}", sig);
-standard_op_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
-standard_op_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
-standard_op_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-standard_op_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-standard_op_to_textual!(BitSampleOp, "{op}: {}", sig);
-standard_op_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
-standard_op_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
-standard_op_to_textual!(
+impl_to_textual!(HostSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
+impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
+impl_to_textual!(HostInverseOp, "{op}: {}", sig);
+impl_to_textual!(ShapeOp, "{op}: {}", sig);
+impl_to_textual!(RingNegOp, "{op}: {}", sig);
+impl_to_textual!(RingAddOp, "{op}: {}", sig);
+impl_to_textual!(RingSubOp, "{op}: {}", sig);
+impl_to_textual!(RingMulOp, "{op}: {}", sig);
+impl_to_textual!(RingDotOp, "{op}: {}", sig);
+impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
+impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
+impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+impl_to_textual!(BitSampleOp, "{op}: {}", sig);
+impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
+impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
+impl_to_textual!(
     FixedpointEncodeOp,
     "{op}{{precision={}}}: {}",
     precision,
     sig
 );
-standard_op_to_textual!(
+impl_to_textual!(
     FixedpointDecodeOp,
     "{op}{{precision={}}}: {}",
     precision,
     sig
 );
-standard_op_to_textual!(FixedpointAddOp, "{op}: {}", sig);
-standard_op_to_textual!(FixedpointSubOp, "{op}: {}", sig);
-standard_op_to_textual!(FixedpointMulOp, "{op}: {}", sig);
-standard_op_to_textual!(FixedpointDotOp, "{op}: {}", sig);
-standard_op_to_textual!(
+impl_to_textual!(FixedpointAddOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointSubOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointMulOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointDotOp, "{op}: {}", sig);
+impl_to_textual!(
     FixedpointTruncPrOp,
     "{op}{{precision={}}}: {}",
     precision,
     sig
 );
 
-standard_op_to_textual!(
+impl_to_textual!(
     FixedpointRingEncodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
     sig
 );
-standard_op_to_textual!(
+impl_to_textual!(
     FixedpointRingDecodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
     sig
 );
-standard_op_to_textual!(RepSetupOp, "{op}: {}", sig);
-standard_op_to_textual!(RepShareOp, "{op}: {}", sig);
-standard_op_to_textual!(RepRevealOp, "{op}: {}", sig);
-standard_op_to_textual!(RepDotOp, "{op}: {}", sig);
-standard_op_to_textual!(RepAddOp, "{op}: {}", sig);
-standard_op_to_textual!(RepSubOp, "{op}: {}", sig);
-standard_op_to_textual!(RepMulOp, "{op}: {}", sig);
-standard_op_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
+impl_to_textual!(RepSetupOp, "{op}: {}", sig);
+impl_to_textual!(RepShareOp, "{op}: {}", sig);
+impl_to_textual!(RepRevealOp, "{op}: {}", sig);
+impl_to_textual!(RepDotOp, "{op}: {}", sig);
+impl_to_textual!(RepAddOp, "{op}: {}", sig);
+impl_to_textual!(RepSubOp, "{op}: {}", sig);
+impl_to_textual!(RepMulOp, "{op}: {}", sig);
+impl_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
