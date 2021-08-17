@@ -171,7 +171,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::HostDiv(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::HostDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::HostExpandDims(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Operator::HostConcatenate(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::HostConcat(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::HostTranspose(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::HostInverse(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             _ => unimplemented!("Not yet implemented symbolic operator {:?}", op),

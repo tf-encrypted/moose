@@ -271,7 +271,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             cut(operation_on_axis!(HostSumOp)),
         ),
         preceded(tag(HostOnesOp::SHORT_NAME), cut(unary!(HostOnesOp))),
-        preceded(tag(HostConcatenateOp::SHORT_NAME), cut(hostconcatenate)),
+        preceded(tag(HostConcatOp::SHORT_NAME), cut(hostconcat)),
         preceded(
             tag(HostTransposeOp::SHORT_NAME),
             cut(unary!(HostTransposeOp)),
@@ -412,13 +412,13 @@ fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, HostSliceOp { sig, start, end }.into()))
 }
 
-/// Parses a HostConcatenate operator.
-fn hostconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a HostConcat operator.
+fn hostconcat<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, HostConcatenateOp { sig, axis }.into()))
+    Ok((input, HostConcatOp { sig, axis }.into()))
 }
 
 /// Parses a RingSample operator.
@@ -1167,7 +1167,7 @@ impl ToTextual for Operator {
             HostDot(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
-            HostConcatenate(op) => op.to_textual(),
+            HostConcat(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
@@ -1258,7 +1258,7 @@ impl_to_textual!(HostMulOp, "{op}: {}", sig);
 impl_to_textual!(HostDivOp, "{op}: {}", sig);
 impl_to_textual!(HostDotOp, "{op}: {}", sig);
 impl_to_textual!(HostOnesOp, "{op}: {}", sig);
-impl_to_textual!(HostConcatenateOp, "{op}{{axis={}}}: {}", axis, sig);
+impl_to_textual!(HostConcatOp, "{op}{{axis={}}}: {}", axis, sig);
 impl_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
 impl_to_textual!(HostReshapeOp, "{op}: {}", sig);
 impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);

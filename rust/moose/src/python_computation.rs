@@ -1210,7 +1210,7 @@ impl TryFrom<PyComputation> for Computation {
                         let sorted_input_names: Vec<String> =
                             inputs.into_iter().map(|(_k, v)| v.clone()).collect();
                         Ok(Operation {
-                            kind: HostConcatenateOp {
+                            kind: HostConcatOp {
                                 // assume input type is the same as output type
                                 // TODO: Support variadic signature
                                 sig: Signature::binary(

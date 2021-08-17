@@ -131,7 +131,7 @@ impl Session for SyncSession {
             Operator::HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostConcatenate(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO Remove the catch-all case once all the Ops have kernels.
@@ -536,7 +536,7 @@ impl Compile<SyncKernel> for Operator {
             HostDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostMean(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
-            HostConcatenate(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostConcat(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -589,7 +589,7 @@ impl Compile<AsyncKernel> for Operator {
             HostDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            HostConcatenate(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostConcat(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -825,15 +825,15 @@ impl Compile<Kernel> for HostOnesOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostConcatenateOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostConcatOp);
 
 kernel! {
-    HostConcatenateOp, [
+    HostConcatOp, [
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => attributes[axis] Self::kernel),
     ]
 }
 
-impl Compile<Kernel> for HostConcatenateOp {
+impl Compile<Kernel> for HostConcatOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::host::concatenate;
         let axis = self.axis as usize;

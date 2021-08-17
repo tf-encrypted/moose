@@ -805,7 +805,7 @@ operators![
     HostReshape,
     HostSum,
     HostOnes,
-    HostConcatenate,
+    HostConcat,
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
@@ -951,7 +951,7 @@ pub struct HostOnesOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostConcatenateOp {
+pub struct HostConcatOp {
     pub sig: Signature,
     pub axis: u32,
 }

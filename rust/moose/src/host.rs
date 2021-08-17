@@ -1,6 +1,6 @@
 use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp,
-    HostConcatenateOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
+    HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
     HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp,
     Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp,
     RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
@@ -453,7 +453,7 @@ impl HostExpandDimsOp {
     }
 }
 
-impl HostConcatenateOp {
+impl HostConcatOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         _sess: &S,
         plc: &HostPlacement,
