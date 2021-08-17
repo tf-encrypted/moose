@@ -1140,7 +1140,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AtLeast2DOperation(op) => Ok(Operation {
-                        kind: StdAtLeast2DOp {
+                        kind: HostAtLeast2DOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,

@@ -1994,7 +1994,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = format!(
             r#"x =  Constant{{value=Float64Tensor([1.0, 1.0, 1.0])}} @Host(alice)
-        res = StdAtLeast2D {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor (x) @Host(alice)
+        res = HostAtLeast2D {{ to_column_vector = {} }} : (Float64Tensor) -> Float64Tensor (x) @Host(alice)
         output = Output : (Float64Tensor) -> Float64Tensor (res) @Host(alice)
         "#,
             to_column_vector

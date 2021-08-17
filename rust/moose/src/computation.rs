@@ -791,7 +791,6 @@ operators![
     Output,
     Constant,
     Shape,
-    StdAtLeast2D,
     PrimDeriveSeed,
     PrimPrfKeyGen,
     // Host operations
@@ -809,6 +808,7 @@ operators![
     HostConcatenate,
     HostTranspose,
     HostInverse,
+    HostAtLeast2D,
     RingAdd,
     RingSub,
     RingNeg,
@@ -957,7 +957,7 @@ pub struct HostConcatenateOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdAtLeast2DOp {
+pub struct HostAtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
 }

@@ -262,7 +262,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         ),
         preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
         preceded(tag(HostReshapeOp::SHORT_NAME), cut(std_unary!(HostReshapeOp))),
-        preceded(tag(StdAtLeast2DOp::SHORT_NAME), cut(stdatleast2d)),
+        preceded(tag(HostAtLeast2DOp::SHORT_NAME), cut(hostatleast2d)),
         preceded(tag(HostSliceOp::SHORT_NAME), cut(stdslice)),
     ));
     let part2 = alt((
@@ -387,15 +387,15 @@ fn hostexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, HostExpandDimsOp { sig, axis }.into()))
 }
 
-/// Parses a StdAtLeast2D operator.
-fn stdatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a HostAtLeast2D operator.
+fn hostatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, to_column_vector) = attributes_single("to_column_vector", parse_bool)(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((
         input,
-        StdAtLeast2DOp {
+        HostAtLeast2DOp {
             sig,
             to_column_vector,
         }
@@ -1173,7 +1173,7 @@ impl ToTextual for Operator {
             HostConcatenate(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
-            StdAtLeast2D(op) => op.to_textual(),
+            HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
@@ -1267,7 +1267,7 @@ standard_op_to_textual!(HostReshapeOp, "{op}: {}", sig);
 standard_op_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
 standard_op_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
 standard_op_to_textual!(
-    StdAtLeast2DOp,
+    HostAtLeast2DOp,
     "{op}{{to_column_vector={}}}: {}",
     to_column_vector,
     sig
@@ -1984,7 +1984,7 @@ mod tests {
             "z = HostExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostSlice {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",

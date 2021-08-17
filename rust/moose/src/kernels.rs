@@ -110,7 +110,7 @@ impl Session for SyncSession {
             Operator::Output(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Load(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::StdAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -539,7 +539,7 @@ impl Compile<SyncKernel> for Operator {
             HostConcatenate(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostSlice(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -592,7 +592,7 @@ impl Compile<AsyncKernel> for Operator {
             HostConcatenate(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostSlice(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -928,17 +928,17 @@ impl Compile<Kernel> for HostReshapeOp {
     }
 }
 
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, StdAtLeast2DOp);
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, StdAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, HostAtLeast2DOp);
 
 kernel! {
-    StdAtLeast2DOp, [
+    HostAtLeast2DOp, [
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => attributes[to_column_vector] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => attributes[to_column_vector] Self::kernel),
     ]
 }
 
-impl StdAtLeast2DOp {
+impl HostAtLeast2DOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -949,7 +949,7 @@ impl StdAtLeast2DOp {
     }
 }
 
-impl Compile<Kernel> for StdAtLeast2DOp {
+impl Compile<Kernel> for HostAtLeast2DOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let tcv = self.to_column_vector;
         match self.sig {
