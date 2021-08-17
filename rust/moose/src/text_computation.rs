@@ -276,10 +276,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             tag(HostTransposeOp::SHORT_NAME),
             cut(unary!(HostTransposeOp)),
         ),
-        preceded(
-            tag(HostInverseOp::SHORT_NAME),
-            cut(unary!(HostInverseOp)),
-        ),
+        preceded(tag(HostInverseOp::SHORT_NAME), cut(unary!(HostInverseOp))),
         preceded(tag(RingAddOp::SHORT_NAME), cut(binary!(RingAddOp))),
         preceded(tag(RingSubOp::SHORT_NAME), cut(binary!(RingSubOp))),
         preceded(tag(RingMulOp::SHORT_NAME), cut(binary!(RingMulOp))),
