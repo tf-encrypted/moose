@@ -1,6 +1,6 @@
 use crate::computation::*;
+use crate::host::{HostShape, RawShape};
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
-use crate::standard::{RawShape, Shape};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -198,7 +198,7 @@ macro_rules! attributes {
 }
 
 /// Constructs a parser for a simple unary operation.
-macro_rules! std_unary {
+macro_rules! unary {
     ($sub:ident) => {
         |input: &'a str| {
             let (input, sig) = type_definition(1)(input)?;
@@ -208,7 +208,7 @@ macro_rules! std_unary {
 }
 
 /// Constructs a parser for a simple binary operation.
-macro_rules! std_binary {
+macro_rules! binary {
     ($sub:ident) => {
         |input: &'a str| {
             let (input, sig) = type_definition(2)(input)?;
@@ -240,44 +240,47 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let part1 = alt((
-        preceded(tag(IdentityOp::SHORT_NAME), cut(std_unary!(IdentityOp))),
-        preceded(tag(LoadOp::SHORT_NAME), cut(std_unary!(LoadOp))),
+        preceded(tag(IdentityOp::SHORT_NAME), cut(unary!(IdentityOp))),
+        preceded(tag(LoadOp::SHORT_NAME), cut(unary!(LoadOp))),
         preceded(tag(SendOp::SHORT_NAME), cut(send_operator)),
         preceded(tag(ReceiveOp::SHORT_NAME), cut(receive_operator)),
         preceded(tag(InputOp::SHORT_NAME), cut(input_operator)),
-        preceded(tag(OutputOp::SHORT_NAME), cut(std_unary!(OutputOp))),
+        preceded(tag(OutputOp::SHORT_NAME), cut(unary!(OutputOp))),
         preceded(tag(ConstantOp::SHORT_NAME), cut(constant)),
-        preceded(tag(ShapeOp::SHORT_NAME), cut(std_unary!(ShapeOp))),
+        preceded(tag(ShapeOp::SHORT_NAME), cut(unary!(ShapeOp))),
         preceded(tag(BitFillOp::SHORT_NAME), cut(bit_fill)),
         preceded(tag(RingFillOp::SHORT_NAME), cut(ring_fill)),
         preceded(tag(SaveOp::SHORT_NAME), cut(save_operator)),
-        preceded(tag(StdAddOp::SHORT_NAME), cut(std_binary!(StdAddOp))),
-        preceded(tag(StdSubOp::SHORT_NAME), cut(std_binary!(StdSubOp))),
-        preceded(tag(StdMulOp::SHORT_NAME), cut(std_binary!(StdMulOp))),
-        preceded(tag(StdDivOp::SHORT_NAME), cut(std_binary!(StdDivOp))),
-        preceded(tag(StdDotOp::SHORT_NAME), cut(std_binary!(StdDotOp))),
+        preceded(tag(HostAddOp::SHORT_NAME), cut(binary!(HostAddOp))),
+        preceded(tag(HostSubOp::SHORT_NAME), cut(binary!(HostSubOp))),
+        preceded(tag(HostMulOp::SHORT_NAME), cut(binary!(HostMulOp))),
+        preceded(tag(HostDivOp::SHORT_NAME), cut(binary!(HostDivOp))),
+        preceded(tag(HostDotOp::SHORT_NAME), cut(binary!(HostDotOp))),
         preceded(
-            tag(StdMeanOp::SHORT_NAME),
-            cut(operation_on_axis!(StdMeanOp)),
+            tag(HostMeanOp::SHORT_NAME),
+            cut(operation_on_axis!(HostMeanOp)),
         ),
-        preceded(tag(StdExpandDimsOp::SHORT_NAME), cut(stdexpanddims)),
-        preceded(tag(StdReshapeOp::SHORT_NAME), cut(std_unary!(StdReshapeOp))),
-        preceded(tag(StdAtLeast2DOp::SHORT_NAME), cut(stdatleast2d)),
-        preceded(tag(StdSliceOp::SHORT_NAME), cut(stdslice)),
+        preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
+        preceded(tag(HostReshapeOp::SHORT_NAME), cut(unary!(HostReshapeOp))),
+        preceded(tag(HostAtLeast2DOp::SHORT_NAME), cut(hostatleast2d)),
+        preceded(tag(HostSliceOp::SHORT_NAME), cut(hostslice)),
     ));
     let part2 = alt((
-        preceded(tag(StdSumOp::SHORT_NAME), cut(operation_on_axis!(StdSumOp))),
-        preceded(tag(StdOnesOp::SHORT_NAME), cut(std_unary!(StdOnesOp))),
-        preceded(tag(StdConcatenateOp::SHORT_NAME), cut(stdconcatenate)),
         preceded(
-            tag(StdTransposeOp::SHORT_NAME),
-            cut(std_unary!(StdTransposeOp)),
+            tag(HostSumOp::SHORT_NAME),
+            cut(operation_on_axis!(HostSumOp)),
         ),
-        preceded(tag(StdInverseOp::SHORT_NAME), cut(std_unary!(StdInverseOp))),
-        preceded(tag(RingAddOp::SHORT_NAME), cut(std_binary!(RingAddOp))),
-        preceded(tag(RingSubOp::SHORT_NAME), cut(std_binary!(RingSubOp))),
-        preceded(tag(RingMulOp::SHORT_NAME), cut(std_binary!(RingMulOp))),
-        preceded(tag(RingDotOp::SHORT_NAME), cut(std_binary!(RingDotOp))),
+        preceded(tag(HostOnesOp::SHORT_NAME), cut(unary!(HostOnesOp))),
+        preceded(tag(HostConcatOp::SHORT_NAME), cut(hostconcat)),
+        preceded(
+            tag(HostTransposeOp::SHORT_NAME),
+            cut(unary!(HostTransposeOp)),
+        ),
+        preceded(tag(HostInverseOp::SHORT_NAME), cut(unary!(HostInverseOp))),
+        preceded(tag(RingAddOp::SHORT_NAME), cut(binary!(RingAddOp))),
+        preceded(tag(RingSubOp::SHORT_NAME), cut(binary!(RingSubOp))),
+        preceded(tag(RingMulOp::SHORT_NAME), cut(binary!(RingMulOp))),
+        preceded(tag(RingDotOp::SHORT_NAME), cut(binary!(RingDotOp))),
         preceded(
             tag(RingSumOp::SHORT_NAME),
             cut(operation_on_axis!(RingSumOp)),
@@ -372,24 +375,24 @@ fn input_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, InputOp { sig, arg_name }.into()))
 }
 
-/// Parses a StdExpandDims operator
-fn stdexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a HostExpandDims operator
+fn hostexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, StdExpandDimsOp { sig, axis }.into()))
+    Ok((input, HostExpandDimsOp { sig, axis }.into()))
 }
 
-/// Parses a StdAtLeast2D operator.
-fn stdatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a HostAtLeast2D operator.
+fn hostatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, to_column_vector) = attributes_single("to_column_vector", parse_bool)(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((
         input,
-        StdAtLeast2DOp {
+        HostAtLeast2DOp {
             sig,
             to_column_vector,
         }
@@ -397,8 +400,8 @@ fn stdatleast2d<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     ))
 }
 
-/// Parses a StdSlice operator.
-fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a HostSlice operator.
+fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (start, end)) = attributes!((
@@ -406,16 +409,16 @@ fn stdslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("end", parse_int)
     ))(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, StdSliceOp { sig, start, end }.into()))
+    Ok((input, HostSliceOp { sig, start, end }.into()))
 }
 
-/// Parses a StdConcatenate operator.
-fn stdconcatenate<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a HostConcat operator.
+fn hostconcat<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, axis) = attributes_single("axis", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, StdConcatenateOp { sig, axis }.into()))
+    Ok((input, HostConcatOp { sig, axis }.into()))
 }
 
 /// Parses a RingSample operator.
@@ -605,7 +608,7 @@ fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_args) = opt(type_definition(0))(input)?;
-    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
+    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitSampleOp { sig }.into()))
 }
 
@@ -614,7 +617,7 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_sig) = opt(type_definition(0))(input)?;
-    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::BitTensor));
+    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitXorOp { sig }.into()))
 }
 
@@ -709,32 +712,32 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (i, type_name) = alphanumeric1(input)?;
     match type_name {
         "Unknown" => Ok((i, Ty::Unknown)),
-        "Shape" => Ok((i, Ty::Shape)),
+        "Shape" => Ok((i, Ty::HostShape)),
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
         "Nonce" => Ok((i, Ty::Nonce)),
         "String" => Ok((i, Ty::String)),
-        "BitTensor" => Ok((i, Ty::BitTensor)),
-        "Ring64Tensor" => Ok((i, Ty::Ring64Tensor)),
-        "Ring128Tensor" => Ok((i, Ty::Ring128Tensor)),
-        "Float32Tensor" => Ok((i, Ty::Float32Tensor)),
-        "Float64Tensor" => Ok((i, Ty::Float64Tensor)),
-        "Int8Tensor" => Ok((i, Ty::Int8Tensor)),
-        "Int16Tensor" => Ok((i, Ty::Int16Tensor)),
-        "Int32Tensor" => Ok((i, Ty::Int32Tensor)),
-        "Int64Tensor" => Ok((i, Ty::Int64Tensor)),
-        "Uint8Tensor" => Ok((i, Ty::Uint8Tensor)),
-        "Uint16Tensor" => Ok((i, Ty::Uint16Tensor)),
-        "Uint32Tensor" => Ok((i, Ty::Uint32Tensor)),
-        "Uint64Tensor" => Ok((i, Ty::Uint64Tensor)),
+        "BitTensor" => Ok((i, Ty::HostBitTensor)),
+        "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
+        "Ring128Tensor" => Ok((i, Ty::HostRing128Tensor)),
+        "Float32Tensor" => Ok((i, Ty::HostFloat32Tensor)),
+        "Float64Tensor" => Ok((i, Ty::HostFloat64Tensor)),
+        "Int8Tensor" => Ok((i, Ty::HostInt8Tensor)),
+        "Int16Tensor" => Ok((i, Ty::HostInt16Tensor)),
+        "Int32Tensor" => Ok((i, Ty::HostInt32Tensor)),
+        "Int64Tensor" => Ok((i, Ty::HostInt64Tensor)),
+        "Uint8Tensor" => Ok((i, Ty::HostUint8Tensor)),
+        "Uint16Tensor" => Ok((i, Ty::HostUint16Tensor)),
+        "Uint32Tensor" => Ok((i, Ty::HostUint32Tensor)),
+        "Uint64Tensor" => Ok((i, Ty::HostUint64Tensor)),
         "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
         "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
-        "Replicated64Tensor" => Ok((i, Ty::Replicated64Tensor)),
-        "Replicated128Tensor" => Ok((i, Ty::Replicated128Tensor)),
+        "Replicated64Tensor" => Ok((i, Ty::ReplicatedRing64Tensor)),
+        "Replicated128Tensor" => Ok((i, Ty::ReplicatedRing128Tensor)),
         "ReplicatedBitTensor" => Ok((i, Ty::ReplicatedBitTensor)),
         "ReplicatedSetup" => Ok((i, Ty::ReplicatedSetup)),
-        "Additive64Tensor" => Ok((i, Ty::Additive64Tensor)),
-        "Additive128Tensor" => Ok((i, Ty::Additive128Tensor)),
+        "Additive64Tensor" => Ok((i, Ty::AdditiveRing64Tensor)),
+        "Additive128Tensor" => Ok((i, Ty::AdditiveRing128Tensor)),
         "Unit" => Ok((i, Ty::Unit)),
         "Float32" => Ok((i, Ty::Float32)),
         "Float64" => Ok((i, Ty::Float64)),
@@ -785,83 +788,83 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         // 1D arrars
         alt((
             constant_literal_helper("Int8Tensor", vector(parse_int), |v| {
-                Constant::Int8Tensor(v.into())
+                Constant::HostInt8Tensor(v.into())
             }),
             constant_literal_helper("Int16Tensor", vector(parse_int), |v| {
-                Constant::Int16Tensor(v.into())
+                Constant::HostInt16Tensor(v.into())
             }),
             constant_literal_helper("Int32Tensor", vector(parse_int), |v| {
-                Constant::Int32Tensor(v.into())
+                Constant::HostInt32Tensor(v.into())
             }),
             constant_literal_helper("Int64Tensor", vector(parse_int), |v| {
-                Constant::Int64Tensor(v.into())
+                Constant::HostInt64Tensor(v.into())
             }),
             constant_literal_helper("Uint8Tensor", vector(parse_int), |v| {
-                Constant::Uint8Tensor(v.into())
+                Constant::HostUint8Tensor(v.into())
             }),
             constant_literal_helper("Uint16Tensor", vector(parse_int), |v| {
-                Constant::Uint16Tensor(v.into())
+                Constant::HostUint16Tensor(v.into())
             }),
             constant_literal_helper("Uint32Tensor", vector(parse_int), |v| {
-                Constant::Uint32Tensor(v.into())
+                Constant::HostUint32Tensor(v.into())
             }),
             constant_literal_helper("Uint64Tensor", vector(parse_int), |v| {
-                Constant::Uint64Tensor(v.into())
+                Constant::HostUint64Tensor(v.into())
             }),
             constant_literal_helper("Float32Tensor", vector(float), |v| {
-                Constant::Float32Tensor(v.into())
+                Constant::HostFloat32Tensor(v.into())
             }),
             constant_literal_helper("Float64Tensor", vector(double), |v| {
-                Constant::Float64Tensor(v.into())
+                Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper("Ring64Tensor", vector(parse_int), |v| {
-                Constant::Ring64Tensor(v.into())
+                Constant::HostRing64Tensor(v.into())
             }),
             constant_literal_helper("Ring128Tensor", vector(parse_int), |v| {
-                Constant::Ring128Tensor(v.into())
+                Constant::HostRing128Tensor(v.into())
             }),
         )),
         // 2D arrars
         alt((
             constant_literal_helper("Int8Tensor", vector2(parse_int), |v| {
-                Constant::Int8Tensor(v.into())
+                Constant::HostInt8Tensor(v.into())
             }),
             constant_literal_helper("Int16Tensor", vector2(parse_int), |v| {
-                Constant::Int16Tensor(v.into())
+                Constant::HostInt16Tensor(v.into())
             }),
             constant_literal_helper("Int32Tensor", vector2(parse_int), |v| {
-                Constant::Int32Tensor(v.into())
+                Constant::HostInt32Tensor(v.into())
             }),
             constant_literal_helper("Int64Tensor", vector2(parse_int), |v| {
-                Constant::Int64Tensor(v.into())
+                Constant::HostInt64Tensor(v.into())
             }),
             constant_literal_helper("Uint8Tensor", vector2(parse_int), |v| {
-                Constant::Uint8Tensor(v.into())
+                Constant::HostUint8Tensor(v.into())
             }),
             constant_literal_helper("Uint16Tensor", vector2(parse_int), |v| {
-                Constant::Uint16Tensor(v.into())
+                Constant::HostUint16Tensor(v.into())
             }),
             constant_literal_helper("Uint32Tensor", vector2(parse_int), |v| {
-                Constant::Uint32Tensor(v.into())
+                Constant::HostUint32Tensor(v.into())
             }),
             constant_literal_helper("Uint64Tensor", vector2(parse_int), |v| {
-                Constant::Uint64Tensor(v.into())
+                Constant::HostUint64Tensor(v.into())
             }),
             constant_literal_helper("Float32Tensor", vector2(float), |v| {
-                Constant::Float32Tensor(v.into())
+                Constant::HostFloat32Tensor(v.into())
             }),
             constant_literal_helper("Float64Tensor", vector2(double), |v| {
-                Constant::Float64Tensor(v.into())
+                Constant::HostFloat64Tensor(v.into())
             }),
             constant_literal_helper(
                 "Ring64Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u64>| Constant::Ring64Tensor(v.into()),
+                |v: ndarray::ArrayD<u64>| Constant::HostRing64Tensor(v.into()),
             ),
             constant_literal_helper(
                 "Ring128Tensor",
                 vector2(parse_int),
-                |v: ndarray::ArrayD<u128>| Constant::Ring128Tensor(v.into()),
+                |v: ndarray::ArrayD<u128>| Constant::HostRing128Tensor(v.into()),
             ),
         )),
     ))(input)
@@ -1157,21 +1160,21 @@ impl ToTextual for Operator {
             Shape(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
-            StdAdd(op) => op.to_textual(),
-            StdSub(op) => op.to_textual(),
-            StdMul(op) => op.to_textual(),
-            StdDiv(op) => op.to_textual(),
-            StdDot(op) => op.to_textual(),
-            StdMean(op) => op.to_textual(),
-            StdOnes(op) => op.to_textual(),
-            StdConcatenate(op) => op.to_textual(),
-            StdExpandDims(op) => op.to_textual(),
-            StdReshape(op) => op.to_textual(),
-            StdAtLeast2D(op) => op.to_textual(),
-            StdSlice(op) => op.to_textual(),
-            StdSum(op) => op.to_textual(),
-            StdTranspose(op) => op.to_textual(),
-            StdInverse(op) => op.to_textual(),
+            HostAdd(op) => op.to_textual(),
+            HostSub(op) => op.to_textual(),
+            HostMul(op) => op.to_textual(),
+            HostDiv(op) => op.to_textual(),
+            HostDot(op) => op.to_textual(),
+            HostMean(op) => op.to_textual(),
+            HostOnes(op) => op.to_textual(),
+            HostConcat(op) => op.to_textual(),
+            HostExpandDims(op) => op.to_textual(),
+            HostReshape(op) => op.to_textual(),
+            HostAtLeast2D(op) => op.to_textual(),
+            HostSlice(op) => op.to_textual(),
+            HostSum(op) => op.to_textual(),
+            HostTranspose(op) => op.to_textual(),
+            HostInverse(op) => op.to_textual(),
             RingNeg(op) => op.to_textual(),
             RingAdd(op) => op.to_textual(),
             RingSub(op) => op.to_textual(),
@@ -1215,7 +1218,7 @@ impl ToTextual for Operator {
     }
 }
 
-macro_rules! standard_op_to_textual {
+macro_rules! impl_to_textual {
     ($op:ty, $format:expr, $($member:tt),* ) => {
         impl ToTextual for $op {
             fn to_textual(&self) -> String {
@@ -1229,104 +1232,104 @@ macro_rules! standard_op_to_textual {
     };
 }
 
-standard_op_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
-standard_op_to_textual!(IdentityOp, "{op}: {}", sig);
-standard_op_to_textual!(LoadOp, "{op}: {}", sig);
-standard_op_to_textual!(SaveOp, "{op}: {}", sig);
-standard_op_to_textual!(
+impl_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
+impl_to_textual!(IdentityOp, "{op}: {}", sig);
+impl_to_textual!(LoadOp, "{op}: {}", sig);
+impl_to_textual!(SaveOp, "{op}: {}", sig);
+impl_to_textual!(
     SendOp,
     "{op} {{rendezvous_key={}, receiver={}}}: {}",
     rendezvous_key,
     receiver,
     sig
 );
-standard_op_to_textual!(
+impl_to_textual!(
     ReceiveOp,
     "{op} {{rendezvous_key={}, sender={}}} : {}",
     rendezvous_key,
     sender,
     sig
 );
-standard_op_to_textual!(InputOp, "{op} {{arg_name={}}}: {}", arg_name, sig);
-standard_op_to_textual!(OutputOp, "{op}: {}", sig);
-standard_op_to_textual!(StdAddOp, "{op}: {}", sig);
-standard_op_to_textual!(StdSubOp, "{op}: {}", sig);
-standard_op_to_textual!(StdMulOp, "{op}: {}", sig);
-standard_op_to_textual!(StdDivOp, "{op}: {}", sig);
-standard_op_to_textual!(StdDotOp, "{op}: {}", sig);
-standard_op_to_textual!(StdOnesOp, "{op}: {}", sig);
-standard_op_to_textual!(StdConcatenateOp, "{op}{{axis={}}}: {}", axis, sig);
-standard_op_to_textual!(StdExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
-standard_op_to_textual!(StdReshapeOp, "{op}: {}", sig);
-standard_op_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
-standard_op_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
-standard_op_to_textual!(
-    StdAtLeast2DOp,
+impl_to_textual!(InputOp, "{op} {{arg_name={}}}: {}", arg_name, sig);
+impl_to_textual!(OutputOp, "{op}: {}", sig);
+impl_to_textual!(HostAddOp, "{op}: {}", sig);
+impl_to_textual!(HostSubOp, "{op}: {}", sig);
+impl_to_textual!(HostMulOp, "{op}: {}", sig);
+impl_to_textual!(HostDivOp, "{op}: {}", sig);
+impl_to_textual!(HostDotOp, "{op}: {}", sig);
+impl_to_textual!(HostOnesOp, "{op}: {}", sig);
+impl_to_textual!(HostConcatOp, "{op}{{axis={}}}: {}", axis, sig);
+impl_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
+impl_to_textual!(HostReshapeOp, "{op}: {}", sig);
+impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(
+    HostAtLeast2DOp,
     "{op}{{to_column_vector={}}}: {}",
     to_column_vector,
     sig
 );
-standard_op_to_textual!(StdSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
-standard_op_to_textual!(StdTransposeOp, "{op}: {}", sig);
-standard_op_to_textual!(StdInverseOp, "{op}: {}", sig);
-standard_op_to_textual!(ShapeOp, "{op}: {}", sig);
-standard_op_to_textual!(RingNegOp, "{op}: {}", sig);
-standard_op_to_textual!(RingAddOp, "{op}: {}", sig);
-standard_op_to_textual!(RingSubOp, "{op}: {}", sig);
-standard_op_to_textual!(RingMulOp, "{op}: {}", sig);
-standard_op_to_textual!(RingDotOp, "{op}: {}", sig);
-standard_op_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
-standard_op_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
-standard_op_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-standard_op_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-standard_op_to_textual!(BitSampleOp, "{op}: {}", sig);
-standard_op_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
-standard_op_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
-standard_op_to_textual!(
+impl_to_textual!(HostSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
+impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
+impl_to_textual!(HostInverseOp, "{op}: {}", sig);
+impl_to_textual!(ShapeOp, "{op}: {}", sig);
+impl_to_textual!(RingNegOp, "{op}: {}", sig);
+impl_to_textual!(RingAddOp, "{op}: {}", sig);
+impl_to_textual!(RingSubOp, "{op}: {}", sig);
+impl_to_textual!(RingMulOp, "{op}: {}", sig);
+impl_to_textual!(RingDotOp, "{op}: {}", sig);
+impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
+impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
+impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+impl_to_textual!(BitSampleOp, "{op}: {}", sig);
+impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
+impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
+impl_to_textual!(
     FixedpointEncodeOp,
     "{op}{{precision={}}}: {}",
     precision,
     sig
 );
-standard_op_to_textual!(
+impl_to_textual!(
     FixedpointDecodeOp,
     "{op}{{precision={}}}: {}",
     precision,
     sig
 );
-standard_op_to_textual!(FixedpointAddOp, "{op}: {}", sig);
-standard_op_to_textual!(FixedpointSubOp, "{op}: {}", sig);
-standard_op_to_textual!(FixedpointMulOp, "{op}: {}", sig);
-standard_op_to_textual!(FixedpointDotOp, "{op}: {}", sig);
-standard_op_to_textual!(
+impl_to_textual!(FixedpointAddOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointSubOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointMulOp, "{op}: {}", sig);
+impl_to_textual!(FixedpointDotOp, "{op}: {}", sig);
+impl_to_textual!(
     FixedpointTruncPrOp,
     "{op}{{precision={}}}: {}",
     precision,
     sig
 );
 
-standard_op_to_textual!(
+impl_to_textual!(
     FixedpointRingEncodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
     sig
 );
-standard_op_to_textual!(
+impl_to_textual!(
     FixedpointRingDecodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
     sig
 );
-standard_op_to_textual!(RepSetupOp, "{op}: {}", sig);
-standard_op_to_textual!(RepShareOp, "{op}: {}", sig);
-standard_op_to_textual!(RepRevealOp, "{op}: {}", sig);
-standard_op_to_textual!(RepDotOp, "{op}: {}", sig);
-standard_op_to_textual!(RepAddOp, "{op}: {}", sig);
-standard_op_to_textual!(RepSubOp, "{op}: {}", sig);
-standard_op_to_textual!(RepMulOp, "{op}: {}", sig);
-standard_op_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
+impl_to_textual!(RepSetupOp, "{op}: {}", sig);
+impl_to_textual!(RepShareOp, "{op}: {}", sig);
+impl_to_textual!(RepRevealOp, "{op}: {}", sig);
+impl_to_textual!(RepDotOp, "{op}: {}", sig);
+impl_to_textual!(RepAddOp, "{op}: {}", sig);
+impl_to_textual!(RepSubOp, "{op}: {}", sig);
+impl_to_textual!(RepMulOp, "{op}: {}", sig);
+impl_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
@@ -1350,8 +1353,8 @@ macro_rules! op_with_axis_to_textual {
     };
 }
 
-op_with_axis_to_textual!(StdMeanOp);
-op_with_axis_to_textual!(StdSumOp);
+op_with_axis_to_textual!(HostMeanOp);
+op_with_axis_to_textual!(HostSumOp);
 op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
@@ -1472,34 +1475,35 @@ impl ToTextual for Ty {
             Ty::Float64 => "Float64",
             Ty::Ring64 => "Ring64",
             Ty::Ring128 => "Ring128",
-            Ty::Ring64Tensor => "Ring64Tensor",
-            Ty::Ring128Tensor => "Ring128Tensor",
+            Ty::HostRing64Tensor => "Ring64Tensor",
+            Ty::HostRing128Tensor => "Ring128Tensor",
             Ty::Bit => "Bit",
-            Ty::BitTensor => "BitTensor",
-            Ty::Shape => "Shape",
+            Ty::HostBitTensor => "BitTensor",
+            Ty::HostShape => "Shape",
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
             Ty::Nonce => "Nonce",
-            Ty::Float32Tensor => "Float32Tensor",
-            Ty::Float64Tensor => "Float64Tensor",
-            Ty::Int8Tensor => "Int8Tensor",
-            Ty::Int16Tensor => "Int16Tensor",
-            Ty::Int32Tensor => "Int32Tensor",
-            Ty::Int64Tensor => "Int64Tensor",
-            Ty::Uint8Tensor => "Uint8Tensor",
-            Ty::Uint16Tensor => "Uint16Tensor",
-            Ty::Uint32Tensor => "Uint32Tensor",
-            Ty::Uint64Tensor => "Uint64Tensor",
+            Ty::HostFloat32Tensor => "Float32Tensor",
+            Ty::HostFloat64Tensor => "Float64Tensor",
+            Ty::HostInt8Tensor => "Int8Tensor",
+            Ty::HostInt16Tensor => "Int16Tensor",
+            Ty::HostInt32Tensor => "Int32Tensor",
+            Ty::HostInt64Tensor => "Int64Tensor",
+            Ty::HostUint8Tensor => "Uint8Tensor",
+            Ty::HostUint16Tensor => "Uint16Tensor",
+            Ty::HostUint32Tensor => "Uint32Tensor",
+            Ty::HostUint64Tensor => "Uint64Tensor",
             Ty::Unknown => "Unknown",
             Ty::Fixed64Tensor => "Fixed64Tensor",
             Ty::Fixed128Tensor => "Fixed128Tensor",
-            Ty::Replicated64Tensor => "Replicated64Tensor",
-            Ty::Replicated128Tensor => "Replicated128Tensor",
+            Ty::ReplicatedRing64Tensor => "Replicated64Tensor",
+            Ty::ReplicatedRing128Tensor => "Replicated128Tensor",
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor",
             Ty::ReplicatedSetup => "ReplicatedSetup",
             Ty::ReplicatedShape => "ReplicatedShape",
-            Ty::Additive64Tensor => "Additive64Tensor",
-            Ty::Additive128Tensor => "Additive128Tensor",
+            Ty::AdditiveRing64Tensor => "Additive64Tensor",
+            Ty::AdditiveRing128Tensor => "Additive128Tensor",
+            Ty::AdditiveShape => "AdditiveShape",
         }
         .to_string()
     }
@@ -1508,24 +1512,24 @@ impl ToTextual for Ty {
 impl ToTextual for Value {
     fn to_textual(&self) -> String {
         match self {
-            Value::Int8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
-            Value::Int16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
-            Value::Int32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
-            Value::Int64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
-            Value::Uint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
-            Value::Uint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
-            Value::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
-            Value::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
-            Value::Float32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
-            Value::Float64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
-            Value::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
-            Value::Ring128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
+            Value::HostInt8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
+            Value::HostInt16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
+            Value::HostInt32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
+            Value::HostInt64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
+            Value::HostUint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
+            Value::HostUint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
+            Value::HostUint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
+            Value::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
+            Value::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
+            Value::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
+            Value::HostRing64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
+            Value::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Value::Float32(x) => format!("Float32({})", x),
             Value::Float64(x) => format!("Float64({})", x),
             Value::String(x) => format!("String({})", x.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
-            Value::Shape(Shape(x, _)) => format!("Shape({:?})", x),
+            Value::HostShape(HostShape(x, _)) => format!("Shape({:?})", x),
             Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
@@ -1537,18 +1541,18 @@ impl ToTextual for Value {
 impl ToTextual for Constant {
     fn to_textual(&self) -> String {
         match self {
-            Constant::Int8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
-            Constant::Int16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
-            Constant::Int32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
-            Constant::Int64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
-            Constant::Uint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
-            Constant::Uint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
-            Constant::Uint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
-            Constant::Uint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
-            Constant::Float32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
-            Constant::Float64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
-            Constant::Ring64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
-            Constant::Ring128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
+            Constant::HostInt8Tensor(x) => format!("Int8Tensor({})", x.0.to_textual()),
+            Constant::HostInt16Tensor(x) => format!("Int16Tensor({})", x.0.to_textual()),
+            Constant::HostInt32Tensor(x) => format!("Int32Tensor({})", x.0.to_textual()),
+            Constant::HostInt64Tensor(x) => format!("Int64Tensor({})", x.0.to_textual()),
+            Constant::HostUint8Tensor(x) => format!("Uint8Tensor({})", x.0.to_textual()),
+            Constant::HostUint16Tensor(x) => format!("Uint16Tensor({})", x.0.to_textual()),
+            Constant::HostUint32Tensor(x) => format!("Uint32Tensor({})", x.0.to_textual()),
+            Constant::HostUint64Tensor(x) => format!("Uint64Tensor({})", x.0.to_textual()),
+            Constant::HostFloat32Tensor(x) => format!("Float32Tensor({})", x.0.to_textual()),
+            Constant::HostFloat64Tensor(x) => format!("Float64Tensor({})", x.0.to_textual()),
+            Constant::HostRing64Tensor(x) => format!("Ring64Tensor({})", x.0.to_textual()),
+            Constant::HostRing128Tensor(x) => format!("Ring128Tensor({})", x.0.to_textual()),
             Constant::Float32(x) => format!("Float32({})", x),
             Constant::Float64(x) => format!("Float64({})", x),
             Constant::String(x) => format!("String({})", x.to_textual()),
@@ -1685,20 +1689,20 @@ mod tests {
             constant_literal::<(&str, ErrorKind)>("Ring64Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring64_tensor,
-            Constant::Ring64Tensor(vec![1, 2, 3].into())
+            Constant::HostRing64Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_ring128_tensor) =
             constant_literal::<(&str, ErrorKind)>("Ring128Tensor([1,2,3])")?;
         assert_eq!(
             parsed_ring128_tensor,
-            Constant::Ring128Tensor(vec![1, 2, 3].into())
+            Constant::HostRing128Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_shape) = constant_literal::<(&str, ErrorKind)>("Shape([1,2,3])")?;
         assert_eq!(parsed_shape, Constant::RawShape(RawShape(vec![1, 2, 3])));
         let (_, parsed_u8_tensor) = constant_literal::<(&str, ErrorKind)>("Uint8Tensor([1,2,3])")?;
         assert_eq!(
             parsed_u8_tensor,
-            Constant::Uint8Tensor(vec![1, 2, 3].into())
+            Constant::HostUint8Tensor(vec![1, 2, 3].into())
         );
         let (_, parsed_seed) =
             constant_literal::<(&str, ErrorKind)>("Seed(529c2fc9bf573d077f45f42b19cfb8d4)")?;
@@ -1721,22 +1725,22 @@ mod tests {
         use std::convert::TryInto;
         let parsed_f32: Constant = "Float32Tensor([[1.0, 2.0], [3.0, 4.0]])".try_into()?;
 
-        let x = crate::standard::Float32Tensor::from(
+        let x = crate::host::HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
 
-        assert_eq!(parsed_f32, Constant::Float32Tensor(x));
+        assert_eq!(parsed_f32, Constant::HostFloat32Tensor(x));
 
         let parsed_ring64: Constant = "Ring64Tensor([[1, 2], [3, 4]])".try_into()?;
 
         let x_backing: ArrayD<i64> = array![[1, 2], [3, 4]]
             .into_dimensionality::<IxDyn>()
             .unwrap();
-        let x = crate::ring::Ring64Tensor::from(x_backing);
+        let x = crate::host::HostRing64Tensor::from(x_backing);
 
-        assert_eq!(parsed_ring64, Constant::Ring64Tensor(x));
+        assert_eq!(parsed_ring64, Constant::HostRing64Tensor(x));
 
         Ok(())
     }
@@ -1750,7 +1754,11 @@ mod tests {
         )?;
         assert_eq!(
             parsed,
-            Signature::binary(Ty::Float32Tensor, Ty::Float64Tensor, Ty::Uint16Tensor),
+            Signature::binary(
+                Ty::HostFloat32Tensor,
+                Ty::HostFloat64Tensor,
+                Ty::HostUint16Tensor
+            ),
         );
 
         let parsed: IResult<_, _, VerboseError<&str>> = parse_type("blah");
@@ -1774,14 +1782,14 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(vec![1.0].into())
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(vec![1.0].into())
             })
         );
 
         // 2D tensor
         use ndarray::prelude::*;
-        let x = crate::standard::Float32Tensor::from(
+        let x = crate::host::HostFloat32Tensor::from(
             array![[1.0, 2.0], [3.0, 4.0]]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
@@ -1792,8 +1800,8 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(x)
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(x)
             })
         );
         Ok(())
@@ -1802,23 +1810,31 @@ mod tests {
     #[test]
     fn test_stdbinary() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
+            "z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::StdAdd(StdAddOp {
-                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
+            Operator::HostAdd(HostAddOp {
+                sig: Signature::binary(
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor
+                ),
             })
         );
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
+            "z = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)",
         )?;
         assert_eq!(op.name, "z");
         assert_eq!(
             op.kind,
-            Operator::StdMul(StdMulOp {
-                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
+            Operator::HostMul(HostMulOp {
+                sig: Signature::binary(
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor
+                ),
             })
         );
         Ok(())
@@ -1826,10 +1842,10 @@ mod tests {
 
     #[test]
     fn test_stdadd_err() {
-        let data = "z = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)";
+        let data = "z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n            ^\n\n");
+            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n             ^\n\n");
         } else {
             panic!("Type parsing should have given an error on an invalid type, but did not");
         }
@@ -1884,7 +1900,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::Receive(ReceiveOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
                 rendezvous_key: "abc".into(),
                 sender: Role::from("bob"),
             })
@@ -1918,7 +1934,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: Some(0),
                 scaling_base: 3,
                 scaling_exp: 1,
@@ -1931,7 +1947,7 @@ mod tests {
         assert_eq!(
             op.kind,
             Operator::FixedpointRingMean(FixedpointRingMeanOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: None,
                 scaling_base: 3,
                 scaling_exp: 1,
@@ -1948,7 +1964,7 @@ mod tests {
         )?;
         assert_eq!(op.name, "x_shape");
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "z_result = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x_shape, y_shape) @Host(carole)",
+            "z_result = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x_shape, y_shape) @Host(carole)",
         )?;
         assert_eq!(op.name, "z_result");
         assert_eq!(op.inputs, vec!["x_shape", "y_shape"]);
@@ -1963,13 +1979,13 @@ mod tests {
             r#"z = Input{arg_name = "prompt"}: () -> Float32Tensor () @Host(alice)"#,
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostExpandDims {axis = [0]}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostAtLeast2D {to_column_vector = false}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = StdSlice {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = HostSlice {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
@@ -2014,29 +2030,33 @@ mod tests {
             "x = Constant{value = Float32Tensor([1.0])}() @Host(alice)
             y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
             // ignore = Constant([1.0]: Float32Tensor) @Host(alice)
-            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
             ",
         )?;
         assert_eq!(comp.operations.len(), 3);
         assert_eq!(
             comp.operations[0].kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(vec![1.0].into())
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(vec![1.0].into())
             })
         );
         assert_eq!(
             comp.operations[1].kind,
             Operator::Constant(ConstantOp {
-                sig: Signature::nullary(Ty::Float32Tensor),
-                value: Constant::Float32Tensor(vec![2.0].into())
+                sig: Signature::nullary(Ty::HostFloat32Tensor),
+                value: Constant::HostFloat32Tensor(vec![2.0].into())
             })
         );
         assert_eq!(comp.operations[2].name, "z");
         assert_eq!(
             comp.operations[2].kind,
-            Operator::StdAdd(StdAddOp {
-                sig: Signature::binary(Ty::Float32Tensor, Ty::Float32Tensor, Ty::Float32Tensor),
+            Operator::HostAdd(HostAddOp {
+                sig: Signature::binary(
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor,
+                    Ty::HostFloat32Tensor
+                ),
             })
         );
         assert_eq!(comp.operations[2].inputs, vec!("x", "y"));
@@ -2052,11 +2072,11 @@ mod tests {
     #[test]
     fn test_sample_computation_err() {
         let data = r#"a = Constant{value = "a"} () @Host(alice)
-            err = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
+            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)
             b = Constant{value = "b"} () @Host(alice)"#;
         let parsed: IResult<_, _, VerboseError<&str>> = parse_computation(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = StdAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n                          ^\n\n");
+            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n                           ^\n\n");
         }
     }
 
@@ -2065,7 +2085,7 @@ mod tests {
         use std::convert::TryInto;
         let comp: Computation = "x = Constant{value = Float32Tensor([1.0])} @Host(alice)
             y = Constant{value = Float32Tensor([2.0])}: () -> Float32Tensor () @Host(bob)
-            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)"
+            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(carole)"
             .try_into()?;
         assert_eq!(comp.operations.len(), 3);
         Ok(())
@@ -2075,7 +2095,7 @@ mod tests {
     fn test_value_try_into() -> Result<(), anyhow::Error> {
         use std::convert::TryInto;
         let v: Constant = "Float32Tensor([1.0, 2.0, 3.0])".try_into()?;
-        assert_eq!(v, Constant::Float32Tensor(vec![1.0, 2.0, 3.0].into()));
+        assert_eq!(v, Constant::HostFloat32Tensor(vec![1.0, 2.0, 3.0].into()));
         Ok(())
     }
 
@@ -2098,7 +2118,7 @@ mod tests {
         use std::convert::TryInto;
         let comp: Computation = "x = Constant{value = Float32Tensor([1.0])} @Host(alice)
             y = Constant{value = Float32Tensor([[1.0, 2.0], [3.0, 4.0]])}: () -> Float32Tensor @Host(bob)
-            z = StdAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
+            z = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Replicated(alice, bob, carole)
             seed = PrimDeriveSeed{sync_key = [1, 2, 3]} (key) @Host(alice)
             seed2 = Constant{value = Seed(529c2fc9bf573d077f45f42b19cfb8d4)} @Host(alice)
             o = Output: (Float32Tensor) -> Float32Tensor (z) @Host(alice)"

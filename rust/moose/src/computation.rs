@@ -1,17 +1,20 @@
-use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
-use crate::bit::BitTensor;
+use crate::additive::{
+    AbstractAdditiveShape, AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor,
+    AdditiveShape,
+};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::host::{
+    HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
+};
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
-    Replicated128Tensor, Replicated64Tensor, ReplicatedBitTensor, ReplicatedSetup, ReplicatedShape,
-};
-use crate::ring::{Ring128Tensor, Ring64Tensor};
-use crate::standard::{
-    Float32Tensor, Float64Tensor, Int16Tensor, Int32Tensor, Int64Tensor, Int8Tensor, RawShape,
-    Shape, StandardTensor, Uint16Tensor, Uint32Tensor, Uint64Tensor, Uint8Tensor,
+    ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
+    ReplicatedShape,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
@@ -105,24 +108,24 @@ macro_rules! constants {
 // The lines with 2 identifiers are for linking to the "Placed" values - the types whose `Value` incarnation has a placement already.
 // The lines with 1 identifier are for linking to the "Unplaced" values, where the Constant and Value are essentially the same and can be converted easily.
 constants![
-    RawShape Shape,
+    RawShape HostShape,
     RawSeed Seed,
     RawPrfKey PrfKey,
     RawNonce Nonce,
     String,
-    BitTensor,
-    Ring64Tensor,
-    Ring128Tensor,
-    Float32Tensor,
-    Float64Tensor,
-    Int8Tensor,
-    Int16Tensor,
-    Int32Tensor,
-    Int64Tensor,
-    Uint8Tensor,
-    Uint16Tensor,
-    Uint32Tensor,
-    Uint64Tensor,
+    HostBitTensor,
+    HostRing64Tensor,
+    HostRing128Tensor,
+    HostFloat32Tensor,
+    HostFloat64Tensor,
+    HostInt8Tensor,
+    HostInt16Tensor,
+    HostInt32Tensor,
+    HostInt64Tensor,
+    HostUint8Tensor,
+    HostUint16Tensor,
+    HostUint32Tensor,
+    HostUint64Tensor,
 ];
 
 impl From<u8> for Constant {
@@ -293,26 +296,26 @@ macro_rules! values {
     };
 }
 
-impl From<Shape> for Symbolic<Shape> {
-    fn from(x: Shape) -> Self {
+impl From<HostShape> for Symbolic<HostShape> {
+    fn from(x: HostShape) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl From<Ring64Tensor> for Symbolic<Ring64Tensor> {
-    fn from(x: Ring64Tensor) -> Self {
+impl From<HostRing64Tensor> for Symbolic<HostRing64Tensor> {
+    fn from(x: HostRing64Tensor) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl From<Ring128Tensor> for Symbolic<Ring128Tensor> {
-    fn from(x: Ring128Tensor) -> Self {
+impl From<HostRing128Tensor> for Symbolic<HostRing128Tensor> {
+    fn from(x: HostRing128Tensor) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl From<BitTensor> for Symbolic<BitTensor> {
-    fn from(x: BitTensor) -> Self {
+impl From<HostBitTensor> for Symbolic<HostBitTensor> {
+    fn from(x: HostBitTensor) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -363,8 +366,17 @@ where
     }
 }
 
-impl<T> From<StandardTensor<T>> for Symbolic<StandardTensor<T>> {
-    fn from(x: StandardTensor<T>) -> Self {
+impl<S> From<AbstractAdditiveShape<S>> for Symbolic<AbstractAdditiveShape<S>>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveShape<S>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
+    fn from(x: HostTensor<T>) -> Self {
         Symbolic::Concrete(x)
     }
 }
@@ -435,9 +447,12 @@ where
     }
 }
 
-impl TryFrom<Symbolic<BitTensor>> for BitTensor {
+impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
     type Error = Error;
-    fn try_from(v: Symbolic<BitTensor>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<AbstractAdditiveShape<S>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
@@ -445,9 +460,19 @@ impl TryFrom<Symbolic<BitTensor>> for BitTensor {
     }
 }
 
-impl<T> TryFrom<Symbolic<StandardTensor<T>>> for StandardTensor<T> {
+impl TryFrom<Symbolic<HostBitTensor>> for HostBitTensor {
     type Error = Error;
-    fn try_from(v: Symbolic<StandardTensor<T>>) -> crate::error::Result<Self> {
+    fn try_from(v: Symbolic<HostBitTensor>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
+    type Error = Error;
+    fn try_from(v: Symbolic<HostTensor<T>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
@@ -457,30 +482,30 @@ impl<T> TryFrom<Symbolic<StandardTensor<T>>> for StandardTensor<T> {
 
 values![
     (Unit, Symbolic<Unit>),
-    (Shape, Symbolic<Shape>),
+    (HostShape, Symbolic<HostShape>),
     (Seed, Symbolic<Seed>),
     (PrfKey, Symbolic<PrfKey>),
     (Nonce, Symbolic<Nonce>),
     (String, Symbolic<String>),
-    (BitTensor, Symbolic<BitTensor>),
-    (Ring64Tensor, Symbolic<Ring64Tensor>),
-    (Ring128Tensor, Symbolic<Ring128Tensor>),
-    (Float32Tensor, Symbolic<Float32Tensor>),
-    (Float64Tensor, Symbolic<Float64Tensor>),
-    (Int8Tensor, Symbolic<Int8Tensor>),
-    (Int16Tensor, Symbolic<Int16Tensor>),
-    (Int32Tensor, Symbolic<Int32Tensor>),
-    (Int64Tensor, Symbolic<Int64Tensor>),
-    (Uint8Tensor, Symbolic<Uint8Tensor>),
-    (Uint16Tensor, Symbolic<Uint16Tensor>),
-    (Uint32Tensor, Symbolic<Uint32Tensor>),
-    (Uint64Tensor, Symbolic<Uint64Tensor>),
+    (HostBitTensor, Symbolic<HostBitTensor>),
+    (HostRing64Tensor, Symbolic<HostRing64Tensor>),
+    (HostRing128Tensor, Symbolic<HostRing128Tensor>),
+    (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
+    (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
+    (HostInt8Tensor, Symbolic<HostInt8Tensor>),
+    (HostInt16Tensor, Symbolic<HostInt16Tensor>),
+    (HostInt32Tensor, Symbolic<HostInt32Tensor>),
+    (HostInt64Tensor, Symbolic<HostInt64Tensor>),
+    (HostUint8Tensor, Symbolic<HostUint8Tensor>),
+    (HostUint16Tensor, Symbolic<HostUint16Tensor>),
+    (HostUint32Tensor, Symbolic<HostUint32Tensor>),
+    (HostUint64Tensor, Symbolic<HostUint64Tensor>),
     (
         Fixed64Tensor,
         Symbolic<
             FixedTensor<
-                <Ring64Tensor as KnownType<SymbolicSession>>::Type,
-                <Replicated64Tensor as KnownType<SymbolicSession>>::Type,
+                <HostRing64Tensor as KnownType<SymbolicSession>>::Type,
+                <ReplicatedRing64Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
     ),
@@ -488,22 +513,22 @@ values![
         Fixed128Tensor,
         Symbolic<
             FixedTensor<
-                <Ring128Tensor as KnownType<SymbolicSession>>::Type,
-                <Replicated128Tensor as KnownType<SymbolicSession>>::Type,
+                <HostRing128Tensor as KnownType<SymbolicSession>>::Type,
+                <ReplicatedRing128Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
     ),
     (
-        Replicated64Tensor,
-        Symbolic<AbstractReplicatedTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+        ReplicatedRing64Tensor,
+        Symbolic<AbstractReplicatedTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
-        Replicated128Tensor,
-        Symbolic<AbstractReplicatedTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+        ReplicatedRing128Tensor,
+        Symbolic<AbstractReplicatedTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
         ReplicatedBitTensor,
-        Symbolic<AbstractReplicatedTensor<<BitTensor as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractReplicatedTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
         ReplicatedSetup,
@@ -511,15 +536,19 @@ values![
     ),
     (
         ReplicatedShape,
-        Symbolic<AbstractReplicatedShape<<Shape as KnownType<SymbolicSession>>::Type>>
+        Symbolic<AbstractReplicatedShape<<HostShape as KnownType<SymbolicSession>>::Type>>
     ),
     (
-        Additive64Tensor,
-        Symbolic<AbstractAdditiveTensor<<Ring64Tensor as KnownType<SymbolicSession>>::Type>>
+        AdditiveRing64Tensor,
+        Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
     ),
     (
-        Additive128Tensor,
-        Symbolic<AbstractAdditiveTensor<<Ring128Tensor as KnownType<SymbolicSession>>::Type>>
+        AdditiveRing128Tensor,
+        Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        AdditiveShape,
+        Symbolic<AbstractAdditiveShape<<HostShape as KnownType<SymbolicSession>>::Type>>
     ),
 ];
 
@@ -791,25 +820,24 @@ operators![
     Output,
     Constant,
     Shape,
-    BitFill,
-    RingFill,
-    AdtFill,
-    RepFill,
-    StdAdd,
-    StdSub,
-    StdMul,
-    StdDiv,
-    StdDot,
-    StdMean,
-    StdExpandDims,
-    StdReshape,
-    StdAtLeast2D,
-    StdSlice,
-    StdSum,
-    StdOnes,
-    StdConcatenate,
-    StdTranspose,
-    StdInverse,
+    PrimDeriveSeed,
+    PrimPrfKeyGen,
+    // Host operations
+    HostAdd,
+    HostSub,
+    HostMul,
+    HostDiv,
+    HostDot,
+    HostMean,
+    HostExpandDims,
+    HostSlice,
+    HostReshape,
+    HostSum,
+    HostOnes,
+    HostConcat,
+    HostTranspose,
+    HostInverse,
+    HostAtLeast2D,
     RingAdd,
     RingSub,
     RingNeg,
@@ -821,12 +849,13 @@ operators![
     RingShr,
     RingInject,
     RingToBit,
+    RingFill,
+    BitFill,
     BitExtract,
     BitSample,
     BitXor,
     BitAnd,
-    PrimDeriveSeed,
-    PrimPrfKeyGen,
+    // Fixedpoint operations
     FixedpointEncode,
     FixedpointDecode,
     FixedpointAdd,
@@ -839,16 +868,20 @@ operators![
     FixedpointRingEncode,
     FixedpointRingDecode,
     FixedpointRingMean,
+    // Additive operations
     AdtReveal,
+    AdtFill,
     AdtAdd,
     AdtSub,
     AdtMul,
     AdtShl,
     AdtToRep,
+    // Replicated operations
     RepAbs,
     RepSetup,
     RepShare,
     RepReveal,
+    RepFill,
     RepAdd,
     RepSub,
     RepMul,
@@ -911,84 +944,84 @@ pub struct ConstantOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdAddOp {
+pub struct HostAddOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdSubOp {
+pub struct HostSubOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdMulOp {
+pub struct HostMulOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdDivOp {
+pub struct HostDivOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdDotOp {
+pub struct HostDotOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdMeanOp {
+pub struct HostMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdOnesOp {
+pub struct HostOnesOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdConcatenateOp {
+pub struct HostConcatOp {
     pub sig: Signature,
     pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdAtLeast2DOp {
+pub struct HostAtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdExpandDimsOp {
+pub struct HostExpandDimsOp {
     pub sig: Signature,
     pub axis: Vec<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdReshapeOp {
+pub struct HostReshapeOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdSliceOp {
+pub struct HostSliceOp {
     pub sig: Signature,
     pub start: u32,
     pub end: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdSumOp {
+pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdTransposeOp {
+pub struct HostTransposeOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdInverseOp {
+pub struct HostInverseOp {
     pub sig: Signature,
 }
 

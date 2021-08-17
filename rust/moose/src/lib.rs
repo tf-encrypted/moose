@@ -1363,20 +1363,19 @@ macro_rules! modelled_alias {
 }
 
 pub mod additive;
-pub mod bit;
+pub mod common;
 pub mod compilation;
 pub mod computation;
 pub mod error;
 pub mod execution;
 pub mod fixedpoint;
+pub mod host;
 pub mod kernels;
 pub mod networking;
 pub mod prim;
 pub mod prng;
 pub mod python_computation;
 pub mod replicated;
-pub mod ring;
-pub mod standard;
 pub mod storage;
 pub mod symbolic;
 pub mod text_computation;
