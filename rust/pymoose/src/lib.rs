@@ -310,7 +310,7 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
     }
 }
 
-fn pyobj_tensor_to_std_tensor<T>(py: Python, obj: &PyObject) -> HostTensor<T>
+fn pyobj_tensor_to_host_tensor<T>(py: Python, obj: &PyObject) -> HostTensor<T>
 where
     T: Element + LinalgScalar,
 {
@@ -328,16 +328,16 @@ fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Er
     let dtype: &PyArrayDescr = dtype_obj.cast_as(py).unwrap();
     let np_dtype = dtype.get_datatype().unwrap();
     match np_dtype {
-        numpy::DataType::Float32 => Ok(Value::from(pyobj_tensor_to_std_tensor::<f32>(py, obj))),
-        numpy::DataType::Float64 => Ok(Value::from(pyobj_tensor_to_std_tensor::<f64>(py, obj))),
-        numpy::DataType::Int8 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i8>(py, obj))),
-        numpy::DataType::Int16 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i16>(py, obj))),
-        numpy::DataType::Int32 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i32>(py, obj))),
-        numpy::DataType::Int64 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i64>(py, obj))),
-        numpy::DataType::Uint8 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u8>(py, obj))),
-        numpy::DataType::Uint16 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u16>(py, obj))),
-        numpy::DataType::Uint32 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u32>(py, obj))),
-        numpy::DataType::Uint64 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u64>(py, obj))),
+        numpy::DataType::Float32 => Ok(Value::from(pyobj_tensor_to_host_tensor::<f32>(py, obj))),
+        numpy::DataType::Float64 => Ok(Value::from(pyobj_tensor_to_host_tensor::<f64>(py, obj))),
+        numpy::DataType::Int8 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i8>(py, obj))),
+        numpy::DataType::Int16 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i16>(py, obj))),
+        numpy::DataType::Int32 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i32>(py, obj))),
+        numpy::DataType::Int64 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i64>(py, obj))),
+        numpy::DataType::Uint8 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u8>(py, obj))),
+        numpy::DataType::Uint16 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u16>(py, obj))),
+        numpy::DataType::Uint32 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u32>(py, obj))),
+        numpy::DataType::Uint64 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u64>(py, obj))),
         otherwise => Err(anyhow::Error::msg(format!(
             "Unsupported numpy datatype {:?}",
             otherwise
