@@ -48,6 +48,7 @@ jobs:
           repository: capeprivacy/coordinator
           token: ${{ secrets.PAT }}
       - run: |
+          python -m venv venv
           python computations/linear_regression.py \
             --coordinator https://demo.capeprivacy.com \
             --token ${{ secrets.DEMO_TOKEN }} \
