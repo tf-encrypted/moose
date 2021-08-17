@@ -791,7 +791,6 @@ operators![
     Output,
     Constant,
     Shape,
-    StdReshape,
     StdAtLeast2D,
     PrimDeriveSeed,
     PrimPrfKeyGen,
@@ -804,6 +803,7 @@ operators![
     HostMean,
     HostExpandDims,
     HostSlice,
+    HostReshape,
     HostSum,
     HostOnes,
     HostConcatenate,
@@ -969,7 +969,7 @@ pub struct HostExpandDimsOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct StdReshapeOp {
+pub struct HostReshapeOp {
     pub sig: Signature,
 }
 

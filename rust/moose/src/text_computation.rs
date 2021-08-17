@@ -261,7 +261,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             cut(operation_on_axis!(HostMeanOp)),
         ),
         preceded(tag(HostExpandDimsOp::SHORT_NAME), cut(hostexpanddims)),
-        preceded(tag(StdReshapeOp::SHORT_NAME), cut(std_unary!(StdReshapeOp))),
+        preceded(tag(HostReshapeOp::SHORT_NAME), cut(std_unary!(HostReshapeOp))),
         preceded(tag(StdAtLeast2DOp::SHORT_NAME), cut(stdatleast2d)),
         preceded(tag(HostSliceOp::SHORT_NAME), cut(stdslice)),
     ));
@@ -1172,7 +1172,7 @@ impl ToTextual for Operator {
             HostOnes(op) => op.to_textual(),
             HostConcatenate(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
-            StdReshape(op) => op.to_textual(),
+            HostReshape(op) => op.to_textual(),
             StdAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
@@ -1263,7 +1263,7 @@ standard_op_to_textual!(HostDotOp, "{op}: {}", sig);
 standard_op_to_textual!(HostOnesOp, "{op}: {}", sig);
 standard_op_to_textual!(HostConcatenateOp, "{op}{{axis={}}}: {}", axis, sig);
 standard_op_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
-standard_op_to_textual!(StdReshapeOp, "{op}: {}", sig);
+standard_op_to_textual!(HostReshapeOp, "{op}: {}", sig);
 standard_op_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
 standard_op_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
 standard_op_to_textual!(

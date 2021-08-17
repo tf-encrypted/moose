@@ -538,7 +538,7 @@ impl Compile<SyncKernel> for Operator {
             HostOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostConcatenate(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
-            StdReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
             StdAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostSlice(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -591,7 +591,7 @@ impl Compile<AsyncKernel> for Operator {
             HostOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostConcatenate(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            StdReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             StdAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostSlice(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -896,7 +896,7 @@ impl Compile<Kernel> for HostExpandDimsOp {
     }
 }
 
-impl Compile<Kernel> for StdReshapeOp {
+impl Compile<Kernel> for HostReshapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
             signature![(_, _) -> Ty::HostFloat32Tensor] => {
