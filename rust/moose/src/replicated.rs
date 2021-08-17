@@ -14,7 +14,7 @@ use crate::kernels::{
     PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt,
     PlacementReveal, PlacementRingMean, PlacementSampleUniform, PlacementSetupGen, PlacementShape,
     PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, RuntimeSession, Session,
+    PlacementTruncPrProvider, PlacementZeros, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use macros::with_context;
@@ -1577,7 +1577,7 @@ where
 }
 
 impl ShapeOp {
-    pub(crate) fn rep_kernel<S: RuntimeSession, RingT, ShapeT>(
+    pub(crate) fn rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         x: AbstractReplicatedTensor<RingT>,
@@ -1598,6 +1598,7 @@ impl ShapeOp {
         }
     }
 }
+
 trait BinaryAdder<S: Session, SetupT, R> {
     fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<R>, y: Vec<R>) -> Vec<R>;
 }

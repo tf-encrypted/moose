@@ -2,7 +2,7 @@
 
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
-    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
+    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement, ShapeOp,
 };
 use crate::error::Result;
 use crate::host::{HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
@@ -46,6 +46,30 @@ where
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractAdditiveShape<S> {
+    pub shapes: [S; 2],
+}
+
+pub type AdditiveShape = AbstractAdditiveShape<HostShape>;
+
+impl<S> Placed for AbstractAdditiveShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Placement = AdditivePlacement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        let AbstractAdditiveShape { shapes: [s0, s1] } = self;
+
+        let owner0 = s0.placement()?.owner;
+        let owner1 = s1.placement()?.owner;
+
+        let owners = [owner0, owner1];
+        Ok(AdditivePlacement { owners })
+    }
+}
+
 impl<S: Session, R> PlacementPlace<S, AbstractAdditiveTensor<R>> for AdditivePlacement
 where
     AbstractAdditiveTensor<R>: Placed<Placement = AdditivePlacement>,
@@ -65,19 +89,40 @@ where
     }
 }
 
+impl ShapeOp {
+    pub(crate) fn adt_kernel<S: Session, HostT, ShapeT>(
+        sess: &S,
+        adt: &AdditivePlacement,
+        x: AbstractAdditiveTensor<HostT>,
+    ) -> AbstractAdditiveShape<ShapeT>
+    where
+        HostPlacement: PlacementShape<S, HostT, ShapeT>,
+    {
+        let (player0, player1) = adt.host_placements();
+        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
+        AbstractAdditiveShape {
+            shapes: [player0.shape(sess, x0), player1.shape(sess, x1)],
+        }
+    }
+}
+
 modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing64Tensor, AdtFillOp);
 modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing128Tensor, AdtFillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing64Tensor, AdtFillOp);
+modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (AdditiveShape) -> AdditiveRing128Tensor, AdtFillOp);
 
 hybrid_kernel! {
     AdtFillOp,
     [
-        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => attributes[value] Self::kernel),
-        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => attributes[value] Self::kernel),
+        (AdditivePlacement, (HostShape) -> AdditiveRing64Tensor => attributes[value] Self::host_kernel),
+        (AdditivePlacement, (HostShape) -> AdditiveRing128Tensor => attributes[value] Self::host_kernel),
+        (AdditivePlacement, (AdditiveShape) -> AdditiveRing64Tensor => attributes[value] Self::adt_kernel),
+        (AdditivePlacement, (AdditiveShape) -> AdditiveRing128Tensor => attributes[value] Self::adt_kernel),
     ]
 }
 
 impl AdtFillOp {
-    fn kernel<S: Session, ShapeT, RingT>(
+    fn host_kernel<S: Session, ShapeT, RingT>(
         sess: &S,
         plc: &AdditivePlacement,
         value: Constant,
@@ -93,6 +138,30 @@ impl AdtFillOp {
         let shares = [
             player0.fill(sess, value, &shape),
             player1.fill(sess, Constant::Ring64(0), &shape),
+        ];
+        AbstractAdditiveTensor { shares }
+    }
+
+    fn adt_kernel<S: Session, ShapeT, RingT>(
+        sess: &S,
+        plc: &AdditivePlacement,
+        value: Constant,
+        shape: AbstractAdditiveShape<ShapeT>,
+    ) -> AbstractAdditiveTensor<RingT>
+    where
+        HostPlacement: PlacementFill<S, ShapeT, RingT>,
+    {
+        // TODO should really return PublicAdditiveTensor, but we don't have that type yet
+
+        let AbstractAdditiveShape {
+            shapes: [shape0, shape1],
+        } = &shape;
+
+        let (player0, player1) = plc.host_placements();
+
+        let shares = [
+            player0.fill(sess, value, shape0),
+            player1.fill(sess, Constant::Ring64(0), shape1),
         ];
         AbstractAdditiveTensor { shares }
     }
@@ -550,9 +619,6 @@ where
     ) -> AbstractAdditiveTensor<R> {
         #![allow(clippy::many_single_char_names)]
 
-        // Hack to get around https://github.com/tf-encrypted/runtime/issues/372
-        let adt = self;
-
         let (player_a, player_b) = self.host_placements();
         assert!(provider != &player_a);
         assert!(provider != &player_b);
@@ -577,7 +643,7 @@ where
             .try_into()
             .ok()
             .unwrap();
-        let masked: AbstractAdditiveTensor<R> = adt
+        let masked: AbstractAdditiveTensor<R> = self
             .add(sess, &x_positive.into(), &r.into())
             .try_into()
             .ok()
@@ -590,7 +656,7 @@ where
 
         // OK
         let overflow = with_context!(
-            adt,
+            self,
             sess,
             r_msb.clone().into() + c_msb - r_msb.clone().into() * c_msb - r_msb.into() * c_msb
         )
@@ -604,12 +670,12 @@ where
             .unwrap();
         // shifted - upper + overflow << (k - m)
         let y_positive: AbstractAdditiveTensor<R> =
-            with_context!(adt, sess, c_top - r_top.into() + shifted_overflow.into())
+            with_context!(self, sess, c_top - r_top.into() + shifted_overflow.into())
                 .try_into()
                 .ok()
                 .unwrap();
 
-        with_context!(adt, sess, y_positive.into() - downshifter)
+        with_context!(self, sess, y_positive.into() - downshifter)
             .try_into()
             .ok()
             .unwrap()

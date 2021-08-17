@@ -1,4 +1,7 @@
-use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
+use crate::additive::{
+    AbstractAdditiveShape, AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor,
+    AdditiveShape,
+};
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
@@ -363,6 +366,15 @@ where
     }
 }
 
+impl<S> From<AbstractAdditiveShape<S>> for Symbolic<AbstractAdditiveShape<S>>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveShape<S>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
     fn from(x: HostTensor<T>) -> Self {
         Symbolic::Concrete(x)
@@ -428,6 +440,19 @@ where
 {
     type Error = Error;
     fn try_from(v: Symbolic<AbstractReplicatedShape<S>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractAdditiveShape<S>>) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
@@ -520,6 +545,10 @@ values![
     (
         AdditiveRing128Tensor,
         Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        AdditiveShape,
+        Symbolic<AbstractAdditiveShape<<HostShape as KnownType<SymbolicSession>>::Type>>
     ),
 ];
 
