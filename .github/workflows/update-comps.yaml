@@ -56,7 +56,3 @@ jobs:
             --coordinator https://demo.capeprivacy.com \
             --token ${{ secrets.DEMO_TOKEN }} \
             --runtime-version main#${{ github.sha }}
-          python coordinator/computations/linear_regression.py \
-            --coordinator https://app.capeprivacy.com \
-            --token ${{ secrets.PROD_TOKEN }} \
-            --runtime-version main#${{ github.sha }}
