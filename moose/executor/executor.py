@@ -10,6 +10,7 @@ from moose.computation import mpspdz as mpspdz_ops
 from moose.computation import primitives as primitives_ops
 from moose.computation import ring as ring_ops
 from moose.computation import standard as standard_ops
+from moose.deprecated.utils import AsyncStore
 from moose.executor.kernels import bit as bit_kernels
 from moose.executor.kernels import fixedpoint as fixed_kernels
 from moose.executor.kernels import host as host_kernels
@@ -19,7 +20,6 @@ from moose.executor.kernels import ring as ring_kernels
 from moose.executor.kernels import standard as standard_kernels
 from moose.logger import get_logger
 from moose.logger import get_tracer
-from moose.utils import AsyncStore
 
 
 class ExecutionError(Exception):

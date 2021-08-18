@@ -3,7 +3,7 @@ from grpc.experimental import aio as grpc_aio
 
 from moose.deprecated.protos import networking_pb2
 from moose.deprecated.protos import networking_pb2_grpc
-from moose.utils import AsyncStore
+from moose.deprecated.utils import AsyncStore
 
 
 class Channel:
