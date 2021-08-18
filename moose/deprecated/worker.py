@@ -1,7 +1,7 @@
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.choreography.grpc import Choreography
+from moose.deprecated.choreography.grpc import Choreography
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.networking.grpc import Networking

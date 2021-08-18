@@ -2,7 +2,7 @@ import argparse
 import logging
 
 from moose import edsl
-from moose.choreography.grpc import Choreographer as GrpcChoreographer
+from moose.deprecated.choreography.grpc import Choreographer as GrpcChoreographer
 from moose.logger import get_logger
 from moose.testing import TestRuntime
 

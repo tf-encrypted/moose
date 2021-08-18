@@ -3,7 +3,7 @@ build:
 			--proto_path=. \
 			--python_out=. \
 			--grpc_python_out=. \
-			moose/protos/*.proto
+			moose/deprecated/protos/*.proto
 	cd rust && cargo build
 
 pydep:

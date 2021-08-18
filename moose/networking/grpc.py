@@ -1,8 +1,8 @@
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.protos import networking_pb2
-from moose.protos import networking_pb2_grpc
+from moose.deprecated.protos import networking_pb2
+from moose.deprecated.protos import networking_pb2_grpc
 from moose.utils import AsyncStore
 
 
