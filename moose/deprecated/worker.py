@@ -2,11 +2,11 @@ import grpc
 from grpc.experimental import aio as grpc_aio
 
 from moose.deprecated.choreography.grpc import Choreography
+from moose.deprecated.networking.grpc import Networking
 from moose.deprecated.utils import DebugInterceptor
 from moose.deprecated.utils import load_certificate
 from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
-from moose.networking.grpc import Networking
 from moose.storage.memory import MemoryDataStore
 
 
