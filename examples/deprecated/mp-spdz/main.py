@@ -2,6 +2,7 @@ import argparse
 import logging
 
 from moose import edsl
+from moose.deprecated import edsl as old_edsl
 from moose.deprecated.choreography.grpc import Choreographer as GrpcChoreographer
 from moose.deprecated.testing import TestRuntime
 from moose.logger import get_logger
@@ -24,10 +25,12 @@ outputter = edsl.host_placement(name="outputter")
 # setup for the placement needs to know ahead of time who to generate key pairs
 # for. In the near future this is ideally something that we can infer automati-
 # cally during compilation from logical to physical computation.
-mpspdz = edsl.mpspdz_placement(name="mpspdz", players=[inputter0, inputter1, outputter])
+mpspdz = old_edsl.mpspdz_placement(
+    name="mpspdz", players=[inputter0, inputter1, outputter]
+)
 
 
-@edsl.function
+@old_edsl.function
 def my_function(x, y, z):
     return x * y + z
 

@@ -1,6 +1,7 @@
 import logging
 
 from moose import edsl
+from moose.deprecated import edsl as old_edsl
 from moose.deprecated.testing import TestRuntime
 from moose.logger import get_logger
 
@@ -18,11 +19,11 @@ def my_comp():
     with inputter0:
         c0_0 = edsl.constant(2)
         c1_0 = edsl.constant(3)
-        x0 = edsl.run_program("python", ["local_computation.py"], c0_0, c1_0)
+        x0 = old_edsl.run_program("python", ["local_computation.py"], c0_0, c1_0)
 
     with inputter1:
         c0_1 = edsl.constant(3)
-        x1 = edsl.run_program("python", ["local_computation.py"], c0_1)
+        x1 = old_edsl.run_program("python", ["local_computation.py"], c0_1)
 
     with aggregator:
         y = edsl.add(x0, x1)

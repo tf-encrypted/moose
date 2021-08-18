@@ -2,12 +2,12 @@ import ast
 import inspect
 import textwrap
 
-from moose.computation.mpspdz import MpspdzCallOperation
-from moose.computation.mpspdz import MpspdzLoadOutputOperation
-from moose.computation.mpspdz import MpspdzPlacement
-from moose.computation.mpspdz import MpspdzSaveInputOperation
-from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import UnknownType
+from moose.deprecated.computation.mpspdz import MpspdzCallOperation
+from moose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
+from moose.deprecated.computation.mpspdz import MpspdzPlacement
+from moose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
+from moose.deprecated.computation.standard import ApplyFunctionOperation
 from moose.logger import get_logger
 
 

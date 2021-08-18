@@ -4,12 +4,9 @@ from collections import defaultdict
 from moose.compiler.compiler import Compiler
 from moose.computation.base import Computation
 from moose.computation.host import HostPlacement
-from moose.computation.host import RunProgramOperation
-from moose.computation.mpspdz import MpspdzPlacement
 from moose.computation.replicated import ReplicatedPlacement
 from moose.computation.standard import AbsOperation
 from moose.computation.standard import AddOperation
-from moose.computation.standard import ApplyFunctionOperation
 from moose.computation.standard import AtLeast2DOperation
 from moose.computation.standard import CastOperation
 from moose.computation.standard import ConcatenateOperation
@@ -34,7 +31,6 @@ from moose.computation.standard import SumOperation
 from moose.computation.standard import TransposeOperation
 from moose.computation.standard import UnknownType
 from moose.edsl.base import AbsExpression
-from moose.edsl.base import ApplyFunctionExpression
 from moose.edsl.base import ArgumentExpression
 from moose.edsl.base import AtLeast2DExpression
 from moose.edsl.base import BinaryOpExpression
@@ -47,11 +43,9 @@ from moose.edsl.base import HostPlacementExpression
 from moose.edsl.base import InverseExpression
 from moose.edsl.base import LoadExpression
 from moose.edsl.base import MeanExpression
-from moose.edsl.base import MpspdzPlacementExpression
 from moose.edsl.base import OnesExpression
 from moose.edsl.base import ReplicatedPlacementExpression
 from moose.edsl.base import ReshapeExpression
-from moose.edsl.base import RunProgramExpression
 from moose.edsl.base import SaveExpression
 from moose.edsl.base import ShapeExpression
 from moose.edsl.base import SliceExpression
@@ -131,17 +125,6 @@ class AstTracer:
     def visit_HostPlacementExpression(self, host_placement_expression):
         assert isinstance(host_placement_expression, HostPlacementExpression)
         placement = HostPlacement(name=host_placement_expression.name)
-        return self.computation.add_placement(placement)
-
-    def visit_MpspdzPlacementExpression(self, mpspdz_placement_expression):
-        assert isinstance(mpspdz_placement_expression, MpspdzPlacementExpression)
-        player_placements = [
-            self.visit_placement_expression(player_placement_expression).name
-            for player_placement_expression in mpspdz_placement_expression.players
-        ]
-        placement = MpspdzPlacement(
-            name=mpspdz_placement_expression.name, player_names=player_placements
-        )
         return self.computation.add_placement(placement)
 
     def visit_ReplicatedPlacementExpression(self, replicated_placement_expression):
@@ -459,40 +442,5 @@ class AstTracer:
                 placement_name=placement.name,
                 name=self.get_fresh_name("save"),
                 inputs={"key": key_operation.name, "value": value_operation.name},
-            )
-        )
-
-    def visit_ApplyFunctionExpression(self, expression):
-        assert isinstance(expression, ApplyFunctionExpression)
-        inputs = {
-            f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
-        }
-        placement = self.visit_placement_expression(expression.placement)
-        output_type = expression.vtype or UnknownType()
-        return self.computation.add_operation(
-            ApplyFunctionOperation(
-                fn=expression.fn,
-                placement_name=placement.name,
-                name=self.get_fresh_name("apply_function"),
-                inputs=inputs,
-                output_placements=expression.output_placements,
-                output_type=output_type,
-            )
-        )
-
-    def visit_RunProgramExpression(self, expression):
-        assert isinstance(expression, RunProgramExpression)
-        inputs = {
-            f"arg{i}": self.visit(expr).name for i, expr in enumerate(expression.inputs)
-        }
-        placement = self.visit_placement_expression(expression.placement)
-        return self.computation.add_operation(
-            RunProgramOperation(
-                placement_name=placement.name,
-                name=self.get_fresh_name("run_program"),
-                path=expression.path,
-                args=expression.args,
-                inputs=inputs,
-                output_type=expression.vtype,
             )
         )
