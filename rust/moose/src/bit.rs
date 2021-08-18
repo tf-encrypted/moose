@@ -18,7 +18,7 @@ use ndarray::prelude::*;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::num::Wrapping;
-use std::ops::{BitAnd, BitXor};
+use std::ops::{BitAnd, BitXor, Shl};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct BitTensor(pub ArrayD<u8>, HostPlacement);
@@ -363,8 +363,9 @@ impl RingInjectOp {
     ) -> AbstractRingTensor<T>
     where
         T: From<u8>,
+        AbstractRingTensor<T>: Shl<usize, Output = AbstractRingTensor<T>>,
     {
-        AbstractRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai << bit_idx))), plc.clone())
+        AbstractRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai))), plc.clone()) << bit_idx
     }
 }
 
