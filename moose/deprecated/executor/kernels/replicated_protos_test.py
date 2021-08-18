@@ -20,7 +20,7 @@ from moose.computation.standard import StringConstant
 from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.computation.standard import UnitType
-from moose.testing import run_test_computation
+from moose.deprecated.testing import run_test_computation
 
 # to get 2 random lists of equal size using hypothesis
 # https://stackoverflow.com/questions/51597021/python-hypothesis-ensure-that-input-lists-have-same-length

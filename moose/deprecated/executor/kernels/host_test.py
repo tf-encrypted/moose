@@ -5,9 +5,9 @@ from absl.testing import parameterized
 
 from moose.computation import dtypes
 from moose.computation.standard import TensorType
+from moose.deprecated.testing import run_test_computation
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace_and_compile
-from moose.testing import run_test_computation
 
 
 class HostKernelTest(parameterized.TestCase):

@@ -10,7 +10,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.standard import BytesConstant
 from moose.computation.standard import ShapeConstant
 from moose.computation.standard import StringConstant
-from moose.testing import run_test_computation
+from moose.deprecated.testing import run_test_computation
 
 
 class PrimitivesKernelTest(parameterized.TestCase):

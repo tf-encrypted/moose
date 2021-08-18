@@ -14,9 +14,9 @@ from moose.computation.standard import StringConstant
 from moose.computation.standard import TensorConstant
 from moose.computation.standard import TensorType
 from moose.deprecated.executor.executor import AsyncExecutor
+from moose.deprecated.testing import run_test_computation
 from moose.edsl import base as edsl
 from moose.edsl.tracer import trace_and_compile
-from moose.testing import run_test_computation
 
 _MOOSE_DTYPES = [
     dtypes.float32,

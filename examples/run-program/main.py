@@ -1,8 +1,8 @@
 import logging
 
 from moose import edsl
+from moose.deprecated.testing import TestRuntime
 from moose.logger import get_logger
-from moose.testing import TestRuntime
 
 get_logger().setLevel(level=logging.DEBUG)
 

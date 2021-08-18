@@ -11,7 +11,7 @@ from moose.computation.host import HostPlacement
 from moose.computation.standard import ShapeConstant
 from moose.computation.standard import StringConstant
 from moose.computation.standard import TensorConstant
-from moose.testing import run_test_computation
+from moose.deprecated.testing import run_test_computation
 
 
 class RingKernelTest(parameterized.TestCase):
