@@ -1,7 +1,7 @@
 use moose::computation::*;
 use moose::execution::*;
+use moose::host::RawShape;
 use moose::prim::RawNonce;
-use moose::standard::RawShape;
 
 fn main() {
     let key_op = Operation {
@@ -32,7 +32,7 @@ fn main() {
     let x_shape_op = Operation {
         name: "x_shape".into(),
         kind: ConstantOp {
-            sig: Signature::nullary(Ty::Shape),
+            sig: Signature::nullary(Ty::HostShape),
             value: Constant::RawShape(RawShape(vec![2, 3])),
         }
         .into(),
@@ -45,7 +45,7 @@ fn main() {
     let x_op = Operation {
         name: "x".into(),
         kind: RingSampleOp {
-            sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::Ring64Tensor),
+            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostRing64Tensor),
             max_value: None,
         }
         .into(),
@@ -60,7 +60,11 @@ fn main() {
         operations.push(Operation {
             name: format!("y{}", i),
             kind: RingMulOp {
-                sig: Signature::binary(Ty::Ring64Tensor, Ty::Ring64Tensor, Ty::Ring64Tensor),
+                sig: Signature::binary(
+                    Ty::HostRing64Tensor,
+                    Ty::HostRing64Tensor,
+                    Ty::HostRing64Tensor,
+                ),
             }
             .into(),
             inputs: vec!["x".into(), "x".into()],

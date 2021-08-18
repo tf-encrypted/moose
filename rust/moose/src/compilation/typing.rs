@@ -51,9 +51,9 @@ mod tests {
     fn test_all_on_one_host() -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
         y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        mul = StdMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = StdDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = StdMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)
+        mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
+        mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)
         constant_0 = Constant{value = String("regression_weights")} () @Host(alice)
         save = Save: (String, Unknown) -> Unit (constant_0, mean) @Host(alice)
         "#;

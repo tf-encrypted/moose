@@ -1,34 +1,32 @@
-use moose::bit::BitTensor;
 use moose::compilation::typing::update_types_one_hop;
 use moose::compilation::{compile_passes, into_pass};
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
 use moose::fixedpoint::Convert;
+use moose::host::{HostBitTensor, HostFloat64Tensor, HostRing64Tensor, HostTensor, RawShape};
 use moose::prim::RawSeed;
 use moose::prng::AesRng;
 use moose::python_computation::PyComputation;
-use moose::ring::Ring64Tensor;
-use moose::standard::{Float64Tensor, RawShape, StandardTensor};
 use moose::utils;
 use ndarray::IxDyn;
 use ndarray::{ArrayD, LinalgScalar};
 use numpy::{Element, PyArrayDescr, PyArrayDyn, PyReadonlyArrayDyn, ToPyArray};
-
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::types::{PyFloat, PyString};
 use pyo3::{exceptions::PyTypeError, prelude::*, types::PyBytes, types::PyList, AsPyPointer};
 use std::collections::HashMap;
 use std::convert::TryInto;
 use std::num::Wrapping;
+
 pub mod python_computation;
 
-fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> Ring64Tensor {
+fn dynarray_to_ring64(arr: &PyReadonlyArrayDyn<u64>) -> HostRing64Tensor {
     let arr_wrap = arr.as_array().mapv(Wrapping);
-    Ring64Tensor::new(arr_wrap)
+    HostRing64Tensor::new(arr_wrap)
 }
 
-fn ring64_to_array(r: Ring64Tensor) -> ArrayD<u64> {
+fn ring64_to_array(r: HostRing64Tensor) -> ArrayD<u64> {
     let inner_arr = r.0;
     let shape = inner_arr.shape();
     let unwrapped = inner_arr.mapv(|x| x.0);
@@ -39,7 +37,7 @@ fn binary_pyfn<'py>(
     py: Python<'py>,
     x: PyReadonlyArrayDyn<u64>,
     y: PyReadonlyArrayDyn<u64>,
-    binary_op: impl Fn(Ring64Tensor, Ring64Tensor) -> Ring64Tensor,
+    binary_op: impl Fn(HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor,
 ) -> &'py PyArrayDyn<u64> {
     let x_ring = dynarray_to_ring64(&x);
     let y_ring = dynarray_to_ring64(&y);
@@ -129,7 +127,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     #[pyfn(m, "ring_fill")]
     fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
         let shape = RawShape(shape);
-        let res = Ring64Tensor::fill(&shape, el);
+        let res = HostRing64Tensor::fill(&shape, el);
         let res_array = ring64_to_array(res);
         res_array.to_pyarray(py)
     }
@@ -142,13 +140,13 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         max_value: Option<u64>,
     ) -> &'py PyArrayDyn<u64> {
         let res = match max_value {
-            None => Ring64Tensor::sample_uniform(
+            None => HostRing64Tensor::sample_uniform(
                 &RawShape(shape),
                 &RawSeed(seed.as_bytes().try_into().unwrap()),
             ),
             Some(max_value) => {
                 if max_value == 1 {
-                    Ring64Tensor::sample_bits(
+                    HostRing64Tensor::sample_bits(
                         &RawShape(shape),
                         &RawSeed(seed.as_bytes().try_into().unwrap()),
                     )
@@ -191,8 +189,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u8>,
         y: PyReadonlyArrayDyn<u8>,
     ) -> &'py PyArrayDyn<u8> {
-        let b1 = BitTensor::from(x.to_owned_array());
-        let b2 = BitTensor::from(y.to_owned_array());
+        let b1 = HostBitTensor::from(x.to_owned_array());
+        let b2 = HostBitTensor::from(y.to_owned_array());
         ArrayD::<u8>::from(b1 ^ b2).to_pyarray(py)
     }
 
@@ -202,8 +200,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u8>,
         y: PyReadonlyArrayDyn<u8>,
     ) -> &'py PyArrayDyn<u8> {
-        let b1 = BitTensor::from(x.to_owned_array());
-        let b2 = BitTensor::from(y.to_owned_array());
+        let b1 = HostBitTensor::from(x.to_owned_array());
+        let b2 = HostBitTensor::from(y.to_owned_array());
         ArrayD::<u8>::from(b1 & b2).to_pyarray(py)
     }
 
@@ -215,14 +213,14 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u8> {
         let shape = RawShape(shape);
         let seed = RawSeed(seed.as_bytes().try_into().unwrap());
-        let b = BitTensor::sample_uniform(&shape, &seed);
+        let b = HostBitTensor::sample_uniform(&shape, &seed);
         ArrayD::<u8>::from(b).to_pyarray(py)
     }
 
     #[pyfn(m, "bit_fill")]
     fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
         let shape = RawShape(shape);
-        let res = BitTensor::fill(&shape, el);
+        let res = HostBitTensor::fill(&shape, el);
         ArrayD::<u8>::from(res).to_pyarray(py)
     }
 
@@ -243,8 +241,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<u8>,
         bit_idx: usize,
     ) -> &'py PyArrayDyn<u64> {
-        let b = BitTensor::from(x.to_owned_array());
-        let res = Ring64Tensor::from(b) << bit_idx;
+        let b = HostBitTensor::from(x.to_owned_array());
+        let res = HostRing64Tensor::from(b) << bit_idx;
         ring64_to_array(res).to_pyarray(py)
     }
 
@@ -260,8 +258,8 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         x: PyReadonlyArrayDyn<f64>,
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<u64> {
-        let x = Float64Tensor::from(x.to_owned_array());
-        let y = Ring64Tensor::encode(&x, scaling_factor);
+        let x = HostFloat64Tensor::from(x.to_owned_array());
+        let y = HostRing64Tensor::encode(&x, scaling_factor);
         ring64_to_array(y).to_pyarray(py)
     }
 
@@ -272,7 +270,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         scaling_factor: u64,
     ) -> &'py PyArrayDyn<f64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = Ring64Tensor::decode(&x_ring, scaling_factor);
+        let y = HostRing64Tensor::decode(&x_ring, scaling_factor);
         y.0.to_pyarray(py)
     }
 
@@ -284,7 +282,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         precision: u32,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = Ring64Tensor::ring_mean(x_ring, axis, 2u64.pow(precision));
+        let y = HostRing64Tensor::ring_mean(x_ring, axis, 2u64.pow(precision));
         ring64_to_array(y).to_pyarray(py)
     }
 
@@ -312,12 +310,12 @@ fn pyobj_to_value(py: Python, obj: PyObject) -> PyResult<Value> {
     }
 }
 
-fn pyobj_tensor_to_std_tensor<T>(py: Python, obj: &PyObject) -> StandardTensor<T>
+fn pyobj_tensor_to_host_tensor<T>(py: Python, obj: &PyObject) -> HostTensor<T>
 where
     T: Element + LinalgScalar,
 {
     let pyarray = obj.cast_as::<PyArrayDyn<T>>(py).unwrap();
-    StandardTensor::from(
+    HostTensor::from(
         pyarray
             .to_owned_array()
             .into_dimensionality::<IxDyn>()
@@ -330,16 +328,16 @@ fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Er
     let dtype: &PyArrayDescr = dtype_obj.cast_as(py).unwrap();
     let np_dtype = dtype.get_datatype().unwrap();
     match np_dtype {
-        numpy::DataType::Float32 => Ok(Value::from(pyobj_tensor_to_std_tensor::<f32>(py, obj))),
-        numpy::DataType::Float64 => Ok(Value::from(pyobj_tensor_to_std_tensor::<f64>(py, obj))),
-        numpy::DataType::Int8 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i8>(py, obj))),
-        numpy::DataType::Int16 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i16>(py, obj))),
-        numpy::DataType::Int32 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i32>(py, obj))),
-        numpy::DataType::Int64 => Ok(Value::from(pyobj_tensor_to_std_tensor::<i64>(py, obj))),
-        numpy::DataType::Uint8 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u8>(py, obj))),
-        numpy::DataType::Uint16 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u16>(py, obj))),
-        numpy::DataType::Uint32 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u32>(py, obj))),
-        numpy::DataType::Uint64 => Ok(Value::from(pyobj_tensor_to_std_tensor::<u64>(py, obj))),
+        numpy::DataType::Float32 => Ok(Value::from(pyobj_tensor_to_host_tensor::<f32>(py, obj))),
+        numpy::DataType::Float64 => Ok(Value::from(pyobj_tensor_to_host_tensor::<f64>(py, obj))),
+        numpy::DataType::Int8 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i8>(py, obj))),
+        numpy::DataType::Int16 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i16>(py, obj))),
+        numpy::DataType::Int32 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i32>(py, obj))),
+        numpy::DataType::Int64 => Ok(Value::from(pyobj_tensor_to_host_tensor::<i64>(py, obj))),
+        numpy::DataType::Uint8 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u8>(py, obj))),
+        numpy::DataType::Uint16 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u16>(py, obj))),
+        numpy::DataType::Uint32 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u32>(py, obj))),
+        numpy::DataType::Uint64 => Ok(Value::from(pyobj_tensor_to_host_tensor::<u64>(py, obj))),
         otherwise => Err(anyhow::Error::msg(format!(
             "Unsupported numpy datatype {:?}",
             otherwise
@@ -349,16 +347,16 @@ fn pyobj_tensor_to_value(py: Python, obj: &PyObject) -> Result<Value, anyhow::Er
 
 fn tensorval_to_pyobj(py: Python, tensor: Value) -> PyResult<PyObject> {
     match tensor {
-        Value::Float32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Float64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Int64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
-        Value::Uint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostFloat32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostFloat64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostInt64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint8Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint16Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint32Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
+        Value::HostUint64Tensor(t) => Ok(t.0.to_pyarray(py).to_object(py)),
         otherwise => Err(PyTypeError::new_err(format!(
             r#"Values of type {:?} cannot be handled by runtime storage: must be a tensor of supported dtype."#,
             otherwise

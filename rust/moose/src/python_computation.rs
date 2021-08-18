@@ -1,12 +1,11 @@
 //! Parser for computations defined in Python
 
-use crate::standard::{Float32Tensor, Float64Tensor, RawShape};
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape};
 use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::convert::TryFrom;
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Deserialize, Debug)]
 #[serde(tag = "__type__")]
@@ -771,7 +770,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
-                Ok(Float32Tensor::from(tensor).into())
+                Ok(HostFloat32Tensor::from(tensor).into())
             }
             PyNdarray::float64 {
                 ref items,
@@ -779,7 +778,7 @@ fn map_constant_value(constant_value: &PyConstant) -> anyhow::Result<Constant> {
             } => {
                 let shape: Vec<usize> = shape.iter().map(|i| *i as usize).collect();
                 let tensor = ArrayD::from_shape_vec(shape, items.clone())?;
-                Ok(Float64Tensor::from(tensor).into())
+                Ok(HostFloat64Tensor::from(tensor).into())
             }
         },
     }
@@ -789,24 +788,24 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
     match py_type {
         PyValueType::prim_PRFKeyType => Ok(Ty::PrfKey),
         PyValueType::prim_SeedType => Ok(Ty::Seed),
-        PyValueType::std_ShapeType => Ok(Ty::Shape),
+        PyValueType::std_ShapeType => Ok(Ty::HostShape),
         PyValueType::std_UnitType => Ok(Ty::Unit),
         PyValueType::std_StringType => Ok(Ty::String),
         PyValueType::std_TensorType { dtype } => match dtype {
-            PyDType::float32 => Ok(Ty::Float32Tensor),
-            PyDType::float64 => Ok(Ty::Float64Tensor),
-            PyDType::int32 => Ok(Ty::Int32Tensor),
-            PyDType::int64 => Ok(Ty::Int64Tensor),
-            PyDType::uint32 => Ok(Ty::Uint32Tensor),
-            PyDType::uint64 => Ok(Ty::Uint64Tensor),
+            PyDType::float32 => Ok(Ty::HostFloat32Tensor),
+            PyDType::float64 => Ok(Ty::HostFloat64Tensor),
+            PyDType::int32 => Ok(Ty::HostInt32Tensor),
+            PyDType::int64 => Ok(Ty::HostInt64Tensor),
+            PyDType::uint32 => Ok(Ty::HostUint32Tensor),
+            PyDType::uint64 => Ok(Ty::HostUint64Tensor),
             PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
         },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
-        PyValueType::ring_RingTensorType => Ok(Ty::Ring128Tensor),
-        PyValueType::bit_BitTensorType => Ok(Ty::BitTensor),
+        PyValueType::ring_RingTensorType => Ok(Ty::HostRing128Tensor),
+        PyValueType::bit_BitTensorType => Ok(Ty::HostBitTensor),
         PyValueType::rep_ReplicatedSetupType => Ok(Ty::ReplicatedSetup),
-        PyValueType::rep_ReplicatedRingTensorType => Ok(Ty::Replicated128Tensor),
+        PyValueType::rep_ReplicatedRingTensorType => Ok(Ty::ReplicatedRing128Tensor),
         PyValueType::fixed_EncodedTensorType => Ok(Ty::Fixed128Tensor),
     }
 }
@@ -907,7 +906,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingShapeOperation(op) => Ok(Operation {
                         kind: ShapeOp {
-                            sig: Signature::unary(Ty::Ring128Tensor, Ty::Shape),
+                            sig: Signature::unary(Ty::HostRing128Tensor, Ty::HostShape),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -917,7 +916,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
                         kind: RingSampleOp {
-                            sig: Signature::binary(Ty::Shape, Ty::Seed, map_type(&op.output_type)?),
+                            sig: Signature::binary(
+                                Ty::HostShape,
+                                Ty::Seed,
+                                map_type(&op.output_type)?,
+                            ),
                             max_value: op.max_value,
                         }
                         .into(),
@@ -946,8 +949,8 @@ impl TryFrom<PyComputation> for Computation {
                     ring_FillTensorOperation(op) => {
                         let ty = map_type(&op.output_type)?;
                         let value = match ty {
-                            Ty::Ring64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
-                            Ty::Ring128Tensor => Constant::Ring128(u128::from_str(&op.value)?),
+                            Ty::HostRing64Tensor => Constant::Ring64(u64::from_str(&op.value)?),
+                            Ty::HostRing128Tensor => Constant::Ring128(u128::from_str(&op.value)?),
                             _ => {
                                 return Err(anyhow::anyhow!(
                                     "unsupported return type for ring fill: {:?}",
@@ -957,7 +960,7 @@ impl TryFrom<PyComputation> for Computation {
                         };
                         Ok(Operation {
                             kind: RingFillOp {
-                                sig: Signature::unary(Ty::Shape, ty),
+                                sig: Signature::unary(Ty::HostShape, ty),
                                 value,
                             }
                             .into(),
@@ -997,7 +1000,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitExtractOperation(op) => Ok(Operation {
                         kind: BitExtractOp {
-                            sig: Signature::unary(map_type(&op.ring_type)?, Ty::BitTensor),
+                            sig: Signature::unary(map_type(&op.ring_type)?, Ty::HostBitTensor),
                             bit_idx: op.bit_idx as usize,
                         }
                         .into(),
@@ -1008,7 +1011,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitSampleOperation(op) => Ok(Operation {
                         kind: BitSampleOp {
-                            sig: Signature::binary(Ty::Shape, Ty::Seed, Ty::BitTensor),
+                            sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostBitTensor),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1018,7 +1021,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitFillTensorOperation(op) => Ok(Operation {
                         kind: BitFillOp {
-                            sig: Signature::unary(Ty::Shape, Ty::BitTensor),
+                            sig: Signature::unary(Ty::HostShape, Ty::HostBitTensor),
                             value: Constant::Ring64(u64::from(op.value)),
                         }
                         .into(),
@@ -1029,7 +1032,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitXorOperation(op) => Ok(Operation {
                         kind: BitXorOp {
-                            sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
+                            sig: Signature::binary(
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                            ),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1039,7 +1046,11 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_BitAndOperation(op) => Ok(Operation {
                         kind: BitAndOp {
-                            sig: Signature::binary(Ty::BitTensor, Ty::BitTensor, Ty::BitTensor),
+                            sig: Signature::binary(
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                                Ty::HostBitTensor,
+                            ),
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1049,7 +1060,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     bit_RingInjectOperation(op) => Ok(Operation {
                         kind: RingInjectOp {
-                            sig: Signature::unary(Ty::BitTensor, map_type(&op.output_type)?),
+                            sig: Signature::unary(Ty::HostBitTensor, map_type(&op.output_type)?),
                             bit_idx: op.bit_idx as usize,
                         }
                         .into(),
@@ -1069,7 +1080,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AddOperation(op) => Ok(Operation {
-                        kind: StdAddOp {
+                        kind: HostAddOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
@@ -1084,7 +1095,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SubOperation(op) => Ok(Operation {
-                        kind: StdSubOp {
+                        kind: HostSubOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
@@ -1099,7 +1110,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_MulOperation(op) => Ok(Operation {
-                        kind: StdMulOp {
+                        kind: HostMulOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
@@ -1114,7 +1125,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DotOperation(op) => Ok(Operation {
-                        kind: StdDotOp {
+                        kind: HostDotOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
@@ -1129,7 +1140,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AtLeast2DOperation(op) => Ok(Operation {
-                        kind: StdAtLeast2DOp {
+                        kind: HostAtLeast2DOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
@@ -1145,7 +1156,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: ShapeOp {
-                            sig: Signature::unary(Ty::Float64Tensor, Ty::Shape),
+                            sig: Signature::unary(Ty::HostFloat64Tensor, Ty::HostShape),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])
@@ -1154,7 +1165,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SliceOperation(op) => Ok(Operation {
-                        kind: StdSliceOp {
+                        kind: HostSliceOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
@@ -1169,8 +1180,8 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_OnesOperation(op) => Ok(Operation {
-                        kind: StdOnesOp {
-                            sig: Signature::unary(Ty::Shape, map_type(&op.output_type)?),
+                        kind: HostOnesOp {
+                            sig: Signature::unary(Ty::HostShape, map_type(&op.output_type)?),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["shape"])
@@ -1179,7 +1190,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_ExpandDimsOperation(op) => Ok(Operation {
-                        kind: StdExpandDimsOp {
+                        kind: HostExpandDimsOp {
                             // assume input type is the same as the output type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
@@ -1199,7 +1210,7 @@ impl TryFrom<PyComputation> for Computation {
                         let sorted_input_names: Vec<String> =
                             inputs.into_iter().map(|(_k, v)| v.clone()).collect();
                         Ok(Operation {
-                            kind: StdConcatenateOp {
+                            kind: HostConcatOp {
                                 // assume input type is the same as output type
                                 // TODO: Support variadic signature
                                 sig: Signature::binary(
@@ -1216,7 +1227,7 @@ impl TryFrom<PyComputation> for Computation {
                         })
                     }
                     std_TransposeOperation(op) => Ok(Operation {
-                        kind: StdTransposeOp {
+                        kind: HostTransposeOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
@@ -1231,7 +1242,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
 
                     std_InverseOperation(op) => Ok(Operation {
-                        kind: StdInverseOp {
+                        kind: HostInverseOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
@@ -1245,7 +1256,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_MeanOperation(op) => Ok(Operation {
-                        kind: StdMeanOp {
+                        kind: HostMeanOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
@@ -1260,7 +1271,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SumOperation(op) => Ok(Operation {
-                        kind: StdSumOp {
+                        kind: HostSumOp {
                             // we can use output type type to determine input type
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
@@ -1275,7 +1286,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_DivOperation(op) => Ok(Operation {
-                        kind: StdDivOp {
+                        kind: HostDivOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
@@ -1570,8 +1581,8 @@ impl TryFrom<PyComputation> for Computation {
                     rep_RevealOperation(op) => Ok(Operation {
                         kind: RepRevealOp {
                             sig: Signature::unary(
-                                Ty::Replicated128Tensor, // TODO: deduct from the output type
-                                Ty::Ring128Tensor,
+                                Ty::ReplicatedRing128Tensor, // TODO: deduct from the output type
+                                Ty::HostRing128Tensor,
                                 // map_type(&op.output_type)?,
                             ),
                         }
@@ -1585,7 +1596,7 @@ impl TryFrom<PyComputation> for Computation {
                         kind: RepShareOp {
                             sig: Signature::binary(
                                 Ty::ReplicatedSetup,
-                                Ty::Ring128Tensor, // TODO: should actually deduct from the output type
+                                Ty::HostRing128Tensor, // TODO: should actually deduct from the output type
                                 map_type(&op.output_type)?,
                             ),
                         }
