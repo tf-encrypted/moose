@@ -3,7 +3,7 @@ import json
 import subprocess
 import tempfile
 
-from moose.computation.host import RunProgramOperation
+from moose.deprecated.computation.host import RunProgramOperation
 from moose.deprecated.executor.kernels.base import Kernel
 from moose.logger import get_logger
 from moose.logger import get_tracer

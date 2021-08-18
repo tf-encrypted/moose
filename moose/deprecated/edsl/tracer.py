@@ -1,11 +1,41 @@
+import inspect
+
+from moose.compiler.compiler import Compiler
 from moose.computation.standard import UnknownType
 from moose.deprecated.computation.host import RunProgramOperation
 from moose.deprecated.computation.mpspdz import MpspdzPlacement
 from moose.deprecated.computation.standard import ApplyFunctionOperation
-from moose.deprecated.edsl import ApplyFunctionExpression
-from moose.deprecated.edsl import MpspdzPlacementExpression
-from moose.deprecated.edsl import RunProgramExpression
+from moose.deprecated.edsl.base import ApplyFunctionExpression
+from moose.deprecated.edsl.base import MpspdzPlacementExpression
+from moose.deprecated.edsl.base import RunProgramExpression
 from moose.edsl import tracer
+from moose.edsl.base import ArgumentExpression
+
+
+def trace(abstract_computation):
+    func_signature = inspect.signature(abstract_computation.func)
+    symbolic_args = [
+        ArgumentExpression(
+            arg_name=arg_name,
+            vtype=parameter.annotation.vtype,
+            placement=parameter.annotation.placement,
+            inputs=[],
+        )
+        for arg_name, parameter in func_signature.parameters.items()
+    ]
+    expression = abstract_computation.func(*symbolic_args)
+    tracer = AstTracer()
+    logical_comp = tracer.trace(expression)
+    return logical_comp
+
+
+def trace_and_compile(
+    abstract_computation, compiler_passes=None, render=False, ring=64
+):
+    logical_computation = trace(abstract_computation)
+    compiler = Compiler(passes=compiler_passes, ring=ring)
+    physical_comp = compiler.compile(logical_computation, render=render)
+    return physical_comp
 
 
 class AstTracer(tracer.AstTracer):

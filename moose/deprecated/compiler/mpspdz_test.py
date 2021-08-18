@@ -1,12 +1,13 @@
 from absl.testing import parameterized
 
 from moose.computation import dtypes
-from moose.computation.mpspdz import MpspdzCallOperation
-from moose.computation.mpspdz import MpspdzLoadOutputOperation
-from moose.computation.mpspdz import MpspdzSaveInputOperation
 from moose.computation.standard import TensorType
+from moose.deprecated import edsl as old_edsl
+from moose.deprecated.computation.mpspdz import MpspdzCallOperation
+from moose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
+from moose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
+from moose.deprecated.edsl.tracer import trace_and_compile
 from moose.edsl import base as edsl
-from moose.edsl.tracer import trace_and_compile
 
 
 class MpspdzTest(parameterized.TestCase):
@@ -14,9 +15,9 @@ class MpspdzTest(parameterized.TestCase):
         alice = edsl.host_placement(name="alice")
         bob = edsl.host_placement(name="bob")
         carole = edsl.host_placement(name="carole")
-        mpspdz = edsl.mpspdz_placement("mpspdz", players=[alice, bob, carole])
+        mpspdz = old_edsl.mpspdz_placement("mpspdz", players=[alice, bob, carole])
 
-        @edsl.function(vtype=TensorType(dtypes.int64))
+        @old_edsl.function(vtype=TensorType(dtypes.int64))
         def my_function(x, y, z):
             return x * y + z
 

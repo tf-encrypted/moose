@@ -5,11 +5,11 @@ from typing import List
 
 from moose.computation import bit as bit_ops
 from moose.computation import fixedpoint as fixed_ops
-from moose.computation import host as host_ops
-from moose.computation import mpspdz as mpspdz_ops
 from moose.computation import primitives as primitives_ops
 from moose.computation import ring as ring_ops
 from moose.computation import standard as standard_ops
+from moose.deprecated.computation import host as host_ops
+from moose.deprecated.computation import mpspdz as mpspdz_ops
 from moose.deprecated.executor.kernels import bit as bit_kernels
 from moose.deprecated.executor.kernels import fixedpoint as fixed_kernels
 from moose.deprecated.executor.kernels import host as host_kernels

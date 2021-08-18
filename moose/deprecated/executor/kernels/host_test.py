@@ -5,9 +5,10 @@ from absl.testing import parameterized
 
 from moose.computation import dtypes
 from moose.computation.standard import TensorType
+from moose.deprecated import edsl as old_edsl
+from moose.deprecated.edsl.tracer import trace_and_compile
 from moose.deprecated.testing import run_test_computation
 from moose.edsl import base as edsl
-from moose.edsl.tracer import trace_and_compile
 
 
 class HostKernelTest(parameterized.TestCase):
@@ -24,7 +25,7 @@ class HostKernelTest(parameterized.TestCase):
         def my_comp():
             c0 = edsl.constant(3, placement=player0)
             c1 = edsl.constant(2, placement=player0)
-            out = edsl.run_program(
+            out = old_edsl.run_program(
                 "python",
                 [test_fixtures_file],
                 c0,

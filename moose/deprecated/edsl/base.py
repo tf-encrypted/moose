@@ -6,10 +6,10 @@ from typing import List
 from typing import Optional
 
 from moose.computation.standard import UnknownType
-from moose.edsl import Expression
-from moose.edsl import PlacementExpression
-from moose.edsl import _maybe_lift_dtype_to_tensor_vtype
-from moose.edsl import get_current_placement
+from moose.edsl.base import Expression
+from moose.edsl.base import PlacementExpression
+from moose.edsl.base import _maybe_lift_dtype_to_tensor_vtype
+from moose.edsl.base import get_current_placement
 
 
 @dataclass
