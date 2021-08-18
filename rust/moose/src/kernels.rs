@@ -301,10 +301,6 @@ pub trait PlacementBitToRing<S: Session, T, O> {
     fn bit_to_ring(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementDaBit<S: Session, O1, O2> {
-    fn get_dabit(&self, sess: &S) -> (O1, O2);
-}
-
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
     fn mul_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
