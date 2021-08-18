@@ -1,12 +1,12 @@
 use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitToRingOp, BitXorOp, Constant, HostPlacement,
-    Placed, ReplicatedPlacement, ShapeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostPlacement, Placed,
+    ReplicatedPlacement, RingInjectOp, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementBitToRing, PlacementFill,
-    PlacementMul, PlacementPlace, PlacementSampleUniform, PlacementSub, PlacementXor,
-    RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementFill, PlacementMul, PlacementPlace,
+    PlacementRingInject, PlacementSampleUniform, PlacementSub, PlacementXor, RuntimeSession,
+    Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -339,31 +339,32 @@ impl BitExtractOp {
     }
 }
 
-modelled!(PlacementBitToRing::bit_to_ring, HostPlacement, (BitTensor) -> Ring64Tensor, BitToRingOp);
-modelled!(PlacementBitToRing::bit_to_ring, HostPlacement, (BitTensor) -> Ring128Tensor, BitToRingOp);
-modelled!(PlacementBitToRing::bit_to_ring, ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated64Tensor, BitToRingOp);
-modelled!(PlacementBitToRing::bit_to_ring, ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated128Tensor, BitToRingOp);
+modelled!(PlacementRingInject::ring_inject, HostPlacement, attributes[bit_idx: usize] (BitTensor) -> Ring64Tensor, RingInjectOp);
+modelled!(PlacementRingInject::ring_inject, HostPlacement, attributes[bit_idx: usize] (BitTensor) -> Ring128Tensor, RingInjectOp);
+modelled!(PlacementRingInject::ring_inject, ReplicatedPlacement, attributes[bit_idx: usize] (ReplicatedBitTensor) -> Replicated64Tensor, RingInjectOp);
+modelled!(PlacementRingInject::ring_inject, ReplicatedPlacement, attributes[bit_idx: usize] (ReplicatedBitTensor) -> Replicated128Tensor, RingInjectOp);
 
 kernel! {
-    BitToRingOp,
+    RingInjectOp,
     [
-        (HostPlacement, (BitTensor) -> Ring64Tensor => Self::kernel),
-        (HostPlacement, (BitTensor) -> Ring128Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated64Tensor => Self::rep_kernel),
-        (ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated128Tensor => Self::rep_kernel),
+        (HostPlacement, (BitTensor) -> Ring64Tensor => attributes[bit_idx] Self::kernel),
+        (HostPlacement, (BitTensor) -> Ring128Tensor => attributes[bit_idx] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated64Tensor => attributes[bit_idx] Self::rep_kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> Replicated128Tensor => attributes[bit_idx] Self::rep_kernel),
     ]
 }
 
-impl BitToRingOp {
+impl RingInjectOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
+        bit_idx: usize,
         x: BitTensor,
     ) -> AbstractRingTensor<T>
     where
         T: From<u8>,
     {
-        AbstractRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai))), plc.clone())
+        AbstractRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai << bit_idx))), plc.clone())
     }
 }
 

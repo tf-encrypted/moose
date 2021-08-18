@@ -7,9 +7,9 @@ use crate::computation::{
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementBitToRing, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill,
-    PlacementKeyGen, PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt,
-    PlacementReveal, PlacementSampleBits, PlacementSampleUniform, PlacementShape, PlacementShl,
+    PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
+    PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementRingInject, PlacementSampleBits, PlacementSampleUniform, PlacementShape, PlacementShl,
     PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
@@ -731,7 +731,7 @@ where
     HostPlacement: PlacementSampleUniform<S, ShapeT, cs!(Seed), RingT>,
     HostPlacement: PlacementSub<S, BitT, BitT, BitT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-    HostPlacement: PlacementBitToRing<S, BitT, RingT>,
+    HostPlacement: PlacementRingInject<S, BitT, RingT>,
     AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<BitT>>,
 {
@@ -751,7 +751,7 @@ where
         let sync_key = RawNonce::generate();
         let seed0 = provider.derive_seed(sess, sync_key, &key);
         let b: BitT = provider.sample_uniform(sess, &shape, &seed0);
-        let b2k = provider.bit_to_ring(sess, &b);
+        let b2k = provider.ring_inject(sess, 0, &b);
 
         let sync_key2 = RawNonce::generate();
         let seed2 = provider.derive_seed(sess, sync_key2, &key);

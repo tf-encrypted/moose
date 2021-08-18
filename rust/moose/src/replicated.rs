@@ -3,19 +3,19 @@
 use crate::additive::{AbstractAdditiveTensor, Additive128Tensor, Additive64Tensor};
 use crate::bit::BitTensor;
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, BitToRingOp, Constant, HostPlacement, KnownType, Placed,
-    RepAddOp, RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp,
-    RepShareOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, ShapeOp,
+    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAddOp, RepDotOp,
+    RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepSubOp,
+    RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{
-    PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract, PlacementBitToRing,
-    PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
-    PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup, PlacementOnes,
-    PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingMean, PlacementSampleUniform,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShr, PlacementSub,
-    PlacementSum, PlacementTruncPr, PlacementTruncPrProvider, PlacementZeros, RuntimeSession,
-    Session,
+    PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract, PlacementDaBitProvider,
+    PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill, PlacementKeyGen,
+    PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace,
+    PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementRingMean,
+    PlacementSampleUniform, PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShl,
+    PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
+    PlacementZeros, RuntimeSession, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::ring::{Ring128Tensor, Ring64Tensor, RingSize};
@@ -1714,10 +1714,11 @@ where
     }
 }
 
-impl BitToRingOp {
+impl RingInjectOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitTensorT, BitTensorT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
+        bit_idx: usize,
         x: ReplicatedBitTensorT,
     ) -> AbstractReplicatedTensor<RingT>
     where
@@ -1749,8 +1750,10 @@ impl BitToRingOp {
             AbstractAdditiveTensor<RingT>,
             AbstractAdditiveTensor<RingT>,
         >,
+        AdditivePlacement:
+            PlacementShl<S, AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<RingT>>,
         HostPlacement: PlacementReveal<S, AbstractAdditiveTensor<BitTensorT>, BitTensorT>,
-        HostPlacement: PlacementBitToRing<S, BitTensorT, RingT>,
+        HostPlacement: PlacementRingInject<S, BitTensorT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1773,13 +1776,14 @@ impl BitToRingOp {
 
         let c = with_context!(adt, sess, x_adt + b_bin);
         let c_open = player0.reveal(sess, &c);
-        let c_ring = player0.bit_to_ring(sess, &c_open);
+        let c_ring = player0.ring_inject(sess, 0, &c_open);
         let x_adt_ring = with_context!(
             adt,
             sess,
             b_ring + c_ring - b_ring * c_ring - b_ring * c_ring
         );
-        rep.adt_to_rep(sess, &x_adt_ring)
+        let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
+        rep.adt_to_rep(sess, &shifted_x_adt)
     }
 }
 
@@ -2446,7 +2450,7 @@ mod tests {
 
     #[rstest]
     #[case(array![0_u8, 1, 0].into_dyn())]
-    fn test_bit_to_ring(#[case] xs: ArrayD<u8>) {
+    fn test_ring_inject(#[case] xs: ArrayD<u8>) {
         let alice = HostPlacement {
             owner: "alice".into(),
         };
@@ -2461,13 +2465,16 @@ mod tests {
 
         let x_shared = rep.share(&sess, &setup, &x);
 
-        let x_ring64: Replicated64Tensor = rep.bit_to_ring(&sess, &x_shared);
-        let x_ring128: Replicated128Tensor = rep.bit_to_ring(&sess, &x_shared);
+        let x_ring64: Replicated64Tensor = rep.ring_inject(&sess, 0, &x_shared);
+        let x_ring128: Replicated128Tensor = rep.ring_inject(&sess, 0, &x_shared);
 
         let target64 = Ring64Tensor::from_raw_plc(xs.map(|x| *x as u64), alice.clone());
         let target128 = Ring128Tensor::from_raw_plc(xs.map(|x| *x as u128), alice.clone());
 
         assert_eq!(alice.reveal(&sess, &x_ring64), target64);
         assert_eq!(alice.reveal(&sess, &x_ring128), target128);
+
+        let shifted_x_ring64: Replicated64Tensor = rep.ring_inject(&sess, 20, &x_shared);
+        assert_eq!(alice.reveal(&sess, &shifted_x_ring64), target64 << 20);
     }
 }
