@@ -802,7 +802,8 @@ where
     fn gen_dabit(
         &self,
         sess: &S,
-        shape: ShapeT,
+        shape_provider: ShapeT,
+        shape_a: ShapeT,
         provider: &HostPlacement,
     ) -> (AbstractAdditiveTensor<RingT>, AbstractAdditiveTensor<BitT>) {
         let adt = self;
@@ -814,21 +815,21 @@ where
 
         let sync_key = RawNonce::generate();
         let seed0 = provider.derive_seed(sess, sync_key, &key);
-        let b: BitT = provider.sample_uniform(sess, &shape, &seed0);
+        let b: BitT = provider.sample_uniform(sess, &shape_provider, &seed0);
         let b2k = provider.ring_inject(sess, 0, &b);
 
         let sync_key2 = RawNonce::generate();
         let seed2 = provider.derive_seed(sess, sync_key2, &key);
-        let b20 = provider.sample_uniform(sess, &shape, &seed2);
+        let b20 = provider.sample_uniform(sess, &shape_provider, &seed2);
         let b21 = with_context!(provider, sess, b - b20);
 
         let sync_key2k = RawNonce::generate();
         let seed2k = provider.derive_seed(sess, sync_key2k, &key);
-        let b2k0: RingT = provider.sample_uniform(sess, &shape, &seed2k);
+        let b2k0: RingT = provider.sample_uniform(sess, &shape_provider, &seed2k);
         let b2k1 = with_context!(provider, sess, b2k - b2k0);
 
-        let b20: BitT = player_a.sample_uniform(sess, &shape, &seed2);
-        let b2k0: RingT = player_a.sample_uniform(sess, &shape, &seed2k);
+        let b20: BitT = player_a.sample_uniform(sess, &shape_a, &seed2);
+        let b2k0: RingT = player_a.sample_uniform(sess, &shape_a, &seed2k);
 
         (
             adt.place(

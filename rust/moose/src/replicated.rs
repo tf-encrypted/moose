@@ -1760,14 +1760,19 @@ impl RingInjectOp {
         let provider = player2;
 
         let x_shape = rep.shape(sess, &x);
-        let AbstractReplicatedShape { shapes: [s0, _, _] } = x_shape;
+        let AbstractReplicatedShape {
+            shapes: [s0, _, s_provider],
+        } = x_shape;
+        // One could think to wrap this up into an additive shape for Hosts@(P0, P2)
+        // but the additive placement that generates a dabit is Hosts@(P0, P1)
+        // to avoid confusion the API corresponding gen_dabit takes two input shapes
+        // 1) s_provider - provider (dealer) shape
+        // 2) s_0 - shape that corresponds to the party expanding the seeds received from provider.
 
-        // TODO(Dragos) this could be optimized by having an AdtShape structure
-        // to avoid sending shapes around
         let (b_ring, b_bin): (
             AbstractAdditiveTensor<RingT>,
             AbstractAdditiveTensor<BitTensorT>,
-        ) = adt.gen_dabit(sess, s0, &provider);
+        ) = adt.gen_dabit(sess, s_provider, s0, &provider);
 
         let x_adt = adt.rep_to_adt(sess, &x);
 
