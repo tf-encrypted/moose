@@ -985,9 +985,9 @@ impl RingInjectOp {
     ) -> AbstractHostRingTensor<T>
     where
         T: From<u8>,
-        AbstractHostRingTensor<T>: Shl<usize, Output = AbstractHostRingTensor<T>>,
+        Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
     {
-        AbstractHostRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai))), plc.clone()) << bit_idx
+        AbstractHostRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx), plc.clone())
     }
 }
 
