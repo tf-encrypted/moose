@@ -1,4 +1,4 @@
-from moose.storage.base import DataStore
+from moose.deprecated.storage.base import DataStore
 
 
 class MemoryDataStore(DataStore):
