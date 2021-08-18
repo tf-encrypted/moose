@@ -3,7 +3,7 @@ from pymoose.moose_kernels import sample_key
 
 from moose.computation.primitives import DeriveSeedOperation
 from moose.computation.primitives import SampleKeyOperation
-from moose.executor.kernels.base import Kernel
+from moose.deprecated.executor.kernels.base import Kernel
 
 
 class SampleKeyKernel(Kernel):

@@ -20,7 +20,7 @@ from moose.computation.ring import RingShlOperation
 from moose.computation.ring import RingShrOperation
 from moose.computation.ring import RingSubOperation
 from moose.computation.ring import RingSumOperation
-from moose.executor.kernels.base import Kernel
+from moose.deprecated.executor.kernels.base import Kernel
 
 
 class RingAddKernel(Kernel):

@@ -6,7 +6,7 @@ from pymoose.moose_kernels import fixedpoint_ring_mean
 from moose.computation.fixedpoint import RingDecodeOperation
 from moose.computation.fixedpoint import RingEncodeOperation
 from moose.computation.fixedpoint import RingMeanOperation
-from moose.executor.kernels.base import Kernel
+from moose.deprecated.executor.kernels.base import Kernel
 
 
 class RingEncodeKernel(Kernel):

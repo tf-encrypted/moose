@@ -7,9 +7,9 @@ from pymoose import LocalRuntime
 from moose import edsl
 from moose.computation.base import Computation
 from moose.computation.utils import serialize_computation
+from moose.deprecated.executor.executor import AsyncExecutor
 from moose.deprecated.networking.memory import Networking
 from moose.deprecated.storage.memory import MemoryDataStore
-from moose.executor.executor import AsyncExecutor
 from moose.logger import get_logger
 from moose.logger import get_tracer
 

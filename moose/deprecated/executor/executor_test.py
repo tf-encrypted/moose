@@ -8,7 +8,7 @@ from moose.computation.dtypes import int64
 from moose.computation.host import HostPlacement
 from moose.computation.standard import IntConstant
 from moose.computation.standard import TensorType
-from moose.executor.executor import AsyncExecutor
+from moose.deprecated.executor.executor import AsyncExecutor
 
 
 class ExecutorTest(parameterized.TestCase):

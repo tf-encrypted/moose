@@ -14,7 +14,7 @@ from moose.computation.bit import BitShapeOperation
 from moose.computation.bit import BitXorOperation
 from moose.computation.bit import PrintBitTensorOperation
 from moose.computation.bit import RingInjectOperation
-from moose.executor.kernels.base import Kernel
+from moose.deprecated.executor.kernels.base import Kernel
 
 
 class BitAndKernel(Kernel):
