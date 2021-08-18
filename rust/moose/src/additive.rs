@@ -735,7 +735,7 @@ where
     AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<BitT>>,
 {
-    fn get_dabit(
+    fn gen_dabit(
         &self,
         sess: &S,
         shape: ShapeT,

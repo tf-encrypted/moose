@@ -1767,7 +1767,7 @@ impl BitToRingOp {
         let (b_ring, b_bin): (
             AbstractAdditiveTensor<RingT>,
             AbstractAdditiveTensor<BitTensorT>,
-        ) = adt.get_dabit(sess, s0, &provider);
+        ) = adt.gen_dabit(sess, s0, &provider);
 
         let x_adt = adt.rep_to_adt(sess, &x);
 

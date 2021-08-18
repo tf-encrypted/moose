@@ -437,7 +437,7 @@ pub trait PlacementTruncPrProvider<S: Session, T, O> {
 }
 
 pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
-    fn get_dabit(&self, sess: &S, shape: ShapeT, provider: &HostPlacement) -> (O1, O2);
+    fn gen_dabit(&self, sess: &S, shape: ShapeT, provider: &HostPlacement) -> (O1, O2);
 }
 
 pub trait PlacementAbs<S: Session, SetupT, T, O> {
