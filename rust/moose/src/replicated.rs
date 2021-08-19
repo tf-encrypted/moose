@@ -48,17 +48,18 @@ pub struct AbstractReplicatedShape<S> {
 
 pub type ReplicatedShape = AbstractReplicatedShape<HostShape>;
 
-type Aat<T> = AbstractAdditiveTensor<T>;
-type Art<T> = AbstractReplicatedTensor<T>;
+/// Type aliases to shorten out impl in replicated protocols
+type AdtT<T> = AbstractAdditiveTensor<T>;
+type ArtT<T> = AbstractReplicatedTensor<T>;
 
-impl<R> Placed for AbstractReplicatedTensor<R>
+impl<R> Placed for ArtT<R>
 where
     R: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = self;
 
@@ -125,21 +126,21 @@ where
     }
 }
 
-impl<S: Session, R> PlacementPlace<S, AbstractReplicatedTensor<R>> for ReplicatedPlacement
+impl<S: Session, R> PlacementPlace<S, ArtT<R>> for ReplicatedPlacement
 where
-    AbstractReplicatedTensor<R>: Placed<Placement = ReplicatedPlacement>,
+    ArtT<R>: Placed<Placement = ReplicatedPlacement>,
     HostPlacement: PlacementPlace<S, R>,
 {
-    fn place(&self, sess: &S, x: AbstractReplicatedTensor<R>) -> AbstractReplicatedTensor<R> {
+    fn place(&self, sess: &S, x: ArtT<R>) -> ArtT<R> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
-                let AbstractReplicatedTensor {
+                let ArtT {
                     shares: [[x00, x10], [x11, x21], [x22, x02]],
                 } = x;
 
                 let (player0, player1, player2) = self.host_placements();
-                AbstractReplicatedTensor {
+                ArtT {
                     shares: [
                         [player0.place(sess, x00), player0.place(sess, x10)],
                         [player1.place(sess, x11), player1.place(sess, x21)],
@@ -207,7 +208,7 @@ impl RepShareOp {
         plc: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> ArtT<RingT>
     where
         RingT: Clone + Placed<Placement = HostPlacement>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
@@ -216,7 +217,7 @@ impl RepShareOp {
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<RingT>>,
     {
         let x_player = x.placement().unwrap();
 
@@ -311,7 +312,7 @@ impl RepShareOp {
             }
         };
 
-        plc.place(sess, AbstractReplicatedTensor { shares })
+        plc.place(sess, ArtT { shares })
     }
 }
 
@@ -329,16 +330,12 @@ hybrid_kernel! {
 }
 
 impl RepRevealOp {
-    fn kernel<S: Session, R: Clone>(
-        sess: &S,
-        receiver: &HostPlacement,
-        xe: AbstractReplicatedTensor<R>,
-    ) -> R
+    fn kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: ArtT<R>) -> R
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,
     {
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &xe;
 
@@ -389,19 +386,19 @@ impl RepAddOp {
     fn rep_rep_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedTensor<R>,
-        y: AbstractReplicatedTensor<R>,
-    ) -> AbstractReplicatedTensor<R>
+        x: ArtT<R>,
+        y: ArtT<R>,
+    ) -> ArtT<R>
     where
         HostPlacement: PlacementAdd<S, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -414,7 +411,7 @@ impl RepAddOp {
         let z22 = with_context!(player2, sess, x22 + y22);
         let z02 = with_context!(player2, sess, x02 + y02);
 
-        AbstractReplicatedTensor {
+        ArtT {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
@@ -423,17 +420,17 @@ impl RepAddOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: R,
-        y: AbstractReplicatedTensor<R>,
-    ) -> AbstractReplicatedTensor<R>
+        y: ArtT<R>,
+    ) -> ArtT<R>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let x_plc = x.placement().unwrap();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = y;
 
@@ -472,24 +469,24 @@ impl RepAddOp {
             }
         };
 
-        rep.place(sess, AbstractReplicatedTensor { shares })
+        rep.place(sess, ArtT { shares })
     }
 
     fn rep_ring_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedTensor<R>,
+        x: ArtT<R>,
         y: R,
-    ) -> AbstractReplicatedTensor<R>
+    ) -> ArtT<R>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let y_plc = y.placement().unwrap();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
@@ -528,7 +525,7 @@ impl RepAddOp {
             }
         };
 
-        rep.place(sess, AbstractReplicatedTensor { shares })
+        rep.place(sess, ArtT { shares })
     }
 }
 
@@ -557,19 +554,19 @@ impl RepSubOp {
     fn rep_rep_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedTensor<R>,
-        y: AbstractReplicatedTensor<R>,
-    ) -> AbstractReplicatedTensor<R>
+        x: ArtT<R>,
+        y: ArtT<R>,
+    ) -> ArtT<R>
     where
         HostPlacement: PlacementSub<S, R, R, R>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -582,7 +579,7 @@ impl RepSubOp {
         let z22 = with_context!(player2, sess, x22 - y22);
         let z02 = with_context!(player2, sess, x02 - y02);
 
-        AbstractReplicatedTensor {
+        ArtT {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
@@ -591,17 +588,17 @@ impl RepSubOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         x: R,
-        y: AbstractReplicatedTensor<R>,
-    ) -> AbstractReplicatedTensor<R>
+        y: ArtT<R>,
+    ) -> ArtT<R>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementSub<S, R, R, R>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let x_plc = x.placement().unwrap();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = y;
 
@@ -640,24 +637,24 @@ impl RepSubOp {
             }
         };
 
-        rep.place(sess, AbstractReplicatedTensor { shares })
+        rep.place(sess, ArtT { shares })
     }
 
     fn rep_ring_kernel<S: Session, R>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedTensor<R>,
+        x: ArtT<R>,
         y: R,
-    ) -> AbstractReplicatedTensor<R>
+    ) -> ArtT<R>
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementSub<S, R, R, R>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<R>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<R>>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let y_plc = y.placement().unwrap();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
@@ -696,7 +693,7 @@ impl RepSubOp {
             }
         };
 
-        rep.place(sess, AbstractReplicatedTensor { shares })
+        rep.place(sess, ArtT { shares })
     }
 }
 
@@ -726,24 +723,24 @@ impl RepMulOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
-        x: AbstractReplicatedTensor<RingT>,
-        y: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        x: ArtT<RingT>,
+        y: ArtT<RingT>,
+    ) -> ArtT<RingT>
     where
         RingT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         ReplicatedPlacement: ZeroShareGen<S, KeyT, RingT, ShapeT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -768,7 +765,7 @@ impl RepMulOp {
 
         rep.place(
             sess,
-            AbstractReplicatedTensor {
+            ArtT {
                 shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
             },
         )
@@ -779,14 +776,14 @@ impl RepMulOp {
         rep: &ReplicatedPlacement,
         _setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
-        y: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        y: ArtT<RingT>,
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -799,7 +796,7 @@ impl RepMulOp {
         let z22 = with_context!(player2, sess, x * y22);
         let z02 = with_context!(player2, sess, x * y02);
 
-        AbstractReplicatedTensor {
+        ArtT {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
@@ -808,15 +805,15 @@ impl RepMulOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         _setup: AbstractReplicatedSetup<KeyT>,
-        x: AbstractReplicatedTensor<RingT>,
+        x: ArtT<RingT>,
         y: RingT,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementMul<S, RingT, RingT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -829,7 +826,7 @@ impl RepMulOp {
         let z22 = with_context!(player2, sess, x22 * y);
         let z02 = with_context!(player2, sess, x02 * y);
 
-        AbstractReplicatedTensor {
+        ArtT {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
@@ -859,24 +856,24 @@ impl RepDotOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
-        x: AbstractReplicatedTensor<RingT>,
-        y: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        x: ArtT<RingT>,
+        y: ArtT<RingT>,
+    ) -> ArtT<RingT>
     where
         RingT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         ReplicatedPlacement: ZeroShareGen<S, KeyT, RingT, ShapeT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -907,7 +904,7 @@ impl RepDotOp {
 
         rep.place(
             sess,
-            AbstractReplicatedTensor {
+            ArtT {
                 shares: [[z0.clone(), z1.clone()], [z1, z2.clone()], [z2, z0]],
             },
         )
@@ -918,14 +915,14 @@ impl RepDotOp {
         rep: &ReplicatedPlacement,
         _setup: AbstractReplicatedSetup<KeyT>,
         x: RingT,
-        y: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        y: ArtT<RingT>,
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[y00, y10], [y11, y21], [y22, y02]],
         } = &y;
 
@@ -938,7 +935,7 @@ impl RepDotOp {
         let z22 = with_context!(player2, sess, dot(&x, y22));
         let z02 = with_context!(player2, sess, dot(&x, y02));
 
-        AbstractReplicatedTensor {
+        ArtT {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
@@ -947,15 +944,15 @@ impl RepDotOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         _setup: AbstractReplicatedSetup<KeyT>,
-        x: AbstractReplicatedTensor<RingT>,
+        x: ArtT<RingT>,
         y: RingT,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementDot<S, RingT, RingT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -968,7 +965,7 @@ impl RepDotOp {
         let z22 = with_context!(player2, sess, dot(x22, &y));
         let z02 = with_context!(player2, sess, dot(x02, &y));
 
-        AbstractReplicatedTensor {
+        ArtT {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
     }
@@ -991,15 +988,15 @@ impl RepMeanOp {
         rep: &ReplicatedPlacement,
         axis: Option<u32>,
         precision: u64,
-        x: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        x: ArtT<RingT>,
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementRingMean<S, RingT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -1013,7 +1010,7 @@ impl RepMeanOp {
 
         rep.place(
             sess,
-            AbstractReplicatedTensor {
+            ArtT {
                 shares: [[z00, z10], [z11, z21], [z22, z02]],
             },
         )
@@ -1036,15 +1033,15 @@ impl RepSumOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: Option<u32>,
-        x: AbstractReplicatedTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        x: ArtT<RingT>,
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementSum<S, RingT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<RingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -1057,7 +1054,7 @@ impl RepSumOp {
 
         rep.place(
             sess,
-            AbstractReplicatedTensor {
+            ArtT {
                 shares: [[z00, z10], [z11, z21], [z22, z02]],
             },
         )
@@ -1082,37 +1079,25 @@ impl RepTruncPrOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         amount: u32,
-        xe: AbstractReplicatedTensor<RingT>,
-    ) -> st!(AbstractReplicatedTensor<RingT>, S)
+        xe: ArtT<RingT>,
+    ) -> st!(ArtT<RingT>, S)
     where
         RingT: Clone,
-        AbstractReplicatedTensor<RingT>: Into<st!(AbstractReplicatedTensor<RingT>)>,
-        st!(AbstractAdditiveTensor<RingT>): TryInto<AbstractAdditiveTensor<RingT>>,
-        AbstractAdditiveTensor<RingT>: Into<st!(AbstractAdditiveTensor<RingT>)>,
-        st!(AbstractAdditiveTensor<RingT>): TryInto<AbstractAdditiveTensor<RingT>>,
+        ArtT<RingT>: Into<st!(ArtT<RingT>)>,
+        st!(AdtT<RingT>): TryInto<AdtT<RingT>>,
+        AdtT<RingT>: Into<st!(AdtT<RingT>)>,
+        st!(AdtT<RingT>): TryInto<AdtT<RingT>>,
 
-        AbstractAdditiveTensor<RingT>: CanonicalType,
-        <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
-        AbstractReplicatedTensor<RingT>: CanonicalType,
-        <AbstractReplicatedTensor<RingT> as CanonicalType>::Type: KnownType<S>,
+        AdtT<RingT>: CanonicalType,
+        <AdtT<RingT> as CanonicalType>::Type: KnownType<S>,
+        ArtT<RingT>: CanonicalType,
+        <ArtT<RingT> as CanonicalType>::Type: KnownType<S>,
 
-        AdditivePlacement: PlacementRepToAdt<
-            S,
-            st!(AbstractReplicatedTensor<RingT>),
-            st!(AbstractAdditiveTensor<RingT>),
-        >,
+        AdditivePlacement: PlacementRepToAdt<S, st!(ArtT<RingT>), st!(AdtT<RingT>)>,
 
-        AdditivePlacement: PlacementTruncPrProvider<
-            S,
-            AbstractAdditiveTensor<RingT>,
-            AbstractAdditiveTensor<RingT>,
-        >,
+        AdditivePlacement: PlacementTruncPrProvider<S, AdtT<RingT>, AdtT<RingT>>,
 
-        ReplicatedPlacement: PlacementAdtToRep<
-            S,
-            st!(AbstractAdditiveTensor<RingT>),
-            st!(AbstractReplicatedTensor<RingT>),
-        >,
+        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtT<RingT>), st!(ArtT<RingT>)>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1174,24 +1159,24 @@ impl<ShapeT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
     type Type = AbstractReplicatedShape<<ShapeT as CanonicalType>::Type>;
 }
 
-impl<RingT: CanonicalType> CanonicalType for AbstractAdditiveTensor<RingT> {
-    type Type = AbstractAdditiveTensor<<RingT as CanonicalType>::Type>;
+impl<RingT: CanonicalType> CanonicalType for AdtT<RingT> {
+    type Type = AdtT<<RingT as CanonicalType>::Type>;
 }
 
 impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
-    for Symbolic<AbstractAdditiveTensor<RingT>>
+    for Symbolic<AdtT<RingT>>
 {
-    type Type = AbstractAdditiveTensor<<RingT as CanonicalType>::Type>;
+    type Type = AdtT<<RingT as CanonicalType>::Type>;
 }
 
-impl<RingT: CanonicalType> CanonicalType for AbstractReplicatedTensor<RingT> {
-    type Type = AbstractReplicatedTensor<<RingT as CanonicalType>::Type>;
+impl<RingT: CanonicalType> CanonicalType for ArtT<RingT> {
+    type Type = ArtT<<RingT as CanonicalType>::Type>;
 }
 
 impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
-    for Symbolic<AbstractReplicatedTensor<RingT>>
+    for Symbolic<ArtT<RingT>>
 {
-    type Type = AbstractReplicatedTensor<<RingT as CanonicalType>::Type>;
+    type Type = ArtT<<RingT as CanonicalType>::Type>;
 }
 
 modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (AdditiveRing64Tensor) -> ReplicatedRing64Tensor, AdtToRepOp);
@@ -1209,27 +1194,23 @@ impl AdtToRepOp {
     fn kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractAdditiveTensor<RingT>,
-    ) -> AbstractReplicatedTensor<RingT>
+        x: AdtT<RingT>,
+    ) -> ArtT<RingT>
     where
         RingT: Placed<Placement = HostPlacement> + Clone,
-        AbstractAdditiveTensor<RingT>: CanonicalType,
-        <AbstractAdditiveTensor<RingT> as CanonicalType>::Type: KnownType<S>,
+        AdtT<RingT>: CanonicalType,
+        <AdtT<RingT> as CanonicalType>::Type: KnownType<S>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
         HostPlacement: PlacementSampleUniform<S, ShapeT, SeedT, RingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
-        AdditivePlacement: PlacementSub<
-            S,
-            st!(AbstractAdditiveTensor<RingT>, S),
-            st!(AbstractAdditiveTensor<RingT>, S),
-            st!(AbstractAdditiveTensor<RingT>, S),
-        >,
-        AbstractAdditiveTensor<RingT>: Into<st!(AbstractAdditiveTensor<RingT>, S)>,
-        HostPlacement: PlacementReveal<S, st!(AbstractAdditiveTensor<RingT>, S), RingT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        AdditivePlacement:
+            PlacementSub<S, st!(AdtT<RingT>, S), st!(AdtT<RingT>, S), st!(AdtT<RingT>, S)>,
+        AdtT<RingT>: Into<st!(AdtT<RingT>, S)>,
+        HostPlacement: PlacementReveal<S, st!(AdtT<RingT>, S), RingT>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<RingT>>,
     {
-        let AbstractAdditiveTensor { shares: [x0, x1] } = &x;
+        let AdtT { shares: [x0, x1] } = &x;
 
         let adt = x.placement().unwrap();
         let (adt_player0, adt_player1) = adt.host_placements();
@@ -1263,7 +1244,7 @@ impl AdtToRepOp {
         let y0_provider = provider.sample_uniform(sess, &shape0, &seed1);
         let y1_provider = provider.sample_uniform(sess, &shape0, &seed2);
 
-        let y = AbstractAdditiveTensor {
+        let y = AdtT {
             shares: [y0.clone(), y1.clone()],
         };
         let c = adt_player0.reveal(sess, &adt.sub(sess, &x.into(), &y.into()));
@@ -1312,7 +1293,7 @@ impl AdtToRepOp {
                 }
             }
         };
-        rep.place(sess, AbstractReplicatedTensor { shares })
+        rep.place(sess, ArtT { shares })
     }
 }
 
@@ -1362,7 +1343,7 @@ impl RepFillOp {
         rep: &ReplicatedPlacement,
         value: u8,
         rep_shape: AbstractReplicatedShape<ShapeT>,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -1388,7 +1369,7 @@ impl RepFillOp {
             ],
         ];
 
-        AbstractReplicatedTensor { shares }
+        ArtT { shares }
     }
 
     fn ring64_kernel<S: Session, ShapeT, RingT>(
@@ -1396,7 +1377,7 @@ impl RepFillOp {
         rep: &ReplicatedPlacement,
         value: u64,
         rep_shape: AbstractReplicatedShape<ShapeT>,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -1422,7 +1403,7 @@ impl RepFillOp {
             ],
         ];
 
-        AbstractReplicatedTensor { shares }
+        ArtT { shares }
     }
 
     fn ring128_kernel<S: Session, ShapeT, RingT>(
@@ -1430,7 +1411,7 @@ impl RepFillOp {
         rep: &ReplicatedPlacement,
         value: u128,
         rep_shape: AbstractReplicatedShape<ShapeT>,
-    ) -> AbstractReplicatedTensor<RingT>
+    ) -> ArtT<RingT>
     where
         HostPlacement: PlacementFill<S, ShapeT, RingT>,
     {
@@ -1456,7 +1437,7 @@ impl RepFillOp {
             ],
         ];
 
-        AbstractReplicatedTensor { shares }
+        ArtT { shares }
     }
 }
 
@@ -1487,12 +1468,12 @@ impl RepMsbOp {
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: AbstractReplicatedTensor<RingT>,
+        x: ArtT<RingT>,
     ) -> ReplicatedBitTensorT
     where
         RingT: RingSize,
         BitTensorT: Clone,
-        ReplicatedBitTensorT: From<AbstractReplicatedTensor<BitTensorT>>,
+        ReplicatedBitTensorT: From<ArtT<BitTensorT>>,
         ReplicatedBitTensorT: Clone,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         HostPlacement: RingBitDecompose<S, RingT>,
@@ -1500,11 +1481,11 @@ impl RepMsbOp {
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementFill<S, ShapeT, BitTensorT>,
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitTensorT, ReplicatedBitTensorT>,
-        ReplicatedPlacement: PlacementPlace<S, AbstractReplicatedTensor<RingT>>,
+        ReplicatedPlacement: PlacementPlace<S, ArtT<RingT>>,
         ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitTensorT>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, x10], [x11, x21], [x22, _x02]],
         } = &x;
 
@@ -1540,7 +1521,7 @@ impl RepMsbOp {
 
         let rep_bsr: Vec<_> = (0..RingT::SIZE)
             .map(|i| {
-                AbstractReplicatedTensor {
+                ArtT {
                     shares: [
                         [p0_zero.clone(), p0_zero.clone()],
                         [p1_zero.clone(), x2_on_1[i].clone()],
@@ -1584,13 +1565,13 @@ impl ShapeOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AbstractReplicatedTensor<RingT>,
+        x: ArtT<RingT>,
     ) -> AbstractReplicatedShape<ShapeT>
     where
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
     {
         let (player0, player1, player2) = rep.host_placements();
-        let AbstractReplicatedTensor {
+        let ArtT {
             shares: [[x00, _x10], [x11, _x21], [x22, _x02]],
         } = &x;
         AbstractReplicatedShape {
@@ -1715,25 +1696,24 @@ where
 }
 
 impl RingInjectOp {
-    pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitTensorT, BitTensorT, ShapeT>(
+    pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitT, BitT, ShapeT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         bit_idx: usize,
-        x: ReplicatedBitTensorT,
-    ) -> Art<RingT>
+        x: ReplicatedBitT,
+    ) -> ArtT<RingT>
     where
-        ReplicatedPlacement:
-            PlacementShape<S, ReplicatedBitTensorT, AbstractReplicatedShape<ShapeT>>,
-        ReplicatedPlacement: PlacementAdtToRep<S, Aat<RingT>, Art<RingT>>,
-        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, Aat<RingT>, Aat<BitTensorT>>,
-        AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitTensorT, Aat<BitTensorT>>,
-        AdditivePlacement: PlacementAdd<S, Aat<BitTensorT>, Aat<BitTensorT>, Aat<BitTensorT>>,
-        AdditivePlacement: PlacementAdd<S, Aat<RingT>, RingT, Aat<RingT>>,
-        AdditivePlacement: PlacementMul<S, Aat<RingT>, RingT, Aat<RingT>>,
-        AdditivePlacement: PlacementSub<S, Aat<RingT>, Aat<RingT>, Aat<RingT>>,
-        AdditivePlacement: PlacementShl<S, Aat<RingT>, Aat<RingT>>,
-        HostPlacement: PlacementReveal<S, Aat<BitTensorT>, BitTensorT>,
-        HostPlacement: PlacementRingInject<S, BitTensorT, RingT>,
+        ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtT<RingT>, ArtT<RingT>>,
+        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtT<RingT>, AdtT<BitT>>,
+        AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, AdtT<BitT>>,
+        AdditivePlacement: PlacementAdd<S, AdtT<BitT>, AdtT<BitT>, AdtT<BitT>>,
+        AdditivePlacement: PlacementAdd<S, AdtT<RingT>, RingT, AdtT<RingT>>,
+        AdditivePlacement: PlacementMul<S, AdtT<RingT>, RingT, AdtT<RingT>>,
+        AdditivePlacement: PlacementSub<S, AdtT<RingT>, AdtT<RingT>, AdtT<RingT>>,
+        AdditivePlacement: PlacementShl<S, AdtT<RingT>, AdtT<RingT>>,
+        HostPlacement: PlacementReveal<S, AdtT<BitT>, BitT>,
+        HostPlacement: PlacementRingInject<S, BitT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1752,7 +1732,7 @@ impl RingInjectOp {
         // 1) s_provider - provider (dealer) shape
         // 2) s_0 - shape that corresponds to the party expanding the seeds received from provider.
 
-        let (b_ring, b_bin): (Aat<RingT>, Aat<BitTensorT>) =
+        let (b_ring, b_bin): (AdtT<RingT>, AdtT<BitT>) =
             adt.gen_dabit(sess, s_provider, s0, &provider);
 
         let x_adt = adt.rep_to_adt(sess, &x);
