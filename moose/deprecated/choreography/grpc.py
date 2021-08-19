@@ -8,9 +8,9 @@ from grpc.experimental import aio as grpc_aio
 from moose.computation.base import Computation
 from moose.computation.utils import deserialize_computation
 from moose.computation.utils import serialize_computation
-from moose.deprecated.protos import executor_pb2
-from moose.deprecated.protos import executor_pb2_grpc
 from moose.logger import get_logger
+from moose.protos import executor_pb2
+from moose.protos import executor_pb2_grpc
 
 
 class Choreographer:
