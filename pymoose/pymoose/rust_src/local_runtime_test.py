@@ -1,11 +1,11 @@
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
+
+from pymoose import LocalRuntime
 from pymoose import edsl
 from pymoose.computation.standard import StringType
 from pymoose.computation.utils import serialize_computation
-
-from pymoose import LocalRuntime
 
 x_owner = edsl.host_placement(name="x_owner")
 y_owner = edsl.host_placement(name="y_owner")

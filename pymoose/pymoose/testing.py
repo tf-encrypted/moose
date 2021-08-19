@@ -1,5 +1,4 @@
 from pymoose import LocalRuntime
-
 from pymoose import edsl
 from pymoose.computation.utils import serialize_computation
 

@@ -1,11 +1,3 @@
-from pymoose.moose_kernels import bit_and
-from pymoose.moose_kernels import bit_extract
-from pymoose.moose_kernels import bit_fill
-from pymoose.moose_kernels import bit_sample
-from pymoose.moose_kernels import bit_shape
-from pymoose.moose_kernels import bit_xor
-from pymoose.moose_kernels import ring_inject
-
 from pymoose.computation.bit import BitAndOperation
 from pymoose.computation.bit import BitExtractOperation
 from pymoose.computation.bit import BitFillTensorOperation
@@ -15,6 +7,13 @@ from pymoose.computation.bit import BitXorOperation
 from pymoose.computation.bit import PrintBitTensorOperation
 from pymoose.computation.bit import RingInjectOperation
 from pymoose.deprecated.executor.kernels.base import Kernel
+from pymoose.rust_src.moose_kernels import bit_and
+from pymoose.rust_src.moose_kernels import bit_extract
+from pymoose.rust_src.moose_kernels import bit_fill
+from pymoose.rust_src.moose_kernels import bit_sample
+from pymoose.rust_src.moose_kernels import bit_shape
+from pymoose.rust_src.moose_kernels import bit_xor
+from pymoose.rust_src.moose_kernels import ring_inject
 
 
 class BitAndKernel(Kernel):

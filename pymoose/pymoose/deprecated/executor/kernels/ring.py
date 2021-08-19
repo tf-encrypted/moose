@@ -1,14 +1,3 @@
-from pymoose.moose_kernels import ring_add
-from pymoose.moose_kernels import ring_dot
-from pymoose.moose_kernels import ring_fill
-from pymoose.moose_kernels import ring_mul
-from pymoose.moose_kernels import ring_sample
-from pymoose.moose_kernels import ring_shape
-from pymoose.moose_kernels import ring_shl
-from pymoose.moose_kernels import ring_shr
-from pymoose.moose_kernels import ring_sub
-from pymoose.moose_kernels import ring_sum
-
 from pymoose.computation.ring import FillTensorOperation
 from pymoose.computation.ring import PrintRingTensorOperation
 from pymoose.computation.ring import RingAddOperation
@@ -21,6 +10,16 @@ from pymoose.computation.ring import RingShrOperation
 from pymoose.computation.ring import RingSubOperation
 from pymoose.computation.ring import RingSumOperation
 from pymoose.deprecated.executor.kernels.base import Kernel
+from pymoose.rust_src.moose_kernels import ring_add
+from pymoose.rust_src.moose_kernels import ring_dot
+from pymoose.rust_src.moose_kernels import ring_fill
+from pymoose.rust_src.moose_kernels import ring_mul
+from pymoose.rust_src.moose_kernels import ring_sample
+from pymoose.rust_src.moose_kernels import ring_shape
+from pymoose.rust_src.moose_kernels import ring_shl
+from pymoose.rust_src.moose_kernels import ring_shr
+from pymoose.rust_src.moose_kernels import ring_sub
+from pymoose.rust_src.moose_kernels import ring_sum
 
 
 class RingAddKernel(Kernel):

@@ -5,9 +5,9 @@ import unittest
 import numpy as np
 import pytest
 from absl.testing import parameterized
-from pymoose import elk_compiler as rust_compiler
 
 from pymoose import edsl
+from pymoose import elk_compiler as rust_compiler
 from pymoose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
 from pymoose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
 from pymoose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
