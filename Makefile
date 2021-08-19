@@ -3,11 +3,10 @@ build:
 			--proto_path=. \
 			--python_out=. \
 			--grpc_python_out=. \
-			pymoose/protos/*.proto
-	cd rust && cargo build
+			pymoose/pymoose/protos/*.proto
+	cargo build
 
 pydep:
-	pip install -r requirements-dev.txt
 	pip install -r pymoose/requirements-dev.txt
 
 pylib:
@@ -16,42 +15,39 @@ pylib:
 install: pydep pylib
 
 fmt:
-	isort .
-	black .
-	cd rust && cargo fmt
-	cd rust/pymoose && isort . && black .
+	cd pymoose && isort .
+	cd pymoose && black .
+	cargo fmt
 
 lint:
-	flake8 .
-	cd rust && cargo fmt --all -- --check
-	cd rust && cargo clippy --all-targets -- -D warnings
+	cd pymoose && flake8 .
+	cargo fmt --all -- --check
+	cargo clippy --all-targets -- -D warnings
 
 test:
-	pytest -m "not slow"
-	cd rust && cargo test --no-default-features
+	cd pymoose && pytest -m "not slow"
+	cargo test --no-default-features
 
 test-long:
 	HYPOTHESIS_PROFILE='test-long' $(MAKE) test
-	pytest -m "slow"
+	cd pymoose && pytest -m "slow"
 
 test-ci:
 	HYPOTHESIS_PROFILE='ci' $(MAKE) test
 
 clean:
-	find ./pymoose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
-	find ./rust/pymoose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
-	rm -rf .pytest_cache
-	rm -rf ./rust/pymoose/.pytest_cache
+	find ./ -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
+	rm -rf ./pymoose/.pytest_cache
 	rm -Rf .hypothesis
-	cd rust && cargo clean
+	cargo clean
 
 ci-ready:
-	cd rust && cargo clean
+	cargo clean
 	$(MAKE) fmt
 	$(MAKE) lint
 	$(MAKE) test-ci
 
 release: ci-ready
-	cd rust && cargo release --workspace --skip-publish
+	cargo release --workspace --skip-publish
 
 .PHONY: build pydep pylib install fmt lint test test-long test-ci clean ci-ready release
