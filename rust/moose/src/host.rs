@@ -2,8 +2,8 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp, HostConcatOp,
     HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
     HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement,
-    RingAddOp, RingDotOp, RingFillOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp, RingShrOp,
-    RingSubOp, RingSumOp, Role, ShapeOp,
+    RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp,
+    RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
@@ -973,6 +973,21 @@ impl BitExtractOp {
         x: HostRing128Tensor,
     ) -> HostBitTensor {
         HostBitTensor((x >> bit_idx).0.mapv(|ai| (ai.0 & 1) as u8), plc.clone())
+    }
+}
+
+impl RingInjectOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        bit_idx: usize,
+        x: HostBitTensor,
+    ) -> AbstractHostRingTensor<T>
+    where
+        T: From<u8>,
+        Wrapping<T>: Shl<usize, Output = Wrapping<T>>,
+    {
+        AbstractHostRingTensor(x.0.mapv(|ai| Wrapping(T::from(ai)) << bit_idx), plc.clone())
     }
 }
 

@@ -83,6 +83,7 @@ impl Session for SyncSession {
             Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingInject(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -289,6 +290,10 @@ pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
+pub trait PlacementRingInject<S: Session, T, O> {
+    fn ring_inject(&self, sess: &S, bit_idx: usize, x: &T) -> O;
+}
+
 pub trait PlacementMulSetup<S: Session, SetupT, T, U, O> {
     fn mul_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
@@ -418,6 +423,16 @@ pub trait PlacementTruncPr<S: Session, T, O> {
 
 pub trait PlacementTruncPrProvider<S: Session, T, O> {
     fn trunc_pr(&self, sess: &S, amount: usize, provider: &HostPlacement, x: &T) -> O;
+}
+
+pub trait PlacementDaBitProvider<S: Session, ShapeT, O1, O2> {
+    fn gen_dabit(
+        &self,
+        sess: &S,
+        shape_provider: ShapeT,
+        shape_a: ShapeT,
+        provider: &HostPlacement,
+    ) -> (O1, O2);
 }
 
 pub trait PlacementAbs<S: Session, SetupT, T, O> {

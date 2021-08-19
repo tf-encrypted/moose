@@ -1,6 +1,6 @@
 use crate::additive::{
-    AbstractAdditiveShape, AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor,
-    AdditiveShape,
+    AbstractAdditiveShape, AbstractAdditiveTensor, AdditiveBitTensor, AdditiveRing128Tensor,
+    AdditiveRing64Tensor, AdditiveShape,
 };
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
@@ -550,6 +550,10 @@ values![
         AdditiveShape,
         Symbolic<AbstractAdditiveShape<<HostShape as KnownType<SymbolicSession>>::Type>>
     ),
+    (
+        AdditiveBitTensor,
+        Symbolic<AbstractAdditiveTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
+    ),
 ];
 
 // Unit is still special. Placed unit is just a host placement.
@@ -848,14 +852,12 @@ operators![
     RingShl,
     RingShr,
     RingInject,
-    RingToBit,
     RingFill,
     BitFill,
     BitExtract,
     BitSample,
     BitXor,
     BitAnd,
-    // Fixedpoint operations
     FixedpointEncode,
     FixedpointDecode,
     FixedpointAdd,
@@ -890,6 +892,7 @@ operators![
     RepMean,
     RepSum,
     RepTruncPr,
+    RepDaBit,
     RepToAdt,
 ];
 
@@ -1037,7 +1040,12 @@ pub struct BitFillOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RingToBitOp {
+pub struct BitToRingOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepDaBitOp {
     pub sig: Signature,
 }
 
@@ -1137,6 +1145,11 @@ pub struct BitXorOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitAndOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct BitNegOp {
     pub sig: Signature,
 }
 

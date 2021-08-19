@@ -1501,6 +1501,7 @@ impl ToTextual for Ty {
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor",
             Ty::ReplicatedSetup => "ReplicatedSetup",
             Ty::ReplicatedShape => "ReplicatedShape",
+            Ty::AdditiveBitTensor => "AdditiveBitTensor",
             Ty::AdditiveRing64Tensor => "Additive64Tensor",
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
