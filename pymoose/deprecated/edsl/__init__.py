@@ -1,6 +1,6 @@
-from moose.deprecated.edsl.base import function
-from moose.deprecated.edsl.base import mpspdz_placement
-from moose.deprecated.edsl.base import run_program
+from pymoose.deprecated.edsl.base import function
+from pymoose.deprecated.edsl.base import mpspdz_placement
+from pymoose.deprecated.edsl.base import run_program
 
 __all__ = [
     "function",

@@ -4,8 +4,8 @@ package moose;
 
 /* This Networking gRPC service was previously used by a point-to-point networking
  * implementation, which has since been deprecated. It can be found in
- * moose/deprecated/networking/grpc.py. This networking implementation is also used
- * by the deprecated gRPC worker at moose/deprecated/worker.py. */
+ * pymoose/deprecated/networking/grpc.py. This networking implementation is also used
+ * by the deprecated gRPC worker at pymoose/deprecated/worker.py. */
 
 service Networking {
     rpc GetValue(GetValueRequest) returns(GetValueResponse) {}

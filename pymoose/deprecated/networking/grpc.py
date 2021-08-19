@@ -1,9 +1,9 @@
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.deprecated.utils import AsyncStore
-from moose.protos import networking_pb2
-from moose.protos import networking_pb2_grpc
+from pymoose.deprecated.utils import AsyncStore
+from pymoose.protos import networking_pb2
+from pymoose.protos import networking_pb2_grpc
 
 
 class Channel:

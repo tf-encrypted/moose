@@ -1,8 +1,8 @@
-from moose.computation.host import HostPlacement
-from moose.computation.standard import DeserializeOperation
-from moose.computation.standard import ReceiveOperation
-from moose.computation.standard import SendOperation
-from moose.computation.standard import SerializeOperation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.standard import DeserializeOperation
+from pymoose.computation.standard import ReceiveOperation
+from pymoose.computation.standard import SendOperation
+from pymoose.computation.standard import SerializeOperation
 
 
 class NetworkingPass:

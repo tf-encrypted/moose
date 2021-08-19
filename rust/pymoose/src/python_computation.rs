@@ -147,15 +147,15 @@ mod tests {
     fn test_deserialize_host_op() {
         let py_code = r#"
 import numpy as np
-from moose.computation import ring as ring_dialect
-from moose.computation import standard as standard_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.utils import serialize_computation
-from moose.computation.standard import TensorType
-from moose.computation.standard import TensorConstant
-from moose.computation.standard import UnitType
-from moose.computation import dtypes
+from pymoose.computation import ring as ring_dialect
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.utils import serialize_computation
+from pymoose.computation.standard import TensorType
+from pymoose.computation.standard import TensorConstant
+from pymoose.computation.standard import UnitType
+from pymoose.computation import dtypes
 def f(arg1, arg2):
     comp = Computation(operations={}, placements={})
     alice = comp.add_placement(HostPlacement(name="alice"))
@@ -267,19 +267,19 @@ def f(arg1, arg2):
         let py_code = r#"
 import numpy as np
 
-from moose.compiler.compiler import Compiler
-from moose.computation import dtypes
-from moose.computation import ring as ring_dialect
-from moose.computation import standard as standard_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import TensorType
-from moose.computation.standard import UnitType
-from moose.computation.utils import serialize_computation
-from moose.computation.ring import RingTensorType
-from moose.computation import dtypes
-from moose.computation import fixedpoint as fixedpoint_ops
+from pymoose.compiler.compiler import Compiler
+from pymoose.computation import dtypes
+from pymoose.computation import ring as ring_dialect
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.replicated import ReplicatedPlacement
+from pymoose.computation.standard import TensorType
+from pymoose.computation.standard import UnitType
+from pymoose.computation.utils import serialize_computation
+from pymoose.computation.ring import RingTensorType
+from pymoose.computation import dtypes
+from pymoose.computation import fixedpoint as fixedpoint_ops
 
 alice = HostPlacement(name="alice")
 bob = HostPlacement(name="bob")
@@ -440,12 +440,12 @@ def f(arg1, arg2):
     fn test_constant() {
         let py_code = r#"
 import numpy as np
-from moose.computation import ring as ring_dialect
-from moose.computation import standard as standard_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.utils import serialize_computation
-from moose.computation import dtypes
+from pymoose.computation import ring as ring_dialect
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.utils import serialize_computation
+from pymoose.computation import dtypes
 
 def f():
     comp = Computation(operations={}, placements={})
@@ -472,9 +472,9 @@ def f():
     fn test_deserialize_linear_regression() {
         let py_code = r#"
 import numpy as np
-from moose import edsl
-from moose.computation import standard as standard_dialect
-from moose.computation.utils import serialize_computation
+from pymoose import edsl
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.utils import serialize_computation
 
 
 FIXED = edsl.fixed(8, 27)
@@ -620,19 +620,19 @@ def f():
         let py_code = r#"
 import numpy as np
 
-from moose.compiler.compiler import Compiler
-from moose.computation import dtypes
-from moose.computation import ring as ring_dialect
-from moose.computation import standard as standard_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import TensorType
-from moose.computation.standard import UnitType
-from moose.computation.utils import serialize_computation
-from moose.computation.ring import RingTensorType
-from moose.computation import dtypes
-from moose.computation import fixedpoint as fixedpoint_ops
+from pymoose.compiler.compiler import Compiler
+from pymoose.computation import dtypes
+from pymoose.computation import ring as ring_dialect
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.replicated import ReplicatedPlacement
+from pymoose.computation.standard import TensorType
+from pymoose.computation.standard import UnitType
+from pymoose.computation.utils import serialize_computation
+from pymoose.computation.ring import RingTensorType
+from pymoose.computation import dtypes
+from pymoose.computation import fixedpoint as fixedpoint_ops
 
 alice = HostPlacement(name="alice")
 bob = HostPlacement(name="bob")

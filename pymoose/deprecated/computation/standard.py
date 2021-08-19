@@ -3,8 +3,8 @@ from dataclasses import field
 from typing import Any
 from typing import Callable
 
-from moose.computation.base import ValueType
-from moose.computation.standard import StandardOperation
+from pymoose.computation.base import ValueType
+from pymoose.computation.standard import StandardOperation
 
 
 @dataclass

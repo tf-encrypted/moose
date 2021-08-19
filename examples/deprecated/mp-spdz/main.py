@@ -1,11 +1,11 @@
 import argparse
 import logging
 
-from moose import edsl
-from moose.deprecated import edsl as old_edsl
-from moose.deprecated.choreography.grpc import Choreographer as GrpcChoreographer
-from moose.deprecated.testing import TestRuntime
-from moose.logger import get_logger
+from pymoose import edsl
+from pymoose.deprecated import edsl as old_edsl
+from pymoose.deprecated.choreography.grpc import Choreographer as GrpcChoreographer
+from pymoose.deprecated.testing import TestRuntime
+from pymoose.logger import get_logger
 
 parser = argparse.ArgumentParser(description="Run example")
 parser.add_argument("--runtime", type=str, default="test")

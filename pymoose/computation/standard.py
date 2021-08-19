@@ -5,10 +5,10 @@ from typing import Union
 
 import numpy as np
 
-from moose.computation import dtypes
-from moose.computation.base import Operation
-from moose.computation.base import Value
-from moose.computation.base import ValueType
+from pymoose.computation import dtypes
+from pymoose.computation.base import Operation
+from pymoose.computation.base import Value
+from pymoose.computation.base import ValueType
 
 
 @dataclass

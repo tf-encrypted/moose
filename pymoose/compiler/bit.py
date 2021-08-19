@@ -3,21 +3,21 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
-import moose.computation.standard as standard_ops
-from moose.compiler.primitives import Seed
-from moose.compiler.ring import RingTensor
-from moose.compiler.standard import Shape
-from moose.computation.base import Computation
-from moose.computation.base import Operation
-from moose.computation.bit import BitAndOperation
-from moose.computation.bit import BitExtractOperation
-from moose.computation.bit import BitFillTensorOperation
-from moose.computation.bit import BitSampleOperation
-from moose.computation.bit import BitShapeOperation
-from moose.computation.bit import BitXorOperation
-from moose.computation.bit import PrintBitTensorOperation
-from moose.computation.bit import RingInjectOperation
-from moose.computation.standard import UnitType
+import pymoose.computation.standard as standard_ops
+from pymoose.compiler.primitives import Seed
+from pymoose.compiler.ring import RingTensor
+from pymoose.compiler.standard import Shape
+from pymoose.computation.base import Computation
+from pymoose.computation.base import Operation
+from pymoose.computation.bit import BitAndOperation
+from pymoose.computation.bit import BitExtractOperation
+from pymoose.computation.bit import BitFillTensorOperation
+from pymoose.computation.bit import BitSampleOperation
+from pymoose.computation.bit import BitShapeOperation
+from pymoose.computation.bit import BitXorOperation
+from pymoose.computation.bit import PrintBitTensorOperation
+from pymoose.computation.bit import RingInjectOperation
+from pymoose.computation.standard import UnitType
 
 
 @dataclass

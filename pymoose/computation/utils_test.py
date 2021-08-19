@@ -1,10 +1,10 @@
 from absl.testing import absltest
 from absl.testing import parameterized
 
-from moose import edsl
-from moose.computation.utils import deserialize_computation
-from moose.computation.utils import serialize_computation
-from moose.edsl.tracer import trace_and_compile
+from pymoose import edsl
+from pymoose.computation.utils import deserialize_computation
+from pymoose.computation.utils import serialize_computation
+from pymoose.edsl.tracer import trace_and_compile
 
 
 class SerdeTest(parameterized.TestCase):

@@ -6,18 +6,18 @@ from typing import Union
 
 import numpy as np
 
-from moose.computation import dtypes
-from moose.computation.standard import FloatConstant
-from moose.computation.standard import FloatType
-from moose.computation.standard import IntConstant
-from moose.computation.standard import IntType
-from moose.computation.standard import ShapeConstant
-from moose.computation.standard import ShapeType
-from moose.computation.standard import StringConstant
-from moose.computation.standard import StringType
-from moose.computation.standard import TensorConstant
-from moose.computation.standard import TensorType
-from moose.computation.standard import ValueType
+from pymoose.computation import dtypes
+from pymoose.computation.standard import FloatConstant
+from pymoose.computation.standard import FloatType
+from pymoose.computation.standard import IntConstant
+from pymoose.computation.standard import IntType
+from pymoose.computation.standard import ShapeConstant
+from pymoose.computation.standard import ShapeType
+from pymoose.computation.standard import StringConstant
+from pymoose.computation.standard import StringType
+from pymoose.computation.standard import TensorConstant
+from pymoose.computation.standard import TensorType
+from pymoose.computation.standard import ValueType
 
 CURRENT_PLACEMENT: List = []
 _NUMPY_DTYPES_MAP = {

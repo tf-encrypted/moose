@@ -1,7 +1,7 @@
 from pymoose import LocalRuntime
 
-from moose import edsl
-from moose.computation.utils import serialize_computation
+from pymoose import edsl
+from pymoose.computation.utils import serialize_computation
 
 
 class LocalMooseRuntime(LocalRuntime):

@@ -1,6 +1,6 @@
 import abc
 
-from moose.compiler import pruning
+from pymoose.compiler import pruning
 
 
 class SubstitutionPass(metaclass=abc.ABCMeta):

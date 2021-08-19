@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from moose.deprecated.utils import AsyncStore
+from pymoose.deprecated.utils import AsyncStore
 
 
 class Channel:

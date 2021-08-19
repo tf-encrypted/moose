@@ -1,4 +1,4 @@
-from moose.deprecated.storage.base import DataStore
+from pymoose.deprecated.storage.base import DataStore
 
 
 class MemoryDataStore(DataStore):

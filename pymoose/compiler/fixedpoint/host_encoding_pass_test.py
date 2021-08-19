@@ -2,15 +2,15 @@ import unittest
 
 from absl.testing import parameterized
 
-from moose.compiler.compiler import Compiler
-from moose.compiler.fixedpoint import host_encoding_pass
-from moose.computation import dtypes
-from moose.computation import fixedpoint as fixedpoint_ops
-from moose.computation import standard as standard_ops
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.standard import TensorType
-from moose.computation.standard import UnitType
+from pymoose.compiler.compiler import Compiler
+from pymoose.compiler.fixedpoint import host_encoding_pass
+from pymoose.computation import dtypes
+from pymoose.computation import fixedpoint as fixedpoint_ops
+from pymoose.computation import standard as standard_ops
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.standard import TensorType
+from pymoose.computation.standard import UnitType
 
 
 class HostEncodingPassTest(parameterized.TestCase):

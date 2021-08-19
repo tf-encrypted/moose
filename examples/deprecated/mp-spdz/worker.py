@@ -2,8 +2,8 @@ import argparse
 import asyncio
 import logging
 
-from moose.deprecated.worker import Worker
-from moose.logger import get_logger
+from pymoose.deprecated.worker import Worker
+from pymoose.logger import get_logger
 
 parser = argparse.ArgumentParser(description="Launch worker")
 parser.add_argument("--host", type=str, default="0.0.0.0")

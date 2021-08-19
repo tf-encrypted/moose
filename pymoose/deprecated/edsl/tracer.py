@@ -1,15 +1,15 @@
 import inspect
 
-from moose.compiler.compiler import Compiler
-from moose.computation.standard import UnknownType
-from moose.deprecated.computation.host import RunProgramOperation
-from moose.deprecated.computation.mpspdz import MpspdzPlacement
-from moose.deprecated.computation.standard import ApplyFunctionOperation
-from moose.deprecated.edsl.base import ApplyFunctionExpression
-from moose.deprecated.edsl.base import MpspdzPlacementExpression
-from moose.deprecated.edsl.base import RunProgramExpression
-from moose.edsl import tracer
-from moose.edsl.base import ArgumentExpression
+from pymoose.compiler.compiler import Compiler
+from pymoose.computation.standard import UnknownType
+from pymoose.deprecated.computation.host import RunProgramOperation
+from pymoose.deprecated.computation.mpspdz import MpspdzPlacement
+from pymoose.deprecated.computation.standard import ApplyFunctionOperation
+from pymoose.deprecated.edsl.base import ApplyFunctionExpression
+from pymoose.deprecated.edsl.base import MpspdzPlacementExpression
+from pymoose.deprecated.edsl.base import RunProgramExpression
+from pymoose.edsl import tracer
+from pymoose.edsl.base import ArgumentExpression
 
 
 def trace(abstract_computation):

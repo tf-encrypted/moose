@@ -3,41 +3,41 @@ from math import log
 from typing import Optional
 from typing import Tuple
 
-from moose.compiler.bit import BitTensor
-from moose.compiler.bit import bit_and
-from moose.compiler.bit import bit_sample
-from moose.compiler.bit import bit_shape
-from moose.compiler.bit import bit_xor
-from moose.compiler.bit import fill_bit_tensor
-from moose.compiler.primitives import PRFKey
-from moose.compiler.primitives import Seed
-from moose.compiler.primitives import derive_seed
-from moose.compiler.primitives import sample_key
-from moose.compiler.pruning import PruningPass
-from moose.compiler.replicated import bit_utils
-from moose.compiler.replicated import trunc_utils
-from moose.compiler.replicated.types import ReplicatedBitTensor
-from moose.compiler.replicated.types import ReplicatedConstantRingTensor
-from moose.compiler.replicated.types import ReplicatedRingTensor
-from moose.compiler.replicated.types import ReplicatedSetup
-from moose.compiler.replicated.types import ReplicatedShape
-from moose.compiler.replicated.types import ReplicatedTensor
-from moose.compiler.replicated.types import SetupContext
-from moose.compiler.ring import RingTensor
-from moose.compiler.ring import fill_tensor
-from moose.compiler.ring import ring_add
-from moose.compiler.ring import ring_dot
-from moose.compiler.ring import ring_mul
-from moose.compiler.ring import ring_sample
-from moose.compiler.ring import ring_shape
-from moose.compiler.ring import ring_sub
-from moose.compiler.ring import ring_sum
-from moose.compiler.standard import StandardTensor
-from moose.computation import fixedpoint as fixed_dialect
-from moose.computation import replicated as replicated_ops
-from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.ring import RingTensorType
-from moose.computation.standard import TensorType
+from pymoose.compiler.bit import BitTensor
+from pymoose.compiler.bit import bit_and
+from pymoose.compiler.bit import bit_sample
+from pymoose.compiler.bit import bit_shape
+from pymoose.compiler.bit import bit_xor
+from pymoose.compiler.bit import fill_bit_tensor
+from pymoose.compiler.primitives import PRFKey
+from pymoose.compiler.primitives import Seed
+from pymoose.compiler.primitives import derive_seed
+from pymoose.compiler.primitives import sample_key
+from pymoose.compiler.pruning import PruningPass
+from pymoose.compiler.replicated import bit_utils
+from pymoose.compiler.replicated import trunc_utils
+from pymoose.compiler.replicated.types import ReplicatedBitTensor
+from pymoose.compiler.replicated.types import ReplicatedConstantRingTensor
+from pymoose.compiler.replicated.types import ReplicatedRingTensor
+from pymoose.compiler.replicated.types import ReplicatedSetup
+from pymoose.compiler.replicated.types import ReplicatedShape
+from pymoose.compiler.replicated.types import ReplicatedTensor
+from pymoose.compiler.replicated.types import SetupContext
+from pymoose.compiler.ring import RingTensor
+from pymoose.compiler.ring import fill_tensor
+from pymoose.compiler.ring import ring_add
+from pymoose.compiler.ring import ring_dot
+from pymoose.compiler.ring import ring_mul
+from pymoose.compiler.ring import ring_sample
+from pymoose.compiler.ring import ring_shape
+from pymoose.compiler.ring import ring_sub
+from pymoose.compiler.ring import ring_sum
+from pymoose.compiler.standard import StandardTensor
+from pymoose.computation import fixedpoint as fixed_dialect
+from pymoose.computation import replicated as replicated_ops
+from pymoose.computation.replicated import ReplicatedPlacement
+from pymoose.computation.ring import RingTensorType
+from pymoose.computation.standard import TensorType
 
 
 class ReplicatedLoweringPass:

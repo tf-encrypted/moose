@@ -2,18 +2,18 @@ import unittest
 
 from absl.testing import parameterized
 
-from moose.compiler.compiler import Compiler
-from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from moose.compiler.replicated.replicated_pass import ReplicatedOpsPass
-from moose.computation import dtypes
-from moose.computation import fixedpoint as fixed_dialect
-from moose.computation import fixedpoint as fixedpoint_ops
-from moose.computation import replicated as rep_dialect
-from moose.computation import standard as std_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import UnitType
+from pymoose.compiler.compiler import Compiler
+from pymoose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from pymoose.compiler.replicated.replicated_pass import ReplicatedOpsPass
+from pymoose.computation import dtypes
+from pymoose.computation import fixedpoint as fixed_dialect
+from pymoose.computation import fixedpoint as fixedpoint_ops
+from pymoose.computation import replicated as rep_dialect
+from pymoose.computation import standard as std_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.replicated import ReplicatedPlacement
+from pymoose.computation.standard import UnitType
 
 
 class ReplicatedTest(parameterized.TestCase):

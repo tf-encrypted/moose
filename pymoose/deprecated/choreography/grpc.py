@@ -5,12 +5,12 @@ from typing import Dict
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.computation.base import Computation
-from moose.computation.utils import deserialize_computation
-from moose.computation.utils import serialize_computation
-from moose.logger import get_logger
-from moose.protos import executor_pb2
-from moose.protos import executor_pb2_grpc
+from pymoose.computation.base import Computation
+from pymoose.computation.utils import deserialize_computation
+from pymoose.computation.utils import serialize_computation
+from pymoose.logger import get_logger
+from pymoose.protos import executor_pb2
+from pymoose.protos import executor_pb2_grpc
 
 
 class Choreographer:

@@ -2,13 +2,13 @@ import ast
 import inspect
 import textwrap
 
-from moose.computation.standard import UnknownType
-from moose.deprecated.computation.mpspdz import MpspdzCallOperation
-from moose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
-from moose.deprecated.computation.mpspdz import MpspdzPlacement
-from moose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
-from moose.deprecated.computation.standard import ApplyFunctionOperation
-from moose.logger import get_logger
+from pymoose.computation.standard import UnknownType
+from pymoose.deprecated.computation.mpspdz import MpspdzCallOperation
+from pymoose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
+from pymoose.deprecated.computation.mpspdz import MpspdzPlacement
+from pymoose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
+from pymoose.deprecated.computation.standard import ApplyFunctionOperation
+from pymoose.logger import get_logger
 
 
 class MpspdzApplyFunctionPass:

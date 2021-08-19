@@ -2,7 +2,7 @@ import argparse
 import json
 import logging
 
-from moose.logger import get_logger
+from pymoose.logger import get_logger
 
 get_logger().setLevel(level=logging.DEBUG)
 

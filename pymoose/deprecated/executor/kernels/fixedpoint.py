@@ -3,10 +3,10 @@ from pymoose.moose_kernels import fixedpoint_decode
 from pymoose.moose_kernels import fixedpoint_encode
 from pymoose.moose_kernels import fixedpoint_ring_mean
 
-from moose.computation.fixedpoint import RingDecodeOperation
-from moose.computation.fixedpoint import RingEncodeOperation
-from moose.computation.fixedpoint import RingMeanOperation
-from moose.deprecated.executor.kernels.base import Kernel
+from pymoose.computation.fixedpoint import RingDecodeOperation
+from pymoose.computation.fixedpoint import RingEncodeOperation
+from pymoose.computation.fixedpoint import RingMeanOperation
+from pymoose.deprecated.executor.kernels.base import Kernel
 
 
 class RingEncodeKernel(Kernel):

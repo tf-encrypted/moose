@@ -3,12 +3,12 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
-from moose.computation import dtypes
-from moose.computation.base import Computation
-from moose.computation.base import Operation
-from moose.computation.standard import DotOperation
-from moose.computation.standard import InverseOperation
-from moose.computation.standard import MulOperation
+from pymoose.computation import dtypes
+from pymoose.computation.base import Computation
+from pymoose.computation.base import Operation
+from pymoose.computation.standard import DotOperation
+from pymoose.computation.standard import InverseOperation
+from pymoose.computation.standard import MulOperation
 
 
 @dataclass

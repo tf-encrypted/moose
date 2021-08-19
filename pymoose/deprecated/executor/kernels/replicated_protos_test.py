@@ -9,18 +9,18 @@ from hypothesis import settings
 from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
-from moose.compiler.compiler import Compiler
-from moose.computation import dtypes
-from moose.computation import fixedpoint as fixedpoint_ops
-from moose.computation import standard as standard_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.replicated import ReplicatedPlacement
-from moose.computation.standard import StringConstant
-from moose.computation.standard import TensorConstant
-from moose.computation.standard import TensorType
-from moose.computation.standard import UnitType
-from moose.deprecated.testing import run_test_computation
+from pymoose.compiler.compiler import Compiler
+from pymoose.computation import dtypes
+from pymoose.computation import fixedpoint as fixedpoint_ops
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.replicated import ReplicatedPlacement
+from pymoose.computation.standard import StringConstant
+from pymoose.computation.standard import TensorConstant
+from pymoose.computation.standard import TensorType
+from pymoose.computation.standard import UnitType
+from pymoose.deprecated.testing import run_test_computation
 
 # to get 2 random lists of equal size using hypothesis
 # https://stackoverflow.com/questions/51597021/python-hypothesis-ensure-that-input-lists-have-same-length

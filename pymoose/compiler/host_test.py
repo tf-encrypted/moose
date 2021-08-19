@@ -1,15 +1,15 @@
 import numpy as np
 from absl.testing import parameterized
 
-from moose.computation import dtypes
-from moose.computation import fixedpoint as fixedpoint_ops
-from moose.computation import ring as ring_ops
-from moose.computation import standard as standard_ops
-from moose.computation.standard import IntType
-from moose.computation.standard import ReceiveOperation
-from moose.computation.standard import SendOperation
-from moose.edsl import base as edsl
-from moose.edsl.tracer import trace_and_compile
+from pymoose.computation import dtypes
+from pymoose.computation import fixedpoint as fixedpoint_ops
+from pymoose.computation import ring as ring_ops
+from pymoose.computation import standard as standard_ops
+from pymoose.computation.standard import IntType
+from pymoose.computation.standard import ReceiveOperation
+from pymoose.computation.standard import SendOperation
+from pymoose.edsl import base as edsl
+from pymoose.edsl.tracer import trace_and_compile
 
 
 class HostTest(parameterized.TestCase):

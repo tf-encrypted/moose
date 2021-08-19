@@ -3,10 +3,10 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-from moose.computation import dtypes
-from moose.computation.base import Operation
-from moose.computation.base import ValueType
-from moose.computation.ring import RingTensorType
+from pymoose.computation import dtypes
+from pymoose.computation.base import Operation
+from pymoose.computation.base import ValueType
+from pymoose.computation.ring import RingTensorType
 
 
 @dataclass

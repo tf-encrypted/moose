@@ -4,7 +4,7 @@ from pathlib import Path
 import grpc
 from grpc.experimental import aio as grpc_aio
 
-from moose.logger import get_logger
+from pymoose.logger import get_logger
 
 
 class AsyncStore:

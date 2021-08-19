@@ -2,12 +2,12 @@ import asyncio
 import random
 from typing import Dict
 
-from moose.computation.base import Computation
-from moose.deprecated.executor.executor import AsyncExecutor
-from moose.deprecated.networking.memory import Networking
-from moose.deprecated.storage.memory import MemoryDataStore
-from moose.logger import get_logger
-from moose.logger import get_tracer
+from pymoose.computation.base import Computation
+from pymoose.deprecated.executor.executor import AsyncExecutor
+from pymoose.deprecated.networking.memory import Networking
+from pymoose.deprecated.storage.memory import MemoryDataStore
+from pymoose.logger import get_logger
+from pymoose.logger import get_tracer
 
 
 class TestRuntime:

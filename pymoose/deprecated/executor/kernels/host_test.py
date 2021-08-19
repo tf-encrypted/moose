@@ -3,12 +3,12 @@ import unittest
 
 from absl.testing import parameterized
 
-from moose.computation import dtypes
-from moose.computation.standard import TensorType
-from moose.deprecated import edsl as old_edsl
-from moose.deprecated.edsl.tracer import trace_and_compile
-from moose.deprecated.testing import run_test_computation
-from moose.edsl import base as edsl
+from pymoose.computation import dtypes
+from pymoose.computation.standard import TensorType
+from pymoose.deprecated import edsl as old_edsl
+from pymoose.deprecated.edsl.tracer import trace_and_compile
+from pymoose.deprecated.testing import run_test_computation
+from pymoose.edsl import base as edsl
 
 
 class HostKernelTest(parameterized.TestCase):

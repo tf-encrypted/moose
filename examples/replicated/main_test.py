@@ -4,9 +4,9 @@ import unittest
 
 import numpy as np
 
-from moose import edsl
-from moose.logger import get_logger
-from moose.testing import LocalMooseRuntime
+from pymoose import edsl
+from pymoose.logger import get_logger
+from pymoose.testing import LocalMooseRuntime
 
 
 class ReplicatedExample(unittest.TestCase):

@@ -3,7 +3,7 @@ build:
 			--proto_path=. \
 			--python_out=. \
 			--grpc_python_out=. \
-			moose/protos/*.proto
+			pymoose/protos/*.proto
 	cd rust && cargo build
 
 pydep:
@@ -39,7 +39,7 @@ test-ci:
 	HYPOTHESIS_PROFILE='ci' $(MAKE) test
 
 clean:
-	find ./moose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
+	find ./pymoose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	find ./rust/pymoose -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf .pytest_cache
 	rm -rf ./rust/pymoose/.pytest_cache

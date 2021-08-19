@@ -1,9 +1,9 @@
 import logging
 
-from moose import edsl
-from moose.deprecated import edsl as old_edsl
-from moose.deprecated.testing import TestRuntime
-from moose.logger import get_logger
+from pymoose import edsl
+from pymoose.deprecated import edsl as old_edsl
+from pymoose.deprecated.testing import TestRuntime
+from pymoose.logger import get_logger
 
 get_logger().setLevel(level=logging.DEBUG)
 

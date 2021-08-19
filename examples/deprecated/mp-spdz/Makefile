@@ -13,6 +13,6 @@ test-localhost:
 		--tty \
 		--volume $(realpath ../..):/worker/moose \
 		tfencrypted/runtime-mpspdz-worker:latest \
-		sh -c "cd /worker/moose/examples/mp-spdz; python3 main.py --runtime test --verbose"
+		sh -c "cd /worker/pymoose/examples/mp-spdz; python3 main.py --runtime test --verbose"
 
 .PHONY: up down run test-localhost

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from moose.computation.base import Operation
-from moose.computation.base import ValueType
+from pymoose.computation.base import Operation
+from pymoose.computation.base import ValueType
 
 
 @dataclass

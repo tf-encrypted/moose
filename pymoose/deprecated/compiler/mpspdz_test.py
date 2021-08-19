@@ -1,13 +1,13 @@
 from absl.testing import parameterized
 
-from moose.computation import dtypes
-from moose.computation.standard import TensorType
-from moose.deprecated import edsl as old_edsl
-from moose.deprecated.computation.mpspdz import MpspdzCallOperation
-from moose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
-from moose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
-from moose.deprecated.edsl.tracer import trace_and_compile
-from moose.edsl import base as edsl
+from pymoose.computation import dtypes
+from pymoose.computation.standard import TensorType
+from pymoose.deprecated import edsl as old_edsl
+from pymoose.deprecated.computation.mpspdz import MpspdzCallOperation
+from pymoose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
+from pymoose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
+from pymoose.deprecated.edsl.tracer import trace_and_compile
+from pymoose.edsl import base as edsl
 
 
 class MpspdzTest(parameterized.TestCase):

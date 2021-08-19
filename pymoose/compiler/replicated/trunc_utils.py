@@ -1,15 +1,15 @@
-from moose.compiler.primitives import derive_seed
-from moose.compiler.primitives import sample_key
-from moose.compiler.replicated.types import ReplicatedRingTensor
-from moose.compiler.replicated.types import ReplicatedSetup
-from moose.compiler.ring import RingTensor
-from moose.compiler.ring import fill_tensor
-from moose.compiler.ring import ring_add
-from moose.compiler.ring import ring_mul
-from moose.compiler.ring import ring_sample
-from moose.compiler.ring import ring_shl
-from moose.compiler.ring import ring_shr
-from moose.compiler.ring import ring_sub
+from pymoose.compiler.primitives import derive_seed
+from pymoose.compiler.primitives import sample_key
+from pymoose.compiler.replicated.types import ReplicatedRingTensor
+from pymoose.compiler.replicated.types import ReplicatedSetup
+from pymoose.compiler.ring import RingTensor
+from pymoose.compiler.ring import fill_tensor
+from pymoose.compiler.ring import ring_add
+from pymoose.compiler.ring import ring_mul
+from pymoose.compiler.ring import ring_sample
+from pymoose.compiler.ring import ring_shl
+from pymoose.compiler.ring import ring_shr
+from pymoose.compiler.ring import ring_sub
 
 
 def tree_reduce(function, sequence, placement_name):

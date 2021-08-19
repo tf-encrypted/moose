@@ -7,14 +7,14 @@ import pytest
 from absl.testing import parameterized
 from pymoose import elk_compiler as rust_compiler
 
-from moose import edsl
-from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
-from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from moose.computation import utils
-from moose.computation.standard import StringType
-from moose.logger import get_logger
-from moose.testing import LocalMooseRuntime
+from pymoose import edsl
+from pymoose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
+from pymoose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
+from pymoose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
+from pymoose.computation import utils
+from pymoose.computation.standard import StringType
+from pymoose.logger import get_logger
+from pymoose.testing import LocalMooseRuntime
 
 FIXED = edsl.fixed(8, 27)
 

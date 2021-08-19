@@ -1,9 +1,9 @@
 from pymoose.moose_kernels import derive_seed
 from pymoose.moose_kernels import sample_key
 
-from moose.computation.primitives import DeriveSeedOperation
-from moose.computation.primitives import SampleKeyOperation
-from moose.deprecated.executor.kernels.base import Kernel
+from pymoose.computation.primitives import DeriveSeedOperation
+from pymoose.computation.primitives import SampleKeyOperation
+from pymoose.deprecated.executor.kernels.base import Kernel
 
 
 class SampleKeyKernel(Kernel):

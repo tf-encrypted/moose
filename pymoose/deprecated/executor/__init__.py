@@ -1,3 +1,3 @@
-from moose.deprecated.executor.executor import AsyncExecutor
+from pymoose.deprecated.executor.executor import AsyncExecutor
 
 __all__ = [AsyncExecutor]

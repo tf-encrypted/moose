@@ -3,10 +3,10 @@ import json
 import subprocess
 import tempfile
 
-from moose.deprecated.computation.host import RunProgramOperation
-from moose.deprecated.executor.kernels.base import Kernel
-from moose.logger import get_logger
-from moose.logger import get_tracer
+from pymoose.deprecated.computation.host import RunProgramOperation
+from pymoose.deprecated.executor.kernels.base import Kernel
+from pymoose.logger import get_logger
+from pymoose.logger import get_tracer
 
 
 class RunProgramKernel(Kernel):

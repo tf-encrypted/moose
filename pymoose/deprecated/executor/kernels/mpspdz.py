@@ -4,13 +4,13 @@ import hashlib
 import tempfile
 from pathlib import Path
 
-from moose.deprecated.computation.mpspdz import MpspdzCallOperation
-from moose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
-from moose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
-from moose.deprecated.executor.kernels.base import Kernel
-from moose.deprecated.executor.kernels.base import run_external_program
-from moose.logger import get_logger
-from moose.logger import get_tracer
+from pymoose.deprecated.computation.mpspdz import MpspdzCallOperation
+from pymoose.deprecated.computation.mpspdz import MpspdzLoadOutputOperation
+from pymoose.deprecated.computation.mpspdz import MpspdzSaveInputOperation
+from pymoose.deprecated.executor.kernels.base import Kernel
+from pymoose.deprecated.executor.kernels.base import run_external_program
+from pymoose.logger import get_logger
+from pymoose.logger import get_tracer
 
 
 def prepare_mpspdz_directory(

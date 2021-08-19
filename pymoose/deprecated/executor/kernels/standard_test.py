@@ -4,19 +4,19 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 
-from moose.computation import dtypes
-from moose.computation import standard as standard_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.standard import ShapeConstant
-from moose.computation.standard import ShapeType
-from moose.computation.standard import StringConstant
-from moose.computation.standard import TensorConstant
-from moose.computation.standard import TensorType
-from moose.deprecated.executor.executor import AsyncExecutor
-from moose.deprecated.testing import run_test_computation
-from moose.edsl import base as edsl
-from moose.edsl.tracer import trace_and_compile
+from pymoose.computation import dtypes
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.standard import ShapeConstant
+from pymoose.computation.standard import ShapeType
+from pymoose.computation.standard import StringConstant
+from pymoose.computation.standard import TensorConstant
+from pymoose.computation.standard import TensorType
+from pymoose.deprecated.executor.executor import AsyncExecutor
+from pymoose.deprecated.testing import run_test_computation
+from pymoose.edsl import base as edsl
+from pymoose.edsl.tracer import trace_and_compile
 
 _MOOSE_DTYPES = [
     dtypes.float32,

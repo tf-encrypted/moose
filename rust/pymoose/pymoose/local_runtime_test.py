@@ -1,9 +1,9 @@
 import numpy as np
 from absl.testing import absltest
 from absl.testing import parameterized
-from moose import edsl
-from moose.computation.standard import StringType
-from moose.computation.utils import serialize_computation
+from pymoose import edsl
+from pymoose.computation.standard import StringType
+from pymoose.computation.utils import serialize_computation
 
 from pymoose import LocalRuntime
 

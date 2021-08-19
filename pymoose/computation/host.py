@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from moose.computation.base import Placement
+from pymoose.computation.base import Placement
 
 
 @dataclass

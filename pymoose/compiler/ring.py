@@ -3,23 +3,23 @@ from dataclasses import field
 from typing import Any
 from typing import Optional
 
-import moose.computation.standard as standard_ops
-from moose.compiler.primitives import Seed
-from moose.compiler.standard import Shape
-from moose.computation.base import Computation
-from moose.computation.base import Operation
-from moose.computation.ring import FillTensorOperation
-from moose.computation.ring import PrintRingTensorOperation
-from moose.computation.ring import RingAddOperation
-from moose.computation.ring import RingDotOperation
-from moose.computation.ring import RingMulOperation
-from moose.computation.ring import RingSampleOperation
-from moose.computation.ring import RingShapeOperation
-from moose.computation.ring import RingShlOperation
-from moose.computation.ring import RingShrOperation
-from moose.computation.ring import RingSubOperation
-from moose.computation.ring import RingSumOperation
-from moose.computation.standard import UnitType
+import pymoose.computation.standard as standard_ops
+from pymoose.compiler.primitives import Seed
+from pymoose.compiler.standard import Shape
+from pymoose.computation.base import Computation
+from pymoose.computation.base import Operation
+from pymoose.computation.ring import FillTensorOperation
+from pymoose.computation.ring import PrintRingTensorOperation
+from pymoose.computation.ring import RingAddOperation
+from pymoose.computation.ring import RingDotOperation
+from pymoose.computation.ring import RingMulOperation
+from pymoose.computation.ring import RingSampleOperation
+from pymoose.computation.ring import RingShapeOperation
+from pymoose.computation.ring import RingShlOperation
+from pymoose.computation.ring import RingShrOperation
+from pymoose.computation.ring import RingSubOperation
+from pymoose.computation.ring import RingSumOperation
+from pymoose.computation.standard import UnitType
 
 
 @dataclass

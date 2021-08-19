@@ -1,7 +1,7 @@
 import asyncio
 
-from moose.logger import get_logger
-from moose.logger import get_tracer
+from pymoose.logger import get_logger
+from pymoose.logger import get_tracer
 
 
 class Kernel:

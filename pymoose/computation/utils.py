@@ -4,20 +4,20 @@ from dataclasses import fields
 import msgpack
 import numpy as np
 
-from moose.computation import bit as bit_dialect
-from moose.computation import dtypes
-from moose.computation import fixedpoint as fixed_dialect
-from moose.computation import host as host_dialect
-from moose.computation import primitives as prim_dialect
-from moose.computation import replicated as rep_dialect
-from moose.computation import ring as ring_dialect
-from moose.computation import standard as std_dialect
-from moose.computation.base import Computation
-from moose.computation.base import Operation
-from moose.computation.base import Placement
-from moose.computation.base import Value
-from moose.computation.base import ValueType
-from moose.logger import get_logger
+from pymoose.computation import bit as bit_dialect
+from pymoose.computation import dtypes
+from pymoose.computation import fixedpoint as fixed_dialect
+from pymoose.computation import host as host_dialect
+from pymoose.computation import primitives as prim_dialect
+from pymoose.computation import replicated as rep_dialect
+from pymoose.computation import ring as ring_dialect
+from pymoose.computation import standard as std_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.base import Operation
+from pymoose.computation.base import Placement
+from pymoose.computation.base import Value
+from pymoose.computation.base import ValueType
+from pymoose.logger import get_logger
 
 SUPPORTED_TYPES = [
     bit_dialect.BitAndOperation,

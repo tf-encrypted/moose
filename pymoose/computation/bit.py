@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 
-from moose.computation.base import Operation
-from moose.computation.base import ValueType
-from moose.computation.ring import RingTensorType
-from moose.computation.standard import ShapeType
+from pymoose.computation.base import Operation
+from pymoose.computation.base import ValueType
+from pymoose.computation.ring import RingTensorType
+from pymoose.computation.standard import ShapeType
 
 
 @dataclass

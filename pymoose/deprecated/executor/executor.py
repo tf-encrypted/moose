@@ -3,23 +3,23 @@ import dataclasses
 from typing import Any
 from typing import List
 
-from moose.computation import bit as bit_ops
-from moose.computation import fixedpoint as fixed_ops
-from moose.computation import primitives as primitives_ops
-from moose.computation import ring as ring_ops
-from moose.computation import standard as standard_ops
-from moose.deprecated.computation import host as host_ops
-from moose.deprecated.computation import mpspdz as mpspdz_ops
-from moose.deprecated.executor.kernels import bit as bit_kernels
-from moose.deprecated.executor.kernels import fixedpoint as fixed_kernels
-from moose.deprecated.executor.kernels import host as host_kernels
-from moose.deprecated.executor.kernels import mpspdz as mpspdz_kernels
-from moose.deprecated.executor.kernels import primitives as primitives_kernels
-from moose.deprecated.executor.kernels import ring as ring_kernels
-from moose.deprecated.executor.kernels import standard as standard_kernels
-from moose.deprecated.utils import AsyncStore
-from moose.logger import get_logger
-from moose.logger import get_tracer
+from pymoose.computation import bit as bit_ops
+from pymoose.computation import fixedpoint as fixed_ops
+from pymoose.computation import primitives as primitives_ops
+from pymoose.computation import ring as ring_ops
+from pymoose.computation import standard as standard_ops
+from pymoose.deprecated.computation import host as host_ops
+from pymoose.deprecated.computation import mpspdz as mpspdz_ops
+from pymoose.deprecated.executor.kernels import bit as bit_kernels
+from pymoose.deprecated.executor.kernels import fixedpoint as fixed_kernels
+from pymoose.deprecated.executor.kernels import host as host_kernels
+from pymoose.deprecated.executor.kernels import mpspdz as mpspdz_kernels
+from pymoose.deprecated.executor.kernels import primitives as primitives_kernels
+from pymoose.deprecated.executor.kernels import ring as ring_kernels
+from pymoose.deprecated.executor.kernels import standard as standard_kernels
+from pymoose.deprecated.utils import AsyncStore
+from pymoose.logger import get_logger
+from pymoose.logger import get_tracer
 
 
 class ExecutionError(Exception):

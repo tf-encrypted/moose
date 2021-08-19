@@ -3,15 +3,15 @@ import unittest
 import numpy as np
 from absl.testing import parameterized
 
-from moose.computation import dtypes
-from moose.computation import ring as ring_dialect
-from moose.computation import standard as standard_dialect
-from moose.computation.base import Computation
-from moose.computation.host import HostPlacement
-from moose.computation.standard import ShapeConstant
-from moose.computation.standard import StringConstant
-from moose.computation.standard import TensorConstant
-from moose.deprecated.testing import run_test_computation
+from pymoose.computation import dtypes
+from pymoose.computation import ring as ring_dialect
+from pymoose.computation import standard as standard_dialect
+from pymoose.computation.base import Computation
+from pymoose.computation.host import HostPlacement
+from pymoose.computation.standard import ShapeConstant
+from pymoose.computation.standard import StringConstant
+from pymoose.computation.standard import TensorConstant
+from pymoose.deprecated.testing import run_test_computation
 
 
 class RingKernelTest(parameterized.TestCase):

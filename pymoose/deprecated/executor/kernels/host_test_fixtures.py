@@ -1,7 +1,7 @@
 import argparse
 import json
 
-from moose.logger import get_logger
+from pymoose.logger import get_logger
 
 parser = argparse.ArgumentParser(description="Local computation")
 parser.add_argument("--input-file", type=str, default="None")
