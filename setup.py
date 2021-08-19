@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="moose",
+    name="pymoose",
     version="0.1.2-alpha.0",  # NOTE: auto-updated during release
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
