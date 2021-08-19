@@ -1,5 +1,6 @@
 """Installing with setuptools."""
 import setuptools
+import setuptools_rust
 
 with open("README.md", "r", encoding="utf8") as fh:
     long_description = fh.read()
@@ -10,6 +11,13 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     python_requires=">=3.6",
     install_requires=[],
+    setup_requires=["setuptools-rust~=0.11.5"],
+    rust_extensions=[
+        setuptools_rust.RustExtension("pymoose.rust_src.moose_kernels", "./Cargo.toml"),
+        setuptools_rust.RustExtension("pymoose.rust_src.moose_runtime", "./Cargo.toml"),
+        setuptools_rust.RustExtension("pymoose.rust_src.elk_compiler", "./Cargo.toml"),
+    ],
+    zip_safe=False,
     license="Apache License 2.0",
     url="https://github.com/tf-encrypted/runtime",
     description="A Secure Runtime for Federated Learning & Encrypted Learning",
