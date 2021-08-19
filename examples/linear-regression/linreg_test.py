@@ -10,7 +10,6 @@ from pymoose import elk_compiler as rust_compiler
 from moose import edsl
 from moose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
 from moose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from moose.compiler.mpspdz import MpspdzApplyFunctionPass
 from moose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from moose.computation import utils
 from moose.computation.standard import StringType
@@ -168,7 +167,6 @@ class LinearRegressionExample(parameterized.TestCase):
             linear_comp,
             ring=128,
             compiler_passes=[
-                MpspdzApplyFunctionPass(),
                 HostEncodingPass(),
                 HostLoweringPass(),
                 ReplicatedEncodingPass(),

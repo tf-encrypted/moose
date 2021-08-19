@@ -1,7 +1,4 @@
 from dataclasses import dataclass
-from dataclasses import field
-from typing import Any
-from typing import Callable
 from typing import Optional
 from typing import Tuple
 from typing import Union
@@ -265,11 +262,4 @@ class ReceiveOperation(StandardOperation):
     sender: str
     receiver: str
     rendezvous_key: str
-    output_type: ValueType
-
-
-@dataclass
-class ApplyFunctionOperation(StandardOperation):
-    fn: Callable = field(repr=False)
-    output_placements: Any
     output_type: ValueType

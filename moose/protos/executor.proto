@@ -2,6 +2,10 @@ syntax = "proto3";
 
 package moose;
 
+/* The Executor gRPC service was previously used by a gRPC runtime implementation,
+ * which has since been deprecated. It can be found in
+ * moose/deprecated/choreography/grpc.py. */
+
 service Executor {
     rpc RunComputation(RunComputationRequest) returns(RunComputationResponse) {}
     rpc GetPublicKey(GetPublicKeyRequest) returns(GetPublicKeyResponse) {}
