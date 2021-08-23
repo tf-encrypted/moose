@@ -1457,7 +1457,11 @@ impl ToTextual for RingSampleSeededOp {
             RingSampleSeededOp {
                 sig,
                 max_value: Some(a),
-            } => format!("RingSampleSeeded{{max_value = {}}}: {}", a, sig.to_textual()),
+            } => format!(
+                "RingSampleSeeded{{max_value = {}}}: {}",
+                a,
+                sig.to_textual()
+            ),
             RingSampleSeededOp {
                 sig,
                 max_value: None,
