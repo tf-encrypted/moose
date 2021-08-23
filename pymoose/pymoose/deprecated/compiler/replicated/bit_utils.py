@@ -1,9 +1,9 @@
-from pymoose.compiler.bit import BitTensor
-from pymoose.compiler.bit import bit_extract
-from pymoose.compiler.bit import ring_inject
-from pymoose.compiler.replicated.types import ReplicatedBitTensor
-from pymoose.compiler.replicated.types import ReplicatedRingTensor
-from pymoose.compiler.replicated.types import RingTensor
+from pymoose.deprecated.compiler.bit import BitTensor
+from pymoose.deprecated.compiler.bit import bit_extract
+from pymoose.deprecated.compiler.bit import ring_inject
+from pymoose.deprecated.compiler.replicated.types import ReplicatedBitTensor
+from pymoose.deprecated.compiler.replicated.types import ReplicatedRingTensor
+from pymoose.deprecated.compiler.replicated.types import RingTensor
 
 
 def inject(x: BitTensor, placement_name):

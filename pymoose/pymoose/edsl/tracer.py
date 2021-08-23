@@ -1,7 +1,6 @@
 import inspect
 from collections import defaultdict
 
-from pymoose.compiler.compiler import Compiler
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
@@ -30,6 +29,7 @@ from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
 from pymoose.computation.standard import TransposeOperation
 from pymoose.computation.standard import UnknownType
+from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.edsl.base import AbsExpression
 from pymoose.edsl.base import ArgumentExpression
 from pymoose.edsl.base import AtLeast2DExpression

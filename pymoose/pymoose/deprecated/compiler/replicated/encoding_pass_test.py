@@ -2,8 +2,6 @@ import unittest
 
 from absl.testing import parameterized
 
-from pymoose.compiler.compiler import Compiler
-from pymoose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from pymoose.computation import dtypes
 from pymoose.computation import fixedpoint as fixedpoint_ops
 from pymoose.computation import standard as standard_ops
@@ -13,6 +11,8 @@ from pymoose.computation.host import HostPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import UnitType
+from pymoose.deprecated.compiler.compiler import Compiler
+from pymoose.deprecated.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 
 
 class ReplicatedTest(parameterized.TestCase):

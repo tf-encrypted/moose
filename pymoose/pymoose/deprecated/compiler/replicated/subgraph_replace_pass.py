@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from pymoose.compiler.pruning import PruningPass
+from pymoose.deprecated.compiler.pruning import PruningPass
 
 
 class SubgraphReplacementPass:

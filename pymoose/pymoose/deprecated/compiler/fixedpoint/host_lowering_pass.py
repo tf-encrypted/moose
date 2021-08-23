@@ -1,8 +1,8 @@
-from pymoose.compiler import host as host_dialect
-from pymoose.compiler import substitution_pass
 from pymoose.computation import dtypes
 from pymoose.computation import fixedpoint as fixedpoint_dialect
 from pymoose.computation import standard as std_dialect
+from pymoose.deprecated.compiler import host as host_dialect
+from pymoose.deprecated.compiler import substitution_pass
 
 
 class HostLoweringPass(substitution_pass.SubstitutionPass):

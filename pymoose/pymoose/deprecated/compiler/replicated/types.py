@@ -3,11 +3,11 @@ from dataclasses import field
 from typing import Any
 from typing import Tuple
 
-from pymoose.compiler.bit import BitTensor
-from pymoose.compiler.primitives import PRFKey
-from pymoose.compiler.ring import RingTensor
-from pymoose.compiler.standard import Shape
 from pymoose.computation.base import Computation
+from pymoose.deprecated.compiler.bit import BitTensor
+from pymoose.deprecated.compiler.primitives import PRFKey
+from pymoose.deprecated.compiler.ring import RingTensor
+from pymoose.deprecated.compiler.standard import Shape
 
 
 @dataclass

@@ -4,8 +4,6 @@ from typing import Any
 from typing import Optional
 
 import pymoose.computation.standard as standard_ops
-from pymoose.compiler.primitives import Seed
-from pymoose.compiler.standard import Shape
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
 from pymoose.computation.ring import FillTensorOperation
@@ -20,6 +18,8 @@ from pymoose.computation.ring import RingShrOperation
 from pymoose.computation.ring import RingSubOperation
 from pymoose.computation.ring import RingSumOperation
 from pymoose.computation.standard import UnitType
+from pymoose.deprecated.compiler.primitives import Seed
+from pymoose.deprecated.compiler.standard import Shape
 
 
 @dataclass

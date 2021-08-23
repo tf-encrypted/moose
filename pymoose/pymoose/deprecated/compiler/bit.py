@@ -4,9 +4,6 @@ from typing import Any
 from typing import Optional
 
 import pymoose.computation.standard as standard_ops
-from pymoose.compiler.primitives import Seed
-from pymoose.compiler.ring import RingTensor
-from pymoose.compiler.standard import Shape
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
 from pymoose.computation.bit import BitAndOperation
@@ -18,6 +15,9 @@ from pymoose.computation.bit import BitXorOperation
 from pymoose.computation.bit import PrintBitTensorOperation
 from pymoose.computation.bit import RingInjectOperation
 from pymoose.computation.standard import UnitType
+from pymoose.deprecated.compiler.primitives import Seed
+from pymoose.deprecated.compiler.ring import RingTensor
+from pymoose.deprecated.compiler.standard import Shape
 
 
 @dataclass

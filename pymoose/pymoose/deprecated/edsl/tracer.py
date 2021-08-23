@@ -1,7 +1,7 @@
 import inspect
 
-from pymoose.compiler.compiler import Compiler
 from pymoose.computation.standard import UnknownType
+from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.deprecated.computation.host import RunProgramOperation
 from pymoose.deprecated.computation.mpspdz import MpspdzPlacement
 from pymoose.deprecated.computation.standard import ApplyFunctionOperation

@@ -1,11 +1,11 @@
-from pymoose.compiler.bit import BitTensor
-from pymoose.compiler.bit import bit_xor
-from pymoose.compiler.bit import print_bit_tensor
-from pymoose.compiler.replicated.types import ReplicatedBitTensor
-from pymoose.compiler.replicated.types import ReplicatedRingTensor
-from pymoose.compiler.replicated.types import RingTensor
-from pymoose.compiler.ring import print_ring_tensor
-from pymoose.compiler.ring import ring_add
+from pymoose.deprecated.compiler.bit import BitTensor
+from pymoose.deprecated.compiler.bit import bit_xor
+from pymoose.deprecated.compiler.bit import print_bit_tensor
+from pymoose.deprecated.compiler.replicated.types import ReplicatedBitTensor
+from pymoose.deprecated.compiler.replicated.types import ReplicatedRingTensor
+from pymoose.deprecated.compiler.replicated.types import RingTensor
+from pymoose.deprecated.compiler.ring import print_ring_tensor
+from pymoose.deprecated.compiler.ring import ring_add
 
 
 def abstract_print_replicated_tensor(

@@ -1,7 +1,7 @@
-from pymoose.compiler import host as host_dialect
-from pymoose.compiler import substitution_pass
 from pymoose.computation import fixedpoint as fixedpoint_dialect
 from pymoose.computation import ring as ring_dialect
+from pymoose.deprecated.compiler import host as host_dialect
+from pymoose.deprecated.compiler import substitution_pass
 
 
 class HostRingLoweringPass(substitution_pass.SubstitutionPass):

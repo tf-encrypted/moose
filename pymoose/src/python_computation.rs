@@ -267,7 +267,7 @@ def f(arg1, arg2):
         let py_code = r#"
 import numpy as np
 
-from pymoose.compiler.compiler import Compiler
+from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.computation import dtypes
 from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as standard_dialect
@@ -620,7 +620,7 @@ def f():
         let py_code = r#"
 import numpy as np
 
-from pymoose.compiler.compiler import Compiler
+from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.computation import dtypes
 from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as standard_dialect
