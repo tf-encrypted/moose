@@ -1,5 +1,5 @@
 use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp, HostConcatOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleSeededOp, BitXorOp, Constant, HostAddOp, HostConcatOp,
     HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
     HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement,
     RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleSeededOp,
@@ -8,7 +8,7 @@ use crate::computation::{
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementSampleSeeded, PlacementSampleUniform, PlacementShl,
+    PlacementNeg, PlacementPlace, PlacementSampleSeeded, PlacementSampleUniformSeeded, PlacementShl,
     PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
     Session, SyncSession, Tensor,
 };
@@ -746,16 +746,16 @@ impl BitFillOp {
     }
 }
 
-modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape, Seed) -> HostBitTensor, BitSampleOp);
+modelled!(PlacementSampleUniformSeeded::sample_uniform_seeded, HostPlacement, (HostShape, Seed) -> HostBitTensor, BitSampleSeededOp);
 
 kernel! {
-    BitSampleOp,
+    BitSampleSeededOp,
     [
         (HostPlacement, (HostShape, Seed) -> HostBitTensor => Self::kernel),
     ]
 }
 
-impl BitSampleOp {
+impl BitSampleSeededOp {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -835,7 +835,7 @@ impl HostBitTensor {
     #[cfg_attr(
         feature = "symbolic",
         deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleOp::kernel for the new code"
+            note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
         )
     )]
     pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {

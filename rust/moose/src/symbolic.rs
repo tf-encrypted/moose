@@ -113,7 +113,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RepFill(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),

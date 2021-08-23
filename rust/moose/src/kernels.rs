@@ -70,7 +70,7 @@ impl Session for SyncSession {
             Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitExtract(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -383,28 +383,28 @@ pub trait PlacementSampleSeeded<S: Session, ShapeT, SeedT, O> {
     fn sample_seeded(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-pub trait PlacementSampleUniform<S: Session, ShapeT, SeedT, O> {
-    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
+pub trait PlacementSampleUniformSeeded<S: Session, ShapeT, SeedT, O> {
+    fn sample_uniform_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleUniform<S, ShapeT, SeedT, O> for P
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleUniformSeeded<S, ShapeT, SeedT, O> for P
 where
     P: PlacementSampleSeeded<S, ShapeT, SeedT, O>,
 {
-    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+    fn sample_uniform_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
         self.sample_seeded(sess, None, shape, seed)
     }
 }
 
-pub trait PlacementSampleBits<S: Session, ShapeT, SeedT, O> {
-    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
+pub trait PlacementSampleBitsSeeded<S: Session, ShapeT, SeedT, O> {
+    fn sample_bits_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
 }
 
-impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleBits<S, ShapeT, SeedT, O> for P
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleBitsSeeded<S, ShapeT, SeedT, O> for P
 where
     P: PlacementSampleSeeded<S, ShapeT, SeedT, O>,
 {
-    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+    fn sample_bits_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
         self.sample_seeded(sess, Some(1), shape, seed)
     }
 }
@@ -569,7 +569,7 @@ impl Compile<SyncKernel> for Operator {
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
-            BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
+            BitSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -623,7 +623,7 @@ impl Compile<AsyncKernel> for Operator {
             RingShr(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            BitSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            BitSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -1295,7 +1295,7 @@ impl Compile<Kernel> for BitExtractOp {
     }
 }
 
-impl Compile<Kernel> for BitSampleOp {
+impl Compile<Kernel> for BitSampleSeededOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(
             HostShape,

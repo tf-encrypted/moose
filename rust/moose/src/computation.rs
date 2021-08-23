@@ -855,7 +855,7 @@ operators![
     RingFill,
     BitFill,
     BitExtract,
-    BitSample,
+    BitSampleSeeded,
     BitXor,
     BitAnd,
     FixedpointEncode,
@@ -1134,7 +1134,7 @@ pub struct BitExtractOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct BitSampleOp {
+pub struct BitSampleSeededOp {
     pub sig: Signature,
 }
 

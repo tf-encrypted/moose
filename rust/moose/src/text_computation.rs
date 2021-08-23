@@ -308,7 +308,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let part3 = alt((
         preceded(tag(RingInjectOp::SHORT_NAME), cut(ring_inject)),
         preceded(tag(BitExtractOp::SHORT_NAME), cut(bit_extract)),
-        preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
+        preceded(tag(BitSampleSeededOp::SHORT_NAME), cut(bit_sample)),
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
     ));
     alt((part1, part2, part3))(input)
@@ -603,13 +603,13 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, BitExtractOp { sig, bit_idx }.into()))
 }
 
-/// Parses a BitSample operator.
+/// Parses a BitSampleSeeded operator.
 fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_args) = opt(type_definition(0))(input)?;
     let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
-    Ok((input, BitSampleOp { sig }.into()))
+    Ok((input, BitSampleSeededOp { sig }.into()))
 }
 
 /// Parses a BitXor operator.
@@ -1186,7 +1186,7 @@ impl ToTextual for Operator {
             RingShr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
-            BitSample(op) => op.to_textual(),
+            BitSampleSeeded(op) => op.to_textual(),
             // BitXor(op) => op.to_textual(),
             // BitAnd(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
@@ -1282,7 +1282,7 @@ impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-impl_to_textual!(BitSampleOp, "{op}: {}", sig);
+impl_to_textual!(BitSampleSeededOp, "{op}: {}", sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
 impl_to_textual!(
@@ -2016,7 +2016,7 @@ mod tests {
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitExtract {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitSample() @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>("z = BitSampleSeeded() @Host(alice)")?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitFill {value = Ring64(0)}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
