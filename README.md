@@ -103,7 +103,7 @@ If needed then tags on GitHub can be deleted using `git push --delete origin {ta
 ### Rust Development
 You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project.
 
-We compile and test against the nightly toolchain so make sure to either set the nightly toolchain as the default using `rustup default nightly` (recommended) or run every command with `+nightly`.
+We compile and test against the stable toolchain so make sure to either set the stable toolchain as the default using `rustup default stable`.
 
 We require code to be formatted according to `cargo fmt` so make sure to run this command before submitted your work. You should also run `cargo clippy` to lint your code.
 
