@@ -2465,7 +2465,7 @@ mod tests {
 
     macro_rules! rep_unary_func_test {
         ($func_name:ident, $test_func: ident<$tt: ty>) => {
-            fn $func_name(xs: ArrayD<$tt>, zs: ArrayD<u8>) {
+            fn $func_name(xs: ArrayD<$tt>, zs: ArrayD<$tt>) {
                 let alice = HostPlacement {
                     owner: "alice".into(),
                 };
@@ -2480,11 +2480,12 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &setup, &x);
 
-                let sum: ReplicatedBitTensor = rep.$test_func(&sess, &setup, &x_shared);
+                let sum: AbstractReplicatedTensor<AbstractHostRingTensor<$tt>> =
+                    rep.$test_func(&sess, &setup, &x_shared);
                 let opened_product = alice.reveal(&sess, &sum);
                 assert_eq!(
                     opened_product,
-                    HostBitTensor::from_raw_plc(zs, alice.clone())
+                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
         };
@@ -2494,14 +2495,14 @@ mod tests {
     rep_unary_func_test!(test_rep_msb128, msb<u128>);
 
     #[rstest]
-    #[case(array![-10_i64 as u64, -100_i64 as u64, -200000_i64 as u64, 0, 1].into_dyn(), array![1_u8, 1, 1, 0, 0].into_dyn())]
-    fn test_rep_msb_64(#[case] x: ArrayD<u64>, #[case] target: ArrayD<u8>) {
+    #[case(array![-10_i64 as u64, -100_i64 as u64, -200000_i64 as u64, 0, 1].into_dyn(), array![1_u64, 1, 1, 0, 0].into_dyn())]
+    fn test_rep_msb_64(#[case] x: ArrayD<u64>, #[case] target: ArrayD<u64>) {
         test_rep_msb64(x, target);
     }
 
     #[rstest]
-    #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1].into_dyn(), array![1_u8, 1, 1, 0, 0].into_dyn())]
-    fn test_rep_msb_128(#[case] x: ArrayD<u128>, #[case] target: ArrayD<u8>) {
+    #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1].into_dyn(), array![1_u128, 1, 1, 0, 0].into_dyn())]
+    fn test_rep_msb_128(#[case] x: ArrayD<u128>, #[case] target: ArrayD<u128>) {
         test_rep_msb128(x, target);
     }
 
@@ -2511,7 +2512,7 @@ mod tests {
         #[test]
         fn test_fuzzy_rep_msb64(raw_vector in proptest::collection::vec(any::<i64>().prop_map(|x| x as u64), 1..5)) {
             let target = raw_vector.iter().map(|x|
-                (*x as i64).is_negative() as u8
+                (*x as i64).is_negative() as u64
             ).collect::<Vec<_>>();
             test_rep_msb64(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
@@ -2519,7 +2520,7 @@ mod tests {
         #[test]
         fn test_fuzzy_rep_msb128(raw_vector in proptest::collection::vec(any::<i128>().prop_map(|x| x as u128), 1..5)) {
             let target = raw_vector.iter().map(|x|
-                (*x as i128).is_negative() as u8
+                (*x as i128).is_negative() as u128
             ).collect::<Vec<_>>();
             test_rep_msb128(Array::from_shape_vec(IxDyn(&[raw_vector.len()]), raw_vector).unwrap(), Array::from_shape_vec(IxDyn(&[target.len()]), target).unwrap());
         }
