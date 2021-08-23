@@ -3,8 +3,8 @@ from dataclasses import field
 from typing import Any
 
 from pymoose.computation.base import Operation
-from pymoose.computation.primitives import DeriveSeedOperation
-from pymoose.computation.primitives import SampleKeyOperation
+from pymoose.deprecated.computation.primitives import DeriveSeedOperation
+from pymoose.deprecated.computation.primitives import SampleKeyOperation
 
 
 @dataclass
