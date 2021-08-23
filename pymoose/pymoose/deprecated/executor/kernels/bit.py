@@ -7,13 +7,13 @@ from pymoose.deprecated.computation.bit import BitXorOperation
 from pymoose.deprecated.computation.bit import PrintBitTensorOperation
 from pymoose.deprecated.computation.bit import RingInjectOperation
 from pymoose.deprecated.executor.kernels.base import Kernel
-from pymoose.rust_src.moose_kernels import bit_and
-from pymoose.rust_src.moose_kernels import bit_extract
-from pymoose.rust_src.moose_kernels import bit_fill
-from pymoose.rust_src.moose_kernels import bit_sample
-from pymoose.rust_src.moose_kernels import bit_shape
-from pymoose.rust_src.moose_kernels import bit_xor
-from pymoose.rust_src.moose_kernels import ring_inject
+from pymoose.rust.moose_kernels import bit_and
+from pymoose.rust.moose_kernels import bit_extract
+from pymoose.rust.moose_kernels import bit_fill
+from pymoose.rust.moose_kernels import bit_sample
+from pymoose.rust.moose_kernels import bit_shape
+from pymoose.rust.moose_kernels import bit_xor
+from pymoose.rust.moose_kernels import ring_inject
 
 
 class BitAndKernel(Kernel):

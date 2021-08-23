@@ -4,9 +4,9 @@ from pymoose.deprecated.computation.fixedpoint import RingDecodeOperation
 from pymoose.deprecated.computation.fixedpoint import RingEncodeOperation
 from pymoose.deprecated.computation.fixedpoint import RingMeanOperation
 from pymoose.deprecated.executor.kernels.base import Kernel
-from pymoose.rust_src.moose_kernels import fixedpoint_decode
-from pymoose.rust_src.moose_kernels import fixedpoint_encode
-from pymoose.rust_src.moose_kernels import fixedpoint_ring_mean
+from pymoose.rust.moose_kernels import fixedpoint_decode
+from pymoose.rust.moose_kernels import fixedpoint_encode
+from pymoose.rust.moose_kernels import fixedpoint_ring_mean
 
 
 class RingEncodeKernel(Kernel):

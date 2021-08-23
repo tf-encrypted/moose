@@ -13,9 +13,9 @@ setuptools.setup(
     install_requires=[],
     setup_requires=["setuptools-rust~=0.11.5"],
     rust_extensions=[
-        setuptools_rust.RustExtension("pymoose.rust_src.moose_kernels", "./Cargo.toml"),
-        setuptools_rust.RustExtension("pymoose.rust_src.moose_runtime", "./Cargo.toml"),
-        setuptools_rust.RustExtension("pymoose.rust_src.elk_compiler", "./Cargo.toml"),
+        setuptools_rust.RustExtension("pymoose.rust.moose_kernels", "./Cargo.toml"),
+        setuptools_rust.RustExtension("pymoose.rust.moose_runtime", "./Cargo.toml"),
+        setuptools_rust.RustExtension("pymoose.rust.elk_compiler", "./Cargo.toml"),
     ],
     zip_safe=False,
     license="Apache License 2.0",
