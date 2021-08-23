@@ -2549,7 +2549,7 @@ mod tests {
     }
 
     #[rstest]
-    #[case(array![100_i64 as u64, -100_i64 as u64, 0].into_dyn())]
+    #[case(array![100_i64 as u64, -100_i64 as u64, -1_i64 as u64, 0].into_dyn())]
     fn test_abs(#[case] xs: ArrayD<u64>) {
         let alice = HostPlacement {
             owner: "alice".into(),
