@@ -3,9 +3,7 @@ import unittest
 from absl.testing import parameterized
 
 from pymoose.compiler.compiler import Compiler
-from pymoose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
 from pymoose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from pymoose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from pymoose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from pymoose.computation import dtypes
 from pymoose.computation import fixedpoint as fixedpoint_ops
@@ -15,6 +13,10 @@ from pymoose.computation.host import HostPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import UnitType
+from pymoose.deprecated.compiler.fixedpoint.host_ring_lowering_pass import (
+    HostRingLoweringPass,
+)
+from pymoose.deprecated.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 
 
 class ReplicatedTest(parameterized.TestCase):

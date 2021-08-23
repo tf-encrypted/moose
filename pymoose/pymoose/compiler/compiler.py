@@ -2,15 +2,17 @@ from collections import defaultdict
 
 from pymoose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
 from pymoose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from pymoose.compiler.fixedpoint.host_ring_lowering_pass import HostRingLoweringPass
 from pymoose.compiler.pruning import PruningPass
 from pymoose.compiler.render import render_computation
 from pymoose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from pymoose.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from pymoose.compiler.replicated.replicated_pass import ReplicatedOpsPass
 from pymoose.computation.base import Computation
+from pymoose.deprecated.compiler.fixedpoint.host_ring_lowering_pass import (
+    HostRingLoweringPass,
+)
 from pymoose.deprecated.compiler.host import NetworkingPass
 from pymoose.deprecated.compiler.mpspdz import MpspdzApplyFunctionPass
+from pymoose.deprecated.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from pymoose.logger import get_logger
 
 
