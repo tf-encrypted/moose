@@ -1,9 +1,9 @@
-from pymoose.computation import replicated as rep_dialect
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.deprecated.compiler.replicated.subgraph_replace_pass import (
     SubgraphReplacementPass,
 )
 from pymoose.deprecated.computation import fixedpoint as fixed_dialect
+from pymoose.deprecated.computation import replicated as rep_dialect
 
 
 class ReplicatedOpsPass(SubgraphReplacementPass):
