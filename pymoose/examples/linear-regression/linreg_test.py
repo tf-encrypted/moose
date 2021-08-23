@@ -7,7 +7,7 @@ import pytest
 from absl.testing import parameterized
 
 from pymoose import edsl
-from pymoose import elk_compiler as rust_compiler
+from pymoose import elk_compiler
 from pymoose.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
 from pymoose.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
 from pymoose.compiler.replicated.encoding_pass import ReplicatedEncodingPass
@@ -179,7 +179,7 @@ class LinearRegressionExample(parameterized.TestCase):
         )
         comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
-        rust_compiled = rust_compiler.compile_computation(
+        rust_compiled = elk_compiler.compile_computation(
             comp_bin,
             [
                 "typing",
