@@ -1,8 +1,9 @@
-from pymoose.computation import fixedpoint as fixed_dialect
 from pymoose.computation import replicated as rep_dialect
+from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.deprecated.compiler.replicated.subgraph_replace_pass import (
     SubgraphReplacementPass,
 )
+from pymoose.deprecated.computation import fixedpoint as fixed_dialect
 
 
 class ReplicatedOpsPass(SubgraphReplacementPass):
@@ -25,7 +26,7 @@ class ReplicatedOpsPass(SubgraphReplacementPass):
         op_names_to_process = set()
         for op in self.computation.operations.values():
             op_placement = self.computation.placement(op.placement_name)
-            if not isinstance(op_placement, rep_dialect.ReplicatedPlacement):
+            if not isinstance(op_placement, ReplicatedPlacement):
                 continue
             if not isinstance(op, fixed_dialect.FixedpointOperation):
                 continue

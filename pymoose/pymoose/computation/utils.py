@@ -4,11 +4,8 @@ from dataclasses import fields
 import msgpack
 import numpy as np
 
-from pymoose.computation import bit as bit_dialect
 from pymoose.computation import dtypes
-from pymoose.computation import fixedpoint as fixed_dialect
 from pymoose.computation import host as host_dialect
-from pymoose.computation import primitives as prim_dialect
 from pymoose.computation import replicated as rep_dialect
 from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as std_dialect
@@ -17,6 +14,9 @@ from pymoose.computation.base import Operation
 from pymoose.computation.base import Placement
 from pymoose.computation.base import Value
 from pymoose.computation.base import ValueType
+from pymoose.deprecated.computation import bit as bit_dialect
+from pymoose.deprecated.computation import fixedpoint as fixed_dialect
+from pymoose.deprecated.computation import primitives as prim_dialect
 from pymoose.logger import get_logger
 
 SUPPORTED_TYPES = [

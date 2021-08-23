@@ -3,7 +3,6 @@ import unittest
 from absl.testing import parameterized
 
 from pymoose.computation import dtypes
-from pymoose.computation import fixedpoint as fixedpoint_ops
 from pymoose.computation import standard as standard_ops
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
@@ -11,6 +10,7 @@ from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import UnitType
 from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.deprecated.compiler.fixedpoint import host_encoding_pass
+from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
 
 
 class HostEncodingPassTest(parameterized.TestCase):

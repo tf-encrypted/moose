@@ -279,7 +279,7 @@ from pymoose.computation.standard import UnitType
 from pymoose.computation.utils import serialize_computation
 from pymoose.computation.ring import RingTensorType
 from pymoose.computation import dtypes
-from pymoose.computation import fixedpoint as fixedpoint_ops
+from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
 
 alice = HostPlacement(name="alice")
 bob = HostPlacement(name="bob")
@@ -632,7 +632,7 @@ from pymoose.computation.standard import UnitType
 from pymoose.computation.utils import serialize_computation
 from pymoose.computation.ring import RingTensorType
 from pymoose.computation import dtypes
-from pymoose.computation import fixedpoint as fixedpoint_ops
+from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
 
 alice = HostPlacement(name="alice")
 bob = HostPlacement(name="bob")

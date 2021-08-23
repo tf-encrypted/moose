@@ -3,7 +3,6 @@ from math import log
 from typing import Optional
 from typing import Tuple
 
-from pymoose.computation import fixedpoint as fixed_dialect
 from pymoose.computation import replicated as replicated_ops
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.ring import RingTensorType
@@ -38,6 +37,7 @@ from pymoose.deprecated.compiler.ring import ring_shape
 from pymoose.deprecated.compiler.ring import ring_sub
 from pymoose.deprecated.compiler.ring import ring_sum
 from pymoose.deprecated.compiler.standard import StandardTensor
+from pymoose.deprecated.computation import fixedpoint as fixed_dialect
 
 
 class ReplicatedLoweringPass:

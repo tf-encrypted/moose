@@ -3,7 +3,6 @@ import unittest
 from absl.testing import parameterized
 
 from pymoose.computation import dtypes
-from pymoose.computation import fixedpoint as fixedpoint_ops
 from pymoose.computation import standard as standard_ops
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
@@ -17,6 +16,7 @@ from pymoose.deprecated.compiler.fixedpoint.host_ring_lowering_pass import (
 from pymoose.deprecated.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from pymoose.deprecated.compiler.replicated.lowering_pass import ReplicatedLoweringPass
 from pymoose.deprecated.compiler.replicated.replicated_pass import ReplicatedOpsPass
+from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
 
 
 class ReplicatedTest(parameterized.TestCase):

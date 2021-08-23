@@ -10,7 +10,6 @@ from hypothesis import strategies as st
 from hypothesis.extra import numpy as hnp
 
 from pymoose.computation import dtypes
-from pymoose.computation import fixedpoint as fixedpoint_ops
 from pymoose.computation import standard as standard_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
@@ -20,6 +19,7 @@ from pymoose.computation.standard import TensorConstant
 from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import UnitType
 from pymoose.deprecated.compiler.compiler import Compiler
+from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
 from pymoose.deprecated.testing import run_test_computation
 
 # to get 2 random lists of equal size using hypothesis
