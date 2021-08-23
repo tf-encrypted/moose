@@ -1,10 +1,10 @@
 build:
+	cargo build
 	python3 -m grpc_tools.protoc \
 			--proto_path=. \
-			--python_out=. \
-			--grpc_python_out=. \
-			pymoose/pymoose/protos/*.proto
-	cargo build
+			--python_out=./pymoose/pymoose/ \
+			--grpc_python_out=./pymoose/pymoose/ \
+			protos/*.proto
 
 pydep:
 	pip install -r pymoose/requirements-dev.txt
@@ -15,18 +15,18 @@ pylib:
 install: pydep pylib
 
 fmt:
+	cargo fmt
 	cd pymoose && isort .
 	cd pymoose && black .
-	cargo fmt
 
 lint:
-	cd pymoose && flake8 .
 	cargo fmt --all -- --check
 	cargo clippy --all-targets -- -D warnings
+	cd pymoose && flake8 .
 
 test:
-	cd pymoose && pytest -m "not slow"
 	cargo test --no-default-features
+	cd pymoose && pytest -m "not slow"
 
 test-long:
 	HYPOTHESIS_PROFILE='test-long' $(MAKE) test
@@ -36,10 +36,10 @@ test-ci:
 	HYPOTHESIS_PROFILE='ci' $(MAKE) test
 
 clean:
+	cargo clean
 	find ./ -depth -type d -name '__pycache__' -prune -print -exec rm -rf {} +
 	rm -rf ./pymoose/.pytest_cache
 	rm -Rf .hypothesis
-	cargo clean
 
 ci-ready:
 	cargo clean
