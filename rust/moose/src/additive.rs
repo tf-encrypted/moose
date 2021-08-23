@@ -8,8 +8,8 @@ use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape,
 use crate::kernels::{
     PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
     PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingInject, PlacementSampleBitsSeeded, PlacementSampleUniformSeeded, PlacementSampleUniform, PlacementShape, PlacementShl,
-    PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
+    PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
+    PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::CanonicalType;

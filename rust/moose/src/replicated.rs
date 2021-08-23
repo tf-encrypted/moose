@@ -12,9 +12,9 @@ use crate::kernels::{
     PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill, PlacementKeyGen,
     PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace,
     PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementRingMean,
-    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShl,
-    PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
-    PlacementZeros, Session,
+    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
+    PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementTruncPrProvider, PlacementZeros, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use macros::with_context;
