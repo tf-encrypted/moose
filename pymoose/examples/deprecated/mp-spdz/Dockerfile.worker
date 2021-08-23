@@ -1,5 +1,5 @@
 FROM tfencrypted/runtime-mpspdz-worker:latest
 
-WORKDIR /worker/pymoose/examples/mp-spdz
+WORKDIR /worker/pymoose/examples/deprecated/mp-spdz
 
 CMD watchexec -w /worker/moose -e py -r "python3 worker.py --verbose"
