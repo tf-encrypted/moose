@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 from pymoose.computation.base import Operation
 from pymoose.computation.base import ValueType
-from pymoose.computation.ring import RingTensorType
 from pymoose.computation.standard import ShapeType
+from pymoose.deprecated.computation.ring import RingTensorType
 
 
 @dataclass

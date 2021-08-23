@@ -4,13 +4,13 @@ import numpy as np
 from absl.testing import parameterized
 
 from pymoose.computation import dtypes
-from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as standard_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
 from pymoose.computation.standard import ShapeConstant
 from pymoose.computation.standard import StringConstant
 from pymoose.computation.standard import TensorConstant
+from pymoose.deprecated.computation import ring as ring_dialect
 from pymoose.deprecated.testing import run_test_computation
 
 

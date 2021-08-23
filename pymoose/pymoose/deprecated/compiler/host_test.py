@@ -2,12 +2,12 @@ import numpy as np
 from absl.testing import parameterized
 
 from pymoose.computation import dtypes
-from pymoose.computation import ring as ring_ops
 from pymoose.computation import standard as standard_ops
 from pymoose.computation.standard import IntType
 from pymoose.computation.standard import ReceiveOperation
 from pymoose.computation.standard import SendOperation
 from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
+from pymoose.deprecated.computation import ring as ring_ops
 from pymoose.edsl import base as edsl
 from pymoose.edsl.tracer import trace_and_compile
 

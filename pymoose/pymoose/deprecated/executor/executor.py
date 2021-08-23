@@ -3,13 +3,13 @@ import dataclasses
 from typing import Any
 from typing import List
 
-from pymoose.computation import ring as ring_ops
 from pymoose.computation import standard as standard_ops
 from pymoose.deprecated.computation import bit as bit_ops
 from pymoose.deprecated.computation import fixedpoint as fixed_ops
 from pymoose.deprecated.computation import host as host_ops
 from pymoose.deprecated.computation import mpspdz as mpspdz_ops
 from pymoose.deprecated.computation import primitives as primitives_ops
+from pymoose.deprecated.computation import ring as ring_ops
 from pymoose.deprecated.executor.kernels import bit as bit_kernels
 from pymoose.deprecated.executor.kernels import fixedpoint as fixed_kernels
 from pymoose.deprecated.executor.kernels import host as host_kernels

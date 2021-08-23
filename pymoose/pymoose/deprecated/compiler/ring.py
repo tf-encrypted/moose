@@ -6,20 +6,20 @@ from typing import Optional
 import pymoose.computation.standard as standard_ops
 from pymoose.computation.base import Computation
 from pymoose.computation.base import Operation
-from pymoose.computation.ring import FillTensorOperation
-from pymoose.computation.ring import PrintRingTensorOperation
-from pymoose.computation.ring import RingAddOperation
-from pymoose.computation.ring import RingDotOperation
-from pymoose.computation.ring import RingMulOperation
-from pymoose.computation.ring import RingSampleOperation
-from pymoose.computation.ring import RingShapeOperation
-from pymoose.computation.ring import RingShlOperation
-from pymoose.computation.ring import RingShrOperation
-from pymoose.computation.ring import RingSubOperation
-from pymoose.computation.ring import RingSumOperation
 from pymoose.computation.standard import UnitType
 from pymoose.deprecated.compiler.primitives import Seed
 from pymoose.deprecated.compiler.standard import Shape
+from pymoose.deprecated.computation.ring import FillTensorOperation
+from pymoose.deprecated.computation.ring import PrintRingTensorOperation
+from pymoose.deprecated.computation.ring import RingAddOperation
+from pymoose.deprecated.computation.ring import RingDotOperation
+from pymoose.deprecated.computation.ring import RingMulOperation
+from pymoose.deprecated.computation.ring import RingSampleOperation
+from pymoose.deprecated.computation.ring import RingShapeOperation
+from pymoose.deprecated.computation.ring import RingShlOperation
+from pymoose.deprecated.computation.ring import RingShrOperation
+from pymoose.deprecated.computation.ring import RingSubOperation
+from pymoose.deprecated.computation.ring import RingSumOperation
 
 
 @dataclass

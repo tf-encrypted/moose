@@ -6,7 +6,7 @@ from typing import Union
 from pymoose.computation import dtypes
 from pymoose.computation.base import Operation
 from pymoose.computation.base import ValueType
-from pymoose.computation.ring import RingTensorType
+from pymoose.deprecated.computation.ring import RingTensorType
 
 
 @dataclass

@@ -147,7 +147,6 @@ mod tests {
     fn test_deserialize_host_op() {
         let py_code = r#"
 import numpy as np
-from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as standard_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
@@ -156,6 +155,7 @@ from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import TensorConstant
 from pymoose.computation.standard import UnitType
 from pymoose.computation import dtypes
+from pymoose.deprecated.computation import ring as ring_dialect
 def f(arg1, arg2):
     comp = Computation(operations={}, placements={})
     alice = comp.add_placement(HostPlacement(name="alice"))
@@ -267,9 +267,7 @@ def f(arg1, arg2):
         let py_code = r#"
 import numpy as np
 
-from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.computation import dtypes
-from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as standard_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
@@ -277,9 +275,11 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import UnitType
 from pymoose.computation.utils import serialize_computation
-from pymoose.computation.ring import RingTensorType
 from pymoose.computation import dtypes
+from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
+from pymoose.deprecated.computation import ring as ring_dialect
+from pymoose.deprecated.computation.ring import RingTensorType
 
 alice = HostPlacement(name="alice")
 bob = HostPlacement(name="bob")
@@ -440,12 +440,12 @@ def f(arg1, arg2):
     fn test_constant() {
         let py_code = r#"
 import numpy as np
-from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as standard_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
 from pymoose.computation.utils import serialize_computation
 from pymoose.computation import dtypes
+from pymoose.deprecated.computation import ring as ring_dialect
 
 def f():
     comp = Computation(operations={}, placements={})
@@ -620,9 +620,7 @@ def f():
         let py_code = r#"
 import numpy as np
 
-from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.computation import dtypes
-from pymoose.computation import ring as ring_dialect
 from pymoose.computation import standard as standard_dialect
 from pymoose.computation.base import Computation
 from pymoose.computation.host import HostPlacement
@@ -630,9 +628,10 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import UnitType
 from pymoose.computation.utils import serialize_computation
-from pymoose.computation.ring import RingTensorType
-from pymoose.computation import dtypes
+from pymoose.deprecated.compiler.compiler import Compiler
 from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
+from pymoose.deprecated.computation import ring as ring_dialect
+from pymoose.deprecated.computation.ring import RingTensorType
 
 alice = HostPlacement(name="alice")
 bob = HostPlacement(name="bob")
