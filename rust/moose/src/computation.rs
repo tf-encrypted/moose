@@ -848,7 +848,7 @@ operators![
     RingMul,
     RingDot,
     RingSum,
-    RingSample,
+    RingSampleSeeded,
     RingShl,
     RingShr,
     RingInject,
@@ -1104,7 +1104,7 @@ pub struct RingSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RingSampleOp {
+pub struct RingSampleSeededOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
 }

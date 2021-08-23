@@ -285,7 +285,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             tag(RingSumOp::SHORT_NAME),
             cut(operation_on_axis!(RingSumOp)),
         ),
-        preceded(tag(RingSampleOp::SHORT_NAME), cut(ring_sample)),
+        preceded(tag(RingSampleSeededOp::SHORT_NAME), cut(ring_sample_seeded)),
         preceded(tag(RingShlOp::SHORT_NAME), cut(ring_shl)),
         preceded(tag(RingShrOp::SHORT_NAME), cut(ring_shr)),
         preceded(tag(PrimDeriveSeedOp::SHORT_NAME), cut(prim_derive_seed)),
@@ -421,15 +421,15 @@ fn hostconcat<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, HostConcatOp { sig, axis }.into()))
 }
 
-/// Parses a RingSample operator.
-fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+/// Parses a RingSampleSeededOp operator.
+fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
     let (input, sig) = type_definition(0)(input)?;
     Ok((
         input,
-        RingSampleOp {
+        RingSampleSeededOp {
             sig,
             max_value: opt_max_value,
         }
@@ -1181,7 +1181,7 @@ impl ToTextual for Operator {
             RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
-            RingSample(op) => op.to_textual(),
+            RingSampleSeeded(op) => op.to_textual(),
             RingShl(op) => op.to_textual(),
             RingShr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
@@ -1451,17 +1451,17 @@ impl ToTextual for RepMeanOp {
     }
 }
 
-impl ToTextual for RingSampleOp {
+impl ToTextual for RingSampleSeededOp {
     fn to_textual(&self) -> String {
         match self {
-            RingSampleOp {
+            RingSampleSeededOp {
                 sig,
                 max_value: Some(a),
-            } => format!("RingSample{{max_value = {}}}: {}", a, sig.to_textual()),
-            RingSampleOp {
+            } => format!("RingSampleSeeded{{max_value = {}}}: {}", a, sig.to_textual()),
+            RingSampleSeededOp {
                 sig,
                 max_value: None,
-            } => format!("RingSample: {}", sig.to_textual()),
+            } => format!("RingSampleSeeded: {}", sig.to_textual()),
         }
     }
 }
@@ -1921,7 +1921,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSample{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+            "x10 = RingSampleSeeded{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())

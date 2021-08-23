@@ -2,13 +2,13 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp, HostConcatOp,
     HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
     HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement,
-    RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp,
+    RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleSeededOp, RingShlOp,
     RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleUniform, PlacementShl,
+    PlacementNeg, PlacementPlace, PlacementSampleSeeded, PlacementSampleUniform, PlacementShl,
     PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
     Session, SyncSession, Tensor,
 };
@@ -1360,11 +1360,11 @@ impl RingShrOp {
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleOp);
+modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleSeededOp);
+modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleSeededOp);
 
 kernel! {
-    RingSampleOp,
+    RingSampleSeededOp,
     [
         (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => custom |op| {
             match op.max_value {
@@ -1391,7 +1391,7 @@ kernel! {
     ]
 }
 
-impl RingSampleOp {
+impl RingSampleSeededOp {
     fn kernel_uniform_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,

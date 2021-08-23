@@ -116,7 +116,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Operator::RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),

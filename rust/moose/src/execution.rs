@@ -1345,7 +1345,7 @@ mod tests {
         let body = (0..100)
             .map(|i| {
                 format!(
-                    "x{} = RingSample: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+                    "x{} = RingSampleSeeded: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
                     i
                 )
             })
@@ -1408,7 +1408,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"seed = Constant{value=Seed(00000000000000000000000000000000)} @Host(alice)
         xshape = Constant{value=Shape([2, 2])} @Host(alice)
-        sampled = RingSample: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
+        sampled = RingSampleSeeded: (Shape, Seed) -> Ring64Tensor (xshape, seed) @Host(alice)
         output = Output: (Ring64Tensor) -> Ring64Tensor (sampled) @Host(alice)
         "#;
         let arguments: HashMap<String, Value> = hashmap!();

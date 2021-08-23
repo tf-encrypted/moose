@@ -44,7 +44,7 @@ fn main() {
 
     let x_op = Operation {
         name: "x".into(),
-        kind: RingSampleOp {
+        kind: RingSampleSeededOp {
             sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostRing64Tensor),
             max_value: None,
         }
