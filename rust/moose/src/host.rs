@@ -2,13 +2,13 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleSeededOp, BitXorOp, Constant, HostAddOp, HostConcatOp,
     HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
     HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement,
-    RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleSeededOp,
+    RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleSeededOp, RingSampleOp,
     RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementSampleSeeded, PlacementSampleUniformSeeded, PlacementShl,
+    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniformSeeded, PlacementShl,
     PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
     Session, SyncSession, Tensor,
 };
@@ -1357,6 +1357,90 @@ impl RingShrOp {
         Wrapping<T>: Shr<usize, Output = Wrapping<T>>,
     {
         AbstractHostRingTensor(x.0 >> amount, plc.clone())
+    }
+}
+
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing128Tensor, RingSampleOp);
+
+kernel! {
+    RingSampleOp,
+    [
+        (HostPlacement, (HostShape) -> HostRing64Tensor => custom |op| {
+            match op.max_value {
+                None => Box::new(|ctx, plc, shape| {
+                    Self::kernel_uniform_u64(ctx, plc, shape)
+                }),
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                    Self::kernel_bits_u64(ctx, plc, shape)
+                }),
+                _ => unimplemented!(),
+            }
+        }),
+        (HostPlacement, (HostShape) -> HostRing128Tensor => custom |op| {
+            match op.max_value {
+                None => Box::new(|ctx, plc, shape| {
+                    Self::kernel_uniform_u128(ctx, plc, shape)
+                }),
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                    Self::kernel_bits_u128(ctx, plc, shape)
+                }),
+                _ => unimplemented!(),
+            }
+        }),
+    ]
+}
+
+impl RingSampleOp {
+    fn kernel_uniform_u64<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing64Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        let raw_array = Array::from_shape_vec(ix, values).unwrap();
+        AbstractHostRingTensor(raw_array, plc.clone())
+    }
+
+    fn kernel_bits_u64<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing64Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+
+    fn kernel_uniform_u128<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing128Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size)
+            .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
+            .collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+
+    fn kernel_bits_u128<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing128Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 }
 

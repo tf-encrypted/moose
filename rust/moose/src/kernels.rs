@@ -74,6 +74,7 @@ impl Session for SyncSession {
             Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::BitExtract(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),

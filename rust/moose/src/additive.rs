@@ -8,7 +8,7 @@ use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape,
 use crate::kernels::{
     PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
     PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingInject, PlacementSampleBitsSeeded, PlacementSampleUniformSeeded, PlacementShape, PlacementShl,
+    PlacementRingInject, PlacementSampleBitsSeeded, PlacementSampleUniformSeeded, PlacementSampleUniform, PlacementShape, PlacementShl,
     PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
@@ -540,7 +540,7 @@ where
     Seed: KnownType<S>,
     R: RingSize + Clone,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
-    HostPlacement: PlacementSampleBitsSeeded<S, cs!(HostShape), cs!(Seed), R>,
+    HostPlacement: PlacementSampleUniform<S, cs!(HostShape), R>,
     HostPlacement: PlacementSampleUniformSeeded<S, cs!(HostShape), cs!(Seed), R>,
     HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
     HostPlacement: PlacementSub<S, R, R, R>,
@@ -557,17 +557,13 @@ where
         AbstractAdditiveTensor<R>,
         AbstractAdditiveTensor<R>,
     ) {
-        let key = self.gen_key(sess);
-
-        let sync_key = RawNonce::generate();
-        let seed = self.derive_seed(sess, sync_key, &key);
-
-        let r = self.sample_uniform_seeded(sess, shape, &seed);
+        let r = self.sample_uniform(sess, shape);
         let r_msb = self.shr(sess, R::SIZE - 1, &r);
         let r_top = self.shr(sess, amount + 1, &self.shl(sess, 1, &r));
 
+        let key = self.gen_key(sess);
         let share = |x| {
-            // TODO(Dragos) this could probably be optimized by sending the key to p0
+            // TODO(Dragos) this could be optimized by instead sending the key (or seeds) to p0
             let share_sync_key = RawNonce::generate();
             let seed = self.derive_seed(sess, share_sync_key, &key);
             let x0 = self.sample_uniform_seeded(sess, shape, &seed);
