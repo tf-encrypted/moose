@@ -6,9 +6,9 @@ use crate::computation::{
     HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
 };
 use crate::error::Result;
-use crate::host::{
-    AbstractHostRingTensor, HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor,
-    HostRing64Tensor,
+use crate::host::{HostRing64Tensor, HostRing128Tensor,
+    AbstractHostRingTensor, HostFloat32Tensor, HostFloat64Tensor, HostFixed128Tensor,
+    HostFixed64Tensor,
 };
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
@@ -26,10 +26,10 @@ use std::num::Wrapping;
 use std::ops::Mul;
 
 /// Fixed-point tensor backed by Z_{2^64} arithmetic
-pub type Fixed64Tensor = FixedTensor<HostRing64Tensor, ReplicatedRing64Tensor>;
+pub type Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedRing64Tensor>;
 
 /// Fixed-point tensor backed by Z_{2^128} arithmetic
-pub type Fixed128Tensor = FixedTensor<HostRing128Tensor, ReplicatedRing128Tensor>;
+pub type Fixed128Tensor = FixedTensor<HostFixed128Tensor, ReplicatedRing128Tensor>;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<HostTensorT, ReplicatedTensorT> {
@@ -60,12 +60,12 @@ pub trait Convert<T> {
     fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
 }
 
-impl Convert<HostFloat64Tensor> for HostRing64Tensor {
+impl Convert<HostFloat64Tensor> for HostFixed64Tensor {
     type Scale = u64;
-    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing64Tensor {
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostFixed64Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
-        HostRing64Tensor::from(x_converted)
+        HostFixed64Tensor(HostRing64Tensor::from(x_converted))
     }
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
         let x_upshifted: ArrayD<i64> = x.into();
@@ -74,12 +74,12 @@ impl Convert<HostFloat64Tensor> for HostRing64Tensor {
     }
 }
 
-impl Convert<HostFloat64Tensor> for HostRing128Tensor {
+impl Convert<HostFloat64Tensor> for HostFixed128Tensor {
     type Scale = u128;
-    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing128Tensor {
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostFixed128Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
-        HostRing128Tensor::from(x_converted)
+        HostFixed64128Tensor(HostFixed128Tensor::from(x_converted))
     }
 
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
@@ -202,6 +202,7 @@ impl FixedpointEncodeOp {
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> HostFloat32Tensor, FixedpointDecodeOp);
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> HostFloat64Tensor, FixedpointDecodeOp);
 
+// TODO(Morten) should these produce Float32Tensor and Float64Tensor instead?
 hybrid_kernel! {
     FixedpointDecodeOp,
     [

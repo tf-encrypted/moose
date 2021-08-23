@@ -977,6 +977,21 @@ impl BitExtractOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractHostFixedTensor<RingT>(pub RingT);
+
+pub type HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>;
+
+pub type HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>;
+
+impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
+    type Placement = RingT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
 /// Tensor for ring arithmetic over Z_{2^64}

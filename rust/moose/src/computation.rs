@@ -5,6 +5,7 @@ use crate::additive::{
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
+    HostFixed64Tensor, HostFixed128Tensor,
     HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
     HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
@@ -490,6 +491,8 @@ values![
     (HostBitTensor, Symbolic<HostBitTensor>),
     (HostRing64Tensor, Symbolic<HostRing64Tensor>),
     (HostRing128Tensor, Symbolic<HostRing128Tensor>),
+    (HostFixed64Tensor, Symbolic<HostFixed64Tensor>),
+    (HostFixed128Tensor, Symbolic<HostFixed128Tensor>),
     (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
     (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
     (HostInt8Tensor, Symbolic<HostInt8Tensor>),
