@@ -3,7 +3,6 @@ import json
 import msgpack
 import numpy as np
 
-from pymoose.computation.bit import BitTensorType
 from pymoose.computation.primitives import PRFKeyType
 from pymoose.computation.primitives import SeedType
 from pymoose.computation.ring import RingTensorType
@@ -39,6 +38,7 @@ from pymoose.computation.standard import SubOperation
 from pymoose.computation.standard import SumOperation
 from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import TransposeOperation
+from pymoose.deprecated.computation.bit import BitTensorType
 from pymoose.deprecated.executor.kernels.base import Kernel
 from pymoose.logger import get_logger
 from pymoose.logger import get_tracer

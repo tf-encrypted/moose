@@ -6,7 +6,7 @@ from pymoose.computation import dtypes
 from pymoose.computation import fixedpoint as fixedpoint_ops
 from pymoose.computation import standard as standard_ops
 from pymoose.computation.base import Computation
-from pymoose.computation.fixedpoint import EncodedTensorType
+from pymoose.deprecated.computation.fixedpoint import EncodedTensorType
 from pymoose.computation.host import HostPlacement
 from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import TensorType
