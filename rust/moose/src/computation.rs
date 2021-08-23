@@ -890,6 +890,7 @@ operators![
     RepMsb,
     RepDot,
     RepMean,
+    RepShl,
     RepSum,
     RepTruncPr,
     RepDaBit,
@@ -1331,6 +1332,12 @@ pub struct RepToAdtOp {
 pub struct RepFillOp {
     pub sig: Signature,
     pub value: Constant,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShlOp {
+    pub sig: Signature,
+    pub amount: usize,
 }
 
 pub trait KnownPlacement {
