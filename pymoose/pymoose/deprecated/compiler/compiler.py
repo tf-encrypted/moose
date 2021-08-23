@@ -1,18 +1,16 @@
 from collections import defaultdict
 
 from pymoose.computation.base import Computation
-from pymoose.deprecated.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
-from pymoose.deprecated.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from pymoose.deprecated.compiler.fixedpoint.host_ring_lowering_pass import (
-    HostRingLoweringPass,
-)
-from pymoose.deprecated.compiler.host import NetworkingPass
-from pymoose.deprecated.compiler.mpspdz import MpspdzApplyFunctionPass
-from pymoose.deprecated.compiler.pruning import PruningPass
-from pymoose.deprecated.compiler.render import render_computation
-from pymoose.deprecated.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from pymoose.deprecated.compiler.replicated.lowering_pass import ReplicatedLoweringPass
-from pymoose.deprecated.compiler.replicated.replicated_pass import ReplicatedOpsPass
+from pymoose.deprecated.compiler import host
+from pymoose.deprecated.compiler import mpspdz
+from pymoose.deprecated.compiler import pruning
+from pymoose.deprecated.compiler import render as rendering
+from pymoose.deprecated.compiler.fixedpoint import host_encoding_pass
+from pymoose.deprecated.compiler.fixedpoint import host_lowering_pass
+from pymoose.deprecated.compiler.fixedpoint import host_ring_lowering_pass
+from pymoose.deprecated.compiler.replicated import encoding_pass
+from pymoose.deprecated.compiler.replicated import lowering_pass
+from pymoose.deprecated.compiler.replicated import replicated_pass
 from pymoose.logger import get_logger
 
 
@@ -22,15 +20,15 @@ class Compiler:
             passes
             if passes is not None
             else [
-                MpspdzApplyFunctionPass(),
-                HostEncodingPass(),
-                HostLoweringPass(),
-                ReplicatedEncodingPass(),
-                ReplicatedOpsPass(),
-                HostRingLoweringPass(),
-                ReplicatedLoweringPass(ring=ring),
-                PruningPass(),
-                NetworkingPass(),
+                mpspdz.MpspdzApplyFunctionPass(),
+                host_encoding_pass.HostEncodingPass(),
+                host_lowering_pass.HostLoweringPass(),
+                encoding_pass.ReplicatedEncodingPass(),
+                replicated_pass.ReplicatedOpsPass(),
+                host_ring_lowering_pass.HostRingLoweringPass(),
+                lowering_pass.ReplicatedLoweringPass(ring=ring),
+                pruning.PruningPass(),
+                host.NetworkingPass(),
             ]
         )
         self.name_counters = defaultdict(int)
@@ -43,7 +41,7 @@ class Compiler:
         render_prefix="pass",
     ) -> Computation:
         if render:
-            render_computation(
+            rendering.render_computation(
                 computation,
                 filename_prefix=f"{render_prefix}-0-initial",
                 render_edge_types=render_edge_types,
@@ -53,7 +51,7 @@ class Compiler:
                 computation, context=self
             )
             if render and performed_changes:
-                render_computation(
+                rendering.render_computation(
                     computation,
                     filename_prefix=(
                         f"{render_prefix}-{i+1}"

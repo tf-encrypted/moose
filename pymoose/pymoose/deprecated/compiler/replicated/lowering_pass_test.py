@@ -10,12 +10,10 @@ from pymoose.computation.replicated import ReplicatedPlacement
 from pymoose.computation.standard import TensorType
 from pymoose.computation.standard import UnitType
 from pymoose.deprecated.compiler.compiler import Compiler
-from pymoose.deprecated.compiler.fixedpoint.host_ring_lowering_pass import (
-    HostRingLoweringPass,
-)
-from pymoose.deprecated.compiler.replicated.encoding_pass import ReplicatedEncodingPass
-from pymoose.deprecated.compiler.replicated.lowering_pass import ReplicatedLoweringPass
-from pymoose.deprecated.compiler.replicated.replicated_pass import ReplicatedOpsPass
+from pymoose.deprecated.compiler.fixedpoint import host_ring_lowering_pass
+from pymoose.deprecated.compiler.replicated import encoding_pass
+from pymoose.deprecated.compiler.replicated import lowering_pass
+from pymoose.deprecated.compiler.replicated import replicated_pass
 from pymoose.deprecated.computation import fixedpoint as fixedpoint_ops
 
 
@@ -135,10 +133,10 @@ class ReplicatedTest(parameterized.TestCase):
 
         compiler = Compiler(
             passes=[
-                ReplicatedEncodingPass(),
-                ReplicatedOpsPass(),
-                HostRingLoweringPass(),
-                ReplicatedLoweringPass(),
+                encoding_pass.ReplicatedEncodingPass(),
+                replicated_pass.ReplicatedOpsPass(),
+                host_ring_lowering_pass.HostRingLoweringPass(),
+                lowering_pass.ReplicatedLoweringPass(),
             ]
         )
         comp = compiler.run_passes(comp)
@@ -263,10 +261,10 @@ class ReplicatedTest(parameterized.TestCase):
 
         compiler = Compiler(
             passes=[
-                ReplicatedEncodingPass(),
-                ReplicatedOpsPass(),
-                HostRingLoweringPass(),
-                ReplicatedLoweringPass(),
+                encoding_pass.ReplicatedEncodingPass(),
+                replicated_pass.ReplicatedOpsPass(),
+                host_ring_lowering_pass.HostRingLoweringPass(),
+                lowering_pass.ReplicatedLoweringPass(),
             ]
         )
         comp = compiler.run_passes(comp)
@@ -390,10 +388,10 @@ class ReplicatedTest(parameterized.TestCase):
 
         compiler = Compiler(
             passes=[
-                ReplicatedEncodingPass(),
-                ReplicatedOpsPass(),
-                HostRingLoweringPass(),
-                ReplicatedLoweringPass(),
+                encoding_pass.ReplicatedEncodingPass(),
+                replicated_pass.ReplicatedOpsPass(),
+                host_ring_lowering_pass.HostRingLoweringPass(),
+                lowering_pass.ReplicatedLoweringPass(),
             ]
         )
         comp = compiler.run_passes(comp)
@@ -466,10 +464,10 @@ class ReplicatedTest(parameterized.TestCase):
 
         compiler = Compiler(
             passes=[
-                ReplicatedEncodingPass(),
-                ReplicatedOpsPass(),
-                HostRingLoweringPass(),
-                ReplicatedLoweringPass(),
+                encoding_pass.ReplicatedEncodingPass(),
+                replicated_pass.ReplicatedOpsPass(),
+                host_ring_lowering_pass.HostRingLoweringPass(),
+                lowering_pass.ReplicatedLoweringPass(),
             ]
         )
         comp = compiler.run_passes(comp)
