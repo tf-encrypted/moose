@@ -99,3 +99,24 @@ Once your PR has been merged to `main`:
 4. create a release on GitHub based on your [tag](https://github.com/tf-encrypted/runtime/tags)
 
 If needed then tags on GitHub can be deleted using `git push --delete origin {tag-name}`
+
+### Rust Development
+You will need a working [installation of Rust](https://www.rust-lang.org/learn/get-started) to compile and test this project.
+
+We compile and test against the stable toolchain so make sure to either set the stable toolchain as the default using `rustup default stable`.
+
+We require code to be formatted according to `cargo fmt` so make sure to run this command before submitted your work. You should also run `cargo clippy` to lint your code.
+
+To ease your development we encourage you to install the following extra cargo commands:
+
+- [`cargo watch`](https://crates.io/crates/cargo-watchcargo-watch) will type check your code on every save;  `cargo watch --exec test` will run all tests on every save.
+
+- [`cargo outdated`](https://crates.io/crates/cargo-outdated) checks if your dependencies are up to date.
+
+- [`cargo audit`](https://crates.io/crates/cargo-audit) checks if any vulnerabilities have been detected for your current dependencies.
+
+- [`cargo release`](https://crates.io/crates/cargo-release) automates the release cycle, including bumping versions.
+
+- [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
+
+- [`cargo expand`](https://github.com/dtolnay/cargo-expand) to dump what macros expand into.

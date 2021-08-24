@@ -1,0 +1,6 @@
+FROM tfencrypted/runtime-mpspdz-worker:latest
+
+WORKDIR /worker/pymoose/examples/deprecated/mp-spdz
+
+# this is just a hack to keep the container running
+CMD echo "Ready"; tail -f /dev/null
