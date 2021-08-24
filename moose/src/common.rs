@@ -1,12 +1,13 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape};
 use crate::computation::{
-    AdditivePlacement, HostPlacement, Placed, ReplicatedPlacement, RingInjectOp, ShapeOp,
+    AdditivePlacement, HostPlacement, HostReshapeOp, Placed, ReplicatedPlacement, RingInjectOp,
+    ShapeOp,
 };
 use crate::host::{
     HostBitTensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
 };
-use crate::kernels::PlacementRingInject;
 use crate::kernels::PlacementShape;
+use crate::kernels::{PlacementReshape, PlacementRingInject};
 use crate::replicated::{
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
@@ -33,6 +34,14 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => Self::rep_kernel),
         (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => Self::adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => Self::adt_kernel),
+    ]
+}
+
+modelled!(PlacementReshape::reshape, HostPlacement, (HostFloat64Tensor, HostShape) -> HostFloat64Tensor, HostReshapeOp);
+
+kernel! {
+    HostReshapeOp, [
+        (HostPlacement, (HostFloat64Tensor, HostShape) -> HostFloat64Tensor => Self::host_kernel),
     ]
 }
 

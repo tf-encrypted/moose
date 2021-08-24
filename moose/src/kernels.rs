@@ -145,10 +145,7 @@ impl Session for SyncSession {
             Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            // TODO add support for the missing operators below
-            HostReshape(_) => {
-                unimplemented!("SyncSession implementation is missing for {:?}", op)
-            }
+            HostReshape(op) => DispatchKernel::compile(&op, plc)(self, operands),
         }
     }
 
@@ -245,6 +242,10 @@ pub trait Tensor<S: Session> {
 
 pub trait PlacementShape<S: Session, T, ShapeT> {
     fn shape(&self, sess: &S, x: &T) -> ShapeT;
+}
+
+pub trait PlacementReshape<S: Session, T, ShapeT, O> {
+    fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> O;
 }
 
 pub trait PlacementKeyGen<S: Session, KeyT> {
