@@ -1,4 +1,3 @@
-use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
@@ -13,6 +12,7 @@ use crate::host::{
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
+use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -1640,26 +1640,11 @@ impl ConstantOp {
     }
 }
 
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (String) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Unit) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostShape) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Seed) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (PrfKey) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostBitTensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostRing64Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostRing128Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostFloat32Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostFloat64Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt8Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt16Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt32Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt64Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint8Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint16Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint32Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint64Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Fixed64Tensor) -> Unit, SendOp);
-modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Fixed128Tensor) -> Unit, SendOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] ($value) -> Unit, SendOp);
+    )*
+)}
 
 kernel! {
     SendOp, [
@@ -1683,7 +1668,6 @@ kernel! {
         (HostPlacement, (HostUint64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (Fixed64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (Fixed128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
-
     ]
 }
 
@@ -1760,26 +1744,11 @@ impl Compile<AsyncKernel> for SendOp {
     }
 }
 
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> String, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Unit, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostShape, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Seed, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> PrfKey, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostBitTensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostRing64Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostRing128Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostFloat32Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostFloat64Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt8Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt16Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt32Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt64Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint8Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint16Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint32Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint64Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Fixed64Tensor, ReceiveOp);
-modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Fixed128Tensor, ReceiveOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> $value, ReceiveOp);
+    )*
+)}
 
 kernel! {
     ReceiveOp, [
@@ -1877,26 +1846,12 @@ impl Compile<AsyncKernel> for ReceiveOp {
     }
 }
 
-modelled!(PlacementIdentity::identity, HostPlacement, (String) -> String, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (Unit) -> Unit, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostShape) -> HostShape, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (Seed) -> Seed, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (PrfKey) -> PrfKey, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostBitTensor) -> HostBitTensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostInt8Tensor) -> HostInt8Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostInt16Tensor) -> HostInt16Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostInt32Tensor) -> HostInt32Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostInt64Tensor) -> HostInt64Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostUint8Tensor) -> HostUint8Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostUint16Tensor) -> HostUint16Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostUint32Tensor) -> HostUint32Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (HostUint64Tensor) -> HostUint64Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (Fixed64Tensor) -> Fixed64Tensor, IdentityOp);
-modelled!(PlacementIdentity::identity, HostPlacement, (Fixed128Tensor) -> Fixed128Tensor, IdentityOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, IdentityOp);
+    )*
+)}
+
 kernel! {
     IdentityOp, [
         (HostPlacement, (String) -> String => Self::kernel),
