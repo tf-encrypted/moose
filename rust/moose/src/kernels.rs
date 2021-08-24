@@ -52,6 +52,7 @@ impl SyncSession {
         }
     }
 }
+
 impl Default for SyncSession {
     fn default() -> Self {
         SyncSession {
