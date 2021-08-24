@@ -1187,8 +1187,6 @@ impl ToTextual for Operator {
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
             BitSampleSeeded(op) => op.to_textual(),
-            // BitXor(op) => op.to_textual(),
-            // BitAnd(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
@@ -1213,7 +1211,10 @@ impl ToTextual for Operator {
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
-            _ => unimplemented!("{:?}", self),
+            // TODO reconsider operators below and implement those that make sense
+            RingSample(_) | BitSample(_) | BitXor(_) | BitAnd(_) | AdtReveal(_) | AdtFill(_)
+            | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_) | AdtToRep(_) | RepAbs(_)
+            | RepFill(_) | RepMsb(_) | RepToAdt(_) | RepDaBit(_) => unimplemented!("{:?}", self),
         }
     }
 }
@@ -1538,7 +1539,21 @@ impl ToTextual for Value {
             Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
-            _ => unimplemented!(), // TODO Implement the missing branches
+            // TODO Implement the missing branches
+            Value::Bit(_)
+            | Value::Unit(_)
+            | Value::HostBitTensor(_)
+            | Value::Fixed64Tensor(_)
+            | Value::Fixed128Tensor(_)
+            | Value::ReplicatedShape(_)
+            | Value::ReplicatedSetup(_)
+            | Value::ReplicatedBitTensor(_)
+            | Value::ReplicatedRing64Tensor(_)
+            | Value::ReplicatedRing128Tensor(_)
+            | Value::AdditiveShape(_)
+            | Value::AdditiveBitTensor(_)
+            | Value::AdditiveRing64Tensor(_)
+            | Value::AdditiveRing128Tensor(_) => unimplemented!(),
         }
     }
 }
@@ -1567,7 +1582,8 @@ impl ToTextual for Constant {
             Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            _ => unimplemented!(), // TODO Implement the missing branches for the BitTensors
+            // TODO Implement the missing branches
+            Constant::Bit(_) | Constant::HostBitTensor(_) => unimplemented!(),
         }
     }
 }
