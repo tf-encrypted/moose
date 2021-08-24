@@ -286,6 +286,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             cut(operation_on_axis!(RingSumOp)),
         ),
         preceded(tag(RingSampleSeededOp::SHORT_NAME), cut(ring_sample_seeded)),
+        preceded(tag(RingSampleOp::SHORT_NAME), cut(ring_sample)),
         preceded(tag(RingShlOp::SHORT_NAME), cut(ring_shl)),
         preceded(tag(RingShrOp::SHORT_NAME), cut(ring_shr)),
         preceded(tag(PrimDeriveSeedOp::SHORT_NAME), cut(prim_derive_seed)),
@@ -308,7 +309,8 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let part3 = alt((
         preceded(tag(RingInjectOp::SHORT_NAME), cut(ring_inject)),
         preceded(tag(BitExtractOp::SHORT_NAME), cut(bit_extract)),
-        preceded(tag(BitSampleSeededOp::SHORT_NAME), cut(bit_sample)),
+        preceded(tag(BitSampleSeededOp::SHORT_NAME), cut(bit_sample_seeded)),
+        preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
         preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
     ));
@@ -422,6 +424,22 @@ fn hostconcat<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, HostConcatOp { sig, axis }.into()))
 }
 
+/// Parses a RingSampleOp operator.
+fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((
+        input,
+        RingSampleOp {
+            sig,
+            max_value: opt_max_value,
+        }
+        .into(),
+    ))
+}
+
 /// Parses a RingSampleSeededOp operator.
 fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
@@ -436,6 +454,22 @@ fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         }
         .into(),
     ))
+}
+
+/// Parses a BitSampleOp operator.
+fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((input, BitSampleOp { sig }.into()))
+}
+
+/// Parses a BitSampleSeededOp operator.
+fn bit_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((input, BitSampleSeededOp { sig }.into()))
 }
 
 /// Parses a BitFill operator.
@@ -602,15 +636,6 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, bit_idx) = attributes_single("bit_idx", parse_int)(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((input, BitExtractOp { sig, bit_idx }.into()))
-}
-
-/// Parses a BitSampleSeeded operator.
-fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, opt_args) = opt(type_definition(0))(input)?;
-    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
-    Ok((input, BitSampleSeededOp { sig }.into()))
 }
 
 /// Parses a BitXor operator.
@@ -2066,11 +2091,15 @@ mod tests {
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitExtract {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitSampleSeeded() @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = BitSampleSeeded: (Shape, Seed) -> BitTensor (shape, seed) @Host(alice)",
+        )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitFill {value = Ring64(0)}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = BitXor: (BitTensor, BitTensor) -> BitTensor (x, y) @Host(alice)",
+        )?;
 
         parse_assignment::<(&str, ErrorKind)>(
             "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
