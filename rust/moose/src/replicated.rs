@@ -2480,11 +2480,11 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &setup, &x);
 
-                let sum: AbstractReplicatedTensor<AbstractHostRingTensor<$tt>> =
+                let result: AbstractReplicatedTensor<AbstractHostRingTensor<$tt>> =
                     rep.$test_func(&sess, &setup, &x_shared);
-                let opened_product = alice.reveal(&sess, &sum);
+                let opened_result = alice.reveal(&sess, &result);
                 assert_eq!(
-                    opened_product,
+                    opened_result,
                     AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
                 );
             }
@@ -2556,27 +2556,18 @@ mod tests {
         assert_eq!(alice.reveal(&sess, &shifted_x_ring64), target64 << 20);
     }
 
+    rep_unary_func_test!(test_rep_abs64, abs<u64>);
+    rep_unary_func_test!(test_rep_abs128, abs<u128>);
+
     #[rstest]
-    #[case(array![100_i64 as u64, -100_i64 as u64, -1_i64 as u64, 0].into_dyn())]
-    fn test_abs(#[case] xs: ArrayD<u64>) {
-        let alice = HostPlacement {
-            owner: "alice".into(),
-        };
-        let rep = ReplicatedPlacement {
-            owners: ["alice".into(), "bob".into(), "carole".into()],
-        };
+    #[case(array![-10_i64 as u64, -100_i64 as u64, -200000_i64 as u64, 0, 1000].into_dyn(), array![10_u64, 100, 200000, 0, 1000].into_dyn())]
+    fn test_rep_abs_64(#[case] x: ArrayD<u64>, #[case] target: ArrayD<u64>) {
+        test_rep_abs64(x, target);
+    }
 
-        let x = HostRing64Tensor::from_raw_plc(xs.clone(), alice.clone());
-
-        let sess = SyncSession::default();
-        let setup = rep.gen_setup(&sess);
-
-        let x_shared = rep.share(&sess, &setup, &x);
-        let x_abs = rep.abs(&sess, &setup, &x_shared);
-
-        let target64 =
-            HostRing64Tensor::from_raw_plc(xs.map(|x| i64::abs(*x as i64) as u64), alice.clone());
-
-        assert_eq!(alice.reveal(&sess, &x_abs), target64);
+    #[rstest]
+    #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1000].into_dyn(), array![10_u128, 100, 200000, 0, 1000].into_dyn())]
+    fn test_rep_abs_128(#[case] x: ArrayD<u128>, #[case] target: ArrayD<u128>) {
+        test_rep_abs128(x, target);
     }
 }
