@@ -1072,6 +1072,7 @@ kernel! {
     ]
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for HostSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -1100,7 +1101,7 @@ impl Compile<Kernel> for HostSumOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements. See PrimDeriveSeedOp::kernel for the new code
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let nonce = self.sync_key.clone();
@@ -1114,7 +1115,7 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements. See PrimPrfKeyGenOp::kernel for the new code
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for PrimPrfKeyGenOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(|| PrfKey(
@@ -1126,6 +1127,7 @@ impl Compile<Kernel> for PrimPrfKeyGenOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingAddOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1140,6 +1142,7 @@ impl Compile<Kernel> for RingAddOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingSubOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1154,6 +1157,7 @@ impl Compile<Kernel> for RingSubOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingMulOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1168,6 +1172,7 @@ impl Compile<Kernel> for RingMulOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingDotOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1182,6 +1187,7 @@ impl Compile<Kernel> for RingDotOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -1197,6 +1203,7 @@ impl Compile<Kernel> for RingSumOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for ShapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1217,6 +1224,7 @@ impl Compile<Kernel> for ShapeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
@@ -1231,6 +1239,7 @@ impl Compile<Kernel> for BitFillOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
@@ -1251,6 +1260,7 @@ impl Compile<Kernel> for RingFillOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.max_value) {
@@ -1277,6 +1287,7 @@ impl Compile<Kernel> for RingSampleOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingSampleSeededOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.max_value) {
@@ -1305,6 +1316,7 @@ impl Compile<Kernel> for RingSampleSeededOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingNegOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1319,6 +1331,7 @@ impl Compile<Kernel> for RingNegOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingShlOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
@@ -1334,6 +1347,7 @@ impl Compile<Kernel> for RingShlOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingShrOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
@@ -1349,6 +1363,7 @@ impl Compile<Kernel> for RingShrOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingInjectOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
@@ -1364,6 +1379,7 @@ impl Compile<Kernel> for RingInjectOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitExtractOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
@@ -1379,6 +1395,7 @@ impl Compile<Kernel> for BitExtractOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitSampleSeededOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(
@@ -1389,12 +1406,14 @@ impl Compile<Kernel> for BitSampleSeededOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitXorOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(HostBitTensor, HostBitTensor, |x, y| x ^ y)
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitAndOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1434,6 +1453,7 @@ impl FixedpointRingEncodeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
@@ -1479,6 +1499,7 @@ impl FixedpointRingDecodeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
@@ -1502,6 +1523,7 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -1528,7 +1550,7 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements. See ConstantOp::kernel for the new code
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for ConstantOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let value = self.value.clone();
@@ -1589,7 +1611,7 @@ impl ConstantOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         let rendezvous_key = self.rendezvous_key.clone();
@@ -1615,7 +1637,7 @@ impl Compile<SyncKernel> for SendOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<AsyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
         let rendezvous_key = Arc::new(self.rendezvous_key.clone());
@@ -1949,7 +1971,7 @@ impl SaveOp {
 }
 
 // This implementation is the old kernel.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.sig.arg(1)?;
@@ -1966,7 +1988,7 @@ impl Compile<SyncKernel> for SaveOp {
 }
 
 // This implementation is the old kernel.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<AsyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.sig.arg(1)?;

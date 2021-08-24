@@ -11,9 +11,8 @@ categories = ["", ""]
 edition = "2018"
 
 [features]
-# TODO: Enable deprecation messages linked to the "symbolic" feature once the older kernels are deleted
 default = []
-symbolic = []
+exclude_old_framework = []
 
 [dependencies]
 aes = "~0.6"

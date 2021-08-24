@@ -523,7 +523,7 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for HostTensor<T>
 where
     T: LinalgScalar,
@@ -599,7 +599,7 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for HostTensor<T> {
     fn from(v: Vec<T>) -> HostTensor<T> {
         HostTensor(
@@ -612,7 +612,7 @@ impl<T> From<Vec<T>> for HostTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Array1<T>> for HostTensor<T> {
     fn from(v: Array1<T>) -> HostTensor<T> {
         HostTensor(
@@ -625,7 +625,7 @@ impl<T> From<Array1<T>> for HostTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Array2<T>> for HostTensor<T> {
     fn from(v: Array2<T>) -> HostTensor<T> {
         HostTensor(
@@ -833,7 +833,7 @@ impl BitAndOp {
 
 impl HostBitTensor {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
         )
@@ -854,7 +854,7 @@ impl HostBitTensor {
 
 impl HostBitTensor {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitFillOp::kernel for the new code"
         )
@@ -882,7 +882,7 @@ impl HostBitTensor {
 }
 
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<u8>> for HostBitTensor {
     fn from(a: ArrayD<u8>) -> HostBitTensor {
         let wrapped = a.mapv(|ai| (ai & 1) as u8);
@@ -896,7 +896,7 @@ impl From<ArrayD<u8>> for HostBitTensor {
 }
 
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<Vec<u8>> for HostBitTensor {
     fn from(v: Vec<u8>) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
@@ -910,7 +910,7 @@ impl From<Vec<u8>> for HostBitTensor {
 }
 
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<&[u8]> for HostBitTensor {
     fn from(v: &[u8]) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
@@ -1644,13 +1644,13 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
@@ -1672,7 +1672,7 @@ impl<T> AbstractHostRingTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for AbstractHostRingTensor<T>
 where
     T: Clone,
@@ -1689,7 +1689,7 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
     fn from(a: ArrayD<i64>) -> AbstractHostRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
@@ -1703,7 +1703,7 @@ impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
     fn from(a: ArrayD<i128>) -> AbstractHostRingTensor<u128> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
@@ -1718,7 +1718,7 @@ impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
 
 impl<T> AbstractHostRingTensor<T> {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
@@ -1734,7 +1734,7 @@ impl<T> AbstractHostRingTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<HostBitTensor> for AbstractHostRingTensor<T>
 where
     T: From<u8>,
@@ -1763,7 +1763,7 @@ impl From<&AbstractHostRingTensor<u128>> for ArrayD<i128> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
     fn from(v: Vec<T>) -> AbstractHostRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
@@ -1779,7 +1779,7 @@ impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<&[T]> for AbstractHostRingTensor<T>
 where
     T: Copy,

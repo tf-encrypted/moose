@@ -212,7 +212,7 @@ impl PrimDeriveSeedOp {
 // TODO deprecated
 impl RawSeed {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
@@ -226,7 +226,7 @@ impl RawSeed {
 // TODO deprecated
 impl RawPrfKey {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
