@@ -820,6 +820,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         constant_literal_helper("Nonce", vector(parse_int), |v| {
             Constant::RawNonce(RawNonce(v))
         }),
+        constant_literal_helper("Bit", parse_int, Constant::Bit),
         // 1D arrars
         alt((
             constant_literal_helper("Int8Tensor", vector(parse_int), |v| {
@@ -857,6 +858,9 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             }),
             constant_literal_helper("Ring128Tensor", vector(parse_int), |v| {
                 Constant::HostRing128Tensor(v.into())
+            }),
+            constant_literal_helper("HostBitTensor", vector(parse_int), |v| {
+                Constant::HostBitTensor(v.into())
             }),
         )),
         // 2D arrars
@@ -901,6 +905,9 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 vector2(parse_int),
                 |v: ndarray::ArrayD<u128>| Constant::HostRing128Tensor(v.into()),
             ),
+            constant_literal_helper("HostBitTensor", vector2(parse_int), |v| {
+                Constant::HostBitTensor(v.into())
+            }),
         )),
     ))(input)
 }
@@ -1250,11 +1257,18 @@ impl ToTextual for Operator {
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
-            // TODO reconsider operators below and implement those that make sense
-            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
-            | AdtToRep(_) | RepAbs(_) | RepFill(_) | RepMsb(_) | RepShl(_) | RepToAdt(_) => {
-                unimplemented!("{:?}", self)
-            }
+            AdtReveal(op) => op.to_textual(),
+            AdtFill(op) => op.to_textual(),
+            AdtAdd(op) => op.to_textual(),
+            AdtSub(op) => op.to_textual(),
+            AdtMul(op) => op.to_textual(),
+            AdtShl(op) => op.to_textual(),
+            AdtToRep(op) => op.to_textual(),
+            RepAbs(op) => op.to_textual(),
+            RepFill(op) => op.to_textual(),
+            RepMsb(op) => op.to_textual(),
+            RepShl(op) => op.to_textual(),
+            RepToAdt(op) => op.to_textual(),
         }
     }
 }
@@ -1372,6 +1386,18 @@ impl_to_textual!(RepAddOp, "{op}: {}", sig);
 impl_to_textual!(RepSubOp, "{op}: {}", sig);
 impl_to_textual!(RepMulOp, "{op}: {}", sig);
 impl_to_textual!(RepTruncPrOp, "{op}{{amount={}}}: {}", amount, sig);
+impl_to_textual!(AdtRevealOp, "{op}: {}", sig);
+impl_to_textual!(AdtFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(AdtAddOp, "{op}: {}", sig);
+impl_to_textual!(AdtSubOp, "{op}: {}", sig);
+impl_to_textual!(AdtMulOp, "{op}: {}", sig);
+impl_to_textual!(AdtShlOp, "{op}: {}", sig);
+impl_to_textual!(AdtToRepOp, "{op}: {}", sig);
+impl_to_textual!(RepAbsOp, "{op}: {}", sig);
+impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(RepMsbOp, "{op}: {}", sig);
+impl_to_textual!(RepShlOp, "{op}: {}", sig);
+impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
@@ -1594,15 +1620,15 @@ impl ToTextual for Value {
             Value::String(x) => format!("String({})", x.to_textual()),
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
-            Value::HostShape(HostShape(x, _)) => format!("Shape({:?})", x),
+            Value::HostShape(HostShape(x, _)) => format!("HostShape({:?})", x),
             Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
-            // TODO Implement the missing branches
-            Value::Bit(_)
-            | Value::Unit(_)
-            | Value::HostBitTensor(_)
-            | Value::Fixed64Tensor(_)
+            Value::Bit(x) => format!("Bit({})", x),
+            Value::Unit(_) => "Unit".to_string(),
+            Value::HostBitTensor(x) => format!("HostBitTensor({})", x.0.to_textual()),
+            // The following value variants live in the replicated form and can not be represented in the textual computation graph.
+            Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
             | Value::ReplicatedShape(_)
             | Value::ReplicatedSetup(_)
@@ -1612,7 +1638,9 @@ impl ToTextual for Value {
             | Value::AdditiveShape(_)
             | Value::AdditiveBitTensor(_)
             | Value::AdditiveRing64Tensor(_)
-            | Value::AdditiveRing128Tensor(_) => unimplemented!(),
+            | Value::AdditiveRing128Tensor(_) => {
+                unimplemented!("Unsupported Value variant: {:?}", self)
+            }
         }
     }
 }
@@ -1641,8 +1669,8 @@ impl ToTextual for Constant {
             Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            // TODO Implement the missing branches
-            Constant::Bit(_) | Constant::HostBitTensor(_) => unimplemented!(),
+            Constant::Bit(x) => format!("Bit({})", x),
+            Constant::HostBitTensor(x) => format!("HostBitTensor({})", x.0.to_textual()),
         }
     }
 }
