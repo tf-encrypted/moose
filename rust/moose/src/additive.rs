@@ -30,6 +30,8 @@ pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
 
 pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
 
+pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
+
 impl<R> Placed for AbstractAdditiveTensor<R>
 where
     R: Placed<Placement = HostPlacement>,

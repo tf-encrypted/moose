@@ -1,5 +1,5 @@
 //! Placements backed by replicated secret sharing
-use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
+use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
     RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp,
@@ -49,7 +49,6 @@ pub struct AbstractReplicatedShape<S> {
 pub type ReplicatedShape = AbstractReplicatedShape<HostShape>;
 
 /// Type aliases to shorten out impl in replicated protocols
-type AdtT<T> = AbstractAdditiveTensor<T>;
 type RepTen<T> = AbstractReplicatedTensor<T>;
 
 impl<R> Placed for RepTen<R>
@@ -1084,20 +1083,20 @@ impl RepTruncPrOp {
     where
         RingT: Clone,
         RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-        st!(AdtT<RingT>): TryInto<AdtT<RingT>>,
-        AdtT<RingT>: Into<st!(AdtT<RingT>)>,
-        st!(AdtT<RingT>): TryInto<AdtT<RingT>>,
+        st!(AdtTen<RingT>): TryInto<AdtTen<RingT>>,
+        AdtTen<RingT>: Into<st!(AdtTen<RingT>)>,
+        st!(AdtTen<RingT>): TryInto<AdtTen<RingT>>,
 
-        AdtT<RingT>: CanonicalType,
-        <AdtT<RingT> as CanonicalType>::Type: KnownType<S>,
+        AdtTen<RingT>: CanonicalType,
+        <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
         RepTen<RingT>: CanonicalType,
         <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
 
-        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<RingT>), st!(AdtT<RingT>)>,
+        AdditivePlacement: PlacementRepToAdt<S, st!(RepTen<RingT>), st!(AdtTen<RingT>)>,
 
-        AdditivePlacement: PlacementTruncPrProvider<S, AdtT<RingT>, AdtT<RingT>>,
+        AdditivePlacement: PlacementTruncPrProvider<S, AdtTen<RingT>, AdtTen<RingT>>,
 
-        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtT<RingT>), st!(RepTen<RingT>)>,
+        ReplicatedPlacement: PlacementAdtToRep<S, st!(AdtTen<RingT>), st!(RepTen<RingT>)>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1159,14 +1158,14 @@ impl<ShapeT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
     type Type = AbstractReplicatedShape<<ShapeT as CanonicalType>::Type>;
 }
 
-impl<RingT: CanonicalType> CanonicalType for AdtT<RingT> {
-    type Type = AdtT<<RingT as CanonicalType>::Type>;
+impl<RingT: CanonicalType> CanonicalType for AdtTen<RingT> {
+    type Type = AdtTen<<RingT as CanonicalType>::Type>;
 }
 
 impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
-    for Symbolic<AdtT<RingT>>
+    for Symbolic<AdtTen<RingT>>
 {
-    type Type = AdtT<<RingT as CanonicalType>::Type>;
+    type Type = AdtTen<<RingT as CanonicalType>::Type>;
 }
 
 impl<RingT: CanonicalType> CanonicalType for RepTen<RingT> {
@@ -1194,23 +1193,23 @@ impl AdtToRepOp {
     fn kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
-        x: AdtT<RingT>,
+        x: AdtTen<RingT>,
     ) -> RepTen<RingT>
     where
         RingT: Placed<Placement = HostPlacement> + Clone,
-        AdtT<RingT>: CanonicalType,
-        <AdtT<RingT> as CanonicalType>::Type: KnownType<S>,
+        AdtTen<RingT>: CanonicalType,
+        <AdtTen<RingT> as CanonicalType>::Type: KnownType<S>,
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementKeyGen<S, KeyT>,
         HostPlacement: PlacementSampleUniform<S, ShapeT, SeedT, RingT>,
         HostPlacement: PlacementDeriveSeed<S, KeyT, SeedT>,
         AdditivePlacement:
-            PlacementSub<S, st!(AdtT<RingT>, S), st!(AdtT<RingT>, S), st!(AdtT<RingT>, S)>,
-        AdtT<RingT>: Into<st!(AdtT<RingT>, S)>,
-        HostPlacement: PlacementReveal<S, st!(AdtT<RingT>, S), RingT>,
+            PlacementSub<S, st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S), st!(AdtTen<RingT>, S)>,
+        AdtTen<RingT>: Into<st!(AdtTen<RingT>, S)>,
+        HostPlacement: PlacementReveal<S, st!(AdtTen<RingT>, S), RingT>,
         ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
     {
-        let AdtT { shares: [x0, x1] } = &x;
+        let AdtTen { shares: [x0, x1] } = &x;
 
         let adt = x.placement().unwrap();
         let (adt_player0, adt_player1) = adt.host_placements();
@@ -1244,7 +1243,7 @@ impl AdtToRepOp {
         let y0_provider = provider.sample_uniform(sess, &shape0, &seed1);
         let y1_provider = provider.sample_uniform(sess, &shape0, &seed2);
 
-        let y = AdtT {
+        let y = AdtTen {
             shares: [y0.clone(), y1.clone()],
         };
         let c = adt_player0.reveal(sess, &adt.sub(sess, &x.into(), &y.into()));
@@ -1815,15 +1814,15 @@ impl RingInjectOp {
     ) -> RepTen<RingT>
     where
         ReplicatedPlacement: PlacementShape<S, ReplicatedBitT, AbstractReplicatedShape<ShapeT>>,
-        ReplicatedPlacement: PlacementAdtToRep<S, AdtT<RingT>, RepTen<RingT>>,
-        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtT<RingT>, AdtT<BitT>>,
-        AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, AdtT<BitT>>,
-        AdditivePlacement: PlacementAdd<S, AdtT<BitT>, AdtT<BitT>, AdtT<BitT>>,
-        AdditivePlacement: PlacementAdd<S, AdtT<RingT>, RingT, AdtT<RingT>>,
-        AdditivePlacement: PlacementMul<S, AdtT<RingT>, RingT, AdtT<RingT>>,
-        AdditivePlacement: PlacementSub<S, AdtT<RingT>, AdtT<RingT>, AdtT<RingT>>,
-        AdditivePlacement: PlacementShl<S, AdtT<RingT>, AdtT<RingT>>,
-        HostPlacement: PlacementReveal<S, AdtT<BitT>, BitT>,
+        ReplicatedPlacement: PlacementAdtToRep<S, AdtTen<RingT>, RepTen<RingT>>,
+        AdditivePlacement: PlacementDaBitProvider<S, ShapeT, AdtTen<RingT>, AdtTen<BitT>>,
+        AdditivePlacement: PlacementRepToAdt<S, ReplicatedBitT, AdtTen<BitT>>,
+        AdditivePlacement: PlacementAdd<S, AdtTen<BitT>, AdtTen<BitT>, AdtTen<BitT>>,
+        AdditivePlacement: PlacementAdd<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
+        AdditivePlacement: PlacementMul<S, AdtTen<RingT>, RingT, AdtTen<RingT>>,
+        AdditivePlacement: PlacementSub<S, AdtTen<RingT>, AdtTen<RingT>, AdtTen<RingT>>,
+        AdditivePlacement: PlacementShl<S, AdtTen<RingT>, AdtTen<RingT>>,
+        HostPlacement: PlacementReveal<S, AdtTen<BitT>, BitT>,
         HostPlacement: PlacementRingInject<S, BitT, RingT>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -1843,7 +1842,7 @@ impl RingInjectOp {
         // 1) s_provider - provider (dealer) shape
         // 2) s_0 - shape that corresponds to the party expanding the seeds received from provider.
 
-        let (b_ring, b_bin): (AdtT<RingT>, AdtT<BitT>) =
+        let (b_ring, b_bin): (AdtTen<RingT>, AdtTen<BitT>) =
             adt.gen_dabit(sess, s_provider, s0, &provider);
 
         let x_adt = adt.rep_to_adt(sess, &x);
