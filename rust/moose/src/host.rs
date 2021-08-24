@@ -538,6 +538,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Add for HostTensor<T>
 where
     T: LinalgScalar,
@@ -553,6 +554,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Sub for HostTensor<T>
 where
     T: LinalgScalar,
@@ -568,6 +570,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Mul for HostTensor<T>
 where
     T: LinalgScalar,
@@ -583,6 +586,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Div for HostTensor<T>
 where
     T: LinalgScalar,
@@ -637,6 +641,7 @@ impl<T> From<Array2<T>> for HostTensor<T> {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 pub fn concatenate<T>(axis: usize, arrays: &[HostTensor<T>]) -> HostTensor<T>
 where
     T: LinalgScalar,
@@ -1532,6 +1537,7 @@ impl RingSampleSeededOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
     pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
         let mut rng = AesRng::from_random_seed();
@@ -1549,6 +1555,7 @@ impl HostRing64Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
     pub fn sample_uniform(shape: &RawShape) -> Self {
         let mut rng = AesRng::from_random_seed();
@@ -1573,6 +1580,7 @@ impl HostRing128Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
     pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
         let mut rng = AesRng::from_seed(seed.0);
@@ -1590,6 +1598,7 @@ impl HostRing64Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
     pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
@@ -1614,6 +1623,7 @@ impl HostRing128Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
@@ -1622,6 +1632,7 @@ impl HostRing64Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
@@ -1716,13 +1727,8 @@ impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T> {
-    #[cfg_attr(
-        feature = "exclude_old_framework",
-        deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements."
-        )
-    )]
     pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractHostRingTensor<T> {
         AbstractHostRingTensor(
             a,
@@ -1796,6 +1802,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Add<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1807,6 +1814,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Mul<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1818,6 +1826,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Sub<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1829,6 +1838,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Shl<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1840,6 +1850,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Shr<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1851,6 +1862,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1862,6 +1874,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
@@ -1914,6 +1927,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone + Zero,

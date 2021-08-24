@@ -1214,7 +1214,7 @@ impl ToTextual for Operator {
             // TODO reconsider operators below and implement those that make sense
             RingSample(_) | BitSample(_) | BitXor(_) | BitAnd(_) | AdtReveal(_) | AdtFill(_)
             | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_) | AdtToRep(_) | RepAbs(_)
-            | RepFill(_) | RepMsb(_) | RepToAdt(_) | RepDaBit(_) => unimplemented!("{:?}", self),
+            | RepFill(_) | RepMsb(_) | RepShl(_) | RepToAdt(_) => unimplemented!("{:?}", self),
         }
     }
 }
