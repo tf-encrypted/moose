@@ -142,8 +142,9 @@ impl Session for SyncSession {
             HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // TODO add support for the missing operators below
-            Identity(_) | Send(_) | Receive(_) | HostReshape(_) => {
+            Send(_) | Receive(_) | HostReshape(_) => {
                 unimplemented!("SyncSession implementation is missing for {:?}", op)
             }
         }
@@ -489,6 +490,10 @@ pub trait PlacementPlace<S: Session, T> {
 
 pub trait PlacementConstant<S: Session, O> {
     fn constant(&self, sess: &S, value: Constant) -> O;
+}
+
+pub trait PlacementIdentity<S: Session, T, O> {
+    fn identity(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementInput<S: Session, O> {
@@ -1741,6 +1746,58 @@ impl Compile<AsyncKernel> for ReceiveOp {
                 map_send_result(sender.send(v))
             })
         })))
+    }
+}
+
+modelled!(PlacementIdentity::identity, HostPlacement, (String) -> String, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Unit) -> Unit, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostShape) -> HostShape, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Seed) -> Seed, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (PrfKey) -> PrfKey, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostBitTensor) -> HostBitTensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostInt8Tensor) -> HostInt8Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostInt16Tensor) -> HostInt16Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostInt32Tensor) -> HostInt32Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostInt64Tensor) -> HostInt64Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostUint8Tensor) -> HostUint8Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostUint16Tensor) -> HostUint16Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostUint32Tensor) -> HostUint32Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (HostUint64Tensor) -> HostUint64Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Fixed64Tensor) -> Fixed64Tensor, IdentityOp);
+modelled!(PlacementIdentity::identity, HostPlacement, (Fixed128Tensor) -> Fixed128Tensor, IdentityOp);
+kernel! {
+    IdentityOp, [
+        (HostPlacement, (String) -> String => Self::kernel),
+        (HostPlacement, (Unit) -> Unit => Self::kernel),
+        (HostPlacement, (HostShape) -> HostShape => Self::kernel),
+        (HostPlacement, (Seed) -> Seed => Self::kernel),
+        (HostPlacement, (PrfKey) -> PrfKey => Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => Self::kernel),
+        (HostPlacement, (HostUint8Tensor) -> HostUint8Tensor => Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => Self::kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => Self::kernel),
+
+    ]
+}
+
+impl IdentityOp {
+    fn kernel<S: RuntimeSession, T: Clone, O: From<T>>(_sess: &S, _plc: &HostPlacement, x: T) -> O {
+        x.clone().into()
     }
 }
 
