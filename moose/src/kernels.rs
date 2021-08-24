@@ -1879,8 +1879,8 @@ kernel! {
 }
 
 impl IdentityOp {
-    fn kernel<S: RuntimeSession, T: Clone, O: From<T>>(_sess: &S, _plc: &HostPlacement, x: T) -> O {
-        x.into()
+    fn kernel<S: RuntimeSession, T>(_sess: &S, _plc: &HostPlacement, x: T) -> T {
+        x
     }
 }
 
