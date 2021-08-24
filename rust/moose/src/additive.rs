@@ -8,8 +8,8 @@ use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape,
 use crate::kernels::{
     PlacementAdd, PlacementDaBitProvider, PlacementDeriveSeed, PlacementFill, PlacementKeyGen,
     PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingInject, PlacementSampleBits, PlacementSampleUniform, PlacementShape, PlacementShl,
-    PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
+    PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
+    PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::CanonicalType;
@@ -542,8 +542,8 @@ where
     Seed: KnownType<S>,
     R: RingSize + Clone,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
-    HostPlacement: PlacementSampleBits<S, cs!(HostShape), cs!(Seed), R>,
-    HostPlacement: PlacementSampleUniform<S, cs!(HostShape), cs!(Seed), R>,
+    HostPlacement: PlacementSampleUniform<S, cs!(HostShape), R>,
+    HostPlacement: PlacementSampleUniformSeeded<S, cs!(HostShape), cs!(Seed), R>,
     HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
     HostPlacement: PlacementSub<S, R, R, R>,
     HostPlacement: PlacementShr<S, R, R>,
@@ -559,20 +559,16 @@ where
         AbstractAdditiveTensor<R>,
         AbstractAdditiveTensor<R>,
     ) {
-        let key = self.gen_key(sess);
-
-        let sync_key = RawNonce::generate();
-        let seed = self.derive_seed(sess, sync_key, &key);
-
-        let r = self.sample_uniform(sess, shape, &seed);
+        let r = self.sample_uniform(sess, shape);
         let r_msb = self.shr(sess, R::SIZE - 1, &r);
         let r_top = self.shr(sess, amount + 1, &self.shl(sess, 1, &r));
 
+        let key = self.gen_key(sess);
         let share = |x| {
-            // TODO(Dragos) this could probably be optimized by sending the key to p0
+            // TODO(Dragos) this could be optimized by instead sending the key (or seeds) to p0
             let share_sync_key = RawNonce::generate();
             let seed = self.derive_seed(sess, share_sync_key, &key);
-            let x0 = self.sample_uniform(sess, shape, &seed);
+            let x0 = self.sample_uniform_seeded(sess, shape, &seed);
             let x1 = self.sub(sess, x, &x0);
             AbstractAdditiveTensor { shares: [x0, x1] }
         };
@@ -793,8 +789,8 @@ where
     PrfKey: KnownType<S>,
     HostPlacement: PlacementKeyGen<S, cs!(PrfKey)>,
     HostPlacement: PlacementDeriveSeed<S, cs!(PrfKey), cs!(Seed)>,
-    HostPlacement: PlacementSampleUniform<S, ShapeT, cs!(Seed), BitT>,
-    HostPlacement: PlacementSampleUniform<S, ShapeT, cs!(Seed), RingT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, cs!(Seed), BitT>,
+    HostPlacement: PlacementSampleUniformSeeded<S, ShapeT, cs!(Seed), RingT>,
     HostPlacement: PlacementSub<S, BitT, BitT, BitT>,
     HostPlacement: PlacementSub<S, RingT, RingT, RingT>,
     HostPlacement: PlacementRingInject<S, BitT, RingT>,
@@ -817,21 +813,21 @@ where
 
         let sync_key = RawNonce::generate();
         let seed0 = provider.derive_seed(sess, sync_key, &key);
-        let b: BitT = provider.sample_uniform(sess, &shape_provider, &seed0);
+        let b: BitT = provider.sample_uniform_seeded(sess, &shape_provider, &seed0);
         let b2k = provider.ring_inject(sess, 0, &b);
 
         let sync_key2 = RawNonce::generate();
         let seed2 = provider.derive_seed(sess, sync_key2, &key);
-        let b20 = provider.sample_uniform(sess, &shape_provider, &seed2);
+        let b20 = provider.sample_uniform_seeded(sess, &shape_provider, &seed2);
         let b21 = with_context!(provider, sess, b - b20);
 
         let sync_key2k = RawNonce::generate();
         let seed2k = provider.derive_seed(sess, sync_key2k, &key);
-        let b2k0: RingT = provider.sample_uniform(sess, &shape_provider, &seed2k);
+        let b2k0: RingT = provider.sample_uniform_seeded(sess, &shape_provider, &seed2k);
         let b2k1 = with_context!(provider, sess, b2k - b2k0);
 
-        let b20: BitT = player_a.sample_uniform(sess, &shape_a, &seed2);
-        let b2k0: RingT = player_a.sample_uniform(sess, &shape_a, &seed2k);
+        let b20: BitT = player_a.sample_uniform_seeded(sess, &shape_a, &seed2);
+        let b2k0: RingT = player_a.sample_uniform_seeded(sess, &shape_a, &seed2k);
 
         (
             adt.place(

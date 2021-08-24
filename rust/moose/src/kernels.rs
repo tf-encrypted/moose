@@ -52,6 +52,7 @@ impl SyncSession {
         }
     }
 }
+
 impl Default for SyncSession {
     fn default() -> Self {
         SyncSession {
@@ -65,78 +66,86 @@ impl Session for SyncSession {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
+        use Operator::*;
         match op {
-            Operator::Shape(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitExtract(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingInject(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Input(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Output(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Load(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO Remove the catch-all case once all the Ops have kernels.
+            Shape(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitExtract(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingInject(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Input(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Output(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Load(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            // TODO add support for the missing operators below
+            Identity(_) | Send(_) | Receive(_) | HostReshape(_) => {
+                unimplemented!("SyncSession implementation is missing for {:?}", op)
+            }
         }
     }
 
@@ -380,33 +389,63 @@ where
     }
 }
 
-pub trait PlacementSample<S: Session, ShapeT, SeedT, O> {
-    fn sample(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT, seed: &SeedT) -> O;
+pub trait PlacementSample<S: Session, ShapeT, O> {
+    fn sample(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT) -> O;
 }
 
-pub trait PlacementSampleUniform<S: Session, ShapeT, SeedT, O> {
-    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
+pub trait PlacementSampleUniform<S: Session, ShapeT, O> {
+    fn sample_uniform(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
-impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleUniform<S, ShapeT, SeedT, O> for P
+pub trait PlacementSampleBits<S: Session, ShapeT, O> {
+    fn sample_bits(&self, sess: &S, shape: &ShapeT) -> O;
+}
+
+impl<S: Session, ShapeT, O, P> PlacementSampleUniform<S, ShapeT, O> for P
 where
-    P: PlacementSample<S, ShapeT, SeedT, O>,
+    P: PlacementSample<S, ShapeT, O>,
 {
-    fn sample_uniform(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
-        self.sample(sess, None, shape, seed)
+    fn sample_uniform(&self, sess: &S, shape: &ShapeT) -> O {
+        self.sample(sess, None, shape)
     }
 }
 
-pub trait PlacementSampleBits<S: Session, ShapeT, SeedT, O> {
-    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
+impl<S: Session, ShapeT, O, P> PlacementSampleBits<S, ShapeT, O> for P
+where
+    P: PlacementSample<S, ShapeT, O>,
+{
+    fn sample_bits(&self, sess: &S, shape: &ShapeT) -> O {
+        self.sample(sess, Some(1), shape)
+    }
 }
 
-impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleBits<S, ShapeT, SeedT, O> for P
+pub trait PlacementSampleSeeded<S: Session, ShapeT, SeedT, O> {
+    fn sample_seeded(&self, sess: &S, max_value: Option<u64>, shape: &ShapeT, seed: &SeedT) -> O;
+}
+
+pub trait PlacementSampleUniformSeeded<S: Session, ShapeT, SeedT, O> {
+    fn sample_uniform_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
+}
+
+pub trait PlacementSampleBitsSeeded<S: Session, ShapeT, SeedT, O> {
+    fn sample_bits_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O;
+}
+
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleUniformSeeded<S, ShapeT, SeedT, O> for P
 where
-    P: PlacementSample<S, ShapeT, SeedT, O>,
+    P: PlacementSampleSeeded<S, ShapeT, SeedT, O>,
 {
-    fn sample_bits(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
-        self.sample(sess, Some(1), shape, seed)
+    fn sample_uniform_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+        self.sample_seeded(sess, None, shape, seed)
+    }
+}
+
+impl<S: Session, ShapeT, SeedT, O, P> PlacementSampleBitsSeeded<S, ShapeT, SeedT, O> for P
+where
+    P: PlacementSampleSeeded<S, ShapeT, SeedT, O>,
+{
+    fn sample_bits_seeded(&self, sess: &S, shape: &ShapeT, seed: &SeedT) -> O {
+        self.sample_seeded(sess, Some(1), shape, seed)
     }
 }
 
@@ -560,17 +599,20 @@ impl Compile<SyncKernel> for Operator {
             HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingNeg(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
+            BitSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -578,7 +620,19 @@ impl Compile<SyncKernel> for Operator {
             FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            op => unimplemented!("deprecated, should not impl for {:?}", op),
+            // TODO implement below (needed until we switch to new framework for execution)
+            FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
+            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
+            | FixedpointSum(_) => {
+                unimplemented!("deprecated, not impl {:?}", self)
+            }
+            // NOTE the following are not supported by design
+            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
+            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+                unimplemented!("Not supported {:?}", self)
+            }
         }
     }
 }
@@ -620,11 +674,13 @@ impl Compile<AsyncKernel> for Operator {
             RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            BitSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -632,7 +688,19 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointRingEncode(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            op => unimplemented!("deprecated, should not impl for {:?}", op),
+            // TODO implement below (needed until we switch to new framework for execution)
+            FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
+            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
+            | FixedpointSum(_) => {
+                unimplemented!("deprecated, not impl {:?}", self)
+            }
+            // NOTE the following are not supported by design
+            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
+            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+                unimplemented!("Not supported {:?}", self)
+            }
         }
     }
 }
@@ -1013,6 +1081,7 @@ kernel! {
     ]
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for HostSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -1041,7 +1110,7 @@ impl Compile<Kernel> for HostSumOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements. See PrimDeriveSeedOp::kernel for the new code
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let nonce = self.sync_key.clone();
@@ -1055,7 +1124,7 @@ impl Compile<Kernel> for PrimDeriveSeedOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements. See PrimPrfKeyGenOp::kernel for the new code
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for PrimPrfKeyGenOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(|| PrfKey(
@@ -1067,6 +1136,7 @@ impl Compile<Kernel> for PrimPrfKeyGenOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingAddOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1081,6 +1151,7 @@ impl Compile<Kernel> for RingAddOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingSubOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1095,6 +1166,7 @@ impl Compile<Kernel> for RingSubOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingMulOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1109,6 +1181,7 @@ impl Compile<Kernel> for RingMulOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingDotOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1123,6 +1196,7 @@ impl Compile<Kernel> for RingDotOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingSumOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -1138,6 +1212,7 @@ impl Compile<Kernel> for RingSumOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for ShapeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1158,6 +1233,7 @@ impl Compile<Kernel> for ShapeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
@@ -1172,6 +1248,7 @@ impl Compile<Kernel> for BitFillOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFillOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.value.clone()) {
@@ -1192,29 +1269,26 @@ impl Compile<Kernel> for RingFillOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.max_value) {
-            (signature![(_, _) -> Ty::HostRing64Tensor], None) => {
-                function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing64Tensor::sample_uniform(&shape.0, &seed.0)
+            (signature![(_) -> Ty::HostRing64Tensor], None) => {
+                function_kernel!(HostShape, |shape| {
+                    HostRing64Tensor::sample_uniform(&shape.0)
                 })
             }
-            (signature!((_, _) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
-                function_kernel!(
-                    HostShape,
-                    Seed,
-                    |shape, seed| HostRing64Tensor::sample_bits(&shape.0, &seed.0)
-                )
+            (signature!((_) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
+                function_kernel!(HostShape, |shape| HostRing64Tensor::sample_bits(&shape.0))
             }
-            (signature![(_, _) -> Ty::HostRing128Tensor], None) => {
-                function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing128Tensor::sample_uniform(&shape.0, &seed.0)
+            (signature![(_) -> Ty::HostRing128Tensor], None) => {
+                function_kernel!(HostShape, |shape| {
+                    HostRing128Tensor::sample_uniform(&shape.0)
                 })
             }
-            (signature![(_, _) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
-                function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing128Tensor::sample_bits(&shape.0, &seed.0)
+            (signature![(_) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
+                function_kernel!(HostShape, |shape| {
+                    HostRing128Tensor::sample_bits(&shape.0)
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1222,6 +1296,36 @@ impl Compile<Kernel> for RingSampleOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for RingSampleSeededOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match (&self.sig, self.max_value) {
+            (signature![(_, _) -> Ty::HostRing64Tensor], None) => {
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing64Tensor::sample_uniform_seeded(&shape.0, &seed.0)
+                })
+            }
+            (signature!((_, _) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing64Tensor::sample_bits_seeded(&shape.0, &seed.0)
+                })
+            }
+            (signature![(_, _) -> Ty::HostRing128Tensor], None) => {
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing128Tensor::sample_uniform_seeded(&shape.0, &seed.0)
+                })
+            }
+            (signature![(_, _) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing128Tensor::sample_bits_seeded(&shape.0, &seed.0)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingNegOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1236,6 +1340,7 @@ impl Compile<Kernel> for RingNegOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingShlOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
@@ -1251,6 +1356,7 @@ impl Compile<Kernel> for RingShlOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingShrOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let amount = self.amount;
@@ -1266,6 +1372,7 @@ impl Compile<Kernel> for RingShrOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingInjectOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
@@ -1281,6 +1388,7 @@ impl Compile<Kernel> for RingInjectOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitExtractOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let bit_idx = self.bit_idx;
@@ -1296,22 +1404,30 @@ impl Compile<Kernel> for BitExtractOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(
-            HostShape,
-            Seed,
-            |shape, seed| HostBitTensor::sample_uniform(&shape.0, &seed.0)
-        )
+        function_kernel!(HostShape, |shape| HostBitTensor::sample_uniform(&shape.0))
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for BitSampleSeededOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        function_kernel!(HostShape, Seed, |shape, seed| {
+            HostBitTensor::sample_uniform_seeded(&shape.0, &seed.0)
+        })
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitXorOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         function_kernel!(HostBitTensor, HostBitTensor, |x, y| x ^ y)
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitAndOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -1351,6 +1467,7 @@ impl FixedpointRingEncodeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointRingEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
@@ -1396,6 +1513,7 @@ impl FixedpointRingDecodeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointRingDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
@@ -1419,6 +1537,7 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointRingMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
@@ -1445,7 +1564,7 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements. See ConstantOp::kernel for the new code
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for ConstantOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let value = self.value.clone();
@@ -1506,7 +1625,7 @@ impl ConstantOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<SyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         let rendezvous_key = self.rendezvous_key.clone();
@@ -1532,7 +1651,7 @@ impl Compile<SyncKernel> for SendOp {
 }
 
 // This impl is only used by the old kernels, which are not aware of the placements.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<AsyncKernel> for SendOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<AsyncKernel> {
         let rendezvous_key = Arc::new(self.rendezvous_key.clone());
@@ -1866,7 +1985,7 @@ impl SaveOp {
 }
 
 // This implementation is the old kernel.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<SyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.sig.arg(1)?;
@@ -1883,7 +2002,7 @@ impl Compile<SyncKernel> for SaveOp {
 }
 
 // This implementation is the old kernel.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<AsyncKernel> for SaveOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<AsyncKernel> {
         let expected_ty = self.sig.arg(1)?;
