@@ -71,6 +71,7 @@ impl Session for SyncSession {
             BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
             BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
             BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -141,7 +142,7 @@ impl Session for SyncSession {
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // TODO add support for the missing operators below
-            Identity(_) | Send(_) | Receive(_) | HostReshape(_) | BitSample(_) => {
+            Identity(_) | Send(_) | Receive(_) | HostReshape(_) => {
                 unimplemented!("SyncSession implementation is missing for {:?}", op)
             }
         }
