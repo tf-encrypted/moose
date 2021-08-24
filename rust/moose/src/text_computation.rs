@@ -310,6 +310,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(BitExtractOp::SHORT_NAME), cut(bit_extract)),
         preceded(tag(BitSampleSeededOp::SHORT_NAME), cut(bit_sample)),
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
+        preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
     ));
     alt((part1, part2, part3))(input)
 }
@@ -619,6 +620,15 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitXorOp { sig }.into()))
+}
+
+/// Parses a BitAnd operator.
+fn bit_and<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, opt_sig) = opt(type_definition(0))(input)?;
+    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
+    Ok((input, BitAndOp { sig }.into()))
 }
 
 /// Parses list of arguments.
@@ -1158,6 +1168,8 @@ impl ToTextual for Operator {
             Output(op) => op.to_textual(),
             Constant(op) => op.to_textual(),
             Shape(op) => op.to_textual(),
+            BitXor(op) => op.to_textual(),
+            BitAnd(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
@@ -1181,11 +1193,13 @@ impl ToTextual for Operator {
             RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
+            RingSample(op) => op.to_textual(),
             RingSampleSeeded(op) => op.to_textual(),
             RingShl(op) => op.to_textual(),
             RingShr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
+            BitSample(op) => op.to_textual(),
             BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
@@ -1212,9 +1226,10 @@ impl ToTextual for Operator {
             RepMul(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
             // TODO reconsider operators below and implement those that make sense
-            RingSample(_) | BitSample(_) | BitXor(_) | BitAnd(_) | AdtReveal(_) | AdtFill(_)
-            | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_) | AdtToRep(_) | RepAbs(_)
-            | RepFill(_) | RepMsb(_) | RepShl(_) | RepToAdt(_) => unimplemented!("{:?}", self),
+            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
+            | AdtToRep(_) | RepAbs(_) | RepFill(_) | RepMsb(_) | RepShl(_) | RepToAdt(_) => {
+                unimplemented!("{:?}", self)
+            }
         }
     }
 }
@@ -1262,7 +1277,6 @@ impl_to_textual!(HostOnesOp, "{op}: {}", sig);
 impl_to_textual!(HostConcatOp, "{op}{{axis={}}}: {}", axis, sig);
 impl_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
 impl_to_textual!(HostReshapeOp, "{op}: {}", sig);
-impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(
     HostAtLeast2DOp,
@@ -1282,8 +1296,10 @@ impl_to_textual!(RingDotOp, "{op}: {}", sig);
 impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(BitXorOp, "{op}: {}", sig);
+impl_to_textual!(BitAndOp, "{op}: {}", sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-impl_to_textual!(BitSampleSeededOp, "{op}: {}", sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
 impl_to_textual!(
@@ -1452,6 +1468,21 @@ impl ToTextual for RepMeanOp {
     }
 }
 
+impl ToTextual for RingSampleOp {
+    fn to_textual(&self) -> String {
+        match self {
+            RingSampleOp {
+                sig,
+                max_value: Some(a),
+            } => format!("RingSample{{max_value = {}}}: {}", a, sig.to_textual()),
+            RingSampleOp {
+                sig,
+                max_value: None,
+            } => format!("RingSample: {}", sig.to_textual()),
+        }
+    }
+}
+
 impl ToTextual for RingSampleSeededOp {
     fn to_textual(&self) -> String {
         match self {
@@ -1470,6 +1501,9 @@ impl ToTextual for RingSampleSeededOp {
         }
     }
 }
+
+impl_to_textual!(BitSampleOp, "{op}: {}", sig);
+impl_to_textual!(BitSampleSeededOp, "{op}: {}", sig);
 
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
