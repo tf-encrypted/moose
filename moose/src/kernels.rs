@@ -143,8 +143,9 @@ impl Session for SyncSession {
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // TODO add support for the missing operators below
-            Send(_) | Receive(_) | HostReshape(_) => {
+            Receive(_) | HostReshape(_) => {
                 unimplemented!("SyncSession implementation is missing for {:?}", op)
             }
         }
@@ -510,6 +511,10 @@ pub trait PlacementLoad<S: Session, KeyT, QueryT, O> {
 
 pub trait PlacementSave<S: Session, KeyT, T, O> {
     fn save(&self, sess: &S, key: &KeyT, x: &T) -> O;
+}
+
+pub trait PlacementSend<S: Session, T, O> {
+    fn send(&self, sess: &S, rendezvous_key: String, receiver: Role, x: &T) -> O;
 }
 
 pub trait PlacementAtLeast2D<S: Session, T, O> {
@@ -1626,6 +1631,65 @@ impl ConstantOp {
         HostPlacement: PlacementPlace<S, T>,
     {
         plc.place(sess, value)
+    }
+}
+
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (String) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Unit) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostShape) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Seed) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (PrfKey) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostBitTensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostRing64Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostRing128Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostFloat32Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostFloat64Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt8Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt16Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt32Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostInt64Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint8Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint16Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint32Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (HostUint64Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Fixed64Tensor) -> Unit, SendOp);
+modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] (Fixed128Tensor) -> Unit, SendOp);
+
+kernel! {
+    SendOp, [
+        (HostPlacement, (String) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Unit) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostShape) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Seed) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (PrfKey) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint8Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Fixed128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+
+    ]
+}
+
+impl SendOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _rendezvous_key: String,
+        _receiver: Role,
+        _x: T,
+    ) -> Unit {
+        unimplemented!("Send Op kernel implementation missing, because RuntimeSession does not have role_assignment yet")
     }
 }
 
