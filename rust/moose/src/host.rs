@@ -1533,14 +1533,55 @@ impl RingSampleSeededOp {
 }
 
 impl HostRing64Tensor {
-    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
+    pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+    pub fn sample_bits(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+}
+
+impl HostRing128Tensor {
+    pub fn sample_uniform(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size)
+            .map(|_| {
+                let upper = rng.next_u64() as u128;
+                let lower = rng.next_u64() as u128;
+                Wrapping((upper << 64) + lower)
+            })
+            .collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+
+    pub fn sample_bits(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+}
+
+impl HostRing64Tensor {
+    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0.as_ref());
         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
@@ -1550,7 +1591,7 @@ impl HostRing64Tensor {
 }
 
 impl HostRing128Tensor {
-    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size)
@@ -1564,7 +1605,7 @@ impl HostRing128Tensor {
         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 
-    pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
@@ -2250,7 +2291,7 @@ mod tests {
     fn ring_sample() {
         let shape = RawShape(vec![5]);
         let seed = RawSeed([0u8; 16]);
-        let r = HostRing64Tensor::sample_uniform(&shape, &seed);
+        let r = HostRing64Tensor::sample_uniform_seeded(&shape, &seed);
         assert_eq!(
             r,
             HostRing64Tensor::from(vec![
@@ -2262,7 +2303,7 @@ mod tests {
             ])
         );
 
-        let r128 = HostRing128Tensor::sample_uniform(&shape, &seed);
+        let r128 = HostRing128Tensor::sample_uniform_seeded(&shape, &seed);
         assert_eq!(
             r128,
             HostRing128Tensor::from(vec![
@@ -2274,10 +2315,10 @@ mod tests {
             ])
         );
 
-        let r_bits = HostRing64Tensor::sample_bits(&shape, &seed);
+        let r_bits = HostRing64Tensor::sample_bits_seeded(&shape, &seed);
         assert_eq!(r_bits, HostRing64Tensor::from(vec![0, 1, 1, 0, 0]));
 
-        let r128_bits = HostRing128Tensor::sample_bits(&shape, &seed);
+        let r128_bits = HostRing128Tensor::sample_bits_seeded(&shape, &seed);
         assert_eq!(r128_bits, HostRing128Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 

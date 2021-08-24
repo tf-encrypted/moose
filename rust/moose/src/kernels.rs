@@ -1251,29 +1251,53 @@ impl Compile<Kernel> for RingFillOp {
     }
 }
 
+impl Compile<Kernel> for RingSampleOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match (&self.sig, self.max_value) {
+            (signature![(_, _) -> Ty::HostRing64Tensor], None) => {
+                function_kernel!(HostShape, |shape| {
+                    HostRing64Tensor::sample_uniform(&shape.0)
+                })
+            }
+            (signature!((_, _) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
+                function_kernel!(HostShape, |shape| HostRing64Tensor::sample_bits(&shape.0))
+            }
+            (signature![(_, _) -> Ty::HostRing128Tensor], None) => {
+                function_kernel!(HostShape, |shape| {
+                    HostRing128Tensor::sample_uniform(&shape.0)
+                })
+            }
+            (signature![(_, _) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
+                function_kernel!(HostShape, |shape| {
+                    HostRing128Tensor::sample_bits(&shape.0)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
 impl Compile<Kernel> for RingSampleSeededOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.max_value) {
             (signature![(_, _) -> Ty::HostRing64Tensor], None) => {
                 function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing64Tensor::sample_uniform(&shape.0, &seed.0)
+                    HostRing64Tensor::sample_uniform_seeded(&shape.0, &seed.0)
                 })
             }
             (signature!((_, _) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
-                function_kernel!(
-                    HostShape,
-                    Seed,
-                    |shape, seed| HostRing64Tensor::sample_bits(&shape.0, &seed.0)
-                )
+                function_kernel!(HostShape, Seed, |shape, seed| {
+                    HostRing64Tensor::sample_bits_seeded(&shape.0, &seed.0)
+                })
             }
             (signature![(_, _) -> Ty::HostRing128Tensor], None) => {
                 function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing128Tensor::sample_uniform(&shape.0, &seed.0)
+                    HostRing128Tensor::sample_uniform_seeded(&shape.0, &seed.0)
                 })
             }
             (signature![(_, _) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
                 function_kernel!(HostShape, Seed, |shape, seed| {
-                    HostRing128Tensor::sample_bits(&shape.0, &seed.0)
+                    HostRing128Tensor::sample_bits_seeded(&shape.0, &seed.0)
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
