@@ -1623,10 +1623,6 @@ impl RepAbsOp {
         ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementFill<S, ShapeT, st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), ShapeT>,
-        ReplicatedPlacement:
-            PlacementAdd<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-        ReplicatedPlacement:
-            PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
         ReplicatedPlacement: PlacementMulSetup<
             S,
             SetupT,
@@ -1634,10 +1630,13 @@ impl RepAbsOp {
             st!(RepTen<RingT>),
             st!(RepTen<RingT>),
         >,
+        ReplicatedPlacement: PlacementShl<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+        ReplicatedPlacement:
+            PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     {
-        // TODO(Dragos) Remove un-necessary cloning
+        // TODO(Dragos) Remove un-necessary cloning due to st! macro
         let msb_ring: st!(RepTen<RingT>) = rep.msb(sess, &setup, &x.clone().into());
-        let double = with_context!(rep, sess, msb_ring + msb_ring);
+        let double = rep.shl(sess, 1, &msb_ring);
 
         let one_r = RingT::Scalar::from(1).into();
         let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring));
