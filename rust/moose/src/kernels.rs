@@ -65,78 +65,82 @@ impl Session for SyncSession {
     type Value = Value;
 
     fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Value>) -> Value {
+        use Operator::*;
         match op {
-            Operator::Shape(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::BitExtract(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RingInject(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            // Operator::RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Input(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Output(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Load(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Operator::HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            op => unimplemented!("SyncSession implementation is missing for {:?}", op), // TODO Remove the catch-all case once all the Ops have kernels.
+            Shape(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitXor(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitAnd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BitExtract(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSample(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingNeg(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingInject(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepShare(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtReveal(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AdtToRep(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Constant(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Input(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Output(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Load(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            // TODO add support for the missing operators below
+            Identity(_) | Send(_) | Receive(_) | HostReshape(_) | BitSample(_) | RepAbs(_)
+            | RepDaBit(_) => unimplemented!("SyncSession implementation is missing for {:?}", op),
         }
     }
 
@@ -590,6 +594,7 @@ impl Compile<SyncKernel> for Operator {
             HostSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostTranspose(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostInverse(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingNeg(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -608,7 +613,19 @@ impl Compile<SyncKernel> for Operator {
             FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            op => unimplemented!("deprecated, should not impl for {:?}", op),
+            // TODO implement below (needed until we switch to new framework for execution)
+            RingSample(_) | BitSample(_) | FixedpointEncode(_) | FixedpointDecode(_)
+            | FixedpointAdd(_) | FixedpointSub(_) | FixedpointMul(_) | FixedpointDot(_)
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
+                unimplemented!("deprecated, not impl {:?}", self)
+            }
+            // NOTE the following are not supported by design
+            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
+            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepSum(_) | RepTruncPr(_) | RepDaBit(_) | RepToAdt(_) => {
+                unimplemented!("Not supported {:?}", self)
+            }
         }
     }
 }
@@ -662,7 +679,19 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointRingEncode(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            op => unimplemented!("deprecated, should not impl for {:?}", op),
+            // TODO implement below (needed until we switch to new framework for execution)
+            RingSample(_) | BitSample(_) | FixedpointEncode(_) | FixedpointDecode(_)
+            | FixedpointAdd(_) | FixedpointSub(_) | FixedpointMul(_) | FixedpointDot(_)
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
+                unimplemented!("deprecated, not impl {:?}", self)
+            }
+            // NOTE the following are not supported by design
+            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
+            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepSum(_) | RepTruncPr(_) | RepDaBit(_) | RepToAdt(_) => {
+                unimplemented!("Not supported {:?}", self)
+            }
         }
     }
 }

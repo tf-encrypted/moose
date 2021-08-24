@@ -123,6 +123,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             BitXor(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             BitAnd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             BitExtract(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            // BitSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             RingSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
