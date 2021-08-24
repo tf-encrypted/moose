@@ -1273,20 +1273,20 @@ impl Compile<Kernel> for RingFillOp {
 impl Compile<Kernel> for RingSampleOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match (&self.sig, self.max_value) {
-            (signature![(_, _) -> Ty::HostRing64Tensor], None) => {
+            (signature![(_) -> Ty::HostRing64Tensor], None) => {
                 function_kernel!(HostShape, |shape| {
                     HostRing64Tensor::sample_uniform(&shape.0)
                 })
             }
-            (signature!((_, _) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
+            (signature!((_) -> Ty::HostRing64Tensor), Some(max_value)) if max_value == 1 => {
                 function_kernel!(HostShape, |shape| HostRing64Tensor::sample_bits(&shape.0))
             }
-            (signature![(_, _) -> Ty::HostRing128Tensor], None) => {
+            (signature![(_) -> Ty::HostRing128Tensor], None) => {
                 function_kernel!(HostShape, |shape| {
                     HostRing128Tensor::sample_uniform(&shape.0)
                 })
             }
-            (signature![(_, _) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
+            (signature![(_) -> Ty::HostRing128Tensor], Some(max_value)) if max_value == 1 => {
                 function_kernel!(HostShape, |shape| {
                     HostRing128Tensor::sample_bits(&shape.0)
                 })
