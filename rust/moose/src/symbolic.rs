@@ -123,6 +123,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             BitXor(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             BitAnd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             BitExtract(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            BitSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             RingSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
@@ -183,7 +184,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             // TODO add support for the following
-            Identity(_) | HostReshape(_) | BitSample(_) => {
+            Identity(_) | HostReshape(_) => {
                 unimplemented!("Missing implementation for symbolic operator {:?}", op)
             }
             // the following operators are not supported by design (for now, at least)

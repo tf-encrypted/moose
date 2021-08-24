@@ -1,14 +1,14 @@
 use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleSeededOp, BitXorOp, Constant, HostAddOp,
-    HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp,
-    HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed,
-    Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, Constant,
+    HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
+    HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp,
+    Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded,
+    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
     PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
     PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
@@ -748,6 +748,29 @@ impl BitFillOp {
         let raw_shape = shape.0 .0;
         let raw_tensor = ArrayD::from_elem(raw_shape.as_ref(), value as u8);
         HostBitTensor(raw_tensor, plc.clone())
+    }
+}
+
+modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape) -> HostBitTensor, BitSampleOp);
+
+kernel! {
+    BitSampleOp,
+    [
+        (HostPlacement, (HostShape) -> HostBitTensor => Self::kernel),
+    ]
+}
+
+impl BitSampleOp {
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostBitTensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        HostBitTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
     }
 }
 
