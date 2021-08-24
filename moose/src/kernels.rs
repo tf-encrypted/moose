@@ -144,8 +144,9 @@ impl Session for SyncSession {
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // TODO add support for the missing operators below
-            Receive(_) | HostReshape(_) => {
+            HostReshape(_) => {
                 unimplemented!("SyncSession implementation is missing for {:?}", op)
             }
         }
@@ -515,6 +516,10 @@ pub trait PlacementSave<S: Session, KeyT, T, O> {
 
 pub trait PlacementSend<S: Session, T, O> {
     fn send(&self, sess: &S, rendezvous_key: String, receiver: Role, x: &T) -> O;
+}
+
+pub trait PlacementReceive<S: Session, O> {
+    fn receive(&self, sess: &S, rendezvous_key: String, sendrt: Role) -> O;
 }
 
 pub trait PlacementAtLeast2D<S: Session, T, O> {
@@ -1751,6 +1756,64 @@ impl Compile<AsyncKernel> for SendOp {
                 }))))
             })
         })))
+    }
+}
+
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> String, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Unit, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostShape, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Seed, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> PrfKey, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostBitTensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostRing64Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostRing128Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostFloat32Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostFloat64Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt8Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt16Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt32Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostInt64Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint8Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint16Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint32Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> HostUint64Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Fixed64Tensor, ReceiveOp);
+modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> Fixed128Tensor, ReceiveOp);
+
+kernel! {
+    ReceiveOp, [
+        (HostPlacement, () -> String => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Unit => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostShape => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Seed => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> PrfKey => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostBitTensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostRing64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostRing128Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFloat32Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFloat64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt8Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt16Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt32Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint8Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint16Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint32Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Fixed64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Fixed128Tensor => attributes[rendezvous_key, sender] Self::kernel),
+
+    ]
+}
+
+impl ReceiveOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _rendezvous_key: String,
+        _sender: Role,
+    ) -> T {
+        unimplemented!("Receive Op kernel implementation missing, because RuntimeSession does not have role_assignment yet")
     }
 }
 
