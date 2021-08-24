@@ -892,9 +892,9 @@ operators![
     RepMsb,
     RepDot,
     RepMean,
+    RepShl,
     RepSum,
     RepTruncPr,
-    RepDaBit,
     RepToAdt,
 ];
 
@@ -1043,11 +1043,6 @@ pub struct BitFillOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitToRingOp {
-    pub sig: Signature,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepDaBitOp {
     pub sig: Signature,
 }
 
@@ -1344,6 +1339,12 @@ pub struct RepToAdtOp {
 pub struct RepFillOp {
     pub sig: Signature,
     pub value: Constant,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShlOp {
+    pub sig: Signature,
+    pub amount: usize,
 }
 
 pub trait KnownPlacement {

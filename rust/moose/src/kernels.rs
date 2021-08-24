@@ -96,9 +96,11 @@ impl Session for SyncSession {
             RepDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -139,8 +141,9 @@ impl Session for SyncSession {
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             // TODO add support for the missing operators below
-            Identity(_) | Send(_) | Receive(_) | HostReshape(_) | BitSample(_) | RepAbs(_)
-            | RepDaBit(_) => unimplemented!("SyncSession implementation is missing for {:?}", op),
+            Identity(_) | Send(_) | Receive(_) | HostReshape(_) | BitSample(_) => {
+                unimplemented!("SyncSession implementation is missing for {:?}", op)
+            }
         }
     }
 
@@ -623,7 +626,7 @@ impl Compile<SyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepSum(_) | RepTruncPr(_) | RepDaBit(_) | RepToAdt(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -689,7 +692,7 @@ impl Compile<AsyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepSum(_) | RepTruncPr(_) | RepDaBit(_) | RepToAdt(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
