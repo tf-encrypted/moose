@@ -213,7 +213,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
     ) -> &'py PyArrayDyn<u8> {
         let shape = RawShape(shape);
         let seed = RawSeed(seed.as_bytes().try_into().unwrap());
-        let b = HostBitTensor::sample_uniform(&shape, &seed);
+        let b = HostBitTensor::sample_uniform_seeded(&shape, &seed);
         ArrayD::<u8>::from(b).to_pyarray(py)
     }
 

@@ -603,11 +603,13 @@ impl Compile<SyncKernel> for Operator {
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<SyncKernel>::compile(op, ctx),
+            BitSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<SyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -617,9 +619,9 @@ impl Compile<SyncKernel> for Operator {
             FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op, ctx),
             // TODO implement below (needed until we switch to new framework for execution)
-            RingSample(_) | BitSample(_) | FixedpointEncode(_) | FixedpointDecode(_)
-            | FixedpointAdd(_) | FixedpointSub(_) | FixedpointMul(_) | FixedpointDot(_)
-            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
+            FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
+            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
+            | FixedpointSum(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
@@ -669,11 +671,13 @@ impl Compile<AsyncKernel> for Operator {
             RingMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShr(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingInject(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitExtract(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            BitSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitXor(op) => Compile::<AsyncKernel>::compile(op, ctx),
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -683,9 +687,9 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointRingDecode(op) => Compile::<AsyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
             // TODO implement below (needed until we switch to new framework for execution)
-            RingSample(_) | BitSample(_) | FixedpointEncode(_) | FixedpointDecode(_)
-            | FixedpointAdd(_) | FixedpointSub(_) | FixedpointMul(_) | FixedpointDot(_)
-            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
+            FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
+            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
+            | FixedpointSum(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
@@ -1399,13 +1403,18 @@ impl Compile<Kernel> for BitExtractOp {
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for BitSampleOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        function_kernel!(HostShape, |shape| HostBitTensor::sample_uniform(&shape.0))
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for BitSampleSeededOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        function_kernel!(
-            HostShape,
-            Seed,
-            |shape, seed| HostBitTensor::sample_uniform(&shape.0, &seed.0)
-        )
+        function_kernel!(HostShape, Seed, |shape, seed| {
+            HostBitTensor::sample_uniform_seeded(&shape.0, &seed.0)
+        })
     }
 }
 

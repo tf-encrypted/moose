@@ -843,7 +843,26 @@ impl HostBitTensor {
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
         )
     )]
-    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_uniform(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostBitTensor(
+            Array::from_shape_vec(ix, values).unwrap(),
+            HostPlacement {
+                owner: "TODO".into(), // Fake owner for the older kernels.
+            },
+        )
+    }
+
+    #[cfg_attr(
+        feature = "exclude_old_framework",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
+        )
+    )]
+    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -2202,7 +2221,7 @@ mod tests {
     fn bit_sample() {
         let shape = RawShape(vec![5]);
         let seed = RawSeed([0u8; 16]);
-        let r = HostBitTensor::sample_uniform(&shape, &seed);
+        let r = HostBitTensor::sample_uniform_seeded(&shape, &seed);
         assert_eq!(r, HostBitTensor::from(vec![0, 1, 1, 0, 0,]));
     }
 
