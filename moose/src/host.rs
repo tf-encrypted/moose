@@ -1,16 +1,16 @@
 use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitXorOp, Constant, HostAddOp, HostConcatOp,
-    HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
-    HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement,
-    RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingShlOp,
-    RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, Constant,
+    HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
+    HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp,
+    Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleUniform, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
-    Session, SyncSession, Tensor,
+    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
+    PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
+    PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -523,7 +523,7 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for HostTensor<T>
 where
     T: LinalgScalar,
@@ -538,6 +538,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Add for HostTensor<T>
 where
     T: LinalgScalar,
@@ -553,6 +554,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Sub for HostTensor<T>
 where
     T: LinalgScalar,
@@ -568,6 +570,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Mul for HostTensor<T>
 where
     T: LinalgScalar,
@@ -583,6 +586,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Div for HostTensor<T>
 where
     T: LinalgScalar,
@@ -599,7 +603,7 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for HostTensor<T> {
     fn from(v: Vec<T>) -> HostTensor<T> {
         HostTensor(
@@ -612,7 +616,7 @@ impl<T> From<Vec<T>> for HostTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Array1<T>> for HostTensor<T> {
     fn from(v: Array1<T>) -> HostTensor<T> {
         HostTensor(
@@ -625,7 +629,7 @@ impl<T> From<Array1<T>> for HostTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct HostTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Array2<T>> for HostTensor<T> {
     fn from(v: Array2<T>) -> HostTensor<T> {
         HostTensor(
@@ -637,6 +641,7 @@ impl<T> From<Array2<T>> for HostTensor<T> {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 pub fn concatenate<T>(axis: usize, arrays: &[HostTensor<T>]) -> HostTensor<T>
 where
     T: LinalgScalar,
@@ -746,16 +751,39 @@ impl BitFillOp {
     }
 }
 
-modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape, Seed) -> HostBitTensor, BitSampleOp);
+modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape) -> HostBitTensor, BitSampleOp);
 
 kernel! {
     BitSampleOp,
+    [
+        (HostPlacement, (HostShape) -> HostBitTensor => Self::kernel),
+    ]
+}
+
+impl BitSampleOp {
+    fn kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostBitTensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        HostBitTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+}
+
+modelled!(PlacementSampleUniformSeeded::sample_uniform_seeded, HostPlacement, (HostShape, Seed) -> HostBitTensor, BitSampleSeededOp);
+
+kernel! {
+    BitSampleSeededOp,
     [
         (HostPlacement, (HostShape, Seed) -> HostBitTensor => Self::kernel),
     ]
 }
 
-impl BitSampleOp {
+impl BitSampleSeededOp {
     fn kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -833,12 +861,31 @@ impl BitAndOp {
 
 impl HostBitTensor {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleOp::kernel for the new code"
+            note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
         )
     )]
-    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_uniform(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostBitTensor(
+            Array::from_shape_vec(ix, values).unwrap(),
+            HostPlacement {
+                owner: "TODO".into(), // Fake owner for the older kernels.
+            },
+        )
+    }
+
+    #[cfg_attr(
+        feature = "exclude_old_framework",
+        deprecated(
+            note = "This function is only used by the old kernels, which are not aware of the placements. See BitSampleSeededOp::kernel for the new code"
+        )
+    )]
+    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| rng.get_bit()).collect();
@@ -854,7 +901,7 @@ impl HostBitTensor {
 
 impl HostBitTensor {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements. See BitFillOp::kernel for the new code"
         )
@@ -882,7 +929,7 @@ impl HostBitTensor {
 }
 
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<u8>> for HostBitTensor {
     fn from(a: ArrayD<u8>) -> HostBitTensor {
         let wrapped = a.mapv(|ai| (ai & 1) as u8);
@@ -896,7 +943,7 @@ impl From<ArrayD<u8>> for HostBitTensor {
 }
 
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<Vec<u8>> for HostBitTensor {
     fn from(v: Vec<u8>) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
@@ -910,7 +957,7 @@ impl From<Vec<u8>> for HostBitTensor {
 }
 
 // This implementation is only used by the old kernels. Construct HostBitTensor(raw_tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<&[u8]> for HostBitTensor {
     fn from(v: &[u8]) -> HostBitTensor {
         let ix = IxDyn(&[v.len()]);
@@ -1360,11 +1407,95 @@ impl RingShrOp {
     }
 }
 
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleOp);
-modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing64Tensor, RingSampleOp);
+modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u64>] (HostShape) -> HostRing128Tensor, RingSampleOp);
 
 kernel! {
     RingSampleOp,
+    [
+        (HostPlacement, (HostShape) -> HostRing64Tensor => custom |op| {
+            match op.max_value {
+                None => Box::new(|ctx, plc, shape| {
+                    Self::kernel_uniform_u64(ctx, plc, shape)
+                }),
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                    Self::kernel_bits_u64(ctx, plc, shape)
+                }),
+                _ => unimplemented!(),
+            }
+        }),
+        (HostPlacement, (HostShape) -> HostRing128Tensor => custom |op| {
+            match op.max_value {
+                None => Box::new(|ctx, plc, shape| {
+                    Self::kernel_uniform_u128(ctx, plc, shape)
+                }),
+                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                    Self::kernel_bits_u128(ctx, plc, shape)
+                }),
+                _ => unimplemented!(),
+            }
+        }),
+    ]
+}
+
+impl RingSampleOp {
+    fn kernel_uniform_u64<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing64Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        let raw_array = Array::from_shape_vec(ix, values).unwrap();
+        AbstractHostRingTensor(raw_array, plc.clone())
+    }
+
+    fn kernel_bits_u64<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing64Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+
+    fn kernel_uniform_u128<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing128Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size)
+            .map(|_| Wrapping(((rng.next_u64() as u128) << 64) + rng.next_u64() as u128))
+            .collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+
+    fn kernel_bits_u128<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        shape: HostShape,
+    ) -> HostRing128Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0 .0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
+        let ix = IxDyn(shape.0 .0.as_ref());
+        AbstractHostRingTensor(Array::from_shape_vec(ix, values).unwrap(), plc.clone())
+    }
+}
+
+modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing64Tensor, RingSampleSeededOp);
+modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_value: Option<u64>] (HostShape, Seed) -> HostRing128Tensor, RingSampleSeededOp);
+
+kernel! {
+    RingSampleSeededOp,
     [
         (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => custom |op| {
             match op.max_value {
@@ -1391,7 +1522,7 @@ kernel! {
     ]
 }
 
-impl RingSampleOp {
+impl RingSampleSeededOp {
     fn kernel_uniform_u64<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -1448,15 +1579,59 @@ impl RingSampleOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
-    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
+    pub fn sample_uniform(shape: &RawShape) -> HostRing64Tensor {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+    pub fn sample_bits(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl HostRing128Tensor {
+    pub fn sample_uniform(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size)
+            .map(|_| {
+                let upper = rng.next_u64() as u128;
+                let lower = rng.next_u64() as u128;
+                Wrapping((upper << 64) + lower)
+            })
+            .collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+
+    pub fn sample_bits(shape: &RawShape) -> Self {
+        let mut rng = AesRng::from_random_seed();
+        let size = shape.0.iter().product();
+        let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
+        let ix = IxDyn(shape.0.as_ref());
+        HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl HostRing64Tensor {
+    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> HostRing64Tensor {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.next_u64())).collect();
         let ix = IxDyn(shape.0.as_ref());
         HostRing64Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
-    pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u64)).collect();
@@ -1465,8 +1640,9 @@ impl HostRing64Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
-    pub fn sample_uniform(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_uniform_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size)
@@ -1480,7 +1656,7 @@ impl HostRing128Tensor {
         HostRing128Tensor::new(Array::from_shape_vec(ix, values).unwrap())
     }
 
-    pub fn sample_bits(shape: &RawShape, seed: &RawSeed) -> Self {
+    pub fn sample_bits_seeded(shape: &RawShape, seed: &RawSeed) -> Self {
         let mut rng = AesRng::from_seed(seed.0);
         let size = shape.0.iter().product();
         let values: Vec<_> = (0..size).map(|_| Wrapping(rng.get_bit() as u128)).collect();
@@ -1489,6 +1665,7 @@ impl HostRing128Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing64Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
@@ -1497,6 +1674,7 @@ impl HostRing64Tensor {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl HostRing128Tensor {
     pub fn bit_extract(&self, bit_idx: usize) -> HostBitTensor {
         let temp = &self.0 >> bit_idx;
@@ -1519,13 +1697,13 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
 {
     #[cfg_attr(
-        feature = "symbolic",
+        feature = "exclude_old_framework",
         deprecated(
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
@@ -1547,7 +1725,7 @@ impl<T> AbstractHostRingTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<ArrayD<T>> for AbstractHostRingTensor<T>
 where
     T: Clone,
@@ -1564,7 +1742,7 @@ where
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
     fn from(a: ArrayD<i64>) -> AbstractHostRingTensor<u64> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u64));
@@ -1578,7 +1756,7 @@ impl From<ArrayD<i64>> for AbstractHostRingTensor<u64> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
     fn from(a: ArrayD<i128>) -> AbstractHostRingTensor<u128> {
         let ring_rep = a.mapv(|ai| Wrapping(ai as u128));
@@ -1591,13 +1769,8 @@ impl From<ArrayD<i128>> for AbstractHostRingTensor<u128> {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T> {
-    #[cfg_attr(
-        feature = "symbolic",
-        deprecated(
-            note = "This function is only used by the old kernels, which are not aware of the placements."
-        )
-    )]
     pub fn new(a: ArrayD<Wrapping<T>>) -> AbstractHostRingTensor<T> {
         AbstractHostRingTensor(
             a,
@@ -1609,7 +1782,7 @@ impl<T> AbstractHostRingTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<HostBitTensor> for AbstractHostRingTensor<T>
 where
     T: From<u8>,
@@ -1638,7 +1811,7 @@ impl From<&AbstractHostRingTensor<u128>> for ArrayD<i128> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
     fn from(v: Vec<T>) -> AbstractHostRingTensor<T> {
         let ix = IxDyn(&[v.len()]);
@@ -1654,7 +1827,7 @@ impl<T> From<Vec<T>> for AbstractHostRingTensor<T> {
 }
 
 // This implementation is only used by the old kernels. Construct AbstractHostRingTensor(tensor, plc.clone()) with a proper placement instead.
-#[cfg(not(feature = "symbolic"))]
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> From<&[T]> for AbstractHostRingTensor<T>
 where
     T: Copy,
@@ -1671,6 +1844,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Add<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1682,6 +1856,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Mul<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1693,6 +1868,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Sub<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1704,6 +1880,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Shl<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1715,6 +1892,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> Shr<usize> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1726,6 +1904,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> BitAnd<AbstractHostRingTensor<T>> for AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone,
@@ -1737,6 +1916,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: LinalgScalar,
@@ -1789,6 +1969,7 @@ where
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
 impl<T> AbstractHostRingTensor<T>
 where
     Wrapping<T>: Clone + Zero,
@@ -2063,7 +2244,7 @@ mod tests {
     fn bit_sample() {
         let shape = RawShape(vec![5]);
         let seed = RawSeed([0u8; 16]);
-        let r = HostBitTensor::sample_uniform(&shape, &seed);
+        let r = HostBitTensor::sample_uniform_seeded(&shape, &seed);
         assert_eq!(r, HostBitTensor::from(vec![0, 1, 1, 0, 0,]));
     }
 
@@ -2166,7 +2347,7 @@ mod tests {
     fn ring_sample() {
         let shape = RawShape(vec![5]);
         let seed = RawSeed([0u8; 16]);
-        let r = HostRing64Tensor::sample_uniform(&shape, &seed);
+        let r = HostRing64Tensor::sample_uniform_seeded(&shape, &seed);
         assert_eq!(
             r,
             HostRing64Tensor::from(vec![
@@ -2178,7 +2359,7 @@ mod tests {
             ])
         );
 
-        let r128 = HostRing128Tensor::sample_uniform(&shape, &seed);
+        let r128 = HostRing128Tensor::sample_uniform_seeded(&shape, &seed);
         assert_eq!(
             r128,
             HostRing128Tensor::from(vec![
@@ -2190,10 +2371,10 @@ mod tests {
             ])
         );
 
-        let r_bits = HostRing64Tensor::sample_bits(&shape, &seed);
+        let r_bits = HostRing64Tensor::sample_bits_seeded(&shape, &seed);
         assert_eq!(r_bits, HostRing64Tensor::from(vec![0, 1, 1, 0, 0]));
 
-        let r128_bits = HostRing128Tensor::sample_bits(&shape, &seed);
+        let r128_bits = HostRing128Tensor::sample_bits_seeded(&shape, &seed);
         assert_eq!(r128_bits, HostRing128Tensor::from(vec![0, 1, 1, 0, 0]));
     }
 

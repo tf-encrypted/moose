@@ -849,6 +849,7 @@ operators![
     RingDot,
     RingSum,
     RingSample,
+    RingSampleSeeded,
     RingShl,
     RingShr,
     RingInject,
@@ -856,6 +857,7 @@ operators![
     BitFill,
     BitExtract,
     BitSample,
+    BitSampleSeeded,
     BitXor,
     BitAnd,
     FixedpointEncode,
@@ -1105,6 +1107,12 @@ pub struct RingSampleOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RingSampleSeededOp {
+    pub sig: Signature,
+    pub max_value: Option<u64>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingShlOp {
     pub sig: Signature,
     pub amount: usize,
@@ -1130,6 +1138,11 @@ pub struct BitExtractOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct BitSampleOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct BitSampleSeededOp {
     pub sig: Signature,
 }
 

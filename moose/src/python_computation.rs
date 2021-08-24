@@ -915,7 +915,8 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     ring_RingSampleOperation(op) => Ok(Operation {
-                        kind: RingSampleOp {
+                        // NOTE(Morten) the old Python op was RingSampleOp, ie without Seeded
+                        kind: RingSampleSeededOp {
                             sig: Signature::binary(
                                 Ty::HostShape,
                                 Ty::Seed,
@@ -1010,7 +1011,8 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     bit_BitSampleOperation(op) => Ok(Operation {
-                        kind: BitSampleOp {
+                        // NOTE(Morten) mapping from BitSample in Python to BitSampleSeeded in Rust
+                        kind: BitSampleSeededOp {
                             sig: Signature::binary(Ty::HostShape, Ty::Seed, Ty::HostBitTensor),
                         }
                         .into(),

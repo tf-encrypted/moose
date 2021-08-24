@@ -285,6 +285,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             tag(RingSumOp::SHORT_NAME),
             cut(operation_on_axis!(RingSumOp)),
         ),
+        preceded(tag(RingSampleSeededOp::SHORT_NAME), cut(ring_sample_seeded)),
         preceded(tag(RingSampleOp::SHORT_NAME), cut(ring_sample)),
         preceded(tag(RingShlOp::SHORT_NAME), cut(ring_shl)),
         preceded(tag(RingShrOp::SHORT_NAME), cut(ring_shr)),
@@ -308,8 +309,10 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let part3 = alt((
         preceded(tag(RingInjectOp::SHORT_NAME), cut(ring_inject)),
         preceded(tag(BitExtractOp::SHORT_NAME), cut(bit_extract)),
+        preceded(tag(BitSampleSeededOp::SHORT_NAME), cut(bit_sample_seeded)),
         preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
+        preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
     ));
     alt((part1, part2, part3))(input)
 }
@@ -421,7 +424,7 @@ fn hostconcat<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, HostConcatOp { sig, axis }.into()))
 }
 
-/// Parses a RingSample operator.
+/// Parses a RingSampleOp operator.
 fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
@@ -435,6 +438,38 @@ fn ring_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         }
         .into(),
     ))
+}
+
+/// Parses a RingSampleSeededOp operator.
+fn ring_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, opt_max_value) = opt(attributes_single("max_value", parse_int))(input)?;
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((
+        input,
+        RingSampleSeededOp {
+            sig,
+            max_value: opt_max_value,
+        }
+        .into(),
+    ))
+}
+
+/// Parses a BitSampleOp operator.
+fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((input, BitSampleOp { sig }.into()))
+}
+
+/// Parses a BitSampleSeededOp operator.
+fn bit_sample_seeded<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, sig) = type_definition(0)(input)?;
+    Ok((input, BitSampleSeededOp { sig }.into()))
 }
 
 /// Parses a BitFill operator.
@@ -603,15 +638,6 @@ fn bit_extract<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, BitExtractOp { sig, bit_idx }.into()))
 }
 
-/// Parses a BitSample operator.
-fn bit_sample<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
-    input: &'a str,
-) -> IResult<&'a str, Operator, E> {
-    let (input, opt_args) = opt(type_definition(0))(input)?;
-    let sig = opt_args.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
-    Ok((input, BitSampleOp { sig }.into()))
-}
-
 /// Parses a BitXor operator.
 fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
@@ -619,6 +645,15 @@ fn bit_xor<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
     Ok((input, BitXorOp { sig }.into()))
+}
+
+/// Parses a BitAnd operator.
+fn bit_and<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, opt_sig) = opt(type_definition(0))(input)?;
+    let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::HostBitTensor));
+    Ok((input, BitAndOp { sig }.into()))
 }
 
 /// Parses list of arguments.
@@ -1158,6 +1193,8 @@ impl ToTextual for Operator {
             Output(op) => op.to_textual(),
             Constant(op) => op.to_textual(),
             Shape(op) => op.to_textual(),
+            BitXor(op) => op.to_textual(),
+            BitAnd(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
@@ -1182,13 +1219,13 @@ impl ToTextual for Operator {
             RingDot(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
             RingSample(op) => op.to_textual(),
+            RingSampleSeeded(op) => op.to_textual(),
             RingShl(op) => op.to_textual(),
             RingShr(op) => op.to_textual(),
             RingInject(op) => op.to_textual(),
             BitExtract(op) => op.to_textual(),
             BitSample(op) => op.to_textual(),
-            // BitXor(op) => op.to_textual(),
-            // BitAnd(op) => op.to_textual(),
+            BitSampleSeeded(op) => op.to_textual(),
             PrimDeriveSeed(op) => op.to_textual(),
             PrimPrfKeyGen(op) => op.to_textual(),
             FixedpointEncode(op) => op.to_textual(),
@@ -1213,7 +1250,11 @@ impl ToTextual for Operator {
             RepSub(op) => op.to_textual(),
             RepMul(op) => op.to_textual(),
             RepTruncPr(op) => op.to_textual(),
-            _ => unimplemented!("{:?}", self),
+            // TODO reconsider operators below and implement those that make sense
+            AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
+            | AdtToRep(_) | RepAbs(_) | RepFill(_) | RepMsb(_) | RepShl(_) | RepToAdt(_) => {
+                unimplemented!("{:?}", self)
+            }
         }
     }
 }
@@ -1261,7 +1302,6 @@ impl_to_textual!(HostOnesOp, "{op}: {}", sig);
 impl_to_textual!(HostConcatOp, "{op}{{axis={}}}: {}", axis, sig);
 impl_to_textual!(HostExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
 impl_to_textual!(HostReshapeOp, "{op}: {}", sig);
-impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RingFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(
     HostAtLeast2DOp,
@@ -1281,8 +1321,10 @@ impl_to_textual!(RingDotOp, "{op}: {}", sig);
 impl_to_textual!(RingShlOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingShrOp, "{op}{{amount={}}}: {}", amount, sig);
 impl_to_textual!(RingInjectOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
+impl_to_textual!(BitFillOp, "{op}{{value={}}}: {}", value, sig);
+impl_to_textual!(BitXorOp, "{op}: {}", sig);
+impl_to_textual!(BitAndOp, "{op}: {}", sig);
 impl_to_textual!(BitExtractOp, "{op}{{bit_idx={}}}: {}", bit_idx, sig);
-impl_to_textual!(BitSampleOp, "{op}: {}", sig);
 impl_to_textual!(PrimDeriveSeedOp, "{op}{{sync_key={}}}: {}", sync_key, sig);
 impl_to_textual!(PrimPrfKeyGenOp, "{op}: {}", sig);
 impl_to_textual!(
@@ -1466,6 +1508,28 @@ impl ToTextual for RingSampleOp {
     }
 }
 
+impl ToTextual for RingSampleSeededOp {
+    fn to_textual(&self) -> String {
+        match self {
+            RingSampleSeededOp {
+                sig,
+                max_value: Some(a),
+            } => format!(
+                "RingSampleSeeded{{max_value = {}}}: {}",
+                a,
+                sig.to_textual()
+            ),
+            RingSampleSeededOp {
+                sig,
+                max_value: None,
+            } => format!("RingSampleSeeded: {}", sig.to_textual()),
+        }
+    }
+}
+
+impl_to_textual!(BitSampleOp, "{op}: {}", sig);
+impl_to_textual!(BitSampleSeededOp, "{op}: {}", sig);
+
 impl ToTextual for Ty {
     fn to_textual(&self) -> String {
         match self {
@@ -1534,7 +1598,21 @@ impl ToTextual for Value {
             Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
-            _ => unimplemented!(), // TODO Implement the missing branches
+            // TODO Implement the missing branches
+            Value::Bit(_)
+            | Value::Unit(_)
+            | Value::HostBitTensor(_)
+            | Value::Fixed64Tensor(_)
+            | Value::Fixed128Tensor(_)
+            | Value::ReplicatedShape(_)
+            | Value::ReplicatedSetup(_)
+            | Value::ReplicatedBitTensor(_)
+            | Value::ReplicatedRing64Tensor(_)
+            | Value::ReplicatedRing128Tensor(_)
+            | Value::AdditiveShape(_)
+            | Value::AdditiveBitTensor(_)
+            | Value::AdditiveRing64Tensor(_)
+            | Value::AdditiveRing128Tensor(_) => unimplemented!(),
         }
     }
 }
@@ -1563,7 +1641,8 @@ impl ToTextual for Constant {
             Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
-            _ => unimplemented!(), // TODO Implement the missing branches for the BitTensors
+            // TODO Implement the missing branches
+            Constant::Bit(_) | Constant::HostBitTensor(_) => unimplemented!(),
         }
     }
 }
@@ -1921,7 +2000,7 @@ mod tests {
     #[test]
     fn test_ring_sample() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "x10 = RingSample{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
+            "x10 = RingSampleSeeded{max_value = 1}: (Shape, Seed) -> Ring64Tensor (shape, seed) @Host(alice)",
         )?;
         assert_eq!(op.name, "x10");
         Ok(())
@@ -2012,11 +2091,15 @@ mod tests {
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitExtract {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitSample() @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = BitSampleSeeded: (Shape, Seed) -> BitTensor (shape, seed) @Host(alice)",
+        )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = BitFill {value = Ring64(0)}: (Shape) -> BitTensor (s) @Host(alice)",
         )?;
-        parse_assignment::<(&str, ErrorKind)>("z = BitXor() @Host(alice)")?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = BitXor: (BitTensor, BitTensor) -> BitTensor (x, y) @Host(alice)",
+        )?;
 
         parse_assignment::<(&str, ErrorKind)>(
             "load = Load: (String, String) -> Float64Tensor (xuri, xconstant) @Host(alice)",
