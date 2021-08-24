@@ -1909,27 +1909,12 @@ impl Compile<AsyncKernel> for IdentityOp {
     }
 }
 
-// Not all the variants from the `values![]` list can be received as an input (nothing replicated, for instance).
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> String, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Unit, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostShape, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Seed, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> PrfKey, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitTensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostRing64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostRing128Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt8Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt16Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint8Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint16Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed128Tensor, InputOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> $value, InputOp);
+    )*
+)}
+
 kernel! {
     InputOp, [
         (HostPlacement, () -> String => attributes[arg_name] Self::kernel),
@@ -2001,27 +1986,11 @@ impl Compile<AsyncKernel> for InputOp {
     }
 }
 
-// Not all the variants from the `values![]` list can be saved as an output (nothing replicated, for instance).
-modelled!(PlacementOutput::output, HostPlacement, (Unit) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostShape) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Seed) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (PrfKey) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (String) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostBitTensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostRing64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostRing128Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostFloat32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostFloat64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt8Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt16Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint8Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint16Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Fixed64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Fixed128Tensor) -> Unit, OutputOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementOutput::output, HostPlacement, ($value) -> Unit, OutputOp);
+    )*
+)}
 
 kernel! {
     OutputOp, [
@@ -2071,27 +2040,11 @@ impl Compile<AsyncKernel> for OutputOp {
     }
 }
 
-// Not all the variants from the `values![]` list can be saved (nothing replicated, for instance).
-modelled!(PlacementSave::save, HostPlacement, (String, Unit) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostShape) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Seed) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, PrfKey) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, String) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostBitTensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostRing64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostRing128Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostFloat32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostFloat64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt8Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt16Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint8Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint16Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Fixed64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Fixed128Tensor) -> Unit, SaveOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementSave::save, HostPlacement, (String, $value) -> Unit, SaveOp);
+    )*
+)}
 
 kernel! {
     SaveOp, [
@@ -2165,26 +2118,11 @@ impl Compile<AsyncKernel> for SaveOp {
     }
 }
 
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Unit, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostShape, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Seed, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> PrfKey, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> String, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostBitTensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostRing64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostRing128Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt8Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt16Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint8Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint16Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed128Tensor, LoadOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementLoad::load, HostPlacement, (String, String) -> $value, LoadOp);
+    )*
+)}
 
 kernel! {
     LoadOp, [
