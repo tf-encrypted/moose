@@ -3,7 +3,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
     AbstractHostRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
@@ -636,12 +636,15 @@ impl Compile<SyncKernel> for Operator {
             FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            // TODO implement below (needed until we switch to new framework for execution)
-            FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
-                unimplemented!("deprecated, not impl {:?}", self)
-            }
+            FixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointMul(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointDot(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointTruncPr(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointMean(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
@@ -1576,6 +1579,215 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointEncodeOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        use crate::fixedpoint::Convert;
+        match self.sig {
+            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
+                let scaling_factor = u64::pow(2, self.precision);
+                closure_kernel!(HostFloat64Tensor, |x| HostRing64Tensor::encode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing128Tensor] => {
+                let scaling_factor = u128::pow(2, self.precision);
+                closure_kernel!(HostFloat64Tensor, |x| HostRing128Tensor::encode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointDecodeOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        use crate::fixedpoint::Convert;
+        match self.sig {
+            signature![(Ty::HostRing64Tensor) -> _] => {
+                let scaling_factor = u64::pow(2, self.precision);
+                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::decode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            signature![(Ty::HostRing128Tensor) -> _] => {
+                let scaling_factor = u128::pow(2, self.precision);
+                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::decode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointAddOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x + y)
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x + y)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointSubOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x - y)
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x - y)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointMulOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x * y)
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x * y)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointDotOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x.dot(y))
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x.dot(y))
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointTruncPrOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        unimplemented!("FixedpointTruncPrOp is not implemented in the older framework")
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointMeanOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        unimplemented!("FixedpointMeanOp is not implemented in the older framework")
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointSumOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        unimplemented!("FixedpointSumOp is not implemented in the older framework")
     }
 }
 
