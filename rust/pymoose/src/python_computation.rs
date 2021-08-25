@@ -38,6 +38,7 @@ mod tests {
         (file_name + ".py", module_name)
     }
     fn run_binary_func(x: &ArrayD<f64>, y: &ArrayD<f64>, py_code: &str) -> Value {
+        pyo3::prepare_freethreaded_python();
         let gil = Python::acquire_gil();
         let py = gil.python();
 
@@ -76,6 +77,7 @@ mod tests {
         outputs["result"].clone()
     }
     fn run_unary_func(x: &ArrayD<f64>, py_code: &str) -> Value {
+        pyo3::prepare_freethreaded_python();
         let gil = Python::acquire_gil();
         let py = gil.python();
 
@@ -114,6 +116,7 @@ mod tests {
     }
 
     fn graph_from_run_call0_func(py_code: &str) -> Computation {
+        pyo3::prepare_freethreaded_python();
         let gil = Python::acquire_gil();
         let py = gil.python();
 
