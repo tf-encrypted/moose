@@ -23,20 +23,49 @@ use paste::paste;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
+pub const TAG_BYTES: usize = 128 / 8;
+static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
+static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
+
 pub type RendezvousKey = str;
 
-#[derive(Clone, Debug, Display)]
-pub struct SessionId(String);
+#[derive(Clone, Debug)]
+pub struct SessionId([u8; TAG_BYTES]);
 
-impl<S: Into<String>> From<S> for SessionId {
-    fn from(s: S) -> SessionId {
-        SessionId(s.into())
+impl std::fmt::Display for SessionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02X}", byte)?
+        }
+        Ok(())
+    }
+}
+
+impl TryFrom<&str> for SessionId {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<SessionId> {
+        let s_bytes = s.as_bytes();
+        if s_bytes.len() > TAG_BYTES {
+            return Err(Error::Unexpected); // TODO more helpful error message
+        }
+        let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
+        for (idx, byte) in s_bytes.iter().enumerate() {
+            raw[idx] = *byte;
+        }
+        Ok(SessionId(raw))
     }
 }
 
 impl SessionId {
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
+    pub fn as_bytes(&self) -> &[u8; TAG_BYTES] {
+        &self.0
+    }
+
+    pub fn random() -> Self {
+        let mut raw = [0; TAG_BYTES];
+        sodiumoxide::init().expect("failed to initialize sodiumoxide");
+        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        SessionId(raw)
     }
 }
 

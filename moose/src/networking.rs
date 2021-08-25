@@ -184,6 +184,7 @@ impl AsyncNetworking for DummyNetworking {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryFrom;
 
     #[test]
     fn sync_networking() {
@@ -196,13 +197,13 @@ mod tests {
             owner: "alice".into(),
         }));
 
-        net.send(&unit, &bob, "rdv", &SessionId::from("12345"))
+        net.send(&unit, &bob, "rdv", &SessionId::try_from("12345").unwrap())
             .unwrap();
-        net.send(&unit, &bob, "rdv", &SessionId::from("67890"))
+        net.send(&unit, &bob, "rdv", &SessionId::try_from("67890").unwrap())
             .unwrap();
-        net.receive(&alice, "rdv", &SessionId::from("12345"))
+        net.receive(&alice, "rdv", &SessionId::try_from("12345").unwrap())
             .unwrap();
-        net.receive(&alice, "rdv", &SessionId::from("67890"))
+        net.receive(&alice, "rdv", &SessionId::try_from("67890").unwrap())
             .unwrap();
     }
 
@@ -215,13 +216,15 @@ mod tests {
         let net1 = Arc::clone(&net);
         let task1 = tokio::spawn(async move {
             let alice = "alice".into();
-            net1.receive(&alice, "rdv", &SessionId::from("12345")).await
+            net1.receive(&alice, "rdv", &SessionId::try_from("12345").unwrap())
+                .await
         });
 
         let net2 = Arc::clone(&net);
         let task2 = tokio::spawn(async move {
             let alice = "alice".into();
-            net2.receive(&alice, "rdv", &SessionId::from("67890")).await
+            net2.receive(&alice, "rdv", &SessionId::try_from("67890").unwrap())
+                .await
         });
 
         let net3 = Arc::clone(&net);
@@ -230,7 +233,7 @@ mod tests {
             let unit = Value::Unit(Unit(HostPlacement {
                 owner: "alice".into(),
             }));
-            net3.send(&unit, &bob, "rdv", &SessionId::from("12345"))
+            net3.send(&unit, &bob, "rdv", &SessionId::try_from("12345").unwrap())
                 .await
         });
 
@@ -240,7 +243,7 @@ mod tests {
             let unit = Value::Unit(Unit(HostPlacement {
                 owner: "alice".into(),
             }));
-            net4.send(&unit, &bob, "rdv", &SessionId::from("67890"))
+            net4.send(&unit, &bob, "rdv", &SessionId::try_from("67890").unwrap())
                 .await
         });
 

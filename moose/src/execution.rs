@@ -16,6 +16,7 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
+use std::convert::TryFrom;
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
@@ -975,7 +976,7 @@ impl TestExecutor {
 
         let session = SyncSession {
             arguments,
-            sid: SessionId::from("abcdef"), // TODO sample random string
+            sid: SessionId::try_from("abcdef").unwrap(), // TODO sample random string
             networking: Rc::clone(&self.networking),
             storage: Rc::clone(&self.storage),
         };
@@ -1203,7 +1204,7 @@ impl AsyncTestRuntime {
 
         for (own_identity, executor) in self.executors.iter() {
             let moose_session = AsyncSession {
-                sid: SessionId::from("foobar"),
+                sid: SessionId::try_from("foobar").unwrap(),
                 arguments: arguments.clone(),
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
@@ -1249,7 +1250,7 @@ impl AsyncTestRuntime {
         let _guard = rt.enter();
         let val = rt.block_on(async {
             let val = self.runtime_storage[&identity]
-                .load(&key, &SessionId::from("foobar"), None, "")
+                .load(&key, &SessionId::try_from("foobar").unwrap(), None, "")
                 .await
                 .unwrap();
             val
@@ -1278,7 +1279,7 @@ impl AsyncTestRuntime {
 
         let result = rt.block_on(async {
             identity_storage
-                .save(&key, &SessionId::from("yo"), &value)
+                .save(&key, &SessionId::try_from("yo").unwrap(), &value)
                 .await
         });
         if let Err(e) = result {
@@ -1515,7 +1516,12 @@ mod tests {
                 let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(store));
                 let executor = TestExecutor::from_storage(&storage);
                 let _outputs = executor.run_computation(&source.try_into()?, arguments)?;
-                storage.load("saved_data", &SessionId::from("foobar"), None, "")?
+                storage.load(
+                    "saved_data",
+                    &SessionId::try_from("foobar").unwrap(),
+                    None,
+                    "",
+                )?
             }
         };
 

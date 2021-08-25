@@ -43,20 +43,10 @@ pub struct SyncSession {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
-impl SyncSession {
-    // Currently used in a test
-    pub fn new(replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>) -> Self {
-        SyncSession {
-            session_id: "abcde".into(),
-            replicated_keys,
-        }
-    }
-}
-
 impl Default for SyncSession {
     fn default() -> Self {
         SyncSession {
-            session_id: "abcde".into(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
+            session_id: SessionId::random(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
             replicated_keys: Default::default(),
         }
     }
