@@ -135,6 +135,7 @@ impl Session for SyncSession {
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Cast(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -545,6 +546,10 @@ pub trait PlacementInverse<S: Session, T, O> {
     fn inverse(&self, sess: &S, x: &T) -> O;
 }
 
+pub trait PlacementCast<S: Session, T, O> {
+    fn cast(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait EmptyTypeHolder<T> {}
 
 pub trait PlacementSlice<S: Session, T, O> {
@@ -623,6 +628,7 @@ impl Compile<SyncKernel> for Operator {
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             // TODO
             HostIndexAxis(_) => unimplemented!(),
+            Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
@@ -690,7 +696,7 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | FixedpointSum(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
