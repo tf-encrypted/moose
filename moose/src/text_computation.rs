@@ -525,12 +525,11 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, sync_key) = attributes_single(
-        "sync_key",
-        map(vector(parse_int), |v| {
-            SyncKey::try_from(v).unwrap() // TODO(Morten) proper error handling
-        }),
-    )(input)?;
+    let (input, sync_key) =
+        attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
+            .map_err(|_: nom::Err<nom::error::Error<&str>>| {
+                Error(make_error(input, ErrorKind::MapRes))
+            })?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
