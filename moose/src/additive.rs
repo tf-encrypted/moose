@@ -11,7 +11,7 @@ use crate::kernels::{
     PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
     PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
-use crate::prim::{PrfKey, SyncKey, Seed};
+use crate::prim::{PrfKey, Seed, SyncKey};
 use crate::replicated::CanonicalType;
 use crate::replicated::{
     AbstractReplicatedTensor, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,

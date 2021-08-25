@@ -1,4 +1,4 @@
-use crate::computation::{TAG_BYTES, HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
+use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::Result;
 use crate::kernels::{
     NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
@@ -123,7 +123,7 @@ impl SyncKey {
         let mut raw_sync_key = [0u8; TAG_BYTES];
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
         sodiumoxide::randombytes::randombytes_into(&mut raw_sync_key);
-        SyncKey(raw_sync_key.into())
+        SyncKey(raw_sync_key)
     }
 
     pub fn as_bytes(&self) -> &[u8] {
@@ -198,7 +198,8 @@ impl PrimDeriveSeedOp {
         use crate::prng::{RngSeed, SEED_SIZE};
         use sodiumoxide::crypto::generichash;
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        let mut hasher = generichash::State::new(Some(SEED_SIZE), Some(key_bytes)).expect("failed to initialize sodiumoxide hash function");
+        let mut hasher = generichash::State::new(Some(SEED_SIZE), Some(key_bytes))
+            .expect("failed to initialize sodiumoxide hash function");
         hasher.update(&nonce).unwrap();
         let h = hasher.finalize().unwrap();
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];

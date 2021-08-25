@@ -10,7 +10,7 @@ use crate::host::{
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
     HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
-use crate::prim::{PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
 use std::collections::HashMap;

@@ -16,7 +16,7 @@ use crate::kernels::{
     PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
     PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
-use crate::prim::{PrfKey, SyncKey, Seed};
+use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 
