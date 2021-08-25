@@ -200,6 +200,7 @@ impl PrimDeriveSeedOp {
         let sid = sess.session_id();
         let raw_key = key.0;
 
+        // TODO how do we concatenate; describe motivations
         let mut nonce: Vec<u8> = vec![];
         nonce.extend(sid.as_bytes());
         nonce.extend(sync_key.0);
