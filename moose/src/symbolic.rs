@@ -183,10 +183,8 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            // TODO add support for the following
-            Identity(_) | HostReshape(_) => {
-                unimplemented!("Missing implementation for symbolic operator {:?}", op)
-            }
+            Identity(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            HostReshape(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             // the following operators are not supported by design (for now, at least)
             Send(_) | Receive(_) => {
                 unimplemented!("Unsupported symbolic operator {:?}", op)
