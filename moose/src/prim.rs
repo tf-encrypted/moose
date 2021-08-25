@@ -116,7 +116,7 @@ impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct SyncKey(pub Vec<u8>);
+pub struct SyncKey([u8; TAG_BYTES]);
 
 impl SyncKey {
     pub fn random() -> SyncKey {
@@ -125,13 +125,32 @@ impl SyncKey {
         sodiumoxide::randombytes::randombytes_into(&mut raw_sync_key);
         SyncKey(raw_sync_key.into())
     }
+
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl TryFrom<Vec<u8>> for SyncKey {
+    type Error = crate::error::Error;
+    fn try_from(bytes: Vec<u8>) -> crate::error::Result<SyncKey> {
+        Self::try_from(bytes.as_ref())
+    }
 }
 
 impl TryFrom<&[u8]> for SyncKey {
     type Error = crate::error::Error;
     fn try_from(bytes: &[u8]) -> crate::error::Result<SyncKey> {
-        // TODO update when changing to fixed length
-        Ok(SyncKey(Vec::from(bytes)))
+        if bytes.len() <= TAG_BYTES {
+            // TODO easier way of doing this?
+            let mut sync_key_bytes = [0; TAG_BYTES];
+            for (idx, byte) in bytes.iter().enumerate() {
+                sync_key_bytes[idx] = *byte;
+            }
+            Ok(SyncKey(sync_key_bytes))
+        } else {
+            Err(crate::error::Error::Unexpected) // TODO more helpful error message
+        }
     }
 }
 

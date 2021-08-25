@@ -525,7 +525,9 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), SyncKey))(input)?;
+    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), |v| {
+        SyncKey::try_from(v).unwrap() // TODO(Morten) proper error handling
+    }))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
@@ -1680,7 +1682,7 @@ impl ToTextual for Role {
 // Required to serialize PrimDeriveSeedOp
 impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
-        format!("{:?}", self.0)
+        format!("{:?}", self.as_bytes())
     }
 }
 
@@ -1941,7 +1943,7 @@ mod tests {
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
-                sync_key: SyncKey(vec![1, 2, 3])
+                sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
         );
         Ok(())

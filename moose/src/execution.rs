@@ -1396,7 +1396,7 @@ mod tests {
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed::from_prf(&RawPrfKey([0; 16]), &SyncKey(vec![1, 2, 3]))
+            RawSeed::from_prf(&RawPrfKey([0; 16]), &SyncKey::try_from(vec![1, 2, 3]).unwrap())
         );
         Ok(())
     }

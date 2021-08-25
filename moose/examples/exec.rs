@@ -2,6 +2,7 @@ use moose::computation::*;
 use moose::execution::*;
 use moose::host::RawShape;
 use moose::prim::SyncKey;
+use std::convert::TryFrom;
 
 fn main() {
     let key_op = Operation {
@@ -20,7 +21,7 @@ fn main() {
         name: "x_seed".into(),
         kind: PrimDeriveSeedOp {
             sig: Signature::unary(Ty::PrfKey, Ty::Seed),
-            sync_key: SyncKey(vec![1, 2, 3]),
+            sync_key: SyncKey::try_from(vec![1, 2, 3]).unwrap(),
         }
         .into(),
         inputs: vec!["key".into()],
