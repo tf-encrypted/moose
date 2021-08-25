@@ -36,7 +36,7 @@ fn binary_pyfn<'py>(
 
 #[pymodule]
 fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    #[pyfn(m, "ring_add")]
+    #[pyfn(m)] #[pyo3(name= "ring_add")]
     fn ring_add<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -45,7 +45,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         binary_pyfn(py, x, y, |a, b| a + b)
     }
 
-    #[pyfn(m, "ring_mul")]
+    #[pyfn(m)] #[pyo3(name= "ring_mul")]
     fn ring_mul<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -54,7 +54,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         binary_pyfn(py, x, y, |a, b| a * b)
     }
 
-    #[pyfn(m, "ring_dot")]
+    #[pyfn(m)] #[pyo3(name= "ring_dot")]
     fn ring_dot<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -67,7 +67,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         res_array.to_pyarray(py)
     }
 
-    #[pyfn(m, "ring_sub")]
+    #[pyfn(m)] #[pyo3(name= "ring_sub")]
     fn ring_sub<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -76,7 +76,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         binary_pyfn(py, x, y, |a, b| a - b)
     }
 
-    #[pyfn(m, "ring_sum")]
+    #[pyfn(m)] #[pyo3(name= "ring_sum")]
     fn ring_sum<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -88,25 +88,25 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         res_array.to_pyarray(py)
     }
 
-    #[pyfn(m, "ring_shape")]
+    #[pyfn(m)] #[pyo3(name= "ring_shape")]
     fn ring_shape<'py>(py: Python<'py>, x: PyReadonlyArrayDyn<u64>) -> &'py PyList {
         let shape: &[usize] = x.shape();
         PyList::new(py, shape.iter())
     }
 
-    #[pyfn(m, "sample_key")]
+    #[pyfn(m)] #[pyo3(name= "sample_key")]
     fn sample_key(py: Python) -> &PyBytes {
         let key: [u8; 16] = AesRng::generate_random_key();
         PyBytes::new(py, &key)
     }
 
-    #[pyfn(m, "derive_seed")]
+    #[pyfn(m)] #[pyo3(name= "derive_seed")]
     fn derive_seed<'py>(py: Python<'py>, seed: &'py PyBytes, nonce: &'py PyBytes) -> &'py PyBytes {
         let new_seed = utils::derive_seed(seed.as_bytes(), nonce.as_bytes());
         PyBytes::new(py, &new_seed)
     }
 
-    #[pyfn(m, "ring_fill")]
+    #[pyfn(m)] #[pyo3(name= "ring_fill")]
     fn ring_fill(py: Python<'_>, shape: Vec<usize>, el: u64) -> &'_ PyArrayDyn<u64> {
         let shape = RawShape(shape);
         let res = HostRing64Tensor::fill(&shape, el);
@@ -114,7 +114,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         res_array.to_pyarray(py)
     }
 
-    #[pyfn(m, "ring_sample")]
+    #[pyfn(m)] #[pyo3(name= "ring_sample")]
     fn ring_sample<'py>(
         py: Python<'py>,
         shape: Vec<usize>,
@@ -141,7 +141,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         res_array.to_pyarray(py)
     }
 
-    #[pyfn(m, "ring_shl")]
+    #[pyfn(m)] #[pyo3(name= "ring_shl")]
     fn ring_shl<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -153,7 +153,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         res_array.to_pyarray(py)
     }
 
-    #[pyfn(m, "ring_shr")]
+    #[pyfn(m)] #[pyo3(name= "ring_shr")]
     fn ring_shr<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -165,7 +165,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         res_array.to_pyarray(py)
     }
 
-    #[pyfn(m, "bit_xor")]
+    #[pyfn(m)] #[pyo3(name= "bit_xor")]
     fn bit_xor<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u8>,
@@ -176,7 +176,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ArrayD::<u8>::from(b1 ^ b2).to_pyarray(py)
     }
 
-    #[pyfn(m, "bit_and")]
+    #[pyfn(m)] #[pyo3(name= "bit_and")]
     fn bit_and<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u8>,
@@ -187,7 +187,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ArrayD::<u8>::from(b1 & b2).to_pyarray(py)
     }
 
-    #[pyfn(m, "bit_sample")]
+    #[pyfn(m)] #[pyo3(name= "bit_sample")]
     fn bit_sample<'py>(
         py: Python<'py>,
         shape: Vec<usize>,
@@ -199,14 +199,14 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ArrayD::<u8>::from(b).to_pyarray(py)
     }
 
-    #[pyfn(m, "bit_fill")]
+    #[pyfn(m)] #[pyo3(name= "bit_fill")]
     fn bit_fill(py: Python<'_>, shape: Vec<usize>, el: u8) -> &'_ PyArrayDyn<u8> {
         let shape = RawShape(shape);
         let res = HostBitTensor::fill(&shape, el);
         ArrayD::<u8>::from(res).to_pyarray(py)
     }
 
-    #[pyfn(m, "bit_extract")]
+    #[pyfn(m)] #[pyo3(name= "bit_extract")]
     fn bit_extract<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -217,7 +217,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ArrayD::<u8>::from(res).to_pyarray(py)
     }
 
-    #[pyfn(m, "ring_inject")]
+    #[pyfn(m)] #[pyo3(name= "ring_inject")]
     fn ring_inject<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u8>,
@@ -228,13 +228,13 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ring64_to_array(res).to_pyarray(py)
     }
 
-    #[pyfn(m, "bit_shape")]
+    #[pyfn(m)] #[pyo3(name= "bit_shape")]
     fn bit_shape<'py>(py: Python<'py>, x: PyReadonlyArrayDyn<u8>) -> &'py PyList {
         let shape: &[usize] = x.shape();
         PyList::new(py, shape.iter())
     }
 
-    #[pyfn(m, "fixedpoint_encode")]
+    #[pyfn(m)] #[pyo3(name= "fixedpoint_encode")]
     fn fixedpoint_encode<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<f64>,
@@ -245,7 +245,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         ring64_to_array(y).to_pyarray(py)
     }
 
-    #[pyfn(m, "fixedpoint_decode")]
+    #[pyfn(m)] #[pyo3(name= "fixedpoint_decode")]
     fn fixedpoint_decode<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -256,7 +256,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         y.0.to_pyarray(py)
     }
 
-    #[pyfn(m, "fixedpoint_ring_mean")]
+    #[pyfn(m)] #[pyo3(name= "fixedpoint_ring_mean")]
     fn fixedpoint_ring_mean<'py>(
         py: Python<'py>,
         x: PyReadonlyArrayDyn<u64>,
@@ -270,3 +270,4 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
 
     Ok(())
 }
+
