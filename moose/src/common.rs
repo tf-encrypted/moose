@@ -1,12 +1,15 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape};
 use crate::computation::{
-    AdditivePlacement, HostPlacement, Placed, ReplicatedPlacement, RingInjectOp, ShapeOp,
+    AdditivePlacement, HostPlacement, HostReshapeOp, Placed, ReplicatedPlacement, RingInjectOp,
+    ShapeOp,
 };
 use crate::host::{
-    HostBitTensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
+    HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
-use crate::kernels::PlacementRingInject;
 use crate::kernels::PlacementShape;
+use crate::kernels::{PlacementReshape, PlacementRingInject};
 use crate::replicated::{
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
@@ -33,6 +36,38 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedShape => Self::rep_kernel),
         (AdditivePlacement, (AdditiveRing64Tensor) -> AdditiveShape => Self::adt_kernel),
         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => Self::adt_kernel),
+    ]
+}
+
+modelled!(PlacementReshape::reshape, HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostBitTensor, HostShape) -> HostBitTensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostFloat32Tensor, HostShape) -> HostFloat32Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostFloat64Tensor, HostShape) -> HostFloat64Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostInt8Tensor, HostShape) -> HostInt8Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostInt16Tensor, HostShape) -> HostInt16Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostInt32Tensor, HostShape) -> HostInt32Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostInt64Tensor, HostShape) -> HostInt64Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostUint8Tensor, HostShape) -> HostUint8Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostUint16Tensor, HostShape) -> HostUint16Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostUint32Tensor, HostShape) -> HostUint32Tensor, HostReshapeOp);
+modelled!(PlacementReshape::reshape, HostPlacement, (HostUint64Tensor, HostShape) -> HostUint64Tensor, HostReshapeOp);
+
+kernel! {
+    HostReshapeOp, [
+        (HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor => Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor => Self::ring_kernel),
+        (HostPlacement, (HostBitTensor, HostShape) -> HostBitTensor => Self::bit_kernel),
+        (HostPlacement, (HostFloat32Tensor, HostShape) -> HostFloat32Tensor => Self::host_kernel),
+        (HostPlacement, (HostFloat64Tensor, HostShape) -> HostFloat64Tensor => Self::host_kernel),
+        (HostPlacement, (HostInt8Tensor, HostShape) -> HostInt8Tensor => Self::host_kernel),
+        (HostPlacement, (HostInt16Tensor, HostShape) -> HostInt16Tensor => Self::host_kernel),
+        (HostPlacement, (HostInt32Tensor, HostShape) -> HostInt32Tensor => Self::host_kernel),
+        (HostPlacement, (HostInt64Tensor, HostShape) -> HostInt64Tensor => Self::host_kernel),
+        (HostPlacement, (HostUint8Tensor, HostShape) -> HostUint8Tensor => Self::host_kernel),
+        (HostPlacement, (HostUint16Tensor, HostShape) -> HostUint16Tensor => Self::host_kernel),
+        (HostPlacement, (HostUint32Tensor, HostShape) -> HostUint32Tensor => Self::host_kernel),
+        (HostPlacement, (HostUint64Tensor, HostShape) -> HostUint64Tensor => Self::host_kernel),
     ]
 }
 

@@ -1,9 +1,10 @@
 use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, Constant,
     HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
-    HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp,
-    Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp,
-    RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp,
+    HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp,
+    RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
+    ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
@@ -252,6 +253,20 @@ impl ShapeOp {
     ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
         HostShape(raw_shape, plc.clone())
+    }
+}
+
+impl HostReshapeOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+        shape: HostShape,
+    ) -> HostTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        plc.place(sess, x.reshape(shape))
     }
 }
 
@@ -728,6 +743,17 @@ impl ShapeOp {
     }
 }
 
+impl HostReshapeOp {
+    pub(crate) fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+        shape: HostShape,
+    ) -> HostBitTensor {
+        HostBitTensor(x.0.into_shape(shape.0 .0).unwrap(), plc.clone()) // TODO need to be fix (unwrap)
+    }
+}
+
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostBitTensor, BitFillOp);
 
 kernel! {
@@ -1193,6 +1219,18 @@ impl ShapeOp {
     ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
         HostShape(raw_shape, plc.clone())
+    }
+}
+
+impl HostReshapeOp {
+    pub(crate) fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostRingTensor<T>,
+        shape: HostShape,
+    ) -> AbstractHostRingTensor<T> {
+        AbstractHostRingTensor::<T>(x.0.into_shape(shape.0 .0).unwrap(), plc.clone())
+        // TODO need to be fix (unwrap)
     }
 }
 
