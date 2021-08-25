@@ -400,11 +400,13 @@ impl HostAddOp {
     }
 }
 
-hybrid_kernel! {
+unified_kernel! {
     HostSubOp,
     [
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
+        (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
@@ -436,9 +438,7 @@ impl HostSubOp {
     {
         with_context!(plc, sess, x - y)
     }
-}
 
-impl HostSubOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,

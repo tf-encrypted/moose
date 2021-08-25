@@ -201,8 +201,8 @@ class LinearRegressionExample(parameterized.TestCase):
         self._linear_regression_eval("mse")
 
     def test_linear_regression_rust_compiler(self):
-        # linear_comp, placements = self._build_linear_regression_example("mse")
-        linear_comp, placements = self._build_simple_example("mse")
+        linear_comp, placements = self._build_linear_regression_example("mse")
+        # linear_comp, placements = self._build_simple_example("mse")
 
         # Compile in Python
         concrete_comp = edsl.trace_and_compile(
