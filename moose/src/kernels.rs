@@ -520,7 +520,7 @@ pub trait PlacementSend<S: Session, T, O> {
 }
 
 pub trait PlacementReceive<S: Session, O> {
-    fn receive(&self, sess: &S, rendezvous_key: String, sendrt: Role) -> O;
+    fn receive(&self, sess: &S, rendezvous_key: String, sender: Role) -> O;
 }
 
 pub trait PlacementAtLeast2D<S: Session, T, O> {
