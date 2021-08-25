@@ -609,7 +609,12 @@ def f():
             .unwrap();
         let diff = HostFloat64Tensor::try_from(
             storage
-                .load("regression_weights", &SessionId::try_from("foobar").unwrap(), None, "")
+                .load(
+                    "regression_weights",
+                    &SessionId::try_from("foobar").unwrap(),
+                    None,
+                    "",
+                )
                 .unwrap(),
         )
         .unwrap();

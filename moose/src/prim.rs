@@ -5,8 +5,10 @@ use crate::kernels::{
     SyncSession,
 };
 use crate::prng::AesRng;
+use crate::prng::{RngSeed, SEED_SIZE};
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use serde::{Deserialize, Serialize};
+use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
@@ -189,21 +191,18 @@ impl PrimDeriveSeedOp {
         let sid = sess.session_id();
         let key_bytes = key.0.as_bytes();
 
-        // TODO(Morten) how do we concatenate; describe motivations
-        let mut nonce: Vec<u8> = vec![];
-        nonce.extend(sid.as_bytes());
-        nonce.extend(sync_key.0);
+        let sid_bytes: [u8; TAG_BYTES] = sid.0;
+        let sync_key_bytes: [u8; TAG_BYTES] = sync_key.0;
+        let mut nonce: Vec<u8> = Vec::with_capacity(2 * TAG_BYTES);
+        nonce.extend(&sid_bytes);
+        nonce.extend(&sync_key_bytes);
 
-        // TODO(Morten) optimize below?
-        use crate::prng::{RngSeed, SEED_SIZE};
-        use sodiumoxide::crypto::generichash;
         sodiumoxide::init().expect("failed to initialize sodiumoxide");
-        let mut hasher = generichash::State::new(Some(SEED_SIZE), Some(key_bytes))
-            .expect("failed to initialize sodiumoxide hash function");
-        hasher.update(&nonce).unwrap();
-        let h = hasher.finalize().unwrap();
+        let digest = generichash::hash(&nonce, Some(SEED_SIZE), Some(key_bytes))
+            .unwrap()
+            .as_ref();
         let mut raw_seed: RngSeed = [0u8; SEED_SIZE];
-        raw_seed.copy_from_slice(h.as_ref());
+        raw_seed.copy_from_slice(digest);
         Seed(RawSeed(raw_seed), plc.clone())
     }
 }

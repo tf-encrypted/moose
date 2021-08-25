@@ -29,7 +29,7 @@ static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::
 static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, Eq, Hash)]
-pub struct RendezvousKey([u8; TAG_BYTES]);
+pub struct RendezvousKey(pub(crate) [u8; TAG_BYTES]);
 
 impl std::fmt::Display for RendezvousKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -84,7 +84,7 @@ impl RendezvousKey {
 }
 
 #[derive(Clone, Debug)]
-pub struct SessionId([u8; TAG_BYTES]);
+pub struct SessionId(pub(crate) [u8; TAG_BYTES]);
 
 impl std::fmt::Display for SessionId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
