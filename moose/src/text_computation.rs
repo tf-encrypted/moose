@@ -333,7 +333,10 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, receiver)) = attributes!((
-        attributes_member("rendezvous_key", string),
+        attributes_member(
+            "rendezvous_key",
+            map(parse_hex, RendezvousKey::from_bytes)
+        ),
         attributes_member("receiver", string)
     ))(input)?;
     let (input, optional_type) = opt(type_definition(0))(input)?;
@@ -354,7 +357,10 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, sender)) = attributes!((
-        attributes_member("rendezvous_key", string),
+        attributes_member(
+            "rendezvous_key",
+            map(parse_hex, RendezvousKey::from_bytes)
+        ),
         attributes_member("sender", string)
     ))(input)?;
     let (input, sig) = type_definition(0)(input)?;
@@ -1717,6 +1723,13 @@ impl ToTextual for SyncKey {
     }
 }
 
+// Required to serialize Send/Receive
+impl ToTextual for RendezvousKey {
+    fn to_textual(&self) -> String {
+        self.as_bytes().to_textual()
+    }
+}
+
 impl ToTextual for Signature {
     fn to_textual(&self) -> String {
         match self {
@@ -1984,14 +1997,14 @@ mod tests {
     #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"send = Send{rendezvous_key = "abc" receiver = "bob"}() @Host(alice)"#,
+            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}() @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
             Operator::Send(SendOp {
                 sig: Signature::unary(Ty::Unknown, Ty::Unknown),
-                rendezvous_key: "abc".try_into()?,
+                rendezvous_key: "0123456789abcdef".try_into()?,
                 receiver: Role::from("bob")
             })
         );
@@ -2001,14 +2014,14 @@ mod tests {
     #[test]
     fn test_receive() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"receive = Receive{rendezvous_key = "abc", sender = "bob"} : () -> Float32Tensor () @Host(alice)"#,
+            r#"receive = Receive{rendezvous_key = 30313233343536373839616263646566, sender = "bob"} : () -> Float32Tensor () @Host(alice)"#,
         )?;
         assert_eq!(op.name, "receive");
         assert_eq!(
             op.kind,
             Operator::Receive(ReceiveOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                rendezvous_key: "abc".try_into()?,
+                rendezvous_key: "0123456789abcdef".try_into()?,
                 sender: Role::from("bob"),
             })
         );

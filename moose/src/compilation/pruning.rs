@@ -84,10 +84,10 @@ mod tests {
     fn test_network_prune() -> std::result::Result<(), anyhow::Error> {
         let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
         y = Constant {value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(bob)
-        send_mul = Send {rendezvous_key="rdv_mul", receiver="alice"} (y) @Host(bob)
-        recv_mul = Receive {rendezvous_key="rdv_mul", sender="bob"} : () -> Float32Tensor () @Host(alice)
-        send_add = Send {rendezvous_key="rdv_add", receiver="alice"} (y) @Host(bob)
-        recv_add = Receive {rendezvous_key="rdv_add", sender="bob"} : () -> Float32Tensor () @Host(alice)
+        send_mul = Send {rendezvous_key=30303030303030303030303030303031, receiver="alice"} (y) @Host(bob)
+        recv_mul = Receive {rendezvous_key=30303030303030303030303030303031, sender="bob"} : () -> Float32Tensor () @Host(alice)
+        send_add = Send {rendezvous_key=30303030303030303030303030303032, receiver="alice"} (y) @Host(bob)
+        recv_add = Receive {rendezvous_key=30303030303030303030303030303032, sender="bob"} : () -> Float32Tensor () @Host(alice)
         mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)
         add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_add) @Host(alice)
         z = Output: (Float32Tensor) -> Float32Tensor (mul) @Host(alice)"#;
@@ -106,10 +106,10 @@ mod tests {
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"
         ));
         assert!(comp.contains(
-            r#"send_mul = Send {rendezvous_key="rdv_mul", receiver="alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
+            r#"send_mul = Send {rendezvous_key=30303030303030303030303030303031, receiver="alice"}: (Unknown) -> Unknown (y) @Host(bob)"#
         ));
         assert!(comp.contains(
-            r#"recv_mul = Receive {rendezvous_key="rdv_mul", sender="bob"} : () -> Float32Tensor () @Host(alice)"#
+            r#"recv_mul = Receive {rendezvous_key=30303030303030303030303030303031, sender="bob"} : () -> Float32Tensor () @Host(alice)"#
         ));
         assert!(comp.contains(
             "mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, recv_mul) @Host(alice)"

@@ -71,6 +71,10 @@ impl TryFrom<&str> for RendezvousKey {
 }
 
 impl RendezvousKey {
+    pub fn from_bytes(bytes: [u8; TAG_BYTES]) -> Self {
+        RendezvousKey(bytes)
+    }
+
     pub fn as_bytes(&self) -> &[u8; TAG_BYTES] {
         &self.0
     }

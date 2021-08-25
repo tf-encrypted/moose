@@ -840,7 +840,7 @@ impl TryFrom<PyComputation> for Computation {
                     prim_DeriveSeedOperation(op) => Ok(Operation {
                         kind: PrimDeriveSeedOp {
                             sig: Signature::unary(Ty::PrfKey, Ty::Seed),
-                            sync_key: op.nonce.try_into()?,
+                            sync_key: op.nonce.clone().try_into()?,
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1305,7 +1305,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_SendOperation(op) => Ok(Operation {
                         kind: SendOp {
                             sig: Signature::unary(Ty::Unknown, Ty::Unit),
-                            rendezvous_key: op.rendezvous_key.try_into()?,
+                            rendezvous_key: op.rendezvous_key.clone().try_into()?,
                             receiver: Role::from(&op.receiver),
                         }
                         .into(),
@@ -1317,7 +1317,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_ReceiveOperation(op) => Ok(Operation {
                         kind: ReceiveOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
-                            rendezvous_key: op.rendezvous_key.try_into()?,
+                            rendezvous_key: op.rendezvous_key.clone().try_into()?,
                             sender: Role::from(&op.sender),
                         }
                         .into(),
