@@ -1,0 +1,35 @@
+[package]
+name = "pymoose"
+version = "0.1.2-alpha.0"
+license = "MIT/Apache-2.0"
+authors = [""]
+description = ""
+repository = ""
+homepage = ""
+keywords = ["", ""]
+categories = ["", ""]
+edition = "2018"
+
+[lib]
+name = "pymoose"
+crate-type = ["cdylib"]
+
+[dependencies]
+anyhow = "~1.0"
+approx = "~0.4"
+maplit = "~1.0"
+numpy = "~0.14"
+ndarray = "~0.15"
+moose = { path = "../moose" }
+tokio = { version="~1.9", features=["full"] }
+rand = "~0.8"
+rmp-serde = "~0.15"
+serde = { version="~1.0", features=["derive"] }
+serde_bytes="~0.11"
+
+[dependencies.pyo3]
+version = "~0.14"
+
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]
