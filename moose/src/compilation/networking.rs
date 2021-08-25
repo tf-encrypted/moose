@@ -1,7 +1,6 @@
 use crate::computation::*;
 use petgraph::visit::EdgeRef;
 use std::collections::HashMap;
-use std::convert::TryInto;
 
 pub struct NetworkingPass {
     operations: Vec<Operation>,
@@ -69,11 +68,7 @@ impl NetworkingPass {
     ) -> String {
         let index = self.counter.next().unwrap();
 
-        // TODO(Morten) we can probably simplify this now; doesn't have to be string first
-        let rendezvous_key: RendezvousKey =
-            format!("rdv_key_{}", self.rendezvous.next().unwrap())
-                .try_into()
-                .unwrap();
+        let rendezvous_key = RendezvousKey::from(self.rendezvous.next().unwrap() as u128);
 
         let send_operation = Operation {
             name: format!("send_{}", index),

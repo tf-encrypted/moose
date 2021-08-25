@@ -17,6 +17,7 @@ use crate::replicated::{
     ReplicatedShape,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
+use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::ShortName;
 use paste::paste;
@@ -36,6 +37,14 @@ impl std::fmt::Display for RendezvousKey {
             write!(f, "{:02X}", byte)?
         }
         Ok(())
+    }
+}
+
+impl From<u128> for RendezvousKey {
+    fn from(v: u128) -> RendezvousKey {
+        let mut raw = [0; TAG_BYTES];
+        LittleEndian::write_u128(&mut raw, v);
+        RendezvousKey(raw)
     }
 }
 

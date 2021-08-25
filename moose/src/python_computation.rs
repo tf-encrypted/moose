@@ -1,7 +1,7 @@
 //! Parser for computations defined in Python
 
-use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape};
 use crate::computation::*;
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
