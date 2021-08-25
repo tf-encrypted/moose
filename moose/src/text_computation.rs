@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::host::{HostShape, RawShape};
+use crate::host::{HostShape, HostSlice, RawShape, RawSliceInfo, RawSliceInfoElem};
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use nom::{
     branch::{alt, permutation},
@@ -1197,6 +1197,7 @@ impl ToTextual for Operator {
             BitAnd(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
+            BetterSlice(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
             HostSub(op) => op.to_textual(),
             HostMul(op) => op.to_textual(),
@@ -1310,6 +1311,7 @@ impl_to_textual!(
     sig
 );
 impl_to_textual!(HostSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
+impl_to_textual!(BetterSliceOp, "{op}{{slice}}: {}", sig);
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
@@ -1569,6 +1571,7 @@ impl ToTextual for Ty {
             Ty::AdditiveRing64Tensor => "Additive64Tensor",
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
+            Ty::HostSlice => "HostSlice",
         }
         .to_string()
     }
@@ -1598,6 +1601,7 @@ impl ToTextual for Value {
             Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
+            Value::HostSlice(HostSlice(x, _)) => format!("Slice({})", x.0.to_textual()),
             // TODO Implement the missing branches
             Value::Bit(_)
             | Value::Unit(_)
@@ -1641,6 +1645,7 @@ impl ToTextual for Constant {
             Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
+            Constant::RawSliceInfo(RawSliceInfo(x)) => format!("SliceInfo({})", x.to_textual()),
             // TODO Implement the missing branches
             Constant::Bit(_) | Constant::HostBitTensor(_) => unimplemented!(),
         }
@@ -1688,6 +1693,19 @@ impl ToTextual for Role {
 impl ToTextual for RawNonce {
     fn to_textual(&self) -> String {
         format!("{:?}", self.0)
+    }
+}
+
+impl ToTextual for Vec<RawSliceInfoElem> {
+    fn to_textual(&self) -> String {
+        let mut s = String::new();
+        for raw_slice_elem in self {
+            s.push_str(&format!(
+                "start: {}, end: {:?}, step: {}",
+                raw_slice_elem.start, raw_slice_elem.end, raw_slice_elem.step
+            ))
+        }
+        s
     }
 }
 

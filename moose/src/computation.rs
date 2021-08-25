@@ -6,8 +6,9 @@ use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
     HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostSlice,
+    HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
+    RawSliceInfo,
 };
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
@@ -110,6 +111,7 @@ macro_rules! constants {
 constants![
     RawShape HostShape,
     RawSeed Seed,
+    RawSliceInfo HostSlice,
     RawPrfKey PrfKey,
     RawNonce Nonce,
     String,
@@ -302,6 +304,12 @@ impl From<HostShape> for Symbolic<HostShape> {
     }
 }
 
+impl From<HostSlice> for Symbolic<HostSlice> {
+    fn from(x: HostSlice) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
 impl From<HostRing64Tensor> for Symbolic<HostRing64Tensor> {
     fn from(x: HostRing64Tensor) -> Self {
         Symbolic::Concrete(x)
@@ -483,6 +491,7 @@ impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
 values![
     (Unit, Symbolic<Unit>),
     (HostShape, Symbolic<HostShape>),
+    (HostSlice, Symbolic<HostSlice>),
     (Seed, Symbolic<Seed>),
     (PrfKey, Symbolic<PrfKey>),
     (Nonce, Symbolic<Nonce>),
@@ -842,6 +851,7 @@ operators![
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
+    BetterSlice,
     RingAdd,
     RingSub,
     RingNeg,
@@ -1033,6 +1043,12 @@ pub struct HostInverseOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct ShapeOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct BetterSliceOp {
+    pub sig: Signature,
+    pub slice: RawSliceInfo,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

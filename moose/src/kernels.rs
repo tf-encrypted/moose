@@ -9,6 +9,7 @@ use crate::host::{
     AbstractHostRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
     HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
+    RawSliceInfo,
 };
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
@@ -133,6 +134,7 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            BetterSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -558,6 +560,10 @@ where
     fn slice(&self, sess: &S, start: u32, end: u32, x: &ShapeT) -> ShapeT;
 }
 
+pub trait PlacementBetterSlice<S: Session, T, O> {
+    fn slice(&self, sess: &S, slice: RawSliceInfo, x: &T) -> O;
+}
+
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())
@@ -628,9 +634,9 @@ impl Compile<SyncKernel> for Operator {
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
-            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+            | AdtToRep(_) | BetterSlice(_) | RepAbs(_) | RepSetup(_) | RepShare(_)
+            | RepReveal(_) | RepFill(_) | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_)
+            | RepDot(_) | RepMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -696,9 +702,9 @@ impl Compile<AsyncKernel> for Operator {
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
-            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+            | AdtToRep(_) | BetterSlice(_) | RepAbs(_) | RepSetup(_) | RepShare(_)
+            | RepReveal(_) | RepFill(_) | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_)
+            | RepDot(_) | RepMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
