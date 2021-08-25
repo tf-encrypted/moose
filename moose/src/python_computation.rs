@@ -840,7 +840,7 @@ impl TryFrom<PyComputation> for Computation {
                     prim_DeriveSeedOperation(op) => Ok(Operation {
                         kind: PrimDeriveSeedOp {
                             sig: Signature::unary(Ty::PrfKey, Ty::Nonce),
-                            sync_key: prim::RawNonce(op.nonce.clone()),
+                            sync_key: prim::SyncKey(op.nonce.clone()),
                         }
                         .into(),
                         name: op.name.clone(),

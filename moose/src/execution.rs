@@ -1295,7 +1295,7 @@ mod tests {
     use crate::compilation::networking::NetworkingPass;
     use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, RawShape};
     use crate::host::{HostRing128Tensor, HostRing64Tensor};
-    use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
+    use crate::prim::{SyncKey, RawPrfKey, RawSeed, Seed};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1396,7 +1396,7 @@ mod tests {
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed::from_prf(&RawPrfKey([0; 16]), &RawNonce(vec![1, 2, 3]))
+            RawSeed::from_prf(&RawPrfKey([0; 16]), &SyncKey(vec![1, 2, 3]))
         );
         Ok(())
     }

@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::host::{HostShape, RawShape};
-use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
+use crate::prim::{Nonce, PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -525,7 +525,7 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), RawNonce))(input)?;
+    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), SyncKey))(input)?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
@@ -818,7 +818,7 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             Constant::RawShape(RawShape(v))
         }),
         constant_literal_helper("Nonce", vector(parse_int), |v| {
-            Constant::RawNonce(RawNonce(v))
+            Constant::SyncKey(SyncKey(v))
         }),
         // 1D arrars
         alt((
@@ -1638,7 +1638,7 @@ impl ToTextual for Constant {
             Constant::Ring64(x) => format!("Ring64({})", x),
             Constant::Ring128(x) => format!("Ring128({})", x),
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
-            Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
+            Constant::SyncKey(SyncKey(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
             // TODO Implement the missing branches
@@ -1685,7 +1685,7 @@ impl ToTextual for Role {
 }
 
 // Required to serialize PrimDeriveSeedOp
-impl ToTextual for RawNonce {
+impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
         format!("{:?}", self.0)
     }
@@ -1948,7 +1948,7 @@ mod tests {
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
-                sync_key: RawNonce(vec![1, 2, 3])
+                sync_key: SyncKey(vec![1, 2, 3])
             })
         );
         Ok(())

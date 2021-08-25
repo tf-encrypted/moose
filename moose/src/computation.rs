@@ -10,7 +10,7 @@ use crate::host::{
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
 };
 use crate::kernels::Session;
-use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
+use crate::prim::{Nonce, PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
@@ -140,7 +140,7 @@ constants![
     RawShape HostShape,
     RawSeed Seed,
     RawPrfKey PrfKey,
-    RawNonce Nonce,
+    SyncKey Nonce, // TODO(Morten) remove this?
     String,
     HostBitTensor,
     HostRing64Tensor,
@@ -1090,7 +1090,7 @@ pub struct AdtFillOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
-    pub sync_key: RawNonce,
+    pub sync_key: SyncKey,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

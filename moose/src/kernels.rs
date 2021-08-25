@@ -10,7 +10,7 @@ use crate::host::{
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
     HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
-use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
 use std::collections::HashMap;
@@ -243,7 +243,7 @@ pub trait PlacementSetupGen<S: Session, SetupT> {
 }
 
 pub trait PlacementDeriveSeed<S: Session, KeyT, SeedT> {
-    fn derive_seed(&self, sess: &S, sync_key: RawNonce, key: &KeyT) -> SeedT;
+    fn derive_seed(&self, sess: &S, sync_key: SyncKey, key: &KeyT) -> SeedT;
 }
 
 pub trait PlacementAdd<S: Session, T, U, O> {
@@ -1103,9 +1103,9 @@ impl Compile<Kernel> for HostSumOp {
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let nonce = self.sync_key.clone();
+        let sync_key = self.sync_key.clone();
         closure_kernel!(PrfKey, |key| Seed(
-            RawSeed::from_prf(&key.0, &nonce),
+            RawSeed::from_prf(&key.0, &sync_key),
             HostPlacement {
                 owner: "TODO".into() // Fake owner for the older kernels.
             }

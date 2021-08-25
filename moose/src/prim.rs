@@ -109,17 +109,18 @@ impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct RawNonce(pub Vec<u8>);
+pub struct SyncKey(pub Vec<u8>);
 
-impl RawNonce {
-    pub fn generate() -> RawNonce {
-        let nonce = AesRng::generate_random_key();
-        RawNonce(nonce.into())
+impl SyncKey {
+    // TODO rename to `random` and use sodium directly
+    pub fn generate() -> SyncKey {
+        let raw_sync_key = AesRng::generate_random_key();
+        SyncKey(raw_sync_key.into())
     }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Nonce(pub RawNonce, pub HostPlacement);
+pub struct Nonce(pub SyncKey, pub HostPlacement);
 
 impl Placed for Nonce {
     type Placement = HostPlacement;
@@ -181,7 +182,7 @@ impl PrimPrfKeyGenOp {
     }
 }
 
-modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[sync_key: RawNonce] (PrfKey) -> Seed, PrimDeriveSeedOp);
+modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[sync_key: SyncKey] (PrfKey) -> Seed, PrimDeriveSeedOp);
 
 kernel! {
     PrimDeriveSeedOp,
@@ -194,7 +195,7 @@ impl PrimDeriveSeedOp {
     fn kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
-        sync_key: RawNonce,
+        sync_key: SyncKey,
         key: PrfKey,
     ) -> Seed {
         let sid = sess.session_id();
@@ -218,8 +219,9 @@ impl RawSeed {
             note = "This function is only used by the old kernels, which are not aware of the placements."
         )
     )]
-    pub fn from_prf(key: &RawPrfKey, nonce: &RawNonce) -> RawSeed {
-        let raw_seed = crate::utils::derive_seed(&key.0, &nonce.0);
+    pub fn from_prf(key: &RawPrfKey, sync_key: &SyncKey) -> RawSeed {
+        let nonce = &sync_key.0;
+        let raw_seed = crate::utils::derive_seed(&key.0, nonce);
         RawSeed(raw_seed)
     }
 }
