@@ -1339,7 +1339,7 @@ mod tests {
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let mut definition = String::from(
             r#"key = PrimPrfKeyGen() @Host(alice)
-        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
         );
@@ -1378,7 +1378,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
-        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =

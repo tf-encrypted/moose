@@ -7,6 +7,7 @@ use crate::kernels::{
 use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawSeed(pub [u8; 16]);
@@ -119,6 +120,14 @@ impl SyncKey {
     }
 }
 
+impl TryFrom<&[u8]> for SyncKey {
+    type Error = crate::error::Error;
+    fn try_from(bytes: &[u8]) -> crate::error::Result<SyncKey> {
+        // TODO update when changing to fixed length
+        Ok(SyncKey(Vec::from(bytes)))
+    }
+}
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Nonce(pub SyncKey, pub HostPlacement);
 
@@ -201,11 +210,12 @@ impl PrimDeriveSeedOp {
         let sid = sess.session_id();
         let raw_key = key.0;
 
-        // TODO how do we concatenate; describe motivations
+        // TODO(Morten) how do we concatenate; describe motivations
         let mut nonce: Vec<u8> = vec![];
         nonce.extend(sid.as_bytes());
         nonce.extend(sync_key.0);
 
+        // TODO(Morten) inline call to `utils::derive_seed`
         let raw_seed = crate::utils::derive_seed(&raw_key.0, &nonce);
         Seed(RawSeed(raw_seed), plc.clone())
     }
