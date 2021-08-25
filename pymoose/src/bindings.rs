@@ -249,7 +249,8 @@ impl MooseComputation {
 
 #[pymodule]
 fn elk_compiler(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
-    #[pyfn(m)] #[pyo3(name= "compile_computation")]
+    #[pyfn(m)]
+    #[pyo3(name = "compile_computation")]
     pub fn compile_computation(
         _py: Python,
         computation: Vec<u8>,
