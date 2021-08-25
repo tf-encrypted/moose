@@ -110,6 +110,7 @@ enum PyDType {
     int64,
     uint32,
     uint64,
+    fixed8_27,
     fixed14_23,
 }
 
@@ -808,6 +809,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             PyDType::uint32 => Ok(Ty::HostUint32Tensor),
             PyDType::uint64 => Ok(Ty::HostUint64Tensor),
             PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
+            PyDType::fixed8_27 => Ok(Ty::Fixed128Tensor), // TODO: store the precision (27)
         },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
@@ -1412,10 +1414,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_CastOperation(op) => Ok(Operation {
                         kind: CastOp {
-                            sig: Signature::unary(
-                                Ty::Unknown,
-                                map_type(&op.output_type)?,
-                            ),
+                            sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
                         }
                         .into(),
                         name: op.name.clone(),

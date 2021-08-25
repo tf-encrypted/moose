@@ -1,16 +1,22 @@
 //! Support for fixed-point arithmetic
 
-use crate::computation::{CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp, FixedpointMulOp, FixedpointRingMeanOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp, HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement};
+use crate::computation::{
+    CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp,
+    FixedpointMeanOp, FixedpointMulOp, FixedpointRingMeanOp, FixedpointSubOp, FixedpointSumOp,
+    FixedpointTruncPrOp, HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
+};
 use crate::error::Result;
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor,
     HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
 };
-use crate::kernels::{PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal, PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, RuntimeSession, Session};
-use crate::replicated::{
-    AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+use crate::kernels::{
+    PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
+    PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode,
+    PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
+    PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
+    PlacementSum, PlacementTruncPr, RuntimeSession, Session,
 };
-use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
@@ -985,7 +991,7 @@ impl CastOp {
     where
         HostFloat64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
-        HostPlacement: PlacementFixedpointEncode<S, cs!(HostFloat64Tensor), cs!(Fixed128Tensor)>
+        HostPlacement: PlacementFixedpointEncode<S, cs!(HostFloat64Tensor), cs!(Fixed128Tensor)>,
     {
         plc.fixedpoint_encode(sess, 27, &x) // TODO: Get the precision from python
     }
@@ -998,7 +1004,7 @@ impl CastOp {
     where
         HostFloat64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
-        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), cs!(HostFloat64Tensor)>
+        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), cs!(HostFloat64Tensor)>,
     {
         plc.fixedpoint_decode(sess, 27, &x) // TODO: Get the precision from python
     }

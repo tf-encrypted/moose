@@ -769,7 +769,7 @@ macro_rules! host_unary_kernel {
 }
 
 macro_rules! host_binary_kernel {
-    ($op:ident, $t:ident::$f:ident, $k:expr) => {
+    ($op:ident, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
                 match self.sig {
@@ -795,32 +795,14 @@ macro_rules! host_binary_kernel {
                 }
             }
         }
-
-        modelled!($t::$f, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostUint32Tensor, HostUint32Tensor) -> HostUint32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostUint64Tensor, HostUint64Tensor) -> HostUint64Tensor, $op);
-
-        kernel! {
-            $op, [
-                (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostUint32Tensor, HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostUint64Tensor, HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
-            ]
-        }
     };
 }
 
-host_binary_kernel!(HostAddOp, PlacementAdd::add, |x, y| x + y);
-host_binary_kernel!(HostSubOp, PlacementSub::sub, |x, y| x - y);
-host_binary_kernel!(HostMulOp, PlacementMul::mul, |x, y| x * y);
-host_binary_kernel!(HostDivOp, PlacementDiv::div, |x, y| x / y);
-host_binary_kernel!(HostDotOp, PlacementDot::dot, |x, y| x.dot(y));
+host_binary_kernel!(HostAddOp, |x, y| x + y);
+host_binary_kernel!(HostSubOp, |x, y| x - y);
+host_binary_kernel!(HostMulOp, |x, y| x * y);
+host_binary_kernel!(HostDivOp, |x, y| x / y);
+host_binary_kernel!(HostDotOp, |x, y| x.dot(y));
 host_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
 modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
