@@ -1748,6 +1748,7 @@ impl ToTextual for [u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryInto;
 
     #[test]
     fn test_constant_literal() -> Result<(), anyhow::Error> {
@@ -1962,7 +1963,7 @@ mod tests {
             op.kind,
             Operator::Send(SendOp {
                 sig: Signature::unary(Ty::Unknown, Ty::Unknown),
-                rendezvous_key: "abc".into(),
+                rendezvous_key: "abc".try_into()?,
                 receiver: Role::from("bob")
             })
         );
@@ -1979,7 +1980,7 @@ mod tests {
             op.kind,
             Operator::Receive(ReceiveOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                rendezvous_key: "abc".into(),
+                rendezvous_key: "abc".try_into()?,
                 sender: Role::from("bob"),
             })
         );

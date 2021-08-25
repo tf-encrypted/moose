@@ -27,7 +27,52 @@ pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
 static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
 
-pub type RendezvousKey = str;
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, Eq, Hash)]
+pub struct RendezvousKey([u8; TAG_BYTES]);
+
+impl std::fmt::Display for RendezvousKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02X}", byte)?
+        }
+        Ok(())
+    }
+}
+
+impl TryFrom<String> for RendezvousKey {
+    type Error = Error;
+    fn try_from(s: String) -> Result<RendezvousKey> {
+        Self::try_from(s.as_str())
+    }
+}
+
+impl TryFrom<&str> for RendezvousKey {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<RendezvousKey> {
+        let s_bytes = s.as_bytes();
+        if s_bytes.len() > TAG_BYTES {
+            return Err(Error::Unexpected); // TODO more helpful error message
+        }
+        let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
+        for (idx, byte) in s_bytes.iter().enumerate() {
+            raw[idx] = *byte;
+        }
+        Ok(RendezvousKey(raw))
+    }
+}
+
+impl RendezvousKey {
+    pub fn as_bytes(&self) -> &[u8; TAG_BYTES] {
+        &self.0
+    }
+
+    pub fn random() -> Self {
+        let mut raw = [0; TAG_BYTES];
+        sodiumoxide::init().expect("failed to initialize sodiumoxide");
+        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        RendezvousKey(raw)
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct SessionId([u8; TAG_BYTES]);
@@ -930,21 +975,21 @@ pub trait HasShortName {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct SendOp {
-    pub sig: Signature,
-    pub rendezvous_key: String,
-    pub receiver: Role,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct IdentityOp {
     pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SendOp {
+    pub sig: Signature,
+    pub rendezvous_key: RendezvousKey,
+    pub receiver: Role,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct ReceiveOp {
     pub sig: Signature,
-    pub rendezvous_key: String,
+    pub rendezvous_key: RendezvousKey,
     pub sender: Role,
 }
 

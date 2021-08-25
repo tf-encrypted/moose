@@ -622,16 +622,16 @@ impl Computation {
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
 
-        let mut send_nodes: HashMap<&str, NodeIndex> = HashMap::new();
-        let mut recv_nodes: HashMap<&str, NodeIndex> = HashMap::new();
+        let mut send_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
+        let mut recv_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
 
-        let mut rdv_keys: HashSet<&str> = HashSet::new();
+        let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
 
         for (i, op) in self.operations.iter().enumerate() {
             let vertex = graph.add_node((op.name.clone(), i));
             match op.kind {
                 Operator::Send(ref op) => {
-                    let key = op.rendezvous_key.as_ref();
+                    let key = &op.rendezvous_key;
 
                     if send_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
@@ -644,7 +644,7 @@ impl Computation {
                     rdv_keys.insert(key);
                 }
                 Operator::Receive(ref op) => {
-                    let key = op.rendezvous_key.as_ref();
+                    let key = &op.rendezvous_key;
 
                     if recv_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
