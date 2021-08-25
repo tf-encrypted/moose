@@ -1,4 +1,4 @@
-use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
+use crate::computation::{TAG_BYTES, HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp};
 use crate::error::Result;
 use crate::kernels::{
     NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
@@ -113,9 +113,10 @@ impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
 pub struct SyncKey(pub Vec<u8>);
 
 impl SyncKey {
-    // TODO rename to `random` and use sodium directly
-    pub fn generate() -> SyncKey {
-        let raw_sync_key = AesRng::generate_random_key();
+    pub fn random() -> SyncKey {
+        let mut raw_sync_key = [0u8; TAG_BYTES];
+        sodiumoxide::init().expect("failed to initialize sodiumoxide");
+        sodiumoxide::randombytes::randombytes_into(&mut raw_sync_key);
         SyncKey(raw_sync_key.into())
     }
 }

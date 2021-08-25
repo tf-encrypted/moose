@@ -228,7 +228,7 @@ impl RepShareOp {
 
         let shares = match () {
             _ if x_player == player0 => {
-                let sync_key = SyncKey::generate();
+                let sync_key = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed0 = player0.derive_seed(sess, sync_key.clone(), k00);
@@ -245,7 +245,7 @@ impl RepShareOp {
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
             _ if x_player == player1 => {
-                let sync_key = SyncKey::generate();
+                let sync_key = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed1 = player1.derive_seed(sess, sync_key.clone(), k11);
@@ -262,7 +262,7 @@ impl RepShareOp {
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
             _ if x_player == player2 => {
-                let sync_key = SyncKey::generate();
+                let sync_key = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed2 = player2.derive_seed(sess, sync_key.clone(), k22);
@@ -284,8 +284,8 @@ impl RepShareOp {
                 // that seeds are used as much as possible instead of dense random tensors;
                 // however, we must make sure keys are not revealed to x_owner and only seeds
 
-                let sync_key0 = SyncKey::generate();
-                let sync_key1 = SyncKey::generate();
+                let sync_key0 = SyncKey::random();
+                let sync_key1 = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed00 = player0.derive_seed(sess, sync_key0.clone(), k00);
@@ -1227,8 +1227,8 @@ impl AdtToRepOp {
             _ => unimplemented!(), // something is wrong in the protocol otherwise
         };
 
-        let sync_key0 = SyncKey::generate();
-        let sync_key1 = SyncKey::generate();
+        let sync_key0 = SyncKey::random();
+        let sync_key1 = SyncKey::random();
 
         let k = provider.gen_key(sess);
         let seed1 = provider.derive_seed(sess, sync_key0, &k);
@@ -1892,9 +1892,9 @@ where
         // a security perspective since the seeds depend on both the keys and the sid.
         // however, with sub-computations we could fix these as eg `0`, `1`, and `2`
         // and make compilation a bit more deterministic
-        let sync_key0 = SyncKey::generate();
-        let sync_key1 = SyncKey::generate();
-        let sync_key2 = SyncKey::generate();
+        let sync_key0 = SyncKey::random();
+        let sync_key1 = SyncKey::random();
+        let sync_key2 = SyncKey::random();
 
         let s00 = player0.derive_seed(ctx, sync_key0.clone(), k00);
         let s10 = player0.derive_seed(ctx, sync_key1.clone(), k10);
