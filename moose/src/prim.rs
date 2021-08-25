@@ -129,53 +129,6 @@ impl TryFrom<&[u8]> for SyncKey {
     }
 }
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct Nonce(pub SyncKey, pub HostPlacement);
-
-impl Placed for Nonce {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        Ok(self.1.clone())
-    }
-}
-
-impl PlacementPlace<SyncSession, Nonce> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, nonce: Nonce) -> Nonce {
-        match nonce.placement() {
-            Ok(place) if &place == self => nonce,
-            _ => {
-                // TODO just updating the placement isn't enough,
-                // we need this to eventually turn into Send + Recv
-                Nonce(nonce.0, self.clone())
-            }
-        }
-    }
-}
-
-impl PlacementPlace<SymbolicSession, Symbolic<Nonce>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<Nonce>) -> Symbolic<Nonce> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                match x {
-                    Symbolic::Concrete(nonce) => {
-                        // TODO insert Place ops?
-                        Symbolic::Concrete(Nonce(nonce.0, self.clone()))
-                    }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                        // TODO insert `Place` ops here?
-                        Symbolic::Symbolic(SymbolicHandle {
-                            op,
-                            plc: self.clone(),
-                        })
-                    }
-                }
-            }
-        }
-    }
-}
-
 modelled!(PlacementKeyGen::gen_key, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp);
 
 kernel! {

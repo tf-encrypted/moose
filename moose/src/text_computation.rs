@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::host::{HostShape, RawShape};
-use crate::prim::{Nonce, PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -750,7 +750,6 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Shape" => Ok((i, Ty::HostShape)),
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
-        "Nonce" => Ok((i, Ty::Nonce)),
         "String" => Ok((i, Ty::String)),
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
@@ -816,9 +815,6 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         constant_literal_helper("Ring128", parse_int, Constant::Ring128),
         constant_literal_helper("Shape", vector(parse_int), |v| {
             Constant::RawShape(RawShape(v))
-        }),
-        constant_literal_helper("Nonce", vector(parse_int), |v| {
-            Constant::SyncKey(SyncKey(v))
         }),
         // 1D arrars
         alt((
@@ -1546,7 +1542,6 @@ impl ToTextual for Ty {
             Ty::HostShape => "Shape",
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
-            Ty::Nonce => "Nonce",
             Ty::HostFloat32Tensor => "Float32Tensor",
             Ty::HostFloat64Tensor => "Float64Tensor",
             Ty::HostInt8Tensor => "Int8Tensor",
@@ -1595,7 +1590,6 @@ impl ToTextual for Value {
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
             Value::HostShape(HostShape(x, _)) => format!("Shape({:?})", x),
-            Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
             // TODO Implement the missing branches
@@ -1638,7 +1632,6 @@ impl ToTextual for Constant {
             Constant::Ring64(x) => format!("Ring64({})", x),
             Constant::Ring128(x) => format!("Ring128({})", x),
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
-            Constant::SyncKey(SyncKey(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
             // TODO Implement the missing branches

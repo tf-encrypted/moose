@@ -10,7 +10,7 @@ use crate::host::{
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
 };
 use crate::kernels::Session;
-use crate::prim::{Nonce, PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, SyncKey, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
@@ -140,7 +140,6 @@ constants![
     RawShape HostShape,
     RawSeed Seed,
     RawPrfKey PrfKey,
-    SyncKey Nonce, // TODO(Morten) remove this?
     String,
     HostBitTensor,
     HostRing64Tensor,
@@ -514,7 +513,6 @@ values![
     (HostShape, Symbolic<HostShape>),
     (Seed, Symbolic<Seed>),
     (PrfKey, Symbolic<PrfKey>),
-    (Nonce, Symbolic<Nonce>),
     (String, Symbolic<String>),
     (HostBitTensor, Symbolic<HostBitTensor>),
     (HostRing64Tensor, Symbolic<HostRing64Tensor>),
