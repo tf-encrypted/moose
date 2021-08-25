@@ -506,11 +506,11 @@ pub trait PlacementSave<S: Session, KeyT, T, O> {
 }
 
 pub trait PlacementSend<S: Session, T, O> {
-    fn send(&self, sess: &S, rendezvous_key: String, receiver: Role, x: &T) -> O;
+    fn send(&self, sess: &S, rendezvous_key: RendezvousKey, receiver: Role, x: &T) -> O;
 }
 
 pub trait PlacementReceive<S: Session, O> {
-    fn receive(&self, sess: &S, rendezvous_key: String, sender: Role) -> O;
+    fn receive(&self, sess: &S, rendezvous_key: RendezvousKey, sender: Role) -> O;
 }
 
 pub trait PlacementAtLeast2D<S: Session, T, O> {
@@ -1844,7 +1844,7 @@ impl ConstantOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] ($value) -> Unit, SendOp);
+        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: RendezvousKey, receiver: Role] ($value) -> Unit, SendOp);
     )*
 )}
 
@@ -1877,7 +1877,7 @@ impl SendOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
-        _rendezvous_key: String,
+        _rendezvous_key: RendezvousKey,
         _receiver: Role,
         _x: T,
     ) -> Unit {
@@ -1948,7 +1948,7 @@ impl Compile<AsyncKernel> for SendOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> $value, ReceiveOp);
+        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: RendezvousKey, sender: Role] () -> $value, ReceiveOp);
     )*
 )}
 
@@ -1982,7 +1982,7 @@ impl ReceiveOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
-        _rendezvous_key: String,
+        _rendezvous_key: RendezvousKey,
         _sender: Role,
     ) -> T {
         unimplemented!("Receive Op kernel implementation missing, because RuntimeSession does not have role_assignment yet")
