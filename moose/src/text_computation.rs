@@ -333,10 +333,7 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, receiver)) = attributes!((
-        attributes_member(
-            "rendezvous_key",
-            map(parse_hex, RendezvousKey::from_bytes)
-        ),
+        attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
         attributes_member("receiver", string)
     ))(input)?;
     let (input, optional_type) = opt(type_definition(0))(input)?;
@@ -357,10 +354,7 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, sender)) = attributes!((
-        attributes_member(
-            "rendezvous_key",
-            map(parse_hex, RendezvousKey::from_bytes)
-        ),
+        attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
         attributes_member("sender", string)
     ))(input)?;
     let (input, sig) = type_definition(0)(input)?;
