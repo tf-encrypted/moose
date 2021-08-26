@@ -531,6 +531,19 @@ macro_rules! symbolic_dispatch_kernel {
     };
 }
 
+/// Macros to define kernels for the Operators.
+///
+/// Sample definition would be in this form:
+/// `
+/// kernel! {
+///   MySuperOp,
+///   [
+///     (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => [runtime] attributes[axis, precision] Self::host_kernel),
+///     (ReplicatedPlacement, (ReplicatedRing128Tensor, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] attributes[axis, precision] Self::rep_kernel),
+///   ]
+/// }
+/// `
+///
 /// Kernel functions makred "runtime" are never used in symbolic contexts
 /// Kernel functions marked "hybrid" maybe be evaluated in symbolic contexts
 macro_rules! kernel {
