@@ -487,9 +487,9 @@ modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, inde
 kernel! {
     HostIndexAxisOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] attributes[axis, index] Self::bit_kernel),
+        (HostPlacement, (HostRing64Tensor) -> [runtime] HostRing64Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> [runtime] HostRing128Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> [runtime] HostBitTensor => attributes[axis, index] Self::bit_kernel),
     ]
 }
 
