@@ -1,10 +1,9 @@
-use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
     AbstractHostRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
@@ -14,6 +13,7 @@ use crate::host::{
 use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
+use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::sync::Arc;
@@ -143,10 +143,10 @@ impl Session for SyncSession {
             HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            // TODO add support for the missing operators below
-            Identity(_) | Send(_) | Receive(_) | HostReshape(_) => {
-                unimplemented!("SyncSession implementation is missing for {:?}", op)
-            }
+            Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostReshape(op) => DispatchKernel::compile(&op, plc)(self, operands),
         }
     }
 
@@ -243,6 +243,10 @@ pub trait Tensor<S: Session> {
 
 pub trait PlacementShape<S: Session, T, ShapeT> {
     fn shape(&self, sess: &S, x: &T) -> ShapeT;
+}
+
+pub trait PlacementReshape<S: Session, T, ShapeT, O> {
+    fn reshape(&self, sess: &S, x: &T, shape: &ShapeT) -> O;
 }
 
 pub trait PlacementKeyGen<S: Session, KeyT> {
@@ -492,6 +496,10 @@ pub trait PlacementConstant<S: Session, O> {
     fn constant(&self, sess: &S, value: Constant) -> O;
 }
 
+pub trait PlacementIdentity<S: Session, T, O> {
+    fn identity(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementInput<S: Session, O> {
     fn input(&self, sess: &S, arg_name: String) -> O;
 }
@@ -506,6 +514,14 @@ pub trait PlacementLoad<S: Session, KeyT, QueryT, O> {
 
 pub trait PlacementSave<S: Session, KeyT, T, O> {
     fn save(&self, sess: &S, key: &KeyT, x: &T) -> O;
+}
+
+pub trait PlacementSend<S: Session, T, O> {
+    fn send(&self, sess: &S, rendezvous_key: String, receiver: Role, x: &T) -> O;
+}
+
+pub trait PlacementReceive<S: Session, O> {
+    fn receive(&self, sess: &S, rendezvous_key: String, sender: Role) -> O;
 }
 
 pub trait PlacementAtLeast2D<S: Session, T, O> {
@@ -616,12 +632,15 @@ impl Compile<SyncKernel> for Operator {
             FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            // TODO implement below (needed until we switch to new framework for execution)
-            FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
-                unimplemented!("deprecated, not impl {:?}", self)
-            }
+            FixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointMul(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointDot(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointTruncPr(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointMean(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FixedpointSum(op) => Compile::<SyncKernel>::compile(op, ctx),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
@@ -1559,6 +1578,215 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
     }
 }
 
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointEncodeOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        use crate::fixedpoint::Convert;
+        match self.sig {
+            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
+                let scaling_factor = u64::pow(2, self.precision);
+                closure_kernel!(HostFloat64Tensor, |x| HostRing64Tensor::encode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            signature![(Ty::HostFloat64Tensor) -> Ty::HostRing128Tensor] => {
+                let scaling_factor = u128::pow(2, self.precision);
+                closure_kernel!(HostFloat64Tensor, |x| HostRing128Tensor::encode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointDecodeOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        use crate::fixedpoint::Convert;
+        match self.sig {
+            signature![(Ty::HostRing64Tensor) -> _] => {
+                let scaling_factor = u64::pow(2, self.precision);
+                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::decode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            signature![(Ty::HostRing128Tensor) -> _] => {
+                let scaling_factor = u128::pow(2, self.precision);
+                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::decode(
+                    &x,
+                    scaling_factor
+                ))
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointAddOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x + y)
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x + y)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointSubOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x - y)
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x - y)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointMulOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x * y)
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x * y)
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointDotOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        match self.sig {
+            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
+                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x.dot(y))
+                })
+            }
+            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
+                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
+                    let x = match x {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    let y = match y {
+                        FixedTensor::HostTensor(v) => v,
+                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
+                    };
+                    FixedTensor::HostTensor(x.dot(y))
+                })
+            }
+            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        }
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointTruncPrOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        unimplemented!("FixedpointTruncPrOp is not implemented in the older framework")
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointMeanOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        unimplemented!("FixedpointMeanOp is not implemented in the older framework")
+    }
+}
+
+#[cfg(not(feature = "exclude_old_framework"))]
+impl Compile<Kernel> for FixedpointSumOp {
+    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        unimplemented!("FixedpointSumOp is not implemented in the older framework")
+    }
+}
+
 // This impl is only used by the old kernels, which are not aware of the placements. See ConstantOp::kernel for the new code
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for ConstantOp {
@@ -1617,6 +1845,49 @@ impl ConstantOp {
         HostPlacement: PlacementPlace<S, T>,
     {
         plc.place(sess, value)
+    }
+}
+
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] ($value) -> Unit, SendOp);
+    )*
+)}
+
+kernel! {
+    SendOp, [
+        (HostPlacement, (String) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Unit) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostShape) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Seed) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (PrfKey) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint8Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (Fixed128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+    ]
+}
+
+impl SendOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _rendezvous_key: String,
+        _receiver: Role,
+        _x: T,
+    ) -> Unit {
+        unimplemented!("Send Op kernel implementation missing, because RuntimeSession does not have role_assignment yet")
     }
 }
 
@@ -1681,6 +1952,49 @@ impl Compile<AsyncKernel> for SendOp {
     }
 }
 
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> $value, ReceiveOp);
+    )*
+)}
+
+kernel! {
+    ReceiveOp, [
+        (HostPlacement, () -> String => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Unit => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostShape => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Seed => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> PrfKey => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostBitTensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostRing64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostRing128Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFloat32Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFloat64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt8Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt16Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt32Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostInt64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint8Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint16Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint32Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostUint64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Fixed64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> Fixed128Tensor => attributes[rendezvous_key, sender] Self::kernel),
+
+    ]
+}
+
+impl ReceiveOp {
+    fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _rendezvous_key: String,
+        _sender: Role,
+    ) -> T {
+        unimplemented!("Receive Op kernel implementation missing, because RuntimeSession does not have role_assignment yet")
+    }
+}
+
 impl Compile<SyncKernel> for ReceiveOp {
     fn compile(&self, ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.sig.ret();
@@ -1740,6 +2054,44 @@ impl Compile<AsyncKernel> for ReceiveOp {
     }
 }
 
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementIdentity::identity, HostPlacement, ($value) -> $value, IdentityOp);
+    )*
+)}
+
+kernel! {
+    IdentityOp, [
+        (HostPlacement, (String) -> String => Self::kernel),
+        (HostPlacement, (Unit) -> Unit => Self::kernel),
+        (HostPlacement, (HostShape) -> HostShape => Self::kernel),
+        (HostPlacement, (Seed) -> Seed => Self::kernel),
+        (HostPlacement, (PrfKey) -> PrfKey => Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => Self::kernel),
+        (HostPlacement, (HostUint8Tensor) -> HostUint8Tensor => Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => Self::kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => Self::kernel),
+
+    ]
+}
+
+impl IdentityOp {
+    fn kernel<S: RuntimeSession, T>(_sess: &S, _plc: &HostPlacement, x: T) -> T {
+        x
+    }
+}
+
 impl Compile<SyncKernel> for IdentityOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<SyncKernel> {
         let expected_ty = self.sig.ret();
@@ -1765,27 +2117,12 @@ impl Compile<AsyncKernel> for IdentityOp {
     }
 }
 
-// Not all the variants from the `values![]` list can be received as an input (nothing replicated, for instance).
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> String, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Unit, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostShape, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Seed, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> PrfKey, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostBitTensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostRing64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostRing128Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostFloat64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt8Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt16Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostInt64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint8Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint16Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint32Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> HostUint64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed64Tensor, InputOp);
-modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> Fixed128Tensor, InputOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementInput::input, HostPlacement, attributes[arg_name: String] () -> $value, InputOp);
+    )*
+)}
+
 kernel! {
     InputOp, [
         (HostPlacement, () -> String => attributes[arg_name] Self::kernel),
@@ -1857,27 +2194,11 @@ impl Compile<AsyncKernel> for InputOp {
     }
 }
 
-// Not all the variants from the `values![]` list can be saved as an output (nothing replicated, for instance).
-modelled!(PlacementOutput::output, HostPlacement, (Unit) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostShape) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Seed) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (PrfKey) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (String) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostBitTensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostRing64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostRing128Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostFloat32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostFloat64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt8Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt16Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostInt64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint8Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint16Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint32Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (HostUint64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Fixed64Tensor) -> Unit, OutputOp);
-modelled!(PlacementOutput::output, HostPlacement, (Fixed128Tensor) -> Unit, OutputOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementOutput::output, HostPlacement, ($value) -> Unit, OutputOp);
+    )*
+)}
 
 kernel! {
     OutputOp, [
@@ -1927,27 +2248,11 @@ impl Compile<AsyncKernel> for OutputOp {
     }
 }
 
-// Not all the variants from the `values![]` list can be saved (nothing replicated, for instance).
-modelled!(PlacementSave::save, HostPlacement, (String, Unit) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostShape) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Seed) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, PrfKey) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, String) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostBitTensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostRing64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostRing128Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostFloat32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostFloat64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt8Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt16Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostInt64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint8Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint16Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint32Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, HostUint64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Fixed64Tensor) -> Unit, SaveOp);
-modelled!(PlacementSave::save, HostPlacement, (String, Fixed128Tensor) -> Unit, SaveOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementSave::save, HostPlacement, (String, $value) -> Unit, SaveOp);
+    )*
+)}
 
 kernel! {
     SaveOp, [
@@ -2021,26 +2326,11 @@ impl Compile<AsyncKernel> for SaveOp {
     }
 }
 
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Unit, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostShape, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Seed, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> PrfKey, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> String, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostBitTensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostRing64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostRing128Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt8Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt16Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostInt64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint8Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint16Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint32Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostUint64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed64Tensor, LoadOp);
-modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Fixed128Tensor, LoadOp);
+for_all_values! {( $($value:ty),* ) => (
+    $(
+        modelled!(PlacementLoad::load, HostPlacement, (String, String) -> $value, LoadOp);
+    )*
+)}
 
 kernel! {
     LoadOp, [
