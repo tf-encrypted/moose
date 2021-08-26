@@ -1077,13 +1077,22 @@ impl Compile<Kernel> for HostAtLeast2DOp {
 
 impl Compile<Kernel> for HostSliceOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
+        assert!(self.slice.0.len() == 1);
         let start = self.slice.0[0].start as usize;
-        let end = self.slice.0[0].end.unwrap() as usize; // TODO(Dragos) fix this
-        match self.sig {
-            signature![(_) -> Ty::HostShape] => {
-                closure_kernel!(HostShape, |x| HostShape(x.0.slice(start, end), x.1))
+        let end = self.slice.0[0].end;
+
+        if let Some(end) = end {
+            match self.sig {
+                signature![(_) -> Ty::HostShape] => {
+                    closure_kernel!(HostShape, |x| HostShape(
+                        x.0.slice(start, end as usize),
+                        x.1
+                    ))
+                }
+                _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
             }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        } else {
+            Err(Error::UnimplementedOperator(format!("{:?}", self)))
         }
     }
 }

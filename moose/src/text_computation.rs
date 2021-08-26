@@ -1334,7 +1334,7 @@ impl_to_textual!(
     to_column_vector,
     sig
 );
-impl_to_textual!(HostSliceOp, "{op}{{slice}}: {}", sig);
+impl_to_textual!(HostSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
@@ -1775,6 +1775,12 @@ use_debug_to_textual!(u32);
 use_debug_to_textual!(Vec<u32>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
+
+impl ToTextual for SliceInfo {
+    fn to_textual(&self) -> String {
+        unimplemented!()
+    }
+}
 
 impl ToTextual for [u8] {
     fn to_textual(&self) -> String {
