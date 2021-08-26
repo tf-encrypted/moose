@@ -116,7 +116,7 @@ impl PlacementPlace<SymbolicSession, Symbolic<HostShape>> for HostPlacement {
 
 /// One slice for slicing op
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct RawSliceInfoElem {
+pub struct SliceInfoElem {
     /// start index; negative are counted from the back of the axis
     pub start: isize,
     /// end index; negative are counted from the back of the axis; when not present
@@ -128,65 +128,16 @@ pub struct RawSliceInfoElem {
 
 /// An ndarray slice needs a SliceInfoElem for each shape dimension
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
-pub struct RawSliceInfo(pub Vec<RawSliceInfoElem>);
+pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
-use ndarray::SliceInfo;
-use ndarray::SliceInfoElem;
-
-impl From<RawSliceInfo> for SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn> {
-    fn from(s: RawSliceInfo) -> SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn> {
-        let all_slices: Vec<SliceInfoElem> =
+impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
+    fn from(s: SliceInfo) -> ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
+        let all_slices: Vec<ndarray::SliceInfoElem> =
             s.0.iter()
-                .map(|x| SliceInfoElem::from(Slice::new(x.start, x.end, x.step)))
+                .map(|x| ndarray::SliceInfoElem::from(Slice::new(x.start, x.end, x.step)))
                 .collect();
-        SliceInfo::<Vec<SliceInfoElem>, IxDyn, IxDyn>::try_from(all_slices).unwrap()
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct HostSlice(pub RawSliceInfo, pub HostPlacement);
-
-impl Placed for HostSlice {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        Ok(self.1.clone())
-    }
-}
-
-impl PlacementPlace<SyncSession, HostSlice> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, slice: HostSlice) -> HostSlice {
-        match slice.placement() {
-            Ok(place) if self == &place => slice,
-            _ => {
-                // TODO just updating the placement isn't enough,
-                // we need this to eventually turn into Send + Recv
-                HostSlice(slice.0, self.clone())
-            }
-        }
-    }
-}
-
-impl PlacementPlace<SymbolicSession, Symbolic<HostSlice>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<HostSlice>) -> Symbolic<HostSlice> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                match x {
-                    Symbolic::Concrete(slice) => {
-                        // TODO insert Place ops?
-                        Symbolic::Concrete(HostSlice(slice.0, self.clone()))
-                    }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                        // TODO insert `Place` ops here?
-                        Symbolic::Symbolic(SymbolicHandle {
-                            op,
-                            plc: self.clone(),
-                        })
-                    }
-                }
-            }
-        }
+        ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::try_from(all_slices)
+            .unwrap()
     }
 }
 
@@ -356,12 +307,14 @@ impl HostSliceOp {
     }
 }
 
-modelled!(PlacementBetterSlice::slice, HostPlacement, attributes[slice: RawSliceInfo] (HostRing64Tensor) -> HostRing64Tensor, BetterSliceOp);
+modelled!(PlacementBetterSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing64Tensor) -> HostRing64Tensor, BetterSliceOp);
+modelled!(PlacementBetterSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing128Tensor) -> HostRing128Tensor, BetterSliceOp);
 
 kernel! {
     BetterSliceOp,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[slice] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[slice] Self::kernel),
     ]
 }
 
@@ -371,14 +324,15 @@ impl BetterSliceOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        raw_slice_info: RawSliceInfo,
+        raw_slice_info: SliceInfo,
         x: AbstractHostRingTensor<T>,
     ) -> AbstractHostRingTensor<T>
     where
         T: Clone,
-        RawSliceInfo: Into<SliceInfo<Vec<SliceInfoElem>, IxDyn, IxDyn>>,
+        SliceInfo: Into<ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>>,
     {
-        let slice_info = SliceInfo::<Vec<SliceInfoElem>, IxDyn, IxDyn>::from(raw_slice_info);
+        let slice_info =
+            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(raw_slice_info);
         let sliced = x.0.slice(slice_info).to_owned();
         AbstractHostRingTensor(sliced, plc.clone())
     }
@@ -2154,13 +2108,13 @@ mod tests {
         };
         let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
 
-        let slice = RawSliceInfo(vec![
-            RawSliceInfoElem {
+        let slice = SliceInfo(vec![
+            SliceInfoElem {
                 start: 1,
                 end: None,
                 step: 1,
             },
-            RawSliceInfoElem {
+            SliceInfoElem {
                 start: 0,
                 end: None,
                 step: 1,
@@ -2172,7 +2126,7 @@ mod tests {
 
         let target: ArrayD<u64> = array![[3, 4]].into_dimensionality::<IxDyn>().unwrap();
 
-        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice.clone()))
+        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
     }
 
     #[test]
