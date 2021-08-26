@@ -25,6 +25,7 @@ use num_traits::Zero;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
@@ -295,8 +296,6 @@ kernel! {
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[slice] Self::kernel),
     ]
 }
-
-use std::convert::TryFrom;
 
 impl HostSliceOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(
