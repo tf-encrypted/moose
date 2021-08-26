@@ -126,47 +126,6 @@ class LinearRegressionExample(parameterized.TestCase):
 
         return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
 
-    def _build_simple_example(self, metric_name="mse", compiler_passes=None):
-        x_owner = edsl.host_placement(name="x-owner")
-        y_owner = edsl.host_placement(name="y-owner")
-        model_owner = edsl.host_placement(name="model-owner")
-        replicated_plc = edsl.replicated_placement(
-            players=[x_owner, y_owner, model_owner], name="replicated-plc"
-        )
-
-        @edsl.computation
-        def my_comp(
-            x_uri: edsl.Argument(placement=x_owner, vtype=StringType()),
-            y_uri: edsl.Argument(placement=y_owner, vtype=StringType()),
-            w_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
-            metric_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
-            rsquared_uri: edsl.Argument(placement=model_owner, vtype=StringType()),
-        ):
-            with x_owner:
-                X = edsl.atleast_2d(
-                    edsl.load(x_uri, dtype=edsl.float64), to_column_vector=True
-                )
-                X = edsl.cast(X, dtype=FIXED)
-
-            with y_owner:
-                y_true = edsl.atleast_2d(
-                    edsl.load(y_uri, dtype=edsl.float64), to_column_vector=True
-                )
-                y_true = edsl.cast(y_true, dtype=FIXED)
-
-            with replicated_plc:
-                w = edsl.sub(X, y_true)
-
-            with model_owner:
-                w = edsl.cast(w, dtype=edsl.float64)
-                res = (
-                    edsl.save(w_uri, w),
-                )
-
-            return res
-
-        return my_comp, (x_owner, y_owner, model_owner, replicated_plc)
-
     def _linear_regression_eval(self, metric_name):
         linear_comp, placements = self._build_linear_regression_example(metric_name)
 
@@ -202,30 +161,13 @@ class LinearRegressionExample(parameterized.TestCase):
 
     def test_linear_regression_rust_compiler(self):
         linear_comp, placements = self._build_linear_regression_example("mse")
-        # linear_comp, placements = self._build_simple_example("mse")
-
-        # Compile in Python
-        concrete_comp = edsl.trace_and_compile(
-            linear_comp,
-            ring=128,
-            compiler_passes=[
-                # HostEncodingPass(),
-                # HostLoweringPass(),
-                # ReplicatedEncodingPass(),
-                # ReplicatedOpsPass(),
-                # HostRingLoweringPass(),
-                # ReplicatedLoweringPass(ring=128),
-                # PruningPass(),
-                # NetworkingPass(),
-            ],
-        )
+        concrete_comp = edsl.trace(linear_comp)
         comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
         rust_compiled = elk_compiler.compile_computation(
             comp_bin,
             [
                 "typing",
-                "dump",
                 # All of the symbolic passes. Currently combines functionality of
                 # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
                 "full",

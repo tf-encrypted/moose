@@ -11,13 +11,13 @@ use crate::computation::{
 };
 use crate::error::Error;
 use crate::error::Result;
-use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
+use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex,
     PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
-    Session, SyncSession, Tensor,
+    PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr,
+    PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession,
+    Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -509,6 +509,7 @@ impl HostMulOp {
 kernel! {
     HostDivOp,
     [
+        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
         (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
@@ -540,9 +541,7 @@ impl HostDivOp {
     {
         unimplemented!("Lacking division protocols yet") // TODO: implement those
     }
-}
 
-impl HostDivOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
         sess: &S,
         plc: &HostPlacement,
@@ -892,6 +891,20 @@ impl HostSumOp {
     {
         let axis = axis.map(|a| a as usize);
         plc.place(sess, x.sum(axis))
+    }
+
+    // TODO: Make it generic for any FixedTensor
+    pub fn rep_kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<u32>,
+        x: cs!(Fixed128Tensor),
+    ) -> cs!(Fixed128Tensor)
+    where
+        Fixed128Tensor: KnownType<S>,
+        ReplicatedPlacement: PlacementSum<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+    {
+        plc.sum(sess, axis, &x)
     }
 }
 
