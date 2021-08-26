@@ -11,7 +11,7 @@ use crate::computation::{
 };
 use crate::error::Error;
 use crate::error::Result;
-use crate::fixedpoint::Fixed128Tensor;
+use crate::fixedpoint::{Fixed128Tensor, FixedTensor};
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex,
     PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
@@ -301,11 +301,11 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlaceme
     }
 }
 
-hybrid_kernel! {
+kernel! {
     HostAddOp,
     [
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
@@ -400,7 +400,7 @@ impl HostAddOp {
     }
 }
 
-unified_kernel! {
+kernel! {
     HostSubOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
@@ -452,7 +452,7 @@ impl HostSubOp {
     }
 }
 
-unified_kernel! {
+kernel! {
     HostMulOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
@@ -506,11 +506,11 @@ impl HostMulOp {
     }
 }
 
-hybrid_kernel! {
+kernel! {
     HostDivOp,
     [
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
@@ -556,7 +556,7 @@ impl HostDivOp {
     }
 }
 
-unified_kernel! {
+kernel! {
     HostDotOp,
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
@@ -862,6 +862,21 @@ impl HostMeanOp {
                 HostTensor::place(plc, out)
             }
         }
+    }
+
+    // TODO: Make it generic for any FixedTensor
+    pub fn rep_kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<u32>,
+        x: cs!(Fixed128Tensor),
+    ) -> cs!(Fixed128Tensor)
+    where
+        Fixed128Tensor: KnownType<S>,
+        ReplicatedPlacement: PlacementRingMean<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+    {
+        // TODO: grab scaling base and exp from somewhere else
+        plc.ring_mean(sess, axis, 2, 27, &x)
     }
 }
 

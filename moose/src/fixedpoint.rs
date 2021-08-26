@@ -974,11 +974,11 @@ impl FixedpointMeanOp {
 modelled!(PlacementCast::cast, HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor, CastOp);
 modelled!(PlacementCast::cast, HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor, CastOp);
 
-hybrid_kernel! {
+kernel! {
     CastOp,
     [
-        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => Self::encode_kernel),
-        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => Self::decode_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => [hybrid] Self::encode_kernel),
+        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::decode_kernel),
     ]
 }
 

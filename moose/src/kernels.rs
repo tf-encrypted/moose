@@ -841,6 +841,7 @@ modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32
 kernel! {
     HostMeanOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 
