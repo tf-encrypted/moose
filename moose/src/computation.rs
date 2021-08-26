@@ -842,7 +842,6 @@ operators![
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
-    BetterSlice,
     RingAdd,
     RingSub,
     RingNeg,
@@ -1009,13 +1008,6 @@ pub struct HostReshapeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostSliceOp {
-    pub sig: Signature,
-    pub start: u32,
-    pub end: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -1037,7 +1029,7 @@ pub struct ShapeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct BetterSliceOp {
+pub struct HostSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
 }

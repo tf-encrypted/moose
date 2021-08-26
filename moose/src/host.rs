@@ -1,18 +1,16 @@
 use crate::computation::{
-    BetterSliceOp, BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp,
-    Constant, HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp,
-    HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp,
-    HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, Constant,
+    HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
+    HostMulOp, HostOnesOp, HostPlacement, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp,
+    Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBetterSlice, PlacementBitExtract, PlacementDot,
-    PlacementFill, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
-    Session, SyncSession, Tensor,
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
+    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
+    PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
+    PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -285,34 +283,14 @@ impl ShapeOp {
     }
 }
 
-modelled!(PlacementSlice::slice, HostPlacement, attributes[start: u32, end: u32] (HostShape) -> HostShape, HostSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, HostSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing64Tensor) -> HostRing64Tensor, HostSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing128Tensor) -> HostRing128Tensor, HostSliceOp);
 
 kernel! {
     HostSliceOp,
     [
-        (HostPlacement, (HostShape) -> HostShape => attributes[start, end] Self::kernel),
-    ]
-}
-
-impl HostSliceOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        start: u32,
-        end: u32,
-        x: HostShape,
-    ) -> HostShape {
-        let slice = x.0.slice(start as usize, end as usize);
-        HostShape(slice, plc.clone())
-    }
-}
-
-modelled!(PlacementBetterSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing64Tensor) -> HostRing64Tensor, BetterSliceOp);
-modelled!(PlacementBetterSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing128Tensor) -> HostRing128Tensor, BetterSliceOp);
-
-kernel! {
-    BetterSliceOp,
-    [
+        (HostPlacement, (HostShape) -> HostShape => attributes[slice] Self::shape_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[slice] Self::kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[slice] Self::kernel),
     ]
@@ -320,7 +298,7 @@ kernel! {
 
 use std::convert::TryFrom;
 
-impl BetterSliceOp {
+impl HostSliceOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
@@ -335,6 +313,19 @@ impl BetterSliceOp {
             ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(raw_slice_info);
         let sliced = x.0.slice(slice_info).to_owned();
         AbstractHostRingTensor(sliced, plc.clone())
+    }
+
+    pub(crate) fn shape_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        slice_info: SliceInfo,
+        x: HostShape,
+    ) -> HostShape {
+        let slice = x.0.slice(
+            slice_info.0[0].start as usize,
+            slice_info.0[0].end.unwrap() as usize,
+        );
+        HostShape(slice, plc.clone())
     }
 }
 
@@ -2122,7 +2113,7 @@ mod tests {
         ]);
 
         let sess = SyncSession::default();
-        let y = PlacementBetterSlice::slice(&alice, &sess, slice, &x);
+        let y = alice.slice(&sess, slice, &x);
 
         let target: ArrayD<u64> = array![[3, 4]].into_dimensionality::<IxDyn>().unwrap();
 

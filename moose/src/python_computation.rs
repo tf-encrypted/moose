@@ -1,6 +1,6 @@
 //! Parser for computations defined in Python
 
-use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape};
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape, SliceInfo, SliceInfoElem};
 use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
@@ -1172,8 +1172,11 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
                             ),
-                            start: op.begin,
-                            end: op.end,
+                            slice: SliceInfo(vec![SliceInfoElem {
+                                start: op.begin as isize,
+                                step: 1,
+                                end: Some(op.end as isize),
+                            }]),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

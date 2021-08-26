@@ -134,7 +134,6 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            BetterSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -551,17 +550,8 @@ pub trait PlacementInverse<S: Session, T, O> {
 
 pub trait EmptyTypeHolder<T> {}
 
-// The `T` type parameter is required by the modelled!() macros, but we are enforcing that T = ShapeT.
-pub trait PlacementSlice<S: Session, ShapeT, T>
-where
-    // Forces ShapeT = T
-    dyn EmptyTypeHolder<ShapeT>: EmptyTypeHolder<T>,
-{
-    fn slice(&self, sess: &S, start: u32, end: u32, x: &ShapeT) -> ShapeT;
-}
-
-pub trait PlacementBetterSlice<S: Session, T, O> {
-    fn slice(&self, sess: &S, slice: SliceInfo, x: &T) -> O;
+pub trait PlacementSlice<S: Session, T, O> {
+    fn slice(&self, sess: &S, slice_info: SliceInfo, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
@@ -634,9 +624,9 @@ impl Compile<SyncKernel> for Operator {
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
-            | AdtToRep(_) | BetterSlice(_) | RepAbs(_) | RepSetup(_) | RepShare(_)
-            | RepReveal(_) | RepFill(_) | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_)
-            | RepDot(_) | RepMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -702,9 +692,9 @@ impl Compile<AsyncKernel> for Operator {
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
-            | AdtToRep(_) | BetterSlice(_) | RepAbs(_) | RepSetup(_) | RepShare(_)
-            | RepReveal(_) | RepFill(_) | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_)
-            | RepDot(_) | RepMean(_) | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+            | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -1068,8 +1058,8 @@ impl Compile<Kernel> for HostAtLeast2DOp {
 
 impl Compile<Kernel> for HostSliceOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let start = self.start as usize;
-        let end = self.end as usize;
+        let start = self.slice.0[0].start as usize;
+        let end = self.slice.0[0].end.unwrap() as usize; // TODO(Dragos) fix this
         match self.sig {
             signature![(_) -> Ty::HostShape] => {
                 closure_kernel!(HostShape, |x| HostShape(x.0.slice(start, end), x.1))

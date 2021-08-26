@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::host::{HostShape, RawShape};
+use crate::host::{HostShape, RawShape, SliceInfo, SliceInfoElem};
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use nom::{
     branch::{alt, permutation},
@@ -412,7 +412,18 @@ fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("end", parse_int)
     ))(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, HostSliceOp { sig, start, end }.into()))
+    Ok((
+        input,
+        HostSliceOp {
+            sig,
+            slice: SliceInfo(vec![SliceInfoElem {
+                start,
+                step: 1,
+                end: Some(end),
+            }]),
+        }
+        .into(),
+    ))
 }
 
 /// Parses a HostConcat operator.
@@ -1197,7 +1208,6 @@ impl ToTextual for Operator {
             BitAnd(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
             RingFill(op) => op.to_textual(),
-            BetterSlice(op) => op.to_textual(),
             HostAdd(op) => op.to_textual(),
             HostSub(op) => op.to_textual(),
             HostMul(op) => op.to_textual(),
@@ -1310,8 +1320,7 @@ impl_to_textual!(
     to_column_vector,
     sig
 );
-impl_to_textual!(HostSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
-impl_to_textual!(BetterSliceOp, "{op}{{slice}}: {}", sig);
+impl_to_textual!(HostSliceOp, "{op}{{slice}}: {}", sig);
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
