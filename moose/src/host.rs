@@ -487,8 +487,11 @@ impl HostMulOp {
         Fixed128Tensor: KnownType<S>,
         ReplicatedPlacement:
             PlacementMul<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+        ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
     {
-        with_context!(plc, sess, x * y)
+        let mul = with_context!(plc, sess, x * y);
+        // TODO: Grab precision (27) from the type
+        plc.trunc_pr(sess, 27, &mul)
     }
 }
 
@@ -590,8 +593,11 @@ impl HostDotOp {
         Fixed128Tensor: KnownType<S>,
         ReplicatedPlacement:
             PlacementDot<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+        ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
     {
-        plc.dot(sess, &x, &y)
+        let mul = plc.dot(sess, &x, &y);
+        // TODO: Grab precision (27) from the type
+        plc.trunc_pr(sess, 27, &mul)
     }
 }
 
