@@ -60,7 +60,7 @@
 //!
 
 use aes::cipher::generic_array::{typenum::U16, typenum::U8, GenericArray};
-use aes::cipher::{BlockCipher, NewBlockCipher};
+use aes::cipher::{BlockEncrypt, NewBlockCipher};
 use aes::Aes128;
 use byteorder::{ByteOrder, LittleEndian};
 use rand::{CryptoRng, Error, RngCore, SeedableRng};
