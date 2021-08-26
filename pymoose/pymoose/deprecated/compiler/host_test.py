@@ -72,7 +72,7 @@ class HostTest(parameterized.TestCase):
             inputs={"value": "serialize_0"},
             sender="player0",
             receiver="player1",
-            rendezvous_key="rendezvous_key_0",
+            rendezvous_key="rdv_key_0",
         )
         receive_op = concrete_comp.operation("receive_0")
         assert receive_op == ReceiveOperation(
@@ -81,7 +81,7 @@ class HostTest(parameterized.TestCase):
             inputs={},
             sender="player0",
             receiver="player1",
-            rendezvous_key="rendezvous_key_0",
+            rendezvous_key="rdv_key_0",
             output_type=IntType(),
         )
 
