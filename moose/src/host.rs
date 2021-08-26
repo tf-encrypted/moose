@@ -16,8 +16,8 @@ use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex,
     PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
     PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr,
-    PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession,
-    Tensor,
+    PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor, RuntimeSession,
+    Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -873,9 +873,11 @@ impl HostMeanOp {
     where
         Fixed128Tensor: KnownType<S>,
         ReplicatedPlacement: PlacementRingMean<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+        ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
     {
         // TODO: grab scaling base and exp from somewhere else
-        plc.ring_mean(sess, axis, 2, 27, &x)
+        let mean = plc.ring_mean(sess, axis, 2, 27, &x);
+        plc.trunc_pr(sess, 27, &mean)
     }
 }
 
