@@ -6,7 +6,7 @@ use crate::computation::{
     RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp,
 };
 use crate::error::{Error, Result};
-use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
+use crate::host::{AbstractHostFixedTensor, HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, HostFixed64Tensor, HostFixed128Tensor};
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract,
     PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
@@ -315,6 +315,9 @@ impl RepShareOp {
     }
 }
 
+// TODO the first two should be from ReplicatedFixedTensor!
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing64Tensor) -> HostFixed64Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing128Tensor) -> HostFixed128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostBitTensor, RepRevealOp);
@@ -322,14 +325,24 @@ modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostB
 hybrid_kernel! {
     RepRevealOp,
     [
-        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => Self::kernel),
-        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => Self::kernel),
-        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => Self::kernel),
+        (HostPlacement, (ReplicatedRing64Tensor) -> HostFixed64Tensor => Self::fixed_kernel),
+        (HostPlacement, (ReplicatedRing128Tensor) -> HostFixed128Tensor => Self::fixed_kernel),
+        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => Self::ring_kernel),
+        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => Self::ring_kernel),
+        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => Self::ring_kernel),
     ]
 }
 
 impl RepRevealOp {
-    fn kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: RepTen<R>) -> R
+    fn fixed_kernel<S: Session, RepT, HostRingT>(sess: &S, receiver: &HostPlacement, xe: RepT) -> AbstractHostFixedTensor<HostRingT>
+    where
+        HostPlacement: PlacementReveal<S, RepT, HostRingT>,
+    {
+        let x = receiver.reveal(sess, &xe);
+        AbstractHostFixedTensor(x)
+    }
+
+    fn ring_kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: RepTen<R>) -> R
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,

@@ -6,7 +6,7 @@ use crate::computation::{
     HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
 };
 use crate::error::Result;
-use crate::host::{HostRing64Tensor, HostRing128Tensor,
+use crate::host::{HostRing64Tensor, HostRing128Tensor, AbstractHostFixedTensor,
     AbstractHostRingTensor, HostFloat32Tensor, HostFloat64Tensor, HostFixed128Tensor,
     HostFixed64Tensor,
 };
@@ -65,10 +65,10 @@ impl Convert<HostFloat64Tensor> for HostFixed64Tensor {
     fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostFixed64Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
-        HostFixed64Tensor(HostRing64Tensor::from(x_converted))
+        AbstractHostFixedTensor(HostRing64Tensor::from(x_converted))
     }
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
-        let x_upshifted: ArrayD<i64> = x.into();
+        let x_upshifted: ArrayD<i64> = x.0.into();
         let x_converted = x_upshifted.mapv(|el| el as f64);
         HostFloat64Tensor::from(x_converted / scaling_factor as f64)
     }
@@ -79,7 +79,7 @@ impl Convert<HostFloat64Tensor> for HostFixed128Tensor {
     fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostFixed128Tensor {
         let x_upshifted = &x.0 * (scaling_factor as f64);
         let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
-        HostFixed64128Tensor(HostFixed128Tensor::from(x_converted))
+        AbstractHostFixedTensor(HostRing128Tensor::from(x_converted))
     }
 
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
@@ -173,60 +173,93 @@ impl FixedpointRingMeanOp {
     }
 }
 
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> HostFixed64Tensor, FixedpointEncodeOp);
+modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat64Tensor) -> HostFixed128Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 
 hybrid_kernel! {
     FixedpointEncodeOp,
     [
-        (HostPlacement, (HostFloat32Tensor) -> Fixed64Tensor => attributes[precision] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => attributes[precision] Self::kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => attributes[precision] Self::host_fixed_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => attributes[precision] Self::host_fixed_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> Fixed64Tensor => attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => attributes[precision] Self::fixed_kernel),
     ]
 }
 
 impl FixedpointEncodeOp {
-    fn kernel<S: Session, StdT, RingT, RepT>(
+    fn fixed_kernel<S: Session, HostFloatT, HostFixedT, RepRingT>(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
-        x: StdT,
-    ) -> FixedTensor<RingT, RepT>
+        x: HostFloatT,
+    ) -> FixedTensor<HostFixedT, RepRingT>
     where
-        HostPlacement: PlacementFixedpointRingEncode<S, StdT, RingT>,
+        HostPlacement: PlacementFixedpointEncode<S, HostFloatT, HostFixedT>,
     {
-        let x = plc.fixedpoint_ring_encode(sess, 2, precision, &x);
+        let x = plc.fixedpoint_encode(sess, precision, &x);
         FixedTensor::Host(x)
+    }
+
+    fn host_fixed_kernel<S: Session, HostFloatT, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        precision: u32,
+        x: HostFloatT,
+    ) -> AbstractHostFixedTensor<HostRingT>
+    where
+        HostPlacement: PlacementFixedpointRingEncode<S, HostFloatT, HostRingT>,
+    {
+        let y = plc.fixedpoint_ring_encode(sess, 2, precision, &x);
+        AbstractHostFixedTensor(y)
     }
 }
 
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed64Tensor) -> HostFloat32Tensor, FixedpointDecodeOp);
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (Fixed128Tensor) -> HostFloat64Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (HostFixed64Tensor) -> HostFloat32Tensor, FixedpointDecodeOp);
+modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (HostFixed128Tensor) -> HostFloat64Tensor, FixedpointDecodeOp);
 
 // TODO(Morten) should these produce Float32Tensor and Float64Tensor instead?
 hybrid_kernel! {
     FixedpointDecodeOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> HostFloat32Tensor => attributes[precision] Self::kernel),
-        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => attributes[precision] Self::kernel),
+        (HostPlacement, (Fixed64Tensor) -> HostFloat32Tensor => attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFloat32Tensor => attributes[precision] Self::host_fixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => attributes[precision] Self::host_fixed_kernel),
     ]
 }
 
 impl FixedpointDecodeOp {
-    fn kernel<S: Session, StdT, RingT, RepT>(
+    fn fixed_kernel<S: Session, HostFixedT, RepRingT, HostFloatT>(
         sess: &S,
         plc: &HostPlacement,
         precision: u32,
-        x: FixedTensor<RingT, RepT>,
-    ) -> StdT
+        x: FixedTensor<HostFixedT, RepRingT>,
+    ) -> HostFloatT
     where
-        HostPlacement: PlacementReveal<S, RepT, RingT>,
-        HostPlacement: PlacementFixedpointRingDecode<S, RingT, StdT>,
+        HostPlacement: PlacementReveal<S, RepRingT, HostFixedT>,
+        HostPlacement: PlacementFixedpointDecode<S, HostFixedT, HostFloatT>,
     {
-        let x = match x {
+        let v = match x {
             FixedTensor::Host(v) => v,
             FixedTensor::Replicated(v) => plc.reveal(sess, &v),
         };
-        plc.fixedpoint_ring_decode(sess, 2, precision, &x)
+        plc.fixedpoint_decode(sess, precision, &v)
+    }
+
+    fn host_fixed_kernel<S: Session, HostRingT, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        precision: u32,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> HostFloatT
+    where
+        HostPlacement: PlacementFixedpointRingDecode<S, HostRingT, HostFloatT>,
+    {
+        plc.fixedpoint_ring_decode(sess, 2, precision, &x.0)
     }
 }
 

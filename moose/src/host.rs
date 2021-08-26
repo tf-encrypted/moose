@@ -4,7 +4,7 @@ use crate::computation::{
     HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp,
     HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp,
     RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp,
+    ShapeOp, SymbolicType,
 };
 use crate::error::Result;
 use crate::kernels::{
@@ -1069,7 +1069,15 @@ pub struct AbstractHostFixedTensor<RingT>(pub RingT);
 
 pub type HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>;
 
+impl SymbolicType for HostFixed64Tensor {
+    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing64Tensor>>>;
+}
+
 pub type HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>;
+
+impl SymbolicType for HostFixed128Tensor {
+    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing128Tensor>>>;
+}
 
 impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
     type Placement = RingT::Placement;

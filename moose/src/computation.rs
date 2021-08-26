@@ -41,6 +41,10 @@ impl SessionId {
     }
 }
 
+pub trait SymbolicType {
+    type Type;
+}
+
 pub trait KnownType<S: Session> {
     type Type;
     const TY: Ty;
@@ -491,8 +495,8 @@ values![
     (HostBitTensor, Symbolic<HostBitTensor>),
     (HostRing64Tensor, Symbolic<HostRing64Tensor>),
     (HostRing128Tensor, Symbolic<HostRing128Tensor>),
-    (HostFixed64Tensor, Symbolic<HostFixed64Tensor>),
-    (HostFixed128Tensor, Symbolic<HostFixed128Tensor>),
+    (HostFixed64Tensor, <HostFixed64Tensor as SymbolicType>::Type),
+    (HostFixed128Tensor, <HostFixed128Tensor as SymbolicType>::Type),
     (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
     (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
     (HostInt8Tensor, Symbolic<HostInt8Tensor>),
@@ -507,7 +511,7 @@ values![
         Fixed64Tensor,
         Symbolic<
             FixedTensor<
-                <HostRing64Tensor as KnownType<SymbolicSession>>::Type,
+                <HostFixed64Tensor as KnownType<SymbolicSession>>::Type,
                 <ReplicatedRing64Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
@@ -516,7 +520,7 @@ values![
         Fixed128Tensor,
         Symbolic<
             FixedTensor<
-                <HostRing128Tensor as KnownType<SymbolicSession>>::Type,
+                <HostFixed128Tensor as KnownType<SymbolicSession>>::Type,
                 <ReplicatedRing128Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
