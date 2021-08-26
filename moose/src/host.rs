@@ -1065,7 +1065,7 @@ impl RingInjectOp {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractHostFixedTensor<RingT>(pub RingT);
+pub struct AbstractHostFixedTensor<HostRingT>(pub HostRingT);
 
 pub type HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>;
 

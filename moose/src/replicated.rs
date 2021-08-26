@@ -3,7 +3,7 @@ use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
     RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp,
-    RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp,
+    RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{AbstractHostFixedTensor, HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, HostFixed64Tensor, HostFixed128Tensor};
@@ -28,11 +28,46 @@ pub struct AbstractReplicatedTensor<R> {
 /// Replicated tensor over Z_{2^64}.
 pub type ReplicatedRing64Tensor = AbstractReplicatedTensor<HostRing64Tensor>;
 
+impl SymbolicType for ReplicatedRing64Tensor {
+    type Type = Symbolic<AbstractReplicatedTensor<Symbolic<HostRing64Tensor>>>;
+}
+
 /// Replicated tensor over Z_{2^128}.
 pub type ReplicatedRing128Tensor = AbstractReplicatedTensor<HostRing128Tensor>;
 
+impl SymbolicType for ReplicatedRing128Tensor {
+    type Type = Symbolic<AbstractReplicatedTensor<Symbolic<HostRing128Tensor>>>;
+}
+
 /// Replicated tensor over Z_2.
 pub type ReplicatedBitTensor = AbstractReplicatedTensor<HostBitTensor>;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
+
+pub type ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>;
+
+impl SymbolicType for ReplicatedFixed64Tensor {
+    type Type = Symbolic<AbstractReplicatedFixedTensor<
+        <ReplicatedRing64Tensor as SymbolicType>::Type
+    >>;
+}
+
+pub type ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>;
+
+impl SymbolicType for ReplicatedFixed128Tensor {
+    type Type = Symbolic<AbstractReplicatedFixedTensor<
+        <ReplicatedRing128Tensor as SymbolicType>::Type
+    >>;
+}
+
+impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
+    type Placement = RepRingT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedSetup<K> {
@@ -188,9 +223,8 @@ impl RepSetupOp {
     }
 }
 
-// TODO first two should return RepFixedTensors
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
-modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedFixed64Tensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedFixed128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
@@ -198,28 +232,28 @@ modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Hos
 hybrid_kernel! {
     RepShareOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedRing64Tensor => Self::host_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedRing128Tensor => Self::host_fixed_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => Self::host_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => Self::host_ring_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::host_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedFixed64Tensor => Self::fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedFixed128Tensor => Self::fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::ring_kernel),
     ]
 }
 
 impl RepShareOp {
-    fn host_fixed_kernel<S: Session, SetupT, HostRingT, RepT>(
+    fn fixed_kernel<S: Session, SetupT, HostRingT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         setup: SetupT,
         x: AbstractHostFixedTensor<HostRingT>,
-    ) -> RepT
+    ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepT>
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepRingT>
     {
-        plc.share(sess, &setup, &x.0)
+        AbstractReplicatedFixedTensor(plc.share(sess, &setup, &x.0))
     }
 
-    fn host_ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
+    fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
@@ -332,9 +366,8 @@ impl RepShareOp {
     }
 }
 
-// TODO the first two should be from ReplicatedFixedTensor!
-modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing64Tensor) -> HostFixed64Tensor, RepRevealOp);
-modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing128Tensor) -> HostFixed128Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostBitTensor, RepRevealOp);
@@ -342,8 +375,8 @@ modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostB
 hybrid_kernel! {
     RepRevealOp,
     [
-        (HostPlacement, (ReplicatedRing64Tensor) -> HostFixed64Tensor => Self::fixed_kernel),
-        (HostPlacement, (ReplicatedRing128Tensor) -> HostFixed128Tensor => Self::fixed_kernel),
+        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => Self::fixed_kernel),
+        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => Self::fixed_kernel),
         (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => Self::ring_kernel),
         (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => Self::ring_kernel),
         (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => Self::ring_kernel),
@@ -351,11 +384,15 @@ hybrid_kernel! {
 }
 
 impl RepRevealOp {
-    fn fixed_kernel<S: Session, RepT, HostRingT>(sess: &S, receiver: &HostPlacement, xe: RepT) -> AbstractHostFixedTensor<HostRingT>
+    fn fixed_kernel<S: Session, RepRingT, HostRingT>(
+        sess: &S,
+        receiver: &HostPlacement,
+        xe: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> AbstractHostFixedTensor<HostRingT>
     where
-        HostPlacement: PlacementReveal<S, RepT, HostRingT>,
+        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
     {
-        let x = receiver.reveal(sess, &xe);
+        let x = receiver.reveal(sess, &xe.0);
         AbstractHostFixedTensor(x)
     }
 

@@ -15,7 +15,7 @@ use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
     AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
-    ReplicatedShape,
+    ReplicatedShape, ReplicatedFixed64Tensor, ReplicatedFixed128Tensor,
 };
 use crate::symbolic::{Symbolic, SymbolicSession};
 use derive_more::Display;
@@ -512,7 +512,7 @@ values![
         Symbolic<
             FixedTensor<
                 <HostFixed64Tensor as KnownType<SymbolicSession>>::Type,
-                <ReplicatedRing64Tensor as KnownType<SymbolicSession>>::Type,
+                <ReplicatedFixed64Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
     ),
@@ -521,21 +521,29 @@ values![
         Symbolic<
             FixedTensor<
                 <HostFixed128Tensor as KnownType<SymbolicSession>>::Type,
-                <ReplicatedRing128Tensor as KnownType<SymbolicSession>>::Type,
+                <ReplicatedFixed128Tensor as KnownType<SymbolicSession>>::Type,
             >,
         >
     ),
     (
         ReplicatedRing64Tensor,
-        Symbolic<AbstractReplicatedTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
+        <ReplicatedRing64Tensor as SymbolicType>::Type
     ),
     (
         ReplicatedRing128Tensor,
-        Symbolic<AbstractReplicatedTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
+        <ReplicatedRing128Tensor as SymbolicType>::Type
     ),
     (
         ReplicatedBitTensor,
         Symbolic<AbstractReplicatedTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
+    ),
+    (
+        ReplicatedFixed64Tensor,
+        <ReplicatedFixed64Tensor as SymbolicType>::Type
+    ),
+    (
+        ReplicatedFixed128Tensor,
+        <ReplicatedFixed128Tensor as SymbolicType>::Type
     ),
     (
         ReplicatedSetup,
