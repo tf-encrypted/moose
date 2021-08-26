@@ -188,6 +188,9 @@ impl RepSetupOp {
     }
 }
 
+// TODO first two should return RepFixedTensors
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
@@ -195,14 +198,28 @@ modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Hos
 hybrid_kernel! {
     RepShareOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedRing64Tensor => Self::host_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedRing128Tensor => Self::host_fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => Self::host_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => Self::host_ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::host_ring_kernel),
     ]
 }
 
 impl RepShareOp {
-    fn kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
+    fn host_fixed_kernel<S: Session, SetupT, HostRingT, RepT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        setup: SetupT,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> RepT
+    where
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepT>
+    {
+        plc.share(sess, &setup, &x.0)
+    }
+
+    fn host_ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,

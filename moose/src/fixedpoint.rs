@@ -17,7 +17,7 @@ use crate::kernels::{
     PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
     PlacementSum, PlacementTruncPr, RuntimeSession, Session,
 };
-use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor};
+use crate::replicated::{ReplicatedRing128Tensor, ReplicatedRing64Tensor, AbstractReplicatedTensor};
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
@@ -263,31 +263,36 @@ impl FixedpointDecodeOp {
     }
 }
 
+// TODO missing ReplicatedFixedTensors
 modelled!(PlacementAdd::add, HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointAddOp);
 modelled!(PlacementAdd::add, HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor, FixedpointAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor, FixedpointAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor, FixedpointAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor, FixedpointAddOp);
 
 hybrid_kernel! {
     FixedpointAddOp,
     [
-        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::host_kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::rep_kernel),
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_kernel_on_host),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_kernel_on_host),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_kernel_on_rep),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_kernel_on_rep),
+        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => Self::host_fixed_kernel_on_host),
+        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => Self::host_fixed_kernel_on_host),
     ]
 }
 
 impl FixedpointAddOp {
-    fn host_kernel<S: Session, RingT, RepT>(
+    fn fixed_kernel_on_host<S: Session, HostFixedT, RepRingT>(
         sess: &S,
         plc: &HostPlacement,
-        x: FixedTensor<RingT, RepT>,
-        y: FixedTensor<RingT, RepT>,
-    ) -> FixedTensor<RingT, RepT>
+        x: FixedTensor<HostFixedT, RepRingT>,
+        y: FixedTensor<HostFixedT, RepRingT>,
+    ) -> FixedTensor<HostFixedT, RepRingT>
     where
-        HostPlacement: PlacementReveal<S, RepT, RingT>,
-        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
+        HostPlacement: PlacementReveal<S, RepRingT, HostFixedT>,
+        HostPlacement: PlacementAdd<S, HostFixedT, HostFixedT, HostFixedT>,
     {
         let x = match x {
             FixedTensor::Host(v) => v,
@@ -302,16 +307,28 @@ impl FixedpointAddOp {
         FixedTensor::Host(result)
     }
 
-    fn rep_kernel<S: Session, RingT, RepT>(
+    fn host_fixed_kernel_on_host<S: Session, HostRingT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostFixedTensor<HostRingT>,
+        y: AbstractHostFixedTensor<HostRingT>,
+    ) -> AbstractHostFixedTensor<HostRingT>
+    where
+        HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
+    {
+        AbstractHostFixedTensor(plc.add(sess, &x.0, &y.0))
+    }
+
+    fn fixed_kernel_on_rep<S: Session, HostFixedT, RepRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: FixedTensor<RingT, RepT>,
-        y: FixedTensor<RingT, RepT>,
-    ) -> FixedTensor<RingT, RepT>
+        x: FixedTensor<HostFixedT, RepRingT>,
+        y: FixedTensor<HostFixedT, RepRingT>,
+    ) -> FixedTensor<HostFixedT, RepRingT>
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
-        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, RingT, RepT>,
-        ReplicatedPlacement: PlacementAdd<S, RepT, RepT, RepT>,
+        ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
         let setup = plc.gen_setup(sess);
 
