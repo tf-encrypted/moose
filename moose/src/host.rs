@@ -487,9 +487,9 @@ modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, inde
 kernel! {
     HostIndexAxisOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostBitTensor) -> HostBitTensor => attributes[axis, index] Self::bit_kernel),
+        (HostPlacement, (HostRing64Tensor) -> [runtime] HostRing64Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> [runtime] HostRing128Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> [runtime] HostBitTensor => attributes[axis, index] Self::bit_kernel),
     ]
 }
 
@@ -1007,7 +1007,7 @@ modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostS
 kernel! {
     BitFillOp,
     [
-        (HostPlacement, (HostShape) -> HostBitTensor => attributes[value: Bit] Self::kernel),
+        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] attributes[value: Bit] Self::kernel),
     ]
 }
 
@@ -1030,7 +1030,7 @@ modelled!(PlacementSampleUniform::sample_uniform, HostPlacement, (HostShape) -> 
 kernel! {
     BitSampleOp,
     [
-        (HostPlacement, (HostShape) -> HostBitTensor => Self::kernel),
+        (HostPlacement, (HostShape) -> HostBitTensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1053,7 +1053,7 @@ modelled!(PlacementSampleUniformSeeded::sample_uniform_seeded, HostPlacement, (H
 kernel! {
     BitSampleSeededOp,
     [
-        (HostPlacement, (HostShape, Seed) -> HostBitTensor => Self::kernel),
+        (HostPlacement, (HostShape, Seed) -> HostBitTensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1079,7 +1079,7 @@ modelled_alias!(PlacementSub::sub, HostPlacement, (HostBitTensor, HostBitTensor)
 kernel! {
     BitXorOp,
     [
-        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => Self::kernel),
+        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1103,9 +1103,9 @@ modelled_alias!(PlacementMul::mul, HostPlacement, (HostBitTensor, HostBitTensor)
 kernel! {
     BitAndOp,
     [
-        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => Self::bit_kernel),
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::ring_kernel),
-        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::ring_kernel),
+        (HostPlacement, (HostBitTensor, HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
     ]
 }
 
@@ -1273,8 +1273,8 @@ modelled!(PlacementBitExtract::bit_extract, HostPlacement, attributes[bit_idx: u
 kernel! {
     BitExtractOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel64),
-        (HostPlacement, (HostRing128Tensor) -> HostBitTensor => attributes[bit_idx] Self::kernel128),
+        (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] attributes[bit_idx] Self::kernel64),
+        (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] attributes[bit_idx] Self::kernel128),
     ]
 }
 
@@ -1495,8 +1495,8 @@ modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostS
 kernel! {
     RingFillOp,
     [
-        (HostPlacement, (HostShape) -> HostRing64Tensor => attributes[value: Ring64] Self::ring64_kernel),
-        (HostPlacement, (HostShape) -> HostRing128Tensor => attributes[value: Ring128] Self::ring128_kernel),
+        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] attributes[value: Ring64] Self::ring64_kernel),
+        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] attributes[value: Ring128] Self::ring128_kernel),
     ]
 }
 
@@ -1553,8 +1553,8 @@ modelled!(PlacementAdd::add, HostPlacement, (HostRing128Tensor, HostRing128Tenso
 kernel! {
     RingAddOp,
     [
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
-        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1579,8 +1579,8 @@ modelled!(PlacementSub::sub, HostPlacement, (HostRing128Tensor, HostRing128Tenso
 kernel! {
     RingSubOp,
     [
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
-        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1605,8 +1605,8 @@ modelled!(PlacementNeg::neg, HostPlacement, (HostRing128Tensor) -> HostRing128Te
 kernel! {
     RingNegOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1630,8 +1630,8 @@ modelled!(PlacementMul::mul, HostPlacement, (HostRing128Tensor, HostRing128Tenso
 kernel! {
     RingMulOp,
     [
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
-        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1656,8 +1656,8 @@ modelled!(PlacementDot::dot, HostPlacement, (HostRing128Tensor, HostRing128Tenso
 kernel! {
     RingDotOp,
     [
-        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => Self::kernel),
-        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => Self::kernel),
+        (HostPlacement, (HostRing64Tensor, HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing128Tensor, HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
     ]
 }
 
@@ -1683,8 +1683,8 @@ modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostR
 kernel! {
     RingSumOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[axis] Self::kernel),
     ]
 }
 
@@ -1712,8 +1712,8 @@ modelled!(PlacementShl::shl, HostPlacement, attributes[amount: usize] (HostRing1
 kernel! {
     RingShlOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[amount] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[amount] Self::kernel),
     ]
 }
 
@@ -1738,8 +1738,8 @@ modelled!(PlacementShr::shr, HostPlacement, attributes[amount: usize] (HostRing1
 kernel! {
     RingShrOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[amount] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[amount] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[amount] Self::kernel),
     ]
 }
 
@@ -1764,7 +1764,7 @@ modelled!(PlacementSample::sample, HostPlacement, attributes[max_value: Option<u
 kernel! {
     RingSampleOp,
     [
-        (HostPlacement, (HostShape) -> HostRing64Tensor => custom |op| {
+        (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape| {
                     Self::kernel_uniform_u64(ctx, plc, shape)
@@ -1775,7 +1775,7 @@ kernel! {
                 _ => unimplemented!(),
             }
         }),
-        (HostPlacement, (HostShape) -> HostRing128Tensor => custom |op| {
+        (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape| {
                     Self::kernel_uniform_u128(ctx, plc, shape)
@@ -1848,7 +1848,7 @@ modelled!(PlacementSampleSeeded::sample_seeded, HostPlacement, attributes[max_va
 kernel! {
     RingSampleSeededOp,
     [
-        (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => custom |op| {
+        (HostPlacement, (HostShape, Seed) -> HostRing64Tensor => [runtime] custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u64(ctx, plc, shape, seed)
@@ -1859,7 +1859,7 @@ kernel! {
                 _ => unimplemented!(),
             }
         }),
-        (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => custom |op| {
+        (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => [runtime] custom |op| {
             match op.max_value {
                 None => Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_uniform_u128(ctx, plc, shape, seed)
