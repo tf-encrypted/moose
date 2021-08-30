@@ -18,6 +18,7 @@ use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
+use ndarray::Slice;
 use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
 use num_traits::FromPrimitive;
@@ -25,6 +26,7 @@ use num_traits::Zero;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
@@ -109,6 +111,34 @@ impl PlacementPlace<SymbolicSession, Symbolic<HostShape>> for HostPlacement {
                 }
             }
         }
+    }
+}
+
+/// One slice for slicing op
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct SliceInfoElem {
+    /// start index; negative are counted from the back of the axis
+    pub start: isize,
+    /// end index; negative are counted from the back of the axis; when not present
+    /// the default is the full length of the axis.
+    pub end: Option<isize>,
+    /// step size in elements; the default is 1, for every element.
+    pub step: Option<isize>,
+}
+
+/// An ndarray slice needs a SliceInfoElem for each shape dimension
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
+pub struct SliceInfo(pub Vec<SliceInfoElem>);
+
+impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
+    fn from(s: SliceInfo) -> ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
+        let all_slices: Vec<ndarray::SliceInfoElem> = s
+            .0
+            .iter()
+            .map(|x| ndarray::SliceInfoElem::from(Slice::new(x.start, x.end, x.step.unwrap_or(1))))
+            .collect();
+        ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::try_from(all_slices)
+            .unwrap()
     }
 }
 
@@ -256,38 +286,45 @@ impl ShapeOp {
     }
 }
 
-impl HostReshapeOp {
-    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: HostTensor<T>,
-        shape: HostShape,
-    ) -> HostTensor<T>
-    where
-        HostPlacement: PlacementPlace<S, HostTensor<T>>,
-    {
-        plc.place(sess, x.reshape(shape))
-    }
-}
-
-modelled!(PlacementSlice::slice, HostPlacement, attributes[start: u32, end: u32] (HostShape) -> HostShape, HostSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, HostSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing64Tensor) -> HostRing64Tensor, HostSliceOp);
+modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (HostRing128Tensor) -> HostRing128Tensor, HostSliceOp);
 
 kernel! {
     HostSliceOp,
     [
-        (HostPlacement, (HostShape) -> HostShape => attributes[start, end] Self::kernel),
+        (HostPlacement, (HostShape) -> HostShape => attributes[slice] Self::shape_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[slice] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[slice] Self::kernel),
     ]
 }
 
 impl HostSliceOp {
-    pub(crate) fn kernel<S: RuntimeSession>(
+    pub(crate) fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        start: u32,
-        end: u32,
+        slice_info: SliceInfo,
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
+    where
+        T: Clone,
+    {
+        let slice_info =
+            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
+        let sliced = x.0.slice(slice_info).to_owned();
+        AbstractHostRingTensor(sliced, plc.clone())
+    }
+
+    pub(crate) fn shape_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        slice_info: SliceInfo,
         x: HostShape,
     ) -> HostShape {
-        let slice = x.0.slice(start as usize, end as usize);
+        let slice = x.0.slice(
+            slice_info.0[0].start as usize,
+            slice_info.0[0].end.unwrap() as usize,
+        );
         HostShape(slice, plc.clone())
     }
 }
@@ -751,6 +788,20 @@ impl HostReshapeOp {
         shape: HostShape,
     ) -> HostBitTensor {
         HostBitTensor(x.0.into_shape(shape.0 .0).unwrap(), plc.clone()) // TODO need to be fix (unwrap)
+    }
+}
+
+impl HostReshapeOp {
+    pub(crate) fn host_kernel<S: RuntimeSession, T: LinalgScalar>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+        shape: HostShape,
+    ) -> HostTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        plc.place(sess, x.reshape(shape))
     }
 }
 
@@ -2072,6 +2123,38 @@ mod tests {
         let x_shape = RawShape(vec![1, 2, 3]);
         let x_slice = x_shape.slice(1, 3);
         assert_eq!(x_slice, RawShape(vec![2, 3]))
+    }
+
+    #[test]
+    fn test_tensor_slice() {
+        let x_backing: ArrayD<u64> = array![[1, 2], [3, 4]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+
+        let slice = SliceInfo(vec![
+            SliceInfoElem {
+                start: 1,
+                end: None,
+                step: None,
+            },
+            SliceInfoElem {
+                start: 0,
+                end: None,
+                step: None,
+            },
+        ]);
+
+        let sess = SyncSession::default();
+        let y = alice.slice(&sess, slice, &x);
+
+        let target: ArrayD<u64> = array![[3, 4]].into_dimensionality::<IxDyn>().unwrap();
+
+        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
     }
 
     #[test]

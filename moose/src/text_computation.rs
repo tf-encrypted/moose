@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::host::{HostShape, RawShape};
+use crate::host::{HostShape, RawShape, SliceInfo, SliceInfoElem};
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use nom::{
     branch::{alt, permutation},
@@ -412,7 +412,18 @@ fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         attributes_member("end", parse_int)
     ))(input)?;
     let (input, sig) = type_definition(1)(input)?;
-    Ok((input, HostSliceOp { sig, start, end }.into()))
+    Ok((
+        input,
+        HostSliceOp {
+            sig,
+            slice: SliceInfo(vec![SliceInfoElem {
+                start,
+                step: None,
+                end: Some(end),
+            }]),
+        }
+        .into(),
+    ))
 }
 
 /// Parses a HostConcat operator.
@@ -1323,7 +1334,7 @@ impl_to_textual!(
     to_column_vector,
     sig
 );
-impl_to_textual!(HostSliceOp, "{op}{{start={}, end={}}}: {}", start, end, sig);
+impl_to_textual!(HostSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
@@ -1768,6 +1779,12 @@ use_debug_to_textual!(u32);
 use_debug_to_textual!(Vec<u32>);
 use_debug_to_textual!(u64);
 use_debug_to_textual!(bool);
+
+impl ToTextual for SliceInfo {
+    fn to_textual(&self) -> String {
+        unimplemented!()
+    }
+}
 
 impl ToTextual for [u8] {
     fn to_textual(&self) -> String {

@@ -8,6 +8,7 @@ use crate::host::{
     AbstractHostRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
     HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
     HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
+    SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
@@ -555,13 +556,8 @@ pub trait PlacementInverse<S: Session, T, O> {
 
 pub trait EmptyTypeHolder<T> {}
 
-// The `T` type parameter is required by the modelled!() macros, but we are enforcing that T = ShapeT.
-pub trait PlacementSlice<S: Session, ShapeT, T>
-where
-    // Forces ShapeT = T
-    dyn EmptyTypeHolder<ShapeT>: EmptyTypeHolder<T>,
-{
-    fn slice(&self, sess: &S, start: u32, end: u32, x: &ShapeT) -> ShapeT;
+pub trait PlacementSlice<S: Session, T, O> {
+    fn slice(&self, sess: &S, slice_info: SliceInfo, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
@@ -1071,13 +1067,22 @@ impl Compile<Kernel> for HostAtLeast2DOp {
 
 impl Compile<Kernel> for HostSliceOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let start = self.start as usize;
-        let end = self.end as usize;
-        match self.sig {
-            signature![(_) -> Ty::HostShape] => {
-                closure_kernel!(HostShape, |x| HostShape(x.0.slice(start, end), x.1))
+        assert!(self.slice.0.len() == 1);
+        let start = self.slice.0[0].start as usize;
+        let end = self.slice.0[0].end;
+
+        if let Some(end) = end {
+            match self.sig {
+                signature![(_) -> Ty::HostShape] => {
+                    closure_kernel!(HostShape, |x| HostShape(
+                        x.0.slice(start, end as usize),
+                        x.1
+                    ))
+                }
+                _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
             }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
+        } else {
+            Err(Error::UnimplementedOperator(format!("{:?}", self)))
         }
     }
 }
