@@ -409,7 +409,7 @@ impl HostBitDecOp {
             .map(|i| plc.and(sess, &plc.shr(sess, i, &x), &ones).0)
             .collect();
 
-        let bit_rep_view: Vec<_> = bit_rep.iter().map(|x| ArrayView::from(x)).collect();
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
         AbstractHostRingTensor(result, plc.clone())
     }
@@ -2670,8 +2670,8 @@ mod tests {
         let x_bits = alice.bit_dec(&sess, &x);
         let targets: Vec<_> = (0..64).map(|i| alice.bit_extract(&sess, i, &x)).collect();
 
-        for i in 0..64 {
-            let injected_target: HostRing64Tensor = alice.ring_inject(&sess, 0, &targets[i]);
+        for (i, target) in targets.iter().enumerate() {
+            let injected_target: HostRing64Tensor = alice.ring_inject(&sess, 0, target);
             assert_eq!(alice.index_axis(&sess, 0, i, &x_bits), injected_target);
         }
     }
