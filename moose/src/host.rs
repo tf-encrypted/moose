@@ -1,17 +1,19 @@
 use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, Constant,
-    HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
-    HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp,
-    HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp, SymbolicType, CanonicalType, RingFixedpointMeanOp,
+    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
+    Constant, HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp,
+    HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp,
+    HostSumOp, HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp,
+    RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp,
+    RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
 };
+use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
-    PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
-    PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor, PlacementMean,
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMean,
+    PlacementMul, PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded,
+    PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr,
+    PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession,
+    Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -25,12 +27,11 @@ use num_traits::Zero;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
+use std::convert::TryFrom;
 use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
-use std::convert::TryFrom;
-use crate::error::Error;
 
 impl SymbolicType for String {
     type Type = Symbolic<String>;
@@ -176,7 +177,9 @@ impl From<HostRing128Tensor> for Symbolic<HostRing128Tensor> {
     }
 }
 
-impl<RingT: Placed> From<AbstractHostFixedTensor<RingT>> for Symbolic<AbstractHostFixedTensor<RingT>> {
+impl<RingT: Placed> From<AbstractHostFixedTensor<RingT>>
+    for Symbolic<AbstractHostFixedTensor<RingT>>
+{
     fn from(x: AbstractHostFixedTensor<RingT>) -> Self {
         Symbolic::Concrete(x)
     }
@@ -218,7 +221,9 @@ impl TryFrom<Symbolic<HostRing128Tensor>> for HostRing128Tensor {
     }
 }
 
-impl<RingT: Placed> TryFrom<Symbolic<AbstractHostFixedTensor<RingT>>> for AbstractHostFixedTensor<RingT> {
+impl<RingT: Placed> TryFrom<Symbolic<AbstractHostFixedTensor<RingT>>>
+    for AbstractHostFixedTensor<RingT>
+{
     type Error = Error;
     fn try_from(v: Symbolic<AbstractHostFixedTensor<RingT>>) -> crate::error::Result<Self> {
         match v {
@@ -233,7 +238,6 @@ impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
         Symbolic::Concrete(x)
     }
 }
-
 
 impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
@@ -309,7 +313,6 @@ impl RingFixedpointMeanOp {
         plc.place(sess, mean)
     }
 }
-
 
 impl HostAddOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
@@ -1228,7 +1231,7 @@ impl SymbolicType for HostFixed64Tensor {
 
 impl<T> From<T> for HostFixed64Tensor
 where
-    HostRing64Tensor: From<T>
+    HostRing64Tensor: From<T>,
 {
     fn from(x: T) -> Self {
         AbstractHostFixedTensor(HostRing64Tensor::from(x))
@@ -1243,7 +1246,7 @@ impl SymbolicType for HostFixed128Tensor {
 
 impl<T> From<T> for HostFixed128Tensor
 where
-    HostRing128Tensor: From<T>
+    HostRing128Tensor: From<T>,
 {
     fn from(x: T) -> Self {
         AbstractHostFixedTensor(HostRing128Tensor::from(x))

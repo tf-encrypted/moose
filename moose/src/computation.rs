@@ -1,20 +1,19 @@
 use crate::additive::{
-    AdditiveBitTensor, AdditiveRing128Tensor,
-    AdditiveRing64Tensor, AdditiveShape,
+    AdditiveBitTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
 };
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::host::{
-    HostFixed64Tensor, HostFixed128Tensor,
-    HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
+    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor,
+    HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor,
+    HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor,
+    HostUint8Tensor, RawShape,
 };
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
-    ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
-    ReplicatedShape, ReplicatedFixed64Tensor, ReplicatedFixed128Tensor,
+    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
 };
 use crate::symbolic::Symbolic;
 use derive_more::Display;
@@ -306,26 +305,26 @@ macro_rules! values {
 
 values![
     Unit,
-    HostShape, 
+    HostShape,
     Seed,
     PrfKey,
-    Nonce, 
+    Nonce,
     String,
     HostBitTensor,
-    HostRing64Tensor, 
+    HostRing64Tensor,
     HostRing128Tensor,
-    HostFixed64Tensor, 
+    HostFixed64Tensor,
     HostFixed128Tensor,
-    HostFloat32Tensor, 
-    HostFloat64Tensor, 
-    HostInt8Tensor, 
-    HostInt16Tensor, 
+    HostFloat32Tensor,
+    HostFloat64Tensor,
+    HostInt8Tensor,
+    HostInt16Tensor,
     HostInt32Tensor,
-    HostInt64Tensor, 
-    HostUint8Tensor, 
+    HostInt64Tensor,
+    HostUint8Tensor,
     HostUint16Tensor,
-    HostUint32Tensor, 
-    HostUint64Tensor, 
+    HostUint32Tensor,
+    HostUint64Tensor,
     Fixed64Tensor,
     Fixed128Tensor,
     ReplicatedRing64Tensor,
@@ -364,8 +363,8 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
         HostUint16Tensor,
         HostUint32Tensor,
         HostUint64Tensor,
-        Fixed64Tensor,
-        Fixed128Tensor
+        HostFixed64Tensor,
+        HostFixed128Tensor
     }
 )}
 

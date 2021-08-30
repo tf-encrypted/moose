@@ -2,30 +2,31 @@
 
 use crate::computation::{
     FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp,
-    FixedpointMulOp, RingFixedpointMeanOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
-    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
+    FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp, HostPlacement,
+    KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
 };
 use crate::error::Result;
-use crate::host::{HostRing64Tensor, HostRing128Tensor, AbstractHostFixedTensor,
-    AbstractHostRingTensor, HostFloat32Tensor, HostFloat64Tensor, HostFixed128Tensor,
-    HostFixed64Tensor,
+use crate::host::{
+    AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor,
+    HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
 };
-use crate::symbolic::Symbolic;
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
-    PlacementFixedpointEncode, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode,
-    PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
-    PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
-    PlacementSum, PlacementTruncPr, RuntimeSession, Session,
+    PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementReveal,
+    PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen,
+    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session,
 };
-use crate::replicated::{ReplicatedFixed64Tensor, ReplicatedFixed128Tensor, AbstractReplicatedFixedTensor};
+use crate::replicated::{
+    AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+};
+use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 use std::num::Wrapping;
 use std::ops::Mul;
-use std::convert::TryFrom;
 
 /// Fixed-point tensor backed by Z_{2^64} arithmetic
 pub type Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedFixed64Tensor>;
@@ -51,8 +52,8 @@ impl SymbolicType for Fixed128Tensor {
     >;
 }
 
-
-impl<HostFixedT, RepFixedT> From<FixedTensor<HostFixedT, RepFixedT>> for Symbolic<FixedTensor<HostFixedT, RepFixedT>>
+impl<HostFixedT, RepFixedT> From<FixedTensor<HostFixedT, RepFixedT>>
+    for Symbolic<FixedTensor<HostFixedT, RepFixedT>>
 where
     HostFixedT: Placed<Placement = HostPlacement>,
     RepFixedT: Placed<Placement = ReplicatedPlacement>,
@@ -62,7 +63,8 @@ where
     }
 }
 
-impl<HostFixedT, RepFixedT> TryFrom<Symbolic<FixedTensor<HostFixedT, RepFixedT>>> for FixedTensor<HostFixedT, RepFixedT>
+impl<HostFixedT, RepFixedT> TryFrom<Symbolic<FixedTensor<HostFixedT, RepFixedT>>>
+    for FixedTensor<HostFixedT, RepFixedT>
 where
     HostFixedT: Placed<Placement = HostPlacement>,
     RepFixedT: Placed<Placement = ReplicatedPlacement>,
@@ -75,7 +77,6 @@ where
         }
     }
 }
-
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<HostFixedT, RepFixedT> {
@@ -743,7 +744,7 @@ impl FixedpointTruncPrOp {
     {
         let setup = plc.gen_setup(sess);
 
-        let v = match x { 
+        let v = match x {
             FixedTensor::Host(x) => plc.share(sess, &setup, &x),
             FixedTensor::Replicated(x) => x,
         };
@@ -1062,14 +1063,12 @@ mod tests {
                     owner: "alice".into(),
                 };
 
-                let x = FixedTensor::Host(AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(
-                    xs,
-                    alice.clone(),
-                )));
-                let y = FixedTensor::Host(AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(
-                    ys,
-                    alice.clone(),
-                )));
+                let x = FixedTensor::Host(AbstractHostFixedTensor::from(
+                    AbstractHostRingTensor::from_raw_plc(xs, alice.clone()),
+                ));
+                let y = FixedTensor::Host(AbstractHostFixedTensor::from(
+                    AbstractHostRingTensor::from_raw_plc(ys, alice.clone()),
+                ));
 
                 let sess = SyncSession::default();
 
@@ -1080,7 +1079,10 @@ mod tests {
                 };
                 assert_eq!(
                     opened_product,
-                    AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(zs, alice.clone()))
+                    AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(
+                        zs,
+                        alice.clone()
+                    ))
                 );
             }
         };

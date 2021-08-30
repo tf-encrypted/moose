@@ -1,7 +1,8 @@
 //! Placements backed by additive secret sharing
 use crate::computation::{
-    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
-    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement, ShapeOp, SymbolicType, CanonicalType,
+    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
+    CanonicalType, Constant, HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
+    ShapeOp, SymbolicType,
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
@@ -11,11 +12,12 @@ use crate::kernels::{
     PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
     PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
-use crate::symbolic::Symbolic;
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{
-    AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
+    AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
+    ReplicatedRing64Tensor,
 };
+use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -42,7 +44,6 @@ impl SymbolicType for AdditiveRing128Tensor {
 impl SymbolicType for AdditiveBitTensor {
     type Type = Symbolic<AbstractAdditiveTensor<<HostBitTensor as SymbolicType>::Type>>;
 }
-
 
 pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
 
@@ -91,7 +92,6 @@ where
     }
 }
 
-
 impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
 where
     R: Placed<Placement = HostPlacement>,
@@ -110,8 +110,6 @@ where
     }
 }
 
-
-
 impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
 where
     R: Placed<Placement = HostPlacement>,
@@ -124,7 +122,6 @@ where
         }
     }
 }
-
 
 impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
 where

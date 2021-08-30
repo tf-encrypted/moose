@@ -1600,7 +1600,10 @@ impl ToTextual for Ty {
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
             // TODO
-            Ty::HostFixed64Tensor | Ty::HostFixed128Tensor |Ty::ReplicatedFixed64Tensor | Ty::ReplicatedFixed128Tensor => unimplemented!()
+            Ty::HostFixed64Tensor
+            | Ty::HostFixed128Tensor
+            | Ty::ReplicatedFixed64Tensor
+            | Ty::ReplicatedFixed128Tensor => unimplemented!(),
         }
         .to_string()
     }

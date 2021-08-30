@@ -1,12 +1,16 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
-    RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp,
-    RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType, CanonicalType,
+    AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
+    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp,
+    RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement,
+    RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
-use crate::host::{AbstractHostFixedTensor, HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, HostFixed64Tensor, HostFixed128Tensor};
+use crate::host::{
+    AbstractHostFixedTensor, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
+    HostRing128Tensor, HostRing64Tensor, HostShape, RingSize,
+};
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract,
     PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
@@ -53,20 +57,19 @@ pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
 pub type ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>;
 
 impl SymbolicType for ReplicatedFixed64Tensor {
-    type Type = Symbolic<AbstractReplicatedFixedTensor<
-        <ReplicatedRing64Tensor as SymbolicType>::Type
-    >>;
+    type Type =
+        Symbolic<AbstractReplicatedFixedTensor<<ReplicatedRing64Tensor as SymbolicType>::Type>>;
 }
 
 pub type ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>;
 
 impl SymbolicType for ReplicatedFixed128Tensor {
-    type Type = Symbolic<AbstractReplicatedFixedTensor<
-        <ReplicatedRing128Tensor as SymbolicType>::Type
-    >>;
+    type Type =
+        Symbolic<AbstractReplicatedFixedTensor<<ReplicatedRing128Tensor as SymbolicType>::Type>>;
 }
 
-impl<HostRingT> From<AbstractReplicatedRingTensor<HostRingT>> for Symbolic<AbstractReplicatedRingTensor<HostRingT>>
+impl<HostRingT> From<AbstractReplicatedRingTensor<HostRingT>>
+    for Symbolic<AbstractReplicatedRingTensor<HostRingT>>
 where
     HostRingT: Placed<Placement = HostPlacement>,
 {
@@ -75,7 +78,8 @@ where
     }
 }
 
-impl<RepRingT> From<AbstractReplicatedFixedTensor<RepRingT>> for Symbolic<AbstractReplicatedFixedTensor<RepRingT>>
+impl<RepRingT> From<AbstractReplicatedFixedTensor<RepRingT>>
+    for Symbolic<AbstractReplicatedFixedTensor<RepRingT>>
 where
     RepRingT: Placed<Placement = ReplicatedPlacement>,
 {
@@ -84,7 +88,8 @@ where
     }
 }
 
-impl<HostKeyT> TryFrom<Symbolic<AbstractReplicatedSetup<HostKeyT>>> for AbstractReplicatedSetup<HostKeyT>
+impl<HostKeyT> TryFrom<Symbolic<AbstractReplicatedSetup<HostKeyT>>>
+    for AbstractReplicatedSetup<HostKeyT>
 where
     HostKeyT: Placed<Placement = HostPlacement>,
 {
@@ -97,7 +102,8 @@ where
     }
 }
 
-impl<HostShapeT> TryFrom<Symbolic<AbstractReplicatedShape<HostShapeT>>> for AbstractReplicatedShape<HostShapeT>
+impl<HostShapeT> TryFrom<Symbolic<AbstractReplicatedShape<HostShapeT>>>
+    for AbstractReplicatedShape<HostShapeT>
 where
     HostShapeT: Placed<Placement = HostPlacement>,
 {
@@ -110,13 +116,15 @@ where
     }
 }
 
-
-impl<HostRingT> TryFrom<Symbolic<AbstractReplicatedRingTensor<HostRingT>>> for AbstractReplicatedRingTensor<HostRingT>
+impl<HostRingT> TryFrom<Symbolic<AbstractReplicatedRingTensor<HostRingT>>>
+    for AbstractReplicatedRingTensor<HostRingT>
 where
     HostRingT: Placed<Placement = HostPlacement>,
 {
     type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedRingTensor<HostRingT>>) -> crate::error::Result<Self> {
+    fn try_from(
+        v: Symbolic<AbstractReplicatedRingTensor<HostRingT>>,
+    ) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
@@ -124,19 +132,21 @@ where
     }
 }
 
-impl<RepRingT> TryFrom<Symbolic<AbstractReplicatedFixedTensor<RepRingT>>> for AbstractReplicatedFixedTensor<RepRingT>
+impl<RepRingT> TryFrom<Symbolic<AbstractReplicatedFixedTensor<RepRingT>>>
+    for AbstractReplicatedFixedTensor<RepRingT>
 where
     RepRingT: Placed<Placement = ReplicatedPlacement>,
 {
     type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedFixedTensor<RepRingT>>) -> crate::error::Result<Self> {
+    fn try_from(
+        v: Symbolic<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> crate::error::Result<Self> {
         match v {
             Symbolic::Concrete(x) => Ok(x),
             _ => Err(Error::Unexpected), // TODO err message
         }
     }
 }
-
 
 impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
 where
@@ -155,8 +165,6 @@ where
         Symbolic::Concrete(x)
     }
 }
-
-
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
@@ -353,7 +361,7 @@ impl RepShareOp {
         x: AbstractHostFixedTensor<HostRingT>,
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepRingT>
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepRingT>,
     {
         AbstractReplicatedFixedTensor(plc.share(sess, &setup, &x.0))
     }
