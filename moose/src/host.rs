@@ -374,6 +374,7 @@ impl HostIndexAxisOp {
 
 modelled!(PlacementBitDec::bit_dec, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
 modelled!(PlacementBitDec::bit_dec, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
+
 kernel! {
     HostBitDecOp,
     [
@@ -410,6 +411,8 @@ impl HostBitDecOp {
             .collect();
 
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+
+        // by default we put bits as rows, ie access i'th bit from tensor T is done through index_axis(Axis(0), T)
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
         AbstractHostRingTensor(result, plc.clone())
     }
