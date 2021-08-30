@@ -524,11 +524,11 @@ pub trait PlacementAtLeast2D<S: Session, T, O> {
     fn at_least_2d(&self, sess: &S, to_column_vector: bool, x: &T) -> O;
 }
 
-pub trait PlacementFixedpointRingEncode<S: Session, T, O> {
+pub trait PlacementRingFixedpointEncode<S: Session, T, O> {
     fn fixedpoint_ring_encode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 
-pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
+pub trait PlacementRingFixedpointDecode<S: Session, T, O> {
     fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 
@@ -1461,8 +1461,8 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
-modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
-modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
 
 kernel! {
     RingFixedpointEncodeOp, [
@@ -1507,8 +1507,8 @@ impl Compile<Kernel> for RingFixedpointEncodeOp {
     }
 }
 
-modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, RingFixedpointDecodeOp);
-modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, RingFixedpointDecodeOp);
+modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, RingFixedpointDecodeOp);
+modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, RingFixedpointDecodeOp);
 
 kernel! {
     RingFixedpointDecodeOp, [

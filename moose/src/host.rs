@@ -4,14 +4,14 @@ use crate::computation::{
     HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp,
     HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp,
     RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp, SymbolicType, CanonicalType,
+    ShapeOp, SymbolicType, CanonicalType, RingFixedpointMeanOp,
 };
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
     PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
     PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
-    PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor, PlacementMean,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -262,6 +262,54 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlaceme
         }
     }
 }
+
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
+
+kernel! {
+    RingFixedpointMeanOp,
+    [
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring128_kernel),
+    ]
+}
+
+impl RingFixedpointMeanOp {
+    fn ring64_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostRing64Tensor,
+    ) -> HostRing64Tensor
+    where
+        HostPlacement: PlacementPlace<S, HostRing64Tensor>,
+    {
+        let scaling_factor = u64::pow(scaling_base, scaling_exp);
+        let axis = axis.map(|a| a as usize);
+        let mean = HostRing64Tensor::fixedpoint_mean(x, axis, scaling_factor);
+        plc.place(sess, mean)
+    }
+
+    fn ring128_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostRing128Tensor,
+    ) -> HostRing128Tensor
+    where
+        HostPlacement: PlacementPlace<S, HostRing128Tensor>,
+    {
+        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
+        let axis = axis.map(|a| a as usize);
+        let mean = HostRing128Tensor::fixedpoint_mean(x, axis, scaling_factor);
+        plc.place(sess, mean)
+    }
+}
+
 
 impl HostAddOp {
     pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(

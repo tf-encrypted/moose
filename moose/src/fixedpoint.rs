@@ -13,7 +13,7 @@ use crate::host::{HostRing64Tensor, HostRing128Tensor, AbstractHostFixedTensor,
 use crate::symbolic::Symbolic;
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
-    PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode,
+    PlacementFixedpointEncode, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode,
     PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
     PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
     PlacementSum, PlacementTruncPr, RuntimeSession, Session,
@@ -191,53 +191,6 @@ where
     }
 }
 
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
-
-kernel! {
-    RingFixedpointMeanOp,
-    [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring64_kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring128_kernel),
-    ]
-}
-
-impl RingFixedpointMeanOp {
-    fn ring64_kernel<S: RuntimeSession>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing64Tensor,
-    ) -> HostRing64Tensor
-    where
-        HostPlacement: PlacementPlace<S, HostRing64Tensor>,
-    {
-        let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        let axis = axis.map(|a| a as usize);
-        let mean = HostRing64Tensor::fixedpoint_mean(x, axis, scaling_factor);
-        plc.place(sess, mean)
-    }
-
-    fn ring128_kernel<S: RuntimeSession>(
-        sess: &S,
-        plc: &HostPlacement,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing128Tensor,
-    ) -> HostRing128Tensor
-    where
-        HostPlacement: PlacementPlace<S, HostRing128Tensor>,
-    {
-        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
-        let axis = axis.map(|a| a as usize);
-        let mean = HostRing128Tensor::fixedpoint_mean(x, axis, scaling_factor);
-        plc.place(sess, mean)
-    }
-}
-
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> HostFixed64Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat64Tensor) -> HostFixed128Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
@@ -274,7 +227,7 @@ impl FixedpointEncodeOp {
         x: HostFloatT,
     ) -> AbstractHostFixedTensor<HostRingT>
     where
-        HostPlacement: PlacementFixedpointRingEncode<S, HostFloatT, HostRingT>,
+        HostPlacement: PlacementRingFixedpointEncode<S, HostFloatT, HostRingT>,
     {
         // TODO(Morten) inline this function?
         let y = plc.fixedpoint_ring_encode(sess, 2, precision, &x);
@@ -323,7 +276,7 @@ impl FixedpointDecodeOp {
         x: AbstractHostFixedTensor<HostRingT>,
     ) -> HostFloatT
     where
-        HostPlacement: PlacementFixedpointRingDecode<S, HostRingT, HostFloatT>,
+        HostPlacement: PlacementRingFixedpointDecode<S, HostRingT, HostFloatT>,
     {
         // TODO(Morten) inline this function?
         plc.fixedpoint_ring_decode(sess, 2, precision, &x.0)
@@ -999,8 +952,10 @@ impl FixedpointMeanOp {
         x: AbstractHostFixedTensor<HostRingT>,
     ) -> AbstractHostFixedTensor<HostRingT>
     where
+        HostPlacement: PlacementMean<S, HostRingT, HostRingT>,
     {
-        unimplemented!()
+        let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
+        AbstractHostFixedTensor(y)
     }
 
     fn repfixed_kernel<S: Session, RepRingT>(
@@ -1012,8 +967,10 @@ impl FixedpointMeanOp {
         x: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
+        ReplicatedPlacement: PlacementMean<S, RepRingT, RepRingT>,
     {
-        unimplemented!()
+        let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
+        AbstractReplicatedFixedTensor(y)
     }
 }
 

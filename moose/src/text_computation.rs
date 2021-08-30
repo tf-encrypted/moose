@@ -531,7 +531,7 @@ fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
 }
 
-/// Parses a FixedpointRingEncode operator.
+/// Parses a RingFixedpointEncode operator.
 fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
@@ -551,7 +551,7 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
     ))
 }
 
-/// Parses a FixedpointRingDecode operator.
+/// Parses a RingFixedpointDecode operator.
 fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
@@ -597,7 +597,7 @@ fn save_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     Ok((input, SaveOp { sig }.into()))
 }
 
-/// Parses a FixedpointRingMean operator.
+/// Parses a RingFixedpointMean operator.
 fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
@@ -1437,7 +1437,7 @@ impl ToTextual for FixedpointMeanOp {
                 scaling_exp,
             } => {
                 format!(
-                    "FixedpointRingMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
+                    "RingFixedpointMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
                     a,
                     scaling_base,
                     scaling_exp,
@@ -1450,7 +1450,7 @@ impl ToTextual for FixedpointMeanOp {
                 scaling_base,
                 scaling_exp,
             } => format!(
-                "FixedpointRingMean{{scaling_base={}, scaling_exp={}}}: {}",
+                "RingFixedpointMean{{scaling_base={}, scaling_exp={}}}: {}",
                 scaling_base,
                 scaling_exp,
                 sig.to_textual()
@@ -1469,7 +1469,7 @@ impl ToTextual for RingFixedpointMeanOp {
                 scaling_exp,
             } => {
                 format!(
-                    "FixedpointRingMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
+                    "RingFixedpointMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
                     a,
                     scaling_base,
                     scaling_exp,
@@ -1482,7 +1482,7 @@ impl ToTextual for RingFixedpointMeanOp {
                 scaling_base,
                 scaling_exp,
             } => format!(
-                "FixedpointRingMean{{scaling_base={}, scaling_exp={}}}: {}",
+                "RingFixedpointMean{{scaling_base={}, scaling_exp={}}}: {}",
                 scaling_base,
                 scaling_exp,
                 sig.to_textual()
@@ -2047,7 +2047,7 @@ mod tests {
     #[test]
     fn test_fixedpoint_ring_mean() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean{scaling_base = 3, scaling_exp = 1, axis = 0} : () -> Float32Tensor () @Host(alice)",
+            "op = RingFixedpointMean{scaling_base = 3, scaling_exp = 1, axis = 0} : () -> Float32Tensor () @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
@@ -2060,7 +2060,7 @@ mod tests {
         );
 
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            "op = FixedpointRingMean{scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor () @Host(alice)",
+            "op = RingFixedpointMean{scaling_base = 3, scaling_exp = 1} : () -> Float32Tensor () @Host(alice)",
         )?;
         assert_eq!(
             op.kind,
@@ -2118,10 +2118,10 @@ mod tests {
             "z = RingShr {amount = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = FixedpointRingDecode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingFixedpointDecode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
-            "z = FixedpointRingEncode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+            "z = RingFixedpointEncode {scaling_base = 3, scaling_exp = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingInject {bit_idx = 2} : (Float32Tensor) -> Float32Tensor () @Host(alice)",

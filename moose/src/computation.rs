@@ -1,19 +1,18 @@
 use crate::additive::{
-    AbstractAdditiveShape, AbstractAdditiveTensor, AdditiveBitTensor, AdditiveRing128Tensor,
+    AdditiveBitTensor, AdditiveRing128Tensor,
     AdditiveRing64Tensor, AdditiveShape,
 };
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::host::{
     HostFixed64Tensor, HostFixed128Tensor,
     HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape,
 };
 use crate::kernels::Session;
 use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
 use crate::replicated::{
-    AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedRingTensor,
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
     ReplicatedShape, ReplicatedFixed64Tensor, ReplicatedFixed128Tensor,
 };
