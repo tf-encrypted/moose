@@ -302,8 +302,8 @@ modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scal
 kernel! {
     RingFixedpointMeanOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring64_kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring128_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[axis, scaling_base, scaling_exp] Self::ring64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[axis, scaling_base, scaling_exp] Self::ring128_kernel),
     ]
 }
 
@@ -444,9 +444,9 @@ modelled!(PlacementSlice::slice, HostPlacement, attributes[slice: SliceInfo] (Ho
 kernel! {
     HostSliceOp,
     [
-        (HostPlacement, (HostShape) -> HostShape => attributes[slice] Self::shape_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[slice] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[slice] Self::kernel),
+        (HostPlacement, (HostShape) -> HostShape => [runtime] attributes[slice] Self::shape_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[slice] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[slice] Self::kernel),
     ]
 }
 
@@ -487,9 +487,9 @@ modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, inde
 kernel! {
     HostIndexAxisOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> [runtime] HostRing64Tensor => attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> [runtime] HostRing128Tensor => attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostBitTensor) -> [runtime] HostBitTensor => attributes[axis, index] Self::bit_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] attributes[axis, index] Self::bit_kernel),
     ]
 }
 

@@ -1764,8 +1764,8 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
-        (HostPlacement, (HostFixed128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFixed128Tensor) -> Unit => [runtime] attributes[rendezvous_key, receiver] Self::kernel),
     ]
 }
 
@@ -1868,8 +1868,8 @@ kernel! {
         (HostPlacement, () -> HostUint16Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> HostUint32Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
-        (HostPlacement, () -> HostFixed64Tensor => attributes[rendezvous_key, sender] Self::kernel),
-        (HostPlacement, () -> HostFixed128Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[rendezvous_key, sender] Self::kernel),
 
     ]
 }
@@ -1970,8 +1970,8 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => Self::kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [runtime] Self::kernel),
 
     ]
 }
@@ -2033,8 +2033,8 @@ kernel! {
         (HostPlacement, () -> HostUint16Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostUint32Tensor => [runtime] attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostUint64Tensor => [runtime] attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> HostFixed64Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> HostFixed128Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostFixed64Tensor => [runtime] attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostFixed128Tensor => [runtime] attributes[arg_name] Self::kernel),
 
     ]
 }
@@ -2110,8 +2110,8 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (HostFixed64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (HostFixed128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
     ]
 }
 
@@ -2164,8 +2164,8 @@ kernel! {
         (HostPlacement, (String, HostUint16Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (String, HostUint32Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (String, HostUint64Tensor) -> Unit => [runtime] Self::kernel),
-        (HostPlacement, (String, HostFixed64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, HostFixed128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (String, HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
     ]
 }
 
@@ -2242,8 +2242,8 @@ kernel! {
         (HostPlacement, (String, String) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostUint64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> HostFixed64Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> HostFixed128Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostFixed64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (String, String) -> HostFixed128Tensor => [runtime] Self::kernel),
     ]
 }
 
