@@ -1174,7 +1174,7 @@ impl TryFrom<PyComputation> for Computation {
                             ),
                             slice: SliceInfo(vec![SliceInfoElem {
                                 start: op.begin as isize,
-                                step: 1,
+                                step: Some(1),
                                 end: Some(op.end as isize),
                             }]),
                         }

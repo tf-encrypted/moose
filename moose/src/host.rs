@@ -123,7 +123,7 @@ pub struct SliceInfoElem {
     /// the default is the full length of the axis.
     pub end: Option<isize>,
     /// step size in elements; the default is 1, for every element.
-    pub step: isize,
+    pub step: Option<isize>,
 }
 
 /// An ndarray slice needs a SliceInfoElem for each shape dimension
@@ -132,10 +132,11 @@ pub struct SliceInfo(pub Vec<SliceInfoElem>);
 
 impl From<SliceInfo> for ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
     fn from(s: SliceInfo) -> ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn> {
-        let all_slices: Vec<ndarray::SliceInfoElem> =
-            s.0.iter()
-                .map(|x| ndarray::SliceInfoElem::from(Slice::new(x.start, x.end, x.step)))
-                .collect();
+        let all_slices: Vec<ndarray::SliceInfoElem> = s
+            .0
+            .iter()
+            .map(|x| ndarray::SliceInfoElem::from(Slice::new(x.start, x.end, x.step.unwrap_or(1))))
+            .collect();
         ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::try_from(all_slices)
             .unwrap()
     }
@@ -302,15 +303,14 @@ impl HostSliceOp {
     pub(crate) fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
-        raw_slice_info: SliceInfo,
+        slice_info: SliceInfo,
         x: AbstractHostRingTensor<T>,
     ) -> AbstractHostRingTensor<T>
     where
         T: Clone,
-        SliceInfo: Into<ndarray::SliceInfo<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>>,
     {
         let slice_info =
-            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(raw_slice_info);
+            ndarray::SliceInfo::<Vec<ndarray::SliceInfoElem>, IxDyn, IxDyn>::from(slice_info);
         let sliced = x.0.slice(slice_info).to_owned();
         AbstractHostRingTensor(sliced, plc.clone())
     }
@@ -2140,12 +2140,12 @@ mod tests {
             SliceInfoElem {
                 start: 1,
                 end: None,
-                step: 1,
+                step: None,
             },
             SliceInfoElem {
                 start: 0,
                 end: None,
-                step: 1,
+                step: None,
             },
         ]);
 

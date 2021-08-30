@@ -418,7 +418,7 @@ fn hostslice<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
             sig,
             slice: SliceInfo(vec![SliceInfoElem {
                 start,
-                step: 1,
+                step: None,
                 end: Some(end),
             }]),
         }
