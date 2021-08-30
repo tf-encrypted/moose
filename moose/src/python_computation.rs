@@ -1,7 +1,7 @@
 //! Parser for computations defined in Python
 
+use crate::computation::*;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, RawShape, SliceInfo, SliceInfoElem};
-use crate::{computation::*, prim};
 use ndarray::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
@@ -839,8 +839,8 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     prim_DeriveSeedOperation(op) => Ok(Operation {
                         kind: PrimDeriveSeedOp {
-                            sig: Signature::unary(Ty::PrfKey, Ty::Nonce),
-                            sync_key: prim::RawNonce(op.nonce.clone()),
+                            sig: Signature::unary(Ty::PrfKey, Ty::Seed),
+                            sync_key: op.nonce.clone().try_into()?,
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1308,7 +1308,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_SendOperation(op) => Ok(Operation {
                         kind: SendOp {
                             sig: Signature::unary(Ty::Unknown, Ty::Unit),
-                            rendezvous_key: op.rendezvous_key.clone(),
+                            rendezvous_key: op.rendezvous_key.clone().try_into()?,
                             receiver: Role::from(&op.receiver),
                         }
                         .into(),
@@ -1320,7 +1320,7 @@ impl TryFrom<PyComputation> for Computation {
                     std_ReceiveOperation(op) => Ok(Operation {
                         kind: ReceiveOp {
                             sig: Signature::nullary(map_type(&op.output_type)?),
-                            rendezvous_key: op.rendezvous_key.clone(),
+                            rendezvous_key: op.rendezvous_key.clone().try_into()?,
                             sender: Role::from(&op.sender),
                         }
                         .into(),

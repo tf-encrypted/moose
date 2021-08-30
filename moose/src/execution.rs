@@ -16,6 +16,7 @@ use petgraph::graph::NodeIndex;
 use petgraph::Graph;
 use rayon::prelude::*;
 use std::collections::{HashMap, HashSet};
+use std::convert::TryFrom;
 use std::rc::Rc;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
@@ -621,16 +622,16 @@ impl Computation {
 
         let mut vertex_map: HashMap<&str, NodeIndex> = HashMap::new();
 
-        let mut send_nodes: HashMap<&str, NodeIndex> = HashMap::new();
-        let mut recv_nodes: HashMap<&str, NodeIndex> = HashMap::new();
+        let mut send_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
+        let mut recv_nodes: HashMap<&RendezvousKey, NodeIndex> = HashMap::new();
 
-        let mut rdv_keys: HashSet<&str> = HashSet::new();
+        let mut rdv_keys: HashSet<&RendezvousKey> = HashSet::new();
 
         for (i, op) in self.operations.iter().enumerate() {
             let vertex = graph.add_node((op.name.clone(), i));
             match op.kind {
                 Operator::Send(ref op) => {
-                    let key = op.rendezvous_key.as_ref();
+                    let key = &op.rendezvous_key;
 
                     if send_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
@@ -643,7 +644,7 @@ impl Computation {
                     rdv_keys.insert(key);
                 }
                 Operator::Receive(ref op) => {
-                    let key = op.rendezvous_key.as_ref();
+                    let key = &op.rendezvous_key;
 
                     if recv_nodes.contains_key(key) {
                         Error::MalformedComputation(format!(
@@ -975,7 +976,7 @@ impl TestExecutor {
 
         let session = SyncSession {
             arguments,
-            sid: SessionId::from("abcdef"), // TODO sample random string
+            sid: SessionId::try_from("abcdef").unwrap(), // TODO sample random string
             networking: Rc::clone(&self.networking),
             storage: Rc::clone(&self.storage),
         };
@@ -1203,7 +1204,7 @@ impl AsyncTestRuntime {
 
         for (own_identity, executor) in self.executors.iter() {
             let moose_session = AsyncSession {
-                sid: SessionId::from("foobar"),
+                sid: SessionId::try_from("foobar").unwrap(),
                 arguments: arguments.clone(),
                 networking: Arc::clone(&self.networking),
                 storage: Arc::clone(&self.runtime_storage[own_identity]),
@@ -1249,7 +1250,7 @@ impl AsyncTestRuntime {
         let _guard = rt.enter();
         let val = rt.block_on(async {
             let val = self.runtime_storage[&identity]
-                .load(&key, &SessionId::from("foobar"), None, "")
+                .load(&key, &SessionId::try_from("foobar").unwrap(), None, "")
                 .await
                 .unwrap();
             val
@@ -1278,7 +1279,7 @@ impl AsyncTestRuntime {
 
         let result = rt.block_on(async {
             identity_storage
-                .save(&key, &SessionId::from("yo"), &value)
+                .save(&key, &SessionId::try_from("yo").unwrap(), &value)
                 .await
         });
         if let Err(e) = result {
@@ -1294,7 +1295,7 @@ mod tests {
     use crate::compilation::networking::NetworkingPass;
     use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostInt64Tensor, HostShape, RawShape};
     use crate::host::{HostRing128Tensor, HostRing64Tensor};
-    use crate::prim::{RawNonce, RawPrfKey, RawSeed, Seed};
+    use crate::prim::{RawPrfKey, RawSeed, Seed, SyncKey};
     use itertools::Itertools;
     use maplit::hashmap;
     use ndarray::prelude::*;
@@ -1338,7 +1339,7 @@ mod tests {
     fn test_eager_executor(#[case] run_async: bool) -> std::result::Result<(), anyhow::Error> {
         let mut definition = String::from(
             r#"key = PrimPrfKeyGen() @Host(alice)
-        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         shape = Constant{value = Shape([2, 3])} @Host(alice)
         "#,
         );
@@ -1377,7 +1378,7 @@ mod tests {
         #[case] run_async: bool,
     ) -> std::result::Result<(), anyhow::Error> {
         let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
-        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (Nonce) -> Seed (key) @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
         output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
         let arguments: HashMap<String, Value> = hashmap!();
         let storage_mapping: HashMap<String, HashMap<String, Value>> =
@@ -1395,7 +1396,10 @@ mod tests {
         let seed: Seed = (outputs.get("output").unwrap().clone()).try_into()?;
         assert_eq!(
             seed.0,
-            RawSeed::from_prf(&RawPrfKey([0; 16]), &RawNonce(vec![1, 2, 3]))
+            RawSeed::from_prf(
+                &RawPrfKey([0; 16]),
+                &SyncKey::try_from(vec![1, 2, 3]).unwrap()
+            )
         );
         Ok(())
     }
@@ -1515,7 +1519,12 @@ mod tests {
                 let storage: Rc<dyn SyncStorage> = Rc::new(LocalSyncStorage::from_hashmap(store));
                 let executor = TestExecutor::from_storage(&storage);
                 let _outputs = executor.run_computation(&source.try_into()?, arguments)?;
-                storage.load("saved_data", &SessionId::from("foobar"), None, "")?
+                storage.load(
+                    "saved_data",
+                    &SessionId::try_from("foobar").unwrap(),
+                    None,
+                    "",
+                )?
             }
         };
 

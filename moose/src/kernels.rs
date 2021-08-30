@@ -10,7 +10,7 @@ use crate::host::{
     HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
     SliceInfo,
 };
-use crate::prim::{PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
@@ -44,20 +44,10 @@ pub struct SyncSession {
     replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>,
 }
 
-impl SyncSession {
-    // Currently used in a test
-    pub fn new(replicated_keys: HashMap<ReplicatedPlacement, ReplicatedSetup>) -> Self {
-        SyncSession {
-            session_id: "abcde".into(),
-            replicated_keys,
-        }
-    }
-}
-
 impl Default for SyncSession {
     fn default() -> Self {
         SyncSession {
-            session_id: "abcde".into(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
+            session_id: SessionId::random(), // TODO sync session is only used in tests currently, but it should get the session if from then env still.
             replicated_keys: Default::default(),
         }
     }
@@ -258,7 +248,7 @@ pub trait PlacementSetupGen<S: Session, SetupT> {
 }
 
 pub trait PlacementDeriveSeed<S: Session, KeyT, SeedT> {
-    fn derive_seed(&self, sess: &S, sync_key: RawNonce, key: &KeyT) -> SeedT;
+    fn derive_seed(&self, sess: &S, sync_key: SyncKey, key: &KeyT) -> SeedT;
 }
 
 pub trait PlacementAdd<S: Session, T, U, O> {
@@ -517,11 +507,11 @@ pub trait PlacementSave<S: Session, KeyT, T, O> {
 }
 
 pub trait PlacementSend<S: Session, T, O> {
-    fn send(&self, sess: &S, rendezvous_key: String, receiver: Role, x: &T) -> O;
+    fn send(&self, sess: &S, rendezvous_key: RendezvousKey, receiver: Role, x: &T) -> O;
 }
 
 pub trait PlacementReceive<S: Session, O> {
-    fn receive(&self, sess: &S, rendezvous_key: String, sender: Role) -> O;
+    fn receive(&self, sess: &S, rendezvous_key: RendezvousKey, sender: Role) -> O;
 }
 
 pub trait PlacementAtLeast2D<S: Session, T, O> {
@@ -1137,9 +1127,9 @@ impl Compile<Kernel> for HostSumOp {
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for PrimDeriveSeedOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        let nonce = self.sync_key.clone();
+        let sync_key = self.sync_key.clone();
         closure_kernel!(PrfKey, |key| Seed(
-            RawSeed::from_prf(&key.0, &nonce),
+            RawSeed::from_prf(&key.0, &sync_key),
             HostPlacement {
                 owner: "TODO".into() // Fake owner for the older kernels.
             }
@@ -1859,7 +1849,7 @@ impl ConstantOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: String, receiver: Role] ($value) -> Unit, SendOp);
+        modelled!(PlacementSend::send, HostPlacement, attributes[rendezvous_key: RendezvousKey, receiver: Role] ($value) -> Unit, SendOp);
     )*
 )}
 
@@ -1892,7 +1882,7 @@ impl SendOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
-        _rendezvous_key: String,
+        _rendezvous_key: RendezvousKey,
         _receiver: Role,
         _x: T,
     ) -> Unit {
@@ -1963,7 +1953,7 @@ impl Compile<AsyncKernel> for SendOp {
 
 for_all_values! {( $($value:ty),* ) => (
     $(
-        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: String, sender: Role] () -> $value, ReceiveOp);
+        modelled!(PlacementReceive::receive, HostPlacement, attributes[rendezvous_key: RendezvousKey, sender: Role] () -> $value, ReceiveOp);
     )*
 )}
 
@@ -1997,7 +1987,7 @@ impl ReceiveOp {
     fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
-        _rendezvous_key: String,
+        _rendezvous_key: RendezvousKey,
         _sender: Role,
     ) -> T {
         unimplemented!("Receive Op kernel implementation missing, because RuntimeSession does not have role_assignment yet")

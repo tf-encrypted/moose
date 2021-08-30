@@ -1,6 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use moose::computation::Computation;
 use rayon::prelude::*;
+use std::convert::TryFrom;
 
 /// Benchmark iter vs par_iter for channel creation
 /// Conclusion is that this never seems worth it.
@@ -603,7 +604,7 @@ fn execute(c: &mut Criterion) {
 
         group.bench_function(BenchmarkId::new("sync_direct", size), |b| {
             let sess = SyncSession {
-                sid: SessionId::from("12345"),
+                sid: SessionId::try_from("12345").unwrap(),
                 arguments: hashmap!(),
                 networking: Rc::new(DummyNetworking(unit.clone())),
                 storage: Rc::new(moose::storage::LocalSyncStorage::default()),
@@ -619,7 +620,7 @@ fn execute(c: &mut Criterion) {
             let comp_compiled: CompiledSyncComputation = comp.compile_sync(&ctx).unwrap();
 
             let sess = SyncSession {
-                sid: SessionId::from("12345"),
+                sid: SessionId::try_from("12345").unwrap(),
                 arguments: hashmap!(),
                 networking: Rc::new(DummyNetworking(unit.clone())),
                 storage: Rc::new(moose::storage::LocalSyncStorage::default()),
@@ -635,7 +636,7 @@ fn execute(c: &mut Criterion) {
             let comp_compiled: CompiledAsyncComputation = comp.compile_async(&ctx).unwrap();
 
             let session = AsyncSession {
-                sid: SessionId::from("12345"),
+                sid: SessionId::try_from("12345").unwrap(),
                 arguments: hashmap! {},
                 networking: Arc::new(DummyNetworking(unit.clone())),
                 storage: Arc::new(moose::storage::LocalAsyncStorage::default()),

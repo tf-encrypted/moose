@@ -184,6 +184,7 @@ impl AsyncNetworking for DummyNetworking {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryInto;
 
     #[test]
     fn sync_networking() {
@@ -196,14 +197,32 @@ mod tests {
             owner: "alice".into(),
         }));
 
-        net.send(&unit, &bob, "rdv", &SessionId::from("12345"))
-            .unwrap();
-        net.send(&unit, &bob, "rdv", &SessionId::from("67890"))
-            .unwrap();
-        net.receive(&alice, "rdv", &SessionId::from("12345"))
-            .unwrap();
-        net.receive(&alice, "rdv", &SessionId::from("67890"))
-            .unwrap();
+        net.send(
+            &unit,
+            &bob,
+            &"rdv".try_into().unwrap(),
+            &"12345".try_into().unwrap(),
+        )
+        .unwrap();
+        net.send(
+            &unit,
+            &bob,
+            &"rdv".try_into().unwrap(),
+            &"67890".try_into().unwrap(),
+        )
+        .unwrap();
+        net.receive(
+            &alice,
+            &"rdv".try_into().unwrap(),
+            &"12345".try_into().unwrap(),
+        )
+        .unwrap();
+        net.receive(
+            &alice,
+            &"rdv".try_into().unwrap(),
+            &"67890".try_into().unwrap(),
+        )
+        .unwrap();
     }
 
     #[tokio::test]
@@ -215,13 +234,23 @@ mod tests {
         let net1 = Arc::clone(&net);
         let task1 = tokio::spawn(async move {
             let alice = "alice".into();
-            net1.receive(&alice, "rdv", &SessionId::from("12345")).await
+            net1.receive(
+                &alice,
+                &"rdv".try_into().unwrap(),
+                &"12345".try_into().unwrap(),
+            )
+            .await
         });
 
         let net2 = Arc::clone(&net);
         let task2 = tokio::spawn(async move {
             let alice = "alice".into();
-            net2.receive(&alice, "rdv", &SessionId::from("67890")).await
+            net2.receive(
+                &alice,
+                &"rdv".try_into().unwrap(),
+                &"67890".try_into().unwrap(),
+            )
+            .await
         });
 
         let net3 = Arc::clone(&net);
@@ -230,8 +259,13 @@ mod tests {
             let unit = Value::Unit(Unit(HostPlacement {
                 owner: "alice".into(),
             }));
-            net3.send(&unit, &bob, "rdv", &SessionId::from("12345"))
-                .await
+            net3.send(
+                &unit,
+                &bob,
+                &"rdv".try_into().unwrap(),
+                &"12345".try_into().unwrap(),
+            )
+            .await
         });
 
         let net4 = Arc::clone(&net);
@@ -240,8 +274,13 @@ mod tests {
             let unit = Value::Unit(Unit(HostPlacement {
                 owner: "alice".into(),
             }));
-            net4.send(&unit, &bob, "rdv", &SessionId::from("67890"))
-                .await
+            net4.send(
+                &unit,
+                &bob,
+                &"rdv".try_into().unwrap(),
+                &"67890".try_into().unwrap(),
+            )
+            .await
         });
 
         let _ = tokio::try_join!(task1, task2, task3, task4).unwrap();

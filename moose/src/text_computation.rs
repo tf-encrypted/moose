@@ -1,6 +1,6 @@
 use crate::computation::*;
 use crate::host::{HostShape, RawShape, SliceInfo, SliceInfoElem};
-use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use nom::{
     branch::{alt, permutation},
     bytes::complete::{is_not, tag, take_while_m_n},
@@ -333,7 +333,7 @@ fn send_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, receiver)) = attributes!((
-        attributes_member("rendezvous_key", string),
+        attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
         attributes_member("receiver", string)
     ))(input)?;
     let (input, optional_type) = opt(type_definition(0))(input)?;
@@ -354,7 +354,7 @@ fn receive_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
     let (input, (rendezvous_key, sender)) = attributes!((
-        attributes_member("rendezvous_key", string),
+        attributes_member("rendezvous_key", map(parse_hex, RendezvousKey::from_bytes)),
         attributes_member("sender", string)
     ))(input)?;
     let (input, sig) = type_definition(0)(input)?;
@@ -536,7 +536,11 @@ fn prim_gen_prf_key<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 fn prim_derive_seed<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
-    let (input, sync_key) = attributes_single("sync_key", map(vector(parse_int), RawNonce))(input)?;
+    let (input, sync_key) =
+        attributes_single("sync_key", map_res(vector(parse_int), SyncKey::try_from))(input)
+            .map_err(|_: nom::Err<nom::error::Error<&str>>| {
+                Error(make_error(input, ErrorKind::MapRes))
+            })?;
     let (input, opt_sig) = opt(type_definition(0))(input)?;
     let sig = opt_sig.unwrap_or_else(|| Signature::nullary(Ty::Seed));
     Ok((input, PrimDeriveSeedOp { sig, sync_key }.into()))
@@ -761,7 +765,6 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Shape" => Ok((i, Ty::HostShape)),
         "Seed" => Ok((i, Ty::Seed)),
         "PrfKey" => Ok((i, Ty::PrfKey)),
-        "Nonce" => Ok((i, Ty::Nonce)),
         "String" => Ok((i, Ty::String)),
         "BitTensor" => Ok((i, Ty::HostBitTensor)),
         "Ring64Tensor" => Ok((i, Ty::HostRing64Tensor)),
@@ -827,9 +830,6 @@ fn constant_literal<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         constant_literal_helper("Ring128", parse_int, Constant::Ring128),
         constant_literal_helper("Shape", vector(parse_int), |v| {
             Constant::RawShape(RawShape(v))
-        }),
-        constant_literal_helper("Nonce", vector(parse_int), |v| {
-            Constant::RawNonce(RawNonce(v))
         }),
         constant_literal_helper("Bit", parse_int, Constant::Bit),
         // 1D arrars
@@ -1583,7 +1583,6 @@ impl ToTextual for Ty {
             Ty::HostShape => "Shape",
             Ty::Seed => "Seed",
             Ty::PrfKey => "PrfKey",
-            Ty::Nonce => "Nonce",
             Ty::HostFloat32Tensor => "Float32Tensor",
             Ty::HostFloat64Tensor => "Float64Tensor",
             Ty::HostInt8Tensor => "Int8Tensor",
@@ -1632,7 +1631,6 @@ impl ToTextual for Value {
             Value::Ring64(x) => format!("Ring64({})", x),
             Value::Ring128(x) => format!("Ring128({})", x),
             Value::HostShape(HostShape(x, _)) => format!("HostShape({:?})", x),
-            Value::Nonce(Nonce(x, _)) => format!("Nonce({:?})", x.0.to_textual()),
             Value::Seed(Seed(x, _)) => format!("Seed({})", x.0.to_textual()),
             Value::PrfKey(PrfKey(x, _)) => format!("PrfKey({})", x.0.to_textual()),
             Value::Bit(x) => format!("Bit({})", x),
@@ -1677,7 +1675,6 @@ impl ToTextual for Constant {
             Constant::Ring64(x) => format!("Ring64({})", x),
             Constant::Ring128(x) => format!("Ring128({})", x),
             Constant::RawShape(RawShape(x)) => format!("Shape({:?})", x),
-            Constant::RawNonce(RawNonce(x)) => format!("Nonce({:?})", x),
             Constant::RawSeed(RawSeed(x)) => format!("Seed({})", x.to_textual()),
             Constant::RawPrfKey(RawPrfKey(x)) => format!("PrfKey({})", x.to_textual()),
             Constant::Bit(x) => format!("Bit({})", x),
@@ -1724,9 +1721,16 @@ impl ToTextual for Role {
 }
 
 // Required to serialize PrimDeriveSeedOp
-impl ToTextual for RawNonce {
+impl ToTextual for SyncKey {
     fn to_textual(&self) -> String {
-        format!("{:?}", self.0)
+        format!("{:?}", self.as_bytes())
+    }
+}
+
+// Required to serialize Send/Receive
+impl ToTextual for RendezvousKey {
+    fn to_textual(&self) -> String {
+        self.as_bytes().to_textual()
     }
 }
 
@@ -1795,6 +1799,7 @@ impl ToTextual for [u8] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::convert::TryInto;
 
     #[test]
     fn test_constant_literal() -> Result<(), anyhow::Error> {
@@ -1993,7 +1998,7 @@ mod tests {
             op.kind,
             Operator::PrimDeriveSeed(PrimDeriveSeedOp {
                 sig: Signature::nullary(Ty::Seed),
-                sync_key: RawNonce(vec![1, 2, 3])
+                sync_key: SyncKey::try_from(vec![1, 2, 3])?
             })
         );
         Ok(())
@@ -2002,14 +2007,14 @@ mod tests {
     #[test]
     fn test_send() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"send = Send{rendezvous_key = "abc" receiver = "bob"}() @Host(alice)"#,
+            r#"send = Send{rendezvous_key = 30313233343536373839616263646566, receiver = "bob"}() @Host(alice)"#,
         )?;
         assert_eq!(op.name, "send");
         assert_eq!(
             op.kind,
             Operator::Send(SendOp {
                 sig: Signature::unary(Ty::Unknown, Ty::Unknown),
-                rendezvous_key: "abc".into(),
+                rendezvous_key: "0123456789abcdef".try_into()?,
                 receiver: Role::from("bob")
             })
         );
@@ -2019,14 +2024,14 @@ mod tests {
     #[test]
     fn test_receive() -> Result<(), anyhow::Error> {
         let (_, op) = parse_assignment::<(&str, ErrorKind)>(
-            r#"receive = Receive{rendezvous_key = "abc", sender = "bob"} : () -> Float32Tensor () @Host(alice)"#,
+            r#"receive = Receive{rendezvous_key = 30313233343536373839616263646566, sender = "bob"} : () -> Float32Tensor () @Host(alice)"#,
         )?;
         assert_eq!(op.name, "receive");
         assert_eq!(
             op.kind,
             Operator::Receive(ReceiveOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
-                rendezvous_key: "abc".into(),
+                rendezvous_key: "0123456789abcdef".try_into()?,
                 sender: Role::from("bob"),
             })
         );

@@ -68,7 +68,7 @@ impl NetworkingPass {
     ) -> String {
         let index = self.counter.next().unwrap();
 
-        let rendezvous_key = format!("rendezvous_key_{}", self.rendezvous.next().unwrap());
+        let rendezvous_key = RendezvousKey::from(self.rendezvous.next().unwrap() as u128);
 
         let send_operation = Operation {
             name: format!("send_{}", index),
@@ -159,9 +159,9 @@ mod tests {
 
         // Networking should introduce one new networking operation (not 2) for the 2 jumps. And leave the mean unchaged (dot already on the right host)
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="alice"}: (Unknown) -> Unit (y) @Host(bob)"#
+            r#"send_0 = Send {rendezvous_key=00000000000000000000000000000000, receiver="alice"}: (Unknown) -> Unit (y) @Host(bob)"#
         ));
-        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="bob"} : () -> Unknown () @Host(alice)"#));
+        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key=00000000000000000000000000000000, sender="bob"} : () -> Unknown () @Host(alice)"#));
         assert!(comp.contains("mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(comp.contains("dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, receive_0) @Host(alice)"));
         assert!(
@@ -179,16 +179,15 @@ mod tests {
         let comp = NetworkingPass::pass(&source.try_into()?)?
             .unwrap()
             .to_textual();
-
         // Should have one send/receive pair per each variable being sent
         assert!(comp.contains(
-            r#"send_0 = Send {rendezvous_key="rendezvous_key_0", receiver="bob"}: (Unknown) -> Unit (x) @Host(alice)"#
+            r#"send_0 = Send {rendezvous_key=00000000000000000000000000000000, receiver="bob"}: (Unknown) -> Unit (x) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key="rendezvous_key_0", sender="alice"} : () -> Unknown () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_0 = Receive {rendezvous_key=00000000000000000000000000000000, sender="alice"} : () -> Unknown () @Host(bob)"#));
         assert!(comp.contains(
-            r#"send_1 = Send {rendezvous_key="rendezvous_key_1", receiver="bob"}: (Unknown) -> Unit (y) @Host(alice)"#
+            r#"send_1 = Send {rendezvous_key=01000000000000000000000000000000, receiver="bob"}: (Unknown) -> Unit (y) @Host(alice)"#
         ));
-        assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key="rendezvous_key_1", sender="alice"} : () -> Unknown () @Host(bob)"#));
+        assert!(comp.contains(r#"receive_1 = Receive {rendezvous_key=01000000000000000000000000000000, sender="alice"} : () -> Unknown () @Host(bob)"#));
         // Should use the same pair of operators for both computations on both (asserting for no extra jumps)
         assert!(comp.contains(r#"add = HostAdd: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));
         assert!(comp.contains(r#"mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (receive_0, receive_1) @Host(bob)"#));

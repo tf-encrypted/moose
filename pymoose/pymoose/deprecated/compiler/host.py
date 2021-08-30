@@ -62,7 +62,7 @@ class NetworkingPass:
             self.serialize_cache[serialize_cache_key] = serialize_operation
             extra_ops += [serialize_operation]
 
-        rendezvous_key = context.get_fresh_name("rendezvous_key")
+        rendezvous_key = context.get_fresh_name("rdv_key")
         send_operation = SendOperation(
             placement_name=source_operation.placement_name,
             name=context.get_fresh_name("send"),
