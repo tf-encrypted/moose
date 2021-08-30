@@ -161,7 +161,7 @@ impl From<u128> for Constant {
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
-    ($(($val:ident, $sym_val:ty),)+) => {
+    ($($val:ident,)+) => {
 
         #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
         pub enum Ty {
@@ -255,7 +255,7 @@ macro_rules! values {
 
         #[derive(PartialEq, Clone, Debug)]
         pub enum SymbolicValue {
-            $($val($sym_val),)+
+            $($val(<$val as SymbolicType>::Type),)+
         }
 
         impl SymbolicValue {
@@ -274,15 +274,15 @@ macro_rules! values {
         }
 
         $(
-        impl From<$sym_val> for SymbolicValue {
-            fn from(x: $sym_val) -> Self {
+        impl From<<$val as SymbolicType>::Type> for SymbolicValue {
+            fn from(x: <$val as SymbolicType>::Type) -> Self {
                 SymbolicValue::$val(x)
             }
         }
         )+
 
         $(
-        impl TryFrom<SymbolicValue> for $sym_val {
+        impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
             type Error = Error;
             fn try_from(v: SymbolicValue) -> Result<Self> {
                 match v {
@@ -298,7 +298,7 @@ macro_rules! values {
 
         $(
         impl KnownType<crate::symbolic::SymbolicSession> for $val {
-            type Type = $sym_val;
+            type Type = <$val as SymbolicType>::Type;
             const TY: Ty = Ty::$val;
         }
         )+
@@ -490,79 +490,40 @@ impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
 }
 
 values![
-    (Unit, <Unit as SymbolicType>::Type),
-    (HostShape, <HostShape as SymbolicType>::Type),
-    (Seed, <Seed as SymbolicType>::Type),
-    (PrfKey, <PrfKey as SymbolicType>::Type),
-    (Nonce, <Nonce as SymbolicType>::Type),
-    (String, <String as SymbolicType>::Type),
-    (HostBitTensor, <HostBitTensor as SymbolicType>::Type),
-    (HostRing64Tensor, <HostRing64Tensor as SymbolicType>::Type),
-    (HostRing128Tensor, <HostRing128Tensor as SymbolicType>::Type),
-    (HostFixed64Tensor, <HostFixed64Tensor as SymbolicType>::Type),
-    (HostFixed128Tensor, <HostFixed128Tensor as SymbolicType>::Type),
-    (HostFloat32Tensor, <HostFloat32Tensor as SymbolicType>::Type),
-    (HostFloat64Tensor, <HostFloat64Tensor as SymbolicType>::Type),
-    (HostInt8Tensor, <HostInt8Tensor as SymbolicType>::Type),
-    (HostInt16Tensor, <HostInt16Tensor as SymbolicType>::Type),
-    (HostInt32Tensor, <HostInt32Tensor as SymbolicType>::Type),
-    (HostInt64Tensor, <HostInt64Tensor as SymbolicType>::Type),
-    (HostUint8Tensor, <HostUint8Tensor as SymbolicType>::Type),
-    (HostUint16Tensor, <HostUint16Tensor as SymbolicType>::Type),
-    (HostUint32Tensor, <HostUint32Tensor as SymbolicType>::Type),
-    (HostUint64Tensor, <HostUint64Tensor as SymbolicType>::Type),
-    (
-        Fixed64Tensor,
-        <Fixed64Tensor as SymbolicType>::Type
-    ),
-    (
-        Fixed128Tensor,
-        <Fixed128Tensor as SymbolicType>::Type
-    ),
-    (
-        ReplicatedRing64Tensor,
-        <ReplicatedRing64Tensor as SymbolicType>::Type
-    ),
-    (
-        ReplicatedRing128Tensor,
-        <ReplicatedRing128Tensor as SymbolicType>::Type
-    ),
-    (
-        ReplicatedBitTensor,
-        <ReplicatedBitTensor as SymbolicType>::Type
-    ),
-    (
-        ReplicatedFixed64Tensor,
-        <ReplicatedFixed64Tensor as SymbolicType>::Type
-    ),
-    (
-        ReplicatedFixed128Tensor,
-        <ReplicatedFixed128Tensor as SymbolicType>::Type
-    ),
-    (
-        ReplicatedSetup,
-        <ReplicatedSetup as SymbolicType>::Type
-    ),
-    (
-        ReplicatedShape,
-        <ReplicatedShape as SymbolicType>::Type
-    ),
-    (
-        AdditiveBitTensor,
-        <AdditiveBitTensor as SymbolicType>::Type
-    ),
-    (
-        AdditiveRing64Tensor,
-        <AdditiveRing64Tensor as SymbolicType>::Type
-    ),
-    (
-        AdditiveRing128Tensor,
-        <AdditiveRing128Tensor as SymbolicType>::Type
-    ),
-    (
-        AdditiveShape,
-        <AdditiveShape as SymbolicType>::Type
-    ),
+    Unit,
+    HostShape, 
+    Seed,
+    PrfKey,
+    Nonce, 
+    String,
+    HostBitTensor,
+    HostRing64Tensor, 
+    HostRing128Tensor,
+    HostFixed64Tensor, 
+    HostFixed128Tensor,
+    HostFloat32Tensor, 
+    HostFloat64Tensor, 
+    HostInt8Tensor, 
+    HostInt16Tensor, 
+    HostInt32Tensor,
+    HostInt64Tensor, 
+    HostUint8Tensor, 
+    HostUint16Tensor,
+    HostUint32Tensor, 
+    HostUint64Tensor, 
+    Fixed64Tensor,
+    Fixed128Tensor,
+    ReplicatedRing64Tensor,
+    ReplicatedRing128Tensor,
+    ReplicatedBitTensor,
+    ReplicatedFixed64Tensor,
+    ReplicatedFixed128Tensor,
+    ReplicatedSetup,
+    ReplicatedShape,
+    AdditiveBitTensor,
+    AdditiveRing64Tensor,
+    AdditiveRing128Tensor,
+    AdditiveShape,
 ];
 
 // A macros to define something common for all the possible values
