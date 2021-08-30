@@ -2,17 +2,21 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
     Constant, HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostIndexAxisOp,
     HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp,
-    HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp,
-    RingFillOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp,
-    RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
-    HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp,
-    RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp,
-    RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
+    HostSubOp, HostSumOp, HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement,
+    RingAddOp, RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    SymbolicType,
 };
 use crate::error::Error;
 use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
-use crate::kernels::{PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor};
+use crate::kernels::{
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex,
+    PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
+    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
+    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor,
+    RuntimeSession, Session, SyncSession, Tensor,
+};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
@@ -876,7 +880,7 @@ impl HostMeanOp {
         ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
     {
         // TODO: grab scaling base and exp from somewhere else
-        let mean = plc.ring_mean(sess, axis, 2, 27, &x);
+        let mean = plc.mean(sess, axis, 2, 27, &x);
         plc.trunc_pr(sess, 27, &mean)
     }
 }

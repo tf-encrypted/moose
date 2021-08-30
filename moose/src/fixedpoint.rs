@@ -1,13 +1,24 @@
 //! Support for fixed-point arithmetic
 
-use crate::computation::{CastOp, Placement, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp, FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp, HostPlacement, KnownType, Placed, ReplicatedPlacement, SymbolicType};
+use crate::computation::{
+    CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp,
+    FixedpointMeanOp, FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
+    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
+};
 use crate::error::Result;
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor,
     HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
 };
-use crate::kernels::{PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, RuntimeSession, Session};
-use crate::replicated::{AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor};
+use crate::kernels::{
+    PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
+    PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementReveal,
+    PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen,
+    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session,
+};
+use crate::replicated::{
+    AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+};
 use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
