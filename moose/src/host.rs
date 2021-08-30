@@ -146,43 +146,6 @@ impl<T> SymbolicType for HostTensor<T> {
     type Type = Symbolic<HostTensor<T>>;
 }
 
-// impl SymbolicType for HostFloat64Tensor {
-//     type Type = Symbolic<HostFloat64Tensor>;
-// }
-
-// impl SymbolicType for HostInt8Tensor {
-//     type Type = Symbolic<HostInt8Tensor>;
-// }
-
-// impl SymbolicType for HostInt16Tensor {
-//     type Type = Symbolic<HostInt16Tensor>;
-// }
-
-// impl SymbolicType for HostInt32Tensor {
-//     type Type = Symbolic<HostInt32Tensor>;
-// }
-
-// impl SymbolicType for HostInt64Tensor {
-//     type Type = Symbolic<HostInt64Tensor>;
-// }
-
-// impl SymbolicType for HostUint8Tensor {
-//     type Type = Symbolic<HostUint8Tensor>;
-// }
-
-// impl SymbolicType for HostUint16Tensor {
-//     type Type = Symbolic<HostUint16Tensor>;
-// }
-
-// impl SymbolicType for HostUint32Tensor {
-//     type Type = Symbolic<HostUint32Tensor>;
-// }
-
-// impl SymbolicType for HostUint64Tensor {
-//     type Type = Symbolic<HostUint64Tensor>;
-// }
-
-
 impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
         match x.placement() {
@@ -1126,10 +1089,28 @@ impl SymbolicType for HostFixed64Tensor {
     type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing64Tensor>>>;
 }
 
+impl<T> From<T> for HostFixed64Tensor
+where
+    HostRing64Tensor: From<T>
+{
+    fn from(x: T) -> Self {
+        AbstractHostFixedTensor(HostRing64Tensor::from(x))
+    }
+}
+
 pub type HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>;
 
 impl SymbolicType for HostFixed128Tensor {
     type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing128Tensor>>>;
+}
+
+impl<T> From<T> for HostFixed128Tensor
+where
+    HostRing128Tensor: From<T>
+{
+    fn from(x: T) -> Self {
+        AbstractHostFixedTensor(HostRing128Tensor::from(x))
+    }
 }
 
 impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {

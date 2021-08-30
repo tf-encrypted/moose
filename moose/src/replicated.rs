@@ -2161,13 +2161,13 @@ mod tests {
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let x = AbstractHostRingTensor::<u64>::encode(&x, scaling_factor);
+        let x = HostFixed64Tensor::encode(&x, scaling_factor);
         let x_shared = rep.share(&sess, &setup, &x);
 
         let mean = rep.mean(&sess, None, 24, &x_shared);
         let mean = rep.trunc_pr(&sess, 24, &mean);
         let opened_result = alice.reveal(&sess, &mean);
-        let decoded_result = AbstractHostRingTensor::<u64>::decode(&opened_result, scaling_factor);
+        let decoded_result = HostFixed64Tensor::decode(&opened_result, scaling_factor);
 
         assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }
