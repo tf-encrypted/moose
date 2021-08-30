@@ -301,7 +301,7 @@ kernel! {
 }
 
 impl HostSliceOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+    pub fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         slice_info: SliceInfo,
@@ -316,7 +316,7 @@ impl HostSliceOp {
         AbstractHostRingTensor(sliced, plc.clone())
     }
 
-    pub(crate) fn shape_kernel<S: RuntimeSession>(
+    pub fn shape_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         slice_info: SliceInfo,
@@ -334,8 +334,17 @@ modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, inde
 modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing128Tensor) -> HostRing128Tensor, HostIndexAxisOp);
 modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostBitTensor) -> HostBitTensor, HostIndexAxisOp);
 
+kernel! {
+    HostIndexAxisOp,
+    [
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => attributes[axis, index] Self::bit_kernel),
+    ]
+}
+
 impl HostIndexAxisOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+    pub fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         axis: usize,
@@ -350,7 +359,7 @@ impl HostIndexAxisOp {
         AbstractHostRingTensor(result.to_owned(), plc.clone())
     }
 
-    pub(crate) fn bit_kernel<S: RuntimeSession>(
+    pub fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         axis: usize,
@@ -361,15 +370,6 @@ impl HostIndexAxisOp {
         let result = x.0.index_axis(axis, index);
         HostBitTensor(result.to_owned(), plc.clone())
     }
-}
-
-kernel! {
-    HostIndexAxisOp,
-    [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, index] Self::kernel),
-        (HostPlacement, (HostBitTensor) -> HostBitTensor => attributes[axis, index] Self::bit_kernel),
-    ]
 }
 
 impl<T> HostTensor<T>
