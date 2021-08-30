@@ -10,9 +10,6 @@ from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
 from pymoose.computation.standard import StringType
-from pymoose.deprecated.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
-from pymoose.deprecated.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from pymoose.deprecated.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
