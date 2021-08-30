@@ -4,7 +4,7 @@ use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
     RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp,
     RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement,
-    RingInjectOp, ShapeOp, SymbolicType,
+    RingInjectOp, ShapeOp, SymbolicType, RepIndexAxisOp,
 };
 use crate::error::{Error, Result};
 use crate::host::{
@@ -18,9 +18,9 @@ use crate::kernels::{
     PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject,
     PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
     PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
+    PlacementIndex, PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
-use crate::prim::{PrfKey, RawNonce, Seed};
+use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -392,7 +392,7 @@ impl RepShareOp {
 
         let shares = match () {
             _ if x_player == player0 => {
-                let sync_key = RawNonce::generate();
+                let sync_key = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed0 = player0.derive_seed(sess, sync_key.clone(), k00);
@@ -409,7 +409,7 @@ impl RepShareOp {
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
             _ if x_player == player1 => {
-                let sync_key = RawNonce::generate();
+                let sync_key = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed1 = player1.derive_seed(sess, sync_key.clone(), k11);
@@ -426,7 +426,7 @@ impl RepShareOp {
                 [[x00, x10], [x11, x21], [x22, x02]]
             }
             _ if x_player == player2 => {
-                let sync_key = RawNonce::generate();
+                let sync_key = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed2 = player2.derive_seed(sess, sync_key.clone(), k22);
@@ -448,8 +448,8 @@ impl RepShareOp {
                 // that seeds are used as much as possible instead of dense random tensors;
                 // however, we must make sure keys are not revealed to x_owner and only seeds
 
-                let sync_key0 = RawNonce::generate();
-                let sync_key1 = RawNonce::generate();
+                let sync_key0 = SyncKey::random();
+                let sync_key1 = SyncKey::random();
                 let shape = x_player.shape(sess, &x);
 
                 let seed00 = player0.derive_seed(sess, sync_key0.clone(), k00);
@@ -1386,8 +1386,8 @@ impl AdtToRepOp {
             _ => unimplemented!(), // something is wrong in the protocol otherwise
         };
 
-        let sync_key0 = RawNonce::generate();
-        let sync_key1 = RawNonce::generate();
+        let sync_key0 = SyncKey::random();
+        let sync_key1 = SyncKey::random();
 
         let k = provider.gen_key(sess);
         let seed1 = provider.derive_seed(sess, sync_key0, &k);
@@ -1632,6 +1632,50 @@ impl RepShlOp {
 
         let z22 = player2.shl(sess, amount, x22);
         let z02 = player2.shl(sess, amount, x02);
+
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+}
+
+modelled!(PlacementIndex::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepIndexAxisOp);
+modelled!(PlacementIndex::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepIndexAxisOp);
+modelled!(PlacementIndex::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, RepIndexAxisOp);
+
+hybrid_kernel! {
+    RepIndexAxisOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => attributes[axis, index] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => attributes[axis, index] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => attributes[axis, index] Self::kernel),
+    ]
+}
+
+impl RepIndexAxisOp {
+    fn kernel<S: Session, RingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: usize,
+        index: usize,
+        x: RepTen<RingT>,
+    ) -> RepTen<RingT>
+    where
+        HostPlacement: PlacementIndex<S, RingT, RingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.index_axis(sess, axis, index, x00);
+        let z10 = player0.index_axis(sess, axis, index, x10);
+
+        let z11 = player1.index_axis(sess, axis, index, x11);
+        let z21 = player1.index_axis(sess, axis, index, x21);
+
+        let z22 = player2.index_axis(sess, axis, index, x22);
+        let z02 = player2.index_axis(sess, axis, index, x02);
 
         RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -2051,9 +2095,9 @@ where
         // a security perspective since the seeds depend on both the keys and the sid.
         // however, with sub-computations we could fix these as eg `0`, `1`, and `2`
         // and make compilation a bit more deterministic
-        let sync_key0 = RawNonce::generate();
-        let sync_key1 = RawNonce::generate();
-        let sync_key2 = RawNonce::generate();
+        let sync_key0 = SyncKey::random();
+        let sync_key1 = SyncKey::random();
+        let sync_key2 = SyncKey::random();
 
         let s00 = player0.derive_seed(ctx, sync_key0.clone(), k00);
         let s10 = player0.derive_seed(ctx, sync_key1.clone(), k10);

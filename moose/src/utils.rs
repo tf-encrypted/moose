@@ -2,6 +2,7 @@ use sodiumoxide::crypto::generichash;
 
 use crate::prng::{RngSeed, SEED_SIZE};
 
+#[cfg(not(feature = "exclude_old_framework"))]
 pub fn derive_seed(key: &[u8], nonce: &[u8]) -> RngSeed {
     sodiumoxide::init().expect("failed to initialize sodiumoxide");
     let mut hasher = generichash::State::new(Some(SEED_SIZE), Some(key)).unwrap();

@@ -7,35 +7,122 @@ use crate::host::{
     HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor,
     HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor,
     HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor,
-    HostUint8Tensor, RawShape,
+    HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
-use crate::prim::{Nonce, PrfKey, RawNonce, RawPrfKey, RawSeed, Seed};
+use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
     ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
     ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
 };
 use crate::symbolic::Symbolic;
+use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::ShortName;
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
-pub type RendezvousKey = str;
+pub const TAG_BYTES: usize = 128 / 8;
+static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
+static_assertions::const_assert!(TAG_BYTES <= sodiumoxide::crypto::generichash::DIGEST_MAX);
 
-#[derive(Clone, Debug, Display)]
-pub struct SessionId(String);
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, Eq, Hash)]
+pub struct RendezvousKey(pub(crate) [u8; TAG_BYTES]);
 
-impl<S: Into<String>> From<S> for SessionId {
-    fn from(s: S) -> SessionId {
-        SessionId(s.into())
+impl std::fmt::Display for RendezvousKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02X}", byte)?
+        }
+        Ok(())
+    }
+}
+
+impl From<u128> for RendezvousKey {
+    fn from(v: u128) -> RendezvousKey {
+        let mut raw = [0; TAG_BYTES];
+        LittleEndian::write_u128(&mut raw, v);
+        RendezvousKey(raw)
+    }
+}
+
+impl TryFrom<String> for RendezvousKey {
+    type Error = Error;
+    fn try_from(s: String) -> Result<RendezvousKey> {
+        Self::try_from(s.as_str())
+    }
+}
+
+impl TryFrom<&str> for RendezvousKey {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<RendezvousKey> {
+        let s_bytes = s.as_bytes();
+        if s_bytes.len() > TAG_BYTES {
+            return Err(Error::Unexpected); // TODO more helpful error message
+        }
+        let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
+        for (idx, byte) in s_bytes.iter().enumerate() {
+            raw[idx] = *byte;
+        }
+        Ok(RendezvousKey(raw))
+    }
+}
+
+impl RendezvousKey {
+    pub fn from_bytes(bytes: [u8; TAG_BYTES]) -> Self {
+        RendezvousKey(bytes)
+    }
+
+    pub fn as_bytes(&self) -> &[u8; TAG_BYTES] {
+        &self.0
+    }
+
+    pub fn random() -> Self {
+        let mut raw = [0; TAG_BYTES];
+        sodiumoxide::init().expect("failed to initialize sodiumoxide");
+        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        RendezvousKey(raw)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SessionId(pub(crate) [u8; TAG_BYTES]);
+
+impl std::fmt::Display for SessionId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        for byte in self.0 {
+            write!(f, "{:02X}", byte)?
+        }
+        Ok(())
+    }
+}
+
+impl TryFrom<&str> for SessionId {
+    type Error = Error;
+    fn try_from(s: &str) -> Result<SessionId> {
+        let s_bytes = s.as_bytes();
+        if s_bytes.len() > TAG_BYTES {
+            return Err(Error::Unexpected); // TODO more helpful error message
+        }
+        let mut raw: [u8; TAG_BYTES] = [0; TAG_BYTES];
+        for (idx, byte) in s_bytes.iter().enumerate() {
+            raw[idx] = *byte;
+        }
+        Ok(SessionId(raw))
     }
 }
 
 impl SessionId {
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_bytes()
+    pub fn as_bytes(&self) -> &[u8; TAG_BYTES] {
+        &self.0
+    }
+
+    pub fn random() -> Self {
+        let mut raw = [0; TAG_BYTES];
+        sodiumoxide::init().expect("failed to initialize sodiumoxide");
+        sodiumoxide::randombytes::randombytes_into(&mut raw);
+        SessionId(raw)
     }
 }
 
@@ -118,7 +205,6 @@ constants![
     RawShape HostShape,
     RawSeed Seed,
     RawPrfKey PrfKey,
-    RawNonce Nonce,
     String,
     HostBitTensor,
     HostRing64Tensor,
@@ -308,7 +394,6 @@ values![
     HostShape,
     Seed,
     PrfKey,
-    Nonce,
     String,
     HostBitTensor,
     HostRing64Tensor,
@@ -651,6 +736,7 @@ operators![
     HostMean,
     HostExpandDims,
     HostSlice,
+    HostIndexAxis,
     HostReshape,
     HostSum,
     HostOnes,
@@ -712,17 +798,11 @@ operators![
     RepSum,
     RepTruncPr,
     RepToAdt,
+    RepIndexAxis,
 ];
 
 pub trait HasShortName {
     fn short_name(&self) -> &str;
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct SendOp {
-    pub sig: Signature,
-    pub rendezvous_key: String,
-    pub receiver: Role,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -731,9 +811,16 @@ pub struct IdentityOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SendOp {
+    pub sig: Signature,
+    pub rendezvous_key: RendezvousKey,
+    pub receiver: Role,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct ReceiveOp {
     pub sig: Signature,
-    pub rendezvous_key: String,
+    pub rendezvous_key: RendezvousKey,
     pub sender: Role,
 }
 
@@ -824,13 +911,6 @@ pub struct HostReshapeOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostSliceOp {
-    pub sig: Signature,
-    pub start: u32,
-    pub end: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
@@ -849,6 +929,19 @@ pub struct HostInverseOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct ShapeOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostSliceOp {
+    pub sig: Signature,
+    pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostIndexAxisOp {
+    pub sig: Signature,
+    pub axis: usize,
+    pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -877,7 +970,7 @@ pub struct AdtFillOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct PrimDeriveSeedOp {
     pub sig: Signature,
-    pub sync_key: RawNonce,
+    pub sync_key: SyncKey,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1162,6 +1255,13 @@ pub struct RepFillOp {
 pub struct RepShlOp {
     pub sig: Signature,
     pub amount: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepIndexAxisOp {
+    pub sig: Signature,
+    pub axis: usize,
+    pub index: usize,
 }
 
 pub trait KnownPlacement {

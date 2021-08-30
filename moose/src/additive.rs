@@ -12,7 +12,7 @@ use crate::kernels::{
     PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
     PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
-use crate::prim::{PrfKey, RawNonce, Seed};
+use crate::prim::{PrfKey, SyncKey, Seed};
 use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
@@ -629,8 +629,8 @@ where
         let key = self.gen_key(sess);
         let share = |x| {
             // TODO(Dragos) this could be optimized by instead sending the key (or seeds) to p0
-            let share_sync_key = RawNonce::generate();
-            let seed = self.derive_seed(sess, share_sync_key, &key);
+            let sync_key = SyncKey::random();
+            let seed = self.derive_seed(sess, sync_key, &key);
             let x0 = self.sample_uniform_seeded(sess, shape, &seed);
             let x1 = self.sub(sess, x, &x0);
             AbstractAdditiveTensor { shares: [x0, x1] }
@@ -874,17 +874,17 @@ where
 
         let key = provider.gen_key(sess);
 
-        let sync_key = RawNonce::generate();
+        let sync_key = SyncKey::random();
         let seed0 = provider.derive_seed(sess, sync_key, &key);
         let b: BitT = provider.sample_uniform_seeded(sess, &shape_provider, &seed0);
         let b2k = provider.ring_inject(sess, 0, &b);
 
-        let sync_key2 = RawNonce::generate();
+        let sync_key2 = SyncKey::random();
         let seed2 = provider.derive_seed(sess, sync_key2, &key);
         let b20 = provider.sample_uniform_seeded(sess, &shape_provider, &seed2);
         let b21 = with_context!(provider, sess, b - b20);
 
-        let sync_key2k = RawNonce::generate();
+        let sync_key2k = SyncKey::random();
         let seed2k = provider.derive_seed(sess, sync_key2k, &key);
         let b2k0: RingT = provider.sample_uniform_seeded(sess, &shape_provider, &seed2k);
         let b2k1 = with_context!(provider, sess, b2k - b2k0);
