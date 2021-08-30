@@ -779,8 +779,8 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Uint16Tensor" => Ok((i, Ty::HostUint16Tensor)),
         "Uint32Tensor" => Ok((i, Ty::HostUint32Tensor)),
         "Uint64Tensor" => Ok((i, Ty::HostUint64Tensor)),
-        "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
-        "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
+        "HostFixed64Tensor" => Ok((i, Ty::HostFixed64Tensor)),
+        "HostFixed128Tensor" => Ok((i, Ty::HostFixed128Tensor)),
         "Replicated64Tensor" => Ok((i, Ty::ReplicatedRing64Tensor)),
         "Replicated128Tensor" => Ok((i, Ty::ReplicatedRing128Tensor)),
         "ReplicatedBitTensor" => Ok((i, Ty::ReplicatedBitTensor)),
@@ -1614,10 +1614,12 @@ impl ToTextual for Ty {
             Ty::HostUint32Tensor => "Uint32Tensor",
             Ty::HostUint64Tensor => "Uint64Tensor",
             Ty::Unknown => "Unknown",
-            Ty::Fixed64Tensor => "Fixed64Tensor",
-            Ty::Fixed128Tensor => "Fixed128Tensor",
-            Ty::ReplicatedRing64Tensor => "Replicated64Tensor",
-            Ty::ReplicatedRing128Tensor => "Replicated128Tensor",
+            Ty::HostFixed64Tensor => "HostFixed64Tensor",
+            Ty::HostFixed128Tensor => "HostFixed128Tensor",
+            Ty::ReplicatedRing64Tensor => "ReplicatedRing64Tensor",
+            Ty::ReplicatedRing128Tensor => "ReplicatedRing128Tensor",
+            Ty::ReplicatedFixed64Tensor => "ReplicatedFixed64Tensor",
+            Ty::ReplicatedFixed128Tensor => "ReplicatedFixed128Tensor",
             Ty::ReplicatedBitTensor => "ReplicatedBitTensor",
             Ty::ReplicatedSetup => "ReplicatedSetup",
             Ty::ReplicatedShape => "ReplicatedShape",
@@ -1626,10 +1628,9 @@ impl ToTextual for Ty {
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
             // TODO
-            Ty::HostFixed64Tensor
-            | Ty::HostFixed128Tensor
-            | Ty::ReplicatedFixed64Tensor
-            | Ty::ReplicatedFixed128Tensor => unimplemented!(),
+            Ty::Fixed64Tensor
+            | Ty::Fixed128Tensor
+             => unimplemented!(),
         }
         .to_string()
     }
