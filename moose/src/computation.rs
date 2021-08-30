@@ -598,7 +598,7 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 pub struct Unit(pub HostPlacement);
 
 impl SymbolicType for Unit {
-    Type = Symbolic<Unit>;
+    type Type = Symbolic<Unit>;
 }
 
 impl Placed for Unit {
