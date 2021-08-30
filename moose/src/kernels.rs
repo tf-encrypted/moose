@@ -94,6 +94,7 @@ impl Session for SyncSession {
             RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -124,6 +125,7 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -560,6 +562,10 @@ pub trait PlacementSlice<S: Session, T, O> {
     fn slice(&self, sess: &S, slice_info: SliceInfo, x: &T) -> O;
 }
 
+pub trait PlacementIndex<S: Session, T, O> {
+    fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
+}
+
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())
@@ -635,7 +641,8 @@ impl Compile<SyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | HostIndexAxis(_)
+            | RepIndexAxis(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -703,7 +710,8 @@ impl Compile<AsyncKernel> for Operator {
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | HostIndexAxis(_)
+            | RepIndexAxis(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

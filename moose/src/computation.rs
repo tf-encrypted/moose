@@ -948,6 +948,7 @@ operators![
     HostMean,
     HostExpandDims,
     HostSlice,
+    HostIndexAxis,
     HostReshape,
     HostSum,
     HostOnes,
@@ -1009,6 +1010,7 @@ operators![
     RepSum,
     RepTruncPr,
     RepToAdt,
+    RepIndexAxis,
 ];
 
 pub trait HasShortName {
@@ -1145,6 +1147,13 @@ pub struct ShapeOp {
 pub struct HostSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostIndexAxisOp {
+    pub sig: Signature,
+    pub axis: usize,
+    pub index: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1457,6 +1466,13 @@ pub struct RepFillOp {
 pub struct RepShlOp {
     pub sig: Signature,
     pub amount: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepIndexAxisOp {
+    pub sig: Signature,
+    pub axis: usize,
+    pub index: usize,
 }
 
 pub trait KnownPlacement {
