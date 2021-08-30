@@ -173,6 +173,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostConcat(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            HostBitDec(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
