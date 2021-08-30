@@ -1628,9 +1628,7 @@ impl ToTextual for Ty {
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
             // TODO
-            Ty::Fixed64Tensor
-            | Ty::Fixed128Tensor
-             => unimplemented!(),
+            Ty::Fixed64Tensor | Ty::Fixed128Tensor => unimplemented!(),
         }
         .to_string()
     }
