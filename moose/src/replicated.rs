@@ -3,7 +3,7 @@ use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
     RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp,
-    RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
+    RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType, CanonicalType,
 };
 use crate::error::{Error, Result};
 use crate::host::{AbstractHostFixedTensor, HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, HostFixed64Tensor, HostFixed128Tensor};
@@ -30,18 +30,22 @@ pub struct AbstractReplicatedTensor<R> {
 pub type ReplicatedRing64Tensor = AbstractReplicatedTensor<HostRing64Tensor>;
 
 impl SymbolicType for ReplicatedRing64Tensor {
-    type Type = Symbolic<AbstractReplicatedTensor<Symbolic<HostRing64Tensor>>>;
+    type Type = Symbolic<AbstractReplicatedTensor<<HostRing64Tensor as SymbolicType>::Type>>;
 }
 
 /// Replicated tensor over Z_{2^128}.
 pub type ReplicatedRing128Tensor = AbstractReplicatedTensor<HostRing128Tensor>;
 
 impl SymbolicType for ReplicatedRing128Tensor {
-    type Type = Symbolic<AbstractReplicatedTensor<Symbolic<HostRing128Tensor>>>;
+    type Type = Symbolic<AbstractReplicatedTensor<<HostRing128Tensor as SymbolicType>::Type>>;
 }
 
 /// Replicated tensor over Z_2.
 pub type ReplicatedBitTensor = AbstractReplicatedTensor<HostBitTensor>;
+
+impl SymbolicType for ReplicatedBitTensor {
+    type Type = Symbolic<AbstractReplicatedTensor<<HostBitTensor as SymbolicType>::Type>>;
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
@@ -77,12 +81,20 @@ pub struct AbstractReplicatedSetup<K> {
 
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
+impl SymbolicType for ReplicatedSetup {
+    type Type = Symbolic<AbstractReplicatedSetup<<PrfKey as SymbolicType>::Type>>;
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedShape<S> {
     pub shapes: [S; 3],
 }
 
 pub type ReplicatedShape = AbstractReplicatedShape<HostShape>;
+
+impl SymbolicType for ReplicatedShape {
+    type Type = Symbolic<AbstractReplicatedShape<<HostShape as SymbolicType>::Type>>;
+}
 
 /// Type aliases to shorten out impl in replicated protocols
 type RepTen<T> = AbstractReplicatedTensor<T>;
@@ -1178,10 +1190,6 @@ impl RepTruncPrOp {
     }
 }
 
-pub trait CanonicalType {
-    type Type;
-}
-
 use crate::host::AbstractHostRingTensor;
 use crate::symbolic::Symbolic;
 
@@ -1191,22 +1199,6 @@ impl<T> CanonicalType for AbstractHostRingTensor<T> {
 
 impl<T> CanonicalType for Symbolic<AbstractHostRingTensor<T>> {
     type Type = AbstractHostRingTensor<T>;
-}
-
-impl CanonicalType for HostBitTensor {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for Symbolic<HostBitTensor> {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for HostShape {
-    type Type = HostShape;
-}
-
-impl CanonicalType for Symbolic<HostShape> {
-    type Type = HostShape;
 }
 
 impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType

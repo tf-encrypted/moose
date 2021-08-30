@@ -7,10 +7,10 @@ macro_rules! cs {
 
 macro_rules! st {
     ($t:ty) => {
-        <<$t as crate::replicated::CanonicalType>::Type as KnownType<S>>::Type
+        <<$t as crate::computation::CanonicalType>::Type as KnownType<S>>::Type
     };
     ($t:ty, $s:ty) => {
-        <<$t as crate::replicated::CanonicalType>::Type as KnownType<$s>>::Type
+        <<$t as crate::computation::CanonicalType>::Type as KnownType<$s>>::Type
     };
 }
 

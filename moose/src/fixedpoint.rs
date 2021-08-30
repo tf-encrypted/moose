@@ -3,13 +3,14 @@
 use crate::computation::{
     FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp,
     FixedpointMulOp, FixedpointRingMeanOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
-    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
+    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
 };
 use crate::error::Result;
 use crate::host::{HostRing64Tensor, HostRing128Tensor, AbstractHostFixedTensor,
     AbstractHostRingTensor, HostFloat32Tensor, HostFloat64Tensor, HostFixed128Tensor,
     HostFixed64Tensor,
 };
+use crate::symbolic::Symbolic;
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
     PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode,
@@ -28,8 +29,26 @@ use std::ops::Mul;
 /// Fixed-point tensor backed by Z_{2^64} arithmetic
 pub type Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedFixed64Tensor>;
 
+impl SymbolicType for Fixed64Tensor {
+    type Type = Symbolic<
+        FixedTensor<
+            <HostFixed64Tensor as SymbolicType>::Type,
+            <ReplicatedFixed64Tensor as SymbolicType>::Type,
+        >,
+    >;
+}
+
 /// Fixed-point tensor backed by Z_{2^128} arithmetic
 pub type Fixed128Tensor = FixedTensor<HostFixed128Tensor, ReplicatedFixed128Tensor>;
+
+impl SymbolicType for Fixed128Tensor {
+    type Type = Symbolic<
+        FixedTensor<
+            <HostFixed128Tensor as SymbolicType>::Type,
+            <ReplicatedFixed128Tensor as SymbolicType>::Type,
+        >,
+    >;
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<HostFixedT, RepFixedT> {

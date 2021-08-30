@@ -17,7 +17,7 @@ use crate::replicated::{
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
     ReplicatedShape, ReplicatedFixed64Tensor, ReplicatedFixed128Tensor,
 };
-use crate::symbolic::{Symbolic, SymbolicSession};
+use crate::symbolic::Symbolic;
 use derive_more::Display;
 use macros::ShortName;
 use paste::paste;
@@ -42,6 +42,10 @@ impl SessionId {
 }
 
 pub trait SymbolicType {
+    type Type;
+}
+
+pub trait CanonicalType {
     type Type;
 }
 
@@ -486,44 +490,34 @@ impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
 }
 
 values![
-    (Unit, Symbolic<Unit>),
-    (HostShape, Symbolic<HostShape>),
-    (Seed, Symbolic<Seed>),
-    (PrfKey, Symbolic<PrfKey>),
-    (Nonce, Symbolic<Nonce>),
-    (String, Symbolic<String>),
-    (HostBitTensor, Symbolic<HostBitTensor>),
-    (HostRing64Tensor, Symbolic<HostRing64Tensor>),
-    (HostRing128Tensor, Symbolic<HostRing128Tensor>),
+    (Unit, <Unit as SymbolicType>::Type),
+    (HostShape, <HostShape as SymbolicType>::Type),
+    (Seed, <Seed as SymbolicType>::Type),
+    (PrfKey, <PrfKey as SymbolicType>::Type),
+    (Nonce, <Nonce as SymbolicType>::Type),
+    (String, <String as SymbolicType>::Type),
+    (HostBitTensor, <HostBitTensor as SymbolicType>::Type),
+    (HostRing64Tensor, <HostRing64Tensor as SymbolicType>::Type),
+    (HostRing128Tensor, <HostRing128Tensor as SymbolicType>::Type),
     (HostFixed64Tensor, <HostFixed64Tensor as SymbolicType>::Type),
     (HostFixed128Tensor, <HostFixed128Tensor as SymbolicType>::Type),
-    (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
-    (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
-    (HostInt8Tensor, Symbolic<HostInt8Tensor>),
-    (HostInt16Tensor, Symbolic<HostInt16Tensor>),
-    (HostInt32Tensor, Symbolic<HostInt32Tensor>),
-    (HostInt64Tensor, Symbolic<HostInt64Tensor>),
-    (HostUint8Tensor, Symbolic<HostUint8Tensor>),
-    (HostUint16Tensor, Symbolic<HostUint16Tensor>),
-    (HostUint32Tensor, Symbolic<HostUint32Tensor>),
-    (HostUint64Tensor, Symbolic<HostUint64Tensor>),
+    (HostFloat32Tensor, <HostFloat32Tensor as SymbolicType>::Type),
+    (HostFloat64Tensor, <HostFloat64Tensor as SymbolicType>::Type),
+    (HostInt8Tensor, <HostInt8Tensor as SymbolicType>::Type),
+    (HostInt16Tensor, <HostInt16Tensor as SymbolicType>::Type),
+    (HostInt32Tensor, <HostInt32Tensor as SymbolicType>::Type),
+    (HostInt64Tensor, <HostInt64Tensor as SymbolicType>::Type),
+    (HostUint8Tensor, <HostUint8Tensor as SymbolicType>::Type),
+    (HostUint16Tensor, <HostUint16Tensor as SymbolicType>::Type),
+    (HostUint32Tensor, <HostUint32Tensor as SymbolicType>::Type),
+    (HostUint64Tensor, <HostUint64Tensor as SymbolicType>::Type),
     (
         Fixed64Tensor,
-        Symbolic<
-            FixedTensor<
-                <HostFixed64Tensor as KnownType<SymbolicSession>>::Type,
-                <ReplicatedFixed64Tensor as KnownType<SymbolicSession>>::Type,
-            >,
-        >
+        <Fixed64Tensor as SymbolicType>::Type
     ),
     (
         Fixed128Tensor,
-        Symbolic<
-            FixedTensor<
-                <HostFixed128Tensor as KnownType<SymbolicSession>>::Type,
-                <ReplicatedFixed128Tensor as KnownType<SymbolicSession>>::Type,
-            >,
-        >
+        <Fixed128Tensor as SymbolicType>::Type
     ),
     (
         ReplicatedRing64Tensor,
@@ -535,7 +529,7 @@ values![
     ),
     (
         ReplicatedBitTensor,
-        Symbolic<AbstractReplicatedTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
+        <ReplicatedBitTensor as SymbolicType>::Type
     ),
     (
         ReplicatedFixed64Tensor,
@@ -547,27 +541,27 @@ values![
     ),
     (
         ReplicatedSetup,
-        Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType<SymbolicSession>>::Type>>
+        <ReplicatedSetup as SymbolicType>::Type
     ),
     (
         ReplicatedShape,
-        Symbolic<AbstractReplicatedShape<<HostShape as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        AdditiveRing64Tensor,
-        Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        AdditiveRing128Tensor,
-        Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        AdditiveShape,
-        Symbolic<AbstractAdditiveShape<<HostShape as KnownType<SymbolicSession>>::Type>>
+        <ReplicatedShape as SymbolicType>::Type
     ),
     (
         AdditiveBitTensor,
-        Symbolic<AbstractAdditiveTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
+        <AdditiveBitTensor as SymbolicType>::Type
+    ),
+    (
+        AdditiveRing64Tensor,
+        <AdditiveRing64Tensor as SymbolicType>::Type
+    ),
+    (
+        AdditiveRing128Tensor,
+        <AdditiveRing128Tensor as SymbolicType>::Type
+    ),
+    (
+        AdditiveShape,
+        <AdditiveShape as SymbolicType>::Type
     ),
 ];
 
@@ -602,6 +596,10 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
 // Unit is still special. Placed unit is just a host placement.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
+
+impl SymbolicType for Unit {
+    Type = Symbolic<Unit>;
+}
 
 impl Placed for Unit {
     type Placement = HostPlacement;

@@ -1,7 +1,7 @@
 //! Placements backed by additive secret sharing
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
-    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement, ShapeOp,
+    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement, ShapeOp, SymbolicType, CanonicalType,
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
@@ -11,8 +11,8 @@ use crate::kernels::{
     PlacementRingInject, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShape,
     PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
+use crate::symbolic::Symbolic;
 use crate::prim::{PrfKey, RawNonce, Seed};
-use crate::replicated::CanonicalType;
 use crate::replicated::{
     AbstractReplicatedTensor, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
 };
@@ -29,6 +29,18 @@ pub type AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>;
 pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
 
 pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
+
+impl SymbolicType for AdditiveRing64Tensor {
+    type Type = Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as SymbolicType>::Type>>;
+}
+
+impl SymbolicType for AdditiveRing128Tensor {
+    type Type = Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as SymbolicType>::Type>>;
+}
+
+impl SymbolicType for AdditiveBitTensor {
+    type Type = Symbolic<AbstractAdditiveTensor<<HostBitTensor as SymbolicType>::Type>>;
+}
 
 pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
 
@@ -55,6 +67,10 @@ pub struct AbstractAdditiveShape<S> {
 }
 
 pub type AdditiveShape = AbstractAdditiveShape<HostShape>;
+
+impl SymbolicType for AdditiveShape {
+    type Type = Symbolic<AbstractAdditiveShape<<HostShape as SymbolicType>::Type>>;
+}
 
 impl<S> Placed for AbstractAdditiveShape<S>
 where

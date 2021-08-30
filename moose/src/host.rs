@@ -4,7 +4,7 @@ use crate::computation::{
     HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp,
     HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp,
     RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp, SymbolicType,
+    ShapeOp, SymbolicType, CanonicalType,
 };
 use crate::error::Result;
 use crate::kernels::{
@@ -29,6 +29,10 @@ use std::fmt::Debug;
 use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
+
+impl SymbolicType for String {
+    type Type = Symbolic<String>;
+}
 
 impl Placed for String {
     type Placement = Placement;
@@ -67,6 +71,10 @@ impl RawShape {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostShape(pub RawShape, pub HostPlacement);
+
+impl SymbolicType for HostShape {
+    type Type = Symbolic<HostShape>;
+}
 
 impl Placed for HostShape {
     type Placement = HostPlacement;
@@ -133,6 +141,47 @@ pub type HostUint8Tensor = HostTensor<u8>;
 pub type HostUint16Tensor = HostTensor<u16>;
 pub type HostUint32Tensor = HostTensor<u32>;
 pub type HostUint64Tensor = HostTensor<u64>;
+
+impl<T> SymbolicType for HostTensor<T> {
+    type Type = Symbolic<HostTensor<T>>;
+}
+
+// impl SymbolicType for HostFloat64Tensor {
+//     type Type = Symbolic<HostFloat64Tensor>;
+// }
+
+// impl SymbolicType for HostInt8Tensor {
+//     type Type = Symbolic<HostInt8Tensor>;
+// }
+
+// impl SymbolicType for HostInt16Tensor {
+//     type Type = Symbolic<HostInt16Tensor>;
+// }
+
+// impl SymbolicType for HostInt32Tensor {
+//     type Type = Symbolic<HostInt32Tensor>;
+// }
+
+// impl SymbolicType for HostInt64Tensor {
+//     type Type = Symbolic<HostInt64Tensor>;
+// }
+
+// impl SymbolicType for HostUint8Tensor {
+//     type Type = Symbolic<HostUint8Tensor>;
+// }
+
+// impl SymbolicType for HostUint16Tensor {
+//     type Type = Symbolic<HostUint16Tensor>;
+// }
+
+// impl SymbolicType for HostUint32Tensor {
+//     type Type = Symbolic<HostUint32Tensor>;
+// }
+
+// impl SymbolicType for HostUint64Tensor {
+//     type Type = Symbolic<HostUint64Tensor>;
+// }
+
 
 impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
@@ -676,6 +725,10 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
 
+impl SymbolicType for HostBitTensor {
+    type Type = Symbolic<HostBitTensor>;
+}
+
 impl<S: Session> Tensor<S> for HostBitTensor {
     type Scalar = u8;
 }
@@ -1095,6 +1148,30 @@ pub type HostRing64Tensor = AbstractHostRingTensor<u64>;
 
 /// Tensor for ring arithmetic over Z_{2^128}
 pub type HostRing128Tensor = AbstractHostRingTensor<u128>;
+
+impl SymbolicType for HostRing64Tensor {
+    type Type = Symbolic<HostRing64Tensor>;
+}
+
+impl SymbolicType for HostRing128Tensor {
+    type Type = Symbolic<HostRing128Tensor>;
+}
+
+impl CanonicalType for HostBitTensor {
+    type Type = HostBitTensor;
+}
+
+impl CanonicalType for Symbolic<HostBitTensor> {
+    type Type = HostBitTensor;
+}
+
+impl CanonicalType for HostShape {
+    type Type = HostShape;
+}
+
+impl CanonicalType for Symbolic<HostShape> {
+    type Type = HostShape;
+}
 
 impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
     type Scalar = T;
