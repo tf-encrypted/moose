@@ -1,39 +1,178 @@
 //! Placements backed by replicated secret sharing
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
-    AdditivePlacement, AdtToRepOp, Constant, HostPlacement, KnownType, Placed, RepAbsOp, RepAddOp,
-    RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp,
-    RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp,
-    ShapeOp,
+    AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
+    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp, RepMulOp,
+    RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp,
+    ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
-use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
+use crate::host::{
+    AbstractHostFixedTensor, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
+    HostRing128Tensor, HostRing64Tensor, HostShape, RingSize,
+};
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract,
     PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
     PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup,
     PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject,
-    PlacementRingMean, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
-    PlacementShareSetup, PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
+    PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
     PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedTensor<R> {
+pub struct AbstractReplicatedRingTensor<R> {
     pub shares: [[R; 2]; 3],
 }
 
 /// Replicated tensor over Z_{2^64}.
-pub type ReplicatedRing64Tensor = AbstractReplicatedTensor<HostRing64Tensor>;
+pub type ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>;
+
+impl SymbolicType for ReplicatedRing64Tensor {
+    type Type = Symbolic<AbstractReplicatedRingTensor<<HostRing64Tensor as SymbolicType>::Type>>;
+}
 
 /// Replicated tensor over Z_{2^128}.
-pub type ReplicatedRing128Tensor = AbstractReplicatedTensor<HostRing128Tensor>;
+pub type ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>;
+
+impl SymbolicType for ReplicatedRing128Tensor {
+    type Type = Symbolic<AbstractReplicatedRingTensor<<HostRing128Tensor as SymbolicType>::Type>>;
+}
 
 /// Replicated tensor over Z_2.
-pub type ReplicatedBitTensor = AbstractReplicatedTensor<HostBitTensor>;
+pub type ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>;
+
+impl SymbolicType for ReplicatedBitTensor {
+    type Type = Symbolic<AbstractReplicatedRingTensor<<HostBitTensor as SymbolicType>::Type>>;
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
+
+pub type ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>;
+
+impl SymbolicType for ReplicatedFixed64Tensor {
+    type Type =
+        Symbolic<AbstractReplicatedFixedTensor<<ReplicatedRing64Tensor as SymbolicType>::Type>>;
+}
+
+pub type ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>;
+
+impl SymbolicType for ReplicatedFixed128Tensor {
+    type Type =
+        Symbolic<AbstractReplicatedFixedTensor<<ReplicatedRing128Tensor as SymbolicType>::Type>>;
+}
+
+impl<HostRingT> From<AbstractReplicatedRingTensor<HostRingT>>
+    for Symbolic<AbstractReplicatedRingTensor<HostRingT>>
+where
+    HostRingT: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedRingTensor<HostRingT>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<RepRingT> From<AbstractReplicatedFixedTensor<RepRingT>>
+    for Symbolic<AbstractReplicatedFixedTensor<RepRingT>>
+where
+    RepRingT: Placed<Placement = ReplicatedPlacement>,
+{
+    fn from(x: AbstractReplicatedFixedTensor<RepRingT>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<HostKeyT> TryFrom<Symbolic<AbstractReplicatedSetup<HostKeyT>>>
+    for AbstractReplicatedSetup<HostKeyT>
+where
+    HostKeyT: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedSetup<HostKeyT>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<HostShapeT> TryFrom<Symbolic<AbstractReplicatedShape<HostShapeT>>>
+    for AbstractReplicatedShape<HostShapeT>
+where
+    HostShapeT: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedShape<HostShapeT>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<HostRingT> TryFrom<Symbolic<AbstractReplicatedRingTensor<HostRingT>>>
+    for AbstractReplicatedRingTensor<HostRingT>
+where
+    HostRingT: Placed<Placement = HostPlacement>,
+{
+    type Error = Error;
+    fn try_from(
+        v: Symbolic<AbstractReplicatedRingTensor<HostRingT>>,
+    ) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<RepRingT> TryFrom<Symbolic<AbstractReplicatedFixedTensor<RepRingT>>>
+    for AbstractReplicatedFixedTensor<RepRingT>
+where
+    RepRingT: Placed<Placement = ReplicatedPlacement>,
+{
+    type Error = Error;
+    fn try_from(
+        v: Symbolic<AbstractReplicatedFixedTensor<RepRingT>>,
+    ) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
+where
+    K: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedSetup<K>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<S> From<AbstractReplicatedShape<S>> for Symbolic<AbstractReplicatedShape<S>>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractReplicatedShape<S>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
+    type Placement = RepRingT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedSetup<K> {
@@ -42,6 +181,10 @@ pub struct AbstractReplicatedSetup<K> {
 
 pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
 
+impl SymbolicType for ReplicatedSetup {
+    type Type = Symbolic<AbstractReplicatedSetup<<PrfKey as SymbolicType>::Type>>;
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedShape<S> {
     pub shapes: [S; 3],
@@ -49,8 +192,12 @@ pub struct AbstractReplicatedShape<S> {
 
 pub type ReplicatedShape = AbstractReplicatedShape<HostShape>;
 
+impl SymbolicType for ReplicatedShape {
+    type Type = Symbolic<AbstractReplicatedShape<<HostShape as SymbolicType>::Type>>;
+}
+
 /// Type aliases to shorten out impl in replicated protocols
-type RepTen<T> = AbstractReplicatedTensor<T>;
+type RepTen<T> = AbstractReplicatedRingTensor<T>;
 
 impl<R> Placed for RepTen<R>
 where
@@ -189,6 +336,8 @@ impl RepSetupOp {
     }
 }
 
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedFixed64Tensor, RepShareOp);
+modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedFixed128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor, RepShareOp);
 modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor, RepShareOp);
@@ -196,14 +345,28 @@ modelled!(PlacementShareSetup::share, ReplicatedPlacement, (ReplicatedSetup, Hos
 hybrid_kernel! {
     RepShareOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => Self::kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostFixed64Tensor) -> ReplicatedFixed64Tensor => Self::fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostFixed128Tensor) -> ReplicatedFixed128Tensor => Self::fixed_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing64Tensor) -> ReplicatedRing64Tensor => Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostRing128Tensor) -> ReplicatedRing128Tensor => Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, HostBitTensor) -> ReplicatedBitTensor => Self::ring_kernel),
     ]
 }
 
 impl RepShareOp {
-    fn kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
+    fn fixed_kernel<S: Session, SetupT, HostRingT, RepRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        setup: SetupT,
+        x: AbstractHostFixedTensor<HostRingT>,
+    ) -> AbstractReplicatedFixedTensor<RepRingT>
+    where
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostRingT, RepRingT>,
+    {
+        AbstractReplicatedFixedTensor(plc.share(sess, &setup, &x.0))
+    }
+
+    fn ring_kernel<S: Session, ShapeT, SeedT, KeyT, RingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         setup: AbstractReplicatedSetup<KeyT>,
@@ -316,6 +479,8 @@ impl RepShareOp {
     }
 }
 
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostBitTensor, RepRevealOp);
@@ -323,14 +488,28 @@ modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostB
 hybrid_kernel! {
     RepRevealOp,
     [
-        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => Self::kernel),
-        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => Self::kernel),
-        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => Self::kernel),
+        (HostPlacement, (ReplicatedFixed64Tensor) -> HostFixed64Tensor => Self::fixed_kernel),
+        (HostPlacement, (ReplicatedFixed128Tensor) -> HostFixed128Tensor => Self::fixed_kernel),
+        (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => Self::ring_kernel),
+        (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => Self::ring_kernel),
+        (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => Self::ring_kernel),
     ]
 }
 
 impl RepRevealOp {
-    fn kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: RepTen<R>) -> R
+    fn fixed_kernel<S: Session, RepRingT, HostRingT>(
+        sess: &S,
+        receiver: &HostPlacement,
+        xe: AbstractReplicatedFixedTensor<RepRingT>,
+    ) -> AbstractHostFixedTensor<HostRingT>
+    where
+        HostPlacement: PlacementReveal<S, RepRingT, HostRingT>,
+    {
+        let x = receiver.reveal(sess, &xe.0);
+        AbstractHostFixedTensor(x)
+    }
+
+    fn ring_kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: RepTen<R>) -> R
     where
         R: Placed<Placement = HostPlacement>,
         HostPlacement: PlacementAdd<S, R, R, R>,
@@ -971,28 +1150,29 @@ impl RepDotOp {
     }
 }
 
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, precision: u64] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, precision: u64] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMeanOp);
 
 hybrid_kernel! {
     RepMeanOp,
     [
-        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => attributes[axis, precision] Self::kernel),
-        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => attributes[axis, precision] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
 impl RepMeanOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         axis: Option<u32>,
-        precision: u64,
-        x: RepTen<RingT>,
-    ) -> RepTen<RingT>
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: RepTen<HostRingT>,
+    ) -> RepTen<HostRingT>
     where
-        HostPlacement: PlacementRingMean<S, RingT, RingT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
+        HostPlacement: PlacementMean<S, HostRingT, HostRingT>,
+        ReplicatedPlacement: PlacementPlace<S, RepTen<HostRingT>>,
     {
         let (player0, player1, player2) = rep.host_placements();
 
@@ -1000,13 +1180,12 @@ impl RepMeanOp {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
-        let precision: u32 = precision.try_into().unwrap();
-        let z00 = player0.ring_mean(sess, axis, 2, precision, x00);
-        let z10 = player0.ring_mean(sess, axis, 2, precision, x10);
-        let z11 = player1.ring_mean(sess, axis, 2, precision, x11);
-        let z21 = player1.ring_mean(sess, axis, 2, precision, x21);
-        let z22 = player2.ring_mean(sess, axis, 2, precision, x22);
-        let z02 = player2.ring_mean(sess, axis, 2, precision, x02);
+        let z00 = player0.mean(sess, axis, scaling_base, scaling_exp, x00);
+        let z10 = player0.mean(sess, axis, scaling_base, scaling_exp, x10);
+        let z11 = player1.mean(sess, axis, scaling_base, scaling_exp, x11);
+        let z21 = player1.mean(sess, axis, scaling_base, scaling_exp, x21);
+        let z22 = player2.mean(sess, axis, scaling_base, scaling_exp, x22);
+        let z02 = player2.mean(sess, axis, scaling_base, scaling_exp, x02);
 
         rep.place(
             sess,
@@ -1061,8 +1240,7 @@ impl RepSumOp {
     }
 }
 
-use std::convert::TryInto;
-
+// TODO(Morten) should we rename this as a shift?
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepTruncPrOp);
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepTruncPrOp);
 
@@ -1112,10 +1290,6 @@ impl RepTruncPrOp {
     }
 }
 
-pub trait CanonicalType {
-    type Type;
-}
-
 use crate::host::AbstractHostRingTensor;
 use crate::symbolic::Symbolic;
 
@@ -1125,22 +1299,6 @@ impl<T> CanonicalType for AbstractHostRingTensor<T> {
 
 impl<T> CanonicalType for Symbolic<AbstractHostRingTensor<T>> {
     type Type = AbstractHostRingTensor<T>;
-}
-
-impl CanonicalType for HostBitTensor {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for Symbolic<HostBitTensor> {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for HostShape {
-    type Type = HostShape;
-}
-
-impl CanonicalType for Symbolic<HostShape> {
-    type Type = HostShape;
 }
 
 impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
@@ -1463,7 +1621,7 @@ impl RepShlOp {
         HostPlacement: PlacementShl<S, RingT, RingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let AbstractReplicatedTensor {
+        let AbstractReplicatedRingTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
         let z00 = player0.shl(sess, amount, x00);
@@ -1506,7 +1664,7 @@ impl RepIndexAxisOp {
         HostPlacement: PlacementIndex<S, RingT, RingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
-        let AbstractReplicatedTensor {
+        let RepTen {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = &x;
 
@@ -2141,19 +2299,21 @@ mod tests {
         let sess = SyncSession::default();
         let setup = rep.gen_setup(&sess);
 
-        let scaling_factor = u64::pow(2, 24);
+        let scaling_base = 2;
+        let scaling_exp = 24;
+        let scaling_factor = u64::pow(scaling_base, scaling_exp);
         let x = crate::host::HostTensor::<f64>::from(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
         );
-        let x = AbstractHostRingTensor::<u64>::encode(&x, scaling_factor);
+        let x = HostFixed64Tensor::encode(&x, scaling_factor);
         let x_shared = rep.share(&sess, &setup, &x);
 
-        let mean = rep.mean(&sess, None, 24, &x_shared);
-        let mean = rep.trunc_pr(&sess, 24, &mean);
+        let mean = rep.mean(&sess, None, scaling_base, scaling_exp, &x_shared);
+        let mean = rep.trunc_pr(&sess, scaling_exp, &mean);
         let opened_result = alice.reveal(&sess, &mean);
-        let decoded_result = AbstractHostRingTensor::<u64>::decode(&opened_result, scaling_factor);
+        let decoded_result = HostFixed64Tensor::decode(&opened_result, scaling_factor);
 
         assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }
@@ -2523,7 +2683,7 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &setup, &x);
 
-                let result: AbstractReplicatedTensor<AbstractHostRingTensor<$tt>> =
+                let result: AbstractReplicatedRingTensor<AbstractHostRingTensor<$tt>> =
                     rep.$test_func(&sess, &setup, &x_shared);
                 let opened_result = alice.reveal(&sess, &result);
                 assert_eq!(

@@ -286,7 +286,7 @@ fn moose_kernels(_py: Python<'_>, m: &PyModule) -> PyResult<()> {
         precision: u32,
     ) -> &'py PyArrayDyn<u64> {
         let x_ring = dynarray_to_ring64(&x);
-        let y = HostRing64Tensor::ring_mean(x_ring, axis, 2u64.pow(precision));
+        let y = HostRing64Tensor::fixedpoint_mean(x_ring, axis, 2u64.pow(precision));
         ring64_to_array(y).to_pyarray(py)
     }
 

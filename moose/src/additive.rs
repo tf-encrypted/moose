@@ -1,7 +1,8 @@
 //! Placements backed by additive secret sharing
 use crate::computation::{
-    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp, Constant,
-    HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement, ShapeOp,
+    AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
+    CanonicalType, Constant, HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
+    ShapeOp, SymbolicType,
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
@@ -12,12 +13,14 @@ use crate::kernels::{
     PlacementShl, PlacementShr, PlacementSub, PlacementTruncPrProvider, Session,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
-use crate::replicated::CanonicalType;
 use crate::replicated::{
-    AbstractReplicatedTensor, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
+    AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
+    ReplicatedRing64Tensor,
 };
+use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractAdditiveTensor<R> {
@@ -29,6 +32,18 @@ pub type AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>;
 pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
 
 pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
+
+impl SymbolicType for AdditiveRing64Tensor {
+    type Type = Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as SymbolicType>::Type>>;
+}
+
+impl SymbolicType for AdditiveRing128Tensor {
+    type Type = Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as SymbolicType>::Type>>;
+}
+
+impl SymbolicType for AdditiveBitTensor {
+    type Type = Symbolic<AbstractAdditiveTensor<<HostBitTensor as SymbolicType>::Type>>;
+}
 
 pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
 
@@ -56,6 +71,10 @@ pub struct AbstractAdditiveShape<S> {
 
 pub type AdditiveShape = AbstractAdditiveShape<HostShape>;
 
+impl SymbolicType for AdditiveShape {
+    type Type = Symbolic<AbstractAdditiveShape<<HostShape as SymbolicType>::Type>>;
+}
+
 impl<S> Placed for AbstractAdditiveShape<S>
 where
     S: Placed<Placement = HostPlacement>,
@@ -70,6 +89,50 @@ where
 
         let owners = [owner0, owner1];
         Ok(AdditivePlacement { owners })
+    }
+}
+
+impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<S> From<AbstractAdditiveShape<S>> for Symbolic<AbstractAdditiveShape<S>>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveShape<S>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Error = crate::error::Error;
+    fn try_from(v: Symbolic<AbstractAdditiveTensor<R>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(crate::error::Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Error = crate::error::Error;
+    fn try_from(v: Symbolic<AbstractAdditiveShape<S>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(crate::error::Error::Unexpected), // TODO err message
+        }
     }
 }
 
@@ -589,8 +652,8 @@ impl<S: Session, R>
 where
     AbstractAdditiveTensor<R>: CanonicalType,
     <AbstractAdditiveTensor<R> as CanonicalType>::Type: KnownType<S>,
-    AbstractReplicatedTensor<R>: CanonicalType,
-    <AbstractReplicatedTensor<R> as CanonicalType>::Type: KnownType<S>,
+    AbstractReplicatedRingTensor<R>: CanonicalType,
+    <AbstractReplicatedRingTensor<R> as CanonicalType>::Type: KnownType<S>,
     R: RingSize,
     HostShape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, cs!(HostShape), R>,
@@ -713,17 +776,17 @@ impl RepToAdtOp {
     fn rep_to_adt_kernel<S: Session, RingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractReplicatedTensor<RingT>,
+        x: AbstractReplicatedRingTensor<RingT>,
     ) -> AbstractAdditiveTensor<RingT>
     where
-        AbstractReplicatedTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
+        AbstractReplicatedRingTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     {
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = x.placement().unwrap().host_placements();
 
-        let AbstractReplicatedTensor {
+        let AbstractReplicatedRingTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 

@@ -3,12 +3,11 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
 use crate::host::{
-    AbstractHostRingTensor, HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor,
-    HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor,
-    HostShape, HostTensor, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
-    SliceInfo,
+    AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
+    HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
@@ -78,6 +77,9 @@ impl Session for SyncSession {
             RingShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RingShr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RingSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RingInject(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepFill(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepSetup(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -112,9 +114,6 @@ impl Session for SyncSession {
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            FixedpointRingEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            FixedpointRingDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            FixedpointRingMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -329,19 +328,9 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
+// TODO(Morten) get rid of scaling_base and scaling_base
 pub trait PlacementMean<S: Session, T, O> {
-    fn mean(&self, sess: &S, axis: Option<u32>, precision: u64, x: &T) -> O;
-}
-
-pub trait PlacementRingMean<S: Session, T, O> {
-    fn ring_mean(
-        &self,
-        sess: &S,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: &T,
-    ) -> O;
+    fn mean(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_base: u32, x: &T) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -520,11 +509,11 @@ pub trait PlacementAtLeast2D<S: Session, T, O> {
     fn at_least_2d(&self, sess: &S, to_column_vector: bool, x: &T) -> O;
 }
 
-pub trait PlacementFixedpointRingEncode<S: Session, T, O> {
+pub trait PlacementRingFixedpointEncode<S: Session, T, O> {
     fn fixedpoint_ring_encode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 
-pub trait PlacementFixedpointRingDecode<S: Session, T, O> {
+pub trait PlacementRingFixedpointDecode<S: Session, T, O> {
     fn fixedpoint_ring_decode(&self, sess: &S, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 
@@ -613,6 +602,9 @@ impl Compile<SyncKernel> for Operator {
             RingMul(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingFixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingFixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
+            RingFixedpointMean(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingSampleSeeded(op) => Compile::<SyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -625,24 +617,19 @@ impl Compile<SyncKernel> for Operator {
             BitAnd(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<SyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointRingEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointRingDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointRingMean(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointEncode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointMul(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointDot(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointTruncPr(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointMean(op) => Compile::<SyncKernel>::compile(op, ctx),
-            FixedpointSum(op) => Compile::<SyncKernel>::compile(op, ctx),
+            // TODO
+            HostIndexAxis(_) => unimplemented!(),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | HostIndexAxis(_)
-            | RepIndexAxis(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
+            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
+            | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -685,6 +672,9 @@ impl Compile<AsyncKernel> for Operator {
             RingMul(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingDot(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSum(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingFixedpointEncode(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingFixedpointDecode(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            RingFixedpointMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSample(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingSampleSeeded(op) => Compile::<AsyncKernel>::compile(op, ctx),
             RingShl(op) => Compile::<AsyncKernel>::compile(op, ctx),
@@ -697,9 +687,6 @@ impl Compile<AsyncKernel> for Operator {
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            FixedpointRingEncode(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            FixedpointRingDecode(op) => Compile::<AsyncKernel>::compile(op, ctx),
-            FixedpointRingMean(op) => Compile::<AsyncKernel>::compile(op, ctx),
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
@@ -1467,17 +1454,17 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
-modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, FixedpointRingEncodeOp);
-modelled!(PlacementFixedpointRingEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, FixedpointRingEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
+modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
 
 kernel! {
-    FixedpointRingEncodeOp, [
+    RingFixedpointEncodeOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
-impl FixedpointRingEncodeOp {
+impl RingFixedpointEncodeOp {
     fn kernel<S: RuntimeSession, ST, TT>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1490,7 +1477,7 @@ impl FixedpointRingEncodeOp {
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointRingEncodeOp {
+impl Compile<Kernel> for RingFixedpointEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         match self.sig {
@@ -1513,17 +1500,17 @@ impl Compile<Kernel> for FixedpointRingEncodeOp {
     }
 }
 
-modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, FixedpointRingDecodeOp);
-modelled!(PlacementFixedpointRingDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, FixedpointRingDecodeOp);
+modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, RingFixedpointDecodeOp);
+modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, RingFixedpointDecodeOp);
 
 kernel! {
-    FixedpointRingDecodeOp, [
+    RingFixedpointDecodeOp, [
         (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
         (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => attributes[scaling_base, scaling_exp] Self::kernel),
     ]
 }
 
-impl FixedpointRingDecodeOp {
+impl RingFixedpointDecodeOp {
     fn kernel<S: RuntimeSession, ST, TT>(
         _sess: &S,
         _plc: &HostPlacement,
@@ -1536,7 +1523,7 @@ impl FixedpointRingDecodeOp {
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointRingDecodeOp {
+impl Compile<Kernel> for RingFixedpointDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         use crate::fixedpoint::Convert;
         match self.sig {
@@ -1560,13 +1547,13 @@ impl Compile<Kernel> for FixedpointRingDecodeOp {
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointRingMeanOp {
+impl Compile<Kernel> for RingFixedpointMeanOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let axis = self.axis.map(|a| a as usize);
         match self.sig {
             signature![(_) -> Ty::HostRing64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
-                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::ring_mean(
+                closure_kernel!(HostRing64Tensor, |x| HostRing64Tensor::fixedpoint_mean(
                     x,
                     axis,
                     scaling_factor
@@ -1574,7 +1561,7 @@ impl Compile<Kernel> for FixedpointRingMeanOp {
             }
             signature![(_) -> Ty::HostRing128Tensor] => {
                 let scaling_factor = u128::pow(self.scaling_base as u128, self.scaling_exp);
-                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::ring_mean(
+                closure_kernel!(HostRing128Tensor, |x| HostRing128Tensor::fixedpoint_mean(
                     x,
                     axis,
                     scaling_factor
@@ -1637,30 +1624,14 @@ impl Compile<Kernel> for FixedpointDecodeOp {
 impl Compile<Kernel> for FixedpointAddOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
-                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x + y)
+            signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
+                function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
+                    AbstractHostFixedTensor(x.0 + y.0)
                 })
             }
-            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
-                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x + y)
+            signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
+                function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
+                    AbstractHostFixedTensor(x.0 + y.0)
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1672,30 +1643,14 @@ impl Compile<Kernel> for FixedpointAddOp {
 impl Compile<Kernel> for FixedpointSubOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
-                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x - y)
+            signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
+                function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
+                    AbstractHostFixedTensor(x.0 - y.0)
                 })
             }
-            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
-                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x - y)
+            signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
+                function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
+                    AbstractHostFixedTensor(x.0 - y.0)
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
@@ -1707,90 +1662,18 @@ impl Compile<Kernel> for FixedpointSubOp {
 impl Compile<Kernel> for FixedpointMulOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
-            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
-                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x * y)
+            signature![(Ty::HostFixed64Tensor, Ty::HostFixed64Tensor) -> _] => {
+                function_kernel!(HostFixed64Tensor, HostFixed64Tensor, |x, y| {
+                    AbstractHostFixedTensor(x.0 * y.0)
                 })
             }
-            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
-                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x * y)
+            signature![(Ty::HostFixed128Tensor, Ty::HostFixed128Tensor) -> _] => {
+                function_kernel!(HostFixed128Tensor, HostFixed128Tensor, |x, y| {
+                    AbstractHostFixedTensor(x.0 * y.0)
                 })
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointDotOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        match self.sig {
-            signature![(Ty::Fixed64Tensor, Ty::Fixed64Tensor) -> _] => {
-                function_kernel!(Fixed64Tensor, Fixed64Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x.dot(y))
-                })
-            }
-            signature![(Ty::Fixed128Tensor, Ty::Fixed128Tensor) -> _] => {
-                function_kernel!(Fixed128Tensor, Fixed128Tensor, |x, y| {
-                    let x = match x {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    let y = match y {
-                        FixedTensor::HostTensor(v) => v,
-                        _ => unimplemented!("No replicated fixedpoint op for the old framework"),
-                    };
-                    FixedTensor::HostTensor(x.dot(y))
-                })
-            }
-            _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
-        }
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointTruncPrOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        unimplemented!("FixedpointTruncPrOp is not implemented in the older framework")
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointMeanOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        unimplemented!("FixedpointMeanOp is not implemented in the older framework")
-    }
-}
-
-#[cfg(not(feature = "exclude_old_framework"))]
-impl Compile<Kernel> for FixedpointSumOp {
-    fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        unimplemented!("FixedpointSumOp is not implemented in the older framework")
     }
 }
 
@@ -1881,8 +1764,8 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
-        (HostPlacement, (Fixed64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
-        (HostPlacement, (Fixed128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
+        (HostPlacement, (HostFixed128Tensor) -> Unit => attributes[rendezvous_key, receiver] Self::kernel),
     ]
 }
 
@@ -1985,8 +1868,8 @@ kernel! {
         (HostPlacement, () -> HostUint16Tensor => attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> HostUint32Tensor => attributes[rendezvous_key, sender] Self::kernel),
         (HostPlacement, () -> HostUint64Tensor => attributes[rendezvous_key, sender] Self::kernel),
-        (HostPlacement, () -> Fixed64Tensor => attributes[rendezvous_key, sender] Self::kernel),
-        (HostPlacement, () -> Fixed128Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFixed64Tensor => attributes[rendezvous_key, sender] Self::kernel),
+        (HostPlacement, () -> HostFixed128Tensor => attributes[rendezvous_key, sender] Self::kernel),
 
     ]
 }
@@ -2087,8 +1970,8 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => Self::kernel),
-        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => Self::kernel),
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => Self::kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => Self::kernel),
 
     ]
 }
@@ -2150,8 +2033,8 @@ kernel! {
         (HostPlacement, () -> HostUint16Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostUint32Tensor => attributes[arg_name] Self::kernel),
         (HostPlacement, () -> HostUint64Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Fixed64Tensor => attributes[arg_name] Self::kernel),
-        (HostPlacement, () -> Fixed128Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostFixed64Tensor => attributes[arg_name] Self::kernel),
+        (HostPlacement, () -> HostFixed128Tensor => attributes[arg_name] Self::kernel),
 
     ]
 }
@@ -2227,8 +2110,8 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> Unit => Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Fixed64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (Fixed128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostFixed64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (HostFixed128Tensor) -> Unit => Self::kernel),
     ]
 }
 
@@ -2281,8 +2164,8 @@ kernel! {
         (HostPlacement, (String, HostUint16Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostUint32Tensor) -> Unit => Self::kernel),
         (HostPlacement, (String, HostUint64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Fixed64Tensor) -> Unit => Self::kernel),
-        (HostPlacement, (String, Fixed128Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostFixed64Tensor) -> Unit => Self::kernel),
+        (HostPlacement, (String, HostFixed128Tensor) -> Unit => Self::kernel),
     ]
 }
 
@@ -2359,8 +2242,8 @@ kernel! {
         (HostPlacement, (String, String) -> HostUint16Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostUint32Tensor => Self::kernel),
         (HostPlacement, (String, String) -> HostUint64Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Fixed64Tensor => Self::kernel),
-        (HostPlacement, (String, String) -> Fixed128Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostFixed64Tensor => Self::kernel),
+        (HostPlacement, (String, String) -> HostFixed128Tensor => Self::kernel),
     ]
 }
 
