@@ -2,7 +2,7 @@
 
 use crate::computation::{
     FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp,
-    FixedpointMulOp, FixedpointRingMeanOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
+    FixedpointMulOp, RingFixedpointMeanOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
     HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
 };
 use crate::error::Result;
@@ -15,7 +15,7 @@ use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
     PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode,
     PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
-    PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
+    PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
     PlacementSum, PlacementTruncPr, RuntimeSession, Session,
 };
 use crate::replicated::{ReplicatedFixed64Tensor, ReplicatedFixed128Tensor, AbstractReplicatedFixedTensor};
@@ -25,6 +25,7 @@ use num_traits::{One, Zero};
 use serde::{Deserialize, Serialize};
 use std::num::Wrapping;
 use std::ops::Mul;
+use std::convert::TryFrom;
 
 /// Fixed-point tensor backed by Z_{2^64} arithmetic
 pub type Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedFixed64Tensor>;
@@ -49,6 +50,32 @@ impl SymbolicType for Fixed128Tensor {
         >,
     >;
 }
+
+
+impl<HostFixedT, RepFixedT> From<FixedTensor<HostFixedT, RepFixedT>> for Symbolic<FixedTensor<HostFixedT, RepFixedT>>
+where
+    HostFixedT: Placed<Placement = HostPlacement>,
+    RepFixedT: Placed<Placement = ReplicatedPlacement>,
+{
+    fn from(x: FixedTensor<HostFixedT, RepFixedT>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<HostFixedT, RepFixedT> TryFrom<Symbolic<FixedTensor<HostFixedT, RepFixedT>>> for FixedTensor<HostFixedT, RepFixedT>
+where
+    HostFixedT: Placed<Placement = HostPlacement>,
+    RepFixedT: Placed<Placement = ReplicatedPlacement>,
+{
+    type Error = ();
+    fn try_from(v: Symbolic<FixedTensor<HostFixedT, RepFixedT>>) -> std::result::Result<Self, ()> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(()),
+        }
+    }
+}
+
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<HostFixedT, RepFixedT> {
@@ -79,16 +106,39 @@ pub trait Convert<T> {
     fn decode(x: &Self, scaling_factor: Self::Scale) -> T;
 }
 
+impl Convert<HostFloat64Tensor> for HostRing64Tensor {
+    type Scale = u64;
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing64Tensor {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
+        HostRing64Tensor::from(x_converted)
+    }
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
+        let x_upshifted: ArrayD<i64> = ArrayD::from(x);
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
+    }
+}
+
 impl Convert<HostFloat64Tensor> for HostFixed64Tensor {
     type Scale = u64;
     fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostFixed64Tensor {
-        let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<u64> = x_upshifted.mapv(|el| (el as i64) as u64);
-        AbstractHostFixedTensor(HostRing64Tensor::from(x_converted))
+        HostFixed64Tensor::from(HostRing64Tensor::encode(x, scaling_factor))
     }
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
-        let x_ring = x.0;
-        let x_upshifted: ArrayD<i64> = ArrayD::from(&x_ring);
+        HostRing64Tensor::decode(&x.0, scaling_factor)
+    }
+}
+
+impl Convert<HostFloat64Tensor> for HostRing128Tensor {
+    type Scale = u128;
+    fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostRing128Tensor {
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
+        HostRing128Tensor::from(x_converted)
+    }
+    fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
+        let x_upshifted: ArrayD<i128> = ArrayD::from(x);
         let x_converted = x_upshifted.mapv(|el| el as f64);
         HostFloat64Tensor::from(x_converted / scaling_factor as f64)
     }
@@ -97,15 +147,10 @@ impl Convert<HostFloat64Tensor> for HostFixed64Tensor {
 impl Convert<HostFloat64Tensor> for HostFixed128Tensor {
     type Scale = u128;
     fn encode(x: &HostFloat64Tensor, scaling_factor: Self::Scale) -> HostFixed128Tensor {
-        let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<u128> = x_upshifted.mapv(|el| (el as i128) as u128);
-        AbstractHostFixedTensor(HostRing128Tensor::from(x_converted))
+        HostFixed128Tensor::from(HostRing128Tensor::encode(x, scaling_factor))
     }
     fn decode(x: &Self, scaling_factor: Self::Scale) -> HostFloat64Tensor {
-        let x_ring = x.0;
-        let x_upshifted: ArrayD<i128> = ArrayD::from(&x_ring);
-        let x_converted = x_upshifted.mapv(|el| el as f64);
-        HostFloat64Tensor::from(x_converted / scaling_factor as f64)
+        HostRing128Tensor::decode(&x.0, scaling_factor)
     }
 }
 
@@ -114,7 +159,7 @@ where
     Wrapping<T>: Clone + Zero + Mul<Wrapping<T>, Output = Wrapping<T>>,
     AbstractHostRingTensor<T>: Convert<HostFloat64Tensor>,
 {
-    pub fn ring_mean(
+    pub fn fixedpoint_mean(
         x: Self,
         axis: Option<usize>,
         scaling_factor: <AbstractHostRingTensor<T> as Convert<HostFloat64Tensor>>::Scale,
@@ -125,10 +170,10 @@ where
         operand_sum.mul(encoded_weight)
     }
 
-    fn compute_mean_weight(x: &Self, &axis: &Option<usize>) -> HostFloat64Tensor {
+    fn compute_mean_weight(x: &Self, axis: &Option<usize>) -> HostFloat64Tensor {
         let shape: &[usize] = x.0.shape();
         if let Some(ax) = axis {
-            let dim_len = shape[ax] as f64;
+            let dim_len = shape[*ax] as f64;
             HostFloat64Tensor::from(
                 Array::from_elem([], 1.0 / dim_len)
                     .into_dimensionality::<IxDyn>()
@@ -146,19 +191,19 @@ where
     }
 }
 
-modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, FixedpointRingMeanOp);
-modelled!(PlacementRingMean::ring_mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, FixedpointRingMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
 
 kernel! {
-    FixedpointRingMeanOp,
+    RingFixedpointMeanOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring64tensor),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, scaling_base, scaling_exp] Self::kernel_ring128tensor),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, scaling_base, scaling_exp] Self::ring128_kernel),
     ]
 }
 
-impl FixedpointRingMeanOp {
-    fn kernel_ring64tensor<S: RuntimeSession>(
+impl RingFixedpointMeanOp {
+    fn ring64_kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -171,11 +216,11 @@ impl FixedpointRingMeanOp {
     {
         let scaling_factor = u64::pow(scaling_base, scaling_exp);
         let axis = axis.map(|a| a as usize);
-        let mean = HostRing64Tensor::ring_mean(x, axis, scaling_factor);
+        let mean = HostRing64Tensor::fixedpoint_mean(x, axis, scaling_factor);
         plc.place(sess, mean)
     }
 
-    fn kernel_ring128tensor<S: RuntimeSession>(
+    fn ring128_kernel<S: RuntimeSession>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -188,7 +233,7 @@ impl FixedpointRingMeanOp {
     {
         let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
         let axis = axis.map(|a| a as usize);
-        let mean = HostRing128Tensor::ring_mean(x, axis, scaling_factor);
+        let mean = HostRing128Tensor::fixedpoint_mean(x, axis, scaling_factor);
         plc.place(sess, mean)
     }
 }
@@ -373,12 +418,12 @@ impl FixedpointAddOp {
 
     fn repfixed_kernel<S: Session, RepRingT>(
         sess: &S,
-        plc: &HostPlacement,
+        plc: &ReplicatedPlacement,
         x: AbstractReplicatedFixedTensor<RepRingT>,
         y: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
-        HostPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
     {
         let z = plc.add(sess, &x.0, &y.0);
         AbstractReplicatedFixedTensor(z)
@@ -875,15 +920,14 @@ impl FixedpointSumOp {
     }
 }
 
-// TODO(Morten) it's weird that we're using RingMean here; should be just mean..?
-modelled!(PlacementRingMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementRingMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementRingMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementRingMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementRingMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed64Tensor) -> HostFixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementRingMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed128Tensor) -> HostFixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementRingMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementRingMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed64Tensor) -> HostFixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed128Tensor) -> HostFixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMeanOp);
 
 hybrid_kernel! {
     FixedpointMeanOp,
@@ -910,14 +954,14 @@ impl FixedpointMeanOp {
     ) -> FixedTensor<HostFixedT, RepFixedT>
     where
         HostPlacement: PlacementReveal<S, RepFixedT, HostFixedT>,
-        HostPlacement: PlacementRingMean<S, HostFixedT, HostFixedT>,
+        HostPlacement: PlacementMean<S, HostFixedT, HostFixedT>,
     {
         let x_revealed = match x {
             FixedTensor::Host(x) => x,
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
-        let result = plc.ring_mean(sess, axis, scaling_base, scaling_exp, &x_revealed);
+        let result = plc.mean(sess, axis, scaling_base, scaling_exp, &x_revealed);
         FixedTensor::Host(result)
     }
 
@@ -932,7 +976,7 @@ impl FixedpointMeanOp {
     where
         ReplicatedPlacement: PlacementSetupGen<S, S::ReplicatedSetup>,
         ReplicatedPlacement: PlacementShareSetup<S, S::ReplicatedSetup, HostFixedT, RepFixedT>,
-        ReplicatedPlacement: PlacementRingMean<S, RepFixedT, RepFixedT>,
+        ReplicatedPlacement: PlacementMean<S, RepFixedT, RepFixedT>,
     {
         let x_shared = match x {
             FixedTensor::Host(x) => {
@@ -942,7 +986,7 @@ impl FixedpointMeanOp {
             FixedTensor::Replicated(x) => x,
         };
 
-        let result = plc.ring_mean(sess, axis, scaling_base, scaling_exp, &x_shared);
+        let result = plc.mean(sess, axis, scaling_base, scaling_exp, &x_shared);
         FixedTensor::Replicated(result)
     }
 
@@ -1019,7 +1063,7 @@ mod tests {
     }
 
     #[test]
-    fn ring_mean_with_axis() {
+    fn fixedpoint_mean_with_axis() {
         let x_backing = HostFloat64Tensor::from(
             array![[1., 2.], [3., 4.]]
                 .into_dimensionality::<IxDyn>()
@@ -1027,9 +1071,9 @@ mod tests {
         );
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = HostFixed64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::ring_mean(x, Some(0), encoding_factor);
-        let dec = HostFixed64Tensor::decode(&out, decoding_factor);
+        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
+        let out = HostRing64Tensor::fixedpoint_mean(x, Some(0), encoding_factor);
+        let dec = HostRing64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec,
             HostFloat64Tensor::from(array![2., 3.].into_dimensionality::<IxDyn>().unwrap())
@@ -1037,7 +1081,7 @@ mod tests {
     }
 
     #[test]
-    fn ring_mean_no_axis() {
+    fn fixedpoint_mean_no_axis() {
         let x_backing = HostFloat64Tensor::from(
             array![[1., 2.], [3., 4.]]
                 .into_dimensionality::<IxDyn>()
@@ -1045,9 +1089,9 @@ mod tests {
         );
         let encoding_factor = 2u64.pow(16);
         let decoding_factor = 2u64.pow(32);
-        let x = HostFixed64Tensor::encode(&x_backing, encoding_factor);
-        let out = HostRing64Tensor::ring_mean(x, None, encoding_factor);
-        let dec = HostFixed64Tensor::decode(&out, decoding_factor);
+        let x = HostRing64Tensor::encode(&x_backing, encoding_factor);
+        let out = HostRing64Tensor::fixedpoint_mean(x, None, encoding_factor);
+        let dec = HostRing64Tensor::decode(&out, decoding_factor);
         assert_eq!(
             dec.0.into_shape((1,)).unwrap(),
             array![2.5].into_shape((1,)).unwrap()
@@ -1061,14 +1105,14 @@ mod tests {
                     owner: "alice".into(),
                 };
 
-                let x = FixedTensor::Host(AbstractHostFixedTensor::from_raw_plc(
+                let x = FixedTensor::Host(AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(
                     xs,
                     alice.clone(),
-                ));
-                let y = FixedTensor::Host(AbstractHostFixedTensor::from_raw_plc(
+                )));
+                let y = FixedTensor::Host(AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(
                     ys,
                     alice.clone(),
-                ));
+                )));
 
                 let sess = SyncSession::default();
 
@@ -1079,7 +1123,7 @@ mod tests {
                 };
                 assert_eq!(
                     opened_product,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(zs, alice.clone()))
                 );
             }
         };
@@ -1117,8 +1161,8 @@ mod tests {
                     owners: ["alice".into(), "bob".into(), "carole".into()],
                 };
 
-                let x = FixedTensor::Host(AbstractHostRingTensor::from_raw_plc(xs, alice.clone()));
-                let y = FixedTensor::Host(AbstractHostRingTensor::from_raw_plc(ys, alice.clone()));
+                let x = FixedTensor::Host(AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(xs, alice.clone())));
+                let y = FixedTensor::Host(AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(ys, alice.clone())));
 
                 let sess = SyncSession::default();
 
@@ -1129,7 +1173,7 @@ mod tests {
                 };
                 assert_eq!(
                     opened_product,
-                    AbstractHostRingTensor::from_raw_plc(zs, alice.clone())
+                    AbstractHostFixedTensor::from(AbstractHostRingTensor::from_raw_plc(zs, alice.clone()))
                 );
             }
         };

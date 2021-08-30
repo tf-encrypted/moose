@@ -14,10 +14,11 @@ use crate::kernels::{
 use crate::symbolic::Symbolic;
 use crate::prim::{PrfKey, RawNonce, Seed};
 use crate::replicated::{
-    AbstractReplicatedTensor, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
+    AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor,
 };
 use macros::with_context;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractAdditiveTensor<R> {
@@ -41,6 +42,7 @@ impl SymbolicType for AdditiveRing128Tensor {
 impl SymbolicType for AdditiveBitTensor {
     type Type = Symbolic<AbstractAdditiveTensor<<HostBitTensor as SymbolicType>::Type>>;
 }
+
 
 pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
 
@@ -86,6 +88,54 @@ where
 
         let owners = [owner0, owner1];
         Ok(AdditivePlacement { owners })
+    }
+}
+
+
+impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveTensor<R>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<S> From<AbstractAdditiveShape<S>> for Symbolic<AbstractAdditiveShape<S>>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    fn from(x: AbstractAdditiveShape<S>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+
+
+impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
+where
+    R: Placed<Placement = HostPlacement>,
+{
+    type Error = crate::error::Error;
+    fn try_from(v: Symbolic<AbstractAdditiveTensor<R>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(crate::error::Error::Unexpected), // TODO err message
+        }
+    }
+}
+
+
+impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Error = crate::error::Error;
+    fn try_from(v: Symbolic<AbstractAdditiveShape<S>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(crate::error::Error::Unexpected), // TODO err message
+        }
     }
 }
 
@@ -605,8 +655,8 @@ impl<S: Session, R>
 where
     AbstractAdditiveTensor<R>: CanonicalType,
     <AbstractAdditiveTensor<R> as CanonicalType>::Type: KnownType<S>,
-    AbstractReplicatedTensor<R>: CanonicalType,
-    <AbstractReplicatedTensor<R> as CanonicalType>::Type: KnownType<S>,
+    AbstractReplicatedRingTensor<R>: CanonicalType,
+    <AbstractReplicatedRingTensor<R> as CanonicalType>::Type: KnownType<S>,
     R: RingSize,
     HostShape: KnownType<S>,
     HostPlacement: TruncMaskGen<S, cs!(HostShape), R>,
@@ -729,17 +779,17 @@ impl RepToAdtOp {
     fn rep_to_adt_kernel<S: Session, RingT>(
         sess: &S,
         adt: &AdditivePlacement,
-        x: AbstractReplicatedTensor<RingT>,
+        x: AbstractReplicatedRingTensor<RingT>,
     ) -> AbstractAdditiveTensor<RingT>
     where
-        AbstractReplicatedTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
+        AbstractReplicatedRingTensor<RingT>: Placed<Placement = ReplicatedPlacement>,
         HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
         AdditivePlacement: PlacementPlace<S, AbstractAdditiveTensor<RingT>>,
     {
         let (adt_player0, adt_player1) = adt.host_placements();
         let (rep_player0, rep_player1, rep_player2) = x.placement().unwrap().host_placements();
 
-        let AbstractReplicatedTensor {
+        let AbstractReplicatedRingTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 

@@ -1524,7 +1524,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingEncodeOperation(op) => Ok(Operation {
-                        kind: FixedpointRingEncodeOp {
+                        kind: RingFixedpointEncodeOp {
                             sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
                             scaling_base: op.scaling_base,
                             scaling_exp: op.scaling_exp,
@@ -1536,7 +1536,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingDecodeOperation(op) => Ok(Operation {
-                        kind: FixedpointRingDecodeOp {
+                        kind: RingFixedpointDecodeOp {
                             sig: Signature::unary(
                                 map_type(&op.input_type)?,
                                 map_type(&op.output_type)?,
@@ -1551,7 +1551,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     fixed_RingMeanOperation(op) => Ok(Operation {
-                        kind: FixedpointRingMeanOp {
+                        kind: RingFixedpointMeanOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,
@@ -1659,7 +1659,8 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                            precision: op.precision,
+                            scaling_base: 2,
+                            scaling_exp: op.precision as u32, // TODO avoid cast
                         }
                         .into(),
                         name: op.name.clone(),

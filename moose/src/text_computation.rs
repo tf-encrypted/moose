@@ -292,15 +292,15 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(PrimDeriveSeedOp::SHORT_NAME), cut(prim_derive_seed)),
         preceded(tag(PrimPrfKeyGenOp::SHORT_NAME), cut(prim_gen_prf_key)),
         preceded(
-            tag(FixedpointRingEncodeOp::SHORT_NAME),
+            tag(RingFixedpointEncodeOp::SHORT_NAME),
             cut(fixed_point_ring_encode),
         ),
         preceded(
-            tag(FixedpointRingDecodeOp::SHORT_NAME),
+            tag(RingFixedpointDecodeOp::SHORT_NAME),
             cut(fixed_point_ring_decode),
         ),
         preceded(
-            tag(FixedpointRingMeanOp::SHORT_NAME),
+            tag(RingFixedpointMeanOp::SHORT_NAME),
             cut(fixed_point_ring_mean),
         ),
         preceded(tag(FixedpointEncodeOp::SHORT_NAME), cut(fixed_point_encode)),
@@ -542,7 +542,7 @@ fn fixed_point_ring_encode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
     let (input, sig) = type_definition(0)(input)?;
     Ok((
         input,
-        FixedpointRingEncodeOp {
+        RingFixedpointEncodeOp {
             sig,
             scaling_base,
             scaling_exp,
@@ -562,7 +562,7 @@ fn fixed_point_ring_decode<'a, E: 'a + ParseError<&'a str> + ContextError<&'a st
     let (input, sig) = type_definition(1)(input)?;
     Ok((
         input,
-        FixedpointRingDecodeOp {
+        RingFixedpointDecodeOp {
             sig,
             scaling_base,
             scaling_exp,
@@ -610,7 +610,7 @@ fn fixed_point_ring_mean<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>
     let (input, sig) = type_definition(0)(input)?;
     Ok((
         input,
-        FixedpointRingMeanOp {
+        RingFixedpointMeanOp {
             sig,
             axis,
             scaling_base,
@@ -1225,6 +1225,9 @@ impl ToTextual for Operator {
             RingMul(op) => op.to_textual(),
             RingDot(op) => op.to_textual(),
             RingSum(op) => op.to_textual(),
+            RingFixedpointEncode(op) => op.to_textual(),
+            RingFixedpointDecode(op) => op.to_textual(),
+            RingFixedpointMean(op) => op.to_textual(),
             RingSample(op) => op.to_textual(),
             RingSampleSeeded(op) => op.to_textual(),
             RingShl(op) => op.to_textual(),
@@ -1244,9 +1247,6 @@ impl ToTextual for Operator {
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
             FixedpointSum(op) => op.to_textual(),
-            FixedpointRingEncode(op) => op.to_textual(),
-            FixedpointRingDecode(op) => op.to_textual(),
-            FixedpointRingMean(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),
@@ -1365,14 +1365,14 @@ impl_to_textual!(
 );
 
 impl_to_textual!(
-    FixedpointRingEncodeOp,
+    RingFixedpointEncodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
     sig
 );
 impl_to_textual!(
-    FixedpointRingDecodeOp,
+    RingFixedpointDecodeOp,
     "{op}{{scaling_base={}, scaling_exp={}}}: {}",
     scaling_base,
     scaling_exp,
@@ -1459,10 +1459,10 @@ impl ToTextual for FixedpointMeanOp {
     }
 }
 
-impl ToTextual for FixedpointRingMeanOp {
+impl ToTextual for RingFixedpointMeanOp {
     fn to_textual(&self) -> String {
         match self {
-            FixedpointRingMeanOp {
+            RingFixedpointMeanOp {
                 sig,
                 axis: Some(a),
                 scaling_base,
@@ -1476,7 +1476,7 @@ impl ToTextual for FixedpointRingMeanOp {
                     sig.to_textual()
                 )
             }
-            FixedpointRingMeanOp {
+            RingFixedpointMeanOp {
                 sig,
                 axis: None,
                 scaling_base,
@@ -1497,22 +1497,26 @@ impl ToTextual for RepMeanOp {
             RepMeanOp {
                 sig,
                 axis: Some(a),
-                precision,
+                scaling_base,
+                scaling_exp,
             } => {
                 format!(
-                    "FixedpointRingMean{{axis = {}, precision={}}}: {}",
+                    "RepMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
                     a,
-                    precision,
+                    scaling_base,
+                    scaling_exp,
                     sig.to_textual()
                 )
             }
             RepMeanOp {
                 sig,
                 axis: None,
-                precision,
+                scaling_base,
+                scaling_exp,
             } => format!(
-                "FixedpointRingMean{{precision={}}}: {}",
-                precision,
+                "RepMean{{scaling_base={}, scaling_exp={}}}: {}",
+                scaling_base,
+                scaling_exp,
                 sig.to_textual()
             ),
         }
@@ -1595,6 +1599,8 @@ impl ToTextual for Ty {
             Ty::AdditiveRing64Tensor => "Additive64Tensor",
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
+            // TODO
+            Ty::HostFixed64Tensor | Ty::HostFixed128Tensor |Ty::ReplicatedFixed64Tensor | Ty::ReplicatedFixed128Tensor => unimplemented!()
         }
         .to_string()
     }
@@ -1627,6 +1633,8 @@ impl ToTextual for Value {
             Value::Bit(x) => format!("Bit({})", x),
             Value::Unit(_) => "Unit".to_string(),
             Value::HostBitTensor(x) => format!("HostBitTensor({})", x.0.to_textual()),
+            // TODO
+            Value::HostFixed64Tensor(_) | Value::HostFixed128Tensor(_) => unimplemented!(),
             // The following value variants live in the replicated form and can not be represented in the textual computation graph.
             Value::Fixed64Tensor(_)
             | Value::Fixed128Tensor(_)
@@ -1635,6 +1643,8 @@ impl ToTextual for Value {
             | Value::ReplicatedBitTensor(_)
             | Value::ReplicatedRing64Tensor(_)
             | Value::ReplicatedRing128Tensor(_)
+            | Value::ReplicatedFixed64Tensor(_)
+            | Value::ReplicatedFixed128Tensor(_)
             | Value::AdditiveShape(_)
             | Value::AdditiveBitTensor(_)
             | Value::AdditiveRing64Tensor(_)
@@ -2041,7 +2051,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+            Operator::RingFixedpointMean(RingFixedpointMeanOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: Some(0),
                 scaling_base: 3,
@@ -2054,7 +2064,7 @@ mod tests {
         )?;
         assert_eq!(
             op.kind,
-            Operator::FixedpointRingMean(FixedpointRingMeanOp {
+            Operator::RingFixedpointMean(RingFixedpointMeanOp {
                 sig: Signature::nullary(Ty::HostFloat32Tensor),
                 axis: None,
                 scaling_base: 3,
