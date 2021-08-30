@@ -12,13 +12,7 @@ use crate::computation::{
 use crate::error::Error;
 use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex,
-    PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr,
-    PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor, RuntimeSession,
-    Session, SyncSession, Tensor,
-};
+use crate::kernels::{PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
@@ -878,7 +872,7 @@ impl HostMeanOp {
     ) -> cs!(Fixed128Tensor)
     where
         Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementRingMean<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+        ReplicatedPlacement: PlacementMean<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
         ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
     {
         // TODO: grab scaling base and exp from somewhere else

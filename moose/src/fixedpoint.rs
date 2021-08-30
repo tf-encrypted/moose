@@ -1,22 +1,14 @@
 //! Support for fixed-point arithmetic
 
-use crate::computation::{
-    CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp,
-    FixedpointMeanOp, FixedpointMulOp, FixedpointRingMeanOp, FixedpointSubOp, FixedpointSumOp,
-    FixedpointTruncPrOp, HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
-};
+use crate::computation::{CastOp, Placement, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp, FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp, HostPlacement, KnownType, Placed, ReplicatedPlacement, SymbolicType};
 use crate::error::Result;
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor,
     HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
 };
-use crate::kernels::{
-    PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
-    PlacementFixedpointEncode, PlacementFixedpointRingDecode, PlacementFixedpointRingEncode,
-    PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal,
-    PlacementRingMean, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub,
-    PlacementSum, PlacementTruncPr, RuntimeSession, Session,
-};
+use crate::kernels::{PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementReveal, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen, PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, RuntimeSession, Session};
+use crate::replicated::{AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor};
+use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};
@@ -969,6 +961,7 @@ impl FixedpointMeanOp {
     {
         let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
         AbstractReplicatedFixedTensor(y)
+    }
 }
 
 modelled!(PlacementCast::cast, HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor, CastOp);
