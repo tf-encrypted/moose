@@ -2,9 +2,9 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
-    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp,
-    RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement,
-    RingInjectOp, ShapeOp, SymbolicType, RepIndexAxisOp,
+    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp, RepMulOp,
+    RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp,
+    ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{
@@ -14,11 +14,11 @@ use crate::host::{
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract,
     PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
-    PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup, PlacementOnes,
-    PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject,
+    PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup,
+    PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject,
     PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
     PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementIndex, PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
+    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;

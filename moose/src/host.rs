@@ -1,21 +1,19 @@
 use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
-    Constant, HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp,
-    HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp,
-    HostSumOp, HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp,
+    Constant, HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostIndexAxisOp,
+    HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp,
+    HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp,
     RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp,
     RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
-    HostIndexAxisOp,
 };
 use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::{
-    PlacementMean,
     PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex,
-    PlacementMul, PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded,
-    PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr,
-    PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession,
-    Tensor,
+    PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
+    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
+    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
+    Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;

@@ -7,8 +7,7 @@ use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
     HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
-    SliceInfo,
+    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
@@ -623,15 +622,14 @@ impl Compile<SyncKernel> for Operator {
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             // TODO
-            | HostIndexAxis(_) => unimplemented!(),
+            HostIndexAxis(_) => unimplemented!(),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_) | FixedpointMul(_)
-            | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_)
-             
-            => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
+            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
+            | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

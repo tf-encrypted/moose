@@ -1,4 +1,6 @@
-use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, SymbolicType, TAG_BYTES};
+use crate::computation::{
+    HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, SymbolicType, TAG_BYTES,
+};
 use crate::error::Result;
 use crate::kernels::{
     NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
