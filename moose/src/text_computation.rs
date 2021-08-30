@@ -239,6 +239,10 @@ macro_rules! operation_on_axis {
 fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
+    // NOTE: Ideally, we would group all of these parser declarations into a single `alt`
+    // combinator. However, `alt` expects a tuple of parsers with cardinality at most 21.
+    // We get around this by nesting calls of `alt`, as recommended by the function docs:
+    // https://docs.rs/nom/7.0.0/nom/branch/fn.alt.html
     let part1 = alt((
         preceded(tag(IdentityOp::SHORT_NAME), cut(unary!(IdentityOp))),
         preceded(tag(LoadOp::SHORT_NAME), cut(unary!(LoadOp))),
@@ -313,6 +317,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
         preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
+        preceded(tag(HostSqrtOp::SHORT_NAME), cut(unary!(HostSqrtOp))),
     ));
     alt((part1, part2, part3))(input)
 }
@@ -1221,6 +1226,7 @@ impl ToTextual for Operator {
             HostDiv(op) => op.to_textual(),
             HostDot(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
+            HostSqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
             HostConcat(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
@@ -1346,6 +1352,7 @@ impl_to_textual!(
 );
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
+impl_to_textual!(HostSqrtOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
 impl_to_textual!(RingNegOp, "{op}: {}", sig);
 impl_to_textual!(RingAddOp, "{op}: {}", sig);

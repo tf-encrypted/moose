@@ -2,7 +2,7 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
     Constant, HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostIndexAxisOp,
     HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp,
-    HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp,
+    HostSqrtOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp,
     RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp,
     RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
 };
@@ -23,8 +23,8 @@ use ndarray::LinalgScalar;
 use ndarray::Slice;
 use ndarray_linalg::types::{Lapack, Scalar};
 use ndarray_linalg::*;
-use num_traits::FromPrimitive;
 use num_traits::Zero;
+use num_traits::{Float, FromPrimitive};
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::cmp::Reverse;
@@ -665,6 +665,20 @@ impl HostMeanOp {
                 HostTensor::place(plc, out)
             }
         }
+    }
+}
+
+impl HostSqrtOp {
+    pub fn kernel<S: RuntimeSession, T: 'static + Float>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let x_sqrt = x.0.mapv(T::sqrt);
+        HostTensor::place(plc, x_sqrt)
     }
 }
 
@@ -2604,6 +2618,28 @@ mod tests {
         );
         let inv = alice.inverse(&sess, &x);
         assert_eq!("[[-2, 1],\n [1.5, -0.5]]", format!("{}", inv.0));
+    }
+
+    #[test]
+    fn test_kernel_sqrt() {
+        use crate::kernels::PlacementSqrt;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::host::HostTensor::<f64>::from(
+            array![[4.0, 9.0], [16.0, 25.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let exp = crate::host::HostTensor::<f64>(
+            array![[2.0, 3.0], [4.0, 5.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+            alice.clone(),
+        );
+        let sqrt = alice.sqrt(&sess, &x);
+        assert_eq!(exp, sqrt)
     }
 
     #[test]

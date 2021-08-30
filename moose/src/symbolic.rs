@@ -163,6 +163,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             AdtToRep(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            HostSqrt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(sess, operands),
