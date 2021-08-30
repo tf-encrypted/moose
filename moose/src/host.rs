@@ -1,17 +1,18 @@
 use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, Constant,
-    HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostInverseOp, HostMeanOp,
-    HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp,
-    HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingInjectOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp,
+    HostAddOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostIndexAxisOp,
+    HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp,
+    HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement, RingAddOp, RingDotOp, RingFillOp,
+    RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp,
+    RingSubOp, RingSumOp, Role, ShapeOp,
 };
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
-    PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
-    PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementAnd, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex,
+    PlacementMul, PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded,
+    PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr,
+    PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession,
+    Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -300,7 +301,7 @@ kernel! {
 }
 
 impl HostSliceOp {
-    pub(crate) fn kernel<S: RuntimeSession, T>(
+    pub fn kernel<S: RuntimeSession, T>(
         _sess: &S,
         plc: &HostPlacement,
         slice_info: SliceInfo,
@@ -315,7 +316,7 @@ impl HostSliceOp {
         AbstractHostRingTensor(sliced, plc.clone())
     }
 
-    pub(crate) fn shape_kernel<S: RuntimeSession>(
+    pub fn shape_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         slice_info: SliceInfo,
@@ -326,6 +327,48 @@ impl HostSliceOp {
             slice_info.0[0].end.unwrap() as usize,
         );
         HostShape(slice, plc.clone())
+    }
+}
+
+modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing64Tensor) -> HostRing64Tensor, HostIndexAxisOp);
+modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing128Tensor) -> HostRing128Tensor, HostIndexAxisOp);
+modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostBitTensor) -> HostBitTensor, HostIndexAxisOp);
+
+kernel! {
+    HostIndexAxisOp,
+    [
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => attributes[axis, index] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => attributes[axis, index] Self::bit_kernel),
+    ]
+}
+
+impl HostIndexAxisOp {
+    pub fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T>
+    where
+        T: Clone,
+    {
+        let axis = Axis(axis);
+        let result = x.0.index_axis(axis, index);
+        AbstractHostRingTensor(result.to_owned(), plc.clone())
+    }
+
+    pub fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        axis: usize,
+        index: usize,
+        x: HostBitTensor,
+    ) -> HostBitTensor {
+        let axis = Axis(axis);
+        let result = x.0.index_axis(axis, index);
+        HostBitTensor(result.to_owned(), plc.clone())
     }
 }
 
@@ -2153,6 +2196,26 @@ mod tests {
         let y = alice.slice(&sess, slice, &x);
 
         let target: ArrayD<u64> = array![[3, 4]].into_dimensionality::<IxDyn>().unwrap();
+
+        assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+    }
+
+    #[test]
+    fn test_index() {
+        let x_backing: ArrayD<u64> = array![[[1, 2], [3, 4]], [[4, 5], [6, 7]]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
+        let sess = SyncSession::default();
+        let y = alice.index_axis(&sess, 0, 1, &x);
+
+        let target: ArrayD<u64> = array![[4, 5], [6, 7]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
 
         assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
     }

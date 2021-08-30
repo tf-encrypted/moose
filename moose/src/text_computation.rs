@@ -1227,6 +1227,7 @@ impl ToTextual for Operator {
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
+            HostIndexAxis(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
             HostTranspose(op) => op.to_textual(),
             HostInverse(op) => op.to_textual(),
@@ -1280,6 +1281,7 @@ impl ToTextual for Operator {
             RepMsb(op) => op.to_textual(),
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
+            RepIndexAxis(op) => op.to_textual(),
         }
     }
 }
@@ -1335,6 +1337,13 @@ impl_to_textual!(
     sig
 );
 impl_to_textual!(HostSliceOp, "{op}{{slice}}: {} {}", sig, slice);
+impl_to_textual!(
+    HostIndexAxisOp,
+    "{op}{{axis={}, index={}}}: {}",
+    axis,
+    index,
+    sig
+);
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
@@ -1409,6 +1418,13 @@ impl_to_textual!(RepFillOp, "{op}{{value={}}}: {}", value, sig);
 impl_to_textual!(RepMsbOp, "{op}: {}", sig);
 impl_to_textual!(RepShlOp, "{op}: {}", sig);
 impl_to_textual!(RepToAdtOp, "{op}: {}", sig);
+impl_to_textual!(
+    RepIndexAxisOp,
+    "{op}{{axis={}, index={}}}: {}",
+    axis,
+    index,
+    sig
+);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
