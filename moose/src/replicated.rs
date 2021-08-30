@@ -19,6 +19,7 @@ use crate::kernels::{
 use crate::prim::{PrfKey, RawNonce, Seed};
 use macros::with_context;
 use serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractReplicatedTensor<R> {
@@ -1127,8 +1128,7 @@ impl RepSumOp {
     }
 }
 
-use std::convert::TryInto;
-
+// TODO(Morten) should we rename this as a shift?
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepTruncPrOp);
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[amount: u32] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepTruncPrOp);
 

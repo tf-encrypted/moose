@@ -1239,7 +1239,7 @@ pub struct FixedpointDotOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointTruncPrOp {
     pub sig: Signature,
-    pub precision: u32,
+    pub precision: u32, // TODO(Morten) rename to amount?
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
