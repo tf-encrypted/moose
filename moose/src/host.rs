@@ -545,7 +545,9 @@ where {
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-        let bit_rep: Vec<_> = (0..64).map(|i| (&x.0 >> i) & (&ones)).collect();
+        let bit_rep: Vec<_> = (0..HostRing64Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
 
         // by default we put bits as rows, ie access i'th bit from tensor T is done through index_axis(Axis(0), T)
@@ -564,7 +566,9 @@ where {
         let raw_shape = shape.0 .0;
         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-        let bit_rep: Vec<_> = (0..128).map(|i| (&x.0 >> i) & (&ones)).collect();
+        let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
 
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
