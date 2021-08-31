@@ -297,7 +297,7 @@ pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
-pub trait PlacementBitDecompose<S: Session, T, O> {
+pub trait PlacementBitDec<S: Session, T, O> {
     fn bit_decompose(&self, sess: &S, x: &T) -> O;
 }
 

@@ -2,19 +2,19 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
     Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp,
     HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement,
-    HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, KnownType, Placed,
-    Placement, RingAddOp, RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp, SymbolicType,
+    HostReshapeOp, HostSliceOp, HostSubOp, HostSumOp, HostTransposeOp, Placed, Placement,
+    RingAddOp, RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp,
+    RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp,
+    SymbolicType,
 };
 use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDecompose, PlacementBitExtract, PlacementDot,
-    PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementOnes,
-    PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
-    PlacementSampleUniformSeeded, PlacementShape, PlacementShl, PlacementShr, PlacementSlice,
-    PlacementSub, PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
+    PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
+    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
+    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementXor, RuntimeSession,
+    Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -523,47 +523,50 @@ impl HostIndexAxisOp {
     }
 }
 
-modelled!(PlacementBitDecompose::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
-modelled!(PlacementBitDecompose::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
 
 kernel! {
     HostBitDecOp,
     [
-        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
     ]
 }
 
 impl HostBitDecOp {
-    pub fn kernel<S: RuntimeSession, T>(
-        sess: &S,
+    pub fn ring64_kernel<S: RuntimeSession>(
+        _sess: &S,
         plc: &HostPlacement,
-        x: AbstractHostRingTensor<T>,
-    ) -> AbstractHostRingTensor<T>
-    where
-        AbstractHostRingTensor<T>: RingSize,
-        T: Clone,
-        HostShape: KnownType<S>,
-        HostPlacement: PlacementShape<S, AbstractHostRingTensor<T>, cs!(HostShape)>,
-        HostPlacement: PlacementOnes<S, cs!(HostShape), AbstractHostRingTensor<T>>,
-        HostPlacement: PlacementAnd<
-            S,
-            AbstractHostRingTensor<T>,
-            AbstractHostRingTensor<T>,
-            AbstractHostRingTensor<T>,
-        >,
-        HostPlacement: PlacementShr<S, AbstractHostRingTensor<T>, AbstractHostRingTensor<T>>,
-    {
-        let k = AbstractHostRingTensor::SIZE;
-        let shape = plc.shape(sess, &x);
-        let ones = plc.ones(sess, &shape);
-        let bit_rep: Vec<_> = (0..k)
-            .map(|i| plc.and(sess, &plc.shr(sess, i, &x), &ones).0)
-            .collect();
+        x: HostRing64Tensor,
+    ) -> HostRing64Tensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
+        let bit_rep: Vec<_> = (0..64).map(|i| (&x.0 >> i) & (&ones)).collect();
         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
 
         // by default we put bits as rows, ie access i'th bit from tensor T is done through index_axis(Axis(0), T)
+        // in the current protocols it's easier to reason that the bits are stacked on axis(0)
+        let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
+        AbstractHostRingTensor(result, plc.clone())
+    }
+
+    pub fn ring128_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+    ) -> HostRing128Tensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+
+        let bit_rep: Vec<_> = (0..128).map(|i| (&x.0 >> i) & (&ones)).collect();
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
         AbstractHostRingTensor(result, plc.clone())
     }
