@@ -134,6 +134,7 @@ impl Session for SyncSession {
             HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostBitDec(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -294,6 +295,10 @@ pub trait PlacementAnd<S: Session, T, U, O> {
 
 pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
+}
+
+pub trait PlacementBitDec<S: Session, T, O> {
+    fn bit_decompose(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementRingInject<S: Session, T, O> {
@@ -623,6 +628,7 @@ impl Compile<SyncKernel> for Operator {
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
             // TODO
             HostIndexAxis(_) => unimplemented!(),
+            HostBitDec(_) => unimplemented!(),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
@@ -690,15 +696,14 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | HostIndexAxis(_)
-            | RepIndexAxis(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
