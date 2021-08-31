@@ -302,26 +302,11 @@ impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlaceme
 kernel! {
     HostAddOp,
     [
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
 impl HostAddOp {
-    fn host_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        HostPlacement:
-            PlacementAdd<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        with_context!(plc, sess, x + y)
-    }
-
     fn rep_kernel<S: Session>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -403,26 +388,11 @@ kernel! {
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
 impl HostSubOp {
-    fn host_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        HostPlacement:
-            PlacementSub<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        with_context!(plc, sess, x - y)
-    }
-
     fn rep_kernel<S: Session>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -455,26 +425,11 @@ kernel! {
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
 impl HostMulOp {
-    fn host_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        HostPlacement:
-            PlacementMul<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        with_context!(plc, sess, x * y)
-    }
-
     fn rep_kernel<S: Session>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -511,25 +466,11 @@ kernel! {
     HostDivOp,
     [
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
 impl HostDivOp {
-    fn host_kernel<S: Session>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _x: cs!(Fixed128Tensor),
-        _y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        // HostPlacement: PlacementDiv<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        unimplemented!("Lacking division protocols yet") // TODO: implement those
-    }
-
     fn rep_kernel<S: Session>(
         _sess: &S,
         _plc: &ReplicatedPlacement,
@@ -561,26 +502,11 @@ kernel! {
     [
         (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::host_kernel),
         (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
 impl HostDotOp {
-    fn host_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: cs!(Fixed128Tensor),
-        y: cs!(Fixed128Tensor),
-    ) -> cs!(Fixed128Tensor)
-    where
-        Fixed128Tensor: KnownType<S>,
-        HostPlacement:
-            PlacementDot<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
-    {
-        plc.dot(sess, &x, &y)
-    }
-
     fn rep_kernel<S: Session>(
         sess: &S,
         plc: &ReplicatedPlacement,
