@@ -297,8 +297,8 @@ pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
-pub trait PlacementBitDec<S: Session, T, O> {
-    fn bit_dec(&self, sess: &S, x: &T) -> O;
+pub trait PlacementBitDecompose<S: Session, T, O> {
+    fn bit_decompose(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementRingInject<S: Session, T, O> {
@@ -626,13 +626,16 @@ impl Compile<SyncKernel> for Operator {
             FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            // TODO
+            HostIndexAxis(_) => unimplemented!(),
+            HostBitDec(_) => unimplemented!(),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | HostIndexAxis(_)
-            | RepIndexAxis(_) | HostBitDec(_) | FixedpointMul(_) | FixedpointDot(_)
-            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
+            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
+            | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -693,15 +696,14 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | HostIndexAxis(_)
-            | HostBitDec(_) | RepIndexAxis(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

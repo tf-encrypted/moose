@@ -10,11 +10,11 @@ use crate::computation::{
 use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
-    PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementOnes, PlacementPlace,
-    PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded,
-    PlacementShape, PlacementShl, PlacementShr, PlacementSlice, PlacementSub, PlacementSum,
-    PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementAnd, PlacementBitDecompose, PlacementBitExtract, PlacementDot,
+    PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementOnes,
+    PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
+    PlacementSampleUniformSeeded, PlacementShape, PlacementShl, PlacementShr, PlacementSlice,
+    PlacementSub, PlacementSum, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -523,8 +523,8 @@ impl HostIndexAxisOp {
     }
 }
 
-modelled!(PlacementBitDec::bit_dec, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
-modelled!(PlacementBitDec::bit_dec, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
+modelled!(PlacementBitDecompose::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
+modelled!(PlacementBitDecompose::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
 
 kernel! {
     HostBitDecOp,
@@ -2890,7 +2890,7 @@ mod tests {
         };
         let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
         let sess = SyncSession::default();
-        let x_bits = alice.bit_dec(&sess, &x);
+        let x_bits = alice.bit_decompose(&sess, &x);
         let targets: Vec<_> = (0..64).map(|i| alice.bit_extract(&sess, i, &x)).collect();
 
         for (i, target) in targets.iter().enumerate() {
