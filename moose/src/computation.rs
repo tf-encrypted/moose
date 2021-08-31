@@ -735,9 +735,11 @@ operators![
     HostDiv,
     HostDot,
     HostMean,
+    HostSqrt,
     HostExpandDims,
     HostSlice,
     HostIndexAxis,
+    HostBitDec,
     HostReshape,
     HostSum,
     HostOnes,
@@ -889,6 +891,11 @@ pub struct HostMeanOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostSqrtOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostOnesOp {
     pub sig: Signature,
 }
@@ -948,6 +955,11 @@ pub struct HostIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostBitDecOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
