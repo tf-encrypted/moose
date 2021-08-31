@@ -987,28 +987,18 @@ kernel! {
 }
 
 impl CastOp {
-    fn encode_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: cs!(HostFloat64Tensor),
-    ) -> cs!(Fixed128Tensor)
+    fn encode_kernel<S: Session, T>(sess: &S, plc: &HostPlacement, x: T) -> cs!(Fixed128Tensor)
     where
-        HostFloat64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
-        HostPlacement: PlacementFixedpointEncode<S, cs!(HostFloat64Tensor), cs!(Fixed128Tensor)>,
+        HostPlacement: PlacementFixedpointEncode<S, T, cs!(Fixed128Tensor)>,
     {
         plc.fixedpoint_encode(sess, 27, &x) // TODO: Get the precision from python
     }
 
-    fn decode_kernel<S: Session>(
-        sess: &S,
-        plc: &HostPlacement,
-        x: cs!(Fixed128Tensor),
-    ) -> cs!(HostFloat64Tensor)
+    fn decode_kernel<S: Session, R>(sess: &S, plc: &HostPlacement, x: cs!(Fixed128Tensor)) -> R
     where
-        HostFloat64Tensor: KnownType<S>,
         Fixed128Tensor: KnownType<S>,
-        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), cs!(HostFloat64Tensor)>,
+        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), R>,
     {
         plc.fixedpoint_decode(sess, 27, &x) // TODO: Get the precision from python
     }
