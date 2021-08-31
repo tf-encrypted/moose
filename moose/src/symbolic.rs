@@ -177,6 +177,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostConcat(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            HostBitDec(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),

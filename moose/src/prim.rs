@@ -171,7 +171,7 @@ modelled!(PlacementKeyGen::gen_key, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp
 kernel! {
     PrimPrfKeyGenOp,
     [
-        (HostPlacement, () -> PrfKey => Self::kernel),
+        (HostPlacement, () -> PrfKey => [runtime] Self::kernel),
     ]
 }
 
@@ -187,7 +187,7 @@ modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[sync_key: 
 kernel! {
     PrimDeriveSeedOp,
     [
-        (HostPlacement, (PrfKey) -> Seed => attributes[sync_key] Self::kernel),
+        (HostPlacement, (PrfKey) -> Seed => [runtime] attributes[sync_key] Self::kernel),
     ]
 }
 
