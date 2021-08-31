@@ -1362,6 +1362,64 @@ macro_rules! modelled_alias {
     };
 }
 
+macro_rules! moose_type {
+
+    ($t:ident) => {
+        impl SymbolicType for $t {
+            type Type = Symbolic<$t>;
+        }
+
+        impl From<$t> for Symbolic<$t> {
+            fn from(x: $t) -> Self {
+                Symbolic::Concrete(x)
+            }
+        }
+
+        impl TryFrom<Symbolic<$t>> for $t {
+            type Error = crate::error::Error;
+            fn try_from(v: Symbolic<$t>) -> crate::error::Result<Self> {
+                match v {
+                    Symbolic::Concrete(x) => Ok(x),
+                    _ => Err(crate::error::Error::Unexpected), // TODO err message
+                }
+            }
+        }
+    };
+
+    ($t:ident, $p:ty) => {
+        impl<U> SymbolicType for $t<U>
+        where
+            U: SymbolicType,
+            <U as SymbolicType>::Type: Placed<Placement = $p>,
+        {
+            type Type = Symbolic<$t<<U as SymbolicType>::Type>>;
+        }
+
+        impl<U> From<$t<U>> for Symbolic<$t<U>>
+        where
+            U: Placed<Placement = $p>,
+        {
+            fn from(x: $t<U>) -> Self {
+                Symbolic::Concrete(x)
+            }
+        }
+
+        impl<U> TryFrom<Symbolic<$t<U>>> for $t<U>
+        where
+            U: Placed<Placement = $p>,
+        {
+            type Error = crate::error::Error;
+            fn try_from(v: Symbolic<$t<U>>) -> crate::error::Result<Self> {
+                match v {
+                    Symbolic::Concrete(x) => Ok(x),
+                    _ => Err(crate::error::Error::Unexpected), // TODO err message
+                }
+            }
+        }
+
+    };
+}
+
 pub mod additive;
 pub mod common;
 pub mod compilation;

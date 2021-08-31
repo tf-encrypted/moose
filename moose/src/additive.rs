@@ -23,8 +23,8 @@ use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractAdditiveTensor<R> {
-    pub shares: [R; 2],
+pub struct AbstractAdditiveTensor<HostRingT> {
+    pub shares: [HostRingT; 2],
 }
 
 pub type AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>;
@@ -33,17 +33,7 @@ pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
 
 pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
 
-impl SymbolicType for AdditiveRing64Tensor {
-    type Type = Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as SymbolicType>::Type>>;
-}
-
-impl SymbolicType for AdditiveRing128Tensor {
-    type Type = Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as SymbolicType>::Type>>;
-}
-
-impl SymbolicType for AdditiveBitTensor {
-    type Type = Symbolic<AbstractAdditiveTensor<<HostBitTensor as SymbolicType>::Type>>;
-}
+moose_type!(AbstractAdditiveTensor, HostPlacement);
 
 pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
 
@@ -71,9 +61,7 @@ pub struct AbstractAdditiveShape<S> {
 
 pub type AdditiveShape = AbstractAdditiveShape<HostShape>;
 
-impl SymbolicType for AdditiveShape {
-    type Type = Symbolic<AbstractAdditiveShape<<HostShape as SymbolicType>::Type>>;
-}
+moose_type!(AbstractAdditiveShape, HostPlacement);
 
 impl<S> Placed for AbstractAdditiveShape<S>
 where
@@ -89,50 +77,6 @@ where
 
         let owners = [owner0, owner1];
         Ok(AdditivePlacement { owners })
-    }
-}
-
-impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractAdditiveTensor<R>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<S> From<AbstractAdditiveShape<S>> for Symbolic<AbstractAdditiveShape<S>>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractAdditiveShape<S>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    type Error = crate::error::Error;
-    fn try_from(v: Symbolic<AbstractAdditiveTensor<R>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(crate::error::Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    type Error = crate::error::Error;
-    fn try_from(v: Symbolic<AbstractAdditiveShape<S>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(crate::error::Error::Unexpected), // TODO err message
-        }
     }
 }
 

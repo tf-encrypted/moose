@@ -76,10 +76,6 @@ impl RawShape {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostShape(pub RawShape, pub HostPlacement);
 
-impl SymbolicType for HostShape {
-    type Type = Symbolic<HostShape>;
-}
-
 impl Placed for HostShape {
     type Placement = HostPlacement;
 
@@ -174,99 +170,11 @@ pub type HostUint16Tensor = HostTensor<u16>;
 pub type HostUint32Tensor = HostTensor<u32>;
 pub type HostUint64Tensor = HostTensor<u64>;
 
-impl<T> SymbolicType for HostTensor<T> {
-    type Type = Symbolic<HostTensor<T>>;
-}
-
-impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostTensor<T>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl From<HostShape> for Symbolic<HostShape> {
-    fn from(x: HostShape) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostRing64Tensor> for Symbolic<HostRing64Tensor> {
-    fn from(x: HostRing64Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostRing128Tensor> for Symbolic<HostRing128Tensor> {
-    fn from(x: HostRing128Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<RingT: Placed> From<AbstractHostFixedTensor<RingT>>
-    for Symbolic<AbstractHostFixedTensor<RingT>>
-{
-    fn from(x: AbstractHostFixedTensor<RingT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostBitTensor> for Symbolic<HostBitTensor> {
-    fn from(x: HostBitTensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl TryFrom<Symbolic<HostBitTensor>> for HostBitTensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostBitTensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl TryFrom<Symbolic<HostRing64Tensor>> for HostRing64Tensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostRing64Tensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl TryFrom<Symbolic<HostRing128Tensor>> for HostRing128Tensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostRing128Tensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<RingT: Placed> TryFrom<Symbolic<AbstractHostFixedTensor<RingT>>>
-    for AbstractHostFixedTensor<RingT>
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractHostFixedTensor<RingT>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
-    fn from(x: HostTensor<T>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
+moose_type!(HostShape);
+moose_type!(HostBitTensor);
+moose_type!(HostRing64Tensor);
+moose_type!(HostRing128Tensor);
+moose_type!(AbstractHostFixedTensor, HostPlacement);
 
 impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
@@ -906,10 +814,6 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
 
-impl SymbolicType for HostBitTensor {
-    type Type = Symbolic<HostBitTensor>;
-}
-
 impl<S: Session> Tensor<S> for HostBitTensor {
     type Scalar = u8;
 }
@@ -1317,10 +1221,6 @@ pub struct AbstractHostFixedTensor<HostRingT>(pub HostRingT);
 
 pub type HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>;
 
-impl SymbolicType for HostFixed64Tensor {
-    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing64Tensor>>>;
-}
-
 impl<T> From<T> for HostFixed64Tensor
 where
     HostRing64Tensor: From<T>,
@@ -1331,10 +1231,6 @@ where
 }
 
 pub type HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>;
-
-impl SymbolicType for HostFixed128Tensor {
-    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing128Tensor>>>;
-}
 
 impl<T> From<T> for HostFixed128Tensor
 where
@@ -1361,14 +1257,6 @@ pub type HostRing64Tensor = AbstractHostRingTensor<u64>;
 
 /// Tensor for ring arithmetic over Z_{2^128}
 pub type HostRing128Tensor = AbstractHostRingTensor<u128>;
-
-impl SymbolicType for HostRing64Tensor {
-    type Type = Symbolic<HostRing64Tensor>;
-}
-
-impl SymbolicType for HostRing128Tensor {
-    type Type = Symbolic<HostRing128Tensor>;
-}
 
 impl CanonicalType for HostBitTensor {
     type Type = HostBitTensor;
