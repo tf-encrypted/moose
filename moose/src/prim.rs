@@ -1,4 +1,6 @@
-use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
+use crate::computation::{
+    HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, SymbolicType, TAG_BYTES,
+};
 use crate::error::Result;
 use crate::kernels::{
     NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
@@ -16,6 +18,10 @@ pub struct RawSeed(pub [u8; 16]);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Seed(pub RawSeed, pub HostPlacement);
+
+impl SymbolicType for Seed {
+    type Type = Symbolic<Seed>;
+}
 
 impl Placed for Seed {
     type Placement = HostPlacement;
@@ -72,6 +78,10 @@ impl RawPrfKey {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrfKey(pub RawPrfKey, pub HostPlacement);
+
+impl SymbolicType for PrfKey {
+    type Type = Symbolic<PrfKey>;
+}
 
 impl Placed for PrfKey {
     type Placement = HostPlacement;
@@ -161,7 +171,7 @@ modelled!(PlacementKeyGen::gen_key, HostPlacement, () -> PrfKey, PrimPrfKeyGenOp
 kernel! {
     PrimPrfKeyGenOp,
     [
-        (HostPlacement, () -> PrfKey => Self::kernel),
+        (HostPlacement, () -> PrfKey => [runtime] Self::kernel),
     ]
 }
 
@@ -177,7 +187,7 @@ modelled!(PlacementDeriveSeed::derive_seed, HostPlacement, attributes[sync_key: 
 kernel! {
     PrimDeriveSeedOp,
     [
-        (HostPlacement, (PrfKey) -> Seed => attributes[sync_key] Self::kernel),
+        (HostPlacement, (PrfKey) -> Seed => [runtime] attributes[sync_key] Self::kernel),
     ]
 }
 

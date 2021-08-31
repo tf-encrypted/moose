@@ -1,22 +1,21 @@
 use crate::additive::{
-    AbstractAdditiveShape, AbstractAdditiveTensor, AdditiveBitTensor, AdditiveRing128Tensor,
-    AdditiveRing64Tensor, AdditiveShape,
+    AdditiveBitTensor, AdditiveRing128Tensor, AdditiveRing64Tensor, AdditiveShape,
 };
 use crate::error::{Error, Result};
-use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor, FixedTensor};
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::host::{
-    HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
-    HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
+    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor,
+    HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor,
+    HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor,
+    HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
-    AbstractReplicatedSetup, AbstractReplicatedShape, AbstractReplicatedTensor,
-    ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup,
-    ReplicatedShape,
+    ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
+    ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedSetup, ReplicatedShape,
 };
-use crate::symbolic::{Symbolic, SymbolicSession};
+use crate::symbolic::Symbolic;
 use byteorder::{ByteOrder, LittleEndian};
 use derive_more::Display;
 use macros::ShortName;
@@ -125,6 +124,14 @@ impl SessionId {
         sodiumoxide::randombytes::randombytes_into(&mut raw);
         SessionId(raw)
     }
+}
+
+pub trait SymbolicType {
+    type Type;
+}
+
+pub trait CanonicalType {
+    type Type;
 }
 
 pub trait KnownType<S: Session> {
@@ -238,7 +245,7 @@ impl From<u128> for Constant {
 // Values are anything that can flow along the edges of the computation graph.
 // Some values are just placed constants, but some could be more complex.
 macro_rules! values {
-    ($(($val:ident, $sym_val:ty),)+) => {
+    ($($val:ident,)+) => {
 
         #[derive(Serialize, Deserialize, PartialEq, Eq, Copy, Clone, Debug, Display)]
         pub enum Ty {
@@ -332,7 +339,7 @@ macro_rules! values {
 
         #[derive(PartialEq, Clone, Debug)]
         pub enum SymbolicValue {
-            $($val($sym_val),)+
+            $($val(<$val as SymbolicType>::Type),)+
         }
 
         impl SymbolicValue {
@@ -351,15 +358,15 @@ macro_rules! values {
         }
 
         $(
-        impl From<$sym_val> for SymbolicValue {
-            fn from(x: $sym_val) -> Self {
+        impl From<<$val as SymbolicType>::Type> for SymbolicValue {
+            fn from(x: <$val as SymbolicType>::Type) -> Self {
                 SymbolicValue::$val(x)
             }
         }
         )+
 
         $(
-        impl TryFrom<SymbolicValue> for $sym_val {
+        impl TryFrom<SymbolicValue> for <$val as SymbolicType>::Type {
             type Error = Error;
             fn try_from(v: SymbolicValue) -> Result<Self> {
                 match v {
@@ -375,270 +382,47 @@ macro_rules! values {
 
         $(
         impl KnownType<crate::symbolic::SymbolicSession> for $val {
-            type Type = $sym_val;
+            type Type = <$val as SymbolicType>::Type;
             const TY: Ty = Ty::$val;
         }
         )+
     };
 }
 
-impl From<HostShape> for Symbolic<HostShape> {
-    fn from(x: HostShape) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostRing64Tensor> for Symbolic<HostRing64Tensor> {
-    fn from(x: HostRing64Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostRing128Tensor> for Symbolic<HostRing128Tensor> {
-    fn from(x: HostRing128Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostBitTensor> for Symbolic<HostBitTensor> {
-    fn from(x: HostBitTensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<R> From<AbstractReplicatedTensor<R>> for Symbolic<AbstractReplicatedTensor<R>>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractReplicatedTensor<R>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<RingT, RepT> From<FixedTensor<RingT, RepT>> for Symbolic<FixedTensor<RingT, RepT>>
-where
-    RingT: Placed<Placement = HostPlacement>,
-    RepT: Placed<Placement = ReplicatedPlacement>,
-{
-    fn from(x: FixedTensor<RingT, RepT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
-where
-    K: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractReplicatedSetup<K>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<S> From<AbstractReplicatedShape<S>> for Symbolic<AbstractReplicatedShape<S>>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractReplicatedShape<S>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractAdditiveTensor<R>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<S> From<AbstractAdditiveShape<S>> for Symbolic<AbstractAdditiveShape<S>>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractAdditiveShape<S>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
-    fn from(x: HostTensor<T>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractAdditiveTensor<R>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<R> TryFrom<Symbolic<AbstractReplicatedTensor<R>>> for AbstractReplicatedTensor<R>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedTensor<R>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<RingT, RepT> TryFrom<Symbolic<FixedTensor<RingT, RepT>>> for FixedTensor<RingT, RepT>
-where
-    RingT: Placed<Placement = HostPlacement>,
-    RepT: Placed<Placement = ReplicatedPlacement>,
-{
-    type Error = ();
-    fn try_from(v: Symbolic<FixedTensor<RingT, RepT>>) -> std::result::Result<Self, ()> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(()),
-        }
-    }
-}
-
-impl<K> TryFrom<Symbolic<AbstractReplicatedSetup<K>>> for AbstractReplicatedSetup<K>
-where
-    K: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedSetup<K>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<S> TryFrom<Symbolic<AbstractReplicatedShape<S>>> for AbstractReplicatedShape<S>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedShape<S>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractAdditiveShape<S>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl TryFrom<Symbolic<HostBitTensor>> for HostBitTensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostBitTensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostTensor<T>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
 values![
-    (Unit, Symbolic<Unit>),
-    (HostShape, Symbolic<HostShape>),
-    (Seed, Symbolic<Seed>),
-    (PrfKey, Symbolic<PrfKey>),
-    (String, Symbolic<String>),
-    (HostBitTensor, Symbolic<HostBitTensor>),
-    (HostRing64Tensor, Symbolic<HostRing64Tensor>),
-    (HostRing128Tensor, Symbolic<HostRing128Tensor>),
-    (HostFloat32Tensor, Symbolic<HostFloat32Tensor>),
-    (HostFloat64Tensor, Symbolic<HostFloat64Tensor>),
-    (HostInt8Tensor, Symbolic<HostInt8Tensor>),
-    (HostInt16Tensor, Symbolic<HostInt16Tensor>),
-    (HostInt32Tensor, Symbolic<HostInt32Tensor>),
-    (HostInt64Tensor, Symbolic<HostInt64Tensor>),
-    (HostUint8Tensor, Symbolic<HostUint8Tensor>),
-    (HostUint16Tensor, Symbolic<HostUint16Tensor>),
-    (HostUint32Tensor, Symbolic<HostUint32Tensor>),
-    (HostUint64Tensor, Symbolic<HostUint64Tensor>),
-    (
-        Fixed64Tensor,
-        Symbolic<
-            FixedTensor<
-                <HostRing64Tensor as KnownType<SymbolicSession>>::Type,
-                <ReplicatedRing64Tensor as KnownType<SymbolicSession>>::Type,
-            >,
-        >
-    ),
-    (
-        Fixed128Tensor,
-        Symbolic<
-            FixedTensor<
-                <HostRing128Tensor as KnownType<SymbolicSession>>::Type,
-                <ReplicatedRing128Tensor as KnownType<SymbolicSession>>::Type,
-            >,
-        >
-    ),
-    (
-        ReplicatedRing64Tensor,
-        Symbolic<AbstractReplicatedTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        ReplicatedRing128Tensor,
-        Symbolic<AbstractReplicatedTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        ReplicatedBitTensor,
-        Symbolic<AbstractReplicatedTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        ReplicatedSetup,
-        Symbolic<AbstractReplicatedSetup<<PrfKey as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        ReplicatedShape,
-        Symbolic<AbstractReplicatedShape<<HostShape as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        AdditiveRing64Tensor,
-        Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        AdditiveRing128Tensor,
-        Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        AdditiveShape,
-        Symbolic<AbstractAdditiveShape<<HostShape as KnownType<SymbolicSession>>::Type>>
-    ),
-    (
-        AdditiveBitTensor,
-        Symbolic<AbstractAdditiveTensor<<HostBitTensor as KnownType<SymbolicSession>>::Type>>
-    ),
+    Unit,
+    HostShape,
+    Seed,
+    PrfKey,
+    String,
+    HostBitTensor,
+    HostRing64Tensor,
+    HostRing128Tensor,
+    HostFixed64Tensor,
+    HostFixed128Tensor,
+    HostFloat32Tensor,
+    HostFloat64Tensor,
+    HostInt8Tensor,
+    HostInt16Tensor,
+    HostInt32Tensor,
+    HostInt64Tensor,
+    HostUint8Tensor,
+    HostUint16Tensor,
+    HostUint32Tensor,
+    HostUint64Tensor,
+    Fixed64Tensor,
+    Fixed128Tensor,
+    ReplicatedRing64Tensor,
+    ReplicatedRing128Tensor,
+    ReplicatedBitTensor,
+    ReplicatedFixed64Tensor,
+    ReplicatedFixed128Tensor,
+    ReplicatedSetup,
+    ReplicatedShape,
+    AdditiveBitTensor,
+    AdditiveRing64Tensor,
+    AdditiveRing128Tensor,
+    AdditiveShape,
 ];
 
 // A macros to define something common for all the possible values
@@ -664,14 +448,18 @@ macro_rules! for_all_values {( $($rules:tt)* ) => (
         HostUint16Tensor,
         HostUint32Tensor,
         HostUint64Tensor,
-        Fixed64Tensor,
-        Fixed128Tensor
+        HostFixed64Tensor,
+        HostFixed128Tensor
     }
 )}
 
 // Unit is still special. Placed unit is just a host placement.
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Unit(pub HostPlacement);
+
+impl SymbolicType for Unit {
+    type Type = Symbolic<Unit>;
+}
 
 impl Placed for Unit {
     type Placement = HostPlacement;
@@ -963,6 +751,9 @@ operators![
     RingMul,
     RingDot,
     RingSum,
+    RingFixedpointMean,
+    RingFixedpointEncode,
+    RingFixedpointDecode,
     RingSample,
     RingSampleSeeded,
     RingShl,
@@ -984,9 +775,6 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
-    FixedpointRingEncode,
-    FixedpointRingDecode,
-    FixedpointRingMean,
     // Additive operations
     AdtReveal,
     AdtFill,
@@ -1228,6 +1016,14 @@ pub struct RingSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RingFixedpointMeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingSampleOp {
     pub sig: Signature,
     pub max_value: Option<u64>,
@@ -1323,7 +1119,7 @@ pub struct FixedpointDotOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FixedpointTruncPrOp {
     pub sig: Signature,
-    pub precision: u32,
+    pub precision: u32, // TODO(Morten) rename to amount?
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1341,23 +1137,15 @@ pub struct FixedpointSumOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedpointRingEncodeOp {
+pub struct RingFixedpointEncodeOp {
     pub sig: Signature,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedpointRingDecodeOp {
+pub struct RingFixedpointDecodeOp {
     pub sig: Signature,
-    pub scaling_base: u64,
-    pub scaling_exp: u32,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct FixedpointRingMeanOp {
-    pub sig: Signature,
-    pub axis: Option<u32>,
     pub scaling_base: u64,
     pub scaling_exp: u32,
 }
@@ -1442,7 +1230,8 @@ pub struct RepDotOp {
 pub struct RepMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
-    pub precision: u64,
+    pub scaling_base: u64,
+    pub scaling_exp: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
