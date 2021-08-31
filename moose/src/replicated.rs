@@ -2027,6 +2027,31 @@ where
     }
 }
 
+trait PrefixOr<S: Session, SetupT> {
+    fn prefix_or(&self, sess: &S, setup: SetupT, x: ReplicatedBitTensor) -> ReplicatedBitTensor;
+}
+
+impl<S: Session, SetupT> PrefixOr<S, SetupT> for ReplicatedPlacement
+where
+    ReplicatedBitTensor: KnownType<S>,
+    ReplicatedBitTensor: Into<st!(ReplicatedBitTensor)>,
+    st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
+    ReplicatedPlacement: PlacementMulSetup<S, SetupT, st!(ReplicatedBitTensor), st!(ReplicatedBitTensor), st!(ReplicatedBitTensor)>,
+{
+    /// Prefix Or protocol
+    ///
+    /// `x` is a replicated bit tensor.
+    fn prefix_or(&self, sess: &S, setup: SetupT, x: ReplicatedBitTensor) -> ReplicatedBitTensor {
+        // OR(x, y) = (x xor y) xor (x and y)
+
+        let rep = self;
+        let x_and_x = rep.mul_setup(sess, &setup, &x.clone().into(),&x.into());
+        x_and_x.into()
+    }
+}
+
+
+
 impl RingInjectOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitT, BitT, ShapeT>(
         sess: &S,
