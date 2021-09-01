@@ -490,6 +490,7 @@ modelled!(PlacementDiag::diag, HostPlacement, (HostInt64Tensor) -> HostInt64Tens
 modelled!(PlacementDiag::diag, HostPlacement, (HostUint16Tensor) -> HostUint16Tensor, HostDiagOp);
 modelled!(PlacementDiag::diag, HostPlacement, (HostUint32Tensor) -> HostUint32Tensor, HostDiagOp);
 modelled!(PlacementDiag::diag, HostPlacement, (HostUint64Tensor) -> HostUint64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostBitTensor) -> HostBitTensor, HostDiagOp);
 modelled!(PlacementDiag::diag, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostDiagOp);
 modelled!(PlacementDiag::diag, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostDiagOp);
 
@@ -505,6 +506,7 @@ kernel! {
         (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
     ]
@@ -527,6 +529,15 @@ impl HostDiagOp {
     ) -> AbstractHostRingTensor<T> {
         let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
         AbstractHostRingTensor::<T>(diag, plc.clone())
+    }
+
+    pub fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+    ) -> HostBitTensor {
+        let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
+        HostBitTensor(diag, plc.clone())
     }
 }
 
