@@ -2,8 +2,8 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
-    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp, RepMulOp,
-    RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp,
+    RepAbsOp, RepAddOp, RepDiagOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp,
+    RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp,
     ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
@@ -13,11 +13,11 @@ use crate::host::{
 };
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract,
-    PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
-    PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup,
-    PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject,
-    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
-    PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementDaBitProvider, PlacementDeriveSeed, PlacementDiag, PlacementDot, PlacementDotSetup,
+    PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul,
+    PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
     PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
@@ -1676,6 +1676,48 @@ impl RepIndexAxisOp {
 
         let z22 = player2.index_axis(sess, axis, index, x22);
         let z02 = player2.index_axis(sess, axis, index, x02);
+
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+}
+
+modelled!(PlacementDiag::diag, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDiagOp);
+modelled!(PlacementDiag::diag, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDiagOp);
+modelled!(PlacementDiag::diag, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, RepDiagOp);
+
+kernel! {
+    RepDiagOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl RepDiagOp {
+    fn kernel<S: Session, RingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepTen<RingT>,
+    ) -> RepTen<RingT>
+    where
+        HostPlacement: PlacementDiag<S, RingT, RingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.diag(sess, x00);
+        let z10 = player0.diag(sess, x10);
+
+        let z11 = player1.diag(sess, x11);
+        let z21 = player1.diag(sess, x21);
+
+        let z22 = player2.diag(sess, x22);
+        let z02 = player2.diag(sess, x02);
 
         RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],

@@ -802,6 +802,7 @@ operators![
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
+    RepDiag,
 ];
 
 pub trait HasShortName {
@@ -1280,6 +1281,11 @@ pub struct RepIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepDiagOp {
+    pub sig: Signature,
 }
 
 pub trait KnownPlacement {

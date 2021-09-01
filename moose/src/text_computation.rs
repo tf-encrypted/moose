@@ -1291,6 +1291,7 @@ impl ToTextual for Operator {
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
+            RepDiag(op) => op.to_textual(),
         }
     }
 }
@@ -1437,6 +1438,7 @@ impl_to_textual!(
     index,
     sig
 );
+impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
