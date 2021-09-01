@@ -10,9 +10,6 @@ from pymoose import edsl
 from pymoose import elk_compiler
 from pymoose.computation import utils
 from pymoose.computation.standard import StringType
-from pymoose.deprecated.compiler.fixedpoint.host_encoding_pass import HostEncodingPass
-from pymoose.deprecated.compiler.fixedpoint.host_lowering_pass import HostLoweringPass
-from pymoose.deprecated.compiler.replicated.encoding_pass import ReplicatedEncodingPass
 from pymoose.logger import get_logger
 from pymoose.testing import LocalMooseRuntime
 
@@ -161,22 +158,7 @@ class LinearRegressionExample(parameterized.TestCase):
 
     def test_linear_regression_rust_compiler(self):
         linear_comp, placements = self._build_linear_regression_example("mse")
-
-        # Compile in Python
-        concrete_comp = edsl.trace_and_compile(
-            linear_comp,
-            ring=128,
-            compiler_passes=[
-                HostEncodingPass(),
-                HostLoweringPass(),
-                ReplicatedEncodingPass(),
-                # ReplicatedOpsPass(),
-                # HostRingLoweringPass(),
-                # ReplicatedLoweringPass(ring=128),
-                # PruningPass(),
-                # NetworkingPass(),
-            ],
-        )
+        concrete_comp = edsl.trace(linear_comp)
         comp_bin = utils.serialize_computation(concrete_comp)
         # Compile in Rust
         rust_compiled = elk_compiler.compile_computation(

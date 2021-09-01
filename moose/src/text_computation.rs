@@ -793,6 +793,11 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "ReplicatedSetup" => Ok((i, Ty::ReplicatedSetup)),
         "Additive64Tensor" => Ok((i, Ty::AdditiveRing64Tensor)),
         "Additive128Tensor" => Ok((i, Ty::AdditiveRing128Tensor)),
+        "ReplicatedShape" => Ok((i, Ty::ReplicatedShape)),
+        "AdditiveBitTensor" => Ok((i, Ty::AdditiveBitTensor)),
+        "AdditiveShape" => Ok((i, Ty::AdditiveShape)),
+        "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
+        "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
         "Unit" => Ok((i, Ty::Unit)),
         "Float32" => Ok((i, Ty::Float32)),
         "Float64" => Ok((i, Ty::Float64)),
@@ -1209,6 +1214,7 @@ impl ToTextual for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.to_textual(),
+            Cast(op) => op.to_textual(),
             Load(op) => op.to_textual(),
             Save(op) => op.to_textual(),
             Send(op) => op.to_textual(),
@@ -1312,6 +1318,7 @@ macro_rules! impl_to_textual {
 
 impl_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
 impl_to_textual!(IdentityOp, "{op}: {}", sig);
+impl_to_textual!(CastOp, "{op}: {}", sig);
 impl_to_textual!(LoadOp, "{op}: {}", sig);
 impl_to_textual!(SaveOp, "{op}: {}", sig);
 impl_to_textual!(
@@ -1641,8 +1648,8 @@ impl ToTextual for Ty {
             Ty::AdditiveRing64Tensor => "Additive64Tensor",
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
-            // TODO
-            Ty::Fixed64Tensor | Ty::Fixed128Tensor => unimplemented!(),
+            Ty::Fixed64Tensor => "Fixed64Tensor",
+            Ty::Fixed128Tensor => "Fixed128Tensor",
         }
         .to_string()
     }
@@ -1824,7 +1831,8 @@ use_debug_to_textual!(bool);
 
 impl ToTextual for SliceInfo {
     fn to_textual(&self) -> String {
-        unimplemented!()
+        // TODO: Find a good textual format for the SliceInfo
+        format!("{:?}", self.0)
     }
 }
 
