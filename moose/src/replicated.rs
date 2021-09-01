@@ -13,13 +13,13 @@ use crate::host::{
 };
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitDec,
-    PlacementBitDecSetup, PlacementBitExtract, PlacementDaBitProvider, PlacementDeriveSeed,
-    PlacementDot, PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean,
-    PlacementMsb, PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace,
-    PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementRotateRight,
-    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
-    PlacementShl, PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
+    PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot,
+    PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb,
+    PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt,
+    PlacementReveal, PlacementRingInject, PlacementRotateRight, PlacementSampleUniformSeeded,
+    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShl, PlacementShr,
+    PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
+    PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
@@ -1781,80 +1781,32 @@ modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRi
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMsbOp);
 
 impl RepMsbOp {
-    fn bit_kernel<S: Session, SetupT, RingT, BitTensorT, ReplicatedBitTensorT, ShapeT>(
+    fn bit_kernel<S: Session, SetupT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
         x: RepTen<RingT>,
-    ) -> ReplicatedBitTensorT
+    ) -> st!(RepTen<HostBitTensor>)
     where
         RingT: RingSize,
-        BitTensorT: Clone,
-        ReplicatedBitTensorT: From<RepTen<BitTensorT>>,
-        ReplicatedBitTensorT: Clone,
-        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
-        HostPlacement: RingBitDecompose<S, RingT>,
-        HostPlacement: PlacementBitExtract<S, RingT, BitTensorT>,
-        HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        HostPlacement: PlacementFill<S, ShapeT, BitTensorT>,
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitTensorT, ReplicatedBitTensorT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
-        ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitTensorT>,
+
+        RepTen<RingT>: CanonicalType,
+        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+
+        HostBitTensor: KnownType<S>,
+        RepTen<HostBitTensor>: KnownType<S>,
+
+        ReplicatedPlacement:
+            PlacementBitDecSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<HostBitTensor>)>,
+        ReplicatedPlacement:
+            PlacementIndex<S, st!(RepTen<HostBitTensor>), st!(RepTen<HostBitTensor>)>,
     {
-        let (player0, player1, player2) = rep.host_placements();
-        let RepTen {
-            shares: [[x00, x10], [x11, x21], [x22, _x02]],
-        } = &x;
-
-        let left = with_context!(player0, sess, x00 + x10);
-        let left_ring_bs = player0.bit_decompose_into_vec(sess, &left);
-
-        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
-        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
-        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
-
-        // transform x2 into boolean sharing
-        let x2_on_1: Vec<_> = player1
-            .bit_decompose_into_vec(sess, x21)
-            .iter()
-            .map(|item| player1.bit_extract(sess, 0, item))
-            .collect();
-        let x2_on_2: Vec<_> = player2
-            .bit_decompose_into_vec(sess, x22)
-            .iter()
-            .map(|item| player2.bit_extract(sess, 0, item))
-            .collect();
-
-        // bit-decompose bsl
-        let bsl: Vec<_> = left_ring_bs
-            .iter()
-            .map(|item| player0.bit_extract(sess, 0, item))
-            .collect();
-
-        let rep_bsl: Vec<_> = bsl
-            .iter()
-            .map(|item| rep.share(sess, &setup, item))
-            .collect();
-
-        let rep_bsr: Vec<_> = (0..RingT::SIZE)
-            .map(|i| {
-                RepTen {
-                    shares: [
-                        [p0_zero.clone(), p0_zero.clone()],
-                        [p1_zero.clone(), x2_on_1[i].clone()],
-                        [x2_on_2[i].clone(), p2_zero.clone()],
-                    ],
-                }
-                .into()
-            })
-            .collect();
-
-        let bits = rep.binary_adder(sess, setup, rep_bsl, rep_bsr);
-        bits[bits.len() - 1].clone()
+        let bits = rep.bit_decompose(sess, &setup, &x.into());
+        rep.index_axis(sess, 0, RingT::SIZE - 1, &bits)
     }
-}
 
-impl RepMsbOp {
     fn ring_kernel<S: Session, SetupT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1978,118 +1930,7 @@ impl ShapeOp {
     }
 }
 
-trait BinaryAdder<S: Session, SetupT, R> {
-    fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<R>, y: Vec<R>) -> Vec<R>;
-}
-
-/// Binary addition protocol
-impl<S: Session, SetupT, RT> BinaryAdder<S, SetupT, RT> for ReplicatedPlacement
-where
-    RT: Clone,
-    RT: Placed<Placement = ReplicatedPlacement>,
-    AbstractReplicatedShape<HostShape>: KnownType<S>,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RT, RT, RT>,
-    ReplicatedPlacement: PlacementAdd<S, RT, RT, RT>,
-    ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<HostShape>), RT>,
-    ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<HostShape>)>,
-{
-    /// Binary addition protocol
-    ///
-    /// `x` and `y` are collections of tensors. The number of tensors matches the ring size (64 or 128)
-    fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<RT>, y: Vec<RT>) -> Vec<RT> {
-        #![allow(clippy::many_single_char_names)]
-
-        assert_eq!(x.len(), y.len());
-        assert!(!x.is_empty());
-
-        let ring_size = x.len();
-        let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
-
-        let rep = self;
-
-        let bitwise_and = |a: &Vec<RT>, b: &Vec<RT>| -> Vec<RT> {
-            assert!(a.len() == ring_size);
-            assert!(b.len() == ring_size);
-            a.iter()
-                .zip(b.iter())
-                .map(|(x, y)| rep.mul_setup(sess, &setup, x, y))
-                .collect()
-        };
-
-        let bitwise_xor = |a: &Vec<RT>, b: &Vec<RT>| -> Vec<RT> {
-            assert!(a.len() == ring_size);
-            assert!(b.len() == ring_size);
-            a.iter()
-                .zip(b.iter())
-                .map(|(x, y)| rep.add(sess, x, y))
-                .collect()
-        };
-        // g is part of the generator set, p propagator set
-        // A few helpful diagrams to understand what is happening here:
-        // https://www.chessprogramming.org/Kogge-Stone_Algorithm or here: https://inst.eecs.berkeley.edu/~eecs151/sp19/files/lec20-adders.pdf
-
-        // P[i:j] = propagate bits for positions [i...i+j]
-        // G[i:j] = generator bits for positions [i...i+j]
-
-        // consider we have inputs a, b to the P,G computing gate
-        // P = P_a & P_b
-        // G = G_b + G_a & P_b
-        // C_{i+1} = G_i + P_i & C_i
-
-        // P, G can be computed in a tree fashion, performing ops on chunks of len 2^i
-        // Note the first level is computed as P0 = x ^ y, G0 = x & y;
-
-        // Perform `g = x * y` for every tensor
-        let mut g = bitwise_and(&x, &y);
-
-        // Perform `p_store = x + y` (just a helper to avoid compute bitwise_xor() twice)
-        let p_store = bitwise_xor(&x, &y);
-
-        let rep_shape = rep.shape(sess, &x[0]);
-
-        // We will need tensors of zeros later
-        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
-
-        let mut p = p_store.clone();
-
-        // computes a >> amount
-        let rotate_left = |a: &Vec<RT>, amount: usize| -> Vec<RT> {
-            assert!(amount <= a.len());
-            (0..a.len())
-                .map(|i| {
-                    if i < a.len() - amount {
-                        a[amount + i].clone()
-                    } else {
-                        zero.clone()
-                    }
-                })
-                .collect()
-        };
-
-        // For chunk of length 2^i...
-        for i in 0..log_r {
-            // Compute g1 and p1, zeroed out up until the current bit
-            let g1 = rotate_left(&g, 1 << i);
-            let p1 = rotate_left(&p, 1 << i);
-
-            // `p_and_g = p1 * g1` for every tensor
-            let p_and_g = bitwise_and(&p1, &g1);
-
-            // Update `g = g + p_and_g`
-            g = bitwise_xor(&g, &p_and_g);
-
-            // update `p = p * p1`
-            p = bitwise_and(&p, &p1);
-        }
-
-        // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
-        let c = rotate_left(&g, 1);
-        // final result is `z = c + p_store` (which is the original `x + y`)
-        bitwise_xor(&c, &p_store)
-    }
-}
-
-trait TenBinaryAdder<S: Session, SetupT, RepBitT> {
+trait BinaryAdder<S: Session, SetupT, RepBitT> {
     fn ten_binary_adder(
         &self,
         sess: &S,
@@ -2101,7 +1942,7 @@ trait TenBinaryAdder<S: Session, SetupT, RepBitT> {
 }
 
 /// Binary addition protocol for tensors
-impl<S: Session, SetupT, RepBitT> TenBinaryAdder<S, SetupT, RepBitT> for ReplicatedPlacement
+impl<S: Session, SetupT, RepBitT> BinaryAdder<S, SetupT, RepBitT> for ReplicatedPlacement
 where
     RepBitT: Clone,
     ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
@@ -2121,8 +1962,25 @@ where
         let rep = self;
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
 
+        // g is part of the generator set, p propagator set
+        // A few helpful diagrams to understand what is happening here:
+        // https://www.chessprogramming.org/Kogge-Stone_Algorithm or here: https://inst.eecs.berkeley.edu/~eecs151/sp19/files/lec20-adders.pdf
+
+        // P[i:j] = propagate bits for positions [i...i+j]
+        // G[i:j] = generator bits for positions [i...i+j]
+
+        // consider we have inputs a, b to the P,G computing gate
+        // P = P_a & P_b
+        // G = G_b + G_a & P_b
+        // C_{i+1} = G_i + P_i & C_i
+
+        // P, G can be computed in a tree fashion, performing ops on chunks of len 2^i
+        // Note the first level is computed as P0 = x ^ y, G0 = x & y;
+
+        // Perform `g = x * y` for every tensor
         let mut g = rep.mul_setup(sess, &setup, &x, &y);
 
+        // Perform `p_store = x + y` (just a helper to avoid compute xor() twice)
         let p_store = rep.add(sess, &x, &y);
         let mut p = p_store.clone();
 
@@ -2132,15 +1990,25 @@ where
         // 2) stack variable length of replicated tensors (variadic kernels + stack op)
 
         for i in 0..log_r {
+            // computes p >> (1<<i)
             let p1 = rep.rotate_right(sess, 1 << i, ring_size, &p);
+            // computes g >> (1<<i)
             let g1 = rep.rotate_right(sess, 1 << i, ring_size, &g);
 
+            // `p_and_g = p1 * g1` for every tensor
             let p_and_g = rep.mul_setup(sess, &setup, &p1, &g1);
+
+            // Update `g = g + p_and_g`
             g = rep.add(sess, &g, &p_and_g);
+
+            // update `p = p * p1`
             p = rep.mul_setup(sess, &setup, &p, &p1);
         }
+
+        // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
         let c = rep.rotate_right(sess, 1, ring_size, &g);
 
+        // final result is `z = c + p_store` (which is the original `x + y`)
         rep.add(sess, &c, &p_store)
     }
 }
@@ -2231,7 +2099,7 @@ impl RepBitDecOp {
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementFill<S, ShapeT, BitT>,
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitT, ReplicatedBitT>,
-        ReplicatedPlacement: TenBinaryAdder<S, SetupT, ReplicatedBitT>,
+        ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitT>,
         ReplicatedPlacement: PlacementIndex<S, ReplicatedBitT, ReplicatedBitT>,
     {
         let (player0, player1, player2) = rep.host_placements();
@@ -2260,8 +2128,7 @@ impl RepBitDecOp {
         }
         .into();
 
-        let bits = rep.ten_binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE);
-        bits
+        rep.ten_binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE)
     }
 }
 
@@ -2372,34 +2239,6 @@ where
         }
     }
 }
-
-// trait ShapeSlicer<S: Session, ShapeT> {
-//     fn slice_shape(
-//         &self,
-//         sess: &S,
-//         shape: &AbstractReplicatedShape<ShapeT>,
-//     ) -> AbstractReplicatedShape<ShapeT>;
-// }
-
-// impl<S: Session> ShapeSlicer<S, cs!(HostShape)> for ReplicatedPlacement
-// where
-//     HostShape: KnownType<S>,
-//     cs!(HostShape): Into<HostShape>,
-// {
-//     fn slice_shape(
-//         &self,
-//         sess: &S,
-//         shape: &AbstractReplicatedShape<cs!(HostShape)>,
-//     ) -> AbstractReplicatedShape<cs!(HostShape)> {
-
-//         let (player0, player1, player2) = self.host_placements();
-//         let AbstractReplicatedShape {
-//             shapes: [shape0, shape1, shape2],
-//         } = shape;
-//         shape0.into()[
-
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
@@ -3022,10 +2861,7 @@ mod tests {
 
         let result: ReplicatedBitTensor = rep.bit_decompose(&sess, &setup, &x_shared);
         let opened_result = alice.reveal(&sess, &result);
-        assert_eq!(
-            opened_result,
-            HostBitTensor::from_raw_plc(zs, alice.clone())
-        );
+        assert_eq!(opened_result, HostBitTensor::from_raw_plc(zs, alice));
     }
 
     #[rstest]
