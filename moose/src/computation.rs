@@ -803,6 +803,7 @@ operators![
     RepIndexAxis,
     RepSlice,
     RepBitDec,
+    RepRotateRight,
 ];
 
 pub trait HasShortName {
@@ -945,6 +946,13 @@ pub struct HostSliceOp {
 pub struct RepSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepRotateRightOp {
+    pub sig: Signature,
+    pub amount: usize,
+    pub bit_length: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

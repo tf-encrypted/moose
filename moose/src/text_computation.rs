@@ -1286,6 +1286,7 @@ impl ToTextual for Operator {
             RepIndexAxis(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
+            RepRotateRight(op) => op.to_textual(),
         }
     }
 }
@@ -1439,6 +1440,7 @@ impl_to_textual!(
 );
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
+impl_to_textual!(RepRotateRightOp, "{op}: {} {} {}", sig, amount, bit_length);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {

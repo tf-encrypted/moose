@@ -2482,8 +2482,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::kernels::PlacementRingInject;
-
     use super::*;
 
     #[test]

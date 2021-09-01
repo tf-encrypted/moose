@@ -3,26 +3,25 @@ use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
     RepAbsOp, RepAddOp, RepBitDecOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp,
-    RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSliceOp, RepSubOp, RepSumOp,
-    RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
+    RepMulOp, RepRevealOp, RepRotateRightOp, RepSetupOp, RepShareOp, RepShlOp, RepSliceOp,
+    RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{
     AbstractHostFixedTensor, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, SliceInfo, SliceInfoElem,
+    HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, SliceInfo,
 };
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitDec,
     PlacementBitDecSetup, PlacementBitExtract, PlacementDaBitProvider, PlacementDeriveSeed,
     PlacementDot, PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean,
     PlacementMsb, PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace,
-    PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementSampleUniformSeeded,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShl, PlacementShr,
-    PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
-    PlacementZeros, Session, Tensor,
+    PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementRotateRight,
+    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
+    PlacementShl, PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
-use aes::cipher::generic_array::typenum::Abs;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
@@ -1720,6 +1719,52 @@ impl RepSliceOp {
     }
 }
 
+modelled!(PlacementRotateRight::rotate_right, ReplicatedPlacement, attributes[amount: usize, bit_length: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, RepRotateRightOp);
+
+kernel! {
+    RepRotateRightOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] attributes[amount, bit_length] Self::kernel),
+    ]
+}
+
+impl RepRotateRightOp {
+    fn kernel<S: Session>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        amount: usize,
+        bit_length: usize,
+        x: RepTen<HostBitTensor>,
+    ) -> st!(ReplicatedBitTensor)
+    where
+        HostBitTensor: KnownType<S>,
+        HostBitTensor: Into<st!(HostBitTensor)>,
+        RepTen<HostBitTensor>: KnownType<S>,
+        RepTen<st!(HostBitTensor)>: Into<st!(ReplicatedBitTensor)>,
+
+        HostPlacement: PlacementRotateRight<S, st!(HostBitTensor), st!(HostBitTensor)>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        let z00 = player0.rotate_right(sess, amount, bit_length, &x00.into());
+        let z10 = player0.rotate_right(sess, amount, bit_length, &x10.into());
+
+        let z11 = player1.rotate_right(sess, amount, bit_length, &x11.into());
+        let z21 = player1.rotate_right(sess, amount, bit_length, &x21.into());
+
+        let z22 = player2.rotate_right(sess, amount, bit_length, &x22.into());
+        let z02 = player2.rotate_right(sess, amount, bit_length, &x02.into());
+
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+        .into()
+    }
+}
+
 kernel! {
     RepMsbOp,
     [
@@ -2044,63 +2089,59 @@ where
     }
 }
 
-trait TenBinaryAdder<S: Session, SetupT, BitT> {
-    fn ten_binary_adder(&self, sess: &S, setup: SetupT, x: BitT, y: BitT) -> BitT;
+trait TenBinaryAdder<S: Session, SetupT, RepBitT> {
+    fn ten_binary_adder(
+        &self,
+        sess: &S,
+        setup: SetupT,
+        x: RepBitT,
+        y: RepBitT,
+        ring_size: usize,
+    ) -> RepBitT;
 }
 
 /// Binary addition protocol for tensors
-impl<S: Session, SetupT, RT> TenBinaryAdder<S, SetupT, RT> for ReplicatedPlacement
+impl<S: Session, SetupT, RepBitT> TenBinaryAdder<S, SetupT, RepBitT> for ReplicatedPlacement
 where
-    RT: Clone,
-    RT: Placed<Placement = ReplicatedPlacement>,
-    AbstractReplicatedShape<HostShape>: KnownType<S>,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RT, RT, RT>,
-    ReplicatedPlacement: PlacementAdd<S, RT, RT, RT>,
-    ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<HostShape>), RT>,
-    ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<HostShape>)>,
-    ReplicatedPlacement: PlacementIndex<S, RT, RT>,
-    ReplicatedPlacement: PlacementSlice<
-        S,
-        st!(AbstractReplicatedShape<HostShape>),
-        st!(AbstractReplicatedShape<HostShape>),
-    >,
+    RepBitT: Clone,
+    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementAdd<S, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementRotateRight<S, RepBitT, RepBitT>,
 {
-    fn ten_binary_adder(&self, sess: &S, setup: SetupT, x: RT, y: RT) -> RT {
+    fn ten_binary_adder(
+        &self,
+        sess: &S,
+        setup: SetupT,
+        x: RepBitT,
+        y: RepBitT,
+        ring_size: usize,
+    ) -> RepBitT {
+        #![allow(clippy::many_single_char_names)]
+
         let rep = self;
-        let ring_size = 64;
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
 
         let mut g = rep.mul_setup(sess, &setup, &x, &y);
+
         let p_store = rep.add(sess, &x, &y);
+        let mut p = p_store.clone();
 
-        // good luck retrieving the tensor size at compile time, perhaps take it as an extra
-        // param to the function?
+        // (Dragos) Note that in the future we might want to delete rotate_right op and replace it with
+        // slice + stack op - however atm we can't do this. It can be unblocked after the following are implemented:
+        // 1) slice tensors with unknown shape at compile time
+        // 2) stack variable length of replicated tensors (variadic kernels + stack op)
 
-        let rep_shape = rep.shape(sess, &x);
-        let slice = SliceInfo(vec![SliceInfoElem {
-            start: 1,
-            end: None,
-            step: None,
-        }]);
-        let sliced_shape = rep.slice(sess, slice, &rep_shape);
+        for i in 0..log_r {
+            let p1 = rep.rotate_right(sess, 1 << i, ring_size, &p);
+            let g1 = rep.rotate_right(sess, 1 << i, ring_size, &g);
 
-        // We will need tensors of zeros later
-        let zero = rep.fill(sess, Constant::Bit(0), &sliced_shape);
-        x
+            let p_and_g = rep.mul_setup(sess, &setup, &p1, &g1);
+            g = rep.add(sess, &g, &p_and_g);
+            p = rep.mul_setup(sess, &setup, &p, &p1);
+        }
+        let c = rep.rotate_right(sess, 1, ring_size, &g);
 
-        // // computes a >> amount
-        // let rotate_left = |a: &RT, amount: usize| -> RT {
-        //     assert!(amount <= ring_size);
-        //     (0..ring_size)
-        //         .map(|i| {
-        //             if i < a.len() - amount {
-        //                 a[amount + i].clone()
-        //             } else {
-        //                 zero.clone()
-        //             }
-        //         })
-        //         .collect()
-        // };
+        rep.add(sess, &c, &p_store)
     }
 }
 
@@ -2190,6 +2231,8 @@ impl RepBitDecOp {
         HostPlacement: PlacementShape<S, RingT, ShapeT>,
         HostPlacement: PlacementFill<S, ShapeT, BitT>,
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitT, ReplicatedBitT>,
+        ReplicatedPlacement: TenBinaryAdder<S, SetupT, ReplicatedBitT>,
+        ReplicatedPlacement: PlacementIndex<S, ReplicatedBitT, ReplicatedBitT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let RepTen {
@@ -2210,13 +2253,15 @@ impl RepBitDecOp {
         let rep_bsl = rep.share(sess, &setup, &bsl);
         let rep_bsr = RepTen {
             shares: [
-                [p0_zero.clone(), p0_zero.clone()],
-                [p1_zero.clone(), x2_on_1.clone()],
-                [x2_on_2.clone(), p2_zero.clone()],
+                [p0_zero.clone(), p0_zero],
+                [p1_zero, x2_on_1],
+                [x2_on_2, p2_zero],
             ],
-        };
+        }
+        .into();
 
-        rep_bsr.into()
+        let bits = rep.ten_binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE);
+        rep.index_axis(sess, 0, RingT::SIZE - 1, &bits)
     }
 }
 
