@@ -728,6 +728,19 @@ operators![
     Shape,
     PrimDeriveSeed,
     PrimPrfKeyGen,
+    AtLeast2D,
+    Slice,
+    Ones,
+    ExpandDims,
+    Concat,
+    Transpose,
+    Dot,
+    Inverse,
+    Sub,
+    Mul,
+    Mean,
+    Sum,
+    Div,
     // Host operations
     HostAdd,
     HostSub,
@@ -808,6 +821,8 @@ pub trait HasShortName {
     fn short_name(&self) -> &str;
 }
 
+// Top (logical) level ops:
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct IdentityOp {
     pub sig: Signature,
@@ -857,6 +872,83 @@ pub struct SaveOp {
 pub struct ConstantOp {
     pub sig: Signature,
     pub value: Constant, // TODO Box<Constant> or Box inside Constant?
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AtLeast2DOp {
+    pub sig: Signature,
+    pub to_column_vector: bool,
+}
+
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SliceOp {
+    pub sig: Signature,
+    pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct OnesOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ExpandDimsOp {
+    pub sig: Signature,
+    pub axis: Vec<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct ConcatOp {
+    pub sig: Signature,
+    pub axis: u32,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct TransposeOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct InverseOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct AddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct MulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct DivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct DotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct MeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct SumOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

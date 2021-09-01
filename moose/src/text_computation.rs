@@ -1222,6 +1222,19 @@ impl ToTextual for Operator {
             Output(op) => op.to_textual(),
             Constant(op) => op.to_textual(),
             Shape(op) => op.to_textual(),
+            AtLeast2D(op) => op.to_textual(),
+            Slice(op) => op.to_textual(),
+            Ones(op) => op.to_textual(),
+            ExpandDims(op) => op.to_textual(),
+            Concat(op) => op.to_textual(),
+            Transpose(op) => op.to_textual(),
+            Dot(op) => op.to_textual(),
+            Inverse(op) => op.to_textual(),
+            Sub(op) => op.to_textual(),
+            Mul(op) => op.to_textual(),
+            Mean(op) => op.to_textual(),
+            Sum(op) => op.to_textual(),
+            Div(op) => op.to_textual(),
             BitXor(op) => op.to_textual(),
             BitAnd(op) => op.to_textual(),
             BitFill(op) => op.to_textual(),
@@ -1334,6 +1347,25 @@ impl_to_textual!(
 );
 impl_to_textual!(InputOp, "{op} {{arg_name={}}}: {}", arg_name, sig);
 impl_to_textual!(OutputOp, "{op}: {}", sig);
+impl_to_textual!(
+    AtLeast2DOp,
+    "{op}{{to_column_vector={}}}: {}",
+    to_column_vector,
+    sig
+);
+
+impl_to_textual!(SliceOp, "{op}{{slice={}}}: {} {}", slice, sig);
+impl_to_textual!(OnesOp, "{op}: {}", sig);
+impl_to_textual!(ExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
+impl_to_textual!(ConcatOp, "{op}{{axis={}}}: {}", axis, sig);
+
+impl_to_textual!(TransposeOp, "{op}: {}", sig);
+impl_to_textual!(DotOp, "{op}: {}", sig);
+impl_to_textual!(InverseOp, "{op}: {}", sig);
+impl_to_textual!(SubOp, "{op}: {}", sig);
+impl_to_textual!(MulOp, "{op}: {}", sig);
+impl_to_textual!(DivOp, "{op}: {}", sig);
+
 impl_to_textual!(HostAddOp, "{op}: {}", sig);
 impl_to_textual!(HostSubOp, "{op}: {}", sig);
 impl_to_textual!(HostMulOp, "{op}: {}", sig);
@@ -1350,7 +1382,7 @@ impl_to_textual!(
     to_column_vector,
     sig
 );
-impl_to_textual!(HostSliceOp, "{op}{{slice}}: {} {}", sig, slice);
+impl_to_textual!(HostSliceOp, "{op}{{slice={}}}: {} {}", slice, sig);
 impl_to_textual!(
     HostIndexAxisOp,
     "{op}{{axis={}, index={}}}: {}",
@@ -1464,6 +1496,8 @@ macro_rules! op_with_axis_to_textual {
     };
 }
 
+op_with_axis_to_textual!(MeanOp);
+op_with_axis_to_textual!(SumOp);
 op_with_axis_to_textual!(HostMeanOp);
 op_with_axis_to_textual!(HostSumOp);
 op_with_axis_to_textual!(RingSumOp);

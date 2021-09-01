@@ -142,6 +142,19 @@ impl Session for SyncSession {
             Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            AtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Ones(op) => unimplemented!("Not done yet: {:?}", op),
+            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            Concat(op) => unimplemented!("Not done yet: {:?}", op),
+            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
+            Dot(op) => unimplemented!("Not done yet: {:?}", op),
+            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
+            Sub(op) => unimplemented!("Not done yet: {:?}", op),
+            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Sum(op) => unimplemented!("Not done yet: {:?}", op),
+            Div(op) => unimplemented!("Not done yet: {:?}", op),
         }
     }
 
@@ -647,6 +660,19 @@ impl Compile<SyncKernel> for Operator {
             FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
+            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Ones(op) => unimplemented!("Not done yet: {:?}", op),
+            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            Concat(op) => unimplemented!("Not done yet: {:?}", op),
+            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
+            Dot(op) => unimplemented!("Not done yet: {:?}", op),
+            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
+            Sub(op) => unimplemented!("Not done yet: {:?}", op),
+            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Sum(op) => unimplemented!("Not done yet: {:?}", op),
+            Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
@@ -715,6 +741,19 @@ impl Compile<AsyncKernel> for Operator {
             BitAnd(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimDeriveSeed(op) => Compile::<AsyncKernel>::compile(op, ctx),
             PrimPrfKeyGen(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
+            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Ones(op) => unimplemented!("Not done yet: {:?}", op),
+            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            Concat(op) => unimplemented!("Not done yet: {:?}", op),
+            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
+            Dot(op) => unimplemented!("Not done yet: {:?}", op),
+            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
+            Sub(op) => unimplemented!("Not done yet: {:?}", op),
+            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Sum(op) => unimplemented!("Not done yet: {:?}", op),
+            Div(op) => unimplemented!("Not done yet: {:?}", op),
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
@@ -1029,6 +1068,28 @@ impl Compile<Kernel> for HostReshapeOp {
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
+    }
+}
+
+kernel! {
+    AtLeast2DOp, [
+        // (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [hybrid] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [hybrid] attributes[to_column_vector] Self::kernel),
+    ]
+}
+
+impl AtLeast2DOp {
+    fn kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        to_column_vector: bool,
+        x: cs!(HostFloat64Tensor),
+    ) -> cs!(HostFloat64Tensor)
+    where
+        HostFloat64Tensor: KnownType<S>,
+        HostPlacement: PlacementAtLeast2D<S, cs!(HostFloat64Tensor), cs!(HostFloat64Tensor)>,
+    {
+        plc.at_least_2d(sess, to_column_vector, &x)
     }
 }
 

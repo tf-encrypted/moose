@@ -190,6 +190,19 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            AtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Ones(op) => unimplemented!("Not done yet: {:?}", op),
+            ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            Concat(op) => unimplemented!("Not done yet: {:?}", op),
+            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
+            Dot(op) => unimplemented!("Not done yet: {:?}", op),
+            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
+            Sub(op) => unimplemented!("Not done yet: {:?}", op),
+            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Sum(op) => unimplemented!("Not done yet: {:?}", op),
+            Div(op) => unimplemented!("Not done yet: {:?}", op),
             // the following operators are not supported by design (for now, at least)
             Send(_) | Receive(_) => {
                 unimplemented!("Unsupported symbolic operator {:?}", op)
