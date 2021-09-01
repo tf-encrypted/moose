@@ -125,6 +125,7 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostDiag(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -571,6 +572,10 @@ pub trait PlacementSlice<S: Session, T, O> {
     fn slice(&self, sess: &S, slice_info: SliceInfo, x: &T) -> O;
 }
 
+pub trait PlacementDiag<S: Session, T, O> {
+    fn diag(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementIndex<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
 }
@@ -650,7 +655,7 @@ impl Compile<SyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostSqrt(_) => {
+            | FixedpointSum(_) | HostSqrt(_) | HostDiag(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -711,7 +716,7 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostSqrt(_) | HostBitDec(_) | HostIndexAxis(_) => {
+            | FixedpointSum(_) | HostSqrt(_) | HostBitDec(_) | HostIndexAxis(_) | HostDiag(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design

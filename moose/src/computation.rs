@@ -737,6 +737,7 @@ operators![
     HostSqrt,
     HostExpandDims,
     HostSlice,
+    HostDiag,
     HostIndexAxis,
     HostBitDec,
     HostReshape,
@@ -942,6 +943,11 @@ pub struct ShapeOp {
 pub struct HostSliceOp {
     pub sig: Signature,
     pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostDiagOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
