@@ -22,6 +22,8 @@ use macros::ShortName;
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+use crate::logical::Tensor;
+
 
 pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
@@ -395,6 +397,7 @@ values![
     Seed,
     PrfKey,
     String,
+    Tensor,
     HostBitTensor,
     HostRing64Tensor,
     HostRing128Tensor,
