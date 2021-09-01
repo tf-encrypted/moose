@@ -97,6 +97,8 @@ impl Session for SyncSession {
             RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepBitDec(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -124,6 +126,7 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostRotateRight(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -299,6 +302,10 @@ pub trait PlacementBitExtract<S: Session, T, O> {
 
 pub trait PlacementBitDec<S: Session, T, O> {
     fn bit_decompose(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementBitDecSetup<S: Session, SetupT, T, O> {
+    fn bit_decompose(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementRingInject<S: Session, T, O> {
@@ -560,6 +567,10 @@ pub trait PlacementIndex<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
 }
 
+pub trait PlacementRotateRight<S: Session, T, O> {
+    fn rotate_right(&self, sess: &S, amount: usize, ring_size: usize, x: &T) -> O;
+}
+
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
     if v.ty() == expected {
         Ok(())
@@ -629,13 +640,14 @@ impl Compile<SyncKernel> for Operator {
             // TODO
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
+            HostRotateRight(_) => unimplemented!(),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | RepSlice(_) | RepBitDec(_) | FixedpointMul(_) | FixedpointDot(_)
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -696,14 +708,15 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) => {
+            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostRotateRight(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
+            | RepSlice(_) | RepBitDec(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

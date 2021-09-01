@@ -1227,6 +1227,7 @@ impl ToTextual for Operator {
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
+            HostRotateRight(op) => op.to_textual(),
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
@@ -1283,6 +1284,8 @@ impl ToTextual for Operator {
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
+            RepBitDec(op) => op.to_textual(),
+            RepSlice(op) => op.to_textual(),
         }
     }
 }
@@ -1344,6 +1347,13 @@ impl_to_textual!(
     axis,
     index,
     sig
+);
+impl_to_textual!(
+    HostRotateRightOp,
+    "{op}{{slice}}: {} {} {}",
+    sig,
+    amount,
+    bit_length
 );
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
@@ -1427,6 +1437,8 @@ impl_to_textual!(
     index,
     sig
 );
+impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
+impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
