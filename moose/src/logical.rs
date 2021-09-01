@@ -1,10 +1,11 @@
 use crate::fixedpoint::{Fixed64Tensor, Fixed128Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
+use crate::host::HostFloat64Tensor;
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use macros::ShortName;
-use crate::computation::{HasShortName, Placed, Placement, Signature, SymbolicType};
-use crate::kernels::{PlacementAdd, Session};
+use crate::computation::{AtLeast2DOp, HasShortName, HostPlacement, KnownType, Placed, Placement, Signature, SymbolicType};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, Session};
 use crate::error::Result;
 use macros::with_context;
 
@@ -89,3 +90,32 @@ impl SymbolicType for Tensor {
 // pub struct LogicalDotOp {
 //     pub sig: Signature,
 // }
+
+
+
+kernel! {
+    AtLeast2DOp, [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::kernel),
+    ]
+}
+
+impl AtLeast2DOp {
+    fn kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        to_column_vector: bool,
+        x: cs!(Tensor),
+    ) -> cs!(Tensor)
+    where
+        Tensor: KnownType<S>,
+        HostPlacement: PlacementAtLeast2D<S, HostFloat64Tensor, HostFloat64Tensor>,
+    {
+        match x {
+            Tensor::Float64(FloatTensor::Host(x)) => {
+                let z = plc.at_least_2d(sess, to_column_vector, &x);
+                Tensor::Float64(FloatTensor::Host(z)).into()
+            },
+            _ => unimplemented!("Fill other match arms please"),
+        }
+    }
+}

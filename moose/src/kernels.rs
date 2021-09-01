@@ -142,8 +142,7 @@ impl Session for SyncSession {
             Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            // AtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
+            AtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Slice(op) => unimplemented!("Not done yet: {:?}", op),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
             ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
@@ -1071,28 +1070,6 @@ impl Compile<Kernel> for HostReshapeOp {
         }
     }
 }
-
-// kernel! {
-//     AtLeast2DOp, [
-//         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [hybrid] attributes[to_column_vector] Self::kernel),
-//         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [hybrid] attributes[to_column_vector] Self::kernel),
-//     ]
-// }
-
-// impl AtLeast2DOp {
-//     fn kernel<S: Session, T>(
-//         sess: &S,
-//         plc: &HostPlacement,
-//         to_column_vector: bool,
-//         x: T,
-//     ) -> T
-//     where
-//         HostFloat64Tensor: KnownType<S>,
-//         HostPlacement: PlacementAtLeast2D<S, T, T>,
-//     {
-//         plc.at_least_2d(sess, to_column_vector, &x)
-//     }
-// }
 
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, HostAtLeast2DOp);
