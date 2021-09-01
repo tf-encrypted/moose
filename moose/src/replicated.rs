@@ -2261,7 +2261,7 @@ impl RepBitDecOp {
         .into();
 
         let bits = rep.ten_binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE);
-        rep.index_axis(sess, 0, RingT::SIZE - 1, &bits)
+        bits
     }
 }
 
@@ -3003,5 +3003,35 @@ mod tests {
     #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1000].into_dyn(), array![10_u128, 100, 200000, 0, 1000].into_dyn())]
     fn test_rep_abs_128(#[case] x: ArrayD<u128>, #[case] target: ArrayD<u128>) {
         test_rep_abs128(x, target);
+    }
+
+    fn test_rep_bit_dec64(xs: ArrayD<u64>, zs: ArrayD<u8>) {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let result: ReplicatedBitTensor = rep.bit_decompose(&sess, &setup, &x_shared);
+        let opened_result = alice.reveal(&sess, &result);
+        assert_eq!(
+            opened_result,
+            HostBitTensor::from_raw_plc(zs, alice.clone())
+        );
+    }
+
+    #[rstest]
+    #[case(array![1073741823].into_dyn(),
+        array![[1_u8],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0] ].into_dyn())]
+    fn test_rep_bit_dec_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u8>) {
+        test_rep_bit_dec64(x, y);
     }
 }
