@@ -30,4 +30,5 @@ jobs:
       - uses: actions-rs/install@v0.1
         with:
           crate: cargo-deny
+          use-tool-cache: true
       - run: cargo deny check
