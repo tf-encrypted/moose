@@ -792,7 +792,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "ReplicatedSetup" => Ok((i, Ty::ReplicatedSetup)),
         "Additive64Tensor" => Ok((i, Ty::AdditiveRing64Tensor)),
         "Additive128Tensor" => Ok((i, Ty::AdditiveRing128Tensor)),
-        "ReplicatedShape" => Ok((i, Ty::AdditiveRing128Tensor)),
+        "ReplicatedShape" => Ok((i, Ty::ReplicatedShape)),
         "AdditiveBitTensor" => Ok((i, Ty::AdditiveBitTensor)),
         "AdditiveShape" => Ok((i, Ty::AdditiveShape)),
         "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
