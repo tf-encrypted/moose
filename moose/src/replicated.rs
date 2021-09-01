@@ -2034,9 +2034,24 @@ trait PrefixOr<S: Session, SetupT> {
 impl<S: Session, SetupT> PrefixOr<S, SetupT> for ReplicatedPlacement
 where
     ReplicatedBitTensor: KnownType<S>,
+    // sAbstractReplicatedShape<HostShape>: KnownType<S>,
     ReplicatedBitTensor: Into<st!(ReplicatedBitTensor)>,
     st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, st!(ReplicatedBitTensor), st!(ReplicatedBitTensor), st!(ReplicatedBitTensor)>,
+    ReplicatedPlacement: PlacementMulSetup<
+        S,
+        SetupT,
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+    >,
+    ReplicatedPlacement: PlacementAdd<
+        S,
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+        st!(ReplicatedBitTensor),
+    >,
+    //     ReplicatedPlacement:
+    //         PlacementShape<S, st!(ReplicatedBitTensor), st!(AbstractReplicatedShape<HostShape>)>,
 {
     /// Prefix Or protocol
     ///
@@ -2045,12 +2060,41 @@ where
         // OR(x, y) = (x xor y) xor (x and y)
 
         let rep = self;
-        let x_and_x = rep.mul_setup(sess, &setup, &x.clone().into(),&x.into());
-        x_and_x.into()
+        // let x_and_x = rep.mul_setup(sess, &setup, &x.clone().into(),&x.into());
+        // x_and_x.into()
+
+        // TODO [Yann] Check if we can pass ReplicatedBitTensor reference as input to avoid clonning
+        let bitwise_and = |x: ReplicatedBitTensor, y: ReplicatedBitTensor| -> ReplicatedBitTensor {
+            rep.mul_setup(sess, &setup, &x.clone().into(), &y.into())
+                .into()
+        };
+
+        let bitwise_xor = |x: ReplicatedBitTensor, y: ReplicatedBitTensor| -> ReplicatedBitTensor {
+            rep.add(sess, &x.clone().into(), &y.into()).into()
+        };
+
+        let bitwise_or = |x: ReplicatedBitTensor, y: ReplicatedBitTensor| -> ReplicatedBitTensor {
+            bitwise_xor(bitwise_xor(x.clone(), y.clone()), bitwise_and(x, y))
+        };
+
+        // let rep_shape = rep.shape(sess, x);
+
+        let n = 8; // extract n from the shape....
+        let l = (n as f64).log2() as u32;
+
+        for i in 0..(l - 1) {
+            for j in 0..(2_i32.pow(l) / 2_i32.pow(i + 1)) {
+                let y = 2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1;
+                for k in 1..2_i32.pow(i) {
+                    //  How to define an empty tensor fore results, Fill? How to slice? .slice op? along which axis?
+                    // let mut res = bitwise_or(x, x);
+                }
+            }
+        }
+
+        x
     }
 }
-
-
 
 impl RingInjectOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitT, BitT, ShapeT>(
