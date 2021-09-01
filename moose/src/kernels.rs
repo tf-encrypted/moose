@@ -132,6 +132,7 @@ impl Session for SyncSession {
             HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSqueeze(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -553,6 +554,10 @@ pub trait PlacementExpandDims<S: Session, T, O> {
     fn expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
 
+pub trait PlacementSqueeze<S: Session, T, O> {
+    fn squeeze(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
 pub trait PlacementConcatenate<S: Session, T1, T2, O> {
     fn concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
 }
@@ -610,6 +615,7 @@ impl Compile<SyncKernel> for Operator {
             HostOnes(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostConcat(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<SyncKernel>::compile(op, ctx),
+            HostSqueeze(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<SyncKernel>::compile(op, ctx),
             HostSlice(op) => Compile::<SyncKernel>::compile(op, ctx),
@@ -681,6 +687,7 @@ impl Compile<AsyncKernel> for Operator {
             HostOnes(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostConcat(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostExpandDims(op) => Compile::<AsyncKernel>::compile(op, ctx),
+            HostSqueeze(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostReshape(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostAtLeast2D(op) => Compile::<AsyncKernel>::compile(op, ctx),
             HostSlice(op) => Compile::<AsyncKernel>::compile(op, ctx),

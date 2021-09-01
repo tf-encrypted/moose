@@ -740,6 +740,7 @@ operators![
     HostIndexAxis,
     HostBitDec,
     HostReshape,
+    HostSqueeze,
     HostSum,
     HostOnes,
     HostConcat,
@@ -910,6 +911,12 @@ pub struct HostAtLeast2DOp {
 pub struct HostExpandDimsOp {
     pub sig: Signature,
     pub axis: Vec<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostSqueezeOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

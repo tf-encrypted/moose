@@ -2,10 +2,10 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
     Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp,
     HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement,
-    HostReshapeOp, HostSliceOp, HostSqrtOp, HostSubOp, HostSumOp, HostTransposeOp, Placed,
-    Placement, RingAddOp, RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp,
-    RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role,
-    ShapeOp, SymbolicType,
+    HostReshapeOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp, HostSumOp, HostTransposeOp,
+    Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp,
+    RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp,
+    RingSumOp, Role, ShapeOp, SymbolicType,
 };
 use crate::error::Error;
 use crate::error::Result;
@@ -756,6 +756,21 @@ impl HostExpandDimsOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Vec<u32>,
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let axis = axis.iter().map(|a| *a as usize).collect();
+        plc.place(sess, x.expand_dims(axis))
+    }
+}
+
+impl HostSqueezeOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
         x: HostTensor<T>,
     ) -> HostTensor<T>
     where

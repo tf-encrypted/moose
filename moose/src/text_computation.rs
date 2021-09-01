@@ -1230,6 +1230,7 @@ impl ToTextual for Operator {
             HostOnes(op) => op.to_textual(),
             HostConcat(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
+            HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
