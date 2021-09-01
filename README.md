@@ -115,6 +115,8 @@ To ease your development we encourage you to install the following extra cargo c
 
 - [`cargo audit`](https://crates.io/crates/cargo-audit) checks if any vulnerabilities have been detected for your current dependencies.
 
+- [`cargo deny`](https://github.com/EmbarkStudios/cargo-deny) checks security advisories and licence conflicts.
+
 - [`cargo release`](https://crates.io/crates/cargo-release) automates the release cycle, including bumping versions.
 
 - [`cargo udeps`](https://crates.io/crates/cargo-udeps) to list unused dependencies.
