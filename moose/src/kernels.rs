@@ -113,6 +113,7 @@ impl Session for SyncSession {
             Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSqrt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -336,6 +337,20 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
 // TODO(Morten) get rid of scaling_base and scaling_base
 pub trait PlacementMean<S: Session, T, O> {
     fn mean(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_base: u32, x: &T) -> O;
+}
+pub trait PlacementSqrt<S: Session, T, O> {
+    fn sqrt(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementRingMean<S: Session, T, O> {
+    fn ring_mean(
+        &self,
+        sess: &S,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: &T,
+    ) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -635,7 +650,7 @@ impl Compile<SyncKernel> for Operator {
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | FixedpointSum(_) | HostSqrt(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -696,7 +711,7 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) => {
+            | FixedpointSum(_) | HostSqrt(_) | HostBitDec(_) | HostIndexAxis(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
@@ -886,6 +901,16 @@ impl Compile<Kernel> for HostMeanOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostSqrtOp);
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostSqrtOp);
+
+kernel! {
+    HostSqrtOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for HostOnesOp {

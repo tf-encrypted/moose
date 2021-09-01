@@ -201,6 +201,11 @@ class MeanOperation(StandardOperation):
 
 
 @dataclass
+class SqrtOperation(StandardOperation):
+    output_type: ValueType
+
+
+@dataclass
 class TransposeOperation(StandardOperation):
     axes: Optional[Tuple[int]]
     output_type: ValueType
