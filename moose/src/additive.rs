@@ -27,13 +27,22 @@ pub struct AbstractAdditiveTensor<HostRingT> {
     pub shares: [HostRingT; 2],
 }
 
-pub type AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>;
+// pub type AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>;
 
-pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
+// pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
 
-pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
+// pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
 
-moose_type!(AbstractAdditiveTensor, HostPlacement);
+// moose_type!(AbstractAdditiveTensor, HostPlacement);
+
+moose_type!(
+    AbstractAdditiveTensor,
+    [
+        (HostRing64Tensor => AdditiveRing64Tensor),
+        (HostRing128Tensor => AdditiveRing128Tensor),
+        (HostBitTensor => AdditiveBitTensor),
+    ]
+);
 
 pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
 

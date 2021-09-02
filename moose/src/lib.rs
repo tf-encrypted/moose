@@ -1281,6 +1281,70 @@ macro_rules! modelled_alias {
 
 macro_rules! moose_type {
 
+    ($outer:ident, [$( ($inner:ident => $combined:ident), )+]) => {
+
+        $(
+            pub type $combined = $outer<$inner>;
+
+            impl SymbolicType for $outer<$inner>
+            {
+                type Type = Symbolic<$outer<<$inner as SymbolicType>::Type>>;
+            }
+
+            impl From<$outer<Symbolic<$inner>>> for Symbolic<$outer<Symbolic<$inner>>>
+            // where
+            //     Inner: Placed<Placement = HostPlacement>,
+            {
+                fn from(x: $outer<Symbolic<$inner>>) -> Self {
+                    Symbolic::Concrete(x)
+                }
+            }
+
+            impl TryFrom<Symbolic<$outer<Symbolic<$inner>>>> for $outer<Symbolic<$inner>>
+            // where
+            //     Inner: Placed<Placement = HostPlacement>,
+            {
+                type Error = crate::error::Error;
+                fn try_from(v: Symbolic<$outer<Symbolic<$inner>>>) -> crate::error::Result<Self> {
+                    match v {
+                        Symbolic::Concrete(x) => Ok(x),
+                        _ => Err(crate::error::Error::Unexpected), // TODO err message
+                    }
+                }
+            }
+        )+
+
+        // impl<Inner> SymbolicType for $outer<Inner>
+        // where
+        //     Inner: SymbolicType,
+        //     <Inner as SymbolicType>::Type: Placed<Placement = HostPlacement>,
+        // {
+        //     type Type = Symbolic<$outer<<Inner as SymbolicType>::Type>>;
+        // }
+
+        // impl<Inner> From<$outer<Inner>> for Symbolic<$outer<Inner>>
+        // where
+        //     Inner: Placed<Placement = HostPlacement>,
+        // {
+        //     fn from(x: $outer<Inner>) -> Self {
+        //         Symbolic::Concrete(x)
+        //     }
+        // }
+
+        // impl<Inner> TryFrom<Symbolic<$outer<Inner>>> for $outer<Inner>
+        // where
+        //     Inner: Placed<Placement = HostPlacement>,
+        // {
+        //     type Error = crate::error::Error;
+        //     fn try_from(v: Symbolic<$outer<Inner>>) -> crate::error::Result<Self> {
+        //         match v {
+        //             Symbolic::Concrete(x) => Ok(x),
+        //             _ => Err(crate::error::Error::Unexpected), // TODO err message
+        //         }
+        //     }
+        // }
+    };
+
     ($t:ident) => {
         impl SymbolicType for $t {
             type Type = Symbolic<$t>;
