@@ -1906,7 +1906,7 @@ impl ShapeOp {
 }
 
 trait BinaryAdder<S: Session, SetupT, RepBitT> {
-    fn ten_binary_adder(
+    fn binary_adder(
         &self,
         sess: &S,
         setup: SetupT,
@@ -1924,7 +1924,7 @@ where
     ReplicatedPlacement: PlacementAdd<S, RepBitT, RepBitT, RepBitT>,
     ReplicatedPlacement: PlacementRotateRight<S, RepBitT, RepBitT>,
 {
-    fn ten_binary_adder(
+    fn binary_adder(
         &self,
         sess: &S,
         setup: SetupT,
@@ -2103,7 +2103,7 @@ impl RepBitDecOp {
         }
         .into();
 
-        rep.ten_binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE)
+        rep.binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE)
     }
 }
 
