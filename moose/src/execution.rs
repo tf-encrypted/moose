@@ -1053,6 +1053,7 @@ impl AsyncSessionHandle {
         let ntasks = self.tasks.len();
         match abort_listener {
             Some(receiver) => {
+                // TODO: Cancel the abort listener task on successful completion
                 let abort_task: AsyncTask = tokio::spawn(async move {
                     receiver.await.ok(); // wait for an abort signal
                     Err(Error::Abort)
