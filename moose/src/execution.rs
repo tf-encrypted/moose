@@ -9,6 +9,7 @@ use crate::storage::{AsyncStorage, LocalAsyncStorage, LocalSyncStorage, SyncStor
 
 use crate::compilation::typing::update_types_one_hop;
 use derive_more::Display;
+use futures::future::Either;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
 use petgraph::algo::toposort;
@@ -21,6 +22,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
+use tokio::sync::oneshot::Receiver;
 
 #[macro_export]
 macro_rules! function_kernel {
@@ -1043,7 +1045,10 @@ impl AsyncSessionHandle {
         errors
     }
 
-    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+    pub async fn join_on_first_error(
+        self,
+        abort_listener: Option<Receiver<()>>,
+    ) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
         use futures::StreamExt;
 
@@ -1058,39 +1063,76 @@ impl AsyncSessionHandle {
         //}
         //let mut tasks = task_vec.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
 
-        let mut tasks = self
-            .tasks
+        let mut task_handles = Vec::new();
+        for task in self.tasks.into_iter() {
+            task_handles.push(Either::Left(task));
+        }
+        match abort_listener {
+            Some(receiver) => {
+                task_handles.push(Either::Right(receiver));
+            }
+            None => (),
+        }
+
+        //let mut tasks = self
+        //    .tasks
+        //    .into_iter()
+        //    .collect::<futures::stream::FuturesUnordered<_>>();
+
+        let mut tasks = task_handles
             .into_iter()
             .collect::<futures::stream::FuturesUnordered<_>>();
 
-        while let Some(x) = tasks.next().await {
-            match x {
-                Ok(Ok(_)) => {
-                    continue;
-                }
-                Ok(Err(e)) => {
-                    match e {
-                        // OperandUnavailable and ResultUnused are typically not root causes.
-                        // Wait to get an error that would indicate the root cause of the problem,
-                        // and return it instead.
-                        OperandUnavailable => continue,
-                        ResultUnused => continue,
-                        _ => {
-                            for task in tasks.iter() {
-                                task.abort();
+        while let Some(either) = tasks.next().await {
+            match either {
+                Either::Left(task_result) => {
+                    match task_result {
+                        Ok(Ok(_)) => {
+                            continue;
+                        }
+                        Ok(Err(e)) => {
+                            match e {
+                                // OperandUnavailable and ResultUnused are typically not root causes.
+                                // Wait to get an error that would indicate the root cause of the problem,
+                                // and return it instead.
+                                OperandUnavailable => continue,
+                                ResultUnused => continue,
+                                _ => {
+                                    for task in tasks.iter() {
+                                        match task {
+                                            Either::Left(t) => {
+                                                t.abort();
+                                            }
+                                            _ => (),
+                                        }
+                                    }
+                                    return Err(anyhow::Error::from(e));
+                                }
                             }
-                            return Err(anyhow::Error::from(e));
+                        }
+                        Err(e) => {
+                            if e.is_cancelled() {
+                                continue;
+                            } else if e.is_panic() {
+                                for task in tasks.iter() {
+                                    match task {
+                                        Either::Left(t) => {
+                                            t.abort();
+                                        }
+                                        _ => (),
+                                    }
+                                }
+                                return Err(anyhow::Error::from(e));
+                            }
                         }
                     }
                 }
-                Err(e) => {
-                    if e.is_cancelled() {
-                        continue;
-                    } else if e.is_panic() {
-                        for task in tasks.iter() {
-                            task.abort();
+                Either::Right(abort_listener) => {
+                    match abort_listener {
+                        Some(listener) => {
+                            listener.abort();
                         }
-                        return Err(anyhow::Error::from(e));
+                        None => ()
                     }
                 }
             }
@@ -1226,7 +1268,7 @@ impl AsyncTestRuntime {
         }
 
         for handle in session_handles {
-            let result = rt.block_on(handle.join_on_first_error());
+            let result = rt.block_on(handle.join_on_first_error(None));
             if let Err(e) = result {
                 return Err(Error::TestRuntime(e.to_string()));
             }
