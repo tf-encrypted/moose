@@ -350,9 +350,9 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
-// TODO(Morten) get rid of scaling_base and scaling_base
+// TODO(Morten) get rid of scaling_base and scaling_exp
 pub trait PlacementMean<S: Session, T, O> {
-    fn mean(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_base: u32, x: &T) -> O;
+    fn mean(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
 }
 pub trait PlacementSqrt<S: Session, T, O> {
     fn sqrt(&self, sess: &S, x: &T) -> O;

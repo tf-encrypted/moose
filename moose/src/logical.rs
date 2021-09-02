@@ -200,12 +200,20 @@ impl MeanOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
     where
-        // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
-        // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementStdMean<S, Float32T, Float32T>,
         HostPlacement: PlacementStdMean<S, Float64T, Float64T>,
     {
         match x {
+            AbstractTensor::Fixed64(x) => {
+                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                AbstractTensor::Fixed128(z)
+            }
             AbstractTensor::Float32(x) => {
                 let z = plc.std_mean(sess, axis, &x);
                 AbstractTensor::Float32(z)
