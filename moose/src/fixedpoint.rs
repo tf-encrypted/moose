@@ -1,9 +1,9 @@
 //! Support for fixed-point arithmetic
 
 use crate::computation::{
-    FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp,
-    FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp, HostPlacement,
-    KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
+    CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp,
+    FixedpointMeanOp, FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
+    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
 };
 use crate::error::Result;
 use crate::host::{
@@ -11,7 +11,7 @@ use crate::host::{
     HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
 };
 use crate::kernels::{
-    PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
+    PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
     PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementReveal,
     PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen,
     PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session,
@@ -197,13 +197,13 @@ modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attribute
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat32Tensor) -> Fixed64Tensor, FixedpointEncodeOp);
 modelled!(PlacementFixedpointEncode::fixedpoint_encode, HostPlacement, attributes[precision: u32] (HostFloat64Tensor) -> Fixed128Tensor, FixedpointEncodeOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointEncodeOp,
     [
-        (HostPlacement, (HostFloat32Tensor) -> Fixed64Tensor => attributes[precision] Self::fixed_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => attributes[precision] Self::fixed_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => attributes[precision] Self::hostfixed_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => attributes[precision] Self::hostfixed_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> Fixed64Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFixed64Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFixed128Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
     ]
 }
 
@@ -242,13 +242,13 @@ modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attribute
 modelled!(PlacementFixedpointDecode::fixedpoint_decode, HostPlacement, attributes[precision: u32] (HostFixed128Tensor) -> HostFloat64Tensor, FixedpointDecodeOp);
 
 // TODO(Morten) these should produce Float32Tensor and Float64Tensor instead
-hybrid_kernel! {
+kernel! {
     FixedpointDecodeOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> HostFloat32Tensor => attributes[precision] Self::fixed_kernel),
-        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => attributes[precision] Self::fixed_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFloat32Tensor => attributes[precision] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => attributes[precision] Self::hostfixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> HostFloat32Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => [hybrid] attributes[precision] Self::fixed_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFloat32Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFloat64Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
     ]
 }
 
@@ -293,17 +293,17 @@ modelled!(PlacementAdd::add, HostPlacement, (HostFixed128Tensor, HostFixed128Ten
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointAddOp);
 modelled!(PlacementAdd::add, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointAddOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointAddOp,
     [
-        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
     ]
 }
 
@@ -393,17 +393,17 @@ modelled!(PlacementSub::sub, HostPlacement, (HostFixed128Tensor, HostFixed128Ten
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointSubOp);
 modelled!(PlacementSub::sub, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointSubOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointSubOp,
     [
-        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
     ]
 }
 
@@ -493,17 +493,17 @@ modelled!(PlacementMul::mul, HostPlacement, (HostFixed128Tensor, HostFixed128Ten
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMulOp);
 modelled!(PlacementMul::mul, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMulOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointMulOp,
     [
-        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
     ]
 }
 
@@ -595,17 +595,17 @@ modelled!(PlacementDot::dot, HostPlacement, (HostFixed128Tensor, HostFixed128Ten
 modelled!(PlacementDot::dot, ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointDotOp);
 modelled!(PlacementDot::dot, ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointDotOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointDotOp,
     [
-        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_on_host_kernel),
-        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_on_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => Self::fixed_on_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => Self::fixed_on_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_on_host_kernel),
+        (HostPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_on_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor, Fixed64Tensor) -> Fixed64Tensor => [hybrid] Self::fixed_on_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor, Fixed128Tensor) -> Fixed128Tensor => [hybrid] Self::fixed_on_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor, HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor, HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor, ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor, ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] Self::repfixed_kernel),
     ]
 }
 
@@ -697,17 +697,17 @@ modelled!(PlacementTruncPr::trunc_pr, HostPlacement, attributes[precision: u32] 
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[precision: u32] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointTruncPrOp);
 modelled!(PlacementTruncPr::trunc_pr, ReplicatedPlacement, attributes[precision: u32] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointTruncPrOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointTruncPrOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[precision] Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[precision] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[precision] Self::fixed_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => attributes[precision] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => attributes[precision] Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => attributes[precision] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => attributes[precision] Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[precision] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[precision] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[precision] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[precision] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] attributes[precision] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[precision] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[precision] Self::repfixed_kernel),
     ]
 }
 
@@ -790,17 +790,17 @@ modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostF
 modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointSumOp);
 modelled!(PlacementSum::sum, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointSumOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointSumOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[axis] Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[axis] Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[axis] Self::rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[axis] Self::rep_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => attributes[axis] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => attributes[axis] Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => attributes[axis] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => attributes[axis] Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis] Self::rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] attributes[axis] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] attributes[axis] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis] Self::repfixed_kernel),
     ]
 }
 
@@ -883,17 +883,17 @@ modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scal
 modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMeanOp);
 modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMeanOp);
 
-hybrid_kernel! {
+kernel! {
     FixedpointMeanOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
     ]
 }
 
@@ -972,6 +972,35 @@ impl FixedpointMeanOp {
     {
         let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
         AbstractReplicatedFixedTensor(y)
+    }
+}
+
+modelled!(PlacementCast::cast, HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor, CastOp);
+modelled!(PlacementCast::cast, HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor, CastOp);
+
+kernel! {
+    CastOp,
+    [
+        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => [hybrid] Self::encode_kernel),
+        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::decode_kernel),
+    ]
+}
+
+impl CastOp {
+    fn encode_kernel<S: Session, T>(sess: &S, plc: &HostPlacement, x: T) -> cs!(Fixed128Tensor)
+    where
+        Fixed128Tensor: KnownType<S>,
+        HostPlacement: PlacementFixedpointEncode<S, T, cs!(Fixed128Tensor)>,
+    {
+        plc.fixedpoint_encode(sess, 27, &x) // TODO: Get the precision from python
+    }
+
+    fn decode_kernel<S: Session, R>(sess: &S, plc: &HostPlacement, x: cs!(Fixed128Tensor)) -> R
+    where
+        Fixed128Tensor: KnownType<S>,
+        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), R>,
+    {
+        plc.fixedpoint_decode(sess, 27, &x) // TODO: Get the precision from python
     }
 }
 

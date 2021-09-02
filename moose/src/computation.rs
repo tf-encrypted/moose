@@ -717,6 +717,7 @@ macro_rules! operators {
 
 operators![
     Identity,
+    Cast,
     Load,
     Save,
     Send,
@@ -734,9 +735,11 @@ operators![
     HostDiv,
     HostDot,
     HostMean,
+    HostSqrt,
     HostExpandDims,
     HostSlice,
     HostIndexAxis,
+    HostBitDec,
     HostReshape,
     HostSum,
     HostOnes,
@@ -841,6 +844,11 @@ pub struct LoadOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct CastOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct SaveOp {
     pub sig: Signature,
 }
@@ -880,6 +888,11 @@ pub struct HostDotOp {
 pub struct HostMeanOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostSqrtOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -942,6 +955,11 @@ pub struct HostIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostBitDecOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

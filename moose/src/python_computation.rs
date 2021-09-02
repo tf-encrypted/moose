@@ -45,6 +45,7 @@ enum PyOperation {
     std_ExpandDimsOperation(PyExpandDimsOperation),
     std_InverseOperation(PyInverseOperation),
     std_MeanOperation(PyMeanOperation),
+    std_SqrtOperation(PySqrtOperation),
     std_SumOperation(PySumOperation),
     std_DivOperation(PyDivOperation),
     std_SerializeOperation(PySerializeOperation),
@@ -55,6 +56,7 @@ enum PyOperation {
     std_SaveOperation(PySaveOperation),
     std_LoadOperation(PyLoadOperation),
     std_ReceiveOperation(PyReceiveOperation),
+    std_CastOperation(PyCastOperation),
     fixed_EncodeOperation(PyFixedEncodeOperation),
     fixed_DecodeOperation(PyFixedDecodeOperation),
     fixed_AddOperation(PyFixedAddOperation),
@@ -109,6 +111,7 @@ enum PyDType {
     int64,
     uint32,
     uint64,
+    fixed8_27,
     fixed14_23,
 }
 
@@ -407,6 +410,14 @@ struct PyMeanOperation {
 }
 
 #[derive(Deserialize, Debug)]
+struct PySqrtOperation {
+    name: String,
+    inputs: Inputs,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
 struct PySumOperation {
     name: String,
     inputs: Inputs,
@@ -455,6 +466,14 @@ struct PyReceiveOperation {
     sender: String,
     receiver: String,
     rendezvous_key: String,
+    placement_name: String,
+    output_type: PyValueType,
+}
+
+#[derive(Deserialize, Debug)]
+struct PyCastOperation {
+    name: String,
+    inputs: Inputs,
     placement_name: String,
     output_type: PyValueType,
 }
@@ -799,6 +818,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
             PyDType::uint32 => Ok(Ty::HostUint32Tensor),
             PyDType::uint64 => Ok(Ty::HostUint64Tensor),
             PyDType::fixed14_23 => Err(anyhow::anyhow!("unimplemented dtype 'fixed14_23'")),
+            PyDType::fixed8_27 => Ok(Ty::Fixed128Tensor), // TODO: store the precision (27)
         },
         PyValueType::std_UnknownType => Ok(Ty::Unknown),
         PyValueType::std_BytesType => Err(anyhow::anyhow!("unimplemented type 'bytes'")),
@@ -1275,6 +1295,19 @@ impl TryFrom<PyComputation> for Computation {
                         name: op.name.clone(),
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
+                    std_SqrtOperation(op) => Ok(Operation {
+                        kind: HostSqrtOp {
+                            sig: Signature::unary(
+                                map_type(&op.output_type)?,
+                                map_type(&op.output_type)?,
+                            ),
+                        }
+                        .into(),
+                        inputs: map_inputs(&op.inputs, &["x"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        name: op.name.clone(),
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
                     std_SumOperation(op) => Ok(Operation {
                         kind: HostSumOp {
                             // we can use output type type to determine input type
@@ -1398,6 +1431,16 @@ impl TryFrom<PyComputation> for Computation {
                         .into(),
                         name: op.name.clone(),
                         inputs: map_inputs(&op.inputs, &["key", "query"])
+                            .with_context(|| format!("Failed at op {:?}", op))?,
+                        placement: map_placement(&placements, &op.placement_name)?,
+                    }),
+                    std_CastOperation(op) => Ok(Operation {
+                        kind: CastOp {
+                            sig: Signature::unary(Ty::Unknown, map_type(&op.output_type)?),
+                        }
+                        .into(),
+                        name: op.name.clone(),
+                        inputs: map_inputs(&op.inputs, &["x"])
                             .with_context(|| format!("Failed at op {:?}", op))?,
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
