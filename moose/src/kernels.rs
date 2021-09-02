@@ -137,6 +137,7 @@ impl Session for SyncSession {
             HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSqueeze(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -567,6 +568,10 @@ pub trait PlacementExpandDims<S: Session, T, O> {
     fn expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
 
+pub trait PlacementSqueeze<S: Session, T, O> {
+    fn squeeze(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
 pub trait PlacementConcatenate<S: Session, T1, T2, O> {
     fn concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
 }
@@ -668,6 +673,7 @@ impl Compile<SyncKernel> for Operator {
             HostBitDec(_) => unimplemented!(),
             HostShlDim(_) => unimplemented!(),
             HostSqrt(_) => unimplemented!(),
+            HostSqueeze(_) => unimplemented!(),
             Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
@@ -737,7 +743,7 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | Cast(_) => {
+            | HostSqueeze(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
@@ -1018,6 +1024,24 @@ impl Compile<Kernel> for HostExpandDimsOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostInt32Tensor) -> HostInt32Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostInt64Tensor) -> HostInt64Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostUint32Tensor) -> HostUint32Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostUint64Tensor) -> HostUint64Tensor, HostSqueezeOp);
+
+kernel! {
+    HostSqueezeOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] attributes[axis] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for HostReshapeOp {

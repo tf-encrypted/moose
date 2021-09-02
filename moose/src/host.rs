@@ -2,10 +2,10 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
     Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp,
     HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement,
-    HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSubOp, HostSumOp, HostTransposeOp,
-    KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp, RingFillOp,
-    RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp,
-    RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
+    HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp, HostSumOp,
+    HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp,
+    RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
+    RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
 };
 use crate::error::Error;
 use crate::error::Result;
@@ -73,6 +73,22 @@ impl RawShape {
     pub fn unsqueeze(mut self, axis: usize) -> Self {
         self.0.insert(axis, 1);
         self
+    }
+
+    pub fn squeeze(mut self, axis: Option<usize>) -> Self {
+        match axis {
+            Some(axis) => {
+                let removed_axis = self.0.remove(axis);
+                match removed_axis {
+                    1 => self,
+                    _ => panic!(
+                        "The axis selected has a value of {:?}. Cannot select an axis to squeeze out
+                        which has size not equal to one", removed_axis
+                    ),
+                }
+            }
+            None => RawShape(self.0.into_iter().filter(|x| *x != 1).collect::<Vec<_>>()),
+        }
     }
 }
 
@@ -871,6 +887,12 @@ where
         self.reshape(HostShape(newshape, plc))
     }
 
+    pub fn squeeze(self, axis: Option<usize>) -> Self {
+        let plc = (&self.1).clone();
+        let newshape = self.shape().0.squeeze(axis);
+        self.reshape(HostShape(newshape, plc))
+    }
+
     pub fn shape(&self) -> HostShape {
         HostShape(RawShape(self.0.shape().into()), self.1.clone())
     }
@@ -1010,6 +1032,21 @@ impl HostExpandDimsOp {
     {
         let axis = axis.iter().map(|a| *a as usize).collect();
         plc.place(sess, x.expand_dims(axis))
+    }
+}
+
+impl HostSqueezeOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let axis = axis.map(|a| a as usize);
+        plc.place(sess, x.squeeze(axis))
     }
 }
 
@@ -2941,6 +2978,29 @@ mod tests {
         );
         let sqrt = alice.sqrt(&sess, &x);
         assert_eq!(exp, sqrt)
+    }
+
+    use rstest::rstest;
+    #[rstest]
+    #[case(None)]
+    #[case(Some(2))]
+    fn test_kernel_squeeze(#[case] axis: Option<u32>) {
+        use crate::kernels::PlacementSqueeze;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::host::HostTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let x_expanded = x.expand_dims(vec![2]);
+        let exp_shape = RawShape(vec![2, 2]);
+
+        let x_squeezed = alice.squeeze(&sess, axis, &x_expanded);
+
+        assert_eq!(exp_shape, x_squeezed.shape().0)
     }
 
     #[test]
