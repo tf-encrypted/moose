@@ -12,14 +12,13 @@ use crate::host::{
     HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, SliceInfo,
 };
 use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitDec,
-    PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot,
-    PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb,
-    PlacementMul, PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt,
-    PlacementReveal, PlacementRingInject, PlacementRotateRight, PlacementSampleUniformSeeded,
-    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShl, PlacementShr,
-    PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
-    PlacementZeros, Session, Tensor,
+    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementBitDec, PlacementBitDecSetup,
+    PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
+    PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup,
+    PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementRotateRight,
+    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
+    PlacementShl, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;

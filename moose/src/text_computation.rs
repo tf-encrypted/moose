@@ -239,6 +239,10 @@ macro_rules! operation_on_axis {
 fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     input: &'a str,
 ) -> IResult<&'a str, Operator, E> {
+    // NOTE: Ideally, we would group all of these parser declarations into a single `alt`
+    // combinator. However, `alt` expects a tuple of parsers with cardinality at most 21.
+    // We get around this by nesting calls of `alt`, as recommended by the function docs:
+    // https://docs.rs/nom/7.0.0/nom/branch/fn.alt.html
     let part1 = alt((
         preceded(tag(IdentityOp::SHORT_NAME), cut(unary!(IdentityOp))),
         preceded(tag(LoadOp::SHORT_NAME), cut(unary!(LoadOp))),
@@ -313,6 +317,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(BitSampleOp::SHORT_NAME), cut(bit_sample)),
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
         preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
+        preceded(tag(HostSqrtOp::SHORT_NAME), cut(unary!(HostSqrtOp))),
     ));
     alt((part1, part2, part3))(input)
 }
@@ -787,6 +792,11 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "ReplicatedSetup" => Ok((i, Ty::ReplicatedSetup)),
         "Additive64Tensor" => Ok((i, Ty::AdditiveRing64Tensor)),
         "Additive128Tensor" => Ok((i, Ty::AdditiveRing128Tensor)),
+        "ReplicatedShape" => Ok((i, Ty::ReplicatedShape)),
+        "AdditiveBitTensor" => Ok((i, Ty::AdditiveBitTensor)),
+        "AdditiveShape" => Ok((i, Ty::AdditiveShape)),
+        "Fixed64Tensor" => Ok((i, Ty::Fixed64Tensor)),
+        "Fixed128Tensor" => Ok((i, Ty::Fixed128Tensor)),
         "Unit" => Ok((i, Ty::Unit)),
         "Float32" => Ok((i, Ty::Float32)),
         "Float64" => Ok((i, Ty::Float64)),
@@ -1203,6 +1213,7 @@ impl ToTextual for Operator {
         use Operator::*;
         match self {
             Identity(op) => op.to_textual(),
+            Cast(op) => op.to_textual(),
             Load(op) => op.to_textual(),
             Save(op) => op.to_textual(),
             Send(op) => op.to_textual(),
@@ -1221,6 +1232,7 @@ impl ToTextual for Operator {
             HostDiv(op) => op.to_textual(),
             HostDot(op) => op.to_textual(),
             HostMean(op) => op.to_textual(),
+            HostSqrt(op) => op.to_textual(),
             HostOnes(op) => op.to_textual(),
             HostConcat(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
@@ -1307,6 +1319,7 @@ macro_rules! impl_to_textual {
 
 impl_to_textual!(ConstantOp, "{op}{{value = {}}}", value);
 impl_to_textual!(IdentityOp, "{op}: {}", sig);
+impl_to_textual!(CastOp, "{op}: {}", sig);
 impl_to_textual!(LoadOp, "{op}: {}", sig);
 impl_to_textual!(SaveOp, "{op}: {}", sig);
 impl_to_textual!(
@@ -1359,6 +1372,7 @@ impl_to_textual!(
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
+impl_to_textual!(HostSqrtOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
 impl_to_textual!(RingNegOp, "{op}: {}", sig);
 impl_to_textual!(RingAddOp, "{op}: {}", sig);
@@ -1643,8 +1657,8 @@ impl ToTextual for Ty {
             Ty::AdditiveRing64Tensor => "Additive64Tensor",
             Ty::AdditiveRing128Tensor => "Additive128Tensor",
             Ty::AdditiveShape => "AdditiveShape",
-            // TODO
-            Ty::Fixed64Tensor | Ty::Fixed128Tensor => unimplemented!(),
+            Ty::Fixed64Tensor => "Fixed64Tensor",
+            Ty::Fixed128Tensor => "Fixed128Tensor",
         }
         .to_string()
     }
@@ -1826,7 +1840,8 @@ use_debug_to_textual!(bool);
 
 impl ToTextual for SliceInfo {
     fn to_textual(&self) -> String {
-        unimplemented!()
+        // TODO: Find a good textual format for the SliceInfo
+        format!("{:?}", self.0)
     }
 }
 

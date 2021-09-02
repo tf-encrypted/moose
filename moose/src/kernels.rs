@@ -3,6 +3,7 @@ use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
+use crate::fixedpoint::Fixed128Tensor;
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
@@ -116,6 +117,7 @@ impl Session for SyncSession {
             Save(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSqrt(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -140,6 +142,7 @@ impl Session for SyncSession {
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostBitDec(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Cast(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Send(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -344,6 +347,20 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
 // TODO(Morten) get rid of scaling_base and scaling_base
 pub trait PlacementMean<S: Session, T, O> {
     fn mean(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_base: u32, x: &T) -> O;
+}
+pub trait PlacementSqrt<S: Session, T, O> {
+    fn sqrt(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementRingMean<S: Session, T, O> {
+    fn ring_mean(
+        &self,
+        sess: &S,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: &T,
+    ) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -558,6 +575,10 @@ pub trait PlacementInverse<S: Session, T, O> {
     fn inverse(&self, sess: &S, x: &T) -> O;
 }
 
+pub trait PlacementCast<S: Session, T, O> {
+    fn cast(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait EmptyTypeHolder<T> {}
 
 pub trait PlacementSlice<S: Session, T, O> {
@@ -642,6 +663,8 @@ impl Compile<SyncKernel> for Operator {
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
             HostRotateRight(_) => unimplemented!(),
+            HostSqrt(_) => unimplemented!(),
+            Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
@@ -709,7 +732,8 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostRotateRight(_) => {
+            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostRotateRight(_)
+            | HostSqrt(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
@@ -782,7 +806,7 @@ macro_rules! host_unary_kernel {
 }
 
 macro_rules! host_binary_kernel {
-    ($op:ident, $t:ident::$f:ident, $k:expr) => {
+    ($op:ident, $k:expr) => {
         impl Compile<Kernel> for $op {
             fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
                 match self.sig {
@@ -808,32 +832,14 @@ macro_rules! host_binary_kernel {
                 }
             }
         }
-
-        modelled!($t::$f, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostUint32Tensor, HostUint32Tensor) -> HostUint32Tensor, $op);
-        modelled!($t::$f, HostPlacement, (HostUint64Tensor, HostUint64Tensor) -> HostUint64Tensor, $op);
-
-        kernel! {
-            $op, [
-                (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostInt32Tensor, HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostInt64Tensor, HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostUint32Tensor, HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
-                (HostPlacement, (HostUint64Tensor, HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
-            ]
-        }
     };
 }
 
-host_binary_kernel!(HostAddOp, PlacementAdd::add, |x, y| x + y);
-host_binary_kernel!(HostSubOp, PlacementSub::sub, |x, y| x - y);
-host_binary_kernel!(HostMulOp, PlacementMul::mul, |x, y| x * y);
-host_binary_kernel!(HostDivOp, PlacementDiv::div, |x, y| x / y);
-host_binary_kernel!(HostDotOp, PlacementDot::dot, |x, y| x.dot(y));
+host_binary_kernel!(HostAddOp, |x, y| x + y);
+host_binary_kernel!(HostSubOp, |x, y| x - y);
+host_binary_kernel!(HostMulOp, |x, y| x * y);
+host_binary_kernel!(HostDivOp, |x, y| x / y);
+host_binary_kernel!(HostDotOp, |x, y| x.dot(y));
 host_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
 modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
@@ -872,6 +878,7 @@ modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32
 kernel! {
     HostMeanOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 
@@ -900,6 +907,16 @@ impl Compile<Kernel> for HostMeanOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostSqrtOp);
+modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostSqrtOp);
+
+kernel! {
+    HostSqrtOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for HostOnesOp {
@@ -1106,6 +1123,7 @@ modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostF
 kernel! {
     HostSumOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 

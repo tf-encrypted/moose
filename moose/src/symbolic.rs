@@ -111,6 +111,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
         match op {
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Constant(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Cast(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Input(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Output(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Load(op) => DispatchKernel::compile(&op, plc)(sess, operands),
@@ -166,6 +167,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             AdtToRep(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            HostSqrt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostRotateRight(op) => DispatchKernel::compile(&op, plc)(sess, operands),
