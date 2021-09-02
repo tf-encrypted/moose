@@ -1179,7 +1179,7 @@ impl TryFrom<PyComputation> for Computation {
                     }),
                     std_ShapeOperation(op) => Ok(Operation {
                         kind: ShapeOp {
-                            sig: Signature::unary(Ty::HostFloat64Tensor, Ty::HostShape),
+                            sig: Signature::unary(Ty::Tensor, Ty::HostShape),
                         }
                         .into(),
                         inputs: map_inputs(&op.inputs, &["x"])

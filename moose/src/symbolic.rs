@@ -200,7 +200,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Inverse(op) => unimplemented!("Not done yet: {:?}", op),
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
-            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
             // the following operators are not supported by design (for now, at least)

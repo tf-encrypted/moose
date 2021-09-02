@@ -1,11 +1,9 @@
-use crate::computation::{
-    AtLeast2DOp, HasShortName, HostPlacement, KnownType, Placed, Placement, Signature, SymbolicType,
-};
+use crate::computation::{AtLeast2DOp, HasShortName, HostPlacement, KnownType, MeanOp, Placed, Placement, Signature, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::HostFloat64Tensor;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementMean, PlacementStdMean, Session};
 use crate::symbolic::Symbolic;
 use macros::with_context;
 use macros::ShortName;
@@ -161,8 +159,6 @@ impl AtLeast2DOp {
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
     where
-        Tensor: KnownType<S>,
-        HostFloat64Tensor: KnownType<S>,
         // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
         // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementAtLeast2D<S, Float32T, Float32T>,
@@ -183,6 +179,39 @@ impl AtLeast2DOp {
             }
             AbstractTensor::Float64(x) => {
                 let z = plc.at_least_2d(sess, to_column_vector, &x);
+                AbstractTensor::Float64(z)
+            }
+            _ => unimplemented!("Fill other match arms please"),
+        }
+    }
+}
+
+kernel! {
+    MeanOp, [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::kernel),
+    ]
+}
+
+impl MeanOp {
+    fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
+        // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementStdMean<S, Float32T, Float32T>,
+        HostPlacement: PlacementStdMean<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Float32(x) => {
+                let z = plc.std_mean(sess, axis, &x);
+                AbstractTensor::Float32(z)
+            }
+            AbstractTensor::Float64(x) => {
+                let z = plc.std_mean(sess, axis, &x);
                 AbstractTensor::Float64(z)
             }
             _ => unimplemented!("Fill other match arms please"),

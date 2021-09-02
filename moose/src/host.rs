@@ -10,13 +10,8 @@ use crate::computation::{
 use crate::error::Error;
 use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
-    PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor,
-    RuntimeSession, Session, SyncSession, Tensor,
-};
+use crate::floatingpoint::FloatTensor;
+use crate::kernels::{PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementStdMean, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor};
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
@@ -843,6 +838,23 @@ impl HostMeanOp {
                     .unwrap();
                 HostTensor::place(plc, out)
             }
+        }
+    }
+
+    pub fn float_kernel<S: RuntimeSession, T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: FloatTensor<T>,
+    ) -> FloatTensor<T>
+    where
+        HostPlacement: PlacementStdMean<S, T, T>,
+    {
+        match x {
+            FloatTensor::Host(x) => {
+                let inner = plc.std_mean(sess, axis, &x);
+                FloatTensor::Host(inner)
+            },
         }
     }
 

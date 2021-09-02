@@ -3,13 +3,15 @@ use crate::computation::{
     AdditivePlacement, HostPlacement, HostReshapeOp, Placed, ReplicatedPlacement, RingInjectOp,
     ShapeOp,
 };
+use crate::floatingpoint::FloatTensor;
 use crate::host::{
     HostBitTensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
     HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
-use crate::kernels::PlacementShape;
+use crate::kernels::{PlacementShape, RuntimeSession};
 use crate::kernels::{PlacementReshape, PlacementRingInject};
+use crate::logical::Tensor;
 use crate::replicated::{
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
 };
@@ -27,9 +29,11 @@ modelled!(PlacementShape::shape, AdditivePlacement, (AdditiveRing128Tensor) -> A
 kernel! {
     ShapeOp,
     [
+        (HostPlacement, (Tensor) -> HostShape => [runtime] Self::logical_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostShape => [runtime] Self::ring_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostShape => [runtime] Self::ring_kernel),
         (HostPlacement, (HostBitTensor) -> HostShape => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostShape => [runtime] Self::host_kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostShape => [runtime] Self::host_kernel),
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
         (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedShape => [runtime] Self::rep_kernel),
@@ -38,6 +42,21 @@ kernel! {
         (AdditivePlacement, (AdditiveRing128Tensor) -> AdditiveShape => [runtime] Self::adt_kernel),
     ]
 }
+
+impl ShapeOp {
+    pub(crate) fn logical_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: Tensor,
+    ) -> HostShape {
+        match x {
+            Tensor::Float32(FloatTensor::Host(x)) => Self::host_kernel(sess, plc, x),
+            Tensor::Float64(FloatTensor::Host(x)) => Self::host_kernel(sess, plc, x),
+            _ => unimplemented!("Can not produce a shape for the tensor {:?}", x),
+        }
+    }
+}
+
 
 modelled!(PlacementReshape::reshape, HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor, HostReshapeOp);
 modelled!(PlacementReshape::reshape, HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor, HostReshapeOp);

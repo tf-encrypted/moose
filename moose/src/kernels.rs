@@ -153,7 +153,7 @@ impl Session for SyncSession {
             Inverse(op) => unimplemented!("Not done yet: {:?}", op),
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
-            Mean(op) => unimplemented!("Not done yet: {:?}", op),
+            Mean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
             Div(op) => unimplemented!("Not done yet: {:?}", op),
         }
@@ -896,11 +896,16 @@ impl Compile<Kernel> for HostInverseOp {
         }
     }
 }
-
+modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, HostMeanOp);
+modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, HostMeanOp);
+modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostMeanOp);
 modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
 
 kernel! {
     HostMeanOp, [
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [runtime] attributes[axis] Self::float_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [runtime] attributes[axis] Self::float_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
         (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
@@ -2340,6 +2345,7 @@ kernel! {
         (HostPlacement, (String, String) -> HostUint64Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostFixed64Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostFixed128Tensor => [runtime] Self::kernel),
+        (HostPlacement, (String, String) -> crate::logical::Tensor => [runtime] Self::kernel),
     ]
 }
 
