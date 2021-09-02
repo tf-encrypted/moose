@@ -163,9 +163,24 @@ impl AtLeast2DOp {
     where
         Tensor: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
+        // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
+        // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementAtLeast2D<S, Float32T, Float32T>,
         HostPlacement: PlacementAtLeast2D<S, Float64T, Float64T>,
     {
         match x {
+            // AbstractTensor::Fixed64(x) => {
+            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
+            //     AbstractTensor::Fixed64(z)
+            // }
+            // AbstractTensor::Fixed128(x) => {
+            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
+            //     AbstractTensor::Fixed128(z)
+            // }
+            AbstractTensor::Float32(x) => {
+                let z = plc.at_least_2d(sess, to_column_vector, &x);
+                AbstractTensor::Float32(z)
+            }
             AbstractTensor::Float64(x) => {
                 let z = plc.at_least_2d(sess, to_column_vector, &x);
                 AbstractTensor::Float64(z)
