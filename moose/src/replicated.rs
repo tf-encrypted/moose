@@ -2427,6 +2427,52 @@ mod tests {
         assert_eq!(6, opened_result.0[[]].0);
     }
 
+    macro_rules! diag_op_test {
+        ($func_name:ident, $rt:ty, $tt:ident) => {
+            fn $func_name() {
+                let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
+                let exp = array![1 as $rt, 4].into_dyn();
+
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let xr = $tt::from_raw_plc(x, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &xr);
+
+                let diag = rep.diag(&sess, &x_shared);
+                let opened_diag = alice.reveal(&sess, &diag);
+                assert_eq!(opened_diag, $tt::from_raw_plc(exp, alice.clone()))
+            }
+        };
+    }
+
+    diag_op_test!(rep_diag_bit, u8, HostBitTensor);
+    diag_op_test!(rep_diag_ring64, u64, AbstractHostRingTensor);
+    diag_op_test!(rep_diag_ring128, u128, AbstractHostRingTensor);
+
+    #[test]
+    fn test_rep_diag_bit() {
+        rep_diag_bit()
+    }
+
+    #[test]
+    fn test_rep_diag_ring64() {
+        rep_diag_ring64()
+    }
+
+    #[test]
+    fn test_rep_diag_ring128() {
+        rep_diag_ring128()
+    }
+
     macro_rules! rep_add_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
