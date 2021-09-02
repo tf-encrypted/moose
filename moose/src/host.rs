@@ -82,8 +82,8 @@ impl RawShape {
                 match removed_axis {
                     1 => self,
                     _ => panic!(
-                        "The axis selected has a value of {:?}. Cannot select an axis to squeeze out which has size not equal to one",
-                        removed_axis
+                        "The axis selected has a value of {:?}. Cannot select an axis to squeeze out
+                        which has size not equal to one", removed_axis
                     ),
                 }
             }
