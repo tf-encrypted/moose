@@ -1,9 +1,9 @@
 //! Support for fixed-point arithmetic
 
 use crate::computation::{
-    FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp, FixedpointMeanOp,
-    FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp, HostPlacement,
-    KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
+    CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp,
+    FixedpointMeanOp, FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
+    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
 };
 use crate::error::Result;
 use crate::host::{
@@ -11,7 +11,7 @@ use crate::host::{
     HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
 };
 use crate::kernels::{
-    PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
+    PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
     PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementReveal,
     PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen,
     PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session,
@@ -972,6 +972,35 @@ impl FixedpointMeanOp {
     {
         let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
         AbstractReplicatedFixedTensor(y)
+    }
+}
+
+modelled!(PlacementCast::cast, HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor, CastOp);
+modelled!(PlacementCast::cast, HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor, CastOp);
+
+kernel! {
+    CastOp,
+    [
+        (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => [hybrid] Self::encode_kernel),
+        (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::decode_kernel),
+    ]
+}
+
+impl CastOp {
+    fn encode_kernel<S: Session, T>(sess: &S, plc: &HostPlacement, x: T) -> cs!(Fixed128Tensor)
+    where
+        Fixed128Tensor: KnownType<S>,
+        HostPlacement: PlacementFixedpointEncode<S, T, cs!(Fixed128Tensor)>,
+    {
+        plc.fixedpoint_encode(sess, 27, &x) // TODO: Get the precision from python
+    }
+
+    fn decode_kernel<S: Session, R>(sess: &S, plc: &HostPlacement, x: cs!(Fixed128Tensor)) -> R
+    where
+        Fixed128Tensor: KnownType<S>,
+        HostPlacement: PlacementFixedpointDecode<S, cs!(Fixed128Tensor), R>,
+    {
+        plc.fixedpoint_decode(sess, 27, &x) // TODO: Get the precision from python
     }
 }
 

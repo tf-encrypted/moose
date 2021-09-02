@@ -111,6 +111,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
         match op {
             PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Constant(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Cast(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Input(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Output(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Load(op) => DispatchKernel::compile(&op, plc)(sess, operands),
