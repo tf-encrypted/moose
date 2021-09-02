@@ -9,8 +9,8 @@ use crate::host::{
     HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor,
 };
-use crate::kernels::{PlacementShape, RuntimeSession};
 use crate::kernels::{PlacementReshape, PlacementRingInject};
+use crate::kernels::{PlacementShape, RuntimeSession};
 use crate::logical::Tensor;
 use crate::replicated::{
     ReplicatedBitTensor, ReplicatedRing128Tensor, ReplicatedRing64Tensor, ReplicatedShape,
@@ -56,7 +56,6 @@ impl ShapeOp {
         }
     }
 }
-
 
 modelled!(PlacementReshape::reshape, HostPlacement, (HostRing64Tensor, HostShape) -> HostRing64Tensor, HostReshapeOp);
 modelled!(PlacementReshape::reshape, HostPlacement, (HostRing128Tensor, HostShape) -> HostRing128Tensor, HostReshapeOp);

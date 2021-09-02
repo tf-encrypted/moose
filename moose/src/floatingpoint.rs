@@ -33,3 +33,10 @@ where
 {
     type Type = Symbolic<FloatTensor<<HostT as SymbolicType>::Type>>;
 }
+
+// TODO(lvorona): Not sure why we need this one separately... But the moose_type macro is coming!
+impl<T: Placed<Placement = HostPlacement>> From<FloatTensor<T>> for Symbolic<FloatTensor<T>> {
+    fn from(x: FloatTensor<T>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}

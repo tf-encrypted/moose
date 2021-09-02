@@ -6,16 +6,15 @@ use crate::computation::{
     HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
 };
 use crate::error::Result;
-use crate::host::{
-    AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
-};
+use crate::floatingpoint::{Float64Tensor, FloatTensor};
+use crate::host::{AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor, HostTensor};
 use crate::kernels::{
     PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
     PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementReveal,
     PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen,
     PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session,
 };
+use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
     AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
 };
@@ -975,12 +974,18 @@ impl FixedpointMeanOp {
     }
 }
 
+modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
+// modelled!(PlacementCast::cast, HostPlacement, (Float64Tensor) -> Fixed128Tensor, CastOp);
+modelled!(PlacementCast::cast, HostPlacement, (Fixed128Tensor) -> Float64Tensor, CastOp);
 modelled!(PlacementCast::cast, HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor, CastOp);
 modelled!(PlacementCast::cast, HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor, CastOp);
 
 kernel! {
     CastOp,
     [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::logical_kernel),
+        // (HostPlacement, (Float64Tensor) -> Fixed128Tensor => [hybrid] Self::encode_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Float64Tensor => [hybrid] Self::float_decode_kernel),
         (HostPlacement, (HostFloat64Tensor) -> Fixed128Tensor => [hybrid] Self::encode_kernel),
         (HostPlacement, (Fixed128Tensor) -> HostFloat64Tensor => [hybrid] Self::decode_kernel),
     ]
@@ -1002,6 +1007,41 @@ impl CastOp {
     {
         plc.fixedpoint_decode(sess, 27, &x) // TODO: Get the precision from python
     }
+
+    fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementCast<S, Fixed128T, Float64T>,
+        // HostPlacement: PlacementCast<S, Float64T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed128(x) => {
+                let inner = plc.cast(sess, &x);
+                AbstractTensor::Float64(inner)
+            },
+            // AbstractTensor::Float64(Float64Tensor::Host(x)) => {
+            //     let inner = plc.cast(sess, &x);
+            //     AbstractTensor::Fixed128(inner)
+            // }
+            _ => unimplemented!("Can not do a cast"),
+        }
+    }
+
+    pub fn float_decode_kernel<S: Session, FixedT, HostT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FixedT,
+    ) -> FloatTensor<HostT>
+    where
+        HostPlacement: PlacementCast<S, FixedT, HostT>,
+    {
+        let inner = plc.cast(sess, &x);
+        FloatTensor::Host(inner)
+    }
+
 }
 
 #[cfg(test)]

@@ -1821,7 +1821,11 @@ impl ConstantOp {
         plc.place(sess, value)
     }
 
-    fn tensor_kernel<S: RuntimeSession>(sess: &S, plc: &HostPlacement, value: Constant) -> crate::logical::Tensor
+    fn tensor_kernel<S: RuntimeSession>(
+        sess: &S,
+        plc: &HostPlacement,
+        value: Constant,
+    ) -> crate::logical::Tensor
     where
         HostPlacement: PlacementPlace<S, HostFloat32Tensor>,
         HostPlacement: PlacementPlace<S, HostFloat64Tensor>,
@@ -1830,16 +1834,14 @@ impl ConstantOp {
             Constant::HostFloat32Tensor(x) => {
                 let inner = plc.place(sess, x);
                 crate::logical::Tensor::Float32(Float32Tensor::Host(inner))
-            },
+            }
             Constant::HostFloat64Tensor(x) => {
                 let inner = plc.place(sess, x);
                 crate::logical::Tensor::Float64(Float64Tensor::Host(inner))
-            },
+            }
             _ => unimplemented!("Unsupported tensor constant value of type {}", value.ty()),
-
         }
     }
-
 }
 
 for_all_values! {( $($value:ty),* ) => (
