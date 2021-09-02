@@ -1778,12 +1778,14 @@ macro_rules! constant_kernels {
         $(
             modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> $val, ConstantOp);
         )+
+        modelled!(PlacementConstant::constant, HostPlacement, attributes[value: Constant] () -> crate::logical::Tensor, ConstantOp);
 
         kernel! {
             ConstantOp, [
                 $(
                     (HostPlacement, () -> $val => [runtime] attributes[value: $val] Self::kernel),
                 )+
+                (HostPlacement, () -> crate::logical::Tensor => [runtime] attributes[value] Self::tensor_kernel),
             ]
         }
     };
@@ -1810,6 +1812,26 @@ impl ConstantOp {
     {
         plc.place(sess, value)
     }
+
+    fn tensor_kernel<S: RuntimeSession>(sess: &S, plc: &HostPlacement, value: Constant) -> crate::logical::Tensor
+    where
+        HostPlacement: PlacementPlace<S, HostFloat32Tensor>,
+        HostPlacement: PlacementPlace<S, HostFloat64Tensor>,
+    {
+        match value {
+            Constant::HostFloat32Tensor(x) => {
+                let inner = plc.place(sess, x);
+                crate::logical::Tensor::Float32(Float32Tensor::Host(inner))
+            },
+            Constant::HostFloat64Tensor(x) => {
+                let inner = plc.place(sess, x);
+                crate::logical::Tensor::Float64(Float64Tensor::Host(inner))
+            },
+            _ => unimplemented!("Unsupported tensor constant value of type {}", value.ty()),
+
+        }
+    }
+
 }
 
 for_all_values! {( $($value:ty),* ) => (
