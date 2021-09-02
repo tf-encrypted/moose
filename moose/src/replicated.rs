@@ -2,9 +2,9 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
-    RepAbsOp, RepAddOp, RepBitDecOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp,
-    RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp, RepSliceOp, RepSubOp,
-    RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
+    RepAbsOp, RepAddOp, RepBitDecOp, RepDiagOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp,
+    RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp, RepSliceOp,
+    RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{
@@ -13,7 +13,7 @@ use crate::host::{
 };
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
-    PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot,
+    PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDiag, PlacementDot,
     PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb,
     PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal,
     PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
@@ -1683,6 +1683,48 @@ impl RepIndexAxisOp {
     }
 }
 
+modelled!(PlacementDiag::diag, ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepDiagOp);
+modelled!(PlacementDiag::diag, ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepDiagOp);
+modelled!(PlacementDiag::diag, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, RepDiagOp);
+
+kernel! {
+    RepDiagOp,
+    [
+        (ReplicatedPlacement, (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl RepDiagOp {
+    fn kernel<S: Session, HostRingT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepTen<HostRingT>,
+    ) -> RepTen<HostRingT>
+    where
+        HostPlacement: PlacementDiag<S, HostRingT, HostRingT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = &x;
+
+        let z00 = player0.diag(sess, x00);
+        let z10 = player0.diag(sess, x10);
+
+        let z11 = player1.diag(sess, x11);
+        let z21 = player1.diag(sess, x21);
+
+        let z22 = player2.diag(sess, x22);
+        let z02 = player2.diag(sess, x02);
+
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+}
+
 modelled!(PlacementSlice::slice, ReplicatedPlacement, attributes[slice: SliceInfo] (ReplicatedShape) -> ReplicatedShape, RepSliceOp);
 
 kernel! {
@@ -2383,6 +2425,52 @@ mod tests {
         let opened_result = alice.reveal(&sess, &sum);
 
         assert_eq!(6, opened_result.0[[]].0);
+    }
+
+    macro_rules! diag_op_test {
+        ($func_name:ident, $rt:ty, $tt:ident) => {
+            fn $func_name() {
+                let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
+                let exp = array![1 as $rt, 4].into_dyn();
+
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let xr = $tt::from_raw_plc(x, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &xr);
+
+                let diag = rep.diag(&sess, &x_shared);
+                let opened_diag = alice.reveal(&sess, &diag);
+                assert_eq!(opened_diag, $tt::from_raw_plc(exp, alice.clone()))
+            }
+        };
+    }
+
+    diag_op_test!(rep_diag_bit, u8, HostBitTensor);
+    diag_op_test!(rep_diag_ring64, u64, AbstractHostRingTensor);
+    diag_op_test!(rep_diag_ring128, u128, AbstractHostRingTensor);
+
+    #[test]
+    fn test_rep_diag_bit() {
+        rep_diag_bit()
+    }
+
+    #[test]
+    fn test_rep_diag_ring64() {
+        rep_diag_ring64()
+    }
+
+    #[test]
+    fn test_rep_diag_ring128() {
+        rep_diag_ring128()
     }
 
     macro_rules! rep_add_test {

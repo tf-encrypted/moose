@@ -805,6 +805,7 @@ operators![
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
+    RepDiag,
     RepSlice,
     RepBitDec,
     RepShlDim,
@@ -1311,6 +1312,11 @@ pub struct RepIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepDiagOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
