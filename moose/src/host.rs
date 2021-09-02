@@ -2,10 +2,10 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
     Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp,
     HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement,
-    HostReshapeOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp, HostSumOp, HostTransposeOp,
-    KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp, RingFillOp,
-    RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp,
-    RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
+    HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp, HostSumOp,
+    HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp,
+    RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
+    RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
 };
 use crate::error::Error;
 use crate::error::Result;
@@ -14,8 +14,8 @@ use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
     PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
     PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementXor,
-    RuntimeSession, Session, SyncSession, Tensor,
+    PlacementShlDim, PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -664,19 +664,64 @@ impl HostIndexAxisOp {
     }
 }
 
+modelled!(PlacementShlDim::shl_dim, HostPlacement, attributes[amount:usize, bit_length: usize] (HostBitTensor) -> HostBitTensor, HostShlDimOp);
+
+kernel! {
+    HostShlDimOp,
+    [
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] attributes[amount, bit_length] Self::bit_kernel),
+    ]
+}
+
+impl HostShlDimOp {
+    pub fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        amount: usize,
+        bit_length: usize,
+        x: HostBitTensor,
+    ) -> HostBitTensor {
+        let axis = Axis(0);
+        let mut raw_tensor_shape = x.0.shape().to_vec();
+        raw_tensor_shape.remove(0);
+        let raw_shape = raw_tensor_shape.as_ref();
+
+        let zero = ArrayD::from_elem(raw_shape, 0);
+        let zero_view = zero.view();
+
+        let concatenated: Vec<_> = (0..bit_length)
+            .map(|i| {
+                if i < bit_length - amount {
+                    x.0.index_axis(axis, i + amount)
+                } else {
+                    zero_view.clone()
+                }
+            })
+            .collect();
+
+        let result = ndarray::stack(Axis(0), &concatenated).unwrap();
+
+        HostBitTensor(result, plc.clone())
+    }
+}
+
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostBitTensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostBitTensor, HostBitDecOp);
 
 kernel! {
     HostBitDecOp,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] Self::bit64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] Self::bit128_kernel),
     ]
 }
 
 impl HostBitDecOp {
-    pub fn ring64_kernel<S: RuntimeSession>(
+    fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
@@ -697,7 +742,7 @@ where {
         AbstractHostRingTensor(result, plc.clone())
     }
 
-    pub fn ring128_kernel<S: RuntimeSession>(
+    fn ring128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
@@ -710,10 +755,50 @@ where {
         let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
-        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
 
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
         AbstractHostRingTensor(result, plc.clone())
+    }
+
+    fn bit64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+    ) -> HostBitTensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+
+        let bit_rep: Vec<_> = (0..HostRing64Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
+
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+        let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
+        // we unwrap only at the end since shifting can cause overflow
+        HostBitTensor(result.map(|v| v.0 as u8), plc.clone())
+    }
+
+    fn bit128_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+    ) -> HostBitTensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+
+        let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
+
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+        let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
+        // we unwrap only at the end since shifting can cause overflow
+        HostBitTensor(result.map(|v| v.0 as u8), plc.clone())
     }
 }
 
@@ -2600,8 +2685,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::kernels::PlacementRingInject;
-
     use super::*;
 
     #[test]
@@ -3149,12 +3232,12 @@ mod tests {
         };
         let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
         let sess = SyncSession::default();
-        let x_bits = alice.bit_decompose(&sess, &x);
+        let x_bits: HostBitTensor = alice.bit_decompose(&sess, &x);
         let targets: Vec<_> = (0..64).map(|i| alice.bit_extract(&sess, i, &x)).collect();
 
         for (i, target) in targets.iter().enumerate() {
-            let injected_target: HostRing64Tensor = alice.ring_inject(&sess, 0, target);
-            assert_eq!(alice.index_axis(&sess, 0, i, &x_bits), injected_target);
+            let sliced = alice.index_axis(&sess, 0, i, &x_bits);
+            assert_eq!(&sliced, target);
         }
     }
 }
