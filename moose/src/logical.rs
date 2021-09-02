@@ -222,7 +222,6 @@ impl MeanOp {
                 let z = plc.std_mean(sess, axis, &x);
                 AbstractTensor::Float64(z)
             }
-            _ => unimplemented!("Fill other match arms please"),
         }
     }
 }

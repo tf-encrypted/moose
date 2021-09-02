@@ -1230,6 +1230,7 @@ impl ToTextual for Operator {
             Transpose(op) => op.to_textual(),
             Dot(op) => op.to_textual(),
             Inverse(op) => op.to_textual(),
+            Add(op) => op.to_textual(),
             Sub(op) => op.to_textual(),
             Mul(op) => op.to_textual(),
             Mean(op) => op.to_textual(),
@@ -1362,6 +1363,7 @@ impl_to_textual!(ConcatOp, "{op}{{axis={}}}: {}", axis, sig);
 impl_to_textual!(TransposeOp, "{op}: {}", sig);
 impl_to_textual!(DotOp, "{op}: {}", sig);
 impl_to_textual!(InverseOp, "{op}: {}", sig);
+impl_to_textual!(AddOp, "{op}: {}", sig);
 impl_to_textual!(SubOp, "{op}: {}", sig);
 impl_to_textual!(MulOp, "{op}: {}", sig);
 impl_to_textual!(DivOp, "{op}: {}", sig);

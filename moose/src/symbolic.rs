@@ -198,6 +198,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Transpose(op) => unimplemented!("Not done yet: {:?}", op),
             Dot(op) => unimplemented!("Not done yet: {:?}", op),
             Inverse(op) => unimplemented!("Not done yet: {:?}", op),
+            Add(op) => unimplemented!("Not done yet: {:?}", op),
             Sub(op) => unimplemented!("Not done yet: {:?}", op),
             Mul(op) => unimplemented!("Not done yet: {:?}", op),
             Mean(op) => DispatchKernel::compile(&op, plc)(sess, operands),

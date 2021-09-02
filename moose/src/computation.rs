@@ -741,6 +741,7 @@ operators![
     Transpose,
     Dot,
     Inverse,
+    Add,
     Sub,
     Mul,
     Mean,

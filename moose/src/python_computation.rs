@@ -1103,7 +1103,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_AddOperation(op) => Ok(Operation {
-                        kind: HostAddOp {
+                        kind: AddOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
@@ -1118,7 +1118,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     std_SubOperation(op) => Ok(Operation {
-                        kind: HostSubOp {
+                        kind: SubOp {
                             // we can use output type type to determine input type
                             sig: Signature::binary(
                                 map_type(&op.output_type)?,
