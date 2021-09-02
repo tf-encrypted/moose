@@ -1043,54 +1043,60 @@ impl AsyncSessionHandle {
         errors
     }
 
-    pub async fn join_on_first_error(self) -> anyhow::Result<()> {
+    pub async fn join_on_first_error(
+        mut self,
+        abort_listener: Option<oneshot::Receiver<()>>,
+    ) -> anyhow::Result<()> {
         use crate::error::Error::{OperandUnavailable, ResultUnused};
         use futures::StreamExt;
 
-        // TODO:
-        // iterate and wrap all tasks with MyJoinHandle
-        // impl drop and future for MyJoinHandle
-        //     in Drop: call join_handle.abort()
-
-        //let mut task_vec = Vec::new();
-        //for task in self.tasks.into_iter() {
-        //    task_vec.push(CancelJoinHandle{task: task});
-        //}
-        //let mut tasks = task_vec.into_iter().collect::<futures::stream::FuturesUnordered<_>>();
+        let ntasks = self.tasks.len();
+        match abort_listener {
+            Some(receiver) => {
+                let abort_task: AsyncTask = tokio::spawn(async move {
+                    receiver.await.ok(); // wait for an abort signal
+                    Err(Error::Abort)
+                });
+                self.tasks.push(abort_task);
+            }
+            None => (),
+        }
 
         let mut tasks = self
             .tasks
             .into_iter()
             .collect::<futures::stream::FuturesUnordered<_>>();
 
-        while let Some(x) = tasks.next().await {
-            match x {
-                Ok(Ok(_)) => {
-                    continue;
-                }
-                Ok(Err(e)) => {
-                    match e {
-                        // OperandUnavailable and ResultUnused are typically not root causes.
-                        // Wait to get an error that would indicate the root cause of the problem,
-                        // and return it instead.
-                        OperandUnavailable => continue,
-                        ResultUnused => continue,
-                        _ => {
+        for _ in 0..ntasks {
+            if let Some(completed_task) = tasks.next().await {
+                match completed_task {
+                    Ok(Ok(_)) => {
+                        continue;
+                    }
+                    Ok(Err(e)) => {
+                        match e {
+                            // OperandUnavailable and ResultUnused are typically not root causes.
+                            // Wait to get an error that would indicate the root cause of the problem,
+                            // and return it instead.
+                            OperandUnavailable => continue,
+                            ResultUnused => continue,
+                            _ => {
+                                for task in tasks.iter() {
+                                    task.abort();
+                                }
+                                return Err(anyhow::Error::from(e));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        if e.is_cancelled() {
+                            continue;
+                        } else if e.is_panic() {
                             for task in tasks.iter() {
                                 task.abort();
                             }
                             return Err(anyhow::Error::from(e));
                         }
-                    }
-                }
-                Err(e) => {
-                    if e.is_cancelled() {
-                        continue;
-                    } else if e.is_panic() {
-                        for task in tasks.iter() {
-                            task.abort();
-                        }
-                        return Err(anyhow::Error::from(e));
                     }
                 }
             }
@@ -1226,7 +1232,7 @@ impl AsyncTestRuntime {
         }
 
         for handle in session_handles {
-            let result = rt.block_on(handle.join_on_first_error());
+            let result = rt.block_on(handle.join_on_first_error(None));
             if let Err(e) = result {
                 return Err(Error::TestRuntime(e.to_string()));
             }

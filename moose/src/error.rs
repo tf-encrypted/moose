@@ -12,6 +12,9 @@ pub enum Error {
     #[error("Kernel result is unused")]
     ResultUnused,
 
+    #[error("Received abort message")]
+    Abort,
+
     #[error("Type mismatch, expected {expected} but found {found}")]
     TypeMismatch { expected: String, found: Ty },
 
