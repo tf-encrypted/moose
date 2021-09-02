@@ -1318,6 +1318,7 @@ pub struct RepIndexAxisOp {
 pub struct RepDiagOp {
     pub sig: Signature,
 }
+
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepSliceOp {
     pub sig: Signature,
