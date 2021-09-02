@@ -742,12 +742,14 @@ operators![
     HostIndexAxis,
     HostBitDec,
     HostReshape,
+    HostSqueeze,
     HostSum,
     HostOnes,
     HostConcat,
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
+    HostShlDim,
     RingAdd,
     RingSub,
     RingNeg,
@@ -803,6 +805,9 @@ operators![
     RepTruncPr,
     RepToAdt,
     RepIndexAxis,
+    RepSlice,
+    RepBitDec,
+    RepShlDim,
 ];
 
 pub trait HasShortName {
@@ -920,6 +925,12 @@ pub struct HostExpandDimsOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostSqueezeOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct HostReshapeOp {
     pub sig: Signature,
 }
@@ -961,6 +972,13 @@ pub struct HostIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostShlDimOp {
+    pub sig: Signature,
+    pub amount: usize,
+    pub bit_length: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1282,10 +1300,28 @@ pub struct RepShlOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShlDimOp {
+    pub sig: Signature,
+    pub amount: usize,
+    pub bit_length: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSliceOp {
+    pub sig: Signature,
+    pub slice: SliceInfo,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepBitDecOp {
+    pub sig: Signature,
 }
 
 pub trait KnownPlacement {

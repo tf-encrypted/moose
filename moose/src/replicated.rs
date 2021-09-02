@@ -2,23 +2,23 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
-    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp, RepMulOp,
-    RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp,
-    ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
+    RepAbsOp, RepAddOp, RepBitDecOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp,
+    RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp, RepSliceOp, RepSubOp,
+    RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{
     AbstractHostFixedTensor, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostRing128Tensor, HostRing64Tensor, HostShape, RingSize,
+    HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, SliceInfo,
 };
 use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract,
-    PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
-    PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup,
-    PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject,
-    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
-    PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
+    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
+    PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot,
+    PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb,
+    PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementShl, PlacementShlDim, PlacementSlice, PlacementSub, PlacementSum,
+    PlacementTruncPr, PlacementTruncPrProvider, PlacementXor, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
@@ -1683,6 +1683,81 @@ impl RepIndexAxisOp {
     }
 }
 
+modelled!(PlacementSlice::slice, ReplicatedPlacement, attributes[slice: SliceInfo] (ReplicatedShape) -> ReplicatedShape, RepSliceOp);
+
+kernel! {
+    RepSliceOp,
+    [
+        (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedShape => [runtime] attributes[slice] Self::shape_kernel),
+    ]
+}
+
+impl RepSliceOp {
+    pub fn shape_kernel<S: Session, ShapeT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        slice_info: SliceInfo,
+        shape: AbstractReplicatedShape<ShapeT>,
+    ) -> AbstractReplicatedShape<ShapeT>
+    where
+        HostPlacement: PlacementSlice<S, ShapeT, ShapeT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+
+        let AbstractReplicatedShape {
+            shapes: [shape0, shape1, shape2],
+        } = shape;
+
+        let new_shape0 = player0.slice(sess, slice_info.clone(), &shape0);
+        let new_shape1 = player1.slice(sess, slice_info.clone(), &shape1);
+        let new_shape2 = player2.slice(sess, slice_info, &shape2);
+
+        AbstractReplicatedShape {
+            shapes: [new_shape0, new_shape1, new_shape2],
+        }
+    }
+}
+
+modelled!(PlacementShlDim::shl_dim, ReplicatedPlacement, attributes[amount: usize, bit_length: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, RepShlDimOp);
+
+kernel! {
+    RepShlDimOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] attributes[amount, bit_length] Self::kernel),
+    ]
+}
+
+impl RepShlDimOp {
+    fn kernel<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        amount: usize,
+        bit_length: usize,
+        x: RepTen<HostBitTensorT>,
+    ) -> RepTen<HostBitTensorT>
+    where
+        HostPlacement: PlacementShlDim<S, HostBitTensorT, HostBitTensorT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        let z00 = player0.shl_dim(sess, amount, bit_length, &x00);
+        let z10 = player0.shl_dim(sess, amount, bit_length, &x10);
+
+        let z11 = player1.shl_dim(sess, amount, bit_length, &x11);
+        let z21 = player1.shl_dim(sess, amount, bit_length, &x21);
+
+        let z22 = player2.shl_dim(sess, amount, bit_length, &x22);
+        let z02 = player2.shl_dim(sess, amount, bit_length, &x02);
+
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+}
+
 kernel! {
     RepMsbOp,
     [
@@ -1699,80 +1774,32 @@ modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRi
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMsbOp);
 
 impl RepMsbOp {
-    fn bit_kernel<S: Session, SetupT, RingT, BitTensorT, ReplicatedBitTensorT, ShapeT>(
+    fn bit_kernel<S: Session, SetupT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
         x: RepTen<RingT>,
-    ) -> ReplicatedBitTensorT
+    ) -> st!(RepTen<HostBitTensor>)
     where
         RingT: RingSize,
-        BitTensorT: Clone,
-        ReplicatedBitTensorT: From<RepTen<BitTensorT>>,
-        ReplicatedBitTensorT: Clone,
-        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
-        HostPlacement: RingBitDecompose<S, RingT>,
-        HostPlacement: PlacementBitExtract<S, RingT, BitTensorT>,
-        HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        HostPlacement: PlacementFill<S, ShapeT, BitTensorT>,
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitTensorT, ReplicatedBitTensorT>,
-        ReplicatedPlacement: PlacementPlace<S, RepTen<RingT>>,
-        ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitTensorT>,
+
+        RepTen<RingT>: CanonicalType,
+        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+
+        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+
+        HostBitTensor: KnownType<S>,
+        RepTen<HostBitTensor>: KnownType<S>,
+
+        ReplicatedPlacement:
+            PlacementBitDecSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<HostBitTensor>)>,
+        ReplicatedPlacement:
+            PlacementIndex<S, st!(RepTen<HostBitTensor>), st!(RepTen<HostBitTensor>)>,
     {
-        let (player0, player1, player2) = rep.host_placements();
-        let RepTen {
-            shares: [[x00, x10], [x11, x21], [x22, _x02]],
-        } = &x;
-
-        let left = with_context!(player0, sess, x00 + x10);
-        let left_ring_bs = player0.bit_decompose(sess, &left);
-
-        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
-        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
-        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
-
-        // transform x2 into boolean sharing
-        let x2_on_1: Vec<_> = player1
-            .bit_decompose(sess, x21)
-            .iter()
-            .map(|item| player1.bit_extract(sess, 0, item))
-            .collect();
-        let x2_on_2: Vec<_> = player2
-            .bit_decompose(sess, x22)
-            .iter()
-            .map(|item| player2.bit_extract(sess, 0, item))
-            .collect();
-
-        // bit-decompose bsl
-        let bsl: Vec<_> = left_ring_bs
-            .iter()
-            .map(|item| player0.bit_extract(sess, 0, item))
-            .collect();
-
-        let rep_bsl: Vec<_> = bsl
-            .iter()
-            .map(|item| rep.share(sess, &setup, item))
-            .collect();
-
-        let rep_bsr: Vec<_> = (0..RingT::SIZE)
-            .map(|i| {
-                RepTen {
-                    shares: [
-                        [p0_zero.clone(), p0_zero.clone()],
-                        [p1_zero.clone(), x2_on_1[i].clone()],
-                        [x2_on_2[i].clone(), p2_zero.clone()],
-                    ],
-                }
-                .into()
-            })
-            .collect();
-
-        let bits = rep.binary_adder(sess, setup, rep_bsl, rep_bsr);
-        bits[bits.len() - 1].clone()
+        let bits = rep.bit_decompose(sess, &setup, &x.into());
+        rep.index_axis(sess, 0, RingT::SIZE - 1, &bits)
     }
-}
 
-impl RepMsbOp {
     fn ring_kernel<S: Session, SetupT, RingT>(
         sess: &S,
         rep: &ReplicatedPlacement,
@@ -1849,30 +1876,6 @@ impl RepAbsOp {
     }
 }
 
-// TODO(Morten): might be able to return [R; R::SIZE] in the future, see https://github.com/rust-lang/rust/issues/60551
-trait RingBitDecompose<S: Session, R> {
-    fn bit_decompose(&self, sess: &S, x: &R) -> Vec<R>;
-}
-
-impl<S: Session, R> RingBitDecompose<S, R> for HostPlacement
-where
-    R: RingSize,
-    HostShape: KnownType<S>,
-    HostPlacement: PlacementOnes<S, cs!(HostShape), R>,
-    HostPlacement: PlacementShape<S, R, cs!(HostShape)>,
-    HostPlacement: PlacementShr<S, R, R>,
-    HostPlacement: PlacementAnd<S, R, R, R>,
-{
-    fn bit_decompose(&self, sess: &S, x: &R) -> Vec<R> {
-        let k = R::SIZE;
-        let shape = self.shape(sess, x);
-        let ones = self.ones(sess, &shape);
-        (0..k)
-            .map(|i| self.and(sess, &self.shr(sess, i, x), &ones))
-            .collect()
-    }
-}
-
 impl ShapeOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,
@@ -1896,114 +1899,89 @@ impl ShapeOp {
     }
 }
 
-trait BinaryAdder<S: Session, SetupT, R> {
-    fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<R>, y: Vec<R>) -> Vec<R>;
+modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add); // add = xor in Z2
+modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // sub = xor in Z2
+
+trait BinaryAdder<S: Session, SetupT, RepBitT> {
+    fn binary_adder(
+        &self,
+        sess: &S,
+        setup: SetupT,
+        x: RepBitT,
+        y: RepBitT,
+        ring_size: usize,
+    ) -> RepBitT;
 }
 
-/// Binary addition protocol
-impl<S: Session, SetupT, RT> BinaryAdder<S, SetupT, RT> for ReplicatedPlacement
+/// Binary addition protocol for tensors
+impl<S: Session, SetupT, RepBitT> BinaryAdder<S, SetupT, RepBitT> for ReplicatedPlacement
 where
-    RT: Clone,
-    RT: Placed<Placement = ReplicatedPlacement>,
-    AbstractReplicatedShape<HostShape>: KnownType<S>,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RT, RT, RT>,
-    ReplicatedPlacement: PlacementAdd<S, RT, RT, RT>,
-    ReplicatedPlacement: PlacementFill<S, st!(AbstractReplicatedShape<HostShape>), RT>,
-    ReplicatedPlacement: PlacementShape<S, RT, st!(AbstractReplicatedShape<HostShape>)>,
+    RepBitT: Clone,
+    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementShlDim<S, RepBitT, RepBitT>,
 {
-    /// Binary addition protocol
-    ///
-    /// `x` and `y` are collections of tensors. The number of tensors matches the ring size (64 or 128)
-    fn binary_adder(&self, sess: &S, setup: SetupT, x: Vec<RT>, y: Vec<RT>) -> Vec<RT> {
+    fn binary_adder(
+        &self,
+        sess: &S,
+        setup: SetupT,
+        x: RepBitT,
+        y: RepBitT,
+        ring_size: usize,
+    ) -> RepBitT {
         #![allow(clippy::many_single_char_names)]
 
-        assert_eq!(x.len(), y.len());
-        assert!(!x.is_empty());
-
-        let ring_size = x.len();
+        let rep = self;
         let log_r = (ring_size as f64).log2() as usize; // we know that R = 64/128
 
-        let rep = self;
-
-        let bitwise_and = |a: &Vec<RT>, b: &Vec<RT>| -> Vec<RT> {
-            assert!(a.len() == ring_size);
-            assert!(b.len() == ring_size);
-            a.iter()
-                .zip(b.iter())
-                .map(|(x, y)| rep.mul_setup(sess, &setup, x, y))
-                .collect()
-        };
-
-        let bitwise_xor = |a: &Vec<RT>, b: &Vec<RT>| -> Vec<RT> {
-            assert!(a.len() == ring_size);
-            assert!(b.len() == ring_size);
-            a.iter()
-                .zip(b.iter())
-                .map(|(x, y)| rep.add(sess, x, y))
-                .collect()
-        };
         // g is part of the generator set, p propagator set
         // A few helpful diagrams to understand what is happening here:
         // https://www.chessprogramming.org/Kogge-Stone_Algorithm or here: https://inst.eecs.berkeley.edu/~eecs151/sp19/files/lec20-adders.pdf
 
-        // P[i:j] = propagate bits for positions [i...i+j]
-        // G[i:j] = generator bits for positions [i...i+j]
-
         // consider we have inputs a, b to the P,G computing gate
-        // P = P_a & P_b
-        // G = G_b + G_a & P_b
-        // C_{i+1} = G_i + P_i & C_i
+        // P = P_a and P_b
+        // G = G_b xor (G_a and P_b)
 
         // P, G can be computed in a tree fashion, performing ops on chunks of len 2^i
         // Note the first level is computed as P0 = x ^ y, G0 = x & y;
 
         // Perform `g = x * y` for every tensor
-        let mut g = bitwise_and(&x, &y);
+        let mut g = rep.and_setup(sess, &setup, &x, &y);
 
-        // Perform `p_store = x + y` (just a helper to avoid compute bitwise_xor() twice)
-        let p_store = bitwise_xor(&x, &y);
-
-        let rep_shape = rep.shape(sess, &x[0]);
-
-        // We will need tensors of zeros later
-        let zero = rep.fill(sess, Constant::Bit(0), &rep_shape);
-
+        // Perform `p_store = x + y` (just a helper to avoid compute xor() twice)
+        let p_store = rep.xor(sess, &x, &y);
         let mut p = p_store.clone();
 
-        // computes a >> amount
-        let rotate_left = |a: &Vec<RT>, amount: usize| -> Vec<RT> {
-            assert!(amount <= a.len());
-            (0..a.len())
-                .map(|i| {
-                    if i < a.len() - amount {
-                        a[amount + i].clone()
-                    } else {
-                        zero.clone()
-                    }
-                })
-                .collect()
-        };
+        // (Dragos) Note that in the future we might want to delete shl_dim op and replace it with
+        // slice + stack op - however atm we can't do this. It can be unblocked after the following are implemented:
+        // 1) slice tensors with unknown shape at compile time
+        // 2) stack variable length of replicated tensors (variadic kernels + stack op)
 
-        // For chunk of length 2^i...
         for i in 0..log_r {
-            // Compute g1 and p1, zeroed out up until the current bit
-            let g1 = rotate_left(&g, 1 << i);
-            let p1 = rotate_left(&p, 1 << i);
+            // computes p << (1<<i)
+            // [ a[0], ... a[amount] ... a[ring_size - 1]
+            // [ a[amount]...a[ring_size-1] 0 ... 0 ]
+            let p1 = rep.shl_dim(sess, 1 << i, ring_size, &p);
+            // computes g >> (1<<i)
+            let g1 = rep.shl_dim(sess, 1 << i, ring_size, &g);
 
-            // `p_and_g = p1 * g1` for every tensor
-            let p_and_g = bitwise_and(&p1, &g1);
+            // Note that the original algorithm had G_a and P_b, but we can have
+            // G_a and P_a instead because the 1s in P_a do not matter in the final result
+            // since they are cancelled out by the zeros in G_a
+            let p_and_g = rep.and_setup(sess, &setup, &p1, &g1);
 
-            // Update `g = g + p_and_g`
-            g = bitwise_xor(&g, &p_and_g);
+            // update `g = g xor p1 and g1`
+            g = rep.xor(sess, &g, &p_and_g);
 
             // update `p = p * p1`
-            p = bitwise_and(&p, &p1);
+            p = rep.and_setup(sess, &setup, &p, &p1);
         }
 
         // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
-        let c = rotate_left(&g, 1);
-        // final result is `z = c + p_store` (which is the original `x + y`)
-        bitwise_xor(&c, &p_store)
+        let c = rep.shl_dim(sess, 1, ring_size, &g);
+
+        // final result is `z = c xor p_store`
+        rep.xor(sess, &c, &p_store)
     }
 }
 
@@ -2059,6 +2037,70 @@ impl RingInjectOp {
         );
         let shifted_x_adt = adt.shl(sess, bit_idx, &x_adt_ring);
         rep.adt_to_rep(sess, &shifted_x_adt)
+    }
+}
+
+modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepBitDecOp);
+modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepBitDecOp);
+
+kernel! {
+    RepBitDecOp,
+    [
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
+    ]
+}
+
+impl RepBitDecOp {
+    fn bit_kernel<S: Session, SetupT, RingT, BitT, ReplicatedBitT, ShapeT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        setup: SetupT,
+        x: RepTen<RingT>,
+    ) -> ReplicatedBitT
+    where
+        RingT: RingSize,
+
+        ReplicatedBitT: From<RepTen<BitT>>,
+        ReplicatedBitT: Clone,
+
+        BitT: Clone,
+
+        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
+        HostPlacement: PlacementBitDec<S, RingT, BitT>,
+        HostPlacement: PlacementShape<S, RingT, ShapeT>,
+        HostPlacement: PlacementFill<S, ShapeT, BitT>,
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitT, ReplicatedBitT>,
+        ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitT>,
+        ReplicatedPlacement: PlacementIndex<S, ReplicatedBitT, ReplicatedBitT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, _x02]],
+        } = &x;
+
+        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
+        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
+        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
+
+        let left = with_context!(player0, sess, x00 + x10);
+        let bsl = player0.bit_decompose(sess, &left);
+
+        // transform x2 into boolean sharing
+        let x2_on_1 = player1.bit_decompose(sess, x21);
+        let x2_on_2 = player2.bit_decompose(sess, x22);
+
+        let rep_bsl = rep.share(sess, &setup, &bsl);
+        let rep_bsr = RepTen {
+            shares: [
+                [p0_zero.clone(), p0_zero],
+                [p1_zero, x2_on_1],
+                [x2_on_2, p2_zero],
+            ],
+        }
+        .into();
+
+        rep.binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE)
     }
 }
 
@@ -2772,5 +2814,32 @@ mod tests {
     #[case(array![-10_i128 as u128, -100_i128 as u128, -200000_i128 as u128, 0, 1000].into_dyn(), array![10_u128, 100, 200000, 0, 1000].into_dyn())]
     fn test_rep_abs_128(#[case] x: ArrayD<u128>, #[case] target: ArrayD<u128>) {
         test_rep_abs128(x, target);
+    }
+
+    fn test_rep_bit_dec64(xs: ArrayD<u64>, zs: ArrayD<u8>) {
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let rep = ReplicatedPlacement {
+            owners: ["alice".into(), "bob".into(), "carole".into()],
+        };
+
+        let x = AbstractHostRingTensor::from_raw_plc(xs, alice.clone());
+
+        let sess = SyncSession::default();
+        let setup = rep.gen_setup(&sess);
+
+        let x_shared = rep.share(&sess, &setup, &x);
+
+        let result: ReplicatedBitTensor = rep.bit_decompose(&sess, &setup, &x_shared);
+        let opened_result = alice.reveal(&sess, &result);
+        assert_eq!(opened_result, HostBitTensor::from_raw_plc(zs, alice));
+    }
+
+    #[rstest]
+    #[case(array![1073741823].into_dyn(),
+        array![[1_u8],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0] ].into_dyn())]
+    fn test_rep_bit_dec_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u8>) {
+        test_rep_bit_dec64(x, y);
     }
 }
