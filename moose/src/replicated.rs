@@ -1883,30 +1883,6 @@ impl RepAbsOp {
     }
 }
 
-// TODO(Morten): might be able to return [R; R::SIZE] in the future, see https://github.com/rust-lang/rust/issues/60551
-trait RingBitDecompose<S: Session, R> {
-    fn bit_decompose_into_vec(&self, sess: &S, x: &R) -> Vec<R>;
-}
-
-impl<S: Session, R> RingBitDecompose<S, R> for HostPlacement
-where
-    R: RingSize,
-    HostShape: KnownType<S>,
-    HostPlacement: PlacementOnes<S, cs!(HostShape), R>,
-    HostPlacement: PlacementShape<S, R, cs!(HostShape)>,
-    HostPlacement: PlacementShr<S, R, R>,
-    HostPlacement: PlacementAnd<S, R, R, R>,
-{
-    fn bit_decompose_into_vec(&self, sess: &S, x: &R) -> Vec<R> {
-        let k = R::SIZE;
-        let shape = self.shape(sess, x);
-        let ones = self.ones(sess, &shape);
-        (0..k)
-            .map(|i| self.and(sess, &self.shr(sess, i, x), &ones))
-            .collect()
-    }
-}
-
 impl ShapeOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ShapeT>(
         sess: &S,

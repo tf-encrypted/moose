@@ -566,61 +566,61 @@ impl HostRotateRightOp {
     }
 }
 
-// modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
-// modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostBitTensor, HostBitDecOp);
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostBitTensor, HostBitDecOp);
 
 kernel! {
     HostBitDecOp,
     [
-        // (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
-        // (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
         (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] Self::bit_kernel64),
         (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] Self::bit_kernel128),
     ]
 }
 
 impl HostBitDecOp {
-    //     pub fn ring64_kernel<S: RuntimeSession>(
-    //         _sess: &S,
-    //         plc: &HostPlacement,
-    //         x: HostRing64Tensor,
-    //     ) -> HostRing64Tensor
-    // where {
-    //         let shape = x.shape();
-    //         let raw_shape = shape.0 .0;
-    //         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+    pub fn ring64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+    ) -> HostRing64Tensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-    //         let bit_rep: Vec<_> = (0..HostRing64Tensor::SIZE)
-    //             .map(|i| (&x.0 >> i) & (&ones))
-    //             .collect();
-    //         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+        let bit_rep: Vec<_> = (0..HostRing64Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
 
-    //         // by default we put bits as rows, ie access i'th bit from tensor T is done through index_axis(Axis(0), T)
-    //         // in the current protocols it's easier to reason that the bits are stacked on axis(0)
-    //         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
-    //         AbstractHostRingTensor(result, plc.clone())
-    //     }
+        // by default we put bits as rows, ie access i'th bit from tensor T is done through index_axis(Axis(0), T)
+        // in the current protocols it's easier to reason that the bits are stacked on axis(0)
+        let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
+        AbstractHostRingTensor(result, plc.clone())
+    }
 
-    //     pub fn ring128_kernel<S: RuntimeSession>(
-    //         _sess: &S,
-    //         plc: &HostPlacement,
-    //         x: HostRing128Tensor,
-    //     ) -> HostRing128Tensor
-    // where {
-    //         let shape = x.shape();
-    //         let raw_shape = shape.0 .0;
-    //         let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+    pub fn ring128_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+    ) -> HostRing128Tensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
 
-    //         let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
-    //             .map(|i| (&x.0 >> i) & (&ones))
-    //             .collect();
-    //         let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+        let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
 
-    //         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
-    //         AbstractHostRingTensor(result, plc.clone())
-    //     }
+        let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
+        AbstractHostRingTensor(result, plc.clone())
+    }
 
     pub fn bit_kernel64<S: RuntimeSession>(
         _sess: &S,
