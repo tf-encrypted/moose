@@ -191,7 +191,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Identity(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Slice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
             ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
             Concat(op) => unimplemented!("Not done yet: {:?}", op),

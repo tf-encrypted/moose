@@ -144,7 +144,7 @@ impl Session for SyncSession {
             Receive(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Slice(op) => unimplemented!("Not done yet: {:?}", op),
+            Slice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
             ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
             Concat(op) => unimplemented!("Not done yet: {:?}", op),

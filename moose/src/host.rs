@@ -1,12 +1,4 @@
-use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
-    Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp,
-    HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement,
-    HostReshapeOp, HostSliceOp, HostSqrtOp, HostSubOp, HostSumOp, HostTransposeOp, KnownType,
-    Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp, RingFillOp, RingFixedpointMeanOp,
-    RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp,
-    RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
-};
+use crate::computation::{BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType, Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp, HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement, HostReshapeOp, HostSliceOp, HostSqrtOp, HostSubOp, HostSumOp, HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SliceOp, SymbolicType};
 use crate::error::Error;
 use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
@@ -555,6 +547,33 @@ impl ShapeOp {
     ) -> HostShape {
         let raw_shape = RawShape(x.0.shape().into());
         HostShape(raw_shape, plc.clone())
+    }
+}
+
+unmodelled!(HostPlacement, attributes[slice: SliceInfo] (HostShape) -> HostShape, SliceOp);
+
+kernel! {
+    SliceOp,
+    [
+        (HostPlacement, (HostShape) -> HostShape => [hybrid] attributes[slice] Self::kernel),
+        // (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [hybrid] attributes[slice] Self::kernel),
+        // (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [hybrid] attributes[slice] Self::kernel),
+    ]
+}
+
+impl SliceOp {
+    // TODO(lvorona): type inferring fails if I try to make it more generic and have one kernel work for all the types
+    pub fn kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        slice_info: SliceInfo,
+        x: cs!(HostShape),
+    ) -> cs!(HostShape)
+    where
+        HostShape: KnownType<S>,
+        HostPlacement: PlacementSlice<S, cs!(HostShape), cs!(HostShape)>,
+    {
+        plc.slice(sess, slice_info, &x)
     }
 }
 
