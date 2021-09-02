@@ -1286,26 +1286,69 @@ macro_rules! moose_type {
         $(
             pub type $combined = $outer<$inner>;
 
+            // TODO if we're able to implement everything without using $outer<Inner>
+            // then the macro could change to something like
+            // moose_type!(AbstractAdditiveTensor<HostRing64Tensor> => AdditiveRing64Tensior)
+
             impl SymbolicType for $outer<$inner>
             {
-                type Type = Symbolic<$outer<<$inner as SymbolicType>::Type>>;
+                type Type = Symbolic<$outer<
+                    <$inner as SymbolicType>::Type
+                >>;
             }
 
-            impl From<$outer<Symbolic<$inner>>> for Symbolic<$outer<Symbolic<$inner>>>
-            // where
-            //     Inner: Placed<Placement = HostPlacement>,
+            // impl CanonicalType for $outer<$inner> {
+            //     type Type = $outer<
+            //         <$inner as CanonicalType>::Type
+            //     >;
+            // }
+
+            // impl CanonicalType for Symbolic<$outer<
+            //     <$inner as SymbolicCanonicalType>::Type
+            // >>
+            // {
+            //     type Type = $outer<
+            // }
+
+            // The kernel macro uses this to map (partially) concrete outputs to symbolic values
+            impl From<
+                $outer<
+                    <$inner as SymbolicType>::Type
+                >
+            >
+            // for Symbolic<
+            //     $outer<
+            //         <$inner as SymbolicType>::Type
+            //     >
+            // >
+            for <$combined as SymbolicType>::Type
             {
-                fn from(x: $outer<Symbolic<$inner>>) -> Self {
+                fn from(
+                    x: $outer<
+                        <$inner as SymbolicType>::Type
+                    >
+                ) -> Self {
                     Symbolic::Concrete(x)
                 }
             }
 
-            impl TryFrom<Symbolic<$outer<Symbolic<$inner>>>> for $outer<Symbolic<$inner>>
-            // where
-            //     Inner: Placed<Placement = HostPlacement>,
+            // The kernel macros uses this to determine whether to invoke kernels, and 
+            // if so, to map symbolic values to (partially) concrete inputs
+            // impl TryFrom<Symbolic<$outer<
+            //     <$inner as SymbolicType>::Type
+            // >>>
+            impl TryFrom<
+                <$combined as SymbolicType>::Type    
+            >
+            for $outer<
+                <$inner as SymbolicType>::Type
+            >
             {
                 type Error = crate::error::Error;
-                fn try_from(v: Symbolic<$outer<Symbolic<$inner>>>) -> crate::error::Result<Self> {
+
+                fn try_from(v: Symbolic<$outer<
+                    <$inner as SymbolicType>::Type
+                >>) -> crate::error::Result<Self> {
                     match v {
                         Symbolic::Concrete(x) => Ok(x),
                         _ => Err(crate::error::Error::Unexpected), // TODO err message
@@ -1313,36 +1356,6 @@ macro_rules! moose_type {
                 }
             }
         )+
-
-        // impl<Inner> SymbolicType for $outer<Inner>
-        // where
-        //     Inner: SymbolicType,
-        //     <Inner as SymbolicType>::Type: Placed<Placement = HostPlacement>,
-        // {
-        //     type Type = Symbolic<$outer<<Inner as SymbolicType>::Type>>;
-        // }
-
-        // impl<Inner> From<$outer<Inner>> for Symbolic<$outer<Inner>>
-        // where
-        //     Inner: Placed<Placement = HostPlacement>,
-        // {
-        //     fn from(x: $outer<Inner>) -> Self {
-        //         Symbolic::Concrete(x)
-        //     }
-        // }
-
-        // impl<Inner> TryFrom<Symbolic<$outer<Inner>>> for $outer<Inner>
-        // where
-        //     Inner: Placed<Placement = HostPlacement>,
-        // {
-        //     type Error = crate::error::Error;
-        //     fn try_from(v: Symbolic<$outer<Inner>>) -> crate::error::Result<Self> {
-        //         match v {
-        //             Symbolic::Concrete(x) => Ok(x),
-        //             _ => Err(crate::error::Error::Unexpected), // TODO err message
-        //         }
-        //     }
-        // }
     };
 
     ($t:ident) => {
