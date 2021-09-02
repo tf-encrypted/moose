@@ -319,6 +319,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
         preceded(tag(HostSqrtOp::SHORT_NAME), cut(unary!(HostSqrtOp))),
         preceded(tag(HostDiagOp::SHORT_NAME), cut(unary!(HostDiagOp))),
+        preceded(tag(HostSqueezeOp::SHORT_NAME), cut(hostsqueeze)),
     ));
     alt((part1, part2, part3))(input)
 }
@@ -391,6 +392,15 @@ fn hostexpanddims<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
     let (input, axis) = attributes_single("axis", vector(parse_int))(input)?;
     let (input, sig) = type_definition(1)(input)?;
     Ok((input, HostExpandDimsOp { sig, axis }.into()))
+}
+
+/// Parses a HostExpandDims operator
+fn hostsqueeze<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
+    input: &'a str,
+) -> IResult<&'a str, Operator, E> {
+    let (input, axis) = opt(attributes_single("axis", parse_int))(input)?;
+    let (input, sig) = type_definition(1)(input)?;
+    Ok((input, HostSqueezeOp { sig, axis }.into()))
 }
 
 /// Parses a HostAtLeast2D operator.
@@ -1237,10 +1247,12 @@ impl ToTextual for Operator {
             HostOnes(op) => op.to_textual(),
             HostConcat(op) => op.to_textual(),
             HostExpandDims(op) => op.to_textual(),
+            HostSqueeze(op) => op.to_textual(),
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
             HostDiag(op) => op.to_textual(),
+            HostShlDim(op) => op.to_textual(),
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
             HostSum(op) => op.to_textual(),
@@ -1298,6 +1310,9 @@ impl ToTextual for Operator {
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
+            RepBitDec(op) => op.to_textual(),
+            RepSlice(op) => op.to_textual(),
+            RepShlDim(op) => op.to_textual(),
         }
     }
 }
@@ -1362,10 +1377,18 @@ impl_to_textual!(
     index,
     sig
 );
+impl_to_textual!(
+    HostShlDimOp,
+    "{op}{{amount={},bit_length={}}}: {}",
+    amount,
+    bit_length,
+    sig
+);
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
 impl_to_textual!(HostInverseOp, "{op}: {}", sig);
 impl_to_textual!(HostSqrtOp, "{op}: {}", sig);
+impl_to_textual!(HostSqueezeOp, "{op}: {}", sig);
 impl_to_textual!(ShapeOp, "{op}: {}", sig);
 impl_to_textual!(RingNegOp, "{op}: {}", sig);
 impl_to_textual!(RingAddOp, "{op}: {}", sig);
@@ -1446,6 +1469,9 @@ impl_to_textual!(
     sig
 );
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
+impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
+impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);
+impl_to_textual!(RepShlDimOp, "{op}: {} {} {}", sig, amount, bit_length);
 
 macro_rules! op_with_axis_to_textual {
     ($op:tt) => {
