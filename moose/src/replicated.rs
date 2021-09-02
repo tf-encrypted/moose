@@ -3,8 +3,8 @@ use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
     RepAbsOp, RepAddOp, RepBitDecOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp, RepMsbOp,
-    RepMulOp, RepRevealOp, RepRotateRightOp, RepSetupOp, RepShareOp, RepShlOp, RepSliceOp,
-    RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
+    RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp, RepSliceOp, RepSubOp,
+    RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{
@@ -12,13 +12,13 @@ use crate::host::{
     HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, SliceInfo,
 };
 use crate::kernels::{
-    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementBitDec, PlacementBitDecSetup,
-    PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
-    PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup,
-    PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementRotateRight,
-    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
-    PlacementShl, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
+    PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
+    PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot,
+    PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb,
+    PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementShl, PlacementShlDim, PlacementSlice, PlacementSub, PlacementSum,
+    PlacementTruncPr, PlacementTruncPrProvider, PlacementXor, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
@@ -1718,16 +1718,16 @@ impl RepSliceOp {
     }
 }
 
-modelled!(PlacementRotateRight::rotate_right, ReplicatedPlacement, attributes[amount: usize, bit_length: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, RepRotateRightOp);
+modelled!(PlacementShlDim::shl_dim, ReplicatedPlacement, attributes[amount: usize, bit_length: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, RepShlDimOp);
 
 kernel! {
-    RepRotateRightOp,
+    RepShlDimOp,
     [
         (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] attributes[amount, bit_length] Self::kernel),
     ]
 }
 
-impl RepRotateRightOp {
+impl RepShlDimOp {
     fn kernel<S: Session>(
         sess: &S,
         plc: &ReplicatedPlacement,
@@ -1741,21 +1741,21 @@ impl RepRotateRightOp {
         RepTen<HostBitTensor>: KnownType<S>,
         RepTen<st!(HostBitTensor)>: Into<st!(ReplicatedBitTensor)>,
 
-        HostPlacement: PlacementRotateRight<S, st!(HostBitTensor), st!(HostBitTensor)>,
+        HostPlacement: PlacementShlDim<S, st!(HostBitTensor), st!(HostBitTensor)>,
     {
         let (player0, player1, player2) = plc.host_placements();
         let RepTen {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
-        let z00 = player0.rotate_right(sess, amount, bit_length, &x00.into());
-        let z10 = player0.rotate_right(sess, amount, bit_length, &x10.into());
+        let z00 = player0.shl_dim(sess, amount, bit_length, &x00.into());
+        let z10 = player0.shl_dim(sess, amount, bit_length, &x10.into());
 
-        let z11 = player1.rotate_right(sess, amount, bit_length, &x11.into());
-        let z21 = player1.rotate_right(sess, amount, bit_length, &x21.into());
+        let z11 = player1.shl_dim(sess, amount, bit_length, &x11.into());
+        let z21 = player1.shl_dim(sess, amount, bit_length, &x21.into());
 
-        let z22 = player2.rotate_right(sess, amount, bit_length, &x22.into());
-        let z02 = player2.rotate_right(sess, amount, bit_length, &x02.into());
+        let z22 = player2.shl_dim(sess, amount, bit_length, &x22.into());
+        let z02 = player2.shl_dim(sess, amount, bit_length, &x02.into());
 
         RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
@@ -1905,6 +1905,9 @@ impl ShapeOp {
     }
 }
 
+modelled_alias!(PlacementXor::xor, ReplicatedPlacement, (ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementAdd::add); // add = xor in Z2
+modelled_alias!(PlacementAndSetup::and_setup, ReplicatedPlacement, (ReplicatedSetup, ReplicatedBitTensor, ReplicatedBitTensor) -> ReplicatedBitTensor => PlacementMulSetup::mul_setup); // sub = xor in Z2
+
 trait BinaryAdder<S: Session, SetupT, RepBitT> {
     fn binary_adder(
         &self,
@@ -1920,9 +1923,9 @@ trait BinaryAdder<S: Session, SetupT, RepBitT> {
 impl<S: Session, SetupT, RepBitT> BinaryAdder<S, SetupT, RepBitT> for ReplicatedPlacement
 where
     RepBitT: Clone,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
-    ReplicatedPlacement: PlacementAdd<S, RepBitT, RepBitT, RepBitT>,
-    ReplicatedPlacement: PlacementRotateRight<S, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementShlDim<S, RepBitT, RepBitT>,
 {
     fn binary_adder(
         &self,
@@ -1941,50 +1944,50 @@ where
         // A few helpful diagrams to understand what is happening here:
         // https://www.chessprogramming.org/Kogge-Stone_Algorithm or here: https://inst.eecs.berkeley.edu/~eecs151/sp19/files/lec20-adders.pdf
 
-        // P[i:j] = propagate bits for positions [i...i+j]
-        // G[i:j] = generator bits for positions [i...i+j]
-
         // consider we have inputs a, b to the P,G computing gate
-        // P = P_a & P_b
-        // G = G_b + G_a & P_b
-        // C_{i+1} = G_i + P_i & C_i
+        // P = P_a and P_b
+        // G = G_b xor (G_a and P_b)
 
         // P, G can be computed in a tree fashion, performing ops on chunks of len 2^i
         // Note the first level is computed as P0 = x ^ y, G0 = x & y;
 
         // Perform `g = x * y` for every tensor
-        let mut g = rep.mul_setup(sess, &setup, &x, &y);
+        let mut g = rep.and_setup(sess, &setup, &x, &y);
 
         // Perform `p_store = x + y` (just a helper to avoid compute xor() twice)
-        let p_store = rep.add(sess, &x, &y);
+        let p_store = rep.xor(sess, &x, &y);
         let mut p = p_store.clone();
 
-        // (Dragos) Note that in the future we might want to delete rotate_right op and replace it with
+        // (Dragos) Note that in the future we might want to delete shl_dim op and replace it with
         // slice + stack op - however atm we can't do this. It can be unblocked after the following are implemented:
         // 1) slice tensors with unknown shape at compile time
         // 2) stack variable length of replicated tensors (variadic kernels + stack op)
 
         for i in 0..log_r {
-            // computes p >> (1<<i)
-            let p1 = rep.rotate_right(sess, 1 << i, ring_size, &p);
+            // computes p << (1<<i)
+            // [ a[0], ... a[amount] ... a[ring_size - 1]
+            // [ a[amount]...a[ring_size-1] 0 ... 0 ]
+            let p1 = rep.shl_dim(sess, 1 << i, ring_size, &p);
             // computes g >> (1<<i)
-            let g1 = rep.rotate_right(sess, 1 << i, ring_size, &g);
+            let g1 = rep.shl_dim(sess, 1 << i, ring_size, &g);
 
-            // `p_and_g = p1 * g1` for every tensor
-            let p_and_g = rep.mul_setup(sess, &setup, &p1, &g1);
+            // Note that the original algorithm had G_a and P_b, but we can have
+            // G_a and P_a instead because the 1s in P_a do not matter in the final result
+            // since they are cancelled out by the zeros in G_a
+            let p_and_g = rep.and_setup(sess, &setup, &p1, &g1);
 
-            // Update `g = g + p_and_g`
-            g = rep.add(sess, &g, &p_and_g);
+            // update `g = g xor p1 and g1`
+            g = rep.xor(sess, &g, &p_and_g);
 
             // update `p = p * p1`
-            p = rep.mul_setup(sess, &setup, &p, &p1);
+            p = rep.and_setup(sess, &setup, &p, &p1);
         }
 
         // c is a copy of g with the first tensor (corresponding to the first bit) zeroed out
-        let c = rep.rotate_right(sess, 1, ring_size, &g);
+        let c = rep.shl_dim(sess, 1, ring_size, &g);
 
-        // final result is `z = c + p_store` (which is the original `x + y`)
-        rep.add(sess, &c, &p_store)
+        // final result is `z = c xor p_store`
+        rep.xor(sess, &c, &p_store)
     }
 }
 

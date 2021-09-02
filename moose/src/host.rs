@@ -2,20 +2,20 @@ use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
     Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp,
     HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement,
-    HostReshapeOp, HostRotateRightOp, HostSliceOp, HostSqrtOp, HostSubOp, HostSumOp,
-    HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp,
-    RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
+    HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSubOp, HostSumOp, HostTransposeOp,
+    KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp, RingFillOp,
+    RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp, RingSampleSeededOp,
+    RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
 };
 use crate::error::Error;
 use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
-    PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace,
-    PlacementRotateRight, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
-    PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
-    PlacementSum, PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
+    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
+    PlacementShlDim, PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -648,16 +648,16 @@ impl HostIndexAxisOp {
     }
 }
 
-modelled!(PlacementRotateRight::rotate_right, HostPlacement, attributes[amount:usize, bit_length: usize] (HostBitTensor) -> HostBitTensor, HostRotateRightOp);
+modelled!(PlacementShlDim::shl_dim, HostPlacement, attributes[amount:usize, bit_length: usize] (HostBitTensor) -> HostBitTensor, HostShlDimOp);
 
 kernel! {
-    HostRotateRightOp,
+    HostShlDimOp,
     [
         (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] attributes[amount, bit_length] Self::bit_kernel),
     ]
 }
 
-impl HostRotateRightOp {
+impl HostShlDimOp {
     pub fn bit_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
@@ -674,18 +674,20 @@ impl HostRotateRightOp {
         raw_tensor_shape.remove(0);
         let raw_shape = raw_tensor_shape.as_ref();
 
+        let zero = ArrayD::from_elem(raw_shape, 0);
+        let zero_view = zero.view();
+
         let concatenated: Vec<_> = (0..bit_length)
             .map(|i| {
                 if i < bit_length - amount {
-                    left[i].to_owned()
+                    left[i].clone()
                 } else {
-                    ArrayD::from_elem(raw_shape, 0)
+                    zero_view.clone()
                 }
             })
             .collect();
 
-        let concatenated_view: Vec<_> = concatenated.iter().map(ArrayView::from).collect();
-        let result = ndarray::stack(Axis(0), &concatenated_view).unwrap();
+        let result = ndarray::stack(Axis(0), &concatenated).unwrap();
 
         HostBitTensor(result, plc.clone())
     }

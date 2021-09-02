@@ -100,7 +100,7 @@ impl Session for SyncSession {
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepBitDec(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            RepRotateRight(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepShlDim(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -129,7 +129,7 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            HostRotateRight(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostShlDim(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -298,6 +298,10 @@ pub trait PlacementXor<S: Session, T, U, O> {
 
 pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
+}
+
+pub trait PlacementAndSetup<S: Session, SetupT, T, U, O> {
+    fn and_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
 }
 
 pub trait PlacementBitExtract<S: Session, T, O> {
@@ -589,8 +593,8 @@ pub trait PlacementIndex<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
 }
 
-pub trait PlacementRotateRight<S: Session, T, O> {
-    fn rotate_right(&self, sess: &S, amount: usize, ring_size: usize, x: &T) -> O;
+pub trait PlacementShlDim<S: Session, T, O> {
+    fn shl_dim(&self, sess: &S, amount: usize, ring_size: usize, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
@@ -662,7 +666,7 @@ impl Compile<SyncKernel> for Operator {
             // TODO
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
-            HostRotateRight(_) => unimplemented!(),
+            HostShlDim(_) => unimplemented!(),
             HostSqrt(_) => unimplemented!(),
             Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             // NOTE the following are not supported by design
@@ -670,8 +674,8 @@ impl Compile<SyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepRotateRight(_) | RepSlice(_) | RepBitDec(_) | FixedpointMul(_)
-            | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
+            | RepShlDim(_) | RepSlice(_) | RepBitDec(_) | FixedpointMul(_) | FixedpointDot(_)
+            | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -732,8 +736,8 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostRotateRight(_)
-            | HostSqrt(_) | Cast(_) => {
+            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
+            | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
@@ -741,7 +745,7 @@ impl Compile<AsyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepRotateRight(_) | RepSlice(_) | RepBitDec(_) => {
+            | RepShlDim(_) | RepSlice(_) | RepBitDec(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }

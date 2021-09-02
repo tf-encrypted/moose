@@ -747,7 +747,7 @@ operators![
     HostTranspose,
     HostInverse,
     HostAtLeast2D,
-    HostRotateRight,
+    HostShlDim,
     RingAdd,
     RingSub,
     RingNeg,
@@ -805,7 +805,7 @@ operators![
     RepIndexAxis,
     RepSlice,
     RepBitDec,
-    RepRotateRight,
+    RepShlDim,
 ];
 
 pub trait HasShortName {
@@ -961,7 +961,7 @@ pub struct RepSliceOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepRotateRightOp {
+pub struct RepShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
@@ -975,7 +975,7 @@ pub struct HostIndexAxisOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct HostRotateRightOp {
+pub struct HostShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
