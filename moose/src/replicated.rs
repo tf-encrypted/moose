@@ -1728,39 +1728,33 @@ kernel! {
 }
 
 impl RepShlDimOp {
-    fn kernel<S: Session>(
+    fn kernel<S: Session, HostBitTensorT>(
         sess: &S,
         plc: &ReplicatedPlacement,
         amount: usize,
         bit_length: usize,
-        x: RepTen<HostBitTensor>,
-    ) -> st!(ReplicatedBitTensor)
+        x: RepTen<HostBitTensorT>,
+    ) -> RepTen<HostBitTensorT>
     where
-        HostBitTensor: KnownType<S>,
-        HostBitTensor: Into<st!(HostBitTensor)>,
-        RepTen<HostBitTensor>: KnownType<S>,
-        RepTen<st!(HostBitTensor)>: Into<st!(ReplicatedBitTensor)>,
-
-        HostPlacement: PlacementShlDim<S, st!(HostBitTensor), st!(HostBitTensor)>,
+        HostPlacement: PlacementShlDim<S, HostBitTensorT, HostBitTensorT>,
     {
         let (player0, player1, player2) = plc.host_placements();
         let RepTen {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = x;
 
-        let z00 = player0.shl_dim(sess, amount, bit_length, &x00.into());
-        let z10 = player0.shl_dim(sess, amount, bit_length, &x10.into());
+        let z00 = player0.shl_dim(sess, amount, bit_length, &x00);
+        let z10 = player0.shl_dim(sess, amount, bit_length, &x10);
 
-        let z11 = player1.shl_dim(sess, amount, bit_length, &x11.into());
-        let z21 = player1.shl_dim(sess, amount, bit_length, &x21.into());
+        let z11 = player1.shl_dim(sess, amount, bit_length, &x11);
+        let z21 = player1.shl_dim(sess, amount, bit_length, &x21);
 
-        let z22 = player2.shl_dim(sess, amount, bit_length, &x22.into());
-        let z02 = player2.shl_dim(sess, amount, bit_length, &x02.into());
+        let z22 = player2.shl_dim(sess, amount, bit_length, &x22);
+        let z02 = player2.shl_dim(sess, amount, bit_length, &x02);
 
         RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
-        .into()
     }
 }
 

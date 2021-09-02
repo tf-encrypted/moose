@@ -1375,10 +1375,10 @@ impl_to_textual!(
 );
 impl_to_textual!(
     HostShlDimOp,
-    "{op}{{slice}}: {} {} {}",
-    sig,
+    "{op}{{amount={},bit_length={}}}: {}",
     amount,
-    bit_length
+    bit_length,
+    sig
 );
 impl_to_textual!(HostTransposeOp, "{op}: {}", sig);
 impl_to_textual!(HostBitDecOp, "{op}: {}", sig);
