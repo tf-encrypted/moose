@@ -1697,13 +1697,13 @@ kernel! {
 }
 
 impl RepDiagOp {
-    fn kernel<S: Session, RingT>(
+    fn kernel<S: Session, HostRingT>(
         sess: &S,
         plc: &ReplicatedPlacement,
-        x: RepTen<RingT>,
-    ) -> RepTen<RingT>
+        x: RepTen<HostRingT>,
+    ) -> RepTen<HostRingT>
     where
-        HostPlacement: PlacementDiag<S, RingT, RingT>,
+        HostPlacement: PlacementDiag<S, HostRingT, HostRingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
         let RepTen {
