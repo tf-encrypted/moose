@@ -318,6 +318,7 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(BitXorOp::SHORT_NAME), cut(bit_xor)),
         preceded(tag(BitAndOp::SHORT_NAME), cut(bit_and)),
         preceded(tag(HostSqrtOp::SHORT_NAME), cut(unary!(HostSqrtOp))),
+        preceded(tag(HostDiagOp::SHORT_NAME), cut(unary!(HostDiagOp))),
         preceded(tag(HostSqueezeOp::SHORT_NAME), cut(hostsqueeze)),
     ));
     alt((part1, part2, part3))(input)
@@ -1250,6 +1251,7 @@ impl ToTextual for Operator {
             HostReshape(op) => op.to_textual(),
             HostAtLeast2D(op) => op.to_textual(),
             HostSlice(op) => op.to_textual(),
+            HostDiag(op) => op.to_textual(),
             HostShlDim(op) => op.to_textual(),
             HostIndexAxis(op) => op.to_textual(),
             HostBitDec(op) => op.to_textual(),
@@ -1366,6 +1368,7 @@ impl_to_textual!(
     sig
 );
 impl_to_textual!(HostSliceOp, "{op}{{slice}}: {} {}", sig, slice);
+impl_to_textual!(HostDiagOp, "{op}: {}", sig);
 impl_to_textual!(
     HostIndexAxisOp,
     "{op}{{axis={}, index={}}}: {}",
@@ -2187,6 +2190,12 @@ mod tests {
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = HostSlice {start = 1, end = 2}: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = HostDiag: (Float32Tensor) -> Float32Tensor () @Host(alice)",
+        )?;
+        parse_assignment::<(&str, ErrorKind)>(
+            "z = HostSqrt: (Float32Tensor) -> Float32Tensor () @Host(alice)",
         )?;
         parse_assignment::<(&str, ErrorKind)>(
             "z = RingSum {axis = 0}: (Float32Tensor) -> Float32Tensor () @Host(alice)",

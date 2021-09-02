@@ -170,6 +170,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostSqrt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            HostDiag(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostOnes(op) => DispatchKernel::compile(&op, plc)(sess, operands),

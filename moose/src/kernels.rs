@@ -129,6 +129,7 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostDiag(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -594,6 +595,10 @@ pub trait PlacementSlice<S: Session, T, O> {
     fn slice(&self, sess: &S, slice_info: SliceInfo, x: &T) -> O;
 }
 
+pub trait PlacementDiag<S: Session, T, O> {
+    fn diag(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementIndex<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
 }
@@ -673,6 +678,7 @@ impl Compile<SyncKernel> for Operator {
             HostBitDec(_) => unimplemented!(),
             HostShlDim(_) => unimplemented!(),
             HostSqrt(_) => unimplemented!(),
+            HostDiag(_) => unimplemented!(),
             HostSqueeze(_) => unimplemented!(),
             Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             // NOTE the following are not supported by design
@@ -743,7 +749,7 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | HostSqueeze(_) | Cast(_) => {
+            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design

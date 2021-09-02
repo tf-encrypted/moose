@@ -1,21 +1,21 @@
 use crate::computation::{
     BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
-    Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp, HostExpandDimsOp,
-    HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp, HostPlacement,
-    HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp, HostSumOp,
-    HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp, RingDotOp,
-    RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
+    Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDiagOp, HostDivOp, HostDotOp,
+    HostExpandDimsOp, HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
+    HostPlacement, HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp,
+    HostSumOp, HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp,
+    RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
     RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
 };
 use crate::error::Error;
 use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
-    PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShlDim, PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDiag, PlacementDot,
+    PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded,
+    PlacementShl, PlacementShlDim, PlacementShr, PlacementSlice, PlacementSub, PlacementSum,
+    PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -619,6 +619,66 @@ impl HostSliceOp {
             slice_info.0[0].end.unwrap() as usize,
         );
         HostShape(slice, plc.clone())
+    }
+}
+
+modelled!(PlacementDiag::diag, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt8Tensor) -> HostInt8Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt16Tensor) -> HostInt16Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt32Tensor) -> HostInt32Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt64Tensor) -> HostInt64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostUint16Tensor) -> HostUint16Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostUint32Tensor) -> HostUint32Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostUint64Tensor) -> HostUint64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostBitTensor) -> HostBitTensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostDiagOp);
+
+kernel! {
+    HostDiagOp,
+    [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
+    ]
+}
+
+impl HostDiagOp {
+    pub fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> HostTensor<T> {
+        let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
+        HostTensor::<T>(diag, plc.clone())
+    }
+
+    pub fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T> {
+        let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
+        AbstractHostRingTensor::<T>(diag, plc.clone())
+    }
+
+    pub fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+    ) -> HostBitTensor {
+        let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
+        HostBitTensor(diag, plc.clone())
     }
 }
 
@@ -2763,6 +2823,23 @@ mod tests {
         let target: ArrayD<u64> = array![[3, 4]].into_dimensionality::<IxDyn>().unwrap();
 
         assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+    }
+
+    #[test]
+    fn test_diag() {
+        let x_backing: ArrayD<f64> = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let x = HostTensor::<f64>(x_backing, alice.clone());
+        let sess = SyncSession::default();
+        let y = alice.diag(&sess, &x);
+        let target: ArrayD<f64> = array![1.0, 4.0].into_dimensionality::<IxDyn>().unwrap();
+        assert_eq!(y, HostTensor::<f64>(target, alice))
     }
 
     #[test]

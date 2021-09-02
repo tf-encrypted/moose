@@ -738,6 +738,7 @@ operators![
     HostSqrt,
     HostExpandDims,
     HostSlice,
+    HostDiag,
     HostIndexAxis,
     HostBitDec,
     HostReshape,
@@ -962,16 +963,8 @@ pub struct HostSliceOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepSliceOp {
+pub struct HostDiagOp {
     pub sig: Signature,
-    pub slice: SliceInfo,
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
-pub struct RepShlDimOp {
-    pub sig: Signature,
-    pub amount: usize,
-    pub bit_length: usize,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1307,10 +1300,23 @@ pub struct RepShlOp {
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepShlDimOp {
+    pub sig: Signature,
+    pub amount: usize,
+    pub bit_length: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RepIndexAxisOp {
     pub sig: Signature,
     pub axis: usize,
     pub index: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepSliceOp {
+    pub sig: Signature,
+    pub slice: SliceInfo,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
