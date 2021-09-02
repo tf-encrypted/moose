@@ -810,7 +810,7 @@ fn map_type(py_type: &PyValueType) -> anyhow::Result<Ty> {
         PyValueType::std_ShapeType => Ok(Ty::HostShape),
         PyValueType::std_UnitType => Ok(Ty::Unit),
         PyValueType::std_StringType => Ok(Ty::String),
-        PyValueType::std_TensorType { dtype: _}=> Ok(Ty::Tensor),
+        PyValueType::std_TensorType { dtype: _ } => Ok(Ty::Tensor),
         // PyValueType::std_TensorType { dtype } => match dtype {
         //     PyDType::float32 => Ok(Ty::HostFloat32Tensor),
         //     PyDType::float64 => Ok(Ty::HostFloat64Tensor),

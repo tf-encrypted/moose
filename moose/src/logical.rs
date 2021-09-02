@@ -1,38 +1,60 @@
-use crate::fixedpoint::{Fixed64Tensor, Fixed128Tensor};
+use crate::computation::{
+    AtLeast2DOp, HasShortName, HostPlacement, KnownType, Placed, Placement, Signature, SymbolicType,
+};
+use crate::error::Result;
+use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::HostFloat64Tensor;
-use crate::symbolic::Symbolic;
-use serde::{Deserialize, Serialize};
-use macros::ShortName;
-use crate::computation::{AtLeast2DOp, HasShortName, HostPlacement, KnownType, Placed, Placement, Signature, SymbolicType};
 use crate::kernels::{PlacementAdd, PlacementAtLeast2D, Session};
-use crate::error::Result;
+use crate::symbolic::Symbolic;
 use macros::with_context;
+use macros::ShortName;
+use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub enum Tensor {
-    Fixed64(Fixed64Tensor),
-    Fixed128(Fixed128Tensor),
-    Float32(Float32Tensor),
-    Float64(Float64Tensor),
+pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T> {
+    Fixed64(Fixed64T),
+    Fixed128(Fixed128T),
+    Float32(Float32T),
+    Float64(Float64T),
 }
 
-impl Placed for Tensor
+pub type Tensor = AbstractTensor<Fixed64Tensor, Fixed128Tensor, Float32Tensor, Float64Tensor>;
+
+impl<Fixed64T, Fixed128T, Float32T, Float64T> Placed
+    for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+where
+    Fixed64T: Placed,
+    Fixed64T::Placement: Into<Placement>,
+    Fixed128T: Placed,
+    Fixed128T::Placement: Into<Placement>,
+    Float32T: Placed,
+    Float32T::Placement: Into<Placement>,
+    Float64T: Placed,
+    Float64T::Placement: Into<Placement>,
 {
     type Placement = Placement;
 
     fn placement(&self) -> Result<Self::Placement> {
         match self {
-            Tensor::Fixed64(x) => Ok(x.placement()?.into()),
-            Tensor::Fixed128(x) => Ok(x.placement()?.into()),
-            Tensor::Float32(x) => Ok(x.placement()?.into()),
-            Tensor::Float64(x) => Ok(x.placement()?.into()),
+            AbstractTensor::Fixed64(x) => Ok(x.placement()?.into()),
+            AbstractTensor::Fixed128(x) => Ok(x.placement()?.into()),
+            AbstractTensor::Float32(x) => Ok(x.placement()?.into()),
+            AbstractTensor::Float64(x) => Ok(x.placement()?.into()),
         }
     }
 }
 
 impl SymbolicType for Tensor {
-    type Type = Symbolic<Tensor>;
+    type Type = Symbolic<
+        AbstractTensor<
+            <Fixed64Tensor as SymbolicType>::Type,
+            <Fixed128Tensor as SymbolicType>::Type,
+            <Float32Tensor as SymbolicType>::Type,
+            <Float64Tensor as SymbolicType>::Type,
+        >,
+    >;
 }
 
 // NOTE(Morten) trying something new here by keeping op structs in dialect file
@@ -91,7 +113,39 @@ impl SymbolicType for Tensor {
 //     pub sig: Signature,
 // }
 
+impl<Fixed64T, Fixed128T, Float32T, Float64T>
+    From<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+    for Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>
+where
+    Fixed64T: Placed<Placement = Placement>,
+    Fixed128T: Placed<Placement = Placement>,
+    Float32T: Placed<Placement = Placement>,
+    Float64T: Placed<Placement = Placement>,
+{
+    fn from(x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
 
+impl<Fixed64T, Fixed128T, Float32T, Float64T>
+    TryFrom<Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>>
+    for AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+where
+    Fixed64T: Placed<Placement = Placement>,
+    Fixed128T: Placed<Placement = Placement>,
+    Float32T: Placed<Placement = Placement>,
+    Float64T: Placed<Placement = Placement>,
+{
+    type Error = ();
+    fn try_from(
+        v: Symbolic<AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>>,
+    ) -> std::result::Result<Self, ()> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(()),
+        }
+    }
+}
 
 kernel! {
     AtLeast2DOp, [
@@ -100,21 +154,22 @@ kernel! {
 }
 
 impl AtLeast2DOp {
-    fn kernel<S: Session>(
+    fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,
-        x: cs!(Tensor),
-    ) -> cs!(Tensor)
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
     where
         Tensor: KnownType<S>,
-        HostPlacement: PlacementAtLeast2D<S, HostFloat64Tensor, HostFloat64Tensor>,
+        HostFloat64Tensor: KnownType<S>,
+        HostPlacement: PlacementAtLeast2D<S, Float64T, Float64T>,
     {
         match x {
-            Tensor::Float64(FloatTensor::Host(x)) => {
+            AbstractTensor::Float64(x) => {
                 let z = plc.at_least_2d(sess, to_column_vector, &x);
-                Tensor::Float64(FloatTensor::Host(z)).into()
-            },
+                AbstractTensor::Float64(z)
+            }
             _ => unimplemented!("Fill other match arms please"),
         }
     }

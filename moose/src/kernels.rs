@@ -4,6 +4,7 @@ use crate::execution::{
     SyncKernel,
 };
 use crate::fixedpoint::Fixed128Tensor;
+use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
@@ -1071,18 +1072,31 @@ impl Compile<Kernel> for HostReshapeOp {
     }
 }
 
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, HostAtLeast2DOp);
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, HostAtLeast2DOp);
 
 kernel! {
     HostAtLeast2DOp, [
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[to_column_vector] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [runtime] attributes[to_column_vector] Self::float_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [runtime] attributes[to_column_vector] Self::float_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
     ]
 }
 
 impl HostAtLeast2DOp {
-    fn kernel<S: RuntimeSession, T>(
+    fn float_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        _plc: &HostPlacement,
+        _to_column_vector: bool,
+        _x: FloatTensor<T>,
+    ) -> FloatTensor<T> {
+        unimplemented!()
+    }
+
+    fn hostfloat_kernel<S: RuntimeSession, T>(
         _sess: &S,
         _plc: &HostPlacement,
         _to_column_vector: bool,

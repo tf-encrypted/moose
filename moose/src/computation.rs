@@ -3,6 +3,7 @@ use crate::additive::{
 };
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor,
     HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor,
@@ -10,6 +11,7 @@ use crate::host::{
     HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
+use crate::logical::Tensor;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::{
     ReplicatedBitTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
@@ -22,8 +24,6 @@ use macros::ShortName;
 use paste::paste;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
-use crate::logical::Tensor;
-
 
 pub const TAG_BYTES: usize = 128 / 8;
 static_assertions::const_assert!(TAG_BYTES >= sodiumoxide::crypto::generichash::DIGEST_MIN);
@@ -415,6 +415,8 @@ values![
     HostUint64Tensor,
     Fixed64Tensor,
     Fixed128Tensor,
+    Float32Tensor,
+    Float64Tensor,
     ReplicatedRing64Tensor,
     ReplicatedRing128Tensor,
     ReplicatedBitTensor,
@@ -882,7 +884,6 @@ pub struct AtLeast2DOp {
     pub sig: Signature,
     pub to_column_vector: bool,
 }
-
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct SliceOp {

@@ -1,5 +1,7 @@
-use crate::{computation::{HostPlacement, Placed, Placement}, host::{HostFloat64Tensor, HostFloat32Tensor}};
+use crate::computation::{HostPlacement, Placed, Placement, SymbolicType};
 use crate::error::Result;
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor};
+use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -22,5 +24,12 @@ where
             FloatTensor::Host(x) => Ok(Placement::Host(x.placement()?)),
         }
     }
+}
 
+impl<HostT> SymbolicType for FloatTensor<HostT>
+where
+    HostT: SymbolicType,
+    <HostT as SymbolicType>::Type: Placed<Placement = HostPlacement>,
+{
+    type Type = Symbolic<FloatTensor<<HostT as SymbolicType>::Type>>;
 }
