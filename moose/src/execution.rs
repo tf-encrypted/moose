@@ -1047,19 +1047,20 @@ impl AsyncSessionHandle {
         mut self,
         abort_listener: Option<oneshot::Receiver<()>>,
     ) -> anyhow::Result<()> {
-        use crate::error::Error::{OperandUnavailable, ResultUnused};
+        use crate::error::Error::{Abort, OperandUnavailable, ResultUnused};
         use futures::StreamExt;
 
         let ntasks = self.tasks.len();
-        match abort_listener {
-            Some(receiver) => {
-                let abort_task: AsyncTask = tokio::spawn(async move {
-                    receiver.await.ok(); // wait for an abort signal
-                    Err(Error::Abort)
-                });
-                self.tasks.push(abort_task);
-            }
-            None => (),
+        if let Some(receiver) = abort_listener {
+            let abort_task: AsyncTask = tokio::spawn(async move {
+                receiver.await.ok(); // wait for an abort signal
+
+                // If the abort signal is sent to the abort listener channel,
+                // then raise the Abort error to instruct the join handle
+                // to exit the computation early
+                Err(Error::Abort)
+            });
+            self.tasks.push(abort_task);
         }
 
         let mut tasks = self
@@ -1080,7 +1081,7 @@ impl AsyncSessionHandle {
                             // and return it instead.
                             OperandUnavailable => continue,
                             ResultUnused => continue,
-                            _ => {
+                            Abort | _ => {
                                 for task in tasks.iter() {
                                     task.abort();
                                 }
