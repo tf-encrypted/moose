@@ -15,8 +15,8 @@ use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
     PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
     PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementStdMean, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementXor, RuntimeSession, Session, SyncSession, Tensor, PlacementMeanAsFixedpoint,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -323,8 +323,8 @@ impl HostAddOp {
     }
 }
 
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
+modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostRing64Tensor, RingFixedpointMeanOp);
+modelled!(PlacementMeanAsFixedpoint::mean_as_fixedpoint, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostRing128Tensor, RingFixedpointMeanOp);
 
 kernel! {
     RingFixedpointMeanOp,
@@ -881,11 +881,11 @@ impl HostMeanOp {
         x: FloatTensor<T>,
     ) -> FloatTensor<T>
     where
-        HostPlacement: PlacementStdMean<S, T, T>,
+        HostPlacement: PlacementMean<S, T, T>,
     {
         match x {
             FloatTensor::Host(x) => {
-                let inner = plc.std_mean(sess, axis, &x);
+                let inner = plc.mean(sess, axis, &x);
                 FloatTensor::Host(inner)
             }
         }
@@ -900,11 +900,11 @@ impl HostMeanOp {
     ) -> cs!(Fixed128Tensor)
     where
         Fixed128Tensor: KnownType<S>,
-        ReplicatedPlacement: PlacementMean<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
+        ReplicatedPlacement: PlacementMeanAsFixedpoint<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
         ReplicatedPlacement: PlacementTruncPr<S, cs!(Fixed128Tensor), cs!(Fixed128Tensor)>,
     {
         // TODO: grab scaling base and exp from somewhere else
-        let mean = plc.mean(sess, axis, 2, 27, &x);
+        let mean = plc.mean_as_fixedpoint(sess, axis, 2, 27, &x);
         plc.trunc_pr(sess, 27, &mean)
     }
 }

@@ -95,7 +95,7 @@ impl Session for SyncSession {
             RepMsb(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepAbs(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepToAdt(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            RepMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepFixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -351,23 +351,16 @@ pub trait PlacementZeros<S: Session, ShapeT, O> {
     fn zeros(&self, sess: &S, shape: &ShapeT) -> O;
 }
 
-// TODO(Morten) get rid of scaling_base and scaling_exp
 pub trait PlacementMean<S: Session, T, O> {
-    fn mean(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
-}
-pub trait PlacementSqrt<S: Session, T, O> {
-    fn sqrt(&self, sess: &S, x: &T) -> O;
+    fn mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
-pub trait PlacementRingMean<S: Session, T, O> {
-    fn ring_mean(
-        &self,
-        sess: &S,
-        axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: &T,
-    ) -> O;
+pub trait PlacementMeanAsFixedpoint<S: Session, T, O> {
+    fn mean_as_fixedpoint(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
+}
+
+pub trait PlacementSqrt<S: Session, T, O> {
+    fn sqrt(&self, sess: &S, x: &T) -> O;
 }
 
 pub trait PlacementSum<S: Session, T, O> {
@@ -562,10 +555,6 @@ pub trait PlacementFixedpointDecode<S: Session, T, O> {
     fn fixedpoint_decode(&self, sess: &S, precision: u32, x: &T) -> O;
 }
 
-pub trait PlacementStdMean<S: Session, T, O> {
-    fn std_mean(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
-}
-
 pub trait PlacementExpandDims<S: Session, T, O> {
     fn expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
@@ -683,7 +672,7 @@ impl Compile<SyncKernel> for Operator {
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostSqrt(_) => {
@@ -767,7 +756,7 @@ impl Compile<AsyncKernel> for Operator {
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
-            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
+            | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepFixedpointMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
@@ -899,10 +888,10 @@ impl Compile<Kernel> for HostInverseOp {
         }
     }
 }
-modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, HostMeanOp);
-modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, HostMeanOp);
-modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostMeanOp);
-modelled!(PlacementStdMean::std_mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, HostMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, HostMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
 
 kernel! {
     HostMeanOp, [
@@ -910,7 +899,8 @@ kernel! {
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [runtime] attributes[axis] Self::float_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
+        // TODO(Morten)
+        // (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 

@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::{HostShape, HostFloat64Tensor};
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementMean, PlacementStdMean, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementMean, Session};
 use crate::symbolic::Symbolic;
 use macros::with_context;
 use macros::ShortName;
@@ -213,24 +213,24 @@ impl MeanOp {
     where
         HostPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
-        HostPlacement: PlacementStdMean<S, Float32T, Float32T>,
-        HostPlacement: PlacementStdMean<S, Float64T, Float64T>,
+        HostPlacement: PlacementMean<S, Float32T, Float32T>,
+        HostPlacement: PlacementMean<S, Float64T, Float64T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
-                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                let z = plc.mean(sess, axis, &x);
                 AbstractTensor::Fixed64(z)
             }
             AbstractTensor::Fixed128(x) => {
-                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                let z = plc.mean(sess, axis, &x);
                 AbstractTensor::Fixed128(z)
             }
             AbstractTensor::Float32(x) => {
-                let z = plc.std_mean(sess, axis, &x);
+                let z = plc.mean(sess, axis, &x);
                 AbstractTensor::Float32(z)
             }
             AbstractTensor::Float64(x) => {
-                let z = plc.std_mean(sess, axis, &x);
+                let z = plc.mean(sess, axis, &x);
                 AbstractTensor::Float64(z)
             }
         }
@@ -248,11 +248,11 @@ impl MeanOp {
     {
         match x {
             AbstractTensor::Fixed64(x) => {
-                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                let z = plc.mean(sess, axis, &x);
                 AbstractTensor::Fixed64(z)
             }
             AbstractTensor::Fixed128(x) => {
-                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                let z = plc.mean(sess, axis, &x);
                 AbstractTensor::Fixed128(z)
             }
             // TODO(Morten) the fact that the following two are unimplemented

@@ -1547,8 +1547,9 @@ impl TryFrom<PyComputation> for Computation {
                                 map_type(&op.output_type)?,
                             ),
                             axis: op.axis,
-                            scaling_base: op.scaling_base,
-                            scaling_exp: op.scaling_exp,
+                            // TODO(Morten) fix on Python side as needed due to removing the two below
+                            // scaling_base: op.scaling_base,
+                            // scaling_exp: op.scaling_exp,
                         }
                         .into(),
                         name: op.name.clone(),
@@ -1700,7 +1701,7 @@ impl TryFrom<PyComputation> for Computation {
                         placement: map_placement(&placements, &op.placement_name)?,
                     }),
                     rep_MeanOperation(op) => Ok(Operation {
-                        kind: RepMeanOp {
+                        kind: RepFixedpointMeanOp {
                             sig: Signature::unary(
                                 map_type(&op.output_type)?,
                                 map_type(&op.output_type)?,

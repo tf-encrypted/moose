@@ -1290,7 +1290,7 @@ impl ToTextual for Operator {
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),
             RepDot(op) => op.to_textual(),
-            RepMean(op) => op.to_textual(),
+            RepFixedpointMean(op) => op.to_textual(),
             RepSum(op) => op.to_textual(),
             RepAdd(op) => op.to_textual(),
             RepSub(op) => op.to_textual(),
@@ -1512,26 +1512,18 @@ impl ToTextual for FixedpointMeanOp {
             FixedpointMeanOp {
                 sig,
                 axis: Some(a),
-                scaling_base,
-                scaling_exp,
             } => {
                 format!(
-                    "RingFixedpointMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
+                    "FixedpointMean{{axis = {}}}: {}",
                     a,
-                    scaling_base,
-                    scaling_exp,
                     sig.to_textual()
                 )
             }
             FixedpointMeanOp {
                 sig,
                 axis: None,
-                scaling_base,
-                scaling_exp,
             } => format!(
-                "RingFixedpointMean{{scaling_base={}, scaling_exp={}}}: {}",
-                scaling_base,
-                scaling_exp,
+                "FixedpointMean{{}}: {}",
                 sig.to_textual()
             ),
         }
@@ -1570,30 +1562,30 @@ impl ToTextual for RingFixedpointMeanOp {
     }
 }
 
-impl ToTextual for RepMeanOp {
+impl ToTextual for RepFixedpointMeanOp {
     fn to_textual(&self) -> String {
         match self {
-            RepMeanOp {
+            RepFixedpointMeanOp {
                 sig,
                 axis: Some(a),
                 scaling_base,
                 scaling_exp,
             } => {
                 format!(
-                    "RepMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
+                    "RepFixedpointMean{{axis = {}, scaling_base={}, scaling_exp={}}}: {}",
                     a,
                     scaling_base,
                     scaling_exp,
                     sig.to_textual()
                 )
             }
-            RepMeanOp {
+            RepFixedpointMeanOp {
                 sig,
                 axis: None,
                 scaling_base,
                 scaling_exp,
             } => format!(
-                "RepMean{{scaling_base={}, scaling_exp={}}}: {}",
+                "RepFixedpointMean{{scaling_base={}, scaling_exp={}}}: {}",
                 scaling_base,
                 scaling_exp,
                 sig.to_textual()

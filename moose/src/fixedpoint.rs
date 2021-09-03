@@ -12,7 +12,7 @@ use crate::kernels::{
     PlacementAdd, PlacementCast, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,
     PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementMulSetup, PlacementReveal,
     PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSetupGen,
-    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session,
+    PlacementShareSetup, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr, Session, PlacementMeanAsFixedpoint,
 };
 use crate::logical::{AbstractTensor, Tensor};
 use crate::replicated::{
@@ -873,26 +873,26 @@ impl FixedpointSumOp {
     }
 }
 
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed64Tensor) -> HostFixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (HostFixed128Tensor) -> HostFixed128Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMeanOp);
-modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>, scaling_base: u64, scaling_exp: u32] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Fixed64Tensor) -> Fixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (Fixed128Tensor) -> Fixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFixed64Tensor) -> HostFixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFixed128Tensor) -> HostFixed128Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor, FixedpointMeanOp);
+modelled!(PlacementMean::mean, ReplicatedPlacement, attributes[axis: Option<u32>] (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor, FixedpointMeanOp);
 
 kernel! {
     FixedpointMeanOp,
     [
-        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
-        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_host_kernel),
-        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::fixed_rep_kernel),
-        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
-        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::hostfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
-        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis, scaling_base, scaling_exp] Self::repfixed_kernel),
+        (HostPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis] Self::fixed_host_kernel),
+        (HostPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::fixed_host_kernel),
+        (ReplicatedPlacement, (Fixed64Tensor) -> Fixed64Tensor => [hybrid] attributes[axis] Self::fixed_rep_kernel),
+        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::fixed_rep_kernel),
+        (HostPlacement, (HostFixed64Tensor) -> HostFixed64Tensor => [hybrid] attributes[axis] Self::hostfixed_kernel),
+        (HostPlacement, (HostFixed128Tensor) -> HostFixed128Tensor => [hybrid] attributes[axis] Self::hostfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed64Tensor) -> ReplicatedFixed64Tensor => [hybrid] attributes[axis] Self::repfixed_kernel),
+        (ReplicatedPlacement, (ReplicatedFixed128Tensor) -> ReplicatedFixed128Tensor => [hybrid] attributes[axis] Self::repfixed_kernel),
     ]
 }
 
@@ -901,8 +901,6 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: FixedTensor<HostFixedT, RepFixedT>,
     ) -> FixedTensor<HostFixedT, RepFixedT>
     where
@@ -914,7 +912,7 @@ impl FixedpointMeanOp {
             FixedTensor::Replicated(x) => plc.reveal(sess, &x),
         };
 
-        let result = plc.mean(sess, axis, scaling_base, scaling_exp, &x_revealed);
+        let result = plc.mean(sess, axis, &x_revealed);
         FixedTensor::Host(result)
     }
 
@@ -922,8 +920,6 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: FixedTensor<HostFixedT, RepFixedT>,
     ) -> FixedTensor<HostFixedT, RepFixedT>
     where
@@ -939,7 +935,7 @@ impl FixedpointMeanOp {
             FixedTensor::Replicated(x) => x,
         };
 
-        let result = plc.mean(sess, axis, scaling_base, scaling_exp, &x_shared);
+        let result = plc.mean(sess, axis, &x_shared);
         FixedTensor::Replicated(result)
     }
 
@@ -947,14 +943,12 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: AbstractHostFixedTensor<HostRingT>,
     ) -> AbstractHostFixedTensor<HostRingT>
     where
-        HostPlacement: PlacementMean<S, HostRingT, HostRingT>,
+        HostPlacement: PlacementMeanAsFixedpoint<S, HostRingT, HostRingT>,
     {
-        let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
+        let y = plc.mean_as_fixedpoint(sess, axis, 2, 27, &x.0); // TODO hardcoded fixedpoint params
         AbstractHostFixedTensor(y)
     }
 
@@ -962,14 +956,12 @@ impl FixedpointMeanOp {
         sess: &S,
         plc: &ReplicatedPlacement,
         axis: Option<u32>,
-        scaling_base: u64,
-        scaling_exp: u32,
         x: AbstractReplicatedFixedTensor<RepRingT>,
     ) -> AbstractReplicatedFixedTensor<RepRingT>
     where
-        ReplicatedPlacement: PlacementMean<S, RepRingT, RepRingT>,
+        ReplicatedPlacement: PlacementMeanAsFixedpoint<S, RepRingT, RepRingT>,
     {
-        let y = plc.mean(sess, axis, scaling_base, scaling_exp, &x.0);
+        let y = plc.mean_as_fixedpoint(sess, axis, 2, 27, &x.0); // TODO hardcoded fixedpoint params
         AbstractReplicatedFixedTensor(y)
     }
 }
