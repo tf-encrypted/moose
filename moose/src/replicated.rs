@@ -2,8 +2,8 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
-    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepFixedpointMeanOp, RepMsbOp, RepMulOp,
-    RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp,
+    RepAbsOp, RepAddOp, RepDotOp, RepFillOp, RepFixedpointMeanOp, RepIndexAxisOp, RepMsbOp,
+    RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlOp, RepSubOp, RepSumOp, RepTruncPrOp,
     ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
 };
 use crate::error::{Error, Result};
@@ -14,11 +14,11 @@ use crate::host::{
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAnd, PlacementBitExtract,
     PlacementDaBitProvider, PlacementDeriveSeed, PlacementDot, PlacementDotSetup, PlacementFill,
-    PlacementIndex, PlacementKeyGen, PlacementMsb, PlacementMul, PlacementMulSetup,
-    PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal, PlacementRingInject,
-    PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape, PlacementShareSetup,
-    PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementTruncPrProvider, PlacementZeros, Session, Tensor, PlacementMeanAsFixedpoint,
+    PlacementIndex, PlacementKeyGen, PlacementMeanAsFixedpoint, PlacementMsb, PlacementMul,
+    PlacementMulSetup, PlacementOnes, PlacementPlace, PlacementRepToAdt, PlacementReveal,
+    PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
+    PlacementShareSetup, PlacementShl, PlacementShr, PlacementSub, PlacementSum, PlacementTruncPr,
+    PlacementTruncPrProvider, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
@@ -2171,10 +2171,13 @@ mod tests {
     use super::*;
     use crate::fixedpoint::Convert;
     use crate::host::AbstractHostRingTensor;
-    use crate::kernels::{PlacementFixedpointEncode, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession};
+    use crate::host::FromRawPlc;
+    use crate::kernels::{
+        PlacementFixedpointEncode, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode,
+        SyncSession,
+    };
     use ndarray::array;
     use proptest::prelude::*;
-    use crate::host::FromRawPlc;
 
     #[test]
     fn test_adt_to_rep() {
@@ -2311,7 +2314,8 @@ mod tests {
         let mean = rep.mean_as_fixedpoint(&sess, None, scaling_base, scaling_exp, &x_shared);
         let mean = rep.trunc_pr(&sess, scaling_exp, &mean);
         let opened_result = alice.reveal(&sess, &mean);
-        let decoded_result = alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
+        let decoded_result =
+            alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
 
         assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }

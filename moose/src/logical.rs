@@ -1,9 +1,16 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SymbolicType};
+use crate::computation::{
+    AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, Placed,
+    Placement, ReplicatedPlacement, Signature, SubOp, SymbolicType,
+};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
-use crate::host::{HostShape};
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementSub, PlacementTruncPr, Session};
+use crate::host::HostShape;
+use crate::kernels::{
+    PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot,
+    PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul,
+    PlacementSub, PlacementTruncPr, Session,
+};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -122,11 +129,11 @@ impl AddOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.add(sess, &x, &y);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.add(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -137,8 +144,7 @@ impl AddOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 
@@ -158,11 +164,11 @@ impl AddOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.add(sess, &x, &y);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.add(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -173,8 +179,7 @@ impl AddOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 }
@@ -206,11 +211,11 @@ impl SubOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.sub(sess, &x, &y);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.sub(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -221,8 +226,7 @@ impl SubOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 
@@ -242,11 +246,11 @@ impl SubOp {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
                 let result = plc.sub(sess, &x, &y);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let result = plc.sub(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -257,12 +261,10 @@ impl SubOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 }
-
 
 modelled!(PlacementMul::mul, HostPlacement, (Tensor, Tensor) -> Tensor, MulOp);
 
@@ -294,12 +296,12 @@ impl MulOp {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -310,8 +312,7 @@ impl MulOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 
@@ -334,12 +335,12 @@ impl MulOp {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.mul(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -350,8 +351,7 @@ impl MulOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 }
@@ -386,12 +386,12 @@ impl DotOp {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -402,8 +402,7 @@ impl DotOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 
@@ -426,12 +425,12 @@ impl DotOp {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed64(result)
-            },
+            }
             (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
                 let z = plc.dot(sess, &x, &y);
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
-            },
+            }
 
             // TODO(Morten)
             // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
@@ -442,8 +441,7 @@ impl DotOp {
             //     let result = plc.add(sess, &x, &y);
             //     AbstractTensor::Float64(result)
             // },
-
-            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
 }
@@ -475,11 +473,11 @@ impl CastOp {
             AbstractTensor::Fixed64(x) => {
                 let inner = plc.fixedpoint_decode(sess, FIXEDPOINT_PRECISON, &x);
                 AbstractTensor::Float32(inner)
-            },
+            }
             AbstractTensor::Fixed128(x) => {
                 let inner = plc.fixedpoint_decode(sess, FIXEDPOINT_PRECISON, &x);
                 AbstractTensor::Float64(inner)
-            },
+            }
             AbstractTensor::Float32(x) => {
                 let inner = plc.fixedpoint_encode(sess, FIXEDPOINT_PRECISON, &x);
                 AbstractTensor::Fixed64(inner)

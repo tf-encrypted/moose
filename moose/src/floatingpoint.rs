@@ -36,14 +36,15 @@ where
 }
 
 // TODO(lvorona): Not sure why we need this one separately... But the moose_type macro is coming!
-impl<HostT: Placed<Placement = HostPlacement>> From<FloatTensor<HostT>> for Symbolic<FloatTensor<HostT>> {
+impl<HostT: Placed<Placement = HostPlacement>> From<FloatTensor<HostT>>
+    for Symbolic<FloatTensor<HostT>>
+{
     fn from(x: FloatTensor<HostT>) -> Self {
         Symbolic::Concrete(x)
     }
 }
 
-impl<HostFloatT> TryFrom<Symbolic<FloatTensor<HostFloatT>>>
-    for FloatTensor<HostFloatT>
+impl<HostFloatT> TryFrom<Symbolic<FloatTensor<HostFloatT>>> for FloatTensor<HostFloatT>
 where
     HostFloatT: Placed<Placement = HostPlacement>,
 {

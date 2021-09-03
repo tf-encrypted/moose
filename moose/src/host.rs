@@ -13,10 +13,10 @@ use crate::fixedpoint::Fixed128Tensor;
 use crate::floatingpoint::FloatTensor;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDot, PlacementFill,
-    PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace, PlacementSample,
-    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr,
-    PlacementXor, RuntimeSession, Session, SyncSession, Tensor, PlacementMeanAsFixedpoint,
+    PlacementIndex, PlacementMean, PlacementMeanAsFixedpoint, PlacementMul, PlacementNeg,
+    PlacementPlace, PlacementSample, PlacementSampleSeeded, PlacementSampleUniform,
+    PlacementSampleUniformSeeded, PlacementShl, PlacementShr, PlacementSlice, PlacementSub,
+    PlacementSum, PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;

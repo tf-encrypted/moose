@@ -1509,23 +1509,12 @@ op_with_axis_to_textual!(FixedpointSumOp);
 impl ToTextual for FixedpointMeanOp {
     fn to_textual(&self) -> String {
         match self {
-            FixedpointMeanOp {
-                sig,
-                axis: Some(a),
-            } => {
-                format!(
-                    "FixedpointMean{{axis = {}}}: {}",
-                    a,
-                    sig.to_textual()
-                )
+            FixedpointMeanOp { sig, axis: Some(a) } => {
+                format!("FixedpointMean{{axis = {}}}: {}", a, sig.to_textual())
             }
-            FixedpointMeanOp {
-                sig,
-                axis: None,
-            } => format!(
-                "FixedpointMean{{}}: {}",
-                sig.to_textual()
-            ),
+            FixedpointMeanOp { sig, axis: None } => {
+                format!("FixedpointMean{{}}: {}", sig.to_textual())
+            }
         }
     }
 }

@@ -1,9 +1,9 @@
-use ndarray::ArrayD;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
     SyncKernel,
 };
+use crate::fixedpoint::Convert;
 use crate::fixedpoint::Fixed128Tensor;
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::{
@@ -16,11 +16,11 @@ use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
+use ndarray::ArrayD;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::num::Wrapping;
 use std::sync::Arc;
-use crate::fixedpoint::Convert;
 
 /// General session trait determining basic properties for session objects.
 pub trait Session {
@@ -359,7 +359,14 @@ pub trait PlacementMean<S: Session, T, O> {
 }
 
 pub trait PlacementMeanAsFixedpoint<S: Session, T, O> {
-    fn mean_as_fixedpoint(&self, sess: &S, axis: Option<u32>, scaling_base: u64, scaling_exp: u32, x: &T) -> O;
+    fn mean_as_fixedpoint(
+        &self,
+        sess: &S,
+        axis: Option<u32>,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: &T,
+    ) -> O;
 }
 
 pub trait PlacementSqrt<S: Session, T, O> {
@@ -1561,7 +1568,8 @@ impl RingFixedpointEncodeOp {
     ) -> HostRing128Tensor {
         let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
         let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<Wrapping<u128>> = x_upshifted.mapv(|el| Wrapping((el as i128) as u128));
+        let x_converted: ArrayD<Wrapping<u128>> =
+            x_upshifted.mapv(|el| Wrapping((el as i128) as u128));
         AbstractHostRingTensor(x_converted, plc.clone())
     }
 }
