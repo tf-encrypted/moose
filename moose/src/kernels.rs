@@ -4,7 +4,6 @@ use crate::execution::{
     SyncKernel,
 };
 use crate::fixedpoint::Convert;
-use crate::fixedpoint::Fixed128Tensor;
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
@@ -904,13 +903,13 @@ modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Hos
 modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
 
 kernel! {
-    HostMeanOp, [
+    HostMeanOp,
+    [
+        // TODO
         (HostPlacement, (Float32Tensor) -> Float32Tensor => [runtime] attributes[axis] Self::float_kernel),
         (HostPlacement, (Float64Tensor) -> Float64Tensor => [runtime] attributes[axis] Self::float_kernel),
         (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        // TODO(Morten)
-        // (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 
@@ -1168,7 +1167,6 @@ modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostF
 kernel! {
     HostSumOp, [
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-        (ReplicatedPlacement, (Fixed128Tensor) -> Fixed128Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 
