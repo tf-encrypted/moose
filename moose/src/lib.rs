@@ -134,7 +134,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, NullarySignature};
                 use crate::kernels::{SyncSession, NullaryKernel};
@@ -148,7 +148,7 @@ macro_rules! concrete_dispatch_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self, &plc);
 
@@ -156,8 +156,8 @@ macro_rules! concrete_dispatch_kernel {
                                 assert_eq!(operands.len(), 0);
 
                                 let y: $u = k(sess, &plc);
-                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
-                                y.into()
+                                debug_assert_eq!(y.placement()?, plc.clone().into());
+                                Ok(y.into())
                             }))
                         }
                     )+
@@ -180,7 +180,7 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
             {
                 use crate::computation::{KnownPlacement, KnownType, Signature, UnarySignature, Value};
                 use crate::kernels::{SyncSession, UnaryKernel};
@@ -195,18 +195,18 @@ macro_rules! concrete_dispatch_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self, &plc);
 
                             Ok(Box::new(move |sess, operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
 
-                                let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
+                                let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0);
                                 debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
-                                y.into()
+                                Ok(y.into())
                             }))
                         }
                     )+
@@ -229,9 +229,9 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature, Value};
+                use crate::computation::{KnownPlacement, KnownType, Signature, BinarySignature};
                 use crate::kernels::{SyncSession, BinaryKernel};
                 use std::convert::TryInto;
 
@@ -245,7 +245,7 @@ macro_rules! concrete_dispatch_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as BinaryKernel<
                                 SyncSession,
@@ -255,15 +255,16 @@ macro_rules! concrete_dispatch_kernel {
                                 $u
                             >>::compile(self, &plc);
 
-                            Ok(Box::new(move |sess, operands| -> Value {
+                            Ok(Box::new(
+                                move |sess, operands: Vec<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 2);
 
-                                let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
-                                let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
+                                let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
+                                let x1: $t1 = operands.get(1).unwrap().clone().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0, x1);
-                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
-                                y.into()
+                                debug_assert_eq!(y.placement()?, plc.clone().into());
+                                Ok(y.into())
                             }))
                         }
                     )+
@@ -286,9 +287,9 @@ macro_rules! concrete_dispatch_kernel {
             fn compile(
                 &self,
                 plc: &crate::computation::Placement
-            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::computation::Value>>
+            ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, Vec<crate::computation::Value>) -> crate::error::Result<crate::computation::Value>>>
             {
-                use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature, Value};
+                use crate::computation::{KnownPlacement, KnownType, Signature, TernarySignature};
                 use crate::kernels::{SyncSession, TernaryKernel};
                 use std::convert::TryInto;
 
@@ -303,20 +304,20 @@ macro_rules! concrete_dispatch_kernel {
                                 ret: <$u as KnownType<SyncSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as TernaryKernel<SyncSession, $plc, $t0, $t1, $t2, $u>>::compile(self, &plc);
 
-                            Ok(Box::new(move |sess, operands: Vec<Value>| -> Value {
+                            Ok(Box::new(move |sess, operands| {
                                 assert_eq!(operands.len(), 3);
 
-                                let x0: $t0 = operands.get(0).unwrap().clone().try_into().unwrap();
-                                let x1: $t1 = operands.get(1).unwrap().clone().try_into().unwrap();
-                                let x2: $t2 = operands.get(2).unwrap().clone().try_into().unwrap();
+                                let x0: $t0 = operands.get(0).unwrap().clone().try_into()?;
+                                let x1: $t1 = operands.get(1).unwrap().clone().try_into()?;
+                                let x2: $t2 = operands.get(2).unwrap().clone().try_into()?;
 
                                 let y: $u = k(sess, &plc, x0, x1, x2);
-                                debug_assert_eq!(y.placement().unwrap(), plc.clone().into());
-                                y.into()
+                                debug_assert_eq!(y.placement()?, plc.clone().into());
+                                Ok(y.into())
                             }))
                         }
                     )+
@@ -345,7 +346,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
                 use crate::computation::{KnownPlacement, Signature, NullarySignature, KnownType};
                 use crate::kernels::{NullaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -371,7 +372,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 assert_eq!(operands.len(), 0);
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc);
-                                y.into()
+                                Ok(y.into())
                             }))
                         }
                     )+
@@ -397,7 +398,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
                 use crate::computation::{KnownPlacement, Signature, UnarySignature, KnownType};
                 use crate::kernels::{UnaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -412,7 +413,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as UnaryKernel<
                                 SymbolicSession,
@@ -424,10 +425,10 @@ macro_rules! symbolic_dispatch_kernel {
                             Ok(Box::new(move |sess, operands| {
                                 assert_eq!(operands.len(), 1);
 
-                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into().unwrap();
+                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0);
-                                y.into()
+                                Ok(y.into())
                             }))
                         }
                     )+
@@ -453,7 +454,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
                 use crate::computation::{KnownPlacement, Signature, BinarySignature, KnownType};
                 use crate::kernels::{BinaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -469,7 +470,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as BinaryKernel<
                                 SymbolicSession,
@@ -482,11 +483,11 @@ macro_rules! symbolic_dispatch_kernel {
                             Ok(Box::new(move |sess, operands| {
                                 assert_eq!(operands.len(), 2);
 
-                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into().unwrap();
-                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into().unwrap();
+                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
+                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into()?;
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1);
-                                y.into()
+                                Ok(y.into())
                             }))
                         }
                     )+
@@ -512,7 +513,7 @@ macro_rules! symbolic_dispatch_kernel {
             ) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 Vec<crate::computation::SymbolicValue>
-            ) -> crate::computation::SymbolicValue>> {
+            ) -> crate::error::Result<crate::computation::SymbolicValue>>> {
                 use crate::computation::{KnownPlacement, Signature, TernarySignature, KnownType};
                 use crate::kernels::{TernaryKernel};
                 use crate::symbolic::SymbolicSession;
@@ -529,7 +530,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 ret: <$u as KnownType<SymbolicSession>>::TY,
                             })
                         ) => {
-                            let plc: $plc = plc.clone().try_into().unwrap();
+                            let plc: $plc = plc.clone().try_into()?;
 
                             let k = <$op as TernaryKernel<
                                 SymbolicSession,
@@ -543,12 +544,12 @@ macro_rules! symbolic_dispatch_kernel {
                             Ok(Box::new(move |sess, operands| {
                                 assert_eq!(operands.len(), 3);
 
-                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into().unwrap();
-                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into().unwrap();
-                                let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.get(2).unwrap().clone().try_into().unwrap();
+                                let x0: <$t0 as KnownType<SymbolicSession>>::Type = operands.get(0).unwrap().clone().try_into()?;
+                                let x1: <$t1 as KnownType<SymbolicSession>>::Type = operands.get(1).unwrap().clone().try_into()?;
+                                let x2: <$t2 as KnownType<SymbolicSession>>::Type = operands.get(2).unwrap().clone().try_into()?;
 
                                 let y: <$u as KnownType<SymbolicSession>>::Type = k(sess, &plc, x0, x1, x2);
-                                y.into()
+                                Ok(y.into())
                             }))
                         }
                     )+
