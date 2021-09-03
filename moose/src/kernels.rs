@@ -1,3 +1,4 @@
+use ndarray::ArrayD;
 use crate::error::{Error, Result};
 use crate::execution::{
     map_receive_error, map_send_result, AsyncKernel, CompilationContext, Compile, Kernel,
@@ -17,7 +18,9 @@ use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::num::Wrapping;
 use std::sync::Arc;
+use crate::fixedpoint::Convert;
 
 /// General session trait determining basic properties for session objects.
 pub trait Session {
@@ -1531,27 +1534,41 @@ modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, 
 
 kernel! {
     RingFixedpointEncodeOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
+        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
     ]
 }
 
 impl RingFixedpointEncodeOp {
-    fn kernel<S: RuntimeSession, ST, TT>(
+    fn float32_kernel<S: RuntimeSession>(
         _sess: &S,
         _plc: &HostPlacement,
         _scaling_base: u64,
         _scaling_exp: u32,
-        _x: HostTensor<ST>,
-    ) -> AbstractHostRingTensor<TT> {
+        _x: HostFloat32Tensor,
+    ) -> HostRing64Tensor {
+        // let scaling_factor = u64::pow(scaling_base, scaling_exp);
+        // HostRing64Tensor::encode(&x, scaling_factor)
         unimplemented!()
+    }
+
+    fn float64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostFloat64Tensor,
+    ) -> HostRing128Tensor {
+        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
+        let x_upshifted = &x.0 * (scaling_factor as f64);
+        let x_converted: ArrayD<Wrapping<u128>> = x_upshifted.mapv(|el| Wrapping((el as i128) as u128));
+        AbstractHostRingTensor(x_converted, plc.clone())
     }
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFixedpointEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
@@ -1577,13 +1594,13 @@ modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, 
 
 kernel! {
     RingFixedpointDecodeOp, [
-        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
     ]
 }
 
 impl RingFixedpointDecodeOp {
-    fn kernel<S: RuntimeSession, ST, TT>(
+    fn float32_kernel<S: RuntimeSession, ST, TT>(
         _sess: &S,
         _plc: &HostPlacement,
         _scaling_base: u64,
@@ -1591,6 +1608,19 @@ impl RingFixedpointDecodeOp {
         _x: AbstractHostRingTensor<ST>,
     ) -> HostTensor<TT> {
         unimplemented!()
+    }
+
+    fn float64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        scaling_base: u64,
+        scaling_exp: u32,
+        x: HostRing128Tensor,
+    ) -> HostFloat64Tensor {
+        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
+        let x_upshifted: ArrayD<i128> = x.0.mapv(|xi| xi.0 as i128);
+        let x_converted = x_upshifted.mapv(|el| el as f64);
+        HostTensor(x_converted / scaling_factor as f64, plc.clone())
     }
 }
 

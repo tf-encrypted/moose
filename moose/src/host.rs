@@ -1684,7 +1684,7 @@ impl RingSize for HostRing128Tensor {
 }
 
 pub trait FromRawPlc<P, T> {
-    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> AbstractHostRingTensor<T>;
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> Self;
 }
 
 impl<P> FromRawPlc<P, u64> for HostRing64Tensor
@@ -1704,6 +1704,15 @@ where
     fn from_raw_plc(raw_tensor: ArrayD<u128>, plc: P) -> HostRing128Tensor {
         let tensor = raw_tensor.mapv(Wrapping).into_dyn();
         AbstractHostRingTensor(tensor, plc.into())
+    }
+}
+
+impl<P, T> FromRawPlc<P, T> for HostTensor<T>
+where
+    P: Into<HostPlacement>,
+{
+    fn from_raw_plc(raw_tensor: ArrayD<T>, plc: P) -> HostTensor<T> {
+        HostTensor(raw_tensor, plc.into())
     }
 }
 

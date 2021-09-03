@@ -2171,9 +2171,10 @@ mod tests {
     use super::*;
     use crate::fixedpoint::Convert;
     use crate::host::AbstractHostRingTensor;
-    use crate::kernels::SyncSession;
+    use crate::kernels::{PlacementFixedpointEncode, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession};
     use ndarray::array;
     use proptest::prelude::*;
+    use crate::host::FromRawPlc;
 
     #[test]
     fn test_adt_to_rep() {
@@ -2297,19 +2298,20 @@ mod tests {
 
         let scaling_base = 2;
         let scaling_exp = 24;
-        let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        let x = crate::host::HostTensor::<f64>::from(
+
+        let x = crate::host::HostFloat64Tensor::from_raw_plc(
             array![1.0, 2.0, 3.0]
                 .into_dimensionality::<IxDyn>()
                 .unwrap(),
+            alice.clone(),
         );
-        let x = HostFixed64Tensor::encode(&x, scaling_factor);
+        let x = alice.fixedpoint_ring_encode(&sess, scaling_base, scaling_exp, &x);
         let x_shared = rep.share(&sess, &setup, &x);
 
         let mean = rep.mean_as_fixedpoint(&sess, None, scaling_base, scaling_exp, &x_shared);
         let mean = rep.trunc_pr(&sess, scaling_exp, &mean);
         let opened_result = alice.reveal(&sess, &mean);
-        let decoded_result = HostFixed64Tensor::decode(&opened_result, scaling_factor);
+        let decoded_result = alice.fixedpoint_ring_decode(&sess, scaling_base, scaling_exp, &opened_result);
 
         assert!(num_traits::abs(2.0 - decoded_result.0[[]]) < 0.01);
     }
