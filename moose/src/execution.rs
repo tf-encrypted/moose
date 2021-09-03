@@ -1051,7 +1051,7 @@ impl AsyncSessionHandle {
         use crate::error::Error::{Abort, OperandUnavailable, ResultUnused};
         use futures::StreamExt;
 
-        let ntasks = self.tasks.len();
+        let num_tasks = self.tasks.len();
         if let Some(receiver) = abort_listener {
             let abort_task: AsyncTask = tokio::spawn(async move {
                 receiver.await.ok(); // wait for an abort signal
@@ -1069,13 +1069,14 @@ impl AsyncSessionHandle {
             .into_iter()
             .collect::<futures::stream::FuturesUnordered<_>>();
 
-        for _ in 0..ntasks {
+        for _ in 0..num_tasks {
             if let Some(completed_task) = tasks.next().await {
                 match completed_task {
                     Ok(Ok(_)) => {
                         continue;
                     }
                     Ok(Err(e)) => {
+                        #[allow(clippy::wildcard_in_or_patterns)]
                         match e {
                             // OperandUnavailable and ResultUnused are typically not root causes.
                             // Wait to get an error that would indicate the root cause of the problem,
