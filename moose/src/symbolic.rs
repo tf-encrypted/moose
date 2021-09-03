@@ -2,7 +2,7 @@ use crate::computation::{
     Computation, HostPlacement, KnownType, Operation, Operator, Placed, Placement,
     ReplicatedPlacement, SymbolicValue,
 };
-use crate::error::Error;
+use crate::error::{Error, Result};
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
 use crate::prim::PrfKey;
 use crate::replicated::AbstractReplicatedSetup;
@@ -29,7 +29,7 @@ where
 {
     type Placement = T::Placement;
 
-    fn placement(&self) -> crate::error::Result<Self::Placement> {
+    fn placement(&self) -> Result<Self::Placement> {
         match self {
             Symbolic::Symbolic(x) => Ok(x.plc.clone()),
             Symbolic::Concrete(x) => x.placement(),
@@ -76,7 +76,12 @@ impl SymbolicSession {
 
 impl Session for SymbolicSession {
     type Value = crate::computation::SymbolicValue;
-    fn execute(&self, op: Operator, plc: &Placement, operands: Vec<Self::Value>) -> Self::Value {
+    fn execute(
+        &self,
+        op: Operator,
+        plc: &Placement,
+        operands: Vec<Self::Value>,
+    ) -> Result<Self::Value> {
         self.strategy.execute(self, op, plc, operands)
     }
 
@@ -93,7 +98,7 @@ pub trait SymbolicStrategy {
         op: Operator,
         plc: &Placement,
         operands: Vec<SymbolicValue>,
-    ) -> SymbolicValue;
+    ) -> Result<SymbolicValue>;
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -106,101 +111,99 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
         op: Operator,
         plc: &Placement,
         operands: Vec<SymbolicValue>,
-    ) -> SymbolicValue {
+    ) -> Result<SymbolicValue> {
         use Operator::*;
         match op {
-            PrimDeriveSeed(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Constant(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Cast(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Input(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Output(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Load(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Save(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Shape(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            BitFill(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingFill(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepFill(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            PrimPrfKeyGen(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            BitXor(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            BitAnd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            BitExtract(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            BitSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            BitSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingSample(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingSampleSeeded(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingNeg(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingFixedpointEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingFixedpointDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingFixedpointMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingShl(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingShr(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RingInject(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepSetup(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepShare(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepReveal(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepTruncPr(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepShl(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepMsb(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepAbs(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepToAdt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepIndexAxis(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepDiag(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepBitDec(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            RepShlDim(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            AdtAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            AdtSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            AdtShl(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            AdtMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            AdtFill(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            AdtReveal(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            AdtToRep(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostSqrt(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostSlice(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostDiag(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostShlDim(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostOnes(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostDiv(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostExpandDims(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostSqueeze(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostConcat(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostTranspose(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostInverse(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostBitDec(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointEncode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointDecode(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointAdd(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointSub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            FixedpointMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            Identity(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            HostReshape(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            PrimDeriveSeed(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Constant(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Cast(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Input(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Output(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Load(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Save(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Shape(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            BitFill(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingFill(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepFill(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            PrimPrfKeyGen(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            BitXor(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            BitAnd(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            BitExtract(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            BitSample(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            BitSampleSeeded(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingSample(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingSampleSeeded(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingAdd(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingSub(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingMul(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingDot(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingNeg(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingSum(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingFixedpointEncode(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingFixedpointDecode(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingFixedpointMean(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingShl(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingShr(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RingInject(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepSetup(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepShare(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepReveal(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepTruncPr(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepAdd(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepSub(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepMul(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepDot(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepMean(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepSum(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepShl(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepMsb(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepAbs(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepToAdt(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepIndexAxis(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepDiag(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepSlice(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepBitDec(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            RepShlDim(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            AdtAdd(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            AdtSub(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            AdtShl(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            AdtMul(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            AdtFill(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            AdtReveal(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            AdtToRep(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostAtLeast2D(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostMean(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostSqrt(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostSum(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostSlice(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostDiag(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostShlDim(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostIndexAxis(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostOnes(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostAdd(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostSub(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostMul(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostDiv(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostDot(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostExpandDims(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostSqueeze(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostConcat(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostTranspose(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostInverse(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostBitDec(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointEncode(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointDecode(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointAdd(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointSub(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointMul(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointDot(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointTruncPr(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointSum(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            FixedpointMean(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            Identity(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
+            HostReshape(op) => Ok(DispatchKernel::compile(&op, plc)?(sess, operands)),
             // the following operators are not supported by design (for now, at least)
-            Send(_) | Receive(_) => {
-                unimplemented!("Unsupported symbolic operator {:?}", op)
-            }
+            Send(_) | Receive(_) => Err(Error::UnimplementedSymbolicOperator(format!("{:?}", op))),
         }
     }
 }
@@ -245,8 +248,15 @@ impl SymbolicExecutor {
                 .iter()
                 .map(|input_name| env.get(input_name).unwrap().clone())
                 .collect();
-            let res = session.execute(operator, &op.placement, operands);
-            env.insert(op.name.clone(), res);
+            let value = session
+                .execute(operator, &op.placement, operands)
+                .map_err(|e| {
+                    Error::Compilation(format!(
+                        "SymbolicSession failed to lower computation due to an error: {:?}",
+                        e,
+                    ))
+                })?;
+            env.insert(op.name.clone(), value);
         }
         let ops = session.ops.read().map_err(|e| {
             Error::Compilation(format!(

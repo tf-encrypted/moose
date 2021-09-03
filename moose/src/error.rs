@@ -18,8 +18,20 @@ pub enum Error {
     #[error("Operator instantiation not supported: {0}")]
     UnimplementedOperator(String),
 
+    #[error("Symbolic operator not supported: {0}")]
+    UnimplementedSymbolicOperator(String),
+
     #[error("Missing argument '{0}'")]
     MissingArgument(String),
+
+    #[error(
+        "Implementation of kernel '{kernel}: {signature}' missing for placement '{placement}'"
+    )]
+    MisplacedKernel {
+        kernel: String,
+        signature: String,
+        placement: String,
+    },
 
     #[error("Malformed computation: operand '{0}' not found")]
     MalformedEnvironment(String),
