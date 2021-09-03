@@ -1,17 +1,22 @@
 use crate::computation::{
     AtLeast2DOp, HasShortName, HostPlacement, KnownType, MeanOp, Placed, Placement, Signature,
-    SymbolicType,
+    SymbolicType, ReplicatedPlacement,
 };
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
-use crate::host::HostFloat64Tensor;
+use crate::host::{HostShape, HostFloat64Tensor};
 use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementMean, PlacementStdMean, Session};
 use crate::symbolic::Symbolic;
 use macros::with_context;
 use macros::ShortName;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub enum Shape {
+    Host(HostShape),
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T> {
@@ -150,12 +155,13 @@ where
 
 kernel! {
     AtLeast2DOp, [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::kernel),
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::host_kernel),
+        // (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[to_column_vector] Self::rep_kernel),
     ]
 }
 
 impl AtLeast2DOp {
-    fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         to_column_vector: bool,
@@ -191,12 +197,14 @@ impl AtLeast2DOp {
 
 kernel! {
     MeanOp, [
-        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::kernel),
+        // TODO(Morten) could we use a single entry for Placement instead?
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::rep_kernel),
     ]
 }
 
 impl MeanOp {
-    fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
         sess: &S,
         plc: &HostPlacement,
         axis: Option<u32>,
@@ -224,6 +232,36 @@ impl MeanOp {
             AbstractTensor::Float64(x) => {
                 let z = plc.std_mean(sess, axis, &x);
                 AbstractTensor::Float64(z)
+            }
+        }
+    }
+
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<u32>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        ReplicatedPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                let z = plc.mean(sess, axis, 2, 27, &x); // TODO: Another hardcoded 27 precision
+                AbstractTensor::Fixed128(z)
+            }
+            // TODO(Morten) the fact that the following two are unimplemented
+            // would be nice to know at (Moose) compile time
+            AbstractTensor::Float32(_x) => {
+                unimplemented!()
+            }
+            AbstractTensor::Float64(_x) => {
+                unimplemented!()
             }
         }
     }
