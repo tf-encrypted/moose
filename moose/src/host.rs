@@ -1,24 +1,7 @@
-use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
-    Constant, HostAddOp, HostAtLeast2DOp, HostBitDecOp, HostConcatOp, HostDivOp, HostDotOp,
-    HostExpandDimsOp, HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
-    HostPlacement, HostReshapeOp, HostSliceOp, HostSqrtOp, HostSubOp, HostSumOp, HostTransposeOp,
-    KnownType, Placed, Placement, RingAddOp, RingDotOp, RingFillOp, RingFixedpointDecodeOp,
-    RingFixedpointEncodeOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SliceOp,
-    SymbolicType,
-};
+use crate::computation::*;
 use crate::error::Error;
 use crate::error::Result;
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementAtLeast2D, PlacementBitDec, PlacementBitExtract,
-    PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFill,
-    PlacementIndex, PlacementInverse, PlacementMean, PlacementMeanAsFixedpoint, PlacementMul,
-    PlacementNeg, PlacementPlace, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode,
-    PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded,
-    PlacementShl, PlacementShr, PlacementSlice, PlacementSqrt, PlacementSub, PlacementSum,
-    PlacementTranspose, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
-};
+use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
@@ -74,6 +57,22 @@ impl RawShape {
     pub fn unsqueeze(mut self, axis: usize) -> Self {
         self.0.insert(axis, 1);
         self
+    }
+
+    pub fn squeeze(mut self, axis: Option<usize>) -> Self {
+        match axis {
+            Some(axis) => {
+                let removed_axis = self.0.remove(axis);
+                match removed_axis {
+                    1 => self,
+                    _ => panic!(
+                        "The axis selected has a value of {:?}. Cannot select an axis to squeeze out
+                        which has size not equal to one", removed_axis
+                    ),
+                }
+            }
+            None => RawShape(self.0.into_iter().filter(|x| *x != 1).collect::<Vec<_>>()),
+        }
     }
 }
 
@@ -588,6 +587,66 @@ impl HostSliceOp {
     }
 }
 
+modelled!(PlacementDiag::diag, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt8Tensor) -> HostInt8Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt16Tensor) -> HostInt16Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt32Tensor) -> HostInt32Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostInt64Tensor) -> HostInt64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostUint16Tensor) -> HostUint16Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostUint32Tensor) -> HostUint32Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostUint64Tensor) -> HostUint64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostBitTensor) -> HostBitTensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostDiagOp);
+modelled!(PlacementDiag::diag, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostDiagOp);
+
+kernel! {
+    HostDiagOp,
+    [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt8Tensor) -> HostInt8Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt16Tensor) -> HostInt16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint16Tensor) -> HostUint16Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] Self::kernel),
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] Self::bit_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring_kernel),
+    ]
+}
+
+impl HostDiagOp {
+    pub fn kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostTensor<T>,
+    ) -> HostTensor<T> {
+        let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
+        HostTensor::<T>(diag, plc.clone())
+    }
+
+    pub fn ring_kernel<S: RuntimeSession, T>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: AbstractHostRingTensor<T>,
+    ) -> AbstractHostRingTensor<T> {
+        let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
+        AbstractHostRingTensor::<T>(diag, plc.clone())
+    }
+
+    pub fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostBitTensor,
+    ) -> HostBitTensor {
+        let diag = x.0.into_diag().into_dimensionality::<IxDyn>().unwrap();
+        HostBitTensor(diag, plc.clone())
+    }
+}
+
 modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing64Tensor) -> HostRing64Tensor, HostIndexAxisOp);
 modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing128Tensor) -> HostRing128Tensor, HostIndexAxisOp);
 modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostBitTensor) -> HostBitTensor, HostIndexAxisOp);
@@ -630,19 +689,64 @@ impl HostIndexAxisOp {
     }
 }
 
+modelled!(PlacementShlDim::shl_dim, HostPlacement, attributes[amount:usize, bit_length: usize] (HostBitTensor) -> HostBitTensor, HostShlDimOp);
+
+kernel! {
+    HostShlDimOp,
+    [
+        (HostPlacement, (HostBitTensor) -> HostBitTensor => [runtime] attributes[amount, bit_length] Self::bit_kernel),
+    ]
+}
+
+impl HostShlDimOp {
+    pub fn bit_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        amount: usize,
+        bit_length: usize,
+        x: HostBitTensor,
+    ) -> HostBitTensor {
+        let axis = Axis(0);
+        let mut raw_tensor_shape = x.0.shape().to_vec();
+        raw_tensor_shape.remove(0);
+        let raw_shape = raw_tensor_shape.as_ref();
+
+        let zero = ArrayD::from_elem(raw_shape, 0);
+        let zero_view = zero.view();
+
+        let concatenated: Vec<_> = (0..bit_length)
+            .map(|i| {
+                if i < bit_length - amount {
+                    x.0.index_axis(axis, i + amount)
+                } else {
+                    zero_view.clone()
+                }
+            })
+            .collect();
+
+        let result = ndarray::stack(Axis(0), &concatenated).unwrap();
+
+        HostBitTensor(result, plc.clone())
+    }
+}
+
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostRing64Tensor, HostBitDecOp);
 modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostRing128Tensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing64Tensor) -> HostBitTensor, HostBitDecOp);
+modelled!(PlacementBitDec::bit_decompose, HostPlacement, (HostRing128Tensor) -> HostBitTensor, HostBitDecOp);
 
 kernel! {
     HostBitDecOp,
     [
         (HostPlacement, (HostRing64Tensor) -> HostRing64Tensor => [runtime] Self::ring64_kernel),
         (HostPlacement, (HostRing128Tensor) -> HostRing128Tensor => [runtime] Self::ring128_kernel),
+        (HostPlacement, (HostRing64Tensor) -> HostBitTensor => [runtime] Self::bit64_kernel),
+        (HostPlacement, (HostRing128Tensor) -> HostBitTensor => [runtime] Self::bit128_kernel),
     ]
 }
 
 impl HostBitDecOp {
-    pub fn ring64_kernel<S: RuntimeSession>(
+    fn ring64_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing64Tensor,
@@ -663,7 +767,7 @@ where {
         AbstractHostRingTensor(result, plc.clone())
     }
 
-    pub fn ring128_kernel<S: RuntimeSession>(
+    fn ring128_kernel<S: RuntimeSession>(
         _sess: &S,
         plc: &HostPlacement,
         x: HostRing128Tensor,
@@ -676,10 +780,50 @@ where {
         let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
             .map(|i| (&x.0 >> i) & (&ones))
             .collect();
-        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
 
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
         let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
         AbstractHostRingTensor(result, plc.clone())
+    }
+
+    fn bit64_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing64Tensor,
+    ) -> HostBitTensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+
+        let bit_rep: Vec<_> = (0..HostRing64Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
+
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+        let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
+        // we unwrap only at the end since shifting can cause overflow
+        HostBitTensor(result.map(|v| v.0 as u8), plc.clone())
+    }
+
+    fn bit128_kernel<S: RuntimeSession>(
+        _sess: &S,
+        plc: &HostPlacement,
+        x: HostRing128Tensor,
+    ) -> HostBitTensor
+where {
+        let shape = x.shape();
+        let raw_shape = shape.0 .0;
+        let ones = ArrayD::from_elem(raw_shape, Wrapping(1));
+
+        let bit_rep: Vec<_> = (0..HostRing128Tensor::SIZE)
+            .map(|i| (&x.0 >> i) & (&ones))
+            .collect();
+
+        let bit_rep_view: Vec<_> = bit_rep.iter().map(ArrayView::from).collect();
+        let result = ndarray::stack(Axis(0), &bit_rep_view).unwrap();
+        // we unwrap only at the end since shifting can cause overflow
+        HostBitTensor(result.map(|v| v.0 as u8), plc.clone())
     }
 }
 
@@ -759,6 +903,12 @@ where
         let plc = (&self.1).clone();
         axis.sort_by_key(|ax| Reverse(*ax));
         let newshape = self.shape().0.extend_singletons(axis);
+        self.reshape(HostShape(newshape, plc))
+    }
+
+    pub fn squeeze(self, axis: Option<usize>) -> Self {
+        let plc = (&self.1).clone();
+        let newshape = self.shape().0.squeeze(axis);
         self.reshape(HostShape(newshape, plc))
     }
 
@@ -916,6 +1066,21 @@ kernel! {
     HostConcatOp, [
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
     ]
+}
+
+impl HostSqueezeOp {
+    pub fn kernel<S: RuntimeSession, T: LinalgScalar + FromPrimitive>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: HostTensor<T>,
+    ) -> HostTensor<T>
+    where
+        HostPlacement: PlacementPlace<S, HostTensor<T>>,
+    {
+        let axis = axis.map(|a| a as usize);
+        plc.place(sess, x.squeeze(axis))
+    }
 }
 
 impl HostConcatOp {
@@ -2657,8 +2822,6 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::kernels::PlacementRingInject;
-
     use super::*;
 
     #[test]
@@ -2737,6 +2900,23 @@ mod tests {
         let target: ArrayD<u64> = array![[3, 4]].into_dimensionality::<IxDyn>().unwrap();
 
         assert_eq!(y, HostRing64Tensor::from_raw_plc(target, alice))
+    }
+
+    #[test]
+    fn test_diag() {
+        let x_backing: ArrayD<f64> = array![[1.0, 2.0], [3.0, 4.0]]
+            .into_dimensionality::<IxDyn>()
+            .unwrap();
+
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+
+        let x = HostTensor::<f64>(x_backing, alice.clone());
+        let sess = SyncSession::default();
+        let y = alice.diag(&sess, &x);
+        let target: ArrayD<f64> = array![1.0, 4.0].into_dimensionality::<IxDyn>().unwrap();
+        assert_eq!(y, HostTensor::<f64>(target, alice))
     }
 
     #[test]
@@ -2946,6 +3126,29 @@ mod tests {
         );
         let sqrt = alice.sqrt(&sess, &x);
         assert_eq!(exp, sqrt)
+    }
+
+    use rstest::rstest;
+    #[rstest]
+    #[case(None)]
+    #[case(Some(2))]
+    fn test_kernel_squeeze(#[case] axis: Option<u32>) {
+        use crate::kernels::PlacementSqueeze;
+        let alice = HostPlacement {
+            owner: "alice".into(),
+        };
+        let sess = SyncSession::default();
+        let x = crate::host::HostTensor::<f64>::from(
+            array![[1.0, 2.0], [3.0, 4.0]]
+                .into_dimensionality::<IxDyn>()
+                .unwrap(),
+        );
+        let x_expanded = x.expand_dims(vec![2]);
+        let exp_shape = RawShape(vec![2, 2]);
+
+        let x_squeezed = alice.squeeze(&sess, axis, &x_expanded);
+
+        assert_eq!(exp_shape, x_squeezed.shape().0)
     }
 
     #[test]
@@ -3183,12 +3386,12 @@ mod tests {
         };
         let x = HostRing64Tensor::from_raw_plc(x_backing, alice.clone());
         let sess = SyncSession::default();
-        let x_bits = alice.bit_decompose(&sess, &x);
+        let x_bits: HostBitTensor = alice.bit_decompose(&sess, &x);
         let targets: Vec<_> = (0..64).map(|i| alice.bit_extract(&sess, i, &x)).collect();
 
         for (i, target) in targets.iter().enumerate() {
-            let injected_target: HostRing64Tensor = alice.ring_inject(&sess, 0, target);
-            assert_eq!(alice.index_axis(&sess, 0, i, &x_bits), injected_target);
+            let sliced = alice.index_axis(&sess, 0, i, &x_bits);
+            assert_eq!(&sliced, target);
         }
     }
 }
