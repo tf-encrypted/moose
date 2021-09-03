@@ -3,6 +3,7 @@ use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FloatTensor<HostT> {
@@ -35,8 +36,22 @@ where
 }
 
 // TODO(lvorona): Not sure why we need this one separately... But the moose_type macro is coming!
-impl<T: Placed<Placement = HostPlacement>> From<FloatTensor<T>> for Symbolic<FloatTensor<T>> {
-    fn from(x: FloatTensor<T>) -> Self {
+impl<HostT: Placed<Placement = HostPlacement>> From<FloatTensor<HostT>> for Symbolic<FloatTensor<HostT>> {
+    fn from(x: FloatTensor<HostT>) -> Self {
         Symbolic::Concrete(x)
+    }
+}
+
+impl<HostFloatT> TryFrom<Symbolic<FloatTensor<HostFloatT>>>
+    for FloatTensor<HostFloatT>
+where
+    HostFloatT: Placed<Placement = HostPlacement>,
+{
+    type Error = ();
+    fn try_from(v: Symbolic<FloatTensor<HostFloatT>>) -> std::result::Result<Self, ()> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(()),
+        }
     }
 }

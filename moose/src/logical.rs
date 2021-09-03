@@ -1,12 +1,9 @@
-use crate::computation::{
-    AtLeast2DOp, HasShortName, HostPlacement, KnownType, MeanOp, Placed, Placement, Signature,
-    SymbolicType, ReplicatedPlacement, AddOp, SubOp, MulOp, DotOp, DivOp,
-};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HasShortName, HostPlacement, KnownType, MeanOp, MulOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::{HostFixed64Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementSub, PlacementMul, PlacementDot, PlacementDiv, PlacementAtLeast2D, PlacementMean, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementSub, Session};
 use crate::symbolic::Symbolic;
 use macros::with_context;
 use macros::ShortName;
@@ -190,6 +187,50 @@ logical_binary_impl!(SubOp, PlacementSub::sub);
 logical_binary_impl!(MulOp, PlacementMul::mul);
 logical_binary_impl!(DotOp, PlacementDot::dot);
 // logical_kernel!(DivOp, PlacementDiv::div);
+
+modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
+
+kernel! {
+    CastOp,
+    [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+// TODO(Morten) right now we fix what you can cast to and from; we could
+// perhaps use a `dtype` attribute to make this more flexible
+impl CastOp {
+    fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementFixedpointDecode<S, Fixed64T, Float32T>,
+        HostPlacement: PlacementFixedpointDecode<S, Fixed128T, Float64T>,
+        HostPlacement: PlacementFixedpointEncode<S, Float32T, Fixed64T>,
+        HostPlacement: PlacementFixedpointEncode<S, Float64T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let inner = plc.fixedpoint_decode(sess, 27, &x);
+                AbstractTensor::Float32(inner)
+            },
+            AbstractTensor::Fixed128(x) => {
+                let inner = plc.fixedpoint_decode(sess, 27, &x);
+                AbstractTensor::Float64(inner)
+            },
+            AbstractTensor::Float32(x) => {
+                let inner = plc.fixedpoint_encode(sess, 27, &x);
+                AbstractTensor::Fixed64(inner)
+            }
+            AbstractTensor::Float64(x) => {
+                let inner = plc.fixedpoint_encode(sess, 27, &x);
+                AbstractTensor::Fixed128(inner)
+            }
+        }
+    }
+}
 
 kernel! {
     AtLeast2DOp, [
