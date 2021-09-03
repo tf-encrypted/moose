@@ -9,7 +9,7 @@ use crate::error::Result;
 use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor, HostTensor,
+    HostFloat32Tensor, HostFloat64Tensor, HostRing128Tensor, HostRing64Tensor,
 };
 use crate::kernels::{
     PlacementAdd, PlacementDot, PlacementDotSetup, PlacementFixedpointDecode,

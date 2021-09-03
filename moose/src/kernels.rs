@@ -4,7 +4,7 @@ use crate::execution::{
     SyncKernel,
 };
 use crate::fixedpoint::Convert;
-use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
@@ -867,22 +867,6 @@ host_binary_kernel!(HostDivOp, |x, y| x / y);
 host_binary_kernel!(HostDotOp, |x, y| x.dot(y));
 host_unary_kernel!(HostTransposeOp, |x| x.transpose());
 
-modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
-
-kernel! {
-    HostTransposeOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-    ]
-}
-
-modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostInverseOp);
-
-kernel! {
-    HostInverseOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-    ]
-}
-
 impl Compile<Kernel> for HostInverseOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         // Using a fake owner for the old kernel
@@ -896,21 +880,6 @@ impl Compile<Kernel> for HostInverseOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
-}
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, HostMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, HostMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostMeanOp);
-modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostMeanOp);
-
-kernel! {
-    HostMeanOp,
-    [
-        // TODO
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [runtime] attributes[axis] Self::float_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [runtime] attributes[axis] Self::float_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
 }
 
 impl Compile<Kernel> for HostMeanOp {
@@ -940,16 +909,6 @@ impl Compile<Kernel> for HostMeanOp {
     }
 }
 
-modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostSqrtOp);
-modelled!(PlacementSqrt::sqrt, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostSqrtOp);
-
-kernel! {
-    HostSqrtOp, [
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
-    ]
-}
-
 impl Compile<Kernel> for HostOnesOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         match self.sig {
@@ -974,14 +933,6 @@ impl Compile<Kernel> for HostOnesOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
-}
-
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostConcatOp);
-
-kernel! {
-    HostConcatOp, [
-        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
 }
 
 impl Compile<Kernel> for HostConcatOp {
@@ -1010,14 +961,6 @@ impl Compile<Kernel> for HostConcatOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
-}
-
-modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostExpandDimsOp);
-
-kernel! {
-    HostExpandDimsOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
 }
 
 impl Compile<Kernel> for HostExpandDimsOp {
@@ -1079,40 +1022,6 @@ impl Compile<Kernel> for HostReshapeOp {
     }
 }
 
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, HostAtLeast2DOp);
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, HostAtLeast2DOp);
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat32Tensor) -> HostFloat32Tensor, HostAtLeast2DOp);
-modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (HostFloat64Tensor) -> HostFloat64Tensor, HostAtLeast2DOp);
-
-kernel! {
-    HostAtLeast2DOp, [
-        (HostPlacement, (Float32Tensor) -> Float32Tensor => [runtime] attributes[to_column_vector] Self::float_kernel),
-        (HostPlacement, (Float64Tensor) -> Float64Tensor => [runtime] attributes[to_column_vector] Self::float_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[to_column_vector] Self::hostfloat_kernel),
-    ]
-}
-
-impl HostAtLeast2DOp {
-    fn float_kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _to_column_vector: bool,
-        _x: FloatTensor<T>,
-    ) -> FloatTensor<T> {
-        unimplemented!()
-    }
-
-    fn hostfloat_kernel<S: RuntimeSession, T>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _to_column_vector: bool,
-        _x: HostTensor<T>,
-    ) -> HostTensor<T> {
-        unimplemented!()
-    }
-}
-
 impl Compile<Kernel> for HostAtLeast2DOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
         let tcv = self.to_column_vector;
@@ -1160,14 +1069,6 @@ impl Compile<Kernel> for HostSliceOp {
             Err(Error::UnimplementedOperator(format!("{:?}", self)))
         }
     }
-}
-
-modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostSumOp);
-
-kernel! {
-    HostSumOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
-    ]
 }
 
 #[cfg(not(feature = "exclude_old_framework"))]
@@ -1534,44 +1435,6 @@ impl Compile<Kernel> for BitAndOp {
     }
 }
 
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat64Tensor) -> HostRing128Tensor, RingFixedpointEncodeOp);
-modelled!(PlacementRingFixedpointEncode::fixedpoint_ring_encode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostFloat32Tensor) -> HostRing64Tensor, RingFixedpointEncodeOp);
-
-kernel! {
-    RingFixedpointEncodeOp, [
-        (HostPlacement, (HostFloat64Tensor) -> HostRing128Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
-        (HostPlacement, (HostFloat32Tensor) -> HostRing64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
-    ]
-}
-
-impl RingFixedpointEncodeOp {
-    fn float32_kernel<S: RuntimeSession>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _scaling_base: u64,
-        _scaling_exp: u32,
-        _x: HostFloat32Tensor,
-    ) -> HostRing64Tensor {
-        // let scaling_factor = u64::pow(scaling_base, scaling_exp);
-        // HostRing64Tensor::encode(&x, scaling_factor)
-        unimplemented!()
-    }
-
-    fn float64_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostFloat64Tensor,
-    ) -> HostRing128Tensor {
-        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
-        let x_upshifted = &x.0 * (scaling_factor as f64);
-        let x_converted: ArrayD<Wrapping<u128>> =
-            x_upshifted.mapv(|el| Wrapping((el as i128) as u128));
-        AbstractHostRingTensor(x_converted, plc.clone())
-    }
-}
-
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFixedpointEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
@@ -1592,41 +1455,6 @@ impl Compile<Kernel> for RingFixedpointEncodeOp {
             }
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
-    }
-}
-
-modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing128Tensor) -> HostFloat64Tensor, RingFixedpointDecodeOp);
-modelled!(PlacementRingFixedpointDecode::fixedpoint_ring_decode, HostPlacement, attributes[scaling_base: u64, scaling_exp: u32] (HostRing64Tensor) -> HostFloat32Tensor, RingFixedpointDecodeOp);
-
-kernel! {
-    RingFixedpointDecodeOp, [
-        (HostPlacement, (HostRing128Tensor) -> HostFloat64Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float64_kernel),
-        (HostPlacement, (HostRing64Tensor) -> HostFloat32Tensor => [runtime] attributes[scaling_base, scaling_exp] Self::float32_kernel),
-    ]
-}
-
-impl RingFixedpointDecodeOp {
-    fn float32_kernel<S: RuntimeSession, ST, TT>(
-        _sess: &S,
-        _plc: &HostPlacement,
-        _scaling_base: u64,
-        _scaling_exp: u32,
-        _x: AbstractHostRingTensor<ST>,
-    ) -> HostTensor<TT> {
-        unimplemented!()
-    }
-
-    fn float64_kernel<S: RuntimeSession>(
-        _sess: &S,
-        plc: &HostPlacement,
-        scaling_base: u64,
-        scaling_exp: u32,
-        x: HostRing128Tensor,
-    ) -> HostFloat64Tensor {
-        let scaling_factor = u128::pow(scaling_base as u128, scaling_exp);
-        let x_upshifted: ArrayD<i128> = x.0.mapv(|xi| xi.0 as i128);
-        let x_converted = x_upshifted.mapv(|el| el as f64);
-        HostTensor(x_converted / scaling_factor as f64, plc.clone())
     }
 }
 

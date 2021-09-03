@@ -504,11 +504,11 @@ impl AtLeast2DOp {
         to_column_vector: bool,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
-    where
+where
         // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
         // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
-        HostPlacement: PlacementAtLeast2D<S, Float32T, Float32T>,
-        HostPlacement: PlacementAtLeast2D<S, Float64T, Float64T>,
+        // HostPlacement: PlacementAtLeast2D<S, Float32T, Float32T>,
+        // HostPlacement: PlacementAtLeast2D<S, Float64T, Float64T>,
     {
         match x {
             // AbstractTensor::Fixed64(x) => {
@@ -519,14 +519,14 @@ impl AtLeast2DOp {
             //     let z = plc.at_least_2d(sess, to_column_vector, &x);
             //     AbstractTensor::Fixed128(z)
             // }
-            AbstractTensor::Float32(x) => {
-                let z = plc.at_least_2d(sess, to_column_vector, &x);
-                AbstractTensor::Float32(z)
-            }
-            AbstractTensor::Float64(x) => {
-                let z = plc.at_least_2d(sess, to_column_vector, &x);
-                AbstractTensor::Float64(z)
-            }
+            // AbstractTensor::Float32(x) => {
+            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
+            //     AbstractTensor::Float32(z)
+            // }
+            // AbstractTensor::Float64(x) => {
+            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
+            //     AbstractTensor::Float64(z)
+            // }
             _ => unimplemented!("Fill other match arms please"),
         }
     }
@@ -549,8 +549,8 @@ impl MeanOp {
     where
         HostPlacement: PlacementMean<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementMean<S, Fixed128T, Fixed128T>,
-        HostPlacement: PlacementMean<S, Float32T, Float32T>,
-        HostPlacement: PlacementMean<S, Float64T, Float64T>,
+        // HostPlacement: PlacementMean<S, Float32T, Float32T>,
+        // HostPlacement: PlacementMean<S, Float64T, Float64T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
@@ -562,12 +562,14 @@ impl MeanOp {
                 AbstractTensor::Fixed128(z)
             }
             AbstractTensor::Float32(x) => {
-                let z = plc.mean(sess, axis, &x);
-                AbstractTensor::Float32(z)
+                unimplemented!()
+                // let z = plc.mean(sess, axis, &x);
+                // AbstractTensor::Float32(z)
             }
             AbstractTensor::Float64(x) => {
-                let z = plc.mean(sess, axis, &x);
-                AbstractTensor::Float64(z)
+                unimplemented!()
+                // let z = plc.mean(sess, axis, &x);
+                // AbstractTensor::Float64(z)
             }
         }
     }
