@@ -2028,7 +2028,13 @@ where
 }
 
 trait PrefixOr<S: Session, SetupT> {
-    fn prefix_or(&self, sess: &S, setup: SetupT, x: ReplicatedBitTensor) -> ReplicatedBitTensor;
+    fn prefix_or(
+        &self,
+        sess: &S,
+        setup: SetupT,
+        x: ReplicatedBitTensor,
+        ring_size: usize,
+    ) -> ReplicatedBitTensor;
 }
 
 impl<S: Session, SetupT> PrefixOr<S, SetupT> for ReplicatedPlacement
@@ -2056,9 +2062,16 @@ where
     /// Prefix Or protocol
     ///
     /// `x` is a replicated bit tensor.
-    fn prefix_or(&self, sess: &S, setup: SetupT, x: ReplicatedBitTensor) -> ReplicatedBitTensor {
+    fn prefix_or(
+        &self,
+        sess: &S,
+        setup: SetupT,
+        x: ReplicatedBitTensor,
+        ring_size: usize,
+    ) -> ReplicatedBitTensor {
         // OR(x, y) = (x xor y) xor (x and y)
 
+        let log_r = (ring_size as f64).log2() as u32; // we know that R = 64/128
         let rep = self;
         // let x_and_x = rep.mul_setup(sess, &setup, &x.clone().into(),&x.into());
         // x_and_x.into()
@@ -2077,17 +2090,12 @@ where
             bitwise_xor(bitwise_xor(x.clone(), y.clone()), bitwise_and(x, y))
         };
 
-        // let rep_shape = rep.shape(sess, x);
-
-        let n = 8; // extract n from the shape....
-        let l = (n as f64).log2() as u32;
-
-        for i in 0..(l - 1) {
-            for j in 0..(2_i32.pow(l) / 2_i32.pow(i + 1)) {
+        for i in 0..(log_r - 1) {
+            for j in 0..(2_i32.pow(log_r) / 2_i32.pow(i + 1)) {
                 let y = 2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1;
                 for k in 1..2_i32.pow(i) {
                     //  How to define an empty tensor fore results, Fill? How to slice? .slice op? along which axis?
-                    // let mut res = bitwise_or(x, x);
+                    // let mut res[i, y+k] = bitwise_or(x[i, y], x[i, y+k]);
                 }
             }
         }
