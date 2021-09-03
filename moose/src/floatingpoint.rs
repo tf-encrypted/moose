@@ -1,6 +1,12 @@
-use crate::computation::{HostPlacement, Placed, Placement, SymbolicType};
+use crate::computation::{
+    FloatingpointAddOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointMulOp,
+    FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType,
+};
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor};
+use crate::kernels::{
+    PlacementAdd, PlacementDiv, PlacementDot, PlacementMul, PlacementSub, Session,
+};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -64,3 +70,168 @@ where
 
 // modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, HostAtLeast2DOp);
 // modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, HostAtLeast2DOp);
+
+modelled!(PlacementAdd::add, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointAddOp);
+
+kernel! {
+    FloatingpointAddOp,
+    [
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointAddOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+        y: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementAdd<S, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.add(sess, &x, &y);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementSub::sub, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointSubOp);
+
+kernel! {
+    FloatingpointSubOp,
+    [
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointSubOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+        y: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementSub<S, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.sub(sess, &x, &y);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementMul::mul, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointMulOp);
+
+kernel! {
+    FloatingpointMulOp,
+    [
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointMulOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+        y: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementMul<S, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.mul(sess, &x, &y);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementDiv::div, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointDivOp);
+
+kernel! {
+    FloatingpointDivOp,
+    [
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointDivOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+        y: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementDiv<S, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.div(sess, &x, &y);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementDot::dot, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointDotOp);
+
+kernel! {
+    FloatingpointDotOp,
+    [
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointDotOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+        y: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementDot<S, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.dot(sess, &x, &y);
+        FloatTensor::Host(z)
+    }
+}

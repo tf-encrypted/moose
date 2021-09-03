@@ -12,12 +12,12 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementAtLeast2D, PlacementBitDec, PlacementBitExtract,
-    PlacementConcatenate, PlacementDot, PlacementExpandDims, PlacementFill, PlacementIndex,
-    PlacementInverse, PlacementMean, PlacementMeanAsFixedpoint, PlacementMul, PlacementNeg,
-    PlacementPlace, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, PlacementSample,
-    PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded, PlacementShl,
-    PlacementShr, PlacementSlice, PlacementSqrt, PlacementSub, PlacementSum, PlacementTranspose,
-    PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
+    PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFill,
+    PlacementIndex, PlacementInverse, PlacementMean, PlacementMeanAsFixedpoint, PlacementMul,
+    PlacementNeg, PlacementPlace, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode,
+    PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded,
+    PlacementShl, PlacementShr, PlacementSlice, PlacementSqrt, PlacementSub, PlacementSum,
+    PlacementTranspose, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
 };
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
@@ -347,6 +347,9 @@ impl RingFixedpointMeanOp {
     }
 }
 
+modelled!(PlacementAdd::add, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostAddOp);
+modelled!(PlacementAdd::add, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostAddOp);
+
 kernel! {
     HostAddOp,
     [
@@ -368,6 +371,9 @@ impl HostAddOp {
         plc.place(sess, x + y)
     }
 }
+
+modelled!(PlacementSub::sub, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostSubOp);
+modelled!(PlacementSub::sub, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostSubOp);
 
 kernel! {
     HostSubOp,
@@ -391,6 +397,9 @@ impl HostSubOp {
     }
 }
 
+modelled!(PlacementMul::mul, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostMulOp);
+modelled!(PlacementMul::mul, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostMulOp);
+
 kernel! {
     HostMulOp,
     [
@@ -413,9 +422,13 @@ impl HostMulOp {
     }
 }
 
+modelled!(PlacementDiv::div, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostDivOp);
+modelled!(PlacementDiv::div, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostDivOp);
+
 kernel! {
     HostDivOp,
     [
+        (HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }
@@ -433,6 +446,9 @@ impl HostDivOp {
         plc.place(sess, x / y)
     }
 }
+
+modelled!(PlacementDot::dot, HostPlacement, (HostFloat32Tensor, HostFloat32Tensor) -> HostFloat32Tensor, HostDotOp);
+modelled!(PlacementDot::dot, HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostDotOp);
 
 kernel! {
     HostDotOp,

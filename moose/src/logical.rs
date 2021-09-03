@@ -122,8 +122,8 @@ impl AddOp {
     where
         HostPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
+        HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -134,16 +134,14 @@ impl AddOp {
                 let result = plc.add(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
+            (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.add(sess, &x, &y);
+                AbstractTensor::Float32(result)
+            }
+            (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.add(sess, &x, &y);
+                AbstractTensor::Float64(result)
+            }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -157,8 +155,6 @@ impl AddOp {
     where
         ReplicatedPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -169,16 +165,6 @@ impl AddOp {
                 let result = plc.add(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -204,8 +190,8 @@ impl SubOp {
     where
         HostPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
         HostPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementSub<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementSub<S, Float64T, Float64T, Float64T>,
+        HostPlacement: PlacementSub<S, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementSub<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -216,16 +202,14 @@ impl SubOp {
                 let result = plc.sub(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
+            (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.sub(sess, &x, &y);
+                AbstractTensor::Float32(result)
+            }
+            (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.sub(sess, &x, &y);
+                AbstractTensor::Float64(result)
+            }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -239,8 +223,6 @@ impl SubOp {
     where
         ReplicatedPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementSub<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementSub<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -251,16 +233,6 @@ impl SubOp {
                 let result = plc.sub(sess, &x, &y);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -288,8 +260,8 @@ impl MulOp {
         HostPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
         HostPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
+        HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -302,16 +274,14 @@ impl MulOp {
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
+            (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.mul(sess, &x, &y);
+                AbstractTensor::Float32(result)
+            }
+            (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.mul(sess, &x, &y);
+                AbstractTensor::Float64(result)
+            }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -327,8 +297,6 @@ impl MulOp {
         ReplicatedPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
         ReplicatedPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -341,16 +309,6 @@ impl MulOp {
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -378,8 +336,8 @@ impl DotOp {
         HostPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
         HostPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
+        HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -392,16 +350,14 @@ impl DotOp {
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
+            (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.dot(sess, &x, &y);
+                AbstractTensor::Float32(result)
+            }
+            (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.dot(sess, &x, &y);
+                AbstractTensor::Float64(result)
+            }
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -417,8 +373,6 @@ impl DotOp {
         ReplicatedPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
         ReplicatedPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
         ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
-        // HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
     {
         match (x, y) {
             (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
@@ -431,16 +385,6 @@ impl DotOp {
                 let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
                 AbstractTensor::Fixed128(result)
             }
-
-            // TODO(Morten)
-            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float32(result)
-            // },
-            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-            //     let result = plc.add(sess, &x, &y);
-            //     AbstractTensor::Float64(result)
-            // },
             _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
         }
     }
@@ -593,14 +537,9 @@ impl MeanOp {
                 let z = plc.mean(sess, axis, &x);
                 AbstractTensor::Fixed128(z)
             }
-            // TODO(Morten) the fact that the following two are unimplemented
-            // would be nice to know at (Moose) compile time
-            AbstractTensor::Float32(_x) => {
-                unimplemented!()
-            }
-            AbstractTensor::Float64(_x) => {
-                unimplemented!()
-            }
+            // TODO(Morten) the fact that we are limited on replicated
+            // placements  would be nice to know at (Moose) compile time
+            _ => unimplemented!(),
         }
     }
 }

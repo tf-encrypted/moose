@@ -128,6 +128,11 @@ impl Session for SyncSession {
             FixedpointTruncPr(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -660,6 +665,11 @@ impl Compile<SyncKernel> for Operator {
             FixedpointDecode(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointAdd(op) => Compile::<SyncKernel>::compile(op, ctx),
             FixedpointSub(op) => Compile::<SyncKernel>::compile(op, ctx),
+            FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
             AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
             Slice(op) => unimplemented!("Not done yet: {:?}", op),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
@@ -762,6 +772,11 @@ impl Compile<AsyncKernel> for Operator {
             | FixedpointSum(_) | HostSqrt(_) | HostBitDec(_) | HostIndexAxis(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
+            FloatingpointAdd(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSub(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)

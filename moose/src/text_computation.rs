@@ -1286,6 +1286,11 @@ impl ToTextual for Operator {
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
             FixedpointSum(op) => op.to_textual(),
+            FloatingpointAdd(op) => unimplemented!(), // TODO
+            FloatingpointSub(op) => unimplemented!(), // TODO
+            FloatingpointMul(op) => unimplemented!(), // TODO
+            FloatingpointDiv(op) => unimplemented!(), // TODO
+            FloatingpointDot(op) => unimplemented!(), // TODO
             RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),

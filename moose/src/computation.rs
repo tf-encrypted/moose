@@ -747,7 +747,7 @@ operators![
     Mean,
     Sum,
     Div,
-    // Host operations
+    // Host operators
     HostAdd,
     HostSub,
     HostMul,
@@ -787,6 +787,7 @@ operators![
     BitSampleSeeded,
     BitXor,
     BitAnd,
+    // Fixed-point operators
     FixedpointEncode,
     FixedpointDecode,
     FixedpointAdd,
@@ -796,7 +797,13 @@ operators![
     FixedpointTruncPr,
     FixedpointMean,
     FixedpointSum,
-    // Additive operations
+    // Floating-point operators
+    FloatingpointAdd,
+    FloatingpointSub,
+    FloatingpointMul,
+    FloatingpointDiv,
+    FloatingpointDot,
+    // Additive operators
     AdtReveal,
     AdtFill,
     AdtAdd,
@@ -804,7 +811,7 @@ operators![
     AdtMul,
     AdtShl,
     AdtToRep,
-    // Replicated operations
+    // Replicated operators
     RepAbs,
     RepSetup,
     RepShare,
@@ -1243,6 +1250,31 @@ pub struct FixedpointMeanOp {
 pub struct FixedpointSumOp {
     pub sig: Signature,
     pub axis: Option<u32>,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointAddOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointSubOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointMulOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointDivOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointDotOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
