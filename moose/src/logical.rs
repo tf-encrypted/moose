@@ -1,14 +1,15 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HasShortName, HostPlacement, KnownType, MeanOp, MulOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SymbolicType};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
-use crate::floatingpoint::{Float32Tensor, Float64Tensor, FloatTensor};
-use crate::host::{HostFixed64Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementSub, Session};
+use crate::floatingpoint::{Float32Tensor, Float64Tensor};
+use crate::host::{HostShape};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementSub, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
-use macros::with_context;
-use macros::ShortName;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
+
+// TODO get rid of this
+const FIXEDPOINT_PRECISON: u32 = 27;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Shape {
@@ -94,99 +95,358 @@ where
     }
 }
 
-macro_rules! logical_binary_impl {
-    ($op:ident, $trait:ident::$trait_fn:ident) => {
-        modelled!($trait::$trait_fn, HostPlacement, (Tensor, Tensor) -> Tensor, $op);
+modelled!(PlacementAdd::add, HostPlacement, (Tensor, Tensor) -> Tensor, AddOp);
 
-        kernel! {
-            $op,
-            [
-                (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
-                (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
-            ]
-        }
-        
-        impl $op {
-            fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
-                sess: &S,
-                plc: &HostPlacement,
-                x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-                y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-            ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
-            where
-                HostPlacement: $trait<S, Fixed64T, Fixed64T, Fixed64T>,
-                HostPlacement: $trait<S, Fixed128T, Fixed128T, Fixed128T>,
-                // HostPlacement: $trait<S, Float32T, Float32T, Float32T>,
-                // HostPlacement: $trait<S, Float64T, Float64T, Float64T>,
-            {
-                match (x, y) {
-                    (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                        let result = plc.$trait_fn(sess, &x, &y);
-                        AbstractTensor::Fixed64(result)
-                    },
-                    (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                        let result = plc.$trait_fn(sess, &x, &y);
-                        AbstractTensor::Fixed128(result)
-                    },
-
-                    // TODO(Morten)
-                    // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-                    //     let result = plc.add(sess, &x, &y);
-                    //     AbstractTensor::Float32(result)
-                    // },
-                    // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-                    //     let result = plc.add(sess, &x, &y);
-                    //     AbstractTensor::Float64(result)
-                    // },
-
-                    _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
-                }
-            }
-        
-            fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
-                sess: &S,
-                plc: &ReplicatedPlacement,
-                x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-                y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-            ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
-            where
-                ReplicatedPlacement: $trait<S, Fixed64T, Fixed64T, Fixed64T>,
-                ReplicatedPlacement: $trait<S, Fixed128T, Fixed128T, Fixed128T>,
-                // HostPlacement: $trait<S, Float32T, Float32T, Float32T>,
-                // HostPlacement: $trait<S, Float64T, Float64T, Float64T>,
-            {
-                match (x, y) {
-                    (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
-                        let result = plc.$trait_fn(sess, &x, &y);
-                        AbstractTensor::Fixed64(result)
-                    },
-                    (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
-                        let result = plc.$trait_fn(sess, &x, &y);
-                        AbstractTensor::Fixed128(result)
-                    },
-
-                    // TODO(Morten)
-                    // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
-                    //     let result = plc.add(sess, &x, &y);
-                    //     AbstractTensor::Float32(result)
-                    // },
-                    // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
-                    //     let result = plc.add(sess, &x, &y);
-                    //     AbstractTensor::Float64(result)
-                    // },
-
-                    _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
-                }
-            }
-        }
-    };
+kernel! {
+    AddOp,
+    [
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+    ]
 }
 
-logical_binary_impl!(AddOp, PlacementAdd::add);
-logical_binary_impl!(SubOp, PlacementSub::sub);
-logical_binary_impl!(MulOp, PlacementMul::mul);
-logical_binary_impl!(DotOp, PlacementDot::dot);
-// logical_kernel!(DivOp, PlacementDiv::div);
+impl AddOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.add(sess, &x, &y);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.add(sess, &x, &y);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        ReplicatedPlacement: PlacementAdd<S, Fixed64T, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementAdd<S, Fixed128T, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementAdd<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementAdd<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.add(sess, &x, &y);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.add(sess, &x, &y);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+}
+
+modelled!(PlacementSub::sub, HostPlacement, (Tensor, Tensor) -> Tensor, SubOp);
+
+kernel! {
+    SubOp,
+    [
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+    ]
+}
+
+impl SubOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementSub<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementSub<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.sub(sess, &x, &y);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.sub(sess, &x, &y);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        ReplicatedPlacement: PlacementSub<S, Fixed64T, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementSub<S, Fixed128T, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementSub<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementSub<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let result = plc.sub(sess, &x, &y);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let result = plc.sub(sess, &x, &y);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+}
+
+
+modelled!(PlacementMul::mul, HostPlacement, (Tensor, Tensor) -> Tensor, MulOp);
+
+kernel! {
+    MulOp,
+    [
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+    ]
+}
+
+impl MulOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementMul<S, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let z = plc.mul(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let z = plc.mul(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        ReplicatedPlacement: PlacementMul<S, Fixed64T, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementMul<S, Fixed128T, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementMul<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementMul<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let z = plc.mul(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let z = plc.mul(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+}
+
+modelled!(PlacementDot::dot, HostPlacement, (Tensor, Tensor) -> Tensor, DotOp);
+
+kernel! {
+    DotOp,
+    [
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+    ]
+}
+
+impl DotOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementDot<S, Fixed64T, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let z = plc.dot(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let z = plc.dot(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        ReplicatedPlacement: PlacementDot<S, Fixed64T, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementDot<S, Fixed128T, Fixed128T, Fixed128T>,
+        ReplicatedPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementDot<S, Float32T, Float32T, Float32T>,
+        // HostPlacement: PlacementDot<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+                let z = plc.dot(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed64(result)
+            },
+            (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+                let z = plc.dot(sess, &x, &y);
+                let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+                AbstractTensor::Fixed128(result)
+            },
+
+            // TODO(Morten)
+            // (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float32(result)
+            // },
+            // (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+            //     let result = plc.add(sess, &x, &y);
+            //     AbstractTensor::Float64(result)
+            // },
+
+            _ => unimplemented!() // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+}
 
 modelled!(PlacementCast::cast, HostPlacement, (Tensor) -> Tensor, CastOp);
 
@@ -213,19 +473,19 @@ impl CastOp {
     {
         match x {
             AbstractTensor::Fixed64(x) => {
-                let inner = plc.fixedpoint_decode(sess, 27, &x);
+                let inner = plc.fixedpoint_decode(sess, FIXEDPOINT_PRECISON, &x);
                 AbstractTensor::Float32(inner)
             },
             AbstractTensor::Fixed128(x) => {
-                let inner = plc.fixedpoint_decode(sess, 27, &x);
+                let inner = plc.fixedpoint_decode(sess, FIXEDPOINT_PRECISON, &x);
                 AbstractTensor::Float64(inner)
             },
             AbstractTensor::Float32(x) => {
-                let inner = plc.fixedpoint_encode(sess, 27, &x);
+                let inner = plc.fixedpoint_encode(sess, FIXEDPOINT_PRECISON, &x);
                 AbstractTensor::Fixed64(inner)
             }
             AbstractTensor::Float64(x) => {
-                let inner = plc.fixedpoint_encode(sess, 27, &x);
+                let inner = plc.fixedpoint_encode(sess, FIXEDPOINT_PRECISON, &x);
                 AbstractTensor::Fixed128(inner)
             }
         }
