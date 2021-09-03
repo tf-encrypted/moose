@@ -1277,6 +1277,43 @@ macro_rules! modelled_alias {
             }
         }
     };
+
+    /*
+    Ternary
+    */
+    ($src_t:ident::$src_f:ident, $plc:ty, ($t0:ty, $t1:ty, $t2:ty) -> $u:ty => $dst_t:ident::$dst_f:ident) => {
+        impl $src_t<crate::kernels::SyncSession, $t0, $t1, $t2, $u> for $plc {
+            fn $src_f(
+                &self,
+                sess: &crate::kernels::SyncSession,
+                x0: &$t0,
+                x1: &$t1,
+                x2: &$t2,
+            ) -> $u {
+                $dst_t::$dst_f(self, sess, x0, x1, x2)
+            }
+        }
+
+        impl
+            $src_t<
+                crate::symbolic::SymbolicSession,
+                <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            > for $plc
+        {
+            fn $src_f(
+                &self,
+                ctx: &crate::symbolic::SymbolicSession,
+                x0: &<$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                x1: &<$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+                x2: &<$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            ) -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type {
+                $dst_t::$dst_f(self, ctx, x0, x1, x2)
+            }
+        }
+    };
 }
 
 pub mod additive;

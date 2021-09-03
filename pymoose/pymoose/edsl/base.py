@@ -171,6 +171,12 @@ class MeanExpression(Expression):
 
 
 @dataclass
+class SqrtExpression(Expression):
+    def __hash__(self):
+        return id(self)
+
+
+@dataclass
 class TransposeExpression(Expression):
     axes: Optional[Tuple[int]]
 
@@ -410,6 +416,12 @@ def mean(x, axis=None, placement=None):
     assert isinstance(x, Expression)
     placement = placement or get_current_placement()
     return MeanExpression(placement=placement, inputs=[x], axis=axis, vtype=x.vtype)
+
+
+def sqrt(x, placement=None):
+    assert isinstance(x, Expression)
+    placement = placement or get_current_placement()
+    return SqrtExpression(placement=placement, inputs=[x], vtype=x.vtype)
 
 
 def shape(x, placement=None):
