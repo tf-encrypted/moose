@@ -314,6 +314,65 @@ impl MulOp {
     }
 }
 
+modelled!(PlacementDiv::div, HostPlacement, (Tensor, Tensor) -> Tensor, DivOp);
+
+kernel! {
+    DivOp,
+    [
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
+        // (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+    ]
+}
+
+impl DivOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        // HostPlacement: PlacementDiv<S, Fixed64T, Fixed64T, Fixed64T>,
+        // HostPlacement: PlacementDiv<S, Fixed128T, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementTruncPr<S, Fixed64T, Fixed64T>,
+        // HostPlacement: PlacementTruncPr<S, Fixed128T, Fixed128T>,
+        HostPlacement: PlacementDiv<S, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementDiv<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            // TODO impl host fixed-point division
+            // (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+            //     let z = plc.div(sess, &x, &y);
+            //     let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+            //     AbstractTensor::Fixed64(result)
+            // }
+            // (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+            //     let z = plc.div(sess, &x, &y);
+            //     let result = plc.trunc_pr(sess, FIXEDPOINT_PRECISON, &z);
+            //     AbstractTensor::Fixed128(result)
+            // }
+            (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.div(sess, &x, &y);
+                AbstractTensor::Float32(result)
+            }
+            (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.div(sess, &x, &y);
+                AbstractTensor::Float64(result)
+            }
+            _ => unimplemented!(), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T> {
+        unimplemented!()
+    }
+}
+
 modelled!(PlacementDot::dot, HostPlacement, (Tensor, Tensor) -> Tensor, DotOp);
 
 kernel! {

@@ -201,14 +201,14 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             ExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
             Concat(op) => unimplemented!("Not done yet: {:?}", op),
             Transpose(op) => unimplemented!("Not done yet: {:?}", op),
-            Dot(op) => unimplemented!("Not done yet: {:?}", op),
             Inverse(op) => unimplemented!("Not done yet: {:?}", op),
-            Add(op) => unimplemented!("Not done yet: {:?}", op),
-            Sub(op) => unimplemented!("Not done yet: {:?}", op),
-            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Add(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Sub(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Mul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Div(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Dot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Mean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Sum(op) => unimplemented!("Not done yet: {:?}", op),
-            Div(op) => unimplemented!("Not done yet: {:?}", op),
             // the following operators are not supported by design (for now, at least)
             Send(_) | Receive(_) => {
                 unimplemented!("Unsupported symbolic operator {:?}", op)
