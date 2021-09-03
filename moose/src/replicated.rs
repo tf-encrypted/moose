@@ -2027,107 +2027,129 @@ where
     }
 }
 
-trait PrefixOr<S: Session, SetupT> {
-    fn prefix_or(
-        &self,
-        sess: &S,
-        setup: SetupT,
-        x: ReplicatedBitTensor,
-        ring_size: usize,
-    ) -> ReplicatedBitTensor;
+trait PrefixOr<S: Session, SetupT, RepBitT> {
+    fn prefix_or(&self, sess: &S, setup: SetupT, x: RepBitT, ring_size: usize) -> Vec<RepBitT>;
+    // TODO(Dragos) replace output type with RepBitSlice
 }
 
-impl<S: Session, SetupT> PrefixOr<S, SetupT> for ReplicatedPlacement
+impl<S: Session, SetupT, RepBitT> PrefixOr<S, SetupT, RepBitT> for ReplicatedPlacement
 where
-    ReplicatedBitTensor: KnownType<S>,
-    // sAbstractReplicatedShape<HostShape>: KnownType<S>,
-    ReplicatedBitTensor: Into<st!(ReplicatedBitTensor)>,
-    st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
-    ReplicatedPlacement: PlacementMulSetup<
-        S,
-        SetupT,
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
-    >,
-    ReplicatedPlacement: PlacementAdd<
-        S,
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
-        st!(ReplicatedBitTensor),
-    >,
-    //     ReplicatedPlacement:
-    //         PlacementShape<S, st!(ReplicatedBitTensor), st!(AbstractReplicatedShape<HostShape>)>,
+    ReplicatedPlacement: PlacementAndSetup<S, SetupT, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementXor<S, RepBitT, RepBitT, RepBitT>,
+    ReplicatedPlacement: PlacementIndex<S, RepBitT, RepBitT>,
 {
     /// Prefix Or protocol
     ///
     /// `x` is a replicated bit tensor.
-    fn prefix_or(
-        &self,
-        sess: &S,
-        setup: SetupT,
-        x: ReplicatedBitTensor,
-        ring_size: usize,
-    ) -> ReplicatedBitTensor {
+    fn prefix_or(&self, sess: &S, setup: SetupT, x: RepBitT, ring_size: usize) -> Vec<RepBitT> {
         // OR(x, y) = (x xor y) xor (x and y)
 
         let log_r = (ring_size as f64).log2() as u32; // we know that R = 64/128
         let rep = self;
-        // let x_and_x = rep.mul_setup(sess, &setup, &x.clone().into(),&x.into());
-        // x_and_x.into()
 
-        // TODO [Yann] Check if we can pass ReplicatedBitTensor reference as input to avoid clonning
-        let bitwise_and = |x: ReplicatedBitTensor, y: ReplicatedBitTensor| -> ReplicatedBitTensor {
-            rep.mul_setup(sess, &setup, &x.clone().into(), &y.into())
-                .into()
+        let bitwise_or = |x: &RepBitT, y: &RepBitT| -> RepBitT {
+            rep.xor(
+                sess,
+                &rep.xor(sess, x, y),
+                &rep.and_setup(sess, &setup, x, y),
+            )
         };
 
-        let bitwise_xor = |x: ReplicatedBitTensor, y: ReplicatedBitTensor| -> ReplicatedBitTensor {
-            rep.add(sess, &x.clone().into(), &y.into()).into()
-        };
-
-        let bitwise_or = |x: ReplicatedBitTensor, y: ReplicatedBitTensor| -> ReplicatedBitTensor {
-            bitwise_xor(bitwise_xor(x.clone(), y.clone()), bitwise_and(x, y))
-        };
+        let mut res: Vec<_> = (0..ring_size)
+            .map(|i| rep.index_axis(sess, 0, i, &x))
+            .collect();
 
         for i in 0..(log_r - 1) {
             for j in 0..(2_i32.pow(log_r) / 2_i32.pow(i + 1)) {
-                let y = 2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1;
-                for k in 1..2_i32.pow(i) {
-                    //  How to define an empty tensor fore results, Fill? How to slice? .slice op? along which axis?
+                let y = (2_i32.pow(i) + j * 2_i32.pow(i + 1) - 1) as usize;
+                let k_bound = 2_i32.pow(i) as usize;
+                for k in 1..k_bound {
                     // let mut res[i, y+k] = bitwise_or(x[i, y], x[i, y+k]);
+                    if y + k < ring_size {
+                        res[y + k] = bitwise_or(&res[y], &res[y + k]);
+                    }
                 }
             }
         }
+        res
+    }
+}
 
+trait AbsFromMsb<S: Session, SetupT, RingT>
+where
+    RepTen<RingT>: CanonicalType,
+    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+{
+    fn abs_from_msb(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: &RepTen<RingT>,
+        msb_ring: &RepTen<RingT>,
+    ) -> st!(RepTen<RingT>);
+}
+
+impl<S: Session, SetupT, RingT> AbsFromMsb<S, SetupT, RingT> for ReplicatedPlacement
+where
+    RepTen<RingT>: CanonicalType,
+    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+    RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+
+    ReplicatedShape: KnownType<S>,
+    RepTen<RingT>: Clone,
+
+    RingT: Tensor<S>,
+    RingT::Scalar: Into<Constant>,
+    RingT::Scalar: From<u8>,
+
+    ReplicatedPlacement: PlacementFill<S, st!(ReplicatedShape), st!(RepTen<RingT>)>,
+    ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), st!(ReplicatedShape)>,
+    ReplicatedPlacement:
+        PlacementMulSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+    ReplicatedPlacement: PlacementShl<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+    ReplicatedPlacement:
+        PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+{
+    fn abs_from_msb(
+        &self,
+        sess: &S,
+        setup: &SetupT,
+        x: &RepTen<RingT>,
+        msb_ring: &RepTen<RingT>,
+    ) -> st!(RepTen<RingT>) {
+        let rep = self;
+        let double = rep.shl(sess, 1, &msb_ring.clone().into());
+        let one_r = RingT::Scalar::from(1).into();
+        let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring.clone().into()));
+        let sign = rep.sub(sess, &ones, &double);
+
+        rep.mul_setup(sess, &setup, &sign, &x.clone().into())
+    }
+}
+trait DivNorm<S: Session, SetupT, RingT> {
+    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT>;
+}
+
+impl<S: Session, SetupT, RingT> DivNorm<S, SetupT, RingT> for ReplicatedPlacement
+where
+    RepTen<RingT>: CanonicalType,
+    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+    RepTen<RingT>: Into<st!(RepTen<RingT>)>,
+    RepTen<RingT>: Clone,
+
+    st!(RepTen<RingT>): Clone,
+    st!(RepTen<RingT>): Into<RepTen<RingT>>,
+
+    ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
+    ReplicatedPlacement: AbsFromMsb<S, SetupT, RingT>,
+{
+    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT> {
+        let rep = self;
+        let msb = rep.msb(sess, setup, &x.clone().into());
+        let abs_x = rep.abs_from_msb(sess, setup, &x, &msb.clone().into());
         x
     }
 }
-
-trait PrefixOr<S: Session, SetupT> {
-    fn prefix_or(&self, sess: &S, setup: SetupT, x: ReplicatedBitTensor) -> ReplicatedBitTensor;
-}
-
-impl<S: Session, SetupT> PrefixOr<S, SetupT> for ReplicatedPlacement
-where
-    ReplicatedBitTensor: KnownType<S>,
-    ReplicatedBitTensor: Into<st!(ReplicatedBitTensor)>,
-    st!(ReplicatedBitTensor): Into<ReplicatedBitTensor>,
-    ReplicatedPlacement: PlacementMulSetup<S, SetupT, st!(ReplicatedBitTensor), st!(ReplicatedBitTensor), st!(ReplicatedBitTensor)>,
-{
-    /// Prefix Or protocol
-    ///
-    /// `x` is a replicated bit tensor.
-    fn prefix_or(&self, sess: &S, setup: SetupT, x: ReplicatedBitTensor) -> ReplicatedBitTensor {
-        // OR(x, y) = (x xor y) xor (x and y)
-
-        let rep = self;
-        let x_and_x = rep.mul_setup(sess, &setup, &x.clone().into(),&x.into());
-        x_and_x.into()
-    }
-}
-
-
 
 impl RingInjectOp {
     pub(crate) fn rep_kernel<S: Session, RingT, ReplicatedBitT, BitT, ShapeT>(
