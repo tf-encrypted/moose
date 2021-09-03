@@ -919,11 +919,13 @@ pub struct InverseOp {
     pub sig: Signature,
 }
 
+// TODO(Morten) rename to LogicalAddOp?
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct AddOp {
     pub sig: Signature,
 }
 
+// TODO(Morten) rename to LogicalSubOp?
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct SubOp {
     pub sig: Signature,
