@@ -11,6 +11,7 @@ use crate::compilation::typing::update_types_one_hop;
 use derive_more::Display;
 use futures::future::{Map, Shared};
 use futures::prelude::*;
+use futures::stream::FuturesUnordered;
 use petgraph::algo::toposort;
 use petgraph::graph::NodeIndex;
 use petgraph::Graph;
@@ -1082,9 +1083,7 @@ impl AsyncSessionHandle {
                             OperandUnavailable => continue,
                             ResultUnused => continue,
                             Abort | _ => {
-                                for task in tasks.iter() {
-                                    task.abort();
-                                }
+                                do_abort(&tasks);
                                 return Err(anyhow::Error::from(e));
                             }
                         }
@@ -1093,9 +1092,7 @@ impl AsyncSessionHandle {
                         if e.is_cancelled() {
                             continue;
                         } else if e.is_panic() {
-                            for task in tasks.iter() {
-                                task.abort();
-                            }
+                            do_abort(&tasks);
                             return Err(anyhow::Error::from(e));
                         }
                     }
@@ -1104,9 +1101,7 @@ impl AsyncSessionHandle {
         }
 
         // Ensure that the abort listener task is aborted
-        for task in tasks.iter() {
-            task.abort();
-        }
+        do_abort(&tasks);
         Ok(())
     }
 
@@ -1114,6 +1109,12 @@ impl AsyncSessionHandle {
         for task in &self.tasks {
             task.abort()
         }
+    }
+}
+
+fn do_abort(tasks: &FuturesUnordered<AsyncTask>) {
+    for task in tasks.iter() {
+        task.abort();
     }
 }
 
