@@ -51,6 +51,57 @@ impl SymbolicType for ReplicatedBitTensor {
     type Type = Symbolic<AbstractReplicatedRingTensor<<HostBitTensor as SymbolicType>::Type>>;
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractReplicatedBitArray<RepBitTensorT, const N: usize>(RepBitTensorT);
+
+impl<RepBitTensorT: Placed, const N: usize> Placed
+    for AbstractReplicatedBitArray<RepBitTensorT, N>
+{
+    type Placement = RepBitTensorT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
+
+pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, 64>;
+
+impl SymbolicType for ReplicatedBitArray64 {
+    type Type =
+        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, 64>>;
+}
+
+pub type ReplicatedBitArray128 = AbstractReplicatedBitArray<ReplicatedBitTensor, 128>;
+
+impl SymbolicType for ReplicatedBitArray128 {
+    type Type =
+        Symbolic<AbstractReplicatedBitArray<<ReplicatedBitTensor as SymbolicType>::Type, 128>>;
+}
+
+impl<RepBitT: Placed, const N: usize> From<AbstractReplicatedBitArray<RepBitT, N>>
+    for Symbolic<AbstractReplicatedBitArray<RepBitT, N>>
+where
+    RepBitT: Placed<Placement = ReplicatedPlacement>,
+{
+    fn from(x: AbstractReplicatedBitArray<RepBitT, N>) -> Self {
+        Symbolic::Concrete(x)
+    }
+}
+
+impl<RepBitT, const N: usize> TryFrom<Symbolic<AbstractReplicatedBitArray<RepBitT, N>>>
+    for AbstractReplicatedBitArray<RepBitT, N>
+where
+    RepBitT: Placed<Placement = ReplicatedPlacement>,
+{
+    type Error = Error;
+    fn try_from(v: Symbolic<AbstractReplicatedBitArray<RepBitT, N>>) -> crate::error::Result<Self> {
+        match v {
+            Symbolic::Concrete(x) => Ok(x),
+            _ => Err(Error::Unexpected), // TODO err message
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
 
@@ -2084,12 +2135,16 @@ impl RingInjectOp {
 
 modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepBitDecOp);
 modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepBitDecOp);
+modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64, RepBitDecOp);
+modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128, RepBitDecOp);
 
 kernel! {
     RepBitDecOp,
     [
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
     ]
 }
 
@@ -2143,6 +2198,65 @@ impl RepBitDecOp {
         .into();
 
         rep.binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE)
+    }
+
+    // NOTE rustc is currently _not_ checking N against RingSize::SIZE but
+    // we may be able to do so (and should!) in the near future,
+    // see https://github.com/rust-lang/rust/issues/60551
+
+    fn ring_kernel<S: Session, SetupT, ShapeT, HostRingT, HostBitT, RepBitT, const N: usize>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        setup: SetupT,
+        x: RepTen<HostRingT>,
+    ) -> AbstractReplicatedBitArray<RepBitT, N>
+    where
+        HostRingT: RingSize,
+
+        RepBitT: From<RepTen<HostBitT>>,
+        RepBitT: Clone,
+
+        HostBitT: Clone,
+
+        HostPlacement: PlacementAdd<S, HostRingT, HostRingT, HostRingT>,
+        HostPlacement: PlacementBitDec<S, HostRingT, HostBitT>,
+        HostPlacement: PlacementShape<S, HostRingT, ShapeT>,
+        HostPlacement: PlacementFill<S, ShapeT, HostBitT>,
+        ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostBitT, RepBitT>,
+        ReplicatedPlacement: BinaryAdder<S, SetupT, RepBitT>,
+        ReplicatedPlacement: PlacementIndex<S, RepBitT, RepBitT>,
+    {
+        let (player0, player1, player2) = rep.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, _x02]],
+        } = &x;
+
+        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
+        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
+        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
+
+        let left = with_context!(player0, sess, x00 + x10);
+        let bsl = player0.bit_decompose(sess, &left);
+
+        // transform x2 into boolean sharing
+        let x2_on_1 = player1.bit_decompose(sess, x21);
+        let x2_on_2 = player2.bit_decompose(sess, x22);
+
+        let rep_bsl = rep.share(sess, &setup, &bsl);
+        let rep_bsr = RepTen {
+            shares: [
+                [p0_zero.clone(), p0_zero],
+                [p1_zero, x2_on_1],
+                [x2_on_2, p2_zero],
+            ],
+        }
+        .into();
+
+        // TODO would be nice to have this as compile time check, see NOTE earlier
+        assert_eq!(HostRingT::SIZE, N);
+
+        let res = rep.binary_adder(sess, setup, rep_bsl, rep_bsr, HostRingT::SIZE);
+        AbstractReplicatedBitArray(res)
     }
 }
 
