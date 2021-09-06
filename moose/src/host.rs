@@ -1,22 +1,7 @@
-use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
-    Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDiagOp, HostDivOp, HostDotOp,
-    HostExpandDimsOp, HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
-    HostPlacement, HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp,
-    HostSumOp, HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp,
-    RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
-};
-use crate::error::Error;
+use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDiag, PlacementDot,
-    PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace,
-    PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded,
-    PlacementShl, PlacementShlDim, PlacementShr, PlacementSlice, PlacementSub, PlacementSum,
-    PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
-};
+use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
 use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
@@ -118,6 +103,7 @@ impl PlacementPlace<SyncSession, HostShape> for HostPlacement {
     }
 }
 
+// TODO(Morten) derive this
 impl PlacementPlace<SymbolicSession, Symbolic<HostShape>> for HostPlacement {
     fn place(&self, _sess: &SymbolicSession, x: Symbolic<HostShape>) -> Symbolic<HostShape> {
         match x.placement() {
@@ -180,62 +166,16 @@ impl<T> Placed for HostTensor<T> {
     }
 }
 
-pub type HostFloat32Tensor = HostTensor<f32>;
-pub type HostFloat64Tensor = HostTensor<f64>;
-pub type HostInt8Tensor = HostTensor<i8>;
-pub type HostInt16Tensor = HostTensor<i16>;
-pub type HostInt32Tensor = HostTensor<i32>;
-pub type HostInt64Tensor = HostTensor<i64>;
-pub type HostUint8Tensor = HostTensor<u8>;
-pub type HostUint16Tensor = HostTensor<u16>;
-pub type HostUint32Tensor = HostTensor<u32>;
-pub type HostUint64Tensor = HostTensor<u64>;
-
-impl<T> SymbolicType for HostTensor<T> {
-    type Type = Symbolic<HostTensor<T>>;
-}
-
-impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostTensor<T>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl From<HostShape> for Symbolic<HostShape> {
-    fn from(x: HostShape) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<RingT: Placed> From<AbstractHostFixedTensor<RingT>>
-    for Symbolic<AbstractHostFixedTensor<RingT>>
-{
-    fn from(x: AbstractHostFixedTensor<RingT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<RingT: Placed> TryFrom<Symbolic<AbstractHostFixedTensor<RingT>>>
-    for AbstractHostFixedTensor<RingT>
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractHostFixedTensor<RingT>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
-    fn from(x: HostTensor<T>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
+moose_type!(HostFloat32Tensor = HostTensor<f32>);
+moose_type!(HostFloat64Tensor = HostTensor<f64>);
+moose_type!(HostInt8Tensor = HostTensor<i8>);
+moose_type!(HostInt16Tensor = HostTensor<i16>);
+moose_type!(HostInt32Tensor = HostTensor<i32>);
+moose_type!(HostInt64Tensor = HostTensor<i64>);
+moose_type!(HostUint8Tensor = HostTensor<u8>);
+moose_type!(HostUint16Tensor = HostTensor<u16>);
+moose_type!(HostUint32Tensor = HostTensor<u32>);
+moose_type!(HostUint64Tensor = HostTensor<u64>);
 
 impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
@@ -246,6 +186,7 @@ impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     }
 }
 
+// TODO derive this
 /// This implementation is required to do the `plc.place(sess, x)`
 impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlacement {
     fn place(
@@ -1669,11 +1610,13 @@ impl RingInjectOp {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedTensor<HostRingT>(pub HostRingT);
 
-pub type HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>;
-
-impl SymbolicType for HostFixed64Tensor {
-    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing64Tensor>>>;
-}
+moose_type!(
+    AbstractHostFixedTensor,
+    [
+        (HostRing64Tensor => HostFixed64Tensor),
+        (HostRing128Tensor => HostFixed128Tensor),
+    ]
+);
 
 impl<T> From<T> for HostFixed64Tensor
 where
@@ -1682,12 +1625,6 @@ where
     fn from(x: T) -> Self {
         AbstractHostFixedTensor(HostRing64Tensor::from(x))
     }
-}
-
-pub type HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>;
-
-impl SymbolicType for HostFixed128Tensor {
-    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing128Tensor>>>;
 }
 
 impl<T> From<T> for HostFixed128Tensor
