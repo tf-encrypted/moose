@@ -1348,6 +1348,36 @@ macro_rules! modelled_alias {
 
 macro_rules! moose_type {
 
+    ($atomic:ident) => {
+        // impl SymbolicType for $atomic {
+        //     type Type = Symbolic<$atomic>;
+        // }
+
+        // impl CanonicalType for $atomic {
+        //     type Type = $atomic;
+        // }
+
+        // impl CanonicalType for Symbolic<$atomic> {
+        //     type Type = $atomic;
+        // }
+    };
+
+    ($combined:ident = $outer:ident<$inner:ident>) => {
+        pub type $combined = $outer<$inner>;
+
+        impl SymbolicType for $combined {
+            type Type = Symbolic<$combined>;
+        }
+
+        impl CanonicalType for $combined {
+            type Type = $combined;
+        }
+
+        impl CanonicalType for Symbolic<$combined> {
+            type Type = $combined;
+        }
+    };
+
     ($outer:ident, [$( ($inner:ident => $combined:ident), )+]) => {
 
         $(
@@ -1355,20 +1385,32 @@ macro_rules! moose_type {
 
             // TODO if we're able to implement everything without using $outer<Inner>
             // then the macro could change to something like
-            // moose_type!(AbstractAdditiveTensor<HostRing64Tensor> => AdditiveRing64Tensior)
+            // moose_type!(AbstractAdditiveTensor<HostRing64Tensor> = AdditiveRing64Tensior)
 
-            impl SymbolicType for $outer<$inner>
+            impl crate::computation::SymbolicType for $outer<$inner>
             {
                 type Type = Symbolic<$outer<
-                    <$inner as SymbolicType>::Type
+                    <$inner as crate::computation::SymbolicType>::Type
                 >>;
             }
 
-            // impl CanonicalType for $outer<$inner> {
-            //     type Type = $outer<
-            //         <$inner as CanonicalType>::Type
-            //     >;
-            // }
+            impl crate::computation::CanonicalType for $outer<$inner> {
+                type Type = $outer<
+                    <$inner as crate::computation::CanonicalType>::Type
+                >;
+            }
+
+            impl crate::computation::CanonicalType for $outer<Symbolic<$inner>> {
+                type Type = $outer<
+                    <$inner as crate::computation::CanonicalType>::Type
+                >;
+            }
+
+            impl crate::computation::CanonicalType for Symbolic<$outer<Symbolic<$inner>>> {
+                type Type = $outer<
+                    <$inner as crate::computation::CanonicalType>::Type
+                >;
+            }
 
             // impl CanonicalType for Symbolic<$outer<
             //     <$inner as SymbolicCanonicalType>::Type
@@ -1380,7 +1422,7 @@ macro_rules! moose_type {
             // The kernel macro uses this to map (partially) concrete outputs to symbolic values
             impl From<
                 $outer<
-                    <$inner as SymbolicType>::Type
+                    <$inner as crate::computation::SymbolicType>::Type
                 >
             >
             // for Symbolic<
@@ -1388,11 +1430,11 @@ macro_rules! moose_type {
             //         <$inner as SymbolicType>::Type
             //     >
             // >
-            for <$combined as SymbolicType>::Type
+            for <$combined as crate::computation::SymbolicType>::Type
             {
                 fn from(
                     x: $outer<
-                        <$inner as SymbolicType>::Type
+                        <$inner as crate::computation::SymbolicType>::Type
                     >
                 ) -> Self {
                     Symbolic::Concrete(x)
@@ -1405,16 +1447,16 @@ macro_rules! moose_type {
             //     <$inner as SymbolicType>::Type
             // >>>
             impl TryFrom<
-                <$combined as SymbolicType>::Type    
+                <$combined as crate::computation::SymbolicType>::Type    
             >
             for $outer<
-                <$inner as SymbolicType>::Type
+                <$inner as crate::computation::SymbolicType>::Type
             >
             {
                 type Error = crate::error::Error;
 
                 fn try_from(v: Symbolic<$outer<
-                    <$inner as SymbolicType>::Type
+                    <$inner as crate::computation::SymbolicType>::Type
                 >>) -> crate::error::Result<Self> {
                     match v {
                         Symbolic::Concrete(x) => Ok(x),
@@ -1425,60 +1467,60 @@ macro_rules! moose_type {
         )+
     };
 
-    ($t:ident) => {
-        impl SymbolicType for $t {
-            type Type = Symbolic<$t>;
-        }
+    // ($t:ident) => {
+    //     impl SymbolicType for $t {
+    //         type Type = Symbolic<$t>;
+    //     }
 
-        impl From<$t> for Symbolic<$t> {
-            fn from(x: $t) -> Self {
-                Symbolic::Concrete(x)
-            }
-        }
+    //     impl From<$t> for Symbolic<$t> {
+    //         fn from(x: $t) -> Self {
+    //             Symbolic::Concrete(x)
+    //         }
+    //     }
 
-        impl TryFrom<Symbolic<$t>> for $t {
-            type Error = crate::error::Error;
-            fn try_from(v: Symbolic<$t>) -> crate::error::Result<Self> {
-                match v {
-                    Symbolic::Concrete(x) => Ok(x),
-                    _ => Err(crate::error::Error::Unexpected), // TODO err message
-                }
-            }
-        }
-    };
+    //     impl TryFrom<Symbolic<$t>> for $t {
+    //         type Error = crate::error::Error;
+    //         fn try_from(v: Symbolic<$t>) -> crate::error::Result<Self> {
+    //             match v {
+    //                 Symbolic::Concrete(x) => Ok(x),
+    //                 _ => Err(crate::error::Error::Unexpected), // TODO err message
+    //             }
+    //         }
+    //     }
+    // };
 
-    ($t:ident, $p:ty) => {
-        impl<U> SymbolicType for $t<U>
-        where
-            U: SymbolicType,
-            <U as SymbolicType>::Type: Placed<Placement = $p>,
-        {
-            type Type = Symbolic<$t<<U as SymbolicType>::Type>>;
-        }
+    // ($t:ident, $p:ty) => {
+    //     impl<U> SymbolicType for $t<U>
+    //     where
+    //         U: SymbolicType,
+    //         <U as SymbolicType>::Type: Placed<Placement = $p>,
+    //     {
+    //         type Type = Symbolic<$t<<U as SymbolicType>::Type>>;
+    //     }
 
-        impl<U> From<$t<U>> for Symbolic<$t<U>>
-        where
-            U: Placed<Placement = $p>,
-        {
-            fn from(x: $t<U>) -> Self {
-                Symbolic::Concrete(x)
-            }
-        }
+    //     impl<U> From<$t<U>> for Symbolic<$t<U>>
+    //     where
+    //         U: Placed<Placement = $p>,
+    //     {
+    //         fn from(x: $t<U>) -> Self {
+    //             Symbolic::Concrete(x)
+    //         }
+    //     }
 
-        impl<U> TryFrom<Symbolic<$t<U>>> for $t<U>
-        where
-            U: Placed<Placement = $p>,
-        {
-            type Error = crate::error::Error;
-            fn try_from(v: Symbolic<$t<U>>) -> crate::error::Result<Self> {
-                match v {
-                    Symbolic::Concrete(x) => Ok(x),
-                    _ => Err(crate::error::Error::Unexpected), // TODO err message
-                }
-            }
-        }
+    //     impl<U> TryFrom<Symbolic<$t<U>>> for $t<U>
+    //     where
+    //         U: Placed<Placement = $p>,
+    //     {
+    //         type Error = crate::error::Error;
+    //         fn try_from(v: Symbolic<$t<U>>) -> crate::error::Result<Self> {
+    //             match v {
+    //                 Symbolic::Concrete(x) => Ok(x),
+    //                 _ => Err(crate::error::Error::Unexpected), // TODO err message
+    //             }
+    //         }
+    //     }
 
-    };
+    // };
 }
 
 pub mod additive;

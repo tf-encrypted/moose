@@ -1762,10 +1762,11 @@ impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
-/// Tensor for ring arithmetic over Z_{2^64}
-pub type HostRing64Tensor = AbstractHostRingTensor<u64>;
+moose_type!(HostBitTensor);
+// moose_type!(HostRing64Tensor = AbstractHostRingTensor<u64>);
+// moose_type!(HostRing128Tensor = AbstractHostRingTensor<u128>);
 
-/// Tensor for ring arithmetic over Z_{2^128}
+pub type HostRing64Tensor = AbstractHostRingTensor<u64>;
 pub type HostRing128Tensor = AbstractHostRingTensor<u128>;
 
 impl SymbolicType for HostRing64Tensor {
@@ -1774,6 +1775,18 @@ impl SymbolicType for HostRing64Tensor {
 
 impl SymbolicType for HostRing128Tensor {
     type Type = Symbolic<HostRing128Tensor>;
+}
+
+impl<T> CanonicalType for Symbolic<AbstractHostRingTensor<T>> {
+    type Type = AbstractHostRingTensor<T>;
+}
+
+impl CanonicalType for HostRing64Tensor {
+    type Type = Self;
+}
+
+impl CanonicalType for HostRing128Tensor {
+    type Type = Self;
 }
 
 impl CanonicalType for HostBitTensor {

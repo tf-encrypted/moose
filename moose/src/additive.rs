@@ -2,7 +2,7 @@
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
     CanonicalType, Constant, HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
-    ShapeOp, SymbolicType,
+    ShapeOp,
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
@@ -20,20 +20,12 @@ use crate::replicated::{
 use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AbstractAdditiveTensor<HostRingT> {
     pub shares: [HostRingT; 2],
 }
-
-// pub type AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>;
-
-// pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
-
-// pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
-
-// moose_type!(AbstractAdditiveTensor, HostPlacement);
 
 moose_type!(
     AbstractAdditiveTensor,
@@ -43,8 +35,6 @@ moose_type!(
         (HostBitTensor => AdditiveBitTensor),
     ]
 );
-
-pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
 
 impl<R> Placed for AbstractAdditiveTensor<R>
 where
@@ -57,32 +47,6 @@ where
 
         let owner0 = x0.placement()?.owner;
         let owner1 = x1.placement()?.owner;
-
-        let owners = [owner0, owner1];
-        Ok(AdditivePlacement { owners })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractAdditiveShape<S> {
-    pub shapes: [S; 2],
-}
-
-pub type AdditiveShape = AbstractAdditiveShape<HostShape>;
-
-moose_type!(AbstractAdditiveShape, HostPlacement);
-
-impl<S> Placed for AbstractAdditiveShape<S>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    type Placement = AdditivePlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        let AbstractAdditiveShape { shapes: [s0, s1] } = self;
-
-        let owner0 = s0.placement()?.owner;
-        let owner1 = s1.placement()?.owner;
 
         let owners = [owner0, owner1];
         Ok(AdditivePlacement { owners })
@@ -108,6 +72,35 @@ where
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractAdditiveShape<S> {
+    pub shapes: [S; 2],
+}
+
+moose_type!(
+    AbstractAdditiveShape,
+    [
+        (HostShape => AdditiveShape),
+    ]
+);
+
+impl<S> Placed for AbstractAdditiveShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Placement = AdditivePlacement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        let AbstractAdditiveShape { shapes: [s0, s1] } = self;
+
+        let owner0 = s0.placement()?.owner;
+        let owner1 = s1.placement()?.owner;
+
+        let owners = [owner0, owner1];
+        Ok(AdditivePlacement { owners })
+    }
+}
+
 impl ShapeOp {
     pub(crate) fn adt_kernel<S: Session, HostT, ShapeT>(
         sess: &S,
@@ -124,6 +117,10 @@ impl ShapeOp {
         }
     }
 }
+
+// Type aliases to shorten out impl in replicated protocols
+type RepTen<T> = AbstractReplicatedRingTensor<T>;
+type AdtTen<T> = AbstractAdditiveTensor<T>;
 
 modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing64Tensor, AdtFillOp);
 modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing128Tensor, AdtFillOp);
@@ -596,8 +593,6 @@ where
         (r_shared, r_top_shared, r_msb_shared)
     }
 }
-
-use std::convert::TryInto;
 
 impl<S: Session, R>
     PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>

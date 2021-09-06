@@ -1,6 +1,4 @@
-use crate::computation::{
-    HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, SymbolicType, TAG_BYTES,
-};
+use crate::computation::{CanonicalType, HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, SymbolicType, TAG_BYTES};
 use crate::error::Result;
 use crate::kernels::{
     NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
@@ -81,6 +79,11 @@ pub struct PrfKey(pub RawPrfKey, pub HostPlacement);
 
 impl SymbolicType for PrfKey {
     type Type = Symbolic<PrfKey>;
+}
+
+
+impl CanonicalType for PrfKey {
+    type Type = Self;
 }
 
 impl Placed for PrfKey {
