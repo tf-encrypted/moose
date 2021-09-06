@@ -1019,6 +1019,12 @@ macro_rules! modelled {
             }
         }
 
+        impl crate::kernels::NullaryKernelCheck<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+        > for $op {}
+
         impl $t<
             crate::symbolic::SymbolicSession,
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
@@ -1082,6 +1088,13 @@ macro_rules! modelled {
             }
         }
 
+        impl crate::kernels::UnaryKernelCheck<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+        > for $op {}
+
         impl $t<
             crate::symbolic::SymbolicSession,
             <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
@@ -1143,6 +1156,14 @@ macro_rules! modelled {
                 .unwrap()
             }
         }
+
+        impl crate::kernels::BinaryKernelCheck<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+        > for $op {}
 
         impl $t<
             crate::symbolic::SymbolicSession,
@@ -1209,6 +1230,15 @@ macro_rules! modelled {
                 .unwrap()
             }
         }
+
+        impl crate::kernels::TernaryKernelCheck<
+            crate::symbolic::SymbolicSession,
+            $plc,
+            <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t1 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$t2 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+            <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type,
+        > for $op {}
 
         impl $t<
             crate::symbolic::SymbolicSession,
