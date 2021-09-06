@@ -2115,21 +2115,15 @@ where
     }
 }
 
-trait AbsFromMsb<S: Session, SetupT, RingT>
+trait SignFromMsb<S: Session, RingT>
 where
     RepTen<RingT>: CanonicalType,
     <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
 {
-    fn abs_from_msb(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        x: &RepTen<RingT>,
-        msb_ring: &RepTen<RingT>,
-    ) -> st!(RepTen<RingT>);
+    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<RingT>) -> st!(RepTen<RingT>);
 }
 
-impl<S: Session, SetupT, RingT> AbsFromMsb<S, SetupT, RingT> for ReplicatedPlacement
+impl<S: Session, RingT> SignFromMsb<S, RingT> for ReplicatedPlacement
 where
     RepTen<RingT>: CanonicalType,
     <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
@@ -2144,33 +2138,19 @@ where
 
     ReplicatedPlacement: PlacementFill<S, st!(ReplicatedShape), st!(RepTen<RingT>)>,
     ReplicatedPlacement: PlacementShape<S, st!(RepTen<RingT>), st!(ReplicatedShape)>,
-    ReplicatedPlacement:
-        PlacementMulSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     ReplicatedPlacement: PlacementShl<S, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     ReplicatedPlacement:
         PlacementSub<S, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
 {
-    fn abs_from_msb(
-        &self,
-        sess: &S,
-        setup: &SetupT,
-        x: &RepTen<RingT>,
-        msb_ring: &RepTen<RingT>,
-    ) -> st!(RepTen<RingT>) {
+    fn sign_from_msb(&self, sess: &S, msb_ring: &RepTen<RingT>) -> st!(RepTen<RingT>) {
         let rep = self;
         let double = rep.shl(sess, 1, &msb_ring.clone().into());
         let one_r = RingT::Scalar::from(1).into();
         let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring.clone().into()));
-        let sign = rep.sub(sess, &ones, &double);
-
-        rep.mul_setup(sess, setup, &sign, &x.clone().into())
+        rep.sub(sess, &ones, &double)
     }
 }
-trait DivNorm<S: Session, SetupT, RingT>
-where
-    RepTen<RingT>: CanonicalType,
-    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-{
+trait DivNorm<S: Session, SetupT, RingT> {
     fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> (RepTen<RingT>, RepTen<RingT>);
 }
 
@@ -2188,7 +2168,7 @@ where
     st!(RepTen<RingT>): Into<RepTen<RingT>>,
 
     ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
-    ReplicatedPlacement: AbsFromMsb<S, SetupT, RingT>,
+    ReplicatedPlacement: SignFromMsb<S, RingT>,
     ReplicatedPlacement:
         PlacementBitDecSetup<S, SetupT, st!(RepTen<RingT>), st!(ReplicatedBitTensor)>,
     ReplicatedPlacement: TopMost<S, SetupT, st!(ReplicatedBitTensor), st!(RepTen<RingT>)>,
@@ -2196,16 +2176,19 @@ where
         PlacementMulSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
 {
     fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> (RepTen<RingT>, RepTen<RingT>) {
-        #![allow(clippy::many_single_char_names)]
         let rep = self;
         let msb = rep.msb(sess, setup, &x.clone().into());
-        let abs_x = rep.abs_from_msb(sess, setup, &x, &msb.clone().into());
+        let sign = rep.sign_from_msb(sess, &msb.into());
+
+        let standard_typed_x: st!(RepTen<RingT>) = x.into();
+
+        let abs_x = rep.mul_setup(sess, setup, &sign, &standard_typed_x);
         let x_bits = rep.bit_decompose(sess, setup, &abs_x);
         let top_most = rep.top_most(sess, setup, &x_bits, RingT::SIZE);
-        let c = rep.mul_setup(sess, setup, &x.into(), &top_most);
-        // here we need sign, not msb
-        let v = rep.mul_setup(sess, setup, &msb, &top_most);
-        (c.into(), v.into())
+
+        let upshifted = rep.mul_setup(sess, setup, &standard_typed_x, &top_most);
+        let signed_topmost = rep.mul_setup(sess, setup, &sign, &top_most);
+        (upshifted.into(), signed_topmost.into())
     }
 }
 
@@ -2245,6 +2228,21 @@ where
             res = rep.add(sess, &res, item);
         }
         res
+    }
+}
+
+trait ApproximateReciprocal<S: Session, SetupT, RingT> {
+    fn approximate_reciprocal(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT>;
+}
+
+impl<S: Session, SetupT, RingT> ApproximateReciprocal<S, SetupT, RingT> for ReplicatedPlacement
+where
+    ReplicatedPlacement: DivNorm<S, SetupT, RingT>,
+{
+    fn approximate_reciprocal(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT> {
+        let rep = self;
+        let (upshifted, _signed_topmost) = rep.norm(sess, setup, x);
+        upshifted
     }
 }
 
