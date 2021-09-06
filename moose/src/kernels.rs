@@ -98,6 +98,10 @@ impl Session for SyncSession {
             RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepDiag(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepBitDec(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepShlDim(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
             AdtShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -126,6 +130,8 @@ impl Session for SyncSession {
             FixedpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FixedpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostDiag(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostShlDim(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostAdd(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSub(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -133,6 +139,7 @@ impl Session for SyncSession {
             HostDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            HostSqueeze(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -296,12 +303,20 @@ pub trait PlacementAnd<S: Session, T, U, O> {
     fn and(&self, sess: &S, x: &T, y: &U) -> O;
 }
 
+pub trait PlacementAndSetup<S: Session, SetupT, T, U, O> {
+    fn and_setup(&self, sess: &S, setup: &SetupT, x: &T, y: &U) -> O;
+}
+
 pub trait PlacementBitExtract<S: Session, T, O> {
     fn bit_extract(&self, sess: &S, bit_idx: usize, x: &T) -> O;
 }
 
 pub trait PlacementBitDec<S: Session, T, O> {
     fn bit_decompose(&self, sess: &S, x: &T) -> O;
+}
+
+pub trait PlacementBitDecSetup<S: Session, SetupT, T, O> {
+    fn bit_decompose(&self, sess: &S, setup: &SetupT, x: &T) -> O;
 }
 
 pub trait PlacementRingInject<S: Session, T, O> {
@@ -555,6 +570,10 @@ pub trait PlacementExpandDims<S: Session, T, O> {
     fn expand_dims(&self, sess: &S, axis: Vec<u32>, x: &T) -> O;
 }
 
+pub trait PlacementSqueeze<S: Session, T, O> {
+    fn squeeze(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
+}
+
 pub trait PlacementConcatenate<S: Session, T1, T2, O> {
     fn concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
 }
@@ -577,8 +596,16 @@ pub trait PlacementSlice<S: Session, T, O> {
     fn slice(&self, sess: &S, slice_info: SliceInfo, x: &T) -> O;
 }
 
+pub trait PlacementDiag<S: Session, T, O> {
+    fn diag(&self, sess: &S, x: &T) -> O;
+}
+
 pub trait PlacementIndex<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
+}
+
+pub trait PlacementShlDim<S: Session, T, O> {
+    fn shl_dim(&self, sess: &S, amount: usize, ring_size: usize, x: &T) -> O;
 }
 
 fn check_type(v: &Value, expected: Ty) -> Result<()> {
@@ -650,14 +677,18 @@ impl Compile<SyncKernel> for Operator {
             // TODO
             HostIndexAxis(_) => unimplemented!(),
             HostBitDec(_) => unimplemented!(),
+            HostShlDim(_) => unimplemented!(),
+            HostSqrt(_) => unimplemented!(),
+            HostDiag(_) => unimplemented!(),
+            HostSqueeze(_) => unimplemented!(),
             Cast(_) => unimplemented!("No implementation of Cast for the old framework"),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostSqrt(_) => {
+            | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_) | FixedpointMul(_)
+            | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_) | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -718,14 +749,16 @@ impl Compile<AsyncKernel> for Operator {
             // TODO implement below (needed until we switch to new framework for execution)
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) | HostSqrt(_) | HostBitDec(_) | HostIndexAxis(_) | Cast(_) => {
+            | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
+            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
-            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_) => {
+            | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
+            | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -998,6 +1031,24 @@ impl Compile<Kernel> for HostExpandDimsOp {
             _ => Err(Error::UnimplementedOperator(format!("{:?}", self))),
         }
     }
+}
+
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostInt32Tensor) -> HostInt32Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostInt64Tensor) -> HostInt64Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostUint32Tensor) -> HostUint32Tensor, HostSqueezeOp);
+modelled!(PlacementSqueeze::squeeze, HostPlacement, attributes[axis: Option<u32>] (HostUint64Tensor) -> HostUint64Tensor, HostSqueezeOp);
+
+kernel! {
+    HostSqueezeOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt32Tensor) -> HostInt32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostInt64Tensor) -> HostInt64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostUint32Tensor) -> HostUint32Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, (HostUint64Tensor) -> HostUint64Tensor => [runtime] attributes[axis] Self::kernel),
+    ]
 }
 
 impl Compile<Kernel> for HostReshapeOp {
