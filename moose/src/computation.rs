@@ -750,6 +750,7 @@ operators![
     HostInverse,
     HostAtLeast2D,
     HostShlDim,
+    HostRevDim,
     RingAdd,
     RingSub,
     RingNeg,
@@ -809,6 +810,7 @@ operators![
     RepSlice,
     RepBitDec,
     RepShlDim,
+    RepRevDim,
 ];
 
 pub trait HasShortName {
@@ -980,6 +982,11 @@ pub struct HostShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct HostRevDimOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
@@ -1305,6 +1312,11 @@ pub struct RepShlDimOp {
     pub sig: Signature,
     pub amount: usize,
     pub bit_length: usize,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct RepRevDimOp {
+    pub sig: Signature,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

@@ -3,8 +3,9 @@ use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
     RepAbsOp, RepAddOp, RepBitDecOp, RepDiagOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp,
-    RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp, RepSliceOp,
-    RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
+    RepMsbOp, RepMulOp, RepRevDimOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp,
+    RepSliceOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp,
+    SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{
@@ -15,10 +16,11 @@ use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
     PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDiag, PlacementDot,
     PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb,
-    PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
-    PlacementShareSetup, PlacementShl, PlacementShlDim, PlacementSlice, PlacementSub, PlacementSum,
-    PlacementTruncPr, PlacementTruncPrProvider, PlacementXor, PlacementZeros, Session, Tensor,
+    PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementRevDim,
+    PlacementReveal, PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen,
+    PlacementShape, PlacementShareSetup, PlacementShl, PlacementShlDim, PlacementSlice,
+    PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider, PlacementXor,
+    PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
@@ -1800,6 +1802,44 @@ impl RepShlDimOp {
     }
 }
 
+modelled!(PlacementRevDim::rev_dim, ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor, RepRevDimOp);
+
+kernel! {
+    RepRevDimOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitTensor) -> ReplicatedBitTensor => [runtime] Self::kernel),
+    ]
+}
+
+impl RepRevDimOp {
+    fn kernel<S: Session, HostBitTensorT>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        x: RepTen<HostBitTensorT>,
+    ) -> RepTen<HostBitTensorT>
+    where
+        HostPlacement: PlacementRevDim<S, HostBitTensorT, HostBitTensorT>,
+    {
+        let (player0, player1, player2) = plc.host_placements();
+        let RepTen {
+            shares: [[x00, x10], [x11, x21], [x22, x02]],
+        } = x;
+
+        let z00 = player0.rev_dim(sess, &x00);
+        let z10 = player0.rev_dim(sess, &x10);
+
+        let z11 = player1.rev_dim(sess, &x11);
+        let z21 = player1.rev_dim(sess, &x21);
+
+        let z22 = player2.rev_dim(sess, &x22);
+        let z02 = player2.rev_dim(sess, &x02);
+
+        RepTen {
+            shares: [[z00, z10], [z11, z21], [z22, z02]],
+        }
+    }
+}
+
 kernel! {
     RepMsbOp,
     [
@@ -2028,7 +2068,7 @@ where
 }
 
 trait PrefixOr<S: Session, SetupT, RepBitT> {
-    fn prefix_or(&self, sess: &S, setup: SetupT, x: RepBitT, ring_size: usize) -> Vec<RepBitT>;
+    fn prefix_or(&self, sess: &S, setup: &SetupT, x: &RepBitT, ring_size: usize) -> Vec<RepBitT>;
     // TODO(Dragos) replace output type with RepBitSlice
 }
 
@@ -2041,7 +2081,7 @@ where
     /// Prefix Or protocol
     ///
     /// `x` is a replicated bit tensor.
-    fn prefix_or(&self, sess: &S, setup: SetupT, x: RepBitT, ring_size: usize) -> Vec<RepBitT> {
+    fn prefix_or(&self, sess: &S, setup: &SetupT, x: &RepBitT, ring_size: usize) -> Vec<RepBitT> {
         // OR(x, y) = (x xor y) xor (x and y)
 
         let log_r = (ring_size as f64).log2() as u32; // we know that R = 64/128
@@ -2051,12 +2091,12 @@ where
             rep.xor(
                 sess,
                 &rep.xor(sess, x, y),
-                &rep.and_setup(sess, &setup, x, y),
+                &rep.and_setup(sess, setup, x, y),
             )
         };
 
         let mut res: Vec<_> = (0..ring_size)
-            .map(|i| rep.index_axis(sess, 0, i, &x))
+            .map(|i| rep.index_axis(sess, 0, i, x))
             .collect();
 
         for i in 0..(log_r - 1) {
@@ -2123,11 +2163,15 @@ where
         let ones = rep.fill(sess, one_r, &rep.shape(sess, &msb_ring.clone().into()));
         let sign = rep.sub(sess, &ones, &double);
 
-        rep.mul_setup(sess, &setup, &sign, &x.clone().into())
+        rep.mul_setup(sess, setup, &sign, &x.clone().into())
     }
 }
-trait DivNorm<S: Session, SetupT, RingT> {
-    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT>;
+trait DivNorm<S: Session, SetupT, RingT>
+where
+    RepTen<RingT>: CanonicalType,
+    <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
+{
+    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> (RepTen<RingT>, RepTen<RingT>);
 }
 
 impl<S: Session, SetupT, RingT> DivNorm<S, SetupT, RingT> for ReplicatedPlacement
@@ -2136,18 +2180,71 @@ where
     <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
     RepTen<RingT>: Into<st!(RepTen<RingT>)>,
     RepTen<RingT>: Clone,
+    RingT: RingSize,
+
+    ReplicatedBitTensor: KnownType<S>,
 
     st!(RepTen<RingT>): Clone,
     st!(RepTen<RingT>): Into<RepTen<RingT>>,
 
     ReplicatedPlacement: PlacementMsb<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>)>,
     ReplicatedPlacement: AbsFromMsb<S, SetupT, RingT>,
+    ReplicatedPlacement:
+        PlacementBitDecSetup<S, SetupT, st!(RepTen<RingT>), st!(ReplicatedBitTensor)>,
+    ReplicatedPlacement: TopMost<S, SetupT, st!(ReplicatedBitTensor), st!(RepTen<RingT>)>,
+    ReplicatedPlacement:
+        PlacementMulSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<RingT>), st!(RepTen<RingT>)>,
 {
-    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> RepTen<RingT> {
+    fn norm(&self, sess: &S, setup: &SetupT, x: RepTen<RingT>) -> (RepTen<RingT>, RepTen<RingT>) {
+        #![allow(clippy::many_single_char_names)]
         let rep = self;
         let msb = rep.msb(sess, setup, &x.clone().into());
         let abs_x = rep.abs_from_msb(sess, setup, &x, &msb.clone().into());
-        x
+        let x_bits = rep.bit_decompose(sess, setup, &abs_x);
+        let top_most = rep.top_most(sess, setup, &x_bits, RingT::SIZE);
+        let c = rep.mul_setup(sess, setup, &x.into(), &top_most);
+        // here we need sign, not msb
+        let v = rep.mul_setup(sess, setup, &msb, &top_most);
+        (c.into(), v.into())
+    }
+}
+
+trait TopMost<S: Session, SetupT, RepBitT, RepRingT> {
+    fn top_most(&self, sess: &S, setup: &SetupT, x: &RepBitT, ring_size: usize) -> RepRingT;
+}
+
+impl<S: Session, SetupT, RepBitT, RepRingT> TopMost<S, SetupT, RepBitT, RepRingT>
+    for ReplicatedPlacement
+where
+    ReplicatedPlacement: PlacementRevDim<S, RepBitT, RepBitT>,
+    ReplicatedPlacement: PrefixOr<S, SetupT, RepBitT>,
+    ReplicatedPlacement: PlacementRingInject<S, RepBitT, RepRingT>,
+    ReplicatedPlacement: PlacementSub<S, RepRingT, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementShl<S, RepRingT, RepRingT>,
+    ReplicatedPlacement: PlacementAdd<S, RepRingT, RepRingT, RepRingT>,
+{
+    fn top_most(&self, sess: &S, setup: &SetupT, x: &RepBitT, ring_size: usize) -> RepRingT {
+        let rep = &self;
+        let x_rev = rep.rev_dim(sess, x);
+        let y = rep.prefix_or(sess, setup, &x_rev, ring_size);
+        let y_vec: Vec<_> = y
+            .iter()
+            .map(|item| rep.ring_inject(sess, 0, item))
+            .collect();
+        let z: Vec<_> = (0..ring_size - 1)
+            .map(|i| rep.sub(sess, &y_vec[i], &y_vec[i + 1]))
+            .collect();
+
+        let s_vec: Vec<_> = (0..ring_size - 1)
+            .map(|i| rep.shl(sess, ring_size - i - 1, &z[i]))
+            .collect();
+
+        // note this can be replaced with a variadic kernel for replicated sum operation
+        let mut res = rep.shl(sess, 0, &s_vec[ring_size - 1]);
+        for item in s_vec.iter().take(ring_size).skip(1) {
+            res = rep.add(sess, &res, item);
+        }
+        res
     }
 }
 
