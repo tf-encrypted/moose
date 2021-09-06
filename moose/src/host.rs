@@ -95,9 +95,7 @@ impl RawShape {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostShape(pub RawShape, pub HostPlacement);
 
-impl SymbolicType for HostShape {
-    type Type = Symbolic<HostShape>;
-}
+moose_type!(HostShape);
 
 impl Placed for HostShape {
     type Placement = HostPlacement;
@@ -213,59 +211,11 @@ impl From<HostShape> for Symbolic<HostShape> {
     }
 }
 
-impl From<HostRing64Tensor> for Symbolic<HostRing64Tensor> {
-    fn from(x: HostRing64Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostRing128Tensor> for Symbolic<HostRing128Tensor> {
-    fn from(x: HostRing128Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
 impl<RingT: Placed> From<AbstractHostFixedTensor<RingT>>
     for Symbolic<AbstractHostFixedTensor<RingT>>
 {
     fn from(x: AbstractHostFixedTensor<RingT>) -> Self {
         Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostBitTensor> for Symbolic<HostBitTensor> {
-    fn from(x: HostBitTensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl TryFrom<Symbolic<HostBitTensor>> for HostBitTensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostBitTensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl TryFrom<Symbolic<HostRing64Tensor>> for HostRing64Tensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostRing64Tensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl TryFrom<Symbolic<HostRing128Tensor>> for HostRing128Tensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostRing128Tensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
     }
 }
 
@@ -1312,9 +1262,7 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
 
-impl SymbolicType for HostBitTensor {
-    type Type = Symbolic<HostBitTensor>;
-}
+moose_type!(HostBitTensor);
 
 impl<S: Session> Tensor<S> for HostBitTensor {
     type Scalar = u8;
@@ -1762,47 +1710,15 @@ impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
-moose_type!(HostBitTensor);
-// moose_type!(HostRing64Tensor = AbstractHostRingTensor<u64>);
-// moose_type!(HostRing128Tensor = AbstractHostRingTensor<u128>);
+moose_type!(HostRing64Tensor = AbstractHostRingTensor<u64>);
+moose_type!(HostRing128Tensor = AbstractHostRingTensor<u128>);
 
-pub type HostRing64Tensor = AbstractHostRingTensor<u64>;
-pub type HostRing128Tensor = AbstractHostRingTensor<u128>;
+impl<T> Placed for AbstractHostRingTensor<T> {
+    type Placement = HostPlacement;
 
-impl SymbolicType for HostRing64Tensor {
-    type Type = Symbolic<HostRing64Tensor>;
-}
-
-impl SymbolicType for HostRing128Tensor {
-    type Type = Symbolic<HostRing128Tensor>;
-}
-
-impl<T> CanonicalType for Symbolic<AbstractHostRingTensor<T>> {
-    type Type = AbstractHostRingTensor<T>;
-}
-
-impl CanonicalType for HostRing64Tensor {
-    type Type = Self;
-}
-
-impl CanonicalType for HostRing128Tensor {
-    type Type = Self;
-}
-
-impl CanonicalType for HostBitTensor {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for Symbolic<HostBitTensor> {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for HostShape {
-    type Type = HostShape;
-}
-
-impl CanonicalType for Symbolic<HostShape> {
-    type Type = HostShape;
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
+    }
 }
 
 impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
@@ -1811,14 +1727,6 @@ impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
 
 impl<S: Session, T> Tensor<S> for Symbolic<AbstractHostRingTensor<T>> {
     type Scalar = T;
-}
-
-impl<T> Placed for AbstractHostRingTensor<T> {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        Ok(self.1.clone())
-    }
 }
 
 pub trait RingSize {

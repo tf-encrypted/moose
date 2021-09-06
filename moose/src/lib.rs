@@ -1349,17 +1349,17 @@ macro_rules! modelled_alias {
 macro_rules! moose_type {
 
     ($atomic:ident) => {
-        // impl SymbolicType for $atomic {
-        //     type Type = Symbolic<$atomic>;
-        // }
+        impl SymbolicType for $atomic {
+            type Type = Symbolic<$atomic>;
+        }
 
-        // impl CanonicalType for $atomic {
-        //     type Type = $atomic;
-        // }
+        impl CanonicalType for $atomic {
+            type Type = $atomic;
+        }
 
-        // impl CanonicalType for Symbolic<$atomic> {
-        //     type Type = $atomic;
-        // }
+        impl CanonicalType for Symbolic<$atomic> {
+            type Type = $atomic;
+        }
     };
 
     ($combined:ident = $outer:ident<$inner:ident>) => {
