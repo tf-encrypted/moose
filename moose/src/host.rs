@@ -22,9 +22,7 @@ use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
 
-impl SymbolicType for String {
-    type Type = Symbolic<String>;
-}
+moose_type!(String);
 
 impl Placed for String {
     type Placement = Placement;
@@ -166,16 +164,16 @@ impl<T> Placed for HostTensor<T> {
     }
 }
 
-moose_type!(HostFloat32Tensor = HostTensor<f32>);
-moose_type!(HostFloat64Tensor = HostTensor<f64>);
-moose_type!(HostInt8Tensor = HostTensor<i8>);
-moose_type!(HostInt16Tensor = HostTensor<i16>);
-moose_type!(HostInt32Tensor = HostTensor<i32>);
-moose_type!(HostInt64Tensor = HostTensor<i64>);
-moose_type!(HostUint8Tensor = HostTensor<u8>);
-moose_type!(HostUint16Tensor = HostTensor<u16>);
-moose_type!(HostUint32Tensor = HostTensor<u32>);
-moose_type!(HostUint64Tensor = HostTensor<u64>);
+moose_type!(HostFloat32Tensor = [atomic] HostTensor<f32>);
+moose_type!(HostFloat64Tensor = [atomic] HostTensor<f64>);
+moose_type!(HostInt8Tensor = [atomic] HostTensor<i8>);
+moose_type!(HostInt16Tensor = [atomic] HostTensor<i16>);
+moose_type!(HostInt32Tensor = [atomic] HostTensor<i32>);
+moose_type!(HostInt64Tensor = [atomic] HostTensor<i64>);
+moose_type!(HostUint8Tensor = [atomic] HostTensor<u8>);
+moose_type!(HostUint16Tensor = [atomic] HostTensor<u16>);
+moose_type!(HostUint32Tensor = [atomic] HostTensor<u32>);
+moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
 
 impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
     fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
@@ -1610,13 +1608,16 @@ impl RingInjectOp {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedTensor<HostRingT>(pub HostRingT);
 
-moose_type!(
-    AbstractHostFixedTensor,
-    [
-        (HostRing64Tensor => HostFixed64Tensor),
-        (HostRing128Tensor => HostFixed128Tensor),
-    ]
-);
+// moose_type!(
+//     AbstractHostFixedTensor,
+//     [
+//         (HostRing64Tensor => HostFixed64Tensor),
+//         (HostRing128Tensor => HostFixed128Tensor),
+//     ]
+// );
+
+moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
+moose_type!(HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>);
 
 impl<T> From<T> for HostFixed64Tensor
 where
@@ -1647,8 +1648,8 @@ impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
-moose_type!(HostRing64Tensor = AbstractHostRingTensor<u64>);
-moose_type!(HostRing128Tensor = AbstractHostRingTensor<u128>);
+moose_type!(HostRing64Tensor = [atomic] AbstractHostRingTensor<u64>);
+moose_type!(HostRing128Tensor = [atomic] AbstractHostRingTensor<u128>);
 
 impl<T> Placed for AbstractHostRingTensor<T> {
     type Placement = HostPlacement;

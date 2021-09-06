@@ -1,4 +1,4 @@
-use crate::computation::{CanonicalType, HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, SymbolicType, TAG_BYTES};
+use crate::computation::{CanonicalType, HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::Result;
 use crate::kernels::{
     NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession,
@@ -17,9 +17,7 @@ pub struct RawSeed(pub [u8; 16]);
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct Seed(pub RawSeed, pub HostPlacement);
 
-impl SymbolicType for Seed {
-    type Type = Symbolic<Seed>;
-}
+moose_type!(Seed);
 
 impl Placed for Seed {
     type Placement = HostPlacement;
@@ -42,6 +40,7 @@ impl PlacementPlace<SyncSession, Seed> for HostPlacement {
     }
 }
 
+// TODO derive
 impl PlacementPlace<SymbolicSession, Symbolic<Seed>> for HostPlacement {
     fn place(&self, _sess: &SymbolicSession, x: Symbolic<Seed>) -> Symbolic<Seed> {
         match x.placement() {
@@ -77,14 +76,7 @@ impl RawPrfKey {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct PrfKey(pub RawPrfKey, pub HostPlacement);
 
-impl SymbolicType for PrfKey {
-    type Type = Symbolic<PrfKey>;
-}
-
-
-impl CanonicalType for PrfKey {
-    type Type = Self;
-}
+moose_type!(PrfKey);
 
 impl Placed for PrfKey {
     type Placement = HostPlacement;
@@ -107,6 +99,7 @@ impl PlacementPlace<SyncSession, PrfKey> for HostPlacement {
     }
 }
 
+// TODO derive
 impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
     fn place(&self, _sess: &SymbolicSession, x: Symbolic<PrfKey>) -> Symbolic<PrfKey> {
         match x.placement() {

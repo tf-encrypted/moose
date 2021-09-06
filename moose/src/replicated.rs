@@ -31,14 +31,18 @@ pub struct AbstractReplicatedRingTensor<R> {
     pub shares: [[R; 2]; 3],
 }
 
-moose_type!(
-    AbstractReplicatedRingTensor,
-    [
-        (HostRing64Tensor => ReplicatedRing64Tensor),
-        (HostRing128Tensor => ReplicatedRing128Tensor),
-        (HostBitTensor => ReplicatedBitTensor),
-    ]
-);
+// moose_type!(
+//     AbstractReplicatedRingTensor,
+//     [
+//         (HostRing64Tensor => ReplicatedRing64Tensor),
+//         (HostRing128Tensor => ReplicatedRing128Tensor),
+//         (HostBitTensor => ReplicatedBitTensor),
+//     ]
+// );
+
+moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
+moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
+moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
 
 impl<HostTenT> Placed for AbstractReplicatedRingTensor<HostTenT>
 where
@@ -96,13 +100,16 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
 
-moose_type!(
-    AbstractReplicatedFixedTensor,
-    [
-        (ReplicatedRing64Tensor => ReplicatedFixed64Tensor),
-        (ReplicatedRing128Tensor => ReplicatedFixed128Tensor),
-    ]
-);
+// moose_type!(
+//     AbstractReplicatedFixedTensor,
+//     [
+//         (ReplicatedRing64Tensor => ReplicatedFixed64Tensor),
+//         (ReplicatedRing128Tensor => ReplicatedFixed128Tensor),
+//     ]
+// );
+
+moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
+moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
 
 impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
     type Placement = RepRingT::Placement;
@@ -117,12 +124,14 @@ pub struct AbstractReplicatedSetup<K> {
     pub keys: [[K; 2]; 3],
 }
 
-moose_type!(
-    AbstractReplicatedSetup,
-    [
-        (PrfKey => ReplicatedSetup),
-    ]
-);
+// moose_type!(
+//     AbstractReplicatedSetup,
+//     [
+//         (PrfKey => ReplicatedSetup),
+//     ]
+// );
+
+moose_type!(ReplicatedSetup = AbstractReplicatedSetup<PrfKey>);
 
 impl<K> Placed for AbstractReplicatedSetup<K>
 where
@@ -156,12 +165,14 @@ pub struct AbstractReplicatedShape<S> {
     pub shapes: [S; 3],
 }
 
-moose_type!(
-    AbstractReplicatedShape,
-    [
-        (HostShape => ReplicatedShape),
-    ]
-);
+// moose_type!(
+//     AbstractReplicatedShape,
+//     [
+//         (HostShape => ReplicatedShape),
+//     ]
+// );
+
+moose_type!(ReplicatedShape = AbstractReplicatedShape<HostShape>);
 
 impl<KeyT> Placed for AbstractReplicatedShape<KeyT>
 where
