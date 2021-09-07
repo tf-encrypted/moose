@@ -1309,6 +1309,7 @@ impl ToTextual for Operator {
             RepShl(op) => op.to_textual(),
             RepToAdt(op) => op.to_textual(),
             RepIndexAxis(op) => op.to_textual(),
+            RepIndex(op) => op.to_textual(),
             RepDiag(op) => op.to_textual(),
             RepBitDec(op) => op.to_textual(),
             RepSlice(op) => op.to_textual(),
@@ -1468,6 +1469,7 @@ impl_to_textual!(
     index,
     sig
 );
+impl_to_textual!(RepIndexOp, "{op}{{index={}}}: {}", index, sig);
 impl_to_textual!(RepDiagOp, "{op}: {}", sig);
 impl_to_textual!(RepBitDecOp, "{op}: {}", sig);
 impl_to_textual!(RepSliceOp, "{op}{{slice}}: {} {}", sig, slice);

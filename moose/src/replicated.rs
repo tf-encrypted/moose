@@ -2,9 +2,10 @@
 use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
 use crate::computation::{
     AdditivePlacement, AdtToRepOp, CanonicalType, Constant, HostPlacement, KnownType, Placed,
-    RepAbsOp, RepAddOp, RepBitDecOp, RepDiagOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepMeanOp,
-    RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp, RepSliceOp,
-    RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp, SymbolicType,
+    RepAbsOp, RepAddOp, RepBitDecOp, RepDiagOp, RepDotOp, RepFillOp, RepIndexAxisOp, RepIndexOp,
+    RepMeanOp, RepMsbOp, RepMulOp, RepRevealOp, RepSetupOp, RepShareOp, RepShlDimOp, RepShlOp,
+    RepSliceOp, RepSubOp, RepSumOp, RepTruncPrOp, ReplicatedPlacement, RingInjectOp, ShapeOp,
+    SymbolicType,
 };
 use crate::error::{Error, Result};
 use crate::host::{
@@ -14,12 +15,12 @@ use crate::host::{
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
     PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDiag, PlacementDot,
-    PlacementDotSetup, PlacementFill, PlacementIndexAxis, PlacementKeyGen, PlacementMean,
-    PlacementMsb, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt,
-    PlacementReveal, PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen,
-    PlacementShape, PlacementShareSetup, PlacementShl, PlacementShlDim, PlacementSlice,
-    PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider, PlacementXor,
-    PlacementZeros, Session, Tensor,
+    PlacementDotSetup, PlacementFill, PlacementIndex, PlacementIndexAxis, PlacementKeyGen,
+    PlacementMean, PlacementMsb, PlacementMul, PlacementMulSetup, PlacementPlace,
+    PlacementRepToAdt, PlacementReveal, PlacementRingInject, PlacementSampleUniformSeeded,
+    PlacementSetupGen, PlacementShape, PlacementShareSetup, PlacementShl, PlacementShlDim,
+    PlacementSlice, PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider,
+    PlacementXor, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
@@ -1732,6 +1733,33 @@ impl RepIndexAxisOp {
         RepTen {
             shares: [[z00, z10], [z11, z21], [z22, z02]],
         }
+    }
+}
+
+modelled!(PlacementIndex::index, ReplicatedPlacement, attributes[index: usize] (ReplicatedBitArray64) -> ReplicatedBitTensor, RepIndexOp);
+modelled!(PlacementIndex::index, ReplicatedPlacement, attributes[index: usize] (ReplicatedBitArray128) -> ReplicatedBitTensor, RepIndexOp);
+
+kernel! {
+    RepIndexOp,
+    [
+        (ReplicatedPlacement, (ReplicatedBitArray64) -> ReplicatedBitTensor => [hybrid] attributes[index] Self::kernel),
+        (ReplicatedPlacement, (ReplicatedBitArray128) -> ReplicatedBitTensor => [hybrid] attributes[index] Self::kernel),
+    ]
+}
+
+impl RepIndexOp {
+    fn kernel<S: Session, RepBitT, const N: usize>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        index: usize,
+        x: AbstractReplicatedBitArray<RepBitT, N>,
+    ) -> RepBitT
+    where
+        ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
+    {
+        // TODO until we have HostBitArrays we simply delegate to IndexAxis operations
+        let stacked_tensor = x.0;
+        plc.index_axis(sess, 0, index, &stacked_tensor)
     }
 }
 
