@@ -1,7 +1,7 @@
-use crate::computation::{FloatingpointAddOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType};
+use crate::computation::{FloatingpointAddOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType};
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementMul, PlacementOnes, PlacementSub, Session};
+use crate::kernels::{PlacementAdd, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementMul, PlacementOnes, PlacementSub, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -281,6 +281,40 @@ impl FloatingpointExpandDimsOp {
             FloatTensor::Host(v) => v,
         };
         let z = plc.expand_dims(sess, axis, &x);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointConcatOp);
+
+kernel! {
+    FloatingpointConcatOp,
+    [
+        (HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointConcatOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        x: FloatTensor<HostFloatT>,
+        y: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementConcatenate<S, HostFloatT, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let y = match y {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.concatenate(sess, axis, &x, &y);
         FloatTensor::Host(z)
     }
 }

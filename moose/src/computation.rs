@@ -807,6 +807,7 @@ operators![
     FloatingpointDiv,
     FloatingpointDot,
     FloatingpointOnes,
+    FloatingpointConcat,
     FloatingpointExpandDims,
     // Additive operators
     AdtReveal,
@@ -1307,6 +1308,12 @@ pub struct FloatingpointDotOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FloatingpointOnesOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointConcatOp {
+    pub sig: Signature,
+    pub axis: u32,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

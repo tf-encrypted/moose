@@ -1,9 +1,9 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTruncPr, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -751,4 +751,46 @@ impl ExpandDimsOp {
             }
         }
    }
+}
+
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Tensor, Tensor) -> Tensor, ConcatOp);
+
+kernel! {
+    ConcatOp, [
+        (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+    ]
+}
+
+impl ConcatOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: u32,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementConcatenate<S, Float32T, Float32T, Float32T>,
+        HostPlacement: PlacementConcatenate<S, Float64T, Float64T, Float64T>,
+    {
+        match (x, y) {
+            // (AbstractTensor::Fixed64(x), AbstractTensor::Fixed64(y)) => {
+            //     let result = plc.concatenate(sess, axis, &x, &y);
+            //     AbstractTensor::Fixed64(result)
+            // }
+            // (AbstractTensor::Fixed128(x), AbstractTensor::Fixed128(y)) => {
+            //     let result = plc.concatenate(sess, axis, &x, &y);
+            //     AbstractTensor::Fixed128(result)
+            // }
+            (AbstractTensor::Float32(x), AbstractTensor::Float32(y)) => {
+                let result = plc.concatenate(sess, axis, &x, &y);
+                AbstractTensor::Float32(result)
+            }
+            (AbstractTensor::Float64(x), AbstractTensor::Float64(y)) => {
+                let result = plc.concatenate(sess, axis, &x, &y);
+                AbstractTensor::Float64(result)
+            }
+            _ => unimplemented!("ConcatOp missing an implementation"), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
 }
