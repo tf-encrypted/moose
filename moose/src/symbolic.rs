@@ -205,19 +205,19 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
     }
 }
 
-impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<String>) -> Symbolic<String> {
-        match x {
-            Symbolic::Concrete(x) => Symbolic::Concrete(x),
-            Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                Symbolic::Symbolic(SymbolicHandle {
-                    op,
-                    plc: Placement::Host(self.clone()),
-                })
-            }
-        }
-    }
-}
+// impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
+//     fn place(&self, _sess: &SymbolicSession, x: Symbolic<String>) -> Symbolic<String> {
+//         match x {
+//             Symbolic::Concrete(x) => Symbolic::Concrete(x),
+//             Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+//                 Symbolic::Symbolic(SymbolicHandle {
+//                     op,
+//                     plc: Placement::Host(self.clone()),
+//                 })
+//             }
+//         }
+//     }
+// }
 
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).
