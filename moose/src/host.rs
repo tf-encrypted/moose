@@ -1608,14 +1608,6 @@ impl RingInjectOp {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedTensor<HostRingT>(pub HostRingT);
 
-// moose_type!(
-//     AbstractHostFixedTensor,
-//     [
-//         (HostRing64Tensor => HostFixed64Tensor),
-//         (HostRing128Tensor => HostFixed128Tensor),
-//     ]
-// );
-
 moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
 moose_type!(HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>);
 

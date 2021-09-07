@@ -3,7 +3,7 @@
 use crate::computation::{
     CastOp, FixedpointAddOp, FixedpointDecodeOp, FixedpointDotOp, FixedpointEncodeOp,
     FixedpointMeanOp, FixedpointMulOp, FixedpointSubOp, FixedpointSumOp, FixedpointTruncPrOp,
-    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement, SymbolicType,
+    HostPlacement, KnownType, Placed, Placement, ReplicatedPlacement,
 };
 use crate::error::Result;
 use crate::host::{
@@ -28,64 +28,14 @@ use std::convert::TryFrom;
 use std::num::Wrapping;
 use std::ops::Mul;
 
-moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedFixed64Tensor>);
-moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, ReplicatedFixed128Tensor>);
-
-// /// Fixed-point tensor backed by Z_{2^64} arithmetic
-// pub type Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedFixed64Tensor>;
-
-// impl SymbolicType for Fixed64Tensor {
-//     type Type = Symbolic<
-//         FixedTensor<
-//             <HostFixed64Tensor as SymbolicType>::Type,
-//             <ReplicatedFixed64Tensor as SymbolicType>::Type,
-//         >,
-//     >;
-// }
-
-// /// Fixed-point tensor backed by Z_{2^128} arithmetic
-// pub type Fixed128Tensor = FixedTensor<HostFixed128Tensor, ReplicatedFixed128Tensor>;
-
-// impl SymbolicType for Fixed128Tensor {
-//     type Type = Symbolic<
-//         FixedTensor<
-//             <HostFixed128Tensor as SymbolicType>::Type,
-//             <ReplicatedFixed128Tensor as SymbolicType>::Type,
-//         >,
-//     >;
-// }
-
-// impl<HostFixedT, RepFixedT> From<FixedTensor<HostFixedT, RepFixedT>>
-//     for Symbolic<FixedTensor<HostFixedT, RepFixedT>>
-// where
-//     HostFixedT: Placed<Placement = HostPlacement>,
-//     RepFixedT: Placed<Placement = ReplicatedPlacement>,
-// {
-//     fn from(x: FixedTensor<HostFixedT, RepFixedT>) -> Self {
-//         Symbolic::Concrete(x)
-//     }
-// }
-
-// impl<HostFixedT, RepFixedT> TryFrom<Symbolic<FixedTensor<HostFixedT, RepFixedT>>>
-//     for FixedTensor<HostFixedT, RepFixedT>
-// where
-//     HostFixedT: Placed<Placement = HostPlacement>,
-//     RepFixedT: Placed<Placement = ReplicatedPlacement>,
-// {
-//     type Error = ();
-//     fn try_from(v: Symbolic<FixedTensor<HostFixedT, RepFixedT>>) -> std::result::Result<Self, ()> {
-//         match v {
-//             Symbolic::Concrete(x) => Ok(x),
-//             _ => Err(()),
-//         }
-//     }
-// }
-
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub enum FixedTensor<HostFixedT, RepFixedT> {
     Host(HostFixedT),
     Replicated(RepFixedT),
 }
+
+moose_type!(Fixed64Tensor = FixedTensor<HostFixed64Tensor, ReplicatedFixed64Tensor>);
+moose_type!(Fixed128Tensor = FixedTensor<HostFixed128Tensor, ReplicatedFixed128Tensor>);
 
 impl<HostFixedT, RepFixedT> Placed for FixedTensor<HostFixedT, RepFixedT>
 where

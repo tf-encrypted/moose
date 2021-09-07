@@ -27,15 +27,6 @@ pub struct AbstractAdditiveTensor<HostRingT> {
     pub shares: [HostRingT; 2],
 }
 
-// moose_type!(
-//     AbstractAdditiveTensor,
-//     [
-//         (HostRing64Tensor => AdditiveRing64Tensor),
-//         (HostRing128Tensor => AdditiveRing128Tensor),
-//         (HostBitTensor => AdditiveBitTensor),
-//     ]
-// );
-
 moose_type!(AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>);
 moose_type!(AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>);
 moose_type!(AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>);
@@ -81,13 +72,6 @@ pub struct AbstractAdditiveShape<S> {
     pub shapes: [S; 2],
 }
 
-// moose_type!(
-//     AbstractAdditiveShape,
-//     [
-//         (HostShape => AdditiveShape),
-//     ]
-// );
-
 moose_type!(AdditiveShape = AbstractAdditiveShape<HostShape>);
 
 impl<S> Placed for AbstractAdditiveShape<S>
@@ -123,10 +107,6 @@ impl ShapeOp {
         }
     }
 }
-
-// Type aliases to shorten out impl in replicated protocols
-type RepTen<T> = AbstractReplicatedRingTensor<T>;
-type AdtTen<T> = AbstractAdditiveTensor<T>;
 
 modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing64Tensor, AdtFillOp);
 modelled!(PlacementFill::fill, AdditivePlacement, attributes[value: Constant] (HostShape) -> AdditiveRing128Tensor, AdtFillOp);
