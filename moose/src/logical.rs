@@ -1,9 +1,9 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTruncPr, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -708,4 +708,47 @@ impl OnesOp {
     //     let result = plc.ones(sess, &shape);
     //     AbstractTensor::Fixed128(result)
     // }
+}
+
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Tensor) -> Tensor, ExpandDimsOp);
+
+kernel! {
+    ExpandDimsOp,
+    [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+    ]
+}
+
+impl ExpandDimsOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Vec<u32>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementExpandDims<S, Float32T, Float32T>,
+        HostPlacement: PlacementExpandDims<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                unimplemented!()
+                // let z = plc.expand_dims(sess, axis, &x);
+                // AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                unimplemented!()
+                // let z = plc.expand_dims(sess, axis, &x);
+                // AbstractTensor::Fixed128(z)
+            }
+            AbstractTensor::Float32(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                AbstractTensor::Float32(z)
+            }
+            AbstractTensor::Float64(x) => {
+                let z = plc.expand_dims(sess, axis, &x);
+                AbstractTensor::Float64(z)
+            }
+        }
+   }
 }

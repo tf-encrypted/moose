@@ -1,7 +1,7 @@
-use crate::computation::{FloatingpointAddOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType};
+use crate::computation::{FloatingpointAddOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType};
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementDiv, PlacementDot, PlacementMul, PlacementOnes, PlacementSub, Session};
+use crate::kernels::{PlacementAdd, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementMul, PlacementOnes, PlacementSub, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -252,6 +252,35 @@ impl FloatingpointOnesOp {
         HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(HostFloat64Tensor)>,
     {
         let z = plc.ones(sess, &shape);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointExpandDimsOp);
+modelled!(PlacementExpandDims::expand_dims, HostPlacement, attributes[axis: Vec<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointExpandDimsOp);
+
+kernel! {
+    FloatingpointExpandDimsOp,
+    [
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointExpandDimsOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Vec<u32>,
+        x: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementExpandDims<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let z = plc.expand_dims(sess, axis, &x);
         FloatTensor::Host(z)
     }
 }
