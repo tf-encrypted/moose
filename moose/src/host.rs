@@ -4,7 +4,7 @@ use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
-use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -30,6 +30,15 @@ impl Placed for String {
     fn placement(&self) -> Result<Self::Placement> {
         // TODO we need a wrapper for strings that contains placement info
         unimplemented!()
+    }
+}
+
+impl<S: Session> PlacementPlace<S, String> for HostPlacement {
+    fn place(&self, _sess: &S, x: String) -> String {
+        match x.placement() {
+            Ok(Placement::Host(place)) if &place == self => x,
+            _ => unimplemented!("Not yet able to place strings"),
+        }
     }
 }
 
@@ -101,30 +110,6 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
     }
 }
 
-// TODO(Morten) derive this
-// impl PlacementPlace<SymbolicSession, Symbolic<HostShape>> for HostPlacement {
-//     fn place(&self, _sess: &SymbolicSession, x: Symbolic<HostShape>) -> Symbolic<HostShape> {
-//         match x.placement() {
-//             Ok(place) if &place == self => x,
-//             _ => {
-//                 match x {
-//                     Symbolic::Concrete(shape) => {
-//                         // TODO insert Place ops?
-//                         Symbolic::Concrete(HostShape(shape.0, self.clone()))
-//                     }
-//                     Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-//                         // TODO insert `Place` ops here?
-//                         Symbolic::Symbolic(SymbolicHandle {
-//                             op,
-//                             plc: self.clone(),
-//                         })
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
-
 /// One slice for slicing op
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SliceInfoElem {
@@ -180,58 +165,6 @@ impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => HostTensor(x.0, self.clone()),
-        }
-    }
-}
-
-// // TODO derive this
-// /// This implementation is required to do the `plc.place(sess, x)`
-// impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlacement {
-//     fn place(
-//         &self,
-//         _sess: &SymbolicSession,
-//         x: Symbolic<HostTensor<T>>,
-//     ) -> Symbolic<HostTensor<T>> {
-//         match x {
-//             Symbolic::Concrete(x) => Symbolic::Concrete(x),
-//             Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-//                 Symbolic::Symbolic(SymbolicHandle {
-//                     op,
-//                     plc: self.clone(),
-//                 })
-//             }
-//         }
-//     }
-// }
-
-impl<S: Session, T> PlacementPlace<S, Symbolic<T>> for HostPlacement
-where
-    T: Placed<Placement = HostPlacement>,
-    HostPlacement: PlacementPlace<S, T>,
-{
-    fn place(
-        &self,
-        sess: &S,
-        x: Symbolic<T>,
-    ) -> Symbolic<T> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                match x {
-                    Symbolic::Concrete(x) => {
-                        // TODO insert Place ops?
-                        let x = self.place(sess, x);
-                        Symbolic::Concrete(x)
-                    }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                        // TODO insert `Place` ops here?
-                        Symbolic::Symbolic(SymbolicHandle {
-                            op,
-                            plc: self.clone(),
-                        })
-                    }
-                }
-            }
         }
     }
 }
@@ -1723,33 +1656,6 @@ where
         }
     }
 }
-
-// impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractHostRingTensor<T>>> for HostPlacement {
-//     fn place(
-//         &self,
-//         _sess: &SymbolicSession,
-//         x: Symbolic<AbstractHostRingTensor<T>>,
-//     ) -> Symbolic<AbstractHostRingTensor<T>> {
-//         match x.placement() {
-//             Ok(place) if &place == self => x,
-//             _ => {
-//                 match x {
-//                     Symbolic::Concrete(x) => {
-//                         // TODO insert Place ops?
-//                         Symbolic::Concrete(AbstractHostRingTensor(x.0, self.clone()))
-//                     }
-//                     Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-//                         // TODO insert `Place` ops here?
-//                         Symbolic::Symbolic(SymbolicHandle {
-//                             op,
-//                             plc: self.clone(),
-//                         })
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
 
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing64Tensor, RingFillOp);
 modelled!(PlacementFill::fill, HostPlacement, attributes[value: Constant] (HostShape) -> HostRing128Tensor, RingFillOp);

@@ -37,6 +37,38 @@ where
     }
 }
 
+impl<S: Session, T> PlacementPlace<S, Symbolic<T>> for HostPlacement
+where
+    T: Placed<Placement = HostPlacement>,
+    HostPlacement: PlacementPlace<S, T>,
+{
+    fn place(
+        &self,
+        sess: &S,
+        x: Symbolic<T>,
+    ) -> Symbolic<T> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(x) => {
+                        // TODO insert Place ops?
+                        let x = self.place(sess, x);
+                        Symbolic::Concrete(x)
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub struct SymbolicSession {
     pub strategy: Box<dyn SymbolicStrategy>,
     pub ops: Arc<RwLock<Vec<Operation>>>, // TODO use HashMap so we can do some consistency checks on the fly?
@@ -204,20 +236,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
         }
     }
 }
-
-// impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
-//     fn place(&self, _sess: &SymbolicSession, x: Symbolic<String>) -> Symbolic<String> {
-//         match x {
-//             Symbolic::Concrete(x) => Symbolic::Concrete(x),
-//             Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-//                 Symbolic::Symbolic(SymbolicHandle {
-//                     op,
-//                     plc: Placement::Host(self.clone()),
-//                 })
-//             }
-//         }
-//     }
-// }
 
 pub struct SymbolicExecutor {
     // Placeholder for the future state we want to keep (symbolic strategy pointer, replicated setup cache, etc).

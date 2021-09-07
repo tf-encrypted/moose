@@ -1762,15 +1762,6 @@ impl Compile<Kernel> for ConstantOp {
     }
 }
 
-impl<S: Session> PlacementPlace<S, String> for HostPlacement {
-    fn place(&self, _sess: &S, x: String) -> String {
-        match x.placement() {
-            Ok(Placement::Host(place)) if &place == self => x,
-            _ => unimplemented!("Not yet able to place strings"),
-        }
-    }
-}
-
 macro_rules! constant_kernels {
     ($($val:ident),+) => {
         $(

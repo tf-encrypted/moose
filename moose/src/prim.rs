@@ -1,9 +1,9 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::Result;
-use crate::kernels::{NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session, SyncSession};
+use crate::kernels::{NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session};
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
-use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;
@@ -36,30 +36,6 @@ impl<S: Session> PlacementPlace<S, Seed> for HostPlacement {
         }
     }
 }
-
-// TODO derive
-// impl PlacementPlace<SymbolicSession, Symbolic<Seed>> for HostPlacement {
-//     fn place(&self, _sess: &SymbolicSession, x: Symbolic<Seed>) -> Symbolic<Seed> {
-//         match x.placement() {
-//             Ok(place) if &place == self => x,
-//             _ => {
-//                 match x {
-//                     Symbolic::Concrete(seed) => {
-//                         // TODO insert Place ops?
-//                         Symbolic::Concrete(Seed(seed.0, self.clone()))
-//                     }
-//                     Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-//                         // TODO insert `Place` ops here?
-//                         Symbolic::Symbolic(SymbolicHandle {
-//                             op,
-//                             plc: self.clone(),
-//                         })
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct RawPrfKey(pub [u8; 16]);
@@ -95,30 +71,6 @@ impl<S: Session> PlacementPlace<S, PrfKey> for HostPlacement {
         }
     }
 }
-
-// TODO derive
-// impl PlacementPlace<SymbolicSession, Symbolic<PrfKey>> for HostPlacement {
-//     fn place(&self, _sess: &SymbolicSession, x: Symbolic<PrfKey>) -> Symbolic<PrfKey> {
-//         match x.placement() {
-//             Ok(place) if &place == self => x,
-//             _ => {
-//                 match x {
-//                     Symbolic::Concrete(key) => {
-//                         // TODO insert Place ops?
-//                         Symbolic::Concrete(PrfKey(key.0, self.clone()))
-//                     }
-//                     Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-//                         // TODO insert `Place` ops here?
-//                         Symbolic::Symbolic(SymbolicHandle {
-//                             op,
-//                             plc: self.clone(),
-//                         })
-//                     }
-//                 }
-//             }
-//         }
-//     }
-// }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct SyncKey([u8; TAG_BYTES]);
