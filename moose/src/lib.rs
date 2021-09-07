@@ -1347,7 +1347,6 @@ macro_rules! modelled_alias {
 }
 
 macro_rules! moose_type {
-
     // Use this for unparameterised types that are already defined
     ($atomic:ident) => {
         impl crate::computation::SymbolicType for $atomic {

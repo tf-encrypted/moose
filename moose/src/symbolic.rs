@@ -1,6 +1,6 @@
 use crate::computation::{
-    Computation, KnownType, Operation, Operator, Placed, Placement,
-    ReplicatedPlacement, SymbolicValue,
+    Computation, KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement,
+    SymbolicValue,
 };
 use crate::error::Error;
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
@@ -43,11 +43,7 @@ where
     P: PlacementPlace<S, T>,
     P: Clone + PartialEq,
 {
-    fn place(
-        &self,
-        sess: &S,
-        x: Symbolic<T>,
-    ) -> Symbolic<T> {
+    fn place(&self, sess: &S, x: Symbolic<T>) -> Symbolic<T> {
         match x.placement() {
             Ok(ref place) if place == self => x,
             _ => {

@@ -1,6 +1,8 @@
 use crate::computation::{HostPlacement, Placed, PrimDeriveSeedOp, PrimPrfKeyGenOp, TAG_BYTES};
 use crate::error::Result;
-use crate::kernels::{NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session};
+use crate::kernels::{
+    NullaryKernel, PlacementDeriveSeed, PlacementKeyGen, PlacementPlace, RuntimeSession, Session,
+};
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
 use crate::symbolic::Symbolic;

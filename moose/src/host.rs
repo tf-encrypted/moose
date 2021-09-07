@@ -1641,11 +1641,7 @@ impl<S: Session, T> PlacementPlace<S, AbstractHostRingTensor<T>> for HostPlaceme
 where
     AbstractHostRingTensor<T>: Placed<Placement = HostPlacement>,
 {
-    fn place(
-        &self,
-        _sess: &S,
-        x: AbstractHostRingTensor<T>,
-    ) -> AbstractHostRingTensor<T> {
+    fn place(&self, _sess: &S, x: AbstractHostRingTensor<T>) -> AbstractHostRingTensor<T> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
