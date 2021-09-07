@@ -2,7 +2,7 @@
 use crate::computation::{
     AdditivePlacement, AdtAddOp, AdtFillOp, AdtMulOp, AdtRevealOp, AdtShlOp, AdtSubOp,
     CanonicalType, Constant, HostPlacement, KnownType, Placed, RepToAdtOp, ReplicatedPlacement,
-    ShapeOp, SymbolicType,
+    ShapeOp,
 };
 use crate::error::Result;
 use crate::host::{HostBitTensor, HostRing128Tensor, HostRing64Tensor, HostShape, RingSize};
@@ -17,35 +17,18 @@ use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
 };
-use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
-use std::convert::TryFrom;
+use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractAdditiveTensor<R> {
-    pub shares: [R; 2],
+pub struct AbstractAdditiveTensor<HostRingT> {
+    pub shares: [HostRingT; 2],
 }
 
-pub type AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>;
-
-pub type AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>;
-
-pub type AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>;
-
-impl SymbolicType for AdditiveRing64Tensor {
-    type Type = Symbolic<AbstractAdditiveTensor<<HostRing64Tensor as SymbolicType>::Type>>;
-}
-
-impl SymbolicType for AdditiveRing128Tensor {
-    type Type = Symbolic<AbstractAdditiveTensor<<HostRing128Tensor as SymbolicType>::Type>>;
-}
-
-impl SymbolicType for AdditiveBitTensor {
-    type Type = Symbolic<AbstractAdditiveTensor<<HostBitTensor as SymbolicType>::Type>>;
-}
-
-pub(crate) type AdtTen<T> = AbstractAdditiveTensor<T>;
+moose_type!(AdditiveRing64Tensor = AbstractAdditiveTensor<HostRing64Tensor>);
+moose_type!(AdditiveRing128Tensor = AbstractAdditiveTensor<HostRing128Tensor>);
+moose_type!(AdditiveBitTensor = AbstractAdditiveTensor<HostBitTensor>);
 
 impl<R> Placed for AbstractAdditiveTensor<R>
 where
@@ -61,78 +44,6 @@ where
 
         let owners = [owner0, owner1];
         Ok(AdditivePlacement { owners })
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractAdditiveShape<S> {
-    pub shapes: [S; 2],
-}
-
-pub type AdditiveShape = AbstractAdditiveShape<HostShape>;
-
-impl SymbolicType for AdditiveShape {
-    type Type = Symbolic<AbstractAdditiveShape<<HostShape as SymbolicType>::Type>>;
-}
-
-impl<S> Placed for AbstractAdditiveShape<S>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    type Placement = AdditivePlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        let AbstractAdditiveShape { shapes: [s0, s1] } = self;
-
-        let owner0 = s0.placement()?.owner;
-        let owner1 = s1.placement()?.owner;
-
-        let owners = [owner0, owner1];
-        Ok(AdditivePlacement { owners })
-    }
-}
-
-impl<R> From<AbstractAdditiveTensor<R>> for Symbolic<AbstractAdditiveTensor<R>>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractAdditiveTensor<R>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<S> From<AbstractAdditiveShape<S>> for Symbolic<AbstractAdditiveShape<S>>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractAdditiveShape<S>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<R> TryFrom<Symbolic<AbstractAdditiveTensor<R>>> for AbstractAdditiveTensor<R>
-where
-    R: Placed<Placement = HostPlacement>,
-{
-    type Error = crate::error::Error;
-    fn try_from(v: Symbolic<AbstractAdditiveTensor<R>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(crate::error::Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<S> TryFrom<Symbolic<AbstractAdditiveShape<S>>> for AbstractAdditiveShape<S>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    type Error = crate::error::Error;
-    fn try_from(v: Symbolic<AbstractAdditiveShape<S>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(crate::error::Error::Unexpected), // TODO err message
-        }
     }
 }
 
@@ -152,6 +63,30 @@ where
                 }
             }
         }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractAdditiveShape<S> {
+    pub shapes: [S; 2],
+}
+
+moose_type!(AdditiveShape = AbstractAdditiveShape<HostShape>);
+
+impl<S> Placed for AbstractAdditiveShape<S>
+where
+    S: Placed<Placement = HostPlacement>,
+{
+    type Placement = AdditivePlacement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        let AbstractAdditiveShape { shapes: [s0, s1] } = self;
+
+        let owner0 = s0.placement()?.owner;
+        let owner1 = s1.placement()?.owner;
+
+        let owners = [owner0, owner1];
+        Ok(AdditivePlacement { owners })
     }
 }
 
@@ -643,8 +578,6 @@ where
         (r_shared, r_top_shared, r_msb_shared)
     }
 }
-
-use std::convert::TryInto;
 
 impl<S: Session, R>
     PlacementTruncPrProvider<S, AbstractAdditiveTensor<R>, AbstractAdditiveTensor<R>>

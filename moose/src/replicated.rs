@@ -1,5 +1,5 @@
 //! Placements backed by replicated secret sharing
-use crate::additive::{AdditiveRing128Tensor, AdditiveRing64Tensor, AdtTen};
+use crate::additive::{AbstractAdditiveTensor, AdditiveRing128Tensor, AdditiveRing64Tensor};
 use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::host::{
@@ -17,183 +17,18 @@ pub struct AbstractReplicatedRingTensor<R> {
     pub shares: [[R; 2]; 3],
 }
 
-/// Replicated tensor over Z_{2^64}.
-pub type ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>;
+moose_type!(ReplicatedRing64Tensor = AbstractReplicatedRingTensor<HostRing64Tensor>);
+moose_type!(ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>);
+moose_type!(ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>);
 
-impl SymbolicType for ReplicatedRing64Tensor {
-    type Type = Symbolic<AbstractReplicatedRingTensor<<HostRing64Tensor as SymbolicType>::Type>>;
-}
-
-/// Replicated tensor over Z_{2^128}.
-pub type ReplicatedRing128Tensor = AbstractReplicatedRingTensor<HostRing128Tensor>;
-
-impl SymbolicType for ReplicatedRing128Tensor {
-    type Type = Symbolic<AbstractReplicatedRingTensor<<HostRing128Tensor as SymbolicType>::Type>>;
-}
-
-/// Replicated tensor over Z_2.
-pub type ReplicatedBitTensor = AbstractReplicatedRingTensor<HostBitTensor>;
-
-impl SymbolicType for ReplicatedBitTensor {
-    type Type = Symbolic<AbstractReplicatedRingTensor<<HostBitTensor as SymbolicType>::Type>>;
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
-pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
-
-pub type ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>;
-
-impl SymbolicType for ReplicatedFixed64Tensor {
-    type Type =
-        Symbolic<AbstractReplicatedFixedTensor<<ReplicatedRing64Tensor as SymbolicType>::Type>>;
-}
-
-pub type ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>;
-
-impl SymbolicType for ReplicatedFixed128Tensor {
-    type Type =
-        Symbolic<AbstractReplicatedFixedTensor<<ReplicatedRing128Tensor as SymbolicType>::Type>>;
-}
-
-impl<HostRingT> From<AbstractReplicatedRingTensor<HostRingT>>
-    for Symbolic<AbstractReplicatedRingTensor<HostRingT>>
+impl<HostTenT> Placed for AbstractReplicatedRingTensor<HostTenT>
 where
-    HostRingT: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractReplicatedRingTensor<HostRingT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<RepRingT> From<AbstractReplicatedFixedTensor<RepRingT>>
-    for Symbolic<AbstractReplicatedFixedTensor<RepRingT>>
-where
-    RepRingT: Placed<Placement = ReplicatedPlacement>,
-{
-    fn from(x: AbstractReplicatedFixedTensor<RepRingT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<HostKeyT> TryFrom<Symbolic<AbstractReplicatedSetup<HostKeyT>>>
-    for AbstractReplicatedSetup<HostKeyT>
-where
-    HostKeyT: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedSetup<HostKeyT>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<HostShapeT> TryFrom<Symbolic<AbstractReplicatedShape<HostShapeT>>>
-    for AbstractReplicatedShape<HostShapeT>
-where
-    HostShapeT: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractReplicatedShape<HostShapeT>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<HostRingT> TryFrom<Symbolic<AbstractReplicatedRingTensor<HostRingT>>>
-    for AbstractReplicatedRingTensor<HostRingT>
-where
-    HostRingT: Placed<Placement = HostPlacement>,
-{
-    type Error = Error;
-    fn try_from(
-        v: Symbolic<AbstractReplicatedRingTensor<HostRingT>>,
-    ) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<RepRingT> TryFrom<Symbolic<AbstractReplicatedFixedTensor<RepRingT>>>
-    for AbstractReplicatedFixedTensor<RepRingT>
-where
-    RepRingT: Placed<Placement = ReplicatedPlacement>,
-{
-    type Error = Error;
-    fn try_from(
-        v: Symbolic<AbstractReplicatedFixedTensor<RepRingT>>,
-    ) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<K> From<AbstractReplicatedSetup<K>> for Symbolic<AbstractReplicatedSetup<K>>
-where
-    K: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractReplicatedSetup<K>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<S> From<AbstractReplicatedShape<S>> for Symbolic<AbstractReplicatedShape<S>>
-where
-    S: Placed<Placement = HostPlacement>,
-{
-    fn from(x: AbstractReplicatedShape<S>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
-    type Placement = RepRingT::Placement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        self.0.placement()
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedSetup<K> {
-    pub keys: [[K; 2]; 3],
-}
-
-pub type ReplicatedSetup = AbstractReplicatedSetup<PrfKey>;
-
-impl SymbolicType for ReplicatedSetup {
-    type Type = Symbolic<AbstractReplicatedSetup<<PrfKey as SymbolicType>::Type>>;
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedShape<S> {
-    pub shapes: [S; 3],
-}
-
-pub type ReplicatedShape = AbstractReplicatedShape<HostShape>;
-
-impl SymbolicType for ReplicatedShape {
-    type Type = Symbolic<AbstractReplicatedShape<<HostShape as SymbolicType>::Type>>;
-}
-
-/// Type aliases to shorten out impl in replicated protocols
-type RepTen<T> = AbstractReplicatedRingTensor<T>;
-
-impl<R> Placed for RepTen<R>
-where
-    R: Placed<Placement = HostPlacement>,
+    HostTenT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
     fn placement(&self) -> Result<Self::Placement> {
-        let RepTen {
+        let AbstractReplicatedRingTensor {
             shares: [[x00, x10], [x11, x21], [x22, x02]],
         } = self;
 
@@ -212,6 +47,53 @@ where
         }
     }
 }
+
+impl<S: Session, R> PlacementPlace<S, AbstractReplicatedRingTensor<R>> for ReplicatedPlacement
+where
+    RepTen<R>: Placed<Placement = ReplicatedPlacement>,
+    HostPlacement: PlacementPlace<S, R>,
+{
+    fn place(&self, sess: &S, x: RepTen<R>) -> RepTen<R> {
+        match x.placement() {
+            Ok(place) if &place == self => x,
+            _ => {
+                let RepTen {
+                    shares: [[x00, x10], [x11, x21], [x22, x02]],
+                } = x;
+
+                let (player0, player1, player2) = self.host_placements();
+                RepTen {
+                    shares: [
+                        [player0.place(sess, x00), player0.place(sess, x10)],
+                        [player1.place(sess, x11), player1.place(sess, x21)],
+                        [player2.place(sess, x22), player2.place(sess, x02)],
+                    ],
+                }
+            }
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+pub struct AbstractReplicatedFixedTensor<RepRingT>(pub RepRingT);
+
+moose_type!(ReplicatedFixed64Tensor = AbstractReplicatedFixedTensor<ReplicatedRing64Tensor>);
+moose_type!(ReplicatedFixed128Tensor = AbstractReplicatedFixedTensor<ReplicatedRing128Tensor>);
+
+impl<RepRingT: Placed> Placed for AbstractReplicatedFixedTensor<RepRingT> {
+    type Placement = RepRingT::Placement;
+
+    fn placement(&self) -> Result<Self::Placement> {
+        self.0.placement()
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractReplicatedSetup<K> {
+    pub keys: [[K; 2]; 3],
+}
+
+moose_type!(ReplicatedSetup = AbstractReplicatedSetup<PrfKey>);
 
 impl<K> Placed for AbstractReplicatedSetup<K>
 where
@@ -240,9 +122,16 @@ where
     }
 }
 
-impl<S> Placed for AbstractReplicatedShape<S>
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AbstractReplicatedShape<S> {
+    pub shapes: [S; 3],
+}
+
+moose_type!(ReplicatedShape = AbstractReplicatedShape<HostShape>);
+
+impl<KeyT> Placed for AbstractReplicatedShape<KeyT>
 where
-    S: Placed<Placement = HostPlacement>,
+    KeyT: Placed<Placement = HostPlacement>,
 {
     type Placement = ReplicatedPlacement;
 
@@ -260,31 +149,9 @@ where
     }
 }
 
-impl<S: Session, R> PlacementPlace<S, RepTen<R>> for ReplicatedPlacement
-where
-    RepTen<R>: Placed<Placement = ReplicatedPlacement>,
-    HostPlacement: PlacementPlace<S, R>,
-{
-    fn place(&self, sess: &S, x: RepTen<R>) -> RepTen<R> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                let RepTen {
-                    shares: [[x00, x10], [x11, x21], [x22, x02]],
-                } = x;
-
-                let (player0, player1, player2) = self.host_placements();
-                RepTen {
-                    shares: [
-                        [player0.place(sess, x00), player0.place(sess, x10)],
-                        [player1.place(sess, x11), player1.place(sess, x21)],
-                        [player2.place(sess, x22), player2.place(sess, x02)],
-                    ],
-                }
-            }
-        }
-    }
-}
+// Type aliases to shorten out impl in replicated protocols
+type RepTen<T> = AbstractReplicatedRingTensor<T>;
+type AdtTen<T> = AbstractAdditiveTensor<T>;
 
 modelled!(PlacementSetupGen::gen_setup, ReplicatedPlacement, () -> ReplicatedSetup, RepSetupOp);
 
@@ -1271,53 +1138,6 @@ impl RepTruncPrOp {
         let y_adt = adt.trunc_pr(sess, amount as usize, &provider, &x_adt);
         rep.adt_to_rep(sess, &y_adt.into())
     }
-}
-
-use crate::host::AbstractHostRingTensor;
-use crate::symbolic::Symbolic;
-
-impl<T> CanonicalType for AbstractHostRingTensor<T> {
-    type Type = AbstractHostRingTensor<T>;
-}
-
-impl<T> CanonicalType for Symbolic<AbstractHostRingTensor<T>> {
-    type Type = AbstractHostRingTensor<T>;
-}
-
-impl<KeyT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
-    for Symbolic<AbstractReplicatedSetup<KeyT>>
-{
-    type Type = AbstractReplicatedSetup<<KeyT as CanonicalType>::Type>;
-}
-
-impl<ShapeT: CanonicalType> CanonicalType for AbstractReplicatedShape<ShapeT> {
-    type Type = AbstractReplicatedShape<<ShapeT as CanonicalType>::Type>;
-}
-
-impl<ShapeT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
-    for Symbolic<AbstractReplicatedShape<ShapeT>>
-{
-    type Type = AbstractReplicatedShape<<ShapeT as CanonicalType>::Type>;
-}
-
-impl<RingT: CanonicalType> CanonicalType for AdtTen<RingT> {
-    type Type = AdtTen<<RingT as CanonicalType>::Type>;
-}
-
-impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
-    for Symbolic<AdtTen<RingT>>
-{
-    type Type = AdtTen<<RingT as CanonicalType>::Type>;
-}
-
-impl<RingT: CanonicalType> CanonicalType for RepTen<RingT> {
-    type Type = RepTen<<RingT as CanonicalType>::Type>;
-}
-
-impl<RingT: CanonicalType + Placed<Placement = HostPlacement>> CanonicalType
-    for Symbolic<RepTen<RingT>>
-{
-    type Type = RepTen<<RingT as CanonicalType>::Type>;
 }
 
 modelled!(PlacementAdtToRep::adt_to_rep, ReplicatedPlacement, (AdditiveRing64Tensor) -> ReplicatedRing64Tensor, AdtToRepOp);
