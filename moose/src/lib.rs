@@ -1350,7 +1350,7 @@ macro_rules! moose_type {
     // Use this for unparameterised types that are already defined
     ($atomic:ident) => {
         impl crate::computation::SymbolicType for $atomic {
-            type Type = Symbolic<$atomic>;
+            type Type = crate::symbolic::Symbolic<$atomic>;
         }
 
         impl crate::computation::CanonicalType for $atomic {
@@ -1367,7 +1367,7 @@ macro_rules! moose_type {
         pub type $combined = $t;
 
         impl crate::computation::SymbolicType for $combined {
-            type Type = Symbolic<$combined>;
+            type Type = crate::symbolic::Symbolic<$combined>;
         }
 
         impl crate::computation::CanonicalType for $combined {
@@ -1383,57 +1383,51 @@ macro_rules! moose_type {
     ($combined:ident = $outer:ident<$inner:ident>) => {
         pub type $combined = $outer<$inner>;
 
-        // TODO if we're able to implement everything without using $outer<Inner>
-        // then the macro could change to something like
-        // moose_type!(AbstractAdditiveTensor<HostRing64Tensor> = AdditiveRing64Tensior)
-
         impl crate::computation::SymbolicType for $outer<$inner> {
-            type Type = Symbolic<$outer<<$inner as crate::computation::SymbolicType>::Type>>;
+            type Type = crate::symbolic::Symbolic<
+                $outer<<$inner as crate::computation::SymbolicType>::Type>,
+            >;
         }
 
         impl crate::computation::CanonicalType for $outer<$inner> {
             type Type = $outer<<$inner as crate::computation::CanonicalType>::Type>;
         }
 
-        impl crate::computation::CanonicalType for $outer<Symbolic<$inner>> {
+        impl crate::computation::CanonicalType
+            for $outer<<$inner as crate::computation::SymbolicType>::Type>
+        {
             type Type = $outer<<$inner as crate::computation::CanonicalType>::Type>;
         }
 
-        impl crate::computation::CanonicalType for Symbolic<$outer<Symbolic<$inner>>> {
+        impl crate::computation::CanonicalType
+            for crate::symbolic::Symbolic<
+                $outer<<$inner as crate::computation::SymbolicType>::Type>,
+            >
+        {
             type Type = $outer<<$inner as crate::computation::CanonicalType>::Type>;
         }
-
-        // impl CanonicalType for Symbolic<$outer<
-        //     <$inner as SymbolicCanonicalType>::Type
-        // >>
-        // {
-        //     type Type = $outer<
-        // }
 
         // The kernel macro uses this to map (partially) concrete outputs to symbolic values
         impl From<$outer<<$inner as crate::computation::SymbolicType>::Type>>
             for <$combined as crate::computation::SymbolicType>::Type
         {
             fn from(x: $outer<<$inner as crate::computation::SymbolicType>::Type>) -> Self {
-                Symbolic::Concrete(x)
+                crate::symbolic::Symbolic::Concrete(x)
             }
         }
 
         // The kernel macros uses this to determine whether to invoke kernels, and
         // if so, to map symbolic values to (partially) concrete inputs
-        // impl TryFrom<Symbolic<$outer<
-        //     <$inner as SymbolicType>::Type
-        // >>>
         impl TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $outer<<$inner as crate::computation::SymbolicType>::Type>
         {
             type Error = crate::error::Error;
 
             fn try_from(
-                v: Symbolic<$outer<<$inner as crate::computation::SymbolicType>::Type>>,
+                v: <$combined as crate::computation::SymbolicType>::Type,
             ) -> crate::error::Result<Self> {
                 match v {
-                    Symbolic::Concrete(x) => Ok(x),
+                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
                     _ => Err(crate::error::Error::Unexpected), // TODO err message
                 }
             }
@@ -1444,12 +1438,8 @@ macro_rules! moose_type {
     ($combined:ident = $outer:ident<$inner1:ident, $inner2:ident>) => {
         pub type $combined = $outer<$inner1, $inner2>;
 
-        // TODO if we're able to implement everything without using $outer<Inner>
-        // then the macro could change to something like
-        // moose_type!(AbstractAdditiveTensor<HostRing64Tensor> = AdditiveRing64Tensior)
-
         impl crate::computation::SymbolicType for $outer<$inner1, $inner2> {
-            type Type = Symbolic<
+            type Type = crate::symbolic::Symbolic<
                 $outer<
                     <$inner1 as crate::computation::SymbolicType>::Type,
                     <$inner2 as crate::computation::SymbolicType>::Type,
@@ -1464,15 +1454,11 @@ macro_rules! moose_type {
             >;
         }
 
-        impl crate::computation::CanonicalType for $outer<Symbolic<$inner1>, Symbolic<$inner2>> {
-            type Type = $outer<
-                <$inner1 as crate::computation::CanonicalType>::Type,
-                <$inner2 as crate::computation::CanonicalType>::Type,
-            >;
-        }
-
         impl crate::computation::CanonicalType
-            for Symbolic<$outer<Symbolic<$inner1>, Symbolic<$inner2>>>
+            for $outer<
+                <$inner1 as crate::computation::SymbolicType>::Type,
+                <$inner2 as crate::computation::SymbolicType>::Type,
+            >
         {
             type Type = $outer<
                 <$inner1 as crate::computation::CanonicalType>::Type,
@@ -1480,12 +1466,19 @@ macro_rules! moose_type {
             >;
         }
 
-        // impl CanonicalType for Symbolic<$outer<
-        //     <$inner as SymbolicCanonicalType>::Type
-        // >>
-        // {
-        //     type Type = $outer<
-        // }
+        impl crate::computation::CanonicalType
+            for crate::symbolic::Symbolic<
+                $outer<
+                    <$inner1 as crate::computation::SymbolicType>::Type,
+                    <$inner2 as crate::computation::SymbolicType>::Type,
+                >,
+            >
+        {
+            type Type = $outer<
+                <$inner1 as crate::computation::CanonicalType>::Type,
+                <$inner2 as crate::computation::CanonicalType>::Type,
+            >;
+        }
 
         // The kernel macro uses this to map (partially) concrete outputs to symbolic values
         impl
@@ -1502,15 +1495,12 @@ macro_rules! moose_type {
                     <$inner2 as crate::computation::SymbolicType>::Type,
                 >,
             ) -> Self {
-                Symbolic::Concrete(x)
+                crate::symbolic::Symbolic::Concrete(x)
             }
         }
 
         // The kernel macros uses this to determine whether to invoke kernels, and
         // if so, to map symbolic values to (partially) concrete inputs
-        // impl TryFrom<Symbolic<$outer<
-        //     <$inner as SymbolicType>::Type
-        // >>>
         impl TryFrom<<$combined as crate::computation::SymbolicType>::Type>
             for $outer<
                 <$inner1 as crate::computation::SymbolicType>::Type,
@@ -1520,15 +1510,10 @@ macro_rules! moose_type {
             type Error = crate::error::Error;
 
             fn try_from(
-                v: Symbolic<
-                    $outer<
-                        <$inner1 as crate::computation::SymbolicType>::Type,
-                        <$inner2 as crate::computation::SymbolicType>::Type,
-                    >,
-                >,
+                v: <$combined as crate::computation::SymbolicType>::Type,
             ) -> crate::error::Result<Self> {
                 match v {
-                    Symbolic::Concrete(x) => Ok(x),
+                    crate::symbolic::Symbolic::Concrete(x) => Ok(x),
                     _ => Err(crate::error::Error::Unexpected), // TODO err message
                 }
             }

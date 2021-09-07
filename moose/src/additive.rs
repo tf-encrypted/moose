@@ -17,7 +17,6 @@ use crate::replicated::{
     AbstractReplicatedRingTensor, ReplicatedBitTensor, ReplicatedRing128Tensor,
     ReplicatedRing64Tensor,
 };
-use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};

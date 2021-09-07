@@ -5,7 +5,6 @@ use crate::kernels::{
 };
 use crate::prng::AesRng;
 use crate::prng::{RngSeed, SEED_SIZE};
-use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use sodiumoxide::crypto::generichash;
 use std::convert::TryFrom;

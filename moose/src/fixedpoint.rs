@@ -19,7 +19,6 @@ use crate::kernels::{
 use crate::replicated::{
     AbstractReplicatedFixedTensor, ReplicatedFixed128Tensor, ReplicatedFixed64Tensor,
 };
-use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
 use num_traits::{One, Zero};

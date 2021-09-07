@@ -21,7 +21,6 @@ use crate::kernels::{
     PlacementTruncPr, PlacementTruncPrProvider, PlacementXor, PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
-use crate::symbolic::Symbolic;
 use macros::with_context;
 use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
