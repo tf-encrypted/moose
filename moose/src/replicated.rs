@@ -2652,8 +2652,8 @@ mod tests {
 
                 let x_shared = rep.share(&sess, &setup, &xr);
 
-                let diag = rep.index_axis(&sess, 0, 1, &x_shared);
-                let opened_index_axis = alice.reveal(&sess, &diag);
+                let index_axis = rep.index_axis(&sess, 0, 1, &x_shared);
+                let opened_index_axis = alice.reveal(&sess, &index_axis);
                 assert_eq!(opened_index_axis, $tt::from_raw_plc(exp, alice.clone()))
             }
         };
@@ -2678,6 +2678,48 @@ mod tests {
 
     fn test_rep_index_axis_ring128() {
         rep_index_axis_ring128()
+    }
+
+    macro_rules! index_op_test {
+        ($func_name:ident, $rt:ty, $tt:ident, $s:expr) => {
+            fn $func_name() {
+                let x = array![[1 as $rt, 2], [3, 4]].into_dyn();
+                let exp = array![1 as $rt, 2].into_dyn();
+
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let xr = HostBitTensor::from_raw_plc(x, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &xr);
+                let x_shared_bit_array =
+                    AbstractReplicatedBitArray::<ReplicatedBitTensor, $s>(x_shared);
+
+                let index = rep.index(&sess, 0, &x_shared_bit_array);
+                let opened_index = alice.reveal(&sess, &index);
+                assert_eq!(opened_index, $tt::from_raw_plc(exp, alice.clone()))
+            }
+        };
+    }
+
+    index_op_test!(rep_index_bit64, u8, HostBitTensor, 64);
+    index_op_test!(rep_index_bit128, u8, HostBitTensor, 128);
+
+    #[test]
+    fn test_rep_index_bit64() {
+        rep_index_bit64()
+    }
+
+    #[test]
+    fn test_rep_index_bit128() {
+        rep_index_bit128()
     }
 
     macro_rules! rep_add_test {
