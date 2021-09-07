@@ -1,5 +1,5 @@
 use crate::computation::{
-    Computation, HostPlacement, KnownType, Operation, Operator, Placed, Placement,
+    Computation, KnownType, Operation, Operator, Placed, Placement,
     ReplicatedPlacement, SymbolicValue,
 };
 use crate::error::Error;
@@ -37,10 +37,11 @@ where
     }
 }
 
-impl<S: Session, T> PlacementPlace<S, Symbolic<T>> for HostPlacement
+impl<S: Session, T, P> PlacementPlace<S, Symbolic<T>> for P
 where
-    T: Placed<Placement = HostPlacement>,
-    HostPlacement: PlacementPlace<S, T>,
+    T: Placed<Placement = P>,
+    P: PlacementPlace<S, T>,
+    P: Clone + PartialEq,
 {
     fn place(
         &self,
@@ -48,11 +49,11 @@ where
         x: Symbolic<T>,
     ) -> Symbolic<T> {
         match x.placement() {
-            Ok(place) if &place == self => x,
+            Ok(ref place) if place == self => x,
             _ => {
                 match x {
                     Symbolic::Concrete(x) => {
-                        // TODO insert Place ops?
+                        // TODO should we indirectly insert Place ops here?
                         let x = self.place(sess, x);
                         Symbolic::Concrete(x)
                     }
