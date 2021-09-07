@@ -137,6 +137,7 @@ impl Session for SyncSession {
             FloatingpointMul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointDot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -702,6 +703,7 @@ impl Compile<SyncKernel> for Operator {
             FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointAtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
@@ -819,6 +821,7 @@ impl Compile<AsyncKernel> for Operator {
             FloatingpointMul(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointDiv(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointDot(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointAtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
@@ -2248,11 +2251,15 @@ impl Compile<AsyncKernel> for SaveOp {
     }
 }
 
-for_all_values! {( $($value:ty),* ) => (
-    $(
-        modelled!(PlacementLoad::load, HostPlacement, (String, String) -> $value, LoadOp);
-    )*
-)}
+// for_all_values! {( $($value:ty),* ) => (
+//     $(
+//         modelled!(PlacementLoad::load, HostPlacement, (String, String) -> $value, LoadOp);
+//     )*
+// )}
+
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> HostFloat64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> Float64Tensor, LoadOp);
+modelled!(PlacementLoad::load, HostPlacement, (String, String) -> crate::logical::Tensor, LoadOp);
 
 kernel! {
     LoadOp, [
@@ -2276,7 +2283,8 @@ kernel! {
         (HostPlacement, (String, String) -> HostUint64Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostFixed64Tensor => [runtime] Self::kernel),
         (HostPlacement, (String, String) -> HostFixed128Tensor => [runtime] Self::kernel),
-        (HostPlacement, (String, String) -> crate::logical::Tensor => [runtime] Self::kernel),
+        (HostPlacement, (String, String) -> Float64Tensor => [hybrid] Self::float_kernel),
+        (HostPlacement, (String, String) -> crate::logical::Tensor => [hybrid] Self::logical_kernel),
     ]
 }
 

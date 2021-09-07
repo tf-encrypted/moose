@@ -806,6 +806,7 @@ operators![
     FloatingpointMul,
     FloatingpointDiv,
     FloatingpointDot,
+    FloatingpointAtLeast2D,
     FloatingpointOnes,
     FloatingpointConcat,
     FloatingpointExpandDims,
@@ -1305,6 +1306,12 @@ pub struct FloatingpointDivOp {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FloatingpointDotOp {
     pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointAtLeast2DOp {
+    pub sig: Signature,
+    pub to_column_vector: bool,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]

@@ -1,15 +1,7 @@
-use crate::computation::{
-    FloatingpointAddOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp,
-    FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMulOp, FloatingpointOnesOp,
-    FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, Placed, Placement,
-    SymbolicType,
-};
+use crate::computation::{FloatingpointAddOp, FloatingpointAtLeast2DOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, LoadOp, Placed, Placement, SymbolicType};
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{
-    PlacementAdd, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims,
-    PlacementInverse, PlacementMul, PlacementOnes, PlacementSub, PlacementTranspose, Session,
-};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementInverse, PlacementLoad, PlacementMul, PlacementOnes, PlacementSub, PlacementTranspose, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -71,8 +63,35 @@ where
 // modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointMeanOp);
 // modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointMeanOp);
 
-// modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, HostAtLeast2DOp);
-// modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, HostAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, FloatingpointAtLeast2DOp);
+modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, FloatingpointAtLeast2DOp);
+
+kernel! {
+    FloatingpointAtLeast2DOp,
+    [
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[to_column_vector] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[to_column_vector] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointAtLeast2DOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        to_column_vector: bool,
+        x: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementAtLeast2D<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.at_least_2d(sess, to_column_vector, &x);
+        FloatTensor::Host(z)
+    }
+}
 
 modelled!(PlacementAdd::add, HostPlacement, (Float32Tensor, Float32Tensor) -> Float32Tensor, FloatingpointAddOp);
 modelled!(PlacementAdd::add, HostPlacement, (Float64Tensor, Float64Tensor) -> Float64Tensor, FloatingpointAddOp);
@@ -377,6 +396,25 @@ impl FloatingpointInverseOp {
             FloatTensor::Host(v) => v,
         };
         let z = plc.inverse(sess, &x);
+        FloatTensor::Host(z)
+    }
+}
+
+impl LoadOp {
+    pub fn float_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: cs!(String),
+        query: cs!(String),
+    ) -> FloatTensor<cs!(HostFloat64Tensor)>
+    where
+        String: KnownType<S>,
+        HostFloat32Tensor: KnownType<S>,
+        HostFloat64Tensor: KnownType<S>,
+        HostPlacement: PlacementLoad<S, cs!(String), cs!(String), cs!(HostFloat64Tensor)>,
+
+    {
+        let z = plc.load(sess, &key, &query);
         FloatTensor::Host(z)
     }
 }

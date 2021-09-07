@@ -229,6 +229,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FloatingpointMul(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FloatingpointDiv(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FloatingpointDot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            FloatingpointAtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)(sess, operands),

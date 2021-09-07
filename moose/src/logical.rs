@@ -1,18 +1,9 @@
-use crate::computation::{
-    AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp,
-    KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp,
-    SumOp, SymbolicType, TransposeOp,
-};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp, KnownType, LoadOp, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType, TransposeOp};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{
-    PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv,
-    PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode,
-    PlacementInverse, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum,
-    PlacementTranspose, PlacementTruncPr, Session,
-};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTranspose, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -512,27 +503,28 @@ impl AtLeast2DOp {
 where
         // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
         // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementAtLeast2D<S, Float32T, Float32T>,
-        // HostPlacement: PlacementAtLeast2D<S, Float64T, Float64T>,
+        HostPlacement: PlacementAtLeast2D<S, Float32T, Float32T>,
+        HostPlacement: PlacementAtLeast2D<S, Float64T, Float64T>,
     {
         match x {
-            // AbstractTensor::Fixed64(x) => {
-            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
-            //     AbstractTensor::Fixed64(z)
-            // }
-            // AbstractTensor::Fixed128(x) => {
-            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
-            //     AbstractTensor::Fixed128(z)
-            // }
-            // AbstractTensor::Float32(x) => {
-            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
-            //     AbstractTensor::Float32(z)
-            // }
-            // AbstractTensor::Float64(x) => {
-            //     let z = plc.at_least_2d(sess, to_column_vector, &x);
-            //     AbstractTensor::Float64(z)
-            // }
-            _ => unimplemented!("Fill other match arms please"),
+            AbstractTensor::Fixed64(x) => {
+                unimplemented!()
+                // let z = plc.at_least_2d(sess, to_column_vector, &x);
+                // AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                unimplemented!()
+                // let z = plc.at_least_2d(sess, to_column_vector, &x);
+                // AbstractTensor::Fixed128(z)
+            }
+            AbstractTensor::Float32(x) => {
+                let z = plc.at_least_2d(sess, to_column_vector, &x);
+                AbstractTensor::Float32(z)
+            }
+            AbstractTensor::Float64(x) => {
+                let z = plc.at_least_2d(sess, to_column_vector, &x);
+                AbstractTensor::Float64(z)
+            }
         }
     }
 }
@@ -890,5 +882,30 @@ impl InverseOp {
                 AbstractTensor::Float64(z)
             }
         }
+    }
+}
+
+impl LoadOp {
+    pub fn logical_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: cs!(String),
+        query: cs!(String),
+    ) -> AbstractTensor<
+        cs!(Fixed64Tensor),
+        cs!(Fixed128Tensor),
+        cs!(Float32Tensor),
+        cs!(Float64Tensor),
+    >
+    where
+        String: KnownType<S>,
+        Fixed64Tensor: KnownType<S>,
+        Fixed128Tensor: KnownType<S>,
+        Float32Tensor: KnownType<S>,
+        Float64Tensor: KnownType<S>,
+        HostPlacement: PlacementLoad<S, cs!(String), cs!(String), cs!(Float64Tensor)>,
+    {
+        let z = plc.load(sess, &key, &query);
+        AbstractTensor::Float64(z)
     }
 }

@@ -1305,6 +1305,7 @@ impl ToTextual for Operator {
             FloatingpointMul(op) => unimplemented!(), // TODO
             FloatingpointDiv(op) => unimplemented!(), // TODO
             FloatingpointDot(op) => unimplemented!(), // TODO
+            FloatingpointAtLeast2D(op) => unimplemented!(), // TODO
             FloatingpointOnes(op) => unimplemented!(), // TODO
             FloatingpointConcat(op) => unimplemented!(), // TODO
             FloatingpointExpandDims(op) => unimplemented!(), // TODO
