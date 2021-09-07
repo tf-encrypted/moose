@@ -1,7 +1,15 @@
-use crate::computation::{FloatingpointAddOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType};
+use crate::computation::{
+    FloatingpointAddOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp,
+    FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMulOp, FloatingpointOnesOp,
+    FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, Placed, Placement,
+    SymbolicType,
+};
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementMul, PlacementOnes, PlacementSub, Session};
+use crate::kernels::{
+    PlacementAdd, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims,
+    PlacementInverse, PlacementMul, PlacementOnes, PlacementSub, PlacementTranspose, Session,
+};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -315,6 +323,60 @@ impl FloatingpointConcatOp {
         };
 
         let z = plc.concatenate(sess, axis, &x, &y);
+        FloatTensor::Host(z)
+    }
+}
+
+// modelled!(PlacementTranspose::transpose, HostPlacement, (Float32Tensor) -> Float32Tensor, FloatingpointTransposeOp);
+modelled!(PlacementTranspose::transpose, HostPlacement, (Float64Tensor) -> Float64Tensor, FloatingpointTransposeOp);
+
+kernel! {
+    FloatingpointTransposeOp, [
+        // (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl FloatingpointTransposeOp {
+    pub fn kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementTranspose<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let z = plc.transpose(sess, &x);
+        FloatTensor::Host(z)
+    }
+}
+
+// modelled!(PlacementInverse::inverse, HostPlacement, (Float32Tensor) -> Float32Tensor, FloatingpointInverseOp);
+modelled!(PlacementInverse::inverse, HostPlacement, (Float64Tensor) -> Float64Tensor, FloatingpointInverseOp);
+
+kernel! {
+    FloatingpointInverseOp, [
+        // (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] Self::kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl FloatingpointInverseOp {
+    pub fn kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementInverse<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        let z = plc.inverse(sess, &x);
         FloatTensor::Host(z)
     }
 }

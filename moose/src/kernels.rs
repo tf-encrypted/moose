@@ -140,6 +140,8 @@ impl Session for SyncSession {
             FloatingpointOnes(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointConcat(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostDiag(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -164,16 +166,16 @@ impl Session for SyncSession {
             Slice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Ones(op) => DispatchKernel::compile(&op, plc)(self, operands),
             ExpandDims(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Concat(op) => unimplemented!("Not done yet: {:?}", op),
-            Transpose(op) => unimplemented!("Not done yet: {:?}", op),
-            Dot(op) => unimplemented!("Not done yet: {:?}", op),
-            Inverse(op) => unimplemented!("Not done yet: {:?}", op),
-            Add(op) => unimplemented!("Not done yet: {:?}", op),
-            Sub(op) => unimplemented!("Not done yet: {:?}", op),
-            Mul(op) => unimplemented!("Not done yet: {:?}", op),
+            Concat(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Transpose(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Dot(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Inverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Add(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Sub(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            Mul(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Mean(op) => DispatchKernel::compile(&op, plc)(self, operands),
             Sum(op) => DispatchKernel::compile(&op, plc)(self, operands),
-            Div(op) => unimplemented!("Not done yet: {:?}", op),
+            Div(op) => DispatchKernel::compile(&op, plc)(self, operands),
         }
     }
 
@@ -703,6 +705,8 @@ impl Compile<SyncKernel> for Operator {
             FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
             AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
             Slice(op) => unimplemented!("Not done yet: {:?}", op),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
@@ -818,6 +822,8 @@ impl Compile<AsyncKernel> for Operator {
             FloatingpointOnes(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointConcat(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointExpandDims(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)

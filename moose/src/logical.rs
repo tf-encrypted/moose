@@ -1,9 +1,18 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
+use crate::computation::{
+    AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp,
+    KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp,
+    SumOp, SymbolicType, TransposeOp,
+};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTruncPr, Session};
+use crate::kernels::{
+    PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv,
+    PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode,
+    PlacementInverse, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum,
+    PlacementTranspose, PlacementTruncPr, Session,
+};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -679,7 +688,12 @@ impl OnesOp {
         sess: &S,
         plc: &HostPlacement,
         shape: cs!(HostShape),
-    ) -> AbstractTensor<cs!(Fixed64Tensor), cs!(Fixed128Tensor), cs!(Float32Tensor), cs!(Float64Tensor)>
+    ) -> AbstractTensor<
+        cs!(Fixed64Tensor),
+        cs!(Fixed128Tensor),
+        cs!(Float32Tensor),
+        cs!(Float64Tensor),
+    >
     where
         HostShape: KnownType<S>,
         Fixed64Tensor: KnownType<S>,
@@ -750,7 +764,7 @@ impl ExpandDimsOp {
                 AbstractTensor::Float64(z)
             }
         }
-   }
+    }
 }
 
 modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (Tensor, Tensor) -> Tensor, ConcatOp);
@@ -791,6 +805,90 @@ impl ConcatOp {
                 AbstractTensor::Float64(result)
             }
             _ => unimplemented!("ConcatOp missing an implementation"), // TOD(Morten) would be nice to catch statically; perhaps if custom kernel?!
+        }
+    }
+}
+
+modelled!(PlacementTranspose::transpose, HostPlacement, (Tensor) -> Tensor, TransposeOp);
+
+kernel! {
+    TransposeOp, [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl TransposeOp {
+    pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        // HostPlacement: PlacementTranspose<S, Float32T, Float32T>,
+        HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                unimplemented!()
+                // let z = plc.transpose(sess, &x);
+                // AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                unimplemented!()
+                // let z = plc.transpose(sess, &x);
+                // AbstractTensor::Fixed128(z)
+            }
+            AbstractTensor::Float32(x) => {
+                unimplemented!()
+                // let z = plc.transpose(sess, &x);
+                // AbstractTensor::Float32(z)
+            }
+            AbstractTensor::Float64(x) => {
+                let z = plc.transpose(sess, &x);
+                AbstractTensor::Float64(z)
+            }
+        }
+    }
+}
+
+modelled!(PlacementInverse::inverse, HostPlacement, (Tensor) -> Tensor, InverseOp);
+
+kernel! {
+    InverseOp, [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] Self::kernel),
+    ]
+}
+
+impl InverseOp {
+    pub fn kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        // HostPlacement: PlacementInverse<S, Float32T, Float32T>,
+        HostPlacement: PlacementInverse<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                unimplemented!()
+                // let z = plc.inverse(sess, &x);
+                // AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                unimplemented!()
+                // let z = plc.inverse(sess, &x);
+                // AbstractTensor::Fixed128(z)
+            }
+            AbstractTensor::Float32(x) => {
+                unimplemented!()
+                // let z = plc.inverse(sess, &x);
+                // AbstractTensor::Float32(z)
+            }
+            AbstractTensor::Float64(x) => {
+                let z = plc.inverse(sess, &x);
+                AbstractTensor::Float64(z)
+            }
         }
     }
 }
