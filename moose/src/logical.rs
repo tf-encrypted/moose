@@ -1,16 +1,9 @@
-use crate::computation::{
-    AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, Placed,
-    Placement, ReplicatedPlacement, Signature, SubOp, SymbolicType,
-};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{
-    PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot,
-    PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul,
-    PlacementSub, PlacementTruncPr, Session,
-};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementSub, PlacementSum, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -598,6 +591,72 @@ impl MeanOp {
             }
             // TODO(Morten) the fact that we are limited on replicated
             // placements  would be nice to know at (Moose) compile time
+            _ => unimplemented!(),
+        }
+    }
+}
+
+kernel! {
+    SumOp, [
+        (HostPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::host_kernel),
+        (ReplicatedPlacement, (Tensor) -> Tensor => [hybrid] attributes[axis] Self::rep_kernel),
+    ]
+}
+
+impl SumOp {
+    fn host_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        HostPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
+        HostPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
+        // HostPlacement: PlacementSum<S, Float32T, Float32T>,
+        // HostPlacement: PlacementSum<S, Float64T, Float64T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let z = plc.sum(sess, axis, &x);
+                AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                let z = plc.sum(sess, axis, &x);
+                AbstractTensor::Fixed128(z)
+            }
+            AbstractTensor::Float32(x) => {
+                unimplemented!()
+                // let z = plc.sum(sess, axis, &x);
+                // AbstractTensor::Float32(z)
+            }
+            AbstractTensor::Float64(x) => {
+                unimplemented!()
+                // let z = plc.sum(sess, axis, &x);
+                // AbstractTensor::Float64(z)
+            }
+        }
+    }
+
+    fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &ReplicatedPlacement,
+        axis: Option<u32>,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
+    where
+        ReplicatedPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
+        ReplicatedPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                let z = plc.sum(sess, axis, &x);
+                AbstractTensor::Fixed64(z)
+            }
+            AbstractTensor::Fixed128(x) => {
+                let z = plc.sum(sess, axis, &x);
+                AbstractTensor::Fixed128(z)
+            }
             _ => unimplemented!(),
         }
     }
