@@ -203,7 +203,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Identity(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             // the following operators are not supported by design (for now, at least)
-            Send(_) | Receive(_) => Err(Error::UnimplementedSymbolicOperator(format!("{:?}", op))),
+            Send(_) | Receive(_) => Err(Error::UnimplementedOperator(format!("{:?}", op))),
         }
     }
 }

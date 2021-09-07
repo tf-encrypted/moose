@@ -161,11 +161,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -210,11 +206,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -268,11 +260,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -321,11 +309,7 @@ macro_rules! concrete_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -376,11 +360,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -432,11 +412,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -491,11 +467,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
@@ -553,11 +525,7 @@ macro_rules! symbolic_dispatch_kernel {
                             }))
                         }
                     )+
-                    _ => Err(crate::error::Error::MisplacedKernel{
-                        kernel: format!("{:?}", self),
-                        signature: format!("{:?}", self.sig),
-                        placement: format!("{:?}", plc),
-                    })
+                    _ => Err(crate::error::Error::UnimplementedOperator(format!("{:?}", self)))
                 }
             }
         }
