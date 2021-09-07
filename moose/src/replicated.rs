@@ -28,8 +28,12 @@ use serde::{Deserialize, Serialize};
 use std::convert::{TryFrom, TryInto};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct AbstractReplicatedRingTensor<R> {
-    pub shares: [[R; 2]; 3],
+pub struct AbstractReplicatedRingTensor<HostRingT> {
+    pub shares: [[HostRingT; 2]; 3],
+}
+
+impl<HostRingT: RingSize> RingSize for AbstractReplicatedRingTensor<HostRingT> {
+    const SIZE: usize = HostRingT::SIZE;
 }
 
 /// Replicated tensor over Z_{2^64}.
@@ -1880,46 +1884,58 @@ impl RepShlDimOp {
     }
 }
 
-kernel! {
-    RepMsbOp,
-    [
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
-        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
-    ]
-}
-
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepMsbOp);
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepMsbOp);
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepMsbOp);
 modelled!(PlacementMsb::msb, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepMsbOp);
 
+kernel! {
+    RepMsbOp,
+    [
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit64_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit128_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedRing64Tensor => [hybrid] Self::ring_kernel),
+        (ReplicatedPlacement,  (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedRing128Tensor => [hybrid] Self::ring_kernel),
+    ]
+}
+
 impl RepMsbOp {
-    fn bit_kernel<S: Session, SetupT, RingT>(
+    fn bit64_kernel<S: Session, SetupT, RepBitT>(
         sess: &S,
         rep: &ReplicatedPlacement,
         setup: SetupT,
-        x: RepTen<RingT>,
-    ) -> st!(RepTen<HostBitTensor>)
+        x: cs!(ReplicatedRing64Tensor),
+    ) -> RepBitT
     where
-        RingT: RingSize,
-
-        RepTen<RingT>: CanonicalType,
-        <RepTen<RingT> as CanonicalType>::Type: KnownType<S>,
-
-        RepTen<RingT>: Into<st!(RepTen<RingT>)>,
-
-        HostBitTensor: KnownType<S>,
-        RepTen<HostBitTensor>: KnownType<S>,
-
+        ReplicatedRing64Tensor: KnownType<S>,
+        ReplicatedBitArray64: KnownType<S>,
         ReplicatedPlacement:
-            PlacementBitDecSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<HostBitTensor>)>,
-        ReplicatedPlacement:
-            PlacementIndexAxis<S, st!(RepTen<HostBitTensor>), st!(RepTen<HostBitTensor>)>,
+            PlacementBitDecSetup<S, SetupT, cs!(ReplicatedRing64Tensor), cs!(ReplicatedBitArray64)>,
+        ReplicatedPlacement: PlacementIndex<S, cs!(ReplicatedBitArray64), RepBitT>,
     {
-        let bits = rep.bit_decompose(sess, &setup, &x.into());
-        rep.index_axis(sess, 0, RingT::SIZE - 1, &bits)
+        let bits = rep.bit_decompose(sess, &setup, &x);
+        rep.index(sess, ReplicatedRing64Tensor::SIZE - 1, &bits)
+    }
+
+    fn bit128_kernel<S: Session, SetupT, RepBitT>(
+        sess: &S,
+        rep: &ReplicatedPlacement,
+        setup: SetupT,
+        x: cs!(ReplicatedRing128Tensor),
+    ) -> RepBitT
+    where
+        ReplicatedRing128Tensor: KnownType<S>,
+        ReplicatedBitArray128: KnownType<S>,
+        ReplicatedPlacement: PlacementBitDecSetup<
+            S,
+            SetupT,
+            cs!(ReplicatedRing128Tensor),
+            cs!(ReplicatedBitArray128),
+        >,
+        ReplicatedPlacement: PlacementIndex<S, cs!(ReplicatedBitArray128), RepBitT>,
+    {
+        let bits = rep.bit_decompose(sess, &setup, &x);
+        rep.index(sess, ReplicatedRing128Tensor::SIZE - 1, &bits)
     }
 
     fn ring_kernel<S: Session, SetupT, RingT>(
