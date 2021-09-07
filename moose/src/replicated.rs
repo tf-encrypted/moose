@@ -2632,6 +2632,54 @@ mod tests {
         rep_diag_ring128()
     }
 
+    macro_rules! index_axis_op_test {
+        ($func_name:ident, $rt:ty, $tt:ident) => {
+            fn $func_name() {
+                let x = array![[[1 as $rt, 2], [3, 4]], [[4, 5], [6, 7]]].into_dyn();
+                let exp = array![[4 as $rt, 5], [6, 7]].into_dyn();
+
+                let alice = HostPlacement {
+                    owner: "alice".into(),
+                };
+                let rep = ReplicatedPlacement {
+                    owners: ["alice".into(), "bob".into(), "carole".into()],
+                };
+
+                let xr = $tt::from_raw_plc(x, alice.clone());
+
+                let sess = SyncSession::default();
+                let setup = rep.gen_setup(&sess);
+
+                let x_shared = rep.share(&sess, &setup, &xr);
+
+                let diag = rep.index_axis(&sess, 0, 1, &x_shared);
+                let opened_index_axis = alice.reveal(&sess, &diag);
+                assert_eq!(opened_index_axis, $tt::from_raw_plc(exp, alice.clone()))
+            }
+        };
+    }
+
+    index_axis_op_test!(rep_index_axis_bit, u8, HostBitTensor);
+    index_axis_op_test!(rep_index_axis_ring64, u64, AbstractHostRingTensor);
+    index_axis_op_test!(rep_index_axis_ring128, u128, AbstractHostRingTensor);
+
+    #[test]
+    fn test_rep_index_axis_bit() {
+        rep_index_axis_bit()
+    }
+
+    #[test]
+
+    fn test_rep_index_axis_ring64() {
+        rep_index_axis_ring64()
+    }
+
+    #[test]
+
+    fn test_rep_index_axis_ring128() {
+        rep_index_axis_ring128()
+    }
+
     macro_rules! rep_add_test {
         ($func_name:ident, $tt: ident) => {
             fn $func_name(xs: ArrayD<$tt>, ys: ArrayD<$tt>, zs: ArrayD<$tt>) {
