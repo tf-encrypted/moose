@@ -1,12 +1,7 @@
-use crate::computation::{
-    FloatingpointAddOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointMulOp,
-    FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType,
-};
+use crate::computation::{FloatingpointAddOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, HostPlacement, KnownType, Placed, Placement, SymbolicType};
 use crate::error::Result;
-use crate::host::{HostFloat32Tensor, HostFloat64Tensor};
-use crate::kernels::{
-    PlacementAdd, PlacementDiv, PlacementDot, PlacementMul, PlacementSub, Session,
-};
+use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
+use crate::kernels::{PlacementAdd, PlacementDiv, PlacementDot, PlacementMul, PlacementOnes, PlacementSub, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -232,6 +227,31 @@ impl FloatingpointDotOp {
         };
 
         let z = plc.dot(sess, &x, &y);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Float64Tensor, FloatingpointOnesOp);
+
+kernel! {
+    FloatingpointOnesOp,
+    [
+        (HostPlacement, (HostShape) -> Float64Tensor => [hybrid] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointOnesOp {
+    fn float_host_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        shape: cs!(HostShape),
+    ) -> FloatTensor<cs!(HostFloat64Tensor)>
+    where
+        HostShape: KnownType<S>,
+        HostFloat64Tensor: KnownType<S>,
+        HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(HostFloat64Tensor)>,
+    {
+        let z = plc.ones(sess, &shape);
         FloatTensor::Host(z)
     }
 }

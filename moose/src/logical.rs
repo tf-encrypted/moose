@@ -1,9 +1,9 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, DivOp, DotOp, HostPlacement, KnownType, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementSub, PlacementSum, PlacementTruncPr, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementDiv, PlacementDot, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -660,4 +660,52 @@ impl SumOp {
             _ => unimplemented!(),
         }
     }
+}
+
+modelled!(PlacementOnes::ones, HostPlacement, (HostShape) -> Tensor, OnesOp);
+// TODO(lvorona): figure out modelled op for the replicated tensor
+// modelled!(PlacementOnes::ones, ReplicatedPlacement, (HostShape) -> Tensor, OnesOp);
+
+kernel! {
+    OnesOp,
+    [
+        (HostPlacement, (HostShape) -> Tensor => [hybrid] Self::host_kernel),
+        // (ReplicatedPlacement, (HostShape) -> Tensor => [hybrid] Self::rep_kernel),
+    ]
+}
+
+impl OnesOp {
+    fn host_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        shape: cs!(HostShape),
+    ) -> AbstractTensor<cs!(Fixed64Tensor), cs!(Fixed128Tensor), cs!(Float32Tensor), cs!(Float64Tensor)>
+    where
+        HostShape: KnownType<S>,
+        Fixed64Tensor: KnownType<S>,
+        Fixed128Tensor: KnownType<S>,
+        Float32Tensor: KnownType<S>,
+        Float64Tensor: KnownType<S>,
+        HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Float64Tensor)>,
+    {
+        let result = plc.ones(sess, &shape);
+        AbstractTensor::Float64(result)
+    }
+
+    // fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+    //     sess: &S,
+    //     plc: &ReplicatedPlacement,
+    //     shape: cs!(HostShape),
+    // ) -> AbstractTensor<cs!(Fixed64Tensor), cs!(Fixed128Tensor), cs!(Float32Tensor), cs!(Float64Tensor)>
+    // where
+    //     HostShape: KnownType<S>,
+    //     Fixed64Tensor: KnownType<S>,
+    //     Fixed128Tensor: KnownType<S>,
+    //     Float32Tensor: KnownType<S>,
+    //     Float64Tensor: KnownType<S>,
+    //     HostPlacement: PlacementOnes<S, cs!(HostShape), cs!(Fixed128Tensor)>,
+    // {
+    //     let result = plc.ones(sess, &shape);
+    //     AbstractTensor::Fixed128(result)
+    // }
 }

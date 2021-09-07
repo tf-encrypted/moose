@@ -806,6 +806,7 @@ operators![
     FloatingpointMul,
     FloatingpointDiv,
     FloatingpointDot,
+    FloatingpointOnes,
     // Additive operators
     AdtReveal,
     AdtFill,
@@ -1299,6 +1300,11 @@ pub struct FloatingpointDivOp {
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct FloatingpointDotOp {
+    pub sig: Signature,
+}
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointOnesOp {
     pub sig: Signature,
 }
 
