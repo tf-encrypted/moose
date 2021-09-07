@@ -14,11 +14,12 @@ use crate::host::{
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
     PlacementBitDecSetup, PlacementDaBitProvider, PlacementDeriveSeed, PlacementDiag, PlacementDot,
-    PlacementDotSetup, PlacementFill, PlacementIndex, PlacementKeyGen, PlacementMean, PlacementMsb,
-    PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt, PlacementReveal,
-    PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen, PlacementShape,
-    PlacementShareSetup, PlacementShl, PlacementShlDim, PlacementSlice, PlacementSub, PlacementSum,
-    PlacementTruncPr, PlacementTruncPrProvider, PlacementXor, PlacementZeros, Session, Tensor,
+    PlacementDotSetup, PlacementFill, PlacementIndexAxis, PlacementKeyGen, PlacementMean,
+    PlacementMsb, PlacementMul, PlacementMulSetup, PlacementPlace, PlacementRepToAdt,
+    PlacementReveal, PlacementRingInject, PlacementSampleUniformSeeded, PlacementSetupGen,
+    PlacementShape, PlacementShareSetup, PlacementShl, PlacementShlDim, PlacementSlice,
+    PlacementSub, PlacementSum, PlacementTruncPr, PlacementTruncPrProvider, PlacementXor,
+    PlacementZeros, Session, Tensor,
 };
 use crate::prim::{PrfKey, Seed, SyncKey};
 use macros::with_context;
@@ -1690,9 +1691,9 @@ impl RepShlOp {
     }
 }
 
-modelled!(PlacementIndex::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepIndexAxisOp);
-modelled!(PlacementIndex::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepIndexAxisOp);
-modelled!(PlacementIndex::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, RepIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedRing64Tensor) -> ReplicatedRing64Tensor, RepIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedRing128Tensor) -> ReplicatedRing128Tensor, RepIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, ReplicatedPlacement, attributes[axis: usize, index: usize] (ReplicatedBitTensor) -> ReplicatedBitTensor, RepIndexAxisOp);
 
 kernel! {
     RepIndexAxisOp,
@@ -1712,7 +1713,7 @@ impl RepIndexAxisOp {
         x: RepTen<RingT>,
     ) -> RepTen<RingT>
     where
-        HostPlacement: PlacementIndex<S, RingT, RingT>,
+        HostPlacement: PlacementIndexAxis<S, RingT, RingT>,
     {
         let (player0, player1, player2) = plc.host_placements();
         let RepTen {
@@ -1887,7 +1888,7 @@ impl RepMsbOp {
         ReplicatedPlacement:
             PlacementBitDecSetup<S, SetupT, st!(RepTen<RingT>), st!(RepTen<HostBitTensor>)>,
         ReplicatedPlacement:
-            PlacementIndex<S, st!(RepTen<HostBitTensor>), st!(RepTen<HostBitTensor>)>,
+            PlacementIndexAxis<S, st!(RepTen<HostBitTensor>), st!(RepTen<HostBitTensor>)>,
     {
         let bits = rep.bit_decompose(sess, &setup, &x.into());
         rep.index_axis(sess, 0, RingT::SIZE - 1, &bits)
@@ -2169,7 +2170,7 @@ impl RepBitDecOp {
         HostPlacement: PlacementFill<S, ShapeT, BitT>,
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitT, ReplicatedBitT>,
         ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitT>,
-        ReplicatedPlacement: PlacementIndex<S, ReplicatedBitT, ReplicatedBitT>,
+        ReplicatedPlacement: PlacementIndexAxis<S, ReplicatedBitT, ReplicatedBitT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let RepTen {
@@ -2224,7 +2225,7 @@ impl RepBitDecOp {
         HostPlacement: PlacementFill<S, ShapeT, HostBitT>,
         ReplicatedPlacement: PlacementShareSetup<S, SetupT, HostBitT, RepBitT>,
         ReplicatedPlacement: BinaryAdder<S, SetupT, RepBitT>,
-        ReplicatedPlacement: PlacementIndex<S, RepBitT, RepBitT>,
+        ReplicatedPlacement: PlacementIndexAxis<S, RepBitT, RepBitT>,
     {
         let (player0, player1, player2) = rep.host_placements();
         let RepTen {

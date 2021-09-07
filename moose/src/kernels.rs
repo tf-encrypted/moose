@@ -600,7 +600,7 @@ pub trait PlacementDiag<S: Session, T, O> {
     fn diag(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementIndex<S: Session, T, O> {
+pub trait PlacementIndexAxis<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
 }
 

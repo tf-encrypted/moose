@@ -12,7 +12,7 @@ use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDiag, PlacementDot,
-    PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace,
+    PlacementFill, PlacementIndexAxis, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace,
     PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded,
     PlacementShl, PlacementShlDim, PlacementShr, PlacementSlice, PlacementSub, PlacementSum,
     PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
@@ -682,9 +682,9 @@ impl HostDiagOp {
     }
 }
 
-modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing64Tensor) -> HostRing64Tensor, HostIndexAxisOp);
-modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing128Tensor) -> HostRing128Tensor, HostIndexAxisOp);
-modelled!(PlacementIndex::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostBitTensor) -> HostBitTensor, HostIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing64Tensor) -> HostRing64Tensor, HostIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostRing128Tensor) -> HostRing128Tensor, HostIndexAxisOp);
+modelled!(PlacementIndexAxis::index_axis, HostPlacement, attributes[axis:usize, index: usize] (HostBitTensor) -> HostBitTensor, HostIndexAxisOp);
 
 kernel! {
     HostIndexAxisOp,
