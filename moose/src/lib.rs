@@ -594,12 +594,15 @@ macro_rules! kernel {
             {
                 use crate::symbolic::SymbolicSession;
 
-                let k = derive_runtime_kernel![nullary, $($kp)+, self];
-
+                let op = self.clone();
                 Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
+                    // TODO derive k outside box (using self instead of op)
+                    // Magic by Morten
+                    let op = &op;
+                    let k = derive_runtime_kernel![nullary, $($kp)+, op];
                     let y = k(sess, plc);
                     y.into()
                 })
@@ -825,7 +828,13 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                                 Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
                             }
-                            (x0, x1) => unimplemented!("{:?}, {:?}", x0, x1) // ok
+                            (x0, x1) => {
+                                let ops = sess.ops.read().unwrap();
+                                for op in ops.iter() {
+                                    println!("Op: {:?}", op);
+                                };
+                                unimplemented!("{:?}, {:?}", x0, x1) // ok
+                            }
                         }
                     }
                 })

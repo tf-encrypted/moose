@@ -1,9 +1,9 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp, KnownType, LoadOp, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, SaveOp, ShapeOp, Signature, SubOp, SumOp, SymbolicType, TransposeOp, Unit};
+use crate::computation::*;
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementSave, PlacementShape, PlacementSub, PlacementSum, PlacementTranspose, PlacementTruncPr, Session};
+use crate::kernels::*;
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -970,3 +970,25 @@ impl ShapeOp {
     }
 }
 
+impl ConstantOp {
+    pub fn logical_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        value: Constant
+    ) -> AbstractTensor<
+        cs!(Fixed64Tensor),
+        cs!(Fixed128Tensor),
+        cs!(Float32Tensor),
+        cs!(Float64Tensor),
+    >
+    where
+        Fixed64Tensor: KnownType<S>,
+        Fixed128Tensor: KnownType<S>,
+        Float32Tensor: KnownType<S>,
+        Float64Tensor: KnownType<S>,
+        HostPlacement: PlacementConstant<S, cs!(Float64Tensor)>,
+    {
+        let z = plc.constant(sess, value);
+        AbstractTensor::Float64(z)
+    }
+}

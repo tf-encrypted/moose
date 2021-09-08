@@ -509,3 +509,19 @@ impl ShapeOp {
         plc.shape(sess, &x)
     }
 }
+
+impl ConstantOp {
+    pub fn float_kernel<S: Session>(
+        sess: &S,
+        plc: &HostPlacement,
+        value: Constant,
+    ) -> FloatTensor<cs!(HostFloat64Tensor)>
+    where
+        HostFloat32Tensor: KnownType<S>,
+        HostFloat64Tensor: KnownType<S>,
+        HostPlacement: PlacementConstant<S, cs!(HostFloat64Tensor)>,
+    {
+        let z = plc.constant(sess, value);
+        FloatTensor::Host(z)
+    }
+}
