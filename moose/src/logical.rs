@@ -612,8 +612,8 @@ impl SumOp {
     where
         HostPlacement: PlacementSum<S, Fixed64T, Fixed64T>,
         HostPlacement: PlacementSum<S, Fixed128T, Fixed128T>,
-        // HostPlacement: PlacementSum<S, Float32T, Float32T>,
-        // HostPlacement: PlacementSum<S, Float64T, Float64T>,
+        HostPlacement: PlacementSum<S, Float32T, Float32T>,
+        HostPlacement: PlacementSum<S, Float64T, Float64T>,
     {
         match x {
             AbstractTensor::Fixed64(x) => {
@@ -625,14 +625,12 @@ impl SumOp {
                 AbstractTensor::Fixed128(z)
             }
             AbstractTensor::Float32(x) => {
-                unimplemented!()
-                // let z = plc.sum(sess, axis, &x);
-                // AbstractTensor::Float32(z)
+                let z = plc.sum(sess, axis, &x);
+                AbstractTensor::Float32(z)
             }
             AbstractTensor::Float64(x) => {
-                unimplemented!()
-                // let z = plc.sum(sess, axis, &x);
-                // AbstractTensor::Float64(z)
+                let z = plc.sum(sess, axis, &x);
+                AbstractTensor::Float64(z)
             }
         }
     }

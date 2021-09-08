@@ -109,7 +109,8 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
 }
 
 // TODO(lvorona): should probably become part of moose_type!
-impl TryFrom<Symbolic<HostShape>> for HostShape {
+impl TryFrom<Symbolic<HostShape>> for HostShape
+{
     type Error = ();
     fn try_from(v: Symbolic<HostShape>) -> std::result::Result<Self, ()> {
         match v {
@@ -893,10 +894,12 @@ impl HostSqrtOp {
     }
 }
 
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat32Tensor) -> HostFloat32Tensor, HostSumOp);
 modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (HostFloat64Tensor) -> HostFloat64Tensor, HostSumOp);
 
 kernel! {
     HostSumOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] attributes[axis] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
     ]
 }
@@ -984,10 +987,12 @@ impl HostConcatOp {
     }
 }
 
+modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostTransposeOp);
 modelled!(PlacementTranspose::transpose, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostTransposeOp);
 
 kernel! {
     HostTransposeOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }
@@ -1005,10 +1010,12 @@ impl HostTransposeOp {
     }
 }
 
+modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor, HostInverseOp);
 modelled!(PlacementInverse::inverse, HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor, HostInverseOp);
 
 kernel! {
     HostInverseOp, [
+        (HostPlacement, (HostFloat32Tensor) -> HostFloat32Tensor => [runtime] Self::kernel),
         (HostPlacement, (HostFloat64Tensor) -> HostFloat64Tensor => [runtime] Self::kernel),
     ]
 }

@@ -813,6 +813,7 @@ operators![
     FloatingpointTranspose,
     FloatingpointInverse,
     FloatingpointMean,
+    FloatingpointSum,
     // Additive operators
     AdtReveal,
     AdtFill,
@@ -1348,6 +1349,11 @@ pub struct FloatingpointMeanOp {
     pub axis: Option<u32>,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointSumOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingFixedpointEncodeOp {

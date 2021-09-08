@@ -144,6 +144,7 @@ impl Session for SyncSession {
             FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)(self, operands),
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            FloatingpointSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostDiag(op) => DispatchKernel::compile(&op, plc)(self, operands),
             HostShlDim(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -711,6 +712,7 @@ impl Compile<SyncKernel> for Operator {
             FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointMean(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSum(op) => unimplemented!("Not done yet: {:?}", op),
             AtLeast2D(op) => unimplemented!("Not done yet: {:?}", op),
             Slice(op) => unimplemented!("Not done yet: {:?}", op),
             Ones(op) => unimplemented!("Not done yet: {:?}", op),
@@ -830,6 +832,7 @@ impl Compile<AsyncKernel> for Operator {
             FloatingpointTranspose(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointInverse(op) => unimplemented!("Not done yet: {:?}", op),
             FloatingpointMean(op) => unimplemented!("Not done yet: {:?}", op),
+            FloatingpointSum(op) => unimplemented!("Not done yet: {:?}", op),
             // NOTE the following are not supported by design
             AdtReveal(_) | AdtFill(_) | AdtAdd(_) | AdtSub(_) | AdtMul(_) | AdtShl(_)
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)

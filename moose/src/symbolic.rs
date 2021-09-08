@@ -236,6 +236,7 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             FloatingpointTranspose(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FloatingpointInverse(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             FloatingpointMean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            FloatingpointSum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Identity(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             HostReshape(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             AtLeast2D(op) => DispatchKernel::compile(&op, plc)(sess, operands),

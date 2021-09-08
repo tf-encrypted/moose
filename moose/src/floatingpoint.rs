@@ -1,7 +1,7 @@
-use crate::computation::{FloatingpointAddOp, FloatingpointAtLeast2DOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMeanOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, LoadOp, Placed, Placement, SaveOp, ShapeOp, SymbolicType, Unit};
+use crate::computation::*;
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementSave, PlacementShape, PlacementSub, PlacementTranspose, Session};
+use crate::kernels::*;
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -84,6 +84,36 @@ impl FloatingpointMeanOp {
         };
 
         let z = plc.mean(sess, axis, &x);
+        FloatTensor::Host(z)
+    }
+}
+
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointSumOp);
+modelled!(PlacementSum::sum, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointSumOp);
+
+kernel! {
+    FloatingpointSumOp,
+    [
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointSumOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementSum<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.sum(sess, axis, &x);
         FloatTensor::Host(z)
     }
 }
