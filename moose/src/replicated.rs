@@ -2060,12 +2060,10 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::fixedpoint::Convert;
     use crate::host::AbstractHostRingTensor;
     use crate::host::FromRawPlc;
     use crate::kernels::{
-        PlacementFixedpointEncode, PlacementRingFixedpointDecode, PlacementRingFixedpointEncode,
-        SyncSession,
+        PlacementRingFixedpointDecode, PlacementRingFixedpointEncode, SyncSession,
     };
     use ndarray::array;
     use proptest::prelude::*;

@@ -51,6 +51,7 @@ where
 }
 
 impl SymbolicType for Tensor {
+    #[allow(clippy::type_complexity)]
     type Type = Symbolic<
         AbstractTensor<
             <Fixed64Tensor as SymbolicType>::Type,
@@ -673,6 +674,7 @@ kernel! {
 }
 
 impl OnesOp {
+    #[allow(clippy::type_complexity)]
     fn host_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
@@ -883,6 +885,7 @@ impl InverseOp {
 }
 
 impl LoadOp {
+    #[allow(clippy::type_complexity)]
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
@@ -964,6 +967,7 @@ impl ShapeOp {
 }
 
 impl ConstantOp {
+    #[allow(clippy::type_complexity)]
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,

@@ -79,9 +79,7 @@ impl FloatingpointMeanOp {
     where
         HostPlacement: PlacementMean<S, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
 
         let z = plc.mean(sess, axis, &x);
         FloatTensor::Host(z)
@@ -109,9 +107,7 @@ impl FloatingpointSumOp {
     where
         HostPlacement: PlacementSum<S, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
 
         let z = plc.sum(sess, axis, &x);
         FloatTensor::Host(z)
@@ -139,9 +135,7 @@ impl FloatingpointAtLeast2DOp {
     where
         HostPlacement: PlacementAtLeast2D<S, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
 
         let z = plc.at_least_2d(sess, to_column_vector, &x);
         FloatTensor::Host(z)
@@ -169,12 +163,8 @@ impl FloatingpointAddOp {
     where
         HostPlacement: PlacementAdd<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
-        let y = match y {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
+        let FloatTensor::Host(y) = y;
 
         let z = plc.add(sess, &x, &y);
         FloatTensor::Host(z)
@@ -202,12 +192,8 @@ impl FloatingpointSubOp {
     where
         HostPlacement: PlacementSub<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
-        let y = match y {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
+        let FloatTensor::Host(y) = y;
 
         let z = plc.sub(sess, &x, &y);
         FloatTensor::Host(z)
@@ -235,12 +221,8 @@ impl FloatingpointMulOp {
     where
         HostPlacement: PlacementMul<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
-        let y = match y {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
+        let FloatTensor::Host(y) = y;
 
         let z = plc.mul(sess, &x, &y);
         FloatTensor::Host(z)
@@ -268,12 +250,8 @@ impl FloatingpointDivOp {
     where
         HostPlacement: PlacementDiv<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
-        let y = match y {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
+        let FloatTensor::Host(y) = y;
 
         let z = plc.div(sess, &x, &y);
         FloatTensor::Host(z)
@@ -301,12 +279,8 @@ impl FloatingpointDotOp {
     where
         HostPlacement: PlacementDot<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
-        let y = match y {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
+        let FloatTensor::Host(y) = y;
 
         let z = plc.dot(sess, &x, &y);
         FloatTensor::Host(z)
@@ -359,9 +333,7 @@ impl FloatingpointExpandDimsOp {
     where
         HostPlacement: PlacementExpandDims<S, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
         let z = plc.expand_dims(sess, axis, &x);
         FloatTensor::Host(z)
     }
@@ -389,12 +361,8 @@ impl FloatingpointConcatOp {
     where
         HostPlacement: PlacementConcatenate<S, HostFloatT, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
-        let y = match y {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
+        let FloatTensor::Host(y) = y;
 
         let z = plc.concatenate(sess, axis, &x, &y);
         FloatTensor::Host(z)
@@ -420,9 +388,7 @@ impl FloatingpointTransposeOp {
     where
         HostPlacement: PlacementTranspose<S, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
         let z = plc.transpose(sess, &x);
         FloatTensor::Host(z)
     }
@@ -447,9 +413,7 @@ impl FloatingpointInverseOp {
     where
         HostPlacement: PlacementInverse<S, HostFloatT, HostFloatT>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
         let z = plc.inverse(sess, &x);
         FloatTensor::Host(z)
     }
@@ -485,9 +449,7 @@ impl SaveOp {
         Unit: KnownType<S>,
         HostPlacement: PlacementSave<S, cs!(String), HostFloatT, cs!(Unit)>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
         plc.save(sess, &key, &x)
     }
 }
@@ -502,9 +464,7 @@ impl ShapeOp {
         HostShape: KnownType<S>,
         HostPlacement: PlacementShape<S, HostFloatT, cs!(HostShape)>,
     {
-        let x = match x {
-            FloatTensor::Host(v) => v,
-        };
+        let FloatTensor::Host(x) = x;
         plc.shape(sess, &x)
     }
 }
