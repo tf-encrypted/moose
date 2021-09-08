@@ -467,7 +467,6 @@ impl LoadOp {
         HostFloat32Tensor: KnownType<S>,
         HostFloat64Tensor: KnownType<S>,
         HostPlacement: PlacementLoad<S, cs!(String), cs!(String), cs!(HostFloat64Tensor)>,
-
     {
         let z = plc.load(sess, &key, &query);
         FloatTensor::Host(z)

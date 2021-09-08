@@ -8,17 +8,15 @@ use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::{
     AbstractHostFixedTensor, AbstractHostRingTensor, HostBitTensor, HostFixed128Tensor,
     HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor,
-    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostTensor,
+    HostInt64Tensor, HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
     HostUint16Tensor, HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, SliceInfo,
 };
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
 use crate::replicated::ReplicatedSetup;
 use crate::{closure_kernel, function_kernel};
 use crate::{computation::*, for_all_values};
-use ndarray::ArrayD;
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::num::Wrapping;
 use std::sync::Arc;
 
 /// General session trait determining basic properties for session objects.
@@ -1551,7 +1549,6 @@ impl Compile<Kernel> for RingFixedpointEncodeOp {
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for RingFixedpointDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostRing64Tensor) -> _] => {
                 let scaling_factor = u64::pow(self.scaling_base, self.scaling_exp);
@@ -1601,7 +1598,6 @@ impl Compile<Kernel> for RingFixedpointMeanOp {
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointEncodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostFloat64Tensor) -> Ty::HostRing64Tensor] => {
                 let scaling_factor = u64::pow(2, self.precision);
@@ -1625,7 +1621,6 @@ impl Compile<Kernel> for FixedpointEncodeOp {
 #[cfg(not(feature = "exclude_old_framework"))]
 impl Compile<Kernel> for FixedpointDecodeOp {
     fn compile(&self, _ctx: &CompilationContext) -> Result<Kernel> {
-        use crate::fixedpoint::Convert;
         match self.sig {
             signature![(Ty::HostRing64Tensor) -> _] => {
                 let scaling_factor = u64::pow(2, self.precision);

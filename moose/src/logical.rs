@@ -308,12 +308,13 @@ impl MulOp {
 }
 
 modelled!(PlacementDiv::div, HostPlacement, (Tensor, Tensor) -> Tensor, DivOp);
+modelled!(PlacementDiv::div, ReplicatedPlacement, (Tensor, Tensor) -> Tensor, DivOp);
 
 kernel! {
     DivOp,
     [
         (HostPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::host_kernel),
-        // (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
+        (ReplicatedPlacement, (Tensor, Tensor) -> Tensor => [hybrid] Self::rep_kernel),
     ]
 }
 
@@ -357,10 +358,10 @@ impl DivOp {
     }
 
     fn rep_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
-        sess: &S,
-        plc: &ReplicatedPlacement,
-        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
-        y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        _sess: &S,
+        _plc: &ReplicatedPlacement,
+        _x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+        _y: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T> {
         unimplemented!()
     }
@@ -500,19 +501,19 @@ impl AtLeast2DOp {
         to_column_vector: bool,
         x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
     ) -> AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>
-where
+    where
         // HostPlacement: PlacementAtLeast2D<S, Fixed64T, Fixed64T>,
         // HostPlacement: PlacementAtLeast2D<S, Fixed128T, Fixed128T>,
         HostPlacement: PlacementAtLeast2D<S, Float32T, Float32T>,
         HostPlacement: PlacementAtLeast2D<S, Float64T, Float64T>,
     {
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_x) => {
                 unimplemented!()
                 // let z = plc.at_least_2d(sess, to_column_vector, &x);
                 // AbstractTensor::Fixed64(z)
             }
-            AbstractTensor::Fixed128(x) => {
+            AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
                 // let z = plc.at_least_2d(sess, to_column_vector, &x);
                 // AbstractTensor::Fixed128(z)
@@ -733,12 +734,12 @@ impl ExpandDimsOp {
         HostPlacement: PlacementExpandDims<S, Float64T, Float64T>,
     {
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_x) => {
                 unimplemented!()
                 // let z = plc.expand_dims(sess, axis, &x);
                 // AbstractTensor::Fixed64(z)
             }
-            AbstractTensor::Fixed128(x) => {
+            AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
                 // let z = plc.expand_dims(sess, axis, &x);
                 // AbstractTensor::Fixed128(z)
@@ -816,17 +817,17 @@ impl TransposeOp {
         HostPlacement: PlacementTranspose<S, Float64T, Float64T>,
     {
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_x) => {
                 unimplemented!()
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Fixed64(z)
             }
-            AbstractTensor::Fixed128(x) => {
+            AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Fixed128(z)
             }
-            AbstractTensor::Float32(x) => {
+            AbstractTensor::Float32(_x) => {
                 unimplemented!()
                 // let z = plc.transpose(sess, &x);
                 // AbstractTensor::Float32(z)
@@ -858,17 +859,17 @@ impl InverseOp {
         HostPlacement: PlacementInverse<S, Float64T, Float64T>,
     {
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_x) => {
                 unimplemented!()
                 // let z = plc.inverse(sess, &x);
                 // AbstractTensor::Fixed64(z)
             }
-            AbstractTensor::Fixed128(x) => {
+            AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
                 // let z = plc.inverse(sess, &x);
                 // AbstractTensor::Fixed128(z)
             }
-            AbstractTensor::Float32(x) => {
+            AbstractTensor::Float32(_x) => {
                 unimplemented!()
                 // let z = plc.inverse(sess, &x);
                 // AbstractTensor::Float32(z)
@@ -922,20 +923,16 @@ impl SaveOp {
         HostPlacement: PlacementSave<S, cs!(String), Float64T, cs!(Unit)>,
     {
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_x) => {
                 unimplemented!()
                 // plc.save(sess, &key, &x)
             }
-            AbstractTensor::Fixed128(x) => {
+            AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
                 // plc.save(sess, &key, &x)
             }
-            AbstractTensor::Float32(x) => {
-                plc.save(sess, &key, &x)
-            }
-            AbstractTensor::Float64(x) => {
-                plc.save(sess, &key, &x)
-            }
+            AbstractTensor::Float32(x) => plc.save(sess, &key, &x),
+            AbstractTensor::Float64(x) => plc.save(sess, &key, &x),
         }
     }
 }
@@ -952,20 +949,16 @@ impl ShapeOp {
         HostPlacement: PlacementShape<S, Float64T, cs!(HostShape)>,
     {
         match x {
-            AbstractTensor::Fixed64(x) => {
+            AbstractTensor::Fixed64(_x) => {
                 unimplemented!()
                 // plc.shape(sess, &x)
             }
-            AbstractTensor::Fixed128(x) => {
+            AbstractTensor::Fixed128(_x) => {
                 unimplemented!()
                 // plc.shape(sess, &x)
             }
-            AbstractTensor::Float32(x) => {
-                plc.shape(sess, &x)
-            }
-            AbstractTensor::Float64(x) => {
-                plc.shape(sess, &x)
-            }
+            AbstractTensor::Float32(x) => plc.shape(sess, &x),
+            AbstractTensor::Float64(x) => plc.shape(sess, &x),
         }
     }
 }
@@ -974,7 +967,7 @@ impl ConstantOp {
     pub fn logical_kernel<S: Session>(
         sess: &S,
         plc: &HostPlacement,
-        value: Constant
+        value: Constant,
     ) -> AbstractTensor<
         cs!(Fixed64Tensor),
         cs!(Fixed128Tensor),

@@ -109,8 +109,7 @@ impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
 }
 
 // TODO(lvorona): should probably become part of moose_type!
-impl TryFrom<Symbolic<HostShape>> for HostShape
-{
+impl TryFrom<Symbolic<HostShape>> for HostShape {
     type Error = ();
     fn try_from(v: Symbolic<HostShape>) -> std::result::Result<Self, ()> {
         match v {

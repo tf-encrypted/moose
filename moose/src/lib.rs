@@ -601,8 +601,9 @@ macro_rules! kernel {
                 | {
                     // TODO derive k outside box (using self instead of op)
                     // Magic by Morten
-                    let op = &op;
-                    let k = derive_runtime_kernel![nullary, $($kp)+, op];
+                    #[allow(unused_variables)]
+                    let opref = &op;
+                    let k = derive_runtime_kernel![nullary, $($kp)+, opref];
                     let y = k(sess, plc);
                     y.into()
                 })

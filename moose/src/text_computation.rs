@@ -1300,19 +1300,19 @@ impl ToTextual for Operator {
             FixedpointTruncPr(op) => op.to_textual(),
             FixedpointMean(op) => op.to_textual(),
             FixedpointSum(op) => op.to_textual(),
-            FloatingpointAdd(op) => unimplemented!(), // TODO
-            FloatingpointSub(op) => unimplemented!(), // TODO
-            FloatingpointMul(op) => unimplemented!(), // TODO
-            FloatingpointDiv(op) => unimplemented!(), // TODO
-            FloatingpointDot(op) => unimplemented!(), // TODO
-            FloatingpointAtLeast2D(op) => unimplemented!(), // TODO
-            FloatingpointOnes(op) => unimplemented!(), // TODO
-            FloatingpointConcat(op) => unimplemented!(), // TODO
-            FloatingpointExpandDims(op) => unimplemented!(), // TODO
-            FloatingpointTranspose(op) => unimplemented!(), // TODO
-            FloatingpointInverse(op) => unimplemented!(), // TODO
-            FloatingpointMean(op) => unimplemented!(), // TODO
-            FloatingpointSum(op) => unimplemented!(), // TODO
+            FloatingpointAdd(op) => op.to_textual(),
+            FloatingpointSub(op) => op.to_textual(),
+            FloatingpointMul(op) => op.to_textual(),
+            FloatingpointDiv(op) => op.to_textual(),
+            FloatingpointDot(op) => op.to_textual(),
+            FloatingpointAtLeast2D(op) => op.to_textual(),
+            FloatingpointOnes(op) => op.to_textual(),
+            FloatingpointConcat(op) => op.to_textual(),
+            FloatingpointExpandDims(op) => op.to_textual(),
+            FloatingpointTranspose(op) => op.to_textual(),
+            FloatingpointInverse(op) => op.to_textual(),
+            FloatingpointMean(op) => op.to_textual(),
+            FloatingpointSum(op) => op.to_textual(),
             RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),
@@ -1549,6 +1549,25 @@ op_with_axis_to_textual!(HostSumOp);
 op_with_axis_to_textual!(RingSumOp);
 op_with_axis_to_textual!(RepSumOp);
 op_with_axis_to_textual!(FixedpointSumOp);
+
+impl_to_textual!(FloatingpointAddOp, "{op}: {}", sig);
+impl_to_textual!(FloatingpointSubOp, "{op}: {}", sig);
+impl_to_textual!(FloatingpointMulOp, "{op}: {}", sig);
+impl_to_textual!(FloatingpointDivOp, "{op}: {}", sig);
+impl_to_textual!(FloatingpointDotOp, "{op}: {}", sig);
+impl_to_textual!(
+    FloatingpointAtLeast2DOp,
+    "{op}{{to_column_vector={}}}: {}",
+    to_column_vector,
+    sig
+);
+impl_to_textual!(FloatingpointOnesOp, "{op}: {}", sig);
+impl_to_textual!(FloatingpointConcatOp, "{op}: {}", sig);
+impl_to_textual!(FloatingpointExpandDimsOp, "{op}{{axis={}}}: {}", axis, sig);
+impl_to_textual!(FloatingpointTransposeOp, "{op}: {}", sig);
+impl_to_textual!(FloatingpointInverseOp, "{op}: {}", sig);
+op_with_axis_to_textual!(FloatingpointMeanOp);
+op_with_axis_to_textual!(FloatingpointSumOp);
 
 impl ToTextual for FixedpointMeanOp {
     fn to_textual(&self) -> String {
