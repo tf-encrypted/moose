@@ -2614,13 +2614,11 @@ mod tests {
     }
 
     #[test]
-
     fn test_rep_index_axis_ring64() {
         rep_index_axis_ring64()
     }
 
     #[test]
-
     fn test_rep_index_axis_ring128() {
         rep_index_axis_ring128()
     }
