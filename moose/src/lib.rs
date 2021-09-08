@@ -48,7 +48,13 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
+                        _ => return Err(crate::error::Error::Compilation(format!(
+                            "{:?}",
+                            crate::error::Error::TypeMismatch{
+                                expected: stringify!($prim_ty).to_string(),
+                                found: $attr.ty(),
+                            },
+                        )))
                     };
                 )?
             )+
@@ -65,11 +71,18 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
+                        _ => return Err(crate::error::Error::Compilation(format!(
+                            "{:?}",
+                            crate::error::Error::TypeMismatch{
+                                expected: stringify!($prim_ty).to_string(),
+                                found: $attr.ty(),
+                            },
+                        )))
                     };
                 )?
             )+
             {
+
                 let kf: crate::error::Result<Box<dyn Fn(&_, &_, _) -> _>> = Ok(Box::new(move |sess, plc, x0| {
                     $k(sess, plc, $($attr.clone()),+, x0)
                 }));
@@ -85,7 +98,13 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
+                        _ => return Err(crate::error::Error::Compilation(format!(
+                            "{:?}",
+                            crate::error::Error::TypeMismatch{
+                                expected: stringify!($prim_ty).to_string(),
+                                found: $attr.ty(),
+                            },
+                        )))
                     };
                 )?
             )+
@@ -102,7 +121,13 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => panic!("Incorrect constant type"), // TODO: another way to report the error
+                        _ => return Err(crate::error::Error::Compilation(format!(
+                            "{:?}",
+                            crate::error::Error::TypeMismatch{
+                                expected: stringify!($prim_ty).to_string(),
+                                found: $attr.ty(),
+                            },
+                        )))
                     };
                 )?
             )+

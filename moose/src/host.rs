@@ -7,8 +7,7 @@ use crate::computation::{
     RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
     RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
 };
-use crate::error::Error;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::{
     PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDiag, PlacementDot,
