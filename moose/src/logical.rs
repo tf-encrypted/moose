@@ -1,9 +1,9 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp, KnownType, LoadOp, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, Signature, SubOp, SumOp, SymbolicType, TransposeOp};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp, KnownType, LoadOp, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, ShapeOp, Signature, SubOp, SumOp, SymbolicType, TransposeOp};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementSub, PlacementSum, PlacementTranspose, PlacementTruncPr, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementShape, PlacementSub, PlacementSum, PlacementTranspose, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -909,3 +909,34 @@ impl LoadOp {
         AbstractTensor::Float64(z)
     }
 }
+
+impl ShapeOp {
+    pub(crate) fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> cs!(HostShape)
+    where
+        HostShape: KnownType<S>,
+        HostPlacement: PlacementShape<S, Float32T, cs!(HostShape)>,
+        HostPlacement: PlacementShape<S, Float64T, cs!(HostShape)>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                unimplemented!()
+                // plc.shape(sess, &x)
+            }
+            AbstractTensor::Fixed128(x) => {
+                unimplemented!()
+                // plc.shape(sess, &x)
+            }
+            AbstractTensor::Float32(x) => {
+                plc.shape(sess, &x)
+            }
+            AbstractTensor::Float64(x) => {
+                plc.shape(sess, &x)
+            }
+        }
+    }
+}
+
