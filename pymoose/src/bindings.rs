@@ -1,5 +1,5 @@
 use moose::compilation::typing::update_types_one_hop;
-use moose::compilation::{compile_passes, into_pass};
+use moose::compilation::{compile_passes, into_pass, Pass};
 use moose::computation::{Computation, Role, Value};
 use moose::execution::AsyncTestRuntime;
 use moose::execution::Identity;
@@ -128,10 +128,9 @@ impl LocalRuntime {
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let compiled_computation = update_types_one_hop(&computation).unwrap().unwrap();
-        compiled_computation.toposort().unwrap();
-
-        self.evaluate_compiled_computation(py, &compiled_computation, role_assignments, arguments)
+        let computation = compile_passes(&computation, &[Pass::Typing, Pass::Symbolic])
+            .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
+        self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
 
     fn evaluate_compiled(

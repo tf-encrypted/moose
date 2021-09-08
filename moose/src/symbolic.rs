@@ -253,10 +253,8 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             Dot(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Mean(op) => DispatchKernel::compile(&op, plc)(sess, operands),
             Sum(op) => DispatchKernel::compile(&op, plc)(sess, operands),
-            // the following operators are not supported by design (for now, at least)
-            Send(_) | Receive(_) => {
-                unimplemented!("Unsupported symbolic operator {:?}", op)
-            }
+            Send(op) => DispatchKernel::compile(&op, plc)(sess, operands),
+            Receive(op) => DispatchKernel::compile(&op, plc)(sess, operands),
         }
     }
 }

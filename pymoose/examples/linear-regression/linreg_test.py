@@ -165,7 +165,7 @@ class LinearRegressionExample(parameterized.TestCase):
             comp_bin,
             [
                 "typing",
-                "dump",
+                # "dump",
                 # All of the symbolic passes. Currently combines functionality of
                 # [ReplicatedOpsPass, HostRingLoweringPass, ReplicatedLoweringPass]
                 "full",
