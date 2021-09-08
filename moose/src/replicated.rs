@@ -1465,32 +1465,32 @@ kernel! {
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing64Tensor => [hybrid] custom |op| {
                 let value: u64 = match op.value {
                     Constant::Ring64(v) => v,
-                    _ => unimplemented!()
+                    _ => unimplemented!()  // TODO: replace
                 };
                 assert!(value == 0 || value == 1);
-                Box::new(move |sess, rep, rep_shape| {
+                Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring64_kernel(sess, rep, value, rep_shape)
-                })
+                }))
             }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedRing128Tensor => [hybrid] custom |op| {
                 let value: u128 = match op.value {
                     Constant::Ring128(v) => v,
-                    _ => unimplemented!()
+                    _ => unimplemented!()  // TODO: replace
                 };
                 assert!(value == 0 || value == 1);
-                Box::new(move |sess, rep, rep_shape| {
+                Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::ring128_kernel(sess, rep, value, rep_shape)
-                })
+                }))
         }),
         (ReplicatedPlacement, (ReplicatedShape) -> ReplicatedBitTensor => [hybrid] custom |op| {
                 let value: u8 = match op.value {
                     Constant::Bit(v) => v,
-                    _ => unimplemented!()
+                    _ => unimplemented!()    // TODO: replace
                 };
                 assert!(value == 0 || value == 1);
-                Box::new(move |sess, rep, rep_shape| {
+                Ok(Box::new(move |sess, rep, rep_shape| {
                     Self::bit_kernel(sess, rep, value, rep_shape)
-                })
+                }))
         }),
     ]
 }

@@ -17,13 +17,13 @@ macro_rules! st {
 macro_rules! derive_runtime_kernel {
     (nullary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_,) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_,) -> _>> = &|$op| $kf;
             kf($self)
         }
     };
     (unary, custom |$op:ident| $kf:expr, $self:ident) => {
         {
-            let kf: &dyn Fn(&Self) -> Box<dyn Fn(&_, &_, _) -> _> = &|$op| $kf;
+            let kf: &dyn Fn(&Self) -> crate::error::Result<Box<dyn Fn(&_, &_, _) -> _>> = &|$op| $kf;
             kf($self)
         }
     };
@@ -52,9 +52,9 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |sess, plc| {
+            Ok(Box::new(move |sess, plc| {
                 $k(sess, plc, $($attr.clone()),+)
-            })
+            }))
         }
     };
     (unary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
@@ -69,9 +69,12 @@ macro_rules! derive_runtime_kernel {
                     };
                 )?
             )+
-            Box::new(move |sess, plc, x0| {
-                $k(sess, plc, $($attr.clone()),+, x0)
-            })
+            {
+                let kf: crate::error::Result<Box<dyn Fn(&_, &_, _) -> _>> = Ok(Box::new(move |sess, plc, x0| {
+                    $k(sess, plc, $($attr.clone()),+, x0)
+                }));
+                kf
+            }
         }
     };
     (binary, attributes[$($attr:ident$(: $prim_ty:ident)?),+] $k:expr, $self:ident) => {
@@ -110,10 +113,16 @@ macro_rules! derive_runtime_kernel {
     };
 
     (nullary, $k:expr, $self:ident) => {
-        Box::new($k)
+        {
+            let kf: crate::error::Result<Box<dyn Fn(&_, &_,) -> _>> = Ok(Box::new($k));
+            kf
+        }
     };
     (unary, $k:expr, $self:ident) => {
-        Box::new($k)
+        {
+            let kf: crate::error::Result<Box<dyn Fn(&_, &_, _) -> _>> = Ok(Box::new($k));
+            kf
+        }
     };
     (binary, $k:expr, $self:ident) => {
         Box::new($k)
@@ -150,7 +159,7 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
 
-                            let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self, &plc);
+                            let k = <$op as NullaryKernel<SyncSession, $plc, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Vec<crate::computation::Value>| {
                                 assert_eq!(operands.len(), 0);
@@ -193,7 +202,7 @@ macro_rules! concrete_dispatch_kernel {
                         ) => {
                             let plc: $plc = plc.clone().try_into()?;
 
-                            let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self, &plc);
+                            let k = <$op as UnaryKernel<SyncSession, $plc, $t0, $u>>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands: Vec<Value>| {
                                 assert_eq!(operands.len(), 1);
@@ -350,7 +359,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 SymbolicSession,
                                 $plc,
                                 <$u as KnownType<SymbolicSession>>::Type,
-                            >>::compile(self, &plc);
+                            >>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands| {
                                 assert_eq!(operands.len(), 0);
@@ -400,7 +409,7 @@ macro_rules! symbolic_dispatch_kernel {
                                 $plc,
                                 <$t0 as KnownType<SymbolicSession>>::Type,
                                 <$u as KnownType<SymbolicSession>>::Type,
-                            >>::compile(self, &plc);
+                            >>::compile(self, &plc)?;
 
                             Ok(Box::new(move |sess, operands| {
                                 assert_eq!(operands.len(), 1);
@@ -566,10 +575,10 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                     _plc: &$plc,
-                ) -> Box<dyn Fn(
+                ) -> crate::error::Result<Box<dyn Fn(
                     &crate::kernels::SyncSession,
                     &$plc)
-                    -> <$u as crate::computation::KnownType<crate::kernels::SyncSession>>::Type>
+                    -> <$u as crate::computation::KnownType<crate::kernels::SyncSession>>::Type>>
                 {
                     derive_runtime_kernel![nullary, $($kp)+, self]
                 }
@@ -588,22 +597,22 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
             {
                 use crate::symbolic::SymbolicSession;
 
-                let k = derive_runtime_kernel![nullary, $($kp)+, self];
+                let k = derive_runtime_kernel![nullary, $($kp)+, self].unwrap();
 
-                Box::new(move |
+                Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
                     let y = k(sess, plc);
                     y.into()
-                })
+                }))
             }
         }
     };
@@ -615,21 +624,21 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc)
-                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
             {
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
-                Box::new(move |
+                Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                 | {
                     let op_name = sess.add_operation(&op, &[], &plc.clone().into());
                     Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
-                })
+                }))
             }
         }
     };
@@ -653,7 +662,7 @@ macro_rules! kernel {
                 fn compile(
                     &self,
                     _plc: &$plc,
-                ) -> Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> $u> {
+                ) -> crate::error::Result<Box<dyn Fn(&crate::kernels::SyncSession, &$plc, $t0) -> $u>> {
                     derive_runtime_kernel![unary, $($kp)+, self]
                 }
             }
@@ -672,18 +681,18 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as KnownType<crate::symbolic::SymbolicSession>>::Type
-            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>
+            ) -> <$u as KnownType<crate::symbolic::SymbolicSession>>::Type>>
             {
                 use crate::symbolic::{Symbolic, SymbolicSession, SymbolicHandle};
                 use std::convert::TryInto;
 
                 let op = self.clone();
 
-                Box::new(move |
+                Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                     x0: <$t0 as KnownType<SymbolicSession>>::Type,
@@ -692,7 +701,7 @@ macro_rules! kernel {
                     // Magic by Morten
                     let op = &op;
 
-                    let k = derive_runtime_kernel![unary, $($kp)+, op];
+                    let k = derive_runtime_kernel![unary, $($kp)+, op].unwrap();  // TODO: replace unwrap
 
                     let v0 = x0.clone().try_into();
 
@@ -709,7 +718,7 @@ macro_rules! kernel {
                             _ => unimplemented!() // ok
                         }
                     }
-                })
+                }))
             }
         }
     };
@@ -722,17 +731,17 @@ macro_rules! kernel {
             <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type
         > for $op
         {
-            fn compile(&self, _plc: &$plc) -> Box<dyn Fn(
+            fn compile(&self, _plc: &$plc) -> crate::error::Result<Box<dyn Fn(
                 &crate::symbolic::SymbolicSession,
                 &$plc,
                 <$t0 as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type)
-                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>
+                -> <$u as crate::computation::KnownType<crate::symbolic::SymbolicSession>>::Type>>
             {
                 use crate::computation::{KnownType};
                 use crate::symbolic::{SymbolicSession, SymbolicHandle, Symbolic};
 
                 let op = self.clone();
-                Box::new(move |
+                Ok(Box::new(move |
                     sess: &SymbolicSession,
                     plc: &$plc,
                     x0: <$t0 as KnownType<SymbolicSession>>::Type
@@ -744,7 +753,7 @@ macro_rules! kernel {
                         }
                         _ => unimplemented!()
                     }
-                })
+                }))
             }
         }
     };

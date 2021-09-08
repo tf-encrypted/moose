@@ -2172,24 +2172,24 @@ kernel! {
     [
         (HostPlacement, (HostShape) -> HostRing64Tensor => [runtime] custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, shape| {
+                None => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_uniform_u64(ctx, plc, shape)
-                }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                })),
+                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_bits_u64(ctx, plc, shape)
-                }),
-                _ => unimplemented!(),
+                })),
+                _ => unimplemented!(),  // TODO: replace
             }
         }),
         (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] custom |op| {
             match op.max_value {
-                None => Box::new(|ctx, plc, shape| {
+                None => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_uniform_u128(ctx, plc, shape)
-                }),
-                Some(max_value) if max_value == 1 => Box::new(|ctx, plc, shape| {
+                })),
+                Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_bits_u128(ctx, plc, shape)
-                }),
-                _ => unimplemented!(),
+                })),
+                _ => unimplemented!(),  // TODO: replace
             }
         }),
     ]
