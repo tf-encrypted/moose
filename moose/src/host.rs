@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
