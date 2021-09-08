@@ -828,13 +828,7 @@ macro_rules! kernel {
                                 let op_name = sess.add_operation(op, &[&h0.op, &h1.op], &plc.clone().into());
                                 Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
                             }
-                            (x0, x1) => {
-                                let ops = sess.ops.read().unwrap();
-                                for op in ops.iter() {
-                                    println!("Op: {:?}", op);
-                                };
-                                unimplemented!("{:?}, {:?}", x0, x1) // ok
-                            }
+                            _ => unimplemented!() // ok
                         }
                     }
                 })
