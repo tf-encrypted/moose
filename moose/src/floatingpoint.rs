@@ -1,7 +1,7 @@
-use crate::computation::{FloatingpointAddOp, FloatingpointAtLeast2DOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, LoadOp, Placed, Placement, ShapeOp, SymbolicType};
+use crate::computation::{FloatingpointAddOp, FloatingpointAtLeast2DOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, LoadOp, Placed, Placement, SaveOp, ShapeOp, SymbolicType, Unit};
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementInverse, PlacementLoad, PlacementMul, PlacementOnes, PlacementShape, PlacementSub, PlacementTranspose, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementInverse, PlacementLoad, PlacementMul, PlacementOnes, PlacementSave, PlacementShape, PlacementSub, PlacementTranspose, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -416,6 +416,25 @@ impl LoadOp {
     {
         let z = plc.load(sess, &key, &query);
         FloatTensor::Host(z)
+    }
+}
+
+impl SaveOp {
+    pub fn float_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: cs!(String),
+        x: FloatTensor<HostFloatT>,
+    ) -> cs!(Unit)
+    where
+        String: KnownType<S>,
+        Unit: KnownType<S>,
+        HostPlacement: PlacementSave<S, cs!(String), HostFloatT, cs!(Unit)>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+        plc.save(sess, &key, &x)
     }
 }
 

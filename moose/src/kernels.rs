@@ -2179,6 +2179,10 @@ for_all_values! {( $($value:ty),* ) => (
     )*
 )}
 
+modelled!(PlacementSave::save, HostPlacement, (String, crate::logical::Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Float32Tensor) -> Unit, SaveOp);
+modelled!(PlacementSave::save, HostPlacement, (String, Float64Tensor) -> Unit, SaveOp);
+
 kernel! {
     SaveOp, [
         (HostPlacement, (String, Unit) -> Unit => [runtime] Self::kernel),
@@ -2201,6 +2205,9 @@ kernel! {
         (HostPlacement, (String, HostUint64Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (String, HostFixed64Tensor) -> Unit => [runtime] Self::kernel),
         (HostPlacement, (String, HostFixed128Tensor) -> Unit => [runtime] Self::kernel),
+        (HostPlacement, (String, crate::logical::Tensor) -> Unit => [hybrid] Self::logical_kernel),
+        (HostPlacement, (String, Float32Tensor) -> Unit => [hybrid] Self::float_kernel),
+        (HostPlacement, (String, Float64Tensor) -> Unit => [hybrid] Self::float_kernel),
     ]
 }
 

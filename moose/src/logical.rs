@@ -1,9 +1,9 @@
-use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp, KnownType, LoadOp, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, ShapeOp, Signature, SubOp, SumOp, SymbolicType, TransposeOp};
+use crate::computation::{AddOp, AtLeast2DOp, CastOp, ConcatOp, DivOp, DotOp, ExpandDimsOp, HostPlacement, InverseOp, KnownType, LoadOp, MeanOp, MulOp, OnesOp, Placed, Placement, ReplicatedPlacement, SaveOp, ShapeOp, Signature, SubOp, SumOp, SymbolicType, TransposeOp, Unit};
 use crate::error::Result;
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::floatingpoint::{Float32Tensor, Float64Tensor};
 use crate::host::HostShape;
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementShape, PlacementSub, PlacementSum, PlacementTranspose, PlacementTruncPr, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementCast, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementFixedpointDecode, PlacementFixedpointEncode, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementSave, PlacementShape, PlacementSub, PlacementSum, PlacementTranspose, PlacementTruncPr, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -907,6 +907,40 @@ impl LoadOp {
     {
         let z = plc.load(sess, &key, &query);
         AbstractTensor::Float64(z)
+    }
+}
+
+impl SaveOp {
+    pub fn logical_kernel<S: Session, Fixed64T, Fixed128T, Float32T, Float64T>(
+        sess: &S,
+        plc: &HostPlacement,
+        key: cs!(String),
+        x: AbstractTensor<Fixed64T, Fixed128T, Float32T, Float64T>,
+    ) -> cs!(Unit)
+    where
+        String: KnownType<S>,
+        Unit: KnownType<S>,
+        // HostPlacement: PlacementSave<S, cs!(String), Fixed64T, cs!(Unit)>,
+        // HostPlacement: PlacementSave<S, cs!(String), Fixed128T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(String), Float32T, cs!(Unit)>,
+        HostPlacement: PlacementSave<S, cs!(String), Float64T, cs!(Unit)>,
+    {
+        match x {
+            AbstractTensor::Fixed64(x) => {
+                unimplemented!()
+                // plc.save(sess, &key, &x)
+            }
+            AbstractTensor::Fixed128(x) => {
+                unimplemented!()
+                // plc.save(sess, &key, &x)
+            }
+            AbstractTensor::Float32(x) => {
+                plc.save(sess, &key, &x)
+            }
+            AbstractTensor::Float64(x) => {
+                plc.save(sess, &key, &x)
+            }
+        }
     }
 }
 
