@@ -2178,73 +2178,18 @@ impl RingInjectOp {
     }
 }
 
-modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor, RepBitDecOp);
-modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor, RepBitDecOp);
 modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64, RepBitDecOp);
 modelled!(PlacementBitDecSetup::bit_decompose, ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128, RepBitDecOp);
 
 kernel! {
     RepBitDecOp,
     [
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
-        (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitTensor => [hybrid] Self::bit_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing64Tensor) -> ReplicatedBitArray64 => [hybrid] Self::ring_kernel),
         (ReplicatedPlacement, (ReplicatedSetup, ReplicatedRing128Tensor) -> ReplicatedBitArray128 => [hybrid] Self::ring_kernel),
     ]
 }
 
 impl RepBitDecOp {
-    fn bit_kernel<S: Session, SetupT, RingT, BitT, ReplicatedBitT, ShapeT>(
-        sess: &S,
-        rep: &ReplicatedPlacement,
-        setup: SetupT,
-        x: RepTen<RingT>,
-    ) -> ReplicatedBitT
-    where
-        RingT: RingSize,
-
-        ReplicatedBitT: From<RepTen<BitT>>,
-        ReplicatedBitT: Clone,
-
-        BitT: Clone,
-
-        HostPlacement: PlacementAdd<S, RingT, RingT, RingT>,
-        HostPlacement: PlacementBitDec<S, RingT, BitT>,
-        HostPlacement: PlacementShape<S, RingT, ShapeT>,
-        HostPlacement: PlacementFill<S, ShapeT, BitT>,
-        ReplicatedPlacement: PlacementShareSetup<S, SetupT, BitT, ReplicatedBitT>,
-        ReplicatedPlacement: BinaryAdder<S, SetupT, ReplicatedBitT>,
-        ReplicatedPlacement: PlacementIndexAxis<S, ReplicatedBitT, ReplicatedBitT>,
-    {
-        let (player0, player1, player2) = rep.host_placements();
-        let RepTen {
-            shares: [[x00, x10], [x11, x21], [x22, _x02]],
-        } = &x;
-
-        let p0_zero = player0.fill(sess, 0_u8.into(), &player0.shape(sess, x00));
-        let p1_zero = player1.fill(sess, 0_u8.into(), &player1.shape(sess, x11));
-        let p2_zero = player2.fill(sess, 0_u8.into(), &player2.shape(sess, x22));
-
-        let left = with_context!(player0, sess, x00 + x10);
-        let bsl = player0.bit_decompose(sess, &left);
-
-        // transform x2 into boolean sharing
-        let x2_on_1 = player1.bit_decompose(sess, x21);
-        let x2_on_2 = player2.bit_decompose(sess, x22);
-
-        let rep_bsl = rep.share(sess, &setup, &bsl);
-        let rep_bsr = RepTen {
-            shares: [
-                [p0_zero.clone(), p0_zero],
-                [p1_zero, x2_on_1],
-                [x2_on_2, p2_zero],
-            ],
-        }
-        .into();
-
-        rep.binary_adder(sess, setup, rep_bsl, rep_bsr, RingT::SIZE)
-    }
-
     // NOTE rustc is currently _not_ checking N against RingSize::SIZE but
     // we may be able to do so (and should!) in the near future,
     // see https://github.com/rust-lang/rust/issues/60551
@@ -3168,8 +3113,8 @@ mod tests {
 
         let x_shared = rep.share(&sess, &setup, &x);
 
-        let result: ReplicatedBitTensor = rep.bit_decompose(&sess, &setup, &x_shared);
-        let opened_result = alice.reveal(&sess, &result);
+        let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
+        let opened_result = alice.reveal(&sess, &result.0);
         assert_eq!(opened_result, HostBitTensor::from_raw_plc(zs, alice));
     }
 
