@@ -223,11 +223,13 @@ pub trait UnaryKernel<S: Session, P, X0, Y> {
 }
 
 pub trait BinaryKernel<S: Session, P, X0, X1, Y> {
-    fn compile(&self, plc: &P) -> Box<dyn Fn(&S, &P, X0, X1) -> Y>;
+    #[allow(clippy::type_complexity)] // TODO
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1) -> Y>>;
 }
 
 pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
-    fn compile(&self, plc: &P) -> Box<dyn Fn(&S, &P, X0, X1, X2) -> Y>;
+    #[allow(clippy::type_complexity)] // TODO
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Y>>;
 }
 
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
