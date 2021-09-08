@@ -1,24 +1,10 @@
-use crate::computation::{
-    BitAndOp, BitExtractOp, BitFillOp, BitSampleOp, BitSampleSeededOp, BitXorOp, CanonicalType,
-    Constant, HostAddOp, HostBitDecOp, HostConcatOp, HostDiagOp, HostDivOp, HostDotOp,
-    HostExpandDimsOp, HostIndexAxisOp, HostInverseOp, HostMeanOp, HostMulOp, HostOnesOp,
-    HostPlacement, HostReshapeOp, HostShlDimOp, HostSliceOp, HostSqrtOp, HostSqueezeOp, HostSubOp,
-    HostSumOp, HostTransposeOp, KnownType, Placed, Placement, ReplicatedPlacement, RingAddOp,
-    RingDotOp, RingFillOp, RingFixedpointMeanOp, RingInjectOp, RingMulOp, RingNegOp, RingSampleOp,
-    RingSampleSeededOp, RingShlOp, RingShrOp, RingSubOp, RingSumOp, Role, ShapeOp, SymbolicType,
-};
+use crate::computation::*;
 use crate::error::{Error, Result};
 use crate::fixedpoint::Fixed128Tensor;
-use crate::kernels::{
-    PlacementAdd, PlacementAnd, PlacementBitDec, PlacementBitExtract, PlacementDiag, PlacementDot,
-    PlacementFill, PlacementIndex, PlacementMean, PlacementMul, PlacementNeg, PlacementPlace,
-    PlacementSample, PlacementSampleSeeded, PlacementSampleUniform, PlacementSampleUniformSeeded,
-    PlacementShl, PlacementShlDim, PlacementShr, PlacementSlice, PlacementSub, PlacementSum,
-    PlacementTruncPr, PlacementXor, RuntimeSession, Session, SyncSession, Tensor,
-};
+use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
 use crate::prng::AesRng;
-use crate::symbolic::{Symbolic, SymbolicHandle, SymbolicSession};
+use crate::symbolic::Symbolic;
 use macros::with_context;
 use ndarray::prelude::*;
 use ndarray::LinalgScalar;
@@ -36,9 +22,7 @@ use std::num::Wrapping;
 use std::ops::{Add, Div, Mul, Sub}; // related to TODOs
 use std::ops::{BitAnd, BitXor, Neg, Shl, Shr};
 
-impl SymbolicType for String {
-    type Type = Symbolic<String>;
-}
+moose_type!(String);
 
 impl Placed for String {
     type Placement = Placement;
@@ -46,6 +30,15 @@ impl Placed for String {
     fn placement(&self) -> Result<Self::Placement> {
         // TODO we need a wrapper for strings that contains placement info
         unimplemented!()
+    }
+}
+
+impl<S: Session> PlacementPlace<S, String> for HostPlacement {
+    fn place(&self, _sess: &S, x: String) -> String {
+        match x.placement() {
+            Ok(Placement::Host(place)) if &place == self => x,
+            _ => unimplemented!("Not yet able to place strings"),
+        }
     }
 }
 
@@ -94,9 +87,7 @@ impl RawShape {
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug)]
 pub struct HostShape(pub RawShape, pub HostPlacement);
 
-impl SymbolicType for HostShape {
-    type Type = Symbolic<HostShape>;
-}
+moose_type!(HostShape);
 
 impl Placed for HostShape {
     type Placement = HostPlacement;
@@ -106,37 +97,14 @@ impl Placed for HostShape {
     }
 }
 
-impl PlacementPlace<SyncSession, HostShape> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, shape: HostShape) -> HostShape {
+impl<S: Session> PlacementPlace<S, HostShape> for HostPlacement {
+    fn place(&self, _sess: &S, shape: HostShape) -> HostShape {
         match shape.placement() {
             Ok(place) if self == &place => shape,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 HostShape(shape.0, self.clone())
-            }
-        }
-    }
-}
-
-impl PlacementPlace<SymbolicSession, Symbolic<HostShape>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<HostShape>) -> Symbolic<HostShape> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                match x {
-                    Symbolic::Concrete(shape) => {
-                        // TODO insert Place ops?
-                        Symbolic::Concrete(HostShape(shape.0, self.clone()))
-                    }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                        // TODO insert `Place` ops here?
-                        Symbolic::Symbolic(SymbolicHandle {
-                            op,
-                            plc: self.clone(),
-                        })
-                    }
-                }
             }
         }
     }
@@ -181,135 +149,22 @@ impl<T> Placed for HostTensor<T> {
     }
 }
 
-pub type HostFloat32Tensor = HostTensor<f32>;
-pub type HostFloat64Tensor = HostTensor<f64>;
-pub type HostInt8Tensor = HostTensor<i8>;
-pub type HostInt16Tensor = HostTensor<i16>;
-pub type HostInt32Tensor = HostTensor<i32>;
-pub type HostInt64Tensor = HostTensor<i64>;
-pub type HostUint8Tensor = HostTensor<u8>;
-pub type HostUint16Tensor = HostTensor<u16>;
-pub type HostUint32Tensor = HostTensor<u32>;
-pub type HostUint64Tensor = HostTensor<u64>;
+moose_type!(HostFloat32Tensor = [atomic] HostTensor<f32>);
+moose_type!(HostFloat64Tensor = [atomic] HostTensor<f64>);
+moose_type!(HostInt8Tensor = [atomic] HostTensor<i8>);
+moose_type!(HostInt16Tensor = [atomic] HostTensor<i16>);
+moose_type!(HostInt32Tensor = [atomic] HostTensor<i32>);
+moose_type!(HostInt64Tensor = [atomic] HostTensor<i64>);
+moose_type!(HostUint8Tensor = [atomic] HostTensor<u8>);
+moose_type!(HostUint16Tensor = [atomic] HostTensor<u16>);
+moose_type!(HostUint32Tensor = [atomic] HostTensor<u32>);
+moose_type!(HostUint64Tensor = [atomic] HostTensor<u64>);
 
-impl<T> SymbolicType for HostTensor<T> {
-    type Type = Symbolic<HostTensor<T>>;
-}
-
-impl<T> TryFrom<Symbolic<HostTensor<T>>> for HostTensor<T> {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostTensor<T>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl From<HostShape> for Symbolic<HostShape> {
-    fn from(x: HostShape) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostRing64Tensor> for Symbolic<HostRing64Tensor> {
-    fn from(x: HostRing64Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostRing128Tensor> for Symbolic<HostRing128Tensor> {
-    fn from(x: HostRing128Tensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<RingT: Placed> From<AbstractHostFixedTensor<RingT>>
-    for Symbolic<AbstractHostFixedTensor<RingT>>
-{
-    fn from(x: AbstractHostFixedTensor<RingT>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl From<HostBitTensor> for Symbolic<HostBitTensor> {
-    fn from(x: HostBitTensor) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl TryFrom<Symbolic<HostBitTensor>> for HostBitTensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostBitTensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl TryFrom<Symbolic<HostRing64Tensor>> for HostRing64Tensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostRing64Tensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl TryFrom<Symbolic<HostRing128Tensor>> for HostRing128Tensor {
-    type Error = Error;
-    fn try_from(v: Symbolic<HostRing128Tensor>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<RingT: Placed> TryFrom<Symbolic<AbstractHostFixedTensor<RingT>>>
-    for AbstractHostFixedTensor<RingT>
-{
-    type Error = Error;
-    fn try_from(v: Symbolic<AbstractHostFixedTensor<RingT>>) -> crate::error::Result<Self> {
-        match v {
-            Symbolic::Concrete(x) => Ok(x),
-            _ => Err(Error::Unexpected), // TODO err message
-        }
-    }
-}
-
-impl<T> From<HostTensor<T>> for Symbolic<HostTensor<T>> {
-    fn from(x: HostTensor<T>) -> Self {
-        Symbolic::Concrete(x)
-    }
-}
-
-impl<T> PlacementPlace<SyncSession, HostTensor<T>> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, x: HostTensor<T>) -> HostTensor<T> {
+impl<S: Session, T> PlacementPlace<S, HostTensor<T>> for HostPlacement {
+    fn place(&self, _sess: &S, x: HostTensor<T>) -> HostTensor<T> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => HostTensor(x.0, self.clone()),
-        }
-    }
-}
-
-/// This implementation is required to do the `plc.place(sess, x)`
-impl<T> PlacementPlace<SymbolicSession, Symbolic<HostTensor<T>>> for HostPlacement {
-    fn place(
-        &self,
-        _sess: &SymbolicSession,
-        x: Symbolic<HostTensor<T>>,
-    ) -> Symbolic<HostTensor<T>> {
-        match x {
-            Symbolic::Concrete(x) => Symbolic::Concrete(x),
-            Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                Symbolic::Symbolic(SymbolicHandle {
-                    op,
-                    plc: self.clone(),
-                })
-            }
         }
     }
 }
@@ -1311,9 +1166,7 @@ where
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct HostBitTensor(pub ArrayD<u8>, HostPlacement);
 
-impl SymbolicType for HostBitTensor {
-    type Type = Symbolic<HostBitTensor>;
-}
+moose_type!(HostBitTensor);
 
 impl<S: Session> Tensor<S> for HostBitTensor {
     type Scalar = u8;
@@ -1331,41 +1184,14 @@ impl Placed for HostBitTensor {
     }
 }
 
-impl PlacementPlace<SyncSession, HostBitTensor> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, x: HostBitTensor) -> HostBitTensor {
+impl<S: Session> PlacementPlace<S, HostBitTensor> for HostPlacement {
+    fn place(&self, _sess: &S, x: HostBitTensor) -> HostBitTensor {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 HostBitTensor(x.0, self.clone())
-            }
-        }
-    }
-}
-
-impl PlacementPlace<SymbolicSession, Symbolic<HostBitTensor>> for HostPlacement {
-    fn place(
-        &self,
-        _sess: &SymbolicSession,
-        x: Symbolic<HostBitTensor>,
-    ) -> Symbolic<HostBitTensor> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                match x {
-                    Symbolic::Concrete(x) => {
-                        // TODO insert Place ops?
-                        Symbolic::Concrete(HostBitTensor(x.0, self.clone()))
-                    }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                        // TODO insert `Place` ops here?
-                        Symbolic::Symbolic(SymbolicHandle {
-                            op,
-                            plc: self.clone(),
-                        })
-                    }
-                }
             }
         }
     }
@@ -1720,11 +1546,8 @@ impl RingInjectOp {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostFixedTensor<HostRingT>(pub HostRingT);
 
-pub type HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>;
-
-impl SymbolicType for HostFixed64Tensor {
-    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing64Tensor>>>;
-}
+moose_type!(HostFixed64Tensor = AbstractHostFixedTensor<HostRing64Tensor>);
+moose_type!(HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>);
 
 impl<T> From<T> for HostFixed64Tensor
 where
@@ -1733,12 +1556,6 @@ where
     fn from(x: T) -> Self {
         AbstractHostFixedTensor(HostRing64Tensor::from(x))
     }
-}
-
-pub type HostFixed128Tensor = AbstractHostFixedTensor<HostRing128Tensor>;
-
-impl SymbolicType for HostFixed128Tensor {
-    type Type = Symbolic<AbstractHostFixedTensor<Symbolic<HostRing128Tensor>>>;
 }
 
 impl<T> From<T> for HostFixed128Tensor
@@ -1761,34 +1578,15 @@ impl<RingT: Placed> Placed for AbstractHostFixedTensor<RingT> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct AbstractHostRingTensor<T>(pub ArrayD<Wrapping<T>>, pub HostPlacement);
 
-/// Tensor for ring arithmetic over Z_{2^64}
-pub type HostRing64Tensor = AbstractHostRingTensor<u64>;
+moose_type!(HostRing64Tensor = [atomic] AbstractHostRingTensor<u64>);
+moose_type!(HostRing128Tensor = [atomic] AbstractHostRingTensor<u128>);
 
-/// Tensor for ring arithmetic over Z_{2^128}
-pub type HostRing128Tensor = AbstractHostRingTensor<u128>;
+impl<T> Placed for AbstractHostRingTensor<T> {
+    type Placement = HostPlacement;
 
-impl SymbolicType for HostRing64Tensor {
-    type Type = Symbolic<HostRing64Tensor>;
-}
-
-impl SymbolicType for HostRing128Tensor {
-    type Type = Symbolic<HostRing128Tensor>;
-}
-
-impl CanonicalType for HostBitTensor {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for Symbolic<HostBitTensor> {
-    type Type = HostBitTensor;
-}
-
-impl CanonicalType for HostShape {
-    type Type = HostShape;
-}
-
-impl CanonicalType for Symbolic<HostShape> {
-    type Type = HostShape;
+    fn placement(&self) -> Result<Self::Placement> {
+        Ok(self.1.clone())
+    }
 }
 
 impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
@@ -1797,14 +1595,6 @@ impl<S: Session, T> Tensor<S> for AbstractHostRingTensor<T> {
 
 impl<S: Session, T> Tensor<S> for Symbolic<AbstractHostRingTensor<T>> {
     type Scalar = T;
-}
-
-impl<T> Placed for AbstractHostRingTensor<T> {
-    type Placement = HostPlacement;
-
-    fn placement(&self) -> Result<Self::Placement> {
-        Ok(self.1.clone())
-    }
 }
 
 pub trait RingSize {
@@ -1847,48 +1637,17 @@ impl<R: RingSize + Placed> RingSize for Symbolic<R> {
     const SIZE: usize = R::SIZE;
 }
 
-impl<T> PlacementPlace<SyncSession, AbstractHostRingTensor<T>> for HostPlacement
+impl<S: Session, T> PlacementPlace<S, AbstractHostRingTensor<T>> for HostPlacement
 where
     AbstractHostRingTensor<T>: Placed<Placement = HostPlacement>,
 {
-    fn place(
-        &self,
-        _sess: &SyncSession,
-        x: AbstractHostRingTensor<T>,
-    ) -> AbstractHostRingTensor<T> {
+    fn place(&self, _sess: &S, x: AbstractHostRingTensor<T>) -> AbstractHostRingTensor<T> {
         match x.placement() {
             Ok(place) if &place == self => x,
             _ => {
                 // TODO just updating the placement isn't enough,
                 // we need this to eventually turn into Send + Recv
                 AbstractHostRingTensor(x.0, self.clone())
-            }
-        }
-    }
-}
-
-impl<T> PlacementPlace<SymbolicSession, Symbolic<AbstractHostRingTensor<T>>> for HostPlacement {
-    fn place(
-        &self,
-        _sess: &SymbolicSession,
-        x: Symbolic<AbstractHostRingTensor<T>>,
-    ) -> Symbolic<AbstractHostRingTensor<T>> {
-        match x.placement() {
-            Ok(place) if &place == self => x,
-            _ => {
-                match x {
-                    Symbolic::Concrete(x) => {
-                        // TODO insert Place ops?
-                        Symbolic::Concrete(AbstractHostRingTensor(x.0, self.clone()))
-                    }
-                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                        // TODO insert `Place` ops here?
-                        Symbolic::Symbolic(SymbolicHandle {
-                            op,
-                            plc: self.clone(),
-                        })
-                    }
-                }
             }
         }
     }

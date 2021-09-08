@@ -1,6 +1,6 @@
 use crate::computation::{
-    Computation, HostPlacement, KnownType, Operation, Operator, Placed, Placement,
-    ReplicatedPlacement, SymbolicValue,
+    Computation, KnownType, Operation, Operator, Placed, Placement, ReplicatedPlacement,
+    SymbolicValue,
 };
 use crate::error::{Error, Result};
 use crate::kernels::{DispatchKernel, PlacementPlace, Session};
@@ -33,6 +33,35 @@ where
         match self {
             Symbolic::Symbolic(x) => Ok(x.plc.clone()),
             Symbolic::Concrete(x) => x.placement(),
+        }
+    }
+}
+
+impl<S: Session, T, P> PlacementPlace<S, Symbolic<T>> for P
+where
+    T: Placed<Placement = P>,
+    P: PlacementPlace<S, T>,
+    P: Clone + PartialEq,
+{
+    fn place(&self, sess: &S, x: Symbolic<T>) -> Symbolic<T> {
+        match x.placement() {
+            Ok(ref place) if place == self => x,
+            _ => {
+                match x {
+                    Symbolic::Concrete(x) => {
+                        // TODO should we indirectly insert Place ops here?
+                        let x = self.place(sess, x);
+                        Symbolic::Concrete(x)
+                    }
+                    Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
+                        // TODO insert `Place` ops here?
+                        Symbolic::Symbolic(SymbolicHandle {
+                            op,
+                            plc: self.clone(),
+                        })
+                    }
+                }
+            }
         }
     }
 }
@@ -204,20 +233,6 @@ impl SymbolicStrategy for DefaultSymbolicStrategy {
             HostReshape(op) => DispatchKernel::compile(&op, plc)?(sess, operands),
             // the following operators are not supported by design (for now, at least)
             Send(_) | Receive(_) => Err(Error::UnimplementedOperator(format!("{:?}", op))),
-        }
-    }
-}
-
-impl PlacementPlace<SymbolicSession, Symbolic<String>> for HostPlacement {
-    fn place(&self, _sess: &SymbolicSession, x: Symbolic<String>) -> Symbolic<String> {
-        match x {
-            Symbolic::Concrete(x) => Symbolic::Concrete(x),
-            Symbolic::Symbolic(SymbolicHandle { op, plc: _ }) => {
-                Symbolic::Symbolic(SymbolicHandle {
-                    op,
-                    plc: Placement::Host(self.clone()),
-                })
-            }
         }
     }
 }
