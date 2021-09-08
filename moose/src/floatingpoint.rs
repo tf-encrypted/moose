@@ -1,7 +1,7 @@
-use crate::computation::{FloatingpointAddOp, FloatingpointAtLeast2DOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, LoadOp, Placed, Placement, SaveOp, ShapeOp, SymbolicType, Unit};
+use crate::computation::{FloatingpointAddOp, FloatingpointAtLeast2DOp, FloatingpointConcatOp, FloatingpointDivOp, FloatingpointDotOp, FloatingpointExpandDimsOp, FloatingpointInverseOp, FloatingpointMeanOp, FloatingpointMulOp, FloatingpointOnesOp, FloatingpointSubOp, FloatingpointTransposeOp, HostPlacement, KnownType, LoadOp, Placed, Placement, SaveOp, ShapeOp, SymbolicType, Unit};
 use crate::error::Result;
 use crate::host::{HostFloat32Tensor, HostFloat64Tensor, HostShape};
-use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementInverse, PlacementLoad, PlacementMul, PlacementOnes, PlacementSave, PlacementShape, PlacementSub, PlacementTranspose, Session};
+use crate::kernels::{PlacementAdd, PlacementAtLeast2D, PlacementConcatenate, PlacementDiv, PlacementDot, PlacementExpandDims, PlacementInverse, PlacementLoad, PlacementMean, PlacementMul, PlacementOnes, PlacementSave, PlacementShape, PlacementSub, PlacementTranspose, Session};
 use crate::symbolic::Symbolic;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
@@ -58,10 +58,35 @@ where
     }
 }
 
-// TODO(Morten)
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointMeanOp);
+modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointMeanOp);
 
-// modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float32Tensor) -> Float32Tensor, FloatingpointMeanOp);
-// modelled!(PlacementMean::mean, HostPlacement, attributes[axis: Option<u32>] (Float64Tensor) -> Float64Tensor, FloatingpointMeanOp);
+kernel! {
+    FloatingpointMeanOp,
+    [
+        (HostPlacement, (Float32Tensor) -> Float32Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+        (HostPlacement, (Float64Tensor) -> Float64Tensor => [hybrid] attributes[axis] Self::float_host_kernel),
+    ]
+}
+
+impl FloatingpointMeanOp {
+    fn float_host_kernel<S: Session, HostFloatT>(
+        sess: &S,
+        plc: &HostPlacement,
+        axis: Option<u32>,
+        x: FloatTensor<HostFloatT>,
+    ) -> FloatTensor<HostFloatT>
+    where
+        HostPlacement: PlacementMean<S, HostFloatT, HostFloatT>,
+    {
+        let x = match x {
+            FloatTensor::Host(v) => v,
+        };
+
+        let z = plc.mean(sess, axis, &x);
+        FloatTensor::Host(z)
+    }
+}
 
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float32Tensor) -> Float32Tensor, FloatingpointAtLeast2DOp);
 modelled!(PlacementAtLeast2D::at_least_2d, HostPlacement, attributes[to_column_vector: bool] (Float64Tensor) -> Float64Tensor, FloatingpointAtLeast2DOp);

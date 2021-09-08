@@ -1311,6 +1311,7 @@ impl ToTextual for Operator {
             FloatingpointExpandDims(op) => unimplemented!(), // TODO
             FloatingpointTranspose(op) => unimplemented!(), // TODO
             FloatingpointInverse(op) => unimplemented!(), // TODO
+            FloatingpointMean(op) => unimplemented!(), // TODO
             RepSetup(op) => op.to_textual(),
             RepShare(op) => op.to_textual(),
             RepReveal(op) => op.to_textual(),

@@ -812,6 +812,7 @@ operators![
     FloatingpointExpandDims,
     FloatingpointTranspose,
     FloatingpointInverse,
+    FloatingpointMean,
     // Additive operators
     AdtReveal,
     AdtFill,
@@ -1340,6 +1341,13 @@ pub struct FloatingpointTransposeOp {
 pub struct FloatingpointInverseOp {
     pub sig: Signature,
 }
+
+#[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
+pub struct FloatingpointMeanOp {
+    pub sig: Signature,
+    pub axis: Option<u32>,
+}
+
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Debug, ShortName)]
 pub struct RingFixedpointEncodeOp {
