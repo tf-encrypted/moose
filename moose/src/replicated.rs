@@ -9,8 +9,9 @@ use crate::computation::{
 };
 use crate::error::{Error, Result};
 use crate::host::{
-    AbstractHostFixedTensor, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
-    HostRing128Tensor, HostRing64Tensor, HostShape, RingSize, SliceInfo,
+    AbstractHostBitArray, AbstractHostFixedTensor, HostBitArray128, HostBitArray64, HostBitTensor,
+    HostFixed128Tensor, HostFixed64Tensor, HostRing128Tensor, HostRing64Tensor, HostShape,
+    RingSize, SliceInfo,
 };
 use crate::kernels::{
     PlacementAbs, PlacementAdd, PlacementAdtToRep, PlacementAndSetup, PlacementBitDec,
@@ -46,6 +47,7 @@ pub struct AbstractReplicatedBitArray<RepBitTensorT, const N: usize>(RepBitTenso
 
 pub type ReplicatedBitArray64 = AbstractReplicatedBitArray<ReplicatedBitTensor, 64>;
 
+// TODO implement using moose_type macro
 impl<RepBitTensorT: Placed, const N: usize> Placed
     for AbstractReplicatedBitArray<RepBitTensorT, N>
 {
@@ -409,6 +411,8 @@ modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedFixed128Tensor) -> 
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor, RepRevealOp);
 modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitTensor) -> HostBitTensor, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray64) -> HostBitArray64, RepRevealOp);
+modelled!(PlacementReveal::reveal, HostPlacement, (ReplicatedBitArray128) -> HostBitArray128, RepRevealOp);
 
 kernel! {
     RepRevealOp,
@@ -418,6 +422,8 @@ kernel! {
         (HostPlacement, (ReplicatedRing64Tensor) -> HostRing64Tensor => [hybrid] Self::ring_kernel),
         (HostPlacement, (ReplicatedRing128Tensor) -> HostRing128Tensor => [hybrid] Self::ring_kernel),
         (HostPlacement, (ReplicatedBitTensor) -> HostBitTensor => [hybrid] Self::ring_kernel),
+        (HostPlacement, (ReplicatedBitArray64) -> HostBitArray64 => [hybrid] Self::bit_array_kernel),
+        (HostPlacement, (ReplicatedBitArray128) -> HostBitArray128 => [hybrid] Self::bit_array_kernel),
     ]
 }
 
@@ -432,6 +438,18 @@ impl RepRevealOp {
     {
         let x = receiver.reveal(sess, &xe.0);
         AbstractHostFixedTensor(x)
+    }
+
+    fn bit_array_kernel<S: Session, RepBitT, HostBitT, const N: usize>(
+        sess: &S,
+        receiver: &HostPlacement,
+        xe: AbstractReplicatedBitArray<RepBitT, N>,
+    ) -> AbstractHostBitArray<HostBitT, N>
+    where
+        HostPlacement: PlacementReveal<S, RepBitT, HostBitT>,
+    {
+        let x = receiver.reveal(sess, &xe.0);
+        AbstractHostBitArray(x)
     }
 
     fn ring_kernel<S: Session, R: Clone>(sess: &S, receiver: &HostPlacement, xe: RepTen<R>) -> R
@@ -2933,13 +2951,23 @@ mod tests {
         let x_shared = rep.share(&sess, &setup, &x);
 
         let result: ReplicatedBitArray64 = rep.bit_decompose(&sess, &setup, &x_shared);
-        let opened_result = alice.reveal(&sess, &result.0);
-        assert_eq!(opened_result, HostBitTensor::from_raw_plc(zs, alice));
+        let opened_result = alice.reveal(&sess, &result);
+        assert_eq!(opened_result, AbstractHostBitArray::from_raw_plc(zs, alice));
     }
 
     #[rstest]
     #[case(array![1073741823].into_dyn(),
-        array![[1_u8],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[1],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0],[0] ].into_dyn())]
+        array![
+            [1_u8],[1],[1],[1],[1],[1],[1],[1],
+            [1],[1],[1],[1],[1],[1],[1],[1],
+            [1],[1],[1],[1],[1],[1],[1],[1],
+            [1],[1],[1],[1],[1],[1],[0],[0],
+            [0],[0],[0],[0],[0],[0],[0],[0],
+            [0],[0],[0],[0],[0],[0],[0],[0],
+            [0],[0],[0],[0],[0],[0],[0],[0],
+            [0],[0],[0],[0],[0],[0],[0],[0],
+        ].into_dyn()
+    )]
     fn test_rep_bit_dec_64(#[case] x: ArrayD<u64>, #[case] y: ArrayD<u8>) {
         test_rep_bit_dec64(x, y);
     }

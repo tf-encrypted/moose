@@ -4,10 +4,10 @@ use crate::additive::{
 use crate::error::{Error, Result};
 use crate::fixedpoint::{Fixed128Tensor, Fixed64Tensor};
 use crate::host::{
-    HostBitTensor, HostFixed128Tensor, HostFixed64Tensor, HostFloat32Tensor, HostFloat64Tensor,
-    HostInt16Tensor, HostInt32Tensor, HostInt64Tensor, HostInt8Tensor, HostRing128Tensor,
-    HostRing64Tensor, HostShape, HostUint16Tensor, HostUint32Tensor, HostUint64Tensor,
-    HostUint8Tensor, RawShape, SliceInfo,
+    HostBitArray128, HostBitArray64, HostBitTensor, HostFixed128Tensor, HostFixed64Tensor,
+    HostFloat32Tensor, HostFloat64Tensor, HostInt16Tensor, HostInt32Tensor, HostInt64Tensor,
+    HostInt8Tensor, HostRing128Tensor, HostRing64Tensor, HostShape, HostUint16Tensor,
+    HostUint32Tensor, HostUint64Tensor, HostUint8Tensor, RawShape, SliceInfo,
 };
 use crate::kernels::Session;
 use crate::prim::{PrfKey, RawPrfKey, RawSeed, Seed, SyncKey};
@@ -397,6 +397,8 @@ values![
     PrfKey,
     String,
     HostBitTensor,
+    HostBitArray64,
+    HostBitArray128,
     HostRing64Tensor,
     HostRing128Tensor,
     HostFixed64Tensor,
