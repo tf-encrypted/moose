@@ -128,7 +128,7 @@ impl LocalRuntime {
         arguments: HashMap<String, PyObject>,
     ) -> PyResult<Option<HashMap<String, PyObject>>> {
         let computation = create_computation_graph_from_py_bytes(computation);
-        let computation = compile_passes(&computation, &[Pass::Typing, Pass::Symbolic])
+        let computation = compile_passes(&computation, &[Pass::Typing, Pass::DeprecatedLogical])
             .map_err(|e| PyRuntimeError::new_err(e.to_string()))?;
         self.evaluate_compiled_computation(py, &computation, role_assignments, arguments)
     }
