@@ -272,21 +272,20 @@ mod tests {
 
     #[test]
     fn test_all_on_one_host() -> std::result::Result<(), anyhow::Error> {
-        let source = r#"x = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        y = Constant{value=Float32Tensor([[1.0, 2.0], [3.0, 4.0]])} @Host(alice)
-        mul = HostMul: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        dot = HostDot: (Float32Tensor, Float32Tensor) -> Float32Tensor (x, y) @Host(alice)
-        mean = HostMean: (Float32Tensor) -> Float32Tensor (dot) @Host(alice)
-        constant_0 = Constant{value = String("regression_weights")} () @Host(alice)
-        save = Save: (String, Unknown) -> Unit (constant_0, mean) @Host(alice)
+        let source = r#"
+        mul = Mul: (Tensor, Tensor) -> Tensor (x, y) @Host(alice)
+        save = Save: (String, Tensor) -> Unit (constant_0, mean) @Host(alice)
         "#;
 
         let comp = deprecated_logical_lowering(&source.try_into()?)?
             .unwrap()
             .to_textual();
-        // The computation should now contain the type information
+        // The computation should now contain the modified type information
         assert!(comp.contains(
-            "save = Save: (String, Float32Tensor) -> Unit (constant_0, mean) @Host(alice)"
+            "mul = HostMul: (Float64Tensor, Float64Tensor) -> Float64Tensor (x, y) @Host(alice)"
+        ));
+        assert!(comp.contains(
+            "save = Save: (String, Float64Tensor) -> Unit (constant_0, mean) @Host(alice)"
         ));
         Ok(())
     }

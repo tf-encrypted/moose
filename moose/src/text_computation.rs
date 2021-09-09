@@ -320,6 +320,12 @@ fn parse_operator<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         preceded(tag(HostSqrtOp::SHORT_NAME), cut(unary!(HostSqrtOp))),
         preceded(tag(HostDiagOp::SHORT_NAME), cut(unary!(HostDiagOp))),
         preceded(tag(HostSqueezeOp::SHORT_NAME), cut(hostsqueeze)),
+        preceded(tag(AddOp::SHORT_NAME), cut(binary!(AddOp))),
+        preceded(tag(SubOp::SHORT_NAME), cut(binary!(SubOp))),
+        preceded(tag(MulOp::SHORT_NAME), cut(binary!(MulOp))),
+        preceded(tag(DivOp::SHORT_NAME), cut(binary!(DivOp))),
+        preceded(tag(DotOp::SHORT_NAME), cut(binary!(DotOp))),
+        preceded(tag(MeanOp::SHORT_NAME), cut(operation_on_axis!(MeanOp))),
     ));
     alt((part1, part2, part3))(input)
 }
@@ -813,6 +819,7 @@ fn parse_type<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
         "Float64" => Ok((i, Ty::Float64)),
         "Ring64" => Ok((i, Ty::Ring64)),
         "Ring128" => Ok((i, Ty::Ring128)),
+        "Tensor" => Ok((i, Ty::Tensor)),
         _ => Err(Error(make_error(input, ErrorKind::Tag))),
     }
 }
