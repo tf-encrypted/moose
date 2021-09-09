@@ -233,6 +233,10 @@ pub trait TernaryKernel<S: Session, P, X0, X1, X2, Y> {
     fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P, X0, X1, X2) -> Y>>;
 }
 
+pub trait VariadicKernel<S: Session, P, XS, Y> {
+    fn compile(&self, plc: &P) -> Box<dyn Fn(&S, &P, Vec<XS>) -> Y>;
+}
+
 pub(crate) trait NullaryKernelCheck<S: Session, P, Y>
 where
     Self: NullaryKernel<S, P, Y>,
@@ -254,6 +258,12 @@ where
 pub(crate) trait TernaryKernelCheck<S: Session, P, X0, X1, X2, Y>
 where
     Self: TernaryKernel<S, P, X0, X1, X2, Y>,
+{
+}
+
+pub(crate) trait VariadicKernelCheck<S: Session, P, XS, Y>
+where
+    Self: VariadicKernel<S, P, XS, Y>,
 {
 }
 
@@ -592,8 +602,8 @@ pub trait PlacementSqueeze<S: Session, T, O> {
     fn squeeze(&self, sess: &S, axis: Option<u32>, x: &T) -> O;
 }
 
-pub trait PlacementConcatenate<S: Session, T1, T2, O> {
-    fn concatenate(&self, sess: &S, axis: u32, x: &T1, y: &T2) -> O;
+pub trait PlacementConcatenate<S: Session, TS, O> {
+    fn concatenate(&self, sess: &S, axis: u32, xs: &[TS]) -> O;
 }
 
 pub trait PlacementTranspose<S: Session, T, O> {
@@ -985,11 +995,11 @@ impl Compile<Kernel> for HostOnesOp {
     }
 }
 
-modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor, HostConcatOp);
+modelled!(PlacementConcatenate::concatenate, HostPlacement, attributes[axis: u32] vec[HostFloat64Tensor] -> HostFloat64Tensor, HostConcatOp);
 
 kernel! {
     HostConcatOp, [
-        (HostPlacement, (HostFloat64Tensor, HostFloat64Tensor) -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
+        (HostPlacement, vec[HostFloat64Tensor] -> HostFloat64Tensor => [runtime] attributes[axis] Self::kernel),
     ]
 }
 

@@ -480,6 +480,7 @@ pub enum Signature {
     Unary(UnarySignature),
     Binary(BinarySignature),
     Ternary(TernarySignature),
+    Variadic(VariadicSignature),
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
@@ -508,6 +509,12 @@ pub struct TernarySignature {
     pub ret: Ty,
 }
 
+#[derive(Serialize, Deserialize, PartialEq, Copy, Clone, Debug)]
+pub struct VariadicSignature {
+    pub args: Ty,
+    pub ret: Ty,
+}
+
 impl From<NullarySignature> for Signature {
     fn from(s: NullarySignature) -> Signature {
         Signature::Nullary(s)
@@ -532,6 +539,12 @@ impl From<TernarySignature> for Signature {
     }
 }
 
+impl From<VariadicSignature> for Signature {
+    fn from(s: VariadicSignature) -> Signature {
+        Signature::Variadic(s)
+    }
+}
+
 impl Signature {
     pub fn nullary(ret: Ty) -> Signature {
         NullarySignature { ret }.into()
@@ -551,12 +564,17 @@ impl Signature {
         }
         .into()
     }
+    pub fn variadic(args: Ty, ret: Ty) -> Signature {
+        VariadicSignature { args, ret }.into()
+    }
+
     pub fn ret(&self) -> Ty {
         match self {
             Signature::Nullary(s) => s.ret,
             Signature::Unary(s) => s.ret,
             Signature::Binary(s) => s.ret,
             Signature::Ternary(s) => s.ret,
+            Signature::Variadic(s) => s.ret,
         }
     }
 
@@ -568,6 +586,7 @@ impl Signature {
             (Signature::Ternary(s), 0) => Ok(s.arg0),
             (Signature::Ternary(s), 1) => Ok(s.arg1),
             (Signature::Ternary(s), 2) => Ok(s.arg2),
+            (Signature::Variadic(s), _) => Ok(s.args),
             _ => Err(Error::OperandUnavailable),
         }
     }
@@ -578,6 +597,8 @@ impl Signature {
             Signature::Unary(_) => 1,
             Signature::Binary(_) => 2,
             Signature::Ternary(_) => 3,
+            // TODO what is the arity of a variadic kernel?
+            Signature::Variadic(_) => 100000,
         }
     }
 
@@ -587,6 +608,8 @@ impl Signature {
             (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
             (Signature::Binary(s), Signature::Binary(o)) => s.merge(o),
             (Signature::Ternary(s), Signature::Ternary(o)) => s.merge(o),
+            (Signature::Variadic(s), Signature::Variadic(o)) => s.merge(o),
+
             (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
                 s,
@@ -603,6 +626,11 @@ impl Signature {
                 o
             )),
             (Signature::Ternary(s), o) => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                s,
+                o
+            )),
+            (Signature::Variadic(s), o) => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
                 s,
                 o
@@ -657,6 +685,18 @@ impl TernarySignature {
         }
         if let Some(new_type) = self.arg2.merge(&another.arg2) {
             self.arg2 = new_type;
+        }
+        if let Some(new_type) = self.ret.merge(&another.ret) {
+            self.ret = new_type;
+        }
+        Ok(())
+    }
+}
+
+impl VariadicSignature {
+    pub fn merge(&mut self, another: &VariadicSignature) -> anyhow::Result<()> {
+        if let Some(new_type) = self.args.merge(&another.args) {
+            self.args = new_type;
         }
         if let Some(new_type) = self.ret.merge(&another.ret) {
             self.ret = new_type;

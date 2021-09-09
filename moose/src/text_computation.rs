@@ -766,7 +766,10 @@ fn type_definition<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
                 input,
                 Signature::ternary(args_types[0], args_types[1], args_types[2], result_type),
             )),
-            _ => Err(Error(make_error(input, ErrorKind::Tag))),
+            _ => Ok((
+                input,
+                Signature::variadic(args_types[0], result_type)
+            ))
         }
     }
 }
@@ -1847,6 +1850,9 @@ impl ToTextual for Signature {
                 arg2.to_textual(),
                 ret.to_textual()
             ),
+            Signature::Variadic(VariadicSignature { args, ret }) => {
+                format!("(vec[{}]) -> {}", args.to_textual(), ret.to_textual())
+            }
         }
     }
 }
