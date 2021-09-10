@@ -48,13 +48,10 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::Compilation(format!(
-                            "{:?}",
-                            crate::error::Error::TypeMismatch{
-                                expected: stringify!($prim_ty).to_string(),
-                                found: $attr.ty(),
-                            },
-                        )))
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
                     };
                 )?
             )+
@@ -71,22 +68,19 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::Compilation(format!(
-                            "{:?}",
-                            crate::error::Error::TypeMismatch{
-                                expected: stringify!($prim_ty).to_string(),
-                                found: $attr.ty(),
-                            },
-                        )))
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
                     };
                 )?
             )+
             {
-
-                let kf: crate::error::Result<Box<dyn Fn(&_, &_, _) -> _>> = Ok(Box::new(move |sess, plc, x0| {
-                    $k(sess, plc, $($attr.clone()),+, x0)
-                }));
-                kf
+                crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _>>::Ok(
+                    Box::new(move |sess, plc, x0| {
+                        $k(sess, plc, $($attr.clone()),+, x0)
+                    })
+                )
             }
         }
     };
@@ -98,13 +92,10 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::Compilation(format!(
-                            "{:?}",
-                            crate::error::Error::TypeMismatch{
-                                expected: stringify!($prim_ty).to_string(),
-                                found: $attr.ty(),
-                            },
-                        )))
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
                     };
                 )?
             )+
@@ -121,13 +112,10 @@ macro_rules! derive_runtime_kernel {
                 $(
                     let $attr = match $attr {
                         Constant::$prim_ty(v) => v,
-                        _ => return Err(crate::error::Error::Compilation(format!(
-                            "{:?}",
-                            crate::error::Error::TypeMismatch{
-                                expected: stringify!($prim_ty).to_string(),
-                                found: $attr.ty(),
-                            },
-                        )))
+                        _ => return Err(crate::error::Error::TypeMismatch{
+                            expected: stringify!($prim_ty).to_string(),
+                            found: $attr.ty(),
+                        })
                     };
                 )?
             )+
@@ -138,16 +126,10 @@ macro_rules! derive_runtime_kernel {
     };
 
     (nullary, $k:expr, $self:ident) => {
-        {
-            let kf: crate::error::Result<Box<dyn Fn(&_, &_,) -> _>> = Ok(Box::new($k));
-            kf
-        }
+        crate::error::Result::<Box<dyn Fn(&_, &_,) -> _>>::Ok(Box::new($k))
     };
     (unary, $k:expr, $self:ident) => {
-        {
-            let kf: crate::error::Result<Box<dyn Fn(&_, &_, _) -> _>> = Ok(Box::new($k));
-            kf
-        }
+        crate::error::Result::<Box<dyn Fn(&_, &_, _) -> _>>::Ok(Box::new($k))
     };
     (binary, $k:expr, $self:ident) => {
         Ok(Box::new($k))
