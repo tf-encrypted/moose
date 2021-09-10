@@ -1237,7 +1237,6 @@ impl TryFrom<PyComputation> for Computation {
                         Ok(Operation {
                             kind: HostConcatOp {
                                 // assume input type is the same as output type
-                                // TODO: Support variadic signature
                                 sig: Signature::variadic(
                                     map_type(&op.output_type)?,
                                     map_type(&op.output_type)?,

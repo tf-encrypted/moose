@@ -608,7 +608,7 @@ impl Signature {
             (Signature::Unary(s), Signature::Unary(o)) => s.merge(o),
             (Signature::Binary(s), Signature::Binary(o)) => s.merge(o),
             (Signature::Ternary(s), Signature::Ternary(o)) => s.merge(o),
-            (Signature::Variadic(s), Signature::Variadic(o)) => s.merge(o),
+            (Signature::Variadic(s), o) => s.merge(o),
 
             (Signature::Nullary(s), o) => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
@@ -626,11 +626,6 @@ impl Signature {
                 o
             )),
             (Signature::Ternary(s), o) => Err(anyhow::anyhow!(
-                "Can not merge {:?} with an incompatible signature {:?}",
-                s,
-                o
-            )),
-            (Signature::Variadic(s), o) => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
                 s,
                 o
@@ -694,14 +689,54 @@ impl TernarySignature {
 }
 
 impl VariadicSignature {
-    pub fn merge(&mut self, another: &VariadicSignature) -> anyhow::Result<()> {
-        if let Some(new_type) = self.args.merge(&another.args) {
-            self.args = new_type;
+    pub fn merge(&mut self, another: &Signature) -> anyhow::Result<()> {
+        match another {
+            Signature::Variadic(sig) => {
+                if let Some(new_type) = self.args.merge(&sig.args) {
+                    self.args = new_type;
+                }
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+                Ok(())
+            }
+            Signature::Unary(sig) => {
+                if self.args == sig.arg0 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+                Ok(())
+            }
+            Signature::Binary(sig) => {
+                if self.args == sig.arg0 && self.args == sig.arg1 {
+                    if let Some(new_type) = self.args.merge(&sig.arg0) {
+                        self.args = new_type;
+                    }
+
+                    if let Some(new_type) = self.args.merge(&sig.arg1) {
+                        self.args = new_type;
+                    }
+                }
+
+                if let Some(new_type) = self.ret.merge(&sig.ret) {
+                    self.ret = new_type;
+                }
+
+                Ok(())
+            },
+            o => Err(anyhow::anyhow!(
+                "Can not merge {:?} with an incompatible signature {:?}",
+                self,
+                o
+            ))
         }
-        if let Some(new_type) = self.ret.merge(&another.ret) {
-            self.ret = new_type;
-        }
-        Ok(())
+
+
     }
 }
 
