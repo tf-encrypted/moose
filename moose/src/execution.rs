@@ -1106,23 +1106,29 @@ impl AsyncSessionHandle {
 }
 
 pub struct AsyncExecutor {
-    // TODO(Morten) keep cache of compiled computations
+    session_ids: HashSet<SessionId>,
 }
 
 impl Default for AsyncExecutor {
     fn default() -> Self {
-        AsyncExecutor {}
+        AsyncExecutor {
+            session_ids: HashSet::new(),
+        }
     }
 }
 
 impl AsyncExecutor {
     pub fn run_computation(
-        &self,
+        &mut self,
         computation: &Computation,
         role_assignment: &RoleAssignment,
         own_identity: &Identity,
         session: AsyncSession,
     ) -> Result<(AsyncSessionHandle, HashMap<String, AsyncReceiver>)> {
+        if !self.session_ids.insert(session.sid.clone()) {
+            return Err(Error::SessionAlreadyExists(format!("{}", session.sid)));
+        }
+
         let ctx = CompilationContext {
             role_assignment,
             own_identity,
@@ -1179,7 +1185,7 @@ impl AsyncTestRuntime {
         }
     }
     pub fn evaluate_computation(
-        &self,
+        &mut self,
         computation: &Computation,
         role_assignments: HashMap<Role, Identity>,
         arguments: HashMap<String, Value>,
@@ -1202,7 +1208,7 @@ impl AsyncTestRuntime {
                 missing_identities, missing_roles)));
         }
 
-        for (own_identity, executor) in self.executors.iter() {
+        for (own_identity, executor) in self.executors.iter_mut() {
             let moose_session = AsyncSession {
                 sid: SessionId::try_from("foobar").unwrap(),
                 arguments: arguments.clone(),
@@ -1319,7 +1325,7 @@ mod tests {
                     .into_iter()
                     .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
                     .collect::<HashMap<Role, Identity>>();
-                let executor = AsyncTestRuntime::new(storage_mapping);
+                let mut executor = AsyncTestRuntime::new(storage_mapping);
                 let outputs = executor.evaluate_computation(
                     &computation,
                     valid_role_assignments,
@@ -1501,7 +1507,7 @@ mod tests {
                     .into_iter()
                     .map(|arg| (Role::from(arg.1), Identity::from(arg.0)))
                     .collect::<HashMap<Role, Identity>>();
-                let executor = AsyncTestRuntime::new(storage_mapping);
+                let mut executor = AsyncTestRuntime::new(storage_mapping);
                 let _outputs = executor.evaluate_computation(
                     &source.try_into()?,
                     valid_role_assignments,
@@ -2290,6 +2296,71 @@ mod tests {
                 Ok(())
             }
             _ => Err(anyhow::anyhow!("Failed to parse test case")),
+        }
+    }
+
+    #[test]
+    fn test_duplicate_session_ids() {
+        let source = r#"key = Constant{value=PrfKey(00000000000000000000000000000000)} @Host(alice)
+        seed = PrimDeriveSeed {sync_key = [1, 2, 3]}: (PrfKey) -> Seed (key) @Host(alice)
+        output = Output: (Seed) -> Seed (seed) @Host(alice)"#;
+
+        let networking: Arc<dyn Send + Sync + AsyncNetworking> =
+            Arc::new(LocalAsyncNetworking::default());
+
+        let identity = Identity::from("alice");
+
+        let exec_storage: Arc<dyn Send + Sync + AsyncStorage> =
+            Arc::new(LocalAsyncStorage::from_hashmap(HashMap::new()));
+
+        let valid_role_assignments: HashMap<Role, Identity> =
+            hashmap!(Role::from("alice") => identity.clone());
+
+        let mut executor = AsyncExecutor::default();
+
+        let rt = Runtime::new().unwrap();
+        let _guard = rt.enter();
+
+        let moose_session = AsyncSession {
+            sid: SessionId::try_from("foobar").unwrap(),
+            arguments: hashmap!(),
+            networking: Arc::clone(&networking),
+            storage: Arc::clone(&exec_storage),
+        };
+
+        let computation: Computation = source.try_into().unwrap();
+        let own_identity = identity;
+
+        executor
+            .run_computation(
+                &computation,
+                &valid_role_assignments,
+                &own_identity,
+                moose_session,
+            )
+            .unwrap();
+
+        let moose_session = AsyncSession {
+            sid: SessionId::try_from("foobar").unwrap(),
+            arguments: hashmap!(),
+            networking: Arc::clone(&networking),
+            storage: Arc::clone(&exec_storage),
+        };
+
+        let expected =
+            Error::SessionAlreadyExists(format!("{}", SessionId::try_from("foobar").unwrap()));
+
+        let res = executor.run_computation(
+            &computation,
+            &valid_role_assignments,
+            &own_identity,
+            moose_session,
+        );
+
+        if let Err(e) = res {
+            assert_eq!(e.to_string(), expected.to_string());
+        } else {
+            panic!("expected session already exists error")
         }
     }
 }
