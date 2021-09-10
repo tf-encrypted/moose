@@ -1553,7 +1553,7 @@ mod tests {
     ) -> std::result::Result<(), anyhow::Error> {
         let source_template = r#"x_0 = Constant{value=Int64Tensor([[1,2], [3,4]])} @Host(alice)
         x_1 = Constant{value=Int64Tensor([[5, 6], [7,8]])} @Host(alice)
-        concatenated = HostConcat {axis=test_axis}: vec[Int64Tensor, Int64Tensor] -> Int64Tensor (x_0, x_1) @Host(alice)
+        concatenated = HostConcat {axis=test_axis}: (Int64Tensor, Int64Tensor) -> Int64Tensor (x_0, x_1) @Host(alice)
         output = Output: (Int64Tensor) -> Int64Tensor (concatenated) @Host(alice)
         "#;
         let source = source_template.replace("test_axis", &axis.to_string());
