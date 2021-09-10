@@ -98,6 +98,7 @@ impl Session for SyncSession {
             RepSum(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepShl(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepIndexAxis(op) => DispatchKernel::compile(&op, plc)(self, operands),
+            RepIndex(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepDiag(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepSlice(op) => DispatchKernel::compile(&op, plc)(self, operands),
             RepBitDec(op) => DispatchKernel::compile(&op, plc)(self, operands),
@@ -602,8 +603,12 @@ pub trait PlacementDiag<S: Session, T, O> {
     fn diag(&self, sess: &S, x: &T) -> O;
 }
 
-pub trait PlacementIndex<S: Session, T, O> {
+pub trait PlacementIndexAxis<S: Session, T, O> {
     fn index_axis(&self, sess: &S, axis: usize, index: usize, x: &T) -> O;
+}
+
+pub trait PlacementIndex<S: Session, T, O> {
+    fn index(&self, sess: &S, index: usize, x: &T) -> O;
 }
 
 pub trait PlacementShlDim<S: Session, T, O> {
@@ -694,9 +699,9 @@ impl Compile<SyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_) | RepRevDim(_)
-            | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
-            | FixedpointSum(_) => {
+            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
+            | RepRevDim(_) | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_)
+            | FixedpointMean(_) | FixedpointSum(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -766,7 +771,8 @@ impl Compile<AsyncKernel> for Operator {
             | AdtToRep(_) | RepAbs(_) | RepSetup(_) | RepShare(_) | RepReveal(_) | RepFill(_)
             | RepAdd(_) | RepSub(_) | RepMul(_) | RepMsb(_) | RepDot(_) | RepMean(_)
             | RepShl(_) | RepSum(_) | RepTruncPr(_) | RepToAdt(_) | RepIndexAxis(_)
-            | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_) | RepRevDim(_) => {
+            | RepIndex(_) | RepDiag(_) | RepShlDim(_) | RepSlice(_) | RepBitDec(_)
+            | RepRevDim(_) => {
                 unimplemented!("Not supported {:?}", self)
             }
         }
@@ -1767,15 +1773,6 @@ impl Compile<Kernel> for ConstantOp {
                 owner: "TODO".into(), // Fake owner for the older kernels.
             }))
         })))
-    }
-}
-
-impl PlacementPlace<SyncSession, String> for HostPlacement {
-    fn place(&self, _sess: &SyncSession, x: String) -> String {
-        match x.placement() {
-            Ok(Placement::Host(place)) if &place == self => x,
-            _ => unimplemented!("Not yet able to place strings"),
-        }
     }
 }
 
