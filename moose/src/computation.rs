@@ -88,6 +88,8 @@ impl RendezvousKey {
 
 #[derive(Clone, Debug)]
 pub struct SessionId(pub(crate) [u8; TAG_BYTES]);
+// fields: logical (from coordinator)
+//         secure (generated from hash)
 
 impl std::fmt::Display for SessionId {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
