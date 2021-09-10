@@ -122,9 +122,9 @@ kernel! {
 }
 
 impl PrimPrfKeyGenOp {
-    fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> PrfKey {
+    fn kernel<S: RuntimeSession>(_sess: &S, plc: &HostPlacement) -> Result<PrfKey> {
         let raw_key = RawPrfKey(AesRng::generate_random_key());
-        PrfKey(raw_key, plc.clone())
+        Ok(PrfKey(raw_key, plc.clone()))
     }
 }
 

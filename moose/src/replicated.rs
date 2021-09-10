@@ -228,7 +228,7 @@ impl RepSetupOp {
     fn kernel<S: Session, K: Clone>(
         sess: &S,
         rep: &ReplicatedPlacement,
-    ) -> AbstractReplicatedSetup<K>
+    ) -> Result<AbstractReplicatedSetup<K>>
     where
         HostPlacement: PlacementKeyGen<S, K>,
         HostPlacement: PlacementPlace<S, K>,
@@ -239,7 +239,7 @@ impl RepSetupOp {
         let k1 = player1.gen_key(sess);
         let k2 = player2.gen_key(sess);
 
-        AbstractReplicatedSetup {
+        Ok(AbstractReplicatedSetup {
             keys: [
                 [
                     player0.place(sess, k0.clone()),
@@ -248,7 +248,7 @@ impl RepSetupOp {
                 [player1.place(sess, k1), player1.place(sess, k2.clone())],
                 [player2.place(sess, k2), player2.place(sess, k0)],
             ],
-        }
+        })
     }
 }
 

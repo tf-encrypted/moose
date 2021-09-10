@@ -243,7 +243,8 @@ pub trait DispatchKernel<S: Session> {
 // fn.. and Box<dyn Fn...> in the traits below instead
 
 pub trait NullaryKernel<S: Session, P, Y> {
-    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Y>>;
+    #[allow(clippy::type_complexity)] // TODO
+    fn compile(&self, plc: &P) -> Result<Box<dyn Fn(&S, &P) -> Result<Y>>>;
 }
 
 pub trait UnaryKernel<S: Session, P, X0, Y> {
@@ -1822,11 +1823,11 @@ constant_kernels![
 ];
 
 impl ConstantOp {
-    fn kernel<S: RuntimeSession, T: Placed>(sess: &S, plc: &HostPlacement, value: T) -> T
+    fn kernel<S: RuntimeSession, T: Placed>(sess: &S, plc: &HostPlacement, value: T) -> Result<T>
     where
         HostPlacement: PlacementPlace<S, T>,
     {
-        plc.place(sess, value)
+        Ok(plc.place(sess, value))
     }
 }
 
