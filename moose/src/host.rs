@@ -1,5 +1,5 @@
 use crate::computation::*;
-use crate::error::Result;
+use crate::error::{Error, Result};
 use crate::fixedpoint::Fixed128Tensor;
 use crate::kernels::*;
 use crate::prim::{RawSeed, Seed};
@@ -1936,7 +1936,9 @@ kernel! {
                 Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_bits_u64(ctx, plc, shape)
                 })),
-                _ => unimplemented!(),  // TODO: replace
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleOp with max_value != 1".to_string()
+                )),
             }
         }),
         (HostPlacement, (HostShape) -> HostRing128Tensor => [runtime] custom |op| {
@@ -1947,7 +1949,9 @@ kernel! {
                 Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape| {
                     Self::kernel_bits_u128(ctx, plc, shape)
                 })),
-                _ => unimplemented!(),  // TODO: replace
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleOp with max_value != 1".to_string()
+                )),
             }
         }),
     ]
@@ -2020,7 +2024,9 @@ kernel! {
                 Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_bits_u64(ctx, plc, shape, seed)
                 })),
-                _ => unimplemented!(),
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleSeededOp with max_value != 1".to_string()
+                )),
             }
         }),
         (HostPlacement, (HostShape, Seed) -> HostRing128Tensor => [runtime] custom |op| {
@@ -2031,7 +2037,9 @@ kernel! {
                 Some(max_value) if max_value == 1 => Ok(Box::new(|ctx, plc, shape, seed| {
                     Self::kernel_bits_u128(ctx, plc, shape, seed)
                 })),
-                _ => unimplemented!(),
+                _ => Err(Error::UnimplementedOperator(
+                    "RingSampleSeededOp with max_value != 1".to_string()
+                )),
             }
         }),
     ]
