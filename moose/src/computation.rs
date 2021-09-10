@@ -591,14 +591,13 @@ impl Signature {
         }
     }
 
-    pub fn arity(&self) -> usize {
+    pub fn arity(&self) -> Option<usize> {
         match self {
-            Signature::Nullary(_) => 0,
-            Signature::Unary(_) => 1,
-            Signature::Binary(_) => 2,
-            Signature::Ternary(_) => 3,
-            // TODO what is the arity of a variadic kernel?
-            Signature::Variadic(_) => 100000,
+            Signature::Nullary(_) => Some(0),
+            Signature::Unary(_) => Some(1),
+            Signature::Binary(_) => Some(2),
+            Signature::Ternary(_) => Some(3),
+            Signature::Variadic(_) => None,
         }
     }
 
@@ -728,15 +727,13 @@ impl VariadicSignature {
                 }
 
                 Ok(())
-            },
+            }
             o => Err(anyhow::anyhow!(
                 "Can not merge {:?} with an incompatible signature {:?}",
                 self,
                 o
-            ))
+            )),
         }
-
-
     }
 }
 

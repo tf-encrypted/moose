@@ -744,32 +744,56 @@ fn type_definition<'a, E: 'a + ParseError<&'a str> + ContextError<&'a str>>(
 ) -> impl FnMut(&'a str) -> IResult<&'a str, Signature, E> {
     move |input: &'a str| {
         let (input, _) = ws(tag(":"))(input)?;
-        let (input, args_types) = verify(
-            delimited(
-                tag("("),
-                separated_list0(tag(","), ws(parse_type)),
-                tag(")"),
-            ),
-            |v: &Vec<Ty>| v.len() >= arg_count,
-        )(input)?;
-        let (input, _) = ws(tag("->"))(input)?;
-        let (input, result_type) = ws(parse_type)(input)?;
+        let res: std::result::Result<(&str, Vec<Ty>), nom::Err<E>> = delimited(
+            tag("("),
+            separated_list0(tag(","), ws(parse_type)),
+            tag(")"),
+        )(input);
 
-        match args_types.len() {
-            0 => Ok((input, Signature::nullary(result_type))),
-            1 => Ok((input, Signature::unary(args_types[0], result_type))),
-            2 => Ok((
-                input,
-                Signature::binary(args_types[0], args_types[1], result_type),
-            )),
-            3 => Ok((
-                input,
-                Signature::ternary(args_types[0], args_types[1], args_types[2], result_type),
-            )),
-            _ => Ok((
-                input,
-                Signature::variadic(args_types[0], result_type)
-            ))
+        match res {
+            Ok((input, args_types)) => {
+                if args_types.len() < arg_count {
+                    return Err(Error(make_error(input, ErrorKind::Verify)));
+                }
+
+                let (input, _) = ws(tag("->"))(input)?;
+                let (input, result_type) = ws(parse_type)(input)?;
+
+                match args_types.len() {
+                    0 => Ok((input, Signature::nullary(result_type))),
+                    1 => Ok((input, Signature::unary(args_types[0], result_type))),
+                    2 => Ok((
+                        input,
+                        Signature::binary(args_types[0], args_types[1], result_type),
+                    )),
+                    3 => Ok((
+                        input,
+                        Signature::ternary(
+                            args_types[0],
+                            args_types[1],
+                            args_types[2],
+                            result_type,
+                        ),
+                    )),
+                    _ => Err(Error(make_error(input, ErrorKind::Tag))),
+                }
+            }
+
+            Err(_) => {
+                let (input, args_types) = verify(
+                    delimited(
+                        tag("vec["),
+                        separated_list0(tag(","), ws(parse_type)),
+                        tag("]"),
+                    ),
+                    |v: &Vec<Ty>| v.len() >= arg_count,
+                )(input)?;
+
+                let (input, _) = ws(tag("->"))(input)?;
+                let (input, result_type) = ws(parse_type)(input)?;
+
+                Ok((input, Signature::variadic(args_types[0], result_type)))
+            }
         }
     }
 }
@@ -2070,7 +2094,7 @@ mod tests {
         let data = "z = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)";
         let parsed: IResult<_, _, VerboseError<&str>> = parse_assignment(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n             ^\n\n");
+            assert_eq!(convert_error(data, e), "0: at line 1, in Verify:\nz = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n                            ^\n\n");
         } else {
             panic!("Type parsing should have given an error on an invalid type, but did not");
         }
@@ -2311,7 +2335,7 @@ mod tests {
             b = Constant{value = "b"} () @Host(alice)"#;
         let parsed: IResult<_, _, VerboseError<&str>> = parse_computation(data);
         if let Err(Failure(e)) = parsed {
-            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n                           ^\n\n");
+            assert_eq!(convert_error(data, e), "0: at line 2, in Verify:\n            err = HostAdd: (Float32Tensor) -> Float32Tensor (x, y) @Host(carole)\n                                          ^\n\n");
         }
     }
 

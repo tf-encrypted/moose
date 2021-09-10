@@ -783,7 +783,7 @@ impl Compile<AsyncKernel> for Operator {
             FixedpointEncode(_) | FixedpointDecode(_) | FixedpointAdd(_) | FixedpointSub(_)
             | FixedpointMul(_) | FixedpointDot(_) | FixedpointTruncPr(_) | FixedpointMean(_)
             | FixedpointSum(_) | HostBitDec(_) | HostIndexAxis(_) | HostShlDim(_) | HostSqrt(_)
-            | HostSqueeze(_) | HostDiag(_) | Cast(_)  => {
+            | HostSqueeze(_) | HostDiag(_) | Cast(_) => {
                 unimplemented!("deprecated, not impl {:?}", self)
             }
             // NOTE the following are not supported by design
