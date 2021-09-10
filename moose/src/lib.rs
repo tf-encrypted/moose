@@ -1184,13 +1184,21 @@ macro_rules! kernel {
                 | {
                     // TODO is there anything else we need to do here to capture that this is a
                     // variadic kernel?
-                    match &xs[0] {
-                        Symbolic::Symbolic(h0) => {
-                            let op_name = sess.add_operation(&op, &[&h0.op], &plc.clone().into());
-                            Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() })
+                    let res: Vec<&str> = xs.iter().filter_map(|x| {
+                        match x {
+                            Symbolic::Symbolic(h0) => {
+                                Some(&h0.op[..])
+                            }
+                            _ => None
                         }
-                        _ => unimplemented!()
+                    }).collect();
+
+                    if  res.len() == xs.len() {
+                        let op_name = sess.add_operation(&op, &res, &plc.clone().into());
+                        return Symbolic::Symbolic(SymbolicHandle { op: op_name, plc: plc.clone().into() });
                     }
+
+                    unimplemented!()
                 })
             }
         }
